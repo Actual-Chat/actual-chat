@@ -1,0 +1,44 @@
+<Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SolutionDir Condition="$(SolutionDir) == ''">$(MSBuildThisFileDirectory.TrimEnd('\').TrimEnd('/'))\</SolutionDir>
+    <Authors>ActualChat, Inc.</Authors>
+    <Company>ActualChat, Inc.</Company>
+    <Copyright>Copyright ActualChat, Inc.</Copyright>
+
+    <!-- Defaults for .csproj -->
+    <TargetFramework>net5.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <Features>strict;pdb-path-determinism</Features>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <NoPackageAnalysis>false</NoPackageAnalysis>
+    <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
+
+    <!-- Defaults for web projects -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <TypeScriptCompilerBlocked>true</TypeScriptCompilerBlocked>
+    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+
+    <!-- Warnings & errors -->
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+    <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
+    <!-- NU5048: The 'PackageIconUrl'/'iconUrl' element is deprecated -->
+    <NoWarn>$(NoWarn);NU5105;NU5048;</NoWarn>
+    <WarningsAsErrors>true</WarningsAsErrors>
+
+    <!-- Deterministic -->
+    <Deterministic>false</Deterministic>
+    <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
+    <PathMap>'$(SolutionDir)'=/_/</PathMap>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(DeterministicSourcePaths) == 'true'">
+    <SourceRoot Include="$(SolutionDir)" />
+  </ItemGroup>
+</Project>
