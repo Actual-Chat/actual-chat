@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <RootNamespace>ActualChat.UI</RootNamespace>
+    <AssemblyName>ActualChat.UI</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazorise" />
+    <PackageReference Include="Blazorise.Bootstrap" />
+    <PackageReference Include="Blazorise.DataGrid" />
+    <PackageReference Include="Blazorise.Icons.FontAwesome" />
+    <PackageReference Include="Blazorise.Sidebar" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="Stl.Fusion.Blazor" />
+    <PackageReference Include="UAParser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Contracts\Contracts.csproj" />
+    <ProjectReference Include="..\Services\Services.csproj" />
+  </ItemGroup>
+
+</Project>
