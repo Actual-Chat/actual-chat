@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ActualChat.Todos</RootNamespace>
+    <AssemblyName>ActualChat.Todos</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Todos.Contracts\Todos.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stl.Fusion.Server" />
+    <PackageReference Include="Stl.Fusion.EntityFramework" />
+    <PackageReference Include="Stl.Fusion.EntityFramework.Npgsql" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using ActualChat.Contracts;
-using ActualChat.Contracts.Clients;
+using ActualChat.Todos;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
@@ -12,10 +11,11 @@ using Stl.Fusion;
 using Stl.Fusion.Client;
 using Stl.OS;
 using Stl.DependencyInjection;
+using Stl.Extensibility;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Extensions;
 
-namespace ActualChat.UI
+namespace ActualChat.UI.Blazor.Host
 {
     public class Program
     {
@@ -36,6 +36,9 @@ namespace ActualChat.UI
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.Logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
 
+            var tmpServices = builder.Services.BuildServiceProvider();
+            var log = tmpServices.GetRequiredService<ILogger<Program>>();
+
             var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
             var apiBaseUri = new Uri($"{baseUri}api/");
 
@@ -53,12 +56,25 @@ namespace ActualChat.UI
             });
             fusion.AddAuthentication().AddRestEaseClient().AddBlazor();
 
-            fusionClient.AddReplicaService<ITodoService, ITodoClientDef>();
+            // Using modules to register everything else
+            var hostInfo = new HostInfo() {
+                HostKind = HostKind.Blazor,
+                ServiceScope = ServiceScope.Client,
+                Environment = builder.HostEnvironment.Environment,
+                Configuration = builder.Configuration,
+            };
+            services.UseModules()
+                .ConfigureModuleServices(s => {
+                    s.AddSingleton(log);
+                    s.AddSingleton(hostInfo);
+                })
+                .Add<TodosClientModule>()
+                .Use();
 
-            ConfigureSharedServices(services);
+            ConfigureBlazorServerServices(services);
         }
 
-        public static void ConfigureSharedServices(IServiceCollection services)
+        public static void ConfigureBlazorServerServices(IServiceCollection services)
         {
             // Blazorise
             services.AddBlazorise().AddBootstrapProviders().AddFontAwesomeIcons();

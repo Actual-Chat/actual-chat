@@ -2,13 +2,13 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using ActualChat.Contracts;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Extensions;
 
-namespace ActualChat.Services
+namespace ActualChat.Todos
 {
+    [RegisterComputeService(typeof(ITodoService))]
     public class TodoService : ITodoService
     {
         private readonly ISandboxedKeyValueStore _store;

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <RootNamespace>ActualChat.UI.Blazor.Host</RootNamespace>
+    <AssemblyName>ActualChat.UI.Blazor.Host</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" />
+    <PackageReference Include="UAParser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
+    <ProjectReference Include="..\Modules\Todos.Contracts\Todos.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Todos.UI.Blazor\Todos.UI.Blazor.csproj" />
+  </ItemGroup>
+
+</Project>

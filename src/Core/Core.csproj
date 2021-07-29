@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.Contracts</RootNamespace>
-    <AssemblyName>ActualChat.Contracts</AssemblyName>
+    <RootNamespace>ActualChat</RootNamespace>
+    <AssemblyName>ActualChat.Core</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
