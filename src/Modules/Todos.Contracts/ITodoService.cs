@@ -6,7 +6,7 @@ using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Extensions;
 
-namespace ActualChat.Contracts
+namespace ActualChat.Todos
 {
     public record Todo(string Id, string Title, bool IsDone = false)
     {

@@ -1,8 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.UI</RootNamespace>
-    <AssemblyName>ActualChat.UI</AssemblyName>
+    <RootNamespace>ActualChat.UI.Blazor</RootNamespace>
+    <AssemblyName>ActualChat.UI.Blazor.Core</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,15 +12,12 @@
     <PackageReference Include="Blazorise.Icons.FontAwesome" />
     <PackageReference Include="Blazorise.Sidebar" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Stl.Fusion.Blazor" />
-    <PackageReference Include="UAParser" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Contracts\Contracts.csproj" />
-    <ProjectReference Include="..\Services\Services.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
 
 </Project>
