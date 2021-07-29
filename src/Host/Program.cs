@@ -5,14 +5,15 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Host;
-using ActualChat.Services;
+using ActualChat.Todos;
+using ActualChat.Users;
 
 var host = Host.CreateDefaultBuilder()
     .ConfigureHostConfiguration(builder => {
         // Looks like there is no better way to set _default_ URL
         builder.Sources.Insert(0, new MemoryConfigurationSource() {
             InitialData = new Dictionary<string, string>() {
-                {WebHostDefaults.ServerUrlsKey, "http://localhost:5005"},
+                {WebHostDefaults.ServerUrlsKey, "http://localhost:7080"},
             }
         });
     })
@@ -26,10 +27,15 @@ var host = Host.CreateDefaultBuilder()
         .UseStartup<Startup>())
     .Build();
 
-// Ensure the DB is created
-var dbContextFactory = host.Services.GetRequiredService<IDbContextFactory<AppDbContext>>();
-await using var dbContext = dbContextFactory.CreateDbContext();
-// await dbContext.Database.EnsureDeletedAsync();
-await dbContext.Database.EnsureCreatedAsync();
+// Ensure the DBs are created
+var usersDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
+await using var usersDbContext = usersDbContextFactory.CreateDbContext();
+await usersDbContext.Database.EnsureDeletedAsync();
+await usersDbContext.Database.EnsureCreatedAsync();
+
+var todosDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<TodosDbContext>>();
+await using var todosDbContext = todosDbContextFactory.CreateDbContext();
+await todosDbContext.Database.EnsureDeletedAsync();
+await todosDbContext.Database.EnsureCreatedAsync();
 
 await host.RunAsync();

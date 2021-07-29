@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using ActualChat.Contracts;
-using ActualChat.Services;
-using ActualChat.UI;
+using ActualChat.Todos;
+using ActualChat.UI.Blazor.Host;
+using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -24,10 +24,7 @@ using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
-using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.Extensions;
-using Stl.IO;
+using Stl.Extensibility;
 
 namespace ActualChat.Host
 {
@@ -61,35 +58,10 @@ namespace ActualChat.Host
 
             services.AddSettings<HostSettings>();
             #pragma warning disable ASP0000
-            HostSettings = services.BuildServiceProvider().GetRequiredService<HostSettings>();
+            var tmpServices = services.BuildServiceProvider();
+            HostSettings = tmpServices.GetRequiredService<HostSettings>();
+            Log = tmpServices.GetRequiredService<ILogger<Startup>>();
             #pragma warning restore ASP0000
-
-            // DbContext & related services
-            var appTempDir = PathEx.GetApplicationTempDirectory("", true);
-            var dbPath = appTempDir & "App.db";
-            services.AddDbContextFactory<AppDbContext>(builder => {
-                if (!string.IsNullOrEmpty(HostSettings.UseSqlServer))
-                    builder.UseSqlServer(HostSettings.UseSqlServer);
-                else if (!string.IsNullOrEmpty(HostSettings.UsePostgreSql))
-                    builder.UseNpgsql(HostSettings.UsePostgreSql);
-                else
-                    builder.UseSqlite($"Data Source={dbPath}");
-                if (Env.IsDevelopment())
-                    builder.EnableSensitiveDataLogging();
-            });
-            services.AddDbContextServices<AppDbContext>(b => {
-                // This is the best way to add DbContext-related services from Stl.Fusion.EntityFramework
-                b.AddDbOperations((_, o) => {
-                    // We use FileBasedDbOperationLogChangeMonitor, so unconditional wake up period
-                    // can be arbitrary long - all depends on the reliability of Notifier-Monitor chain.
-                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(Env.IsDevelopment() ? 60 : 5);
-                });
-                var operationLogChangeAlertPath = dbPath + "_changed";
-                b.AddFileBasedDbOperationLogChangeTracking(operationLogChangeAlertPath);
-                if (!HostSettings.UseInMemoryAuthService)
-                    b.AddDbAuthentication();
-                b.AddKeyValueStore();
-            });
 
             // Fusion services
             services.AddSingleton(new Publisher.Options() { Id = HostSettings.PublisherId });
@@ -103,11 +75,9 @@ namespace ActualChat.Host
                 authHelperOptionsBuilder: (_, options) => {
                     options.NameClaimKeys = Array.Empty<string>();
                 });
-            fusion.AddComputeService<ITodoService, TodoService>();
-            fusion.AddSandboxedKeyValueStore();
 
             // Shared services
-            Program.ConfigureSharedServices(services);
+            Program.ConfigureBlazorServerServices(services);
 
             // ASP.NET Core authentication providers
             services.AddAuthentication(options => {
@@ -144,12 +114,26 @@ namespace ActualChat.Host
                     Title = "ActualChat API", Version = "v1"
                 });
             });
+
+            // Using modules to register everything else
+            var hostInfo = new HostInfo() {
+                HostKind = HostKind.WebServer,
+                ServiceScope = ServiceScope.Server,
+                Environment = Env.EnvironmentName,
+                Configuration = Cfg,
+            };
+            services.UseModules()
+                .ConfigureModuleServices(s => {
+                    s.AddSingleton(Log);
+                    s.AddSingleton(hostInfo);
+                })
+                .Add<UsersModule>()
+                .Add<TodosModule>()
+                .Use();
         }
 
-        public void Configure(IApplicationBuilder app, ILogger<Startup> log)
+        public void Configure(IApplicationBuilder app)
         {
-            Log = log;
-
             // This server serves static content from Blazor Client,
             // and since we don't copy it to local wwwroot,
             // we need to find Client's wwwroot in bin/(Debug/Release) folder
@@ -160,7 +144,8 @@ namespace ActualChat.Host
             if (!Directory.Exists(Path.Combine(wwwRootPath, "_framework")))
                 // This is a regular build, not a build produced w/ "publish",
                 // so we remap wwwroot to the client's wwwroot folder
-                wwwRootPath = Path.GetFullPath(Path.Combine(baseDir, $"../../../../UI/{binCfgPart}/net5.0/wwwroot"));
+                wwwRootPath = Path.GetFullPath(Path.Combine(baseDir,
+                    $"../../../../UI.Blazor.Host/{binCfgPart}/net5.0/wwwroot"));
             Env.WebRootPath = wwwRootPath;
             Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
             StaticWebAssetsLoader.UseStaticWebAssets(Env, Cfg);

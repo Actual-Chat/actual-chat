@@ -12,16 +12,15 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Stl.Fusion.Server" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\UI\UI.csproj" />
-    <ProjectReference Include="..\Services\Services.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Modules\Users\Users.csproj" />
+    <ProjectReference Include="..\Modules\Todos\Todos.csproj" />
+    <ProjectReference Include="..\UI.Blazor.Host\UI.Blazor.Host.csproj" />
   </ItemGroup>
 
   <ItemGroup>
