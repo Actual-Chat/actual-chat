@@ -10,8 +10,8 @@ namespace ActualChat.Hosting
         protected HostInfo HostInfo { get; } = null!;
 
         protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
-        protected HostModule(IServiceProvider services) : base(services)
-            => HostInfo = Services.GetRequiredService<HostInfo>();
+        protected HostModule(IPluginHost plugins) : base(plugins)
+            => HostInfo = plugins.GetRequiredService<HostInfo>();
 
         public virtual void InjectServices(IServiceCollection services)
         {

@@ -8,7 +8,7 @@ using Stl.Fusion.Extensions;
 
 namespace ActualChat.Todos.Client
 {
-    [RegisterRestEaseReplicaService(typeof(ITodoService), Scope = nameof(ServiceScope.Client))]
+    [RegisterRestEaseReplicaService(typeof(ITodoService))]
     [BasePath("todo")]
     public interface ITodoClientDef
     {

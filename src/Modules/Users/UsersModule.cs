@@ -14,10 +14,13 @@ namespace ActualChat.Users
     {
         public UsersHostModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public UsersHostModule(IServiceProvider services) : base(services) { }
+        public UsersHostModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
+            if (HostInfo.ServiceScope != ServiceScope.Server)
+                return; // Server-side only module
+
             base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             var settings = services.BuildServiceProvider().GetRequiredService<UsersSettings>();

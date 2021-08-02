@@ -10,6 +10,6 @@ namespace ActualChat.Todos.UI.Blazor
     {
         public TodosBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public TodosBlazorUIModule(IServiceProvider services) : base(services) { }
+        public TodosBlazorUIModule(IPluginHost plugins) : base(plugins) { }
     }
 }
