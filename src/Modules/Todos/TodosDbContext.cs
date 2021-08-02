@@ -1,5 +1,6 @@
 using System;
 using ActualChat.Db;
+using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework.Extensions;
@@ -16,7 +17,7 @@ namespace ActualChat.Todos
         public TodosDbContext(DbContextOptions options) : base(options) { }
     }
 
-    [RegisterService(typeof(IDbInitializer), IsEnumerable = true)]
+    [RegisterService(typeof(IDataInitializer), IsEnumerable = true)]
     public class TodosDbInitializer : DbInitializer<TodosDbContext>
     {
         public TodosDbInitializer(IServiceProvider services) : base(services) { }
