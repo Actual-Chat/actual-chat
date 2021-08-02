@@ -11,8 +11,7 @@ namespace ActualChat.Hosting
     {
         private readonly ImmutableOptionSet? _capabilities = null;
 
-        protected IServiceProvider Services { get; } = null!;
-        protected IPluginHost Plugins => Services.Plugins();
+        protected IPluginHost Plugins { get; } = null!;
 
         public string Name => Capabilities.Get<string>();
         public Version Version => Capabilities.Get<Version>();
@@ -21,8 +20,7 @@ namespace ActualChat.Hosting
         public virtual IEnumerable<Type> Dependencies => Array.Empty<Type>();
 
         protected Plugin(IPluginInfoProvider.Query _) { }
-        protected Plugin(IServiceProvider services)
-            => Services = services;
+        protected Plugin(IPluginHost plugins) => Plugins = plugins;
 
         protected virtual ImmutableOptionSet ComputeCapabilities()
         {

@@ -1,4 +1,8 @@
+using System;
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
+using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 
@@ -13,5 +17,11 @@ namespace ActualChat.Users
         public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
         public UsersDbContext(DbContextOptions options) : base(options) { }
+    }
+
+    [RegisterService(typeof(IDbInitializer), IsEnumerable = true)]
+    public class UsersDbInitializer : DbInitializer<UsersDbContext>
+    {
+        public UsersDbInitializer(IServiceProvider services) : base(services) { }
     }
 }

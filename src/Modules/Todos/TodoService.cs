@@ -10,7 +10,7 @@ using Stl.Fusion.Extensions;
 
 namespace ActualChat.Todos
 {
-    [RegisterComputeService(typeof(ITodoService), Scope = nameof(ServiceScope.Server))]
+    [RegisterComputeService(typeof(ITodoService))]
     public class TodoService : ITodoService
     {
         private readonly ISandboxedKeyValueStore _store;

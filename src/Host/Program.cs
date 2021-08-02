@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ActualChat.Db;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.Memory;
@@ -28,20 +29,8 @@ var host = Host.CreateDefaultBuilder()
         .UseStartup<Startup>())
     .Build();
 
-// Ensure the DBs are created
-var usersDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
-await using var usersDbContext = usersDbContextFactory.CreateDbContext();
-await usersDbContext.Database.EnsureDeletedAsync();
-await usersDbContext.Database.EnsureCreatedAsync();
-
-var todosDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<TodosDbContext>>();
-await using var todosDbContext = todosDbContextFactory.CreateDbContext();
-await todosDbContext.Database.EnsureDeletedAsync();
-await todosDbContext.Database.EnsureCreatedAsync();
-
-var voiceDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<VoiceDbContext>>();
-await using var voiceDbContext = voiceDbContextFactory.CreateDbContext();
-await voiceDbContext.Database.EnsureDeletedAsync();
-await voiceDbContext.Database.EnsureCreatedAsync();
+var dbInitializers = host.Services.GetServices<IDbInitializer>();
+foreach (var dbInitializer in dbInitializers)
+    await dbInitializer.InitializeDb(true);
 
 await host.RunAsync();
