@@ -1,14 +1,16 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ActualChat.Hosting;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Extensions;
 
 namespace ActualChat.Todos
 {
-    [RegisterComputeService(typeof(ITodoService))]
+    [RegisterComputeService(typeof(ITodoService), Scope = nameof(ServiceScope.Server))]
     public class TodoService : ITodoService
     {
         private readonly ISandboxedKeyValueStore _store;
@@ -34,6 +36,9 @@ namespace ActualChat.Todos
                 todo = todo with { Id = Ulid.NewUlid().ToString() };
             else
                 oldTodo = await TryGet(session, todo.Id, cancellationToken);
+
+            if (todo.Title.Contains("@"))
+                throw new ValidationException("Todo title can't contain '@' symbol.");
 
             var key = GetTodoKey(user, todo.Id);
             await _store.Set(session, key, todo, cancellationToken);

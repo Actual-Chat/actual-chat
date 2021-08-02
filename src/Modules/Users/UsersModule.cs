@@ -1,30 +1,34 @@
 using System;
+using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.Operations.Internal;
+using Stl.Plugins;
 
 namespace ActualChat.Users
 {
-    public class UsersModule : Module
+    public class UsersHostModule : HostModule
     {
-        public UsersModule(IServiceCollection services, IServiceProvider moduleBuilderServices)
-            : base(services, moduleBuilderServices) { }
+        public UsersHostModule(IPluginInfoProvider.Query _) : base(_) { }
+        [ServiceConstructor]
+        public UsersHostModule(IServiceProvider services) : base(services) { }
 
-        public override void Use()
+        public override void InjectServices(IServiceCollection services)
         {
-            base.Use();
+            base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            var settings = Services.BuildServiceProvider().GetRequiredService<UsersSettings>();
+            var settings = services.BuildServiceProvider().GetRequiredService<UsersSettings>();
 
-            Services.AddDbContextFactory<UsersDbContext>(builder => {
+            services.AddDbContextFactory<UsersDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            Services.AddDbContextServices<UsersDbContext>(b => {
-                Services.AddSingleton(new CompletionProducer.Options {
+            services.AddDbContextServices<UsersDbContext>(b => {
+                services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
                 b.AddDbOperations((_, o) => {

@@ -1,35 +1,39 @@
 using System;
+using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.DependencyInjection;
 using Stl.Fusion;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.Operations.Internal;
+using Stl.Plugins;
 
 namespace ActualChat.Todos
 {
-    public class TodosModule : Module
+    public class TodosModule : HostModule
     {
-        public TodosModule(IServiceCollection services, IServiceProvider moduleBuilderServices)
-            : base(services, moduleBuilderServices) { }
+        public TodosModule(IPluginInfoProvider.Query _) : base(_) { }
+        [ServiceConstructor]
+        public TodosModule(IServiceProvider services) : base(services) { }
 
-        public override void Use()
+        public override void InjectServices(IServiceCollection services)
         {
-            base.Use();
+            base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            var settings = Services.BuildServiceProvider().GetRequiredService<TodosSettings>();
+            var settings = services.BuildServiceProvider().GetRequiredService<TodosSettings>();
 
-            var fusion = Services.AddFusion();
+            var fusion = services.AddFusion();
             fusion.AddSandboxedKeyValueStore();
 
-            Services.AddDbContextFactory<TodosDbContext>(builder => {
+            services.AddDbContextFactory<TodosDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            Services.AddDbContextServices<TodosDbContext>(b => {
-                Services.AddSingleton(new CompletionProducer.Options {
+            services.AddDbContextServices<TodosDbContext>(b => {
+                services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
                 b.AddDbOperations((_, o) => {

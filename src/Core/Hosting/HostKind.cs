@@ -1,6 +1,6 @@
 using Stl.Text;
 
-namespace ActualChat
+namespace ActualChat.Hosting
 {
     public static class HostKind
     {

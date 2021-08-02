@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using ActualChat.Todos;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Host;
 using ActualChat.Users;
 using ActualChat.Voice;
@@ -25,7 +25,9 @@ using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
-using Stl.Extensibility;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Stl.Collections;
+using Stl.Plugins;
 
 namespace ActualChat.Host
 {
@@ -33,8 +35,9 @@ namespace ActualChat.Host
     {
         private IConfiguration Cfg { get; }
         private IWebHostEnvironment Env { get; }
-        private HostSettings HostSettings { get; set; } = null!;
-        private ILogger Log { get; set; } = NullLogger<Startup>.Instance;
+        private IPluginHost Plugins { get; set; } = null!;
+        private HostSettings HostSettings => Plugins.GetRequiredService<HostSettings>();
+        private ILogger Log => Plugins?.GetService<ILogger<Startup>>() ?? NullLogger<Startup>.Instance;
 
         public Startup(IConfiguration cfg, IWebHostEnvironment environment)
         {
@@ -57,12 +60,18 @@ namespace ActualChat.Host
                 }
             });
 
+            // Other services shared together with plugins
+            services.AddSingleton(new HostInfo() {
+                HostKind = HostKind.WebServer,
+                ServiceScope = ServiceScope.Server,
+                Environment = Env.EnvironmentName,
+                Configuration = Cfg,
+            });
             services.AddSettings<HostSettings>();
-            #pragma warning disable ASP0000
-            var tmpServices = services.BuildServiceProvider();
-            HostSettings = tmpServices.GetRequiredService<HostSettings>();
-            Log = tmpServices.GetRequiredService<ILogger<Startup>>();
-            #pragma warning restore ASP0000
+
+            // Creating plugins
+            Plugins = new PluginHostBuilder(new ServiceCollection().Add(services)).Build();
+            services.AddSingleton(Plugins);
 
             // Fusion services
             services.AddSingleton(new Publisher.Options() { Id = HostSettings.PublisherId });
@@ -76,9 +85,6 @@ namespace ActualChat.Host
                 authHelperOptionsBuilder: (_, options) => {
                     options.NameClaimKeys = Array.Empty<string>();
                 });
-
-            // Shared services
-            Program.ConfigureBlazorServerServices(services);
 
             // ASP.NET Core authentication providers
             services.AddAuthentication(options => {
@@ -116,22 +122,11 @@ namespace ActualChat.Host
                 });
             });
 
-            // Using modules to register everything else
-            var hostInfo = new HostInfo() {
-                HostKind = HostKind.WebServer,
-                ServiceScope = ServiceScope.Server,
-                Environment = Env.EnvironmentName,
-                Configuration = Cfg,
-            };
-            services.UseModules()
-                .ConfigureModuleServices(s => {
-                    s.AddSingleton(Log);
-                    s.AddSingleton(hostInfo);
-                })
-                .Add<UsersModule>()
-                .Add<TodosModule>()
-                .Add<VoiceModule>()
-                .Use();
+            // Injecting plugin services
+            Plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
+
+            // Blazor Server services
+            Program.ConfigureBlazorServerServices(services, Plugins);
         }
 
         public void Configure(IApplicationBuilder app)
