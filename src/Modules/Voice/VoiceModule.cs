@@ -1,36 +1,40 @@
-﻿using System;
+﻿using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.DependencyInjection;
 using Stl.Fusion;
 using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.Operations.Internal;
+using Stl.Plugins;
 
 namespace ActualChat.Voice
 {
-    public class VoiceModule : Module
+    public class VoiceModule : HostModule
     {
-        public VoiceModule(IServiceCollection services, IServiceProvider moduleBuilderServices) 
-            : base(services, moduleBuilderServices) { }
+        public VoiceModule(IPluginInfoProvider.Query _) : base(_) { }
+        [ServiceConstructor]
+        public VoiceModule(IPluginHost plugins) : base(plugins) { }
 
-        public override void Use()
+        public override void InjectServices(IServiceCollection services)
         {
-            base.Use();
-            
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            var settings = Services.BuildServiceProvider().GetRequiredService<VoiceSettings>();
+            if (HostInfo.ServiceScope != ServiceScope.Server)
+                return; // Server-side only module
 
-            var fusion = Services.AddFusion();
+            base.InjectServices(services);
+            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+            var settings = services.BuildServiceProvider().GetRequiredService<VoiceSettings>();
+
+            var fusion = services.AddFusion();
             fusion.AddSandboxedKeyValueStore();
 
-            Services.AddDbContextFactory<VoiceDbContext>(builder => {
+            services.AddDbContextFactory<VoiceDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            Services.AddDbContextServices<VoiceDbContext>(b => {
-                Services.AddSingleton(new CompletionProducer.Options {
+            services.AddDbContextServices<VoiceDbContext>(b => {
+                services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
             });
