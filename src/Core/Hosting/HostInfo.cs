@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Stl.Text;
 
-namespace ActualChat
+namespace ActualChat.Hosting
 {
     public record HostInfo
     {

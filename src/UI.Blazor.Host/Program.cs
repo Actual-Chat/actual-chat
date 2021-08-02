@@ -1,12 +1,17 @@
 using System;
 using System.Threading.Tasks;
+using ActualChat.Hosting;
 using ActualChat.Todos;
+using ActualChat.Todos.Client;
+using ActualChat.Todos.UI.Blazor;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Stl.Collections;
 using Stl.Fusion;
 using Stl.Fusion.Client;
 using Stl.OS;
@@ -14,30 +19,47 @@ using Stl.DependencyInjection;
 using Stl.Extensibility;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Extensions;
+using Stl.Fusion.UI;
+using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Host
 {
     public class Program
     {
-        public static Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             if (OSInfo.Kind != OSKind.WebAssembly)
                 throw new ApplicationException("This app runs only in browser.");
 
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            ConfigureServices(builder.Services, builder);
+            await ConfigureServices(builder.Services, builder);
             var host = builder.Build();
-            host.Services.HostedServices().Start();
-            return host.RunAsync();
+            await host.Services.HostedServices().Start();
+            await host.RunAsync();
         }
 
-        public static void ConfigureServices(IServiceCollection services, WebAssemblyHostBuilder builder)
+        public static async Task ConfigureServices(IServiceCollection services, WebAssemblyHostBuilder builder)
         {
+            // Logging
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.Logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
 
-            var tmpServices = builder.Services.BuildServiceProvider();
-            var log = tmpServices.GetRequiredService<ILogger<Program>>();
+            // Other services shared with plugins
+            services.AddSingleton(new HostInfo() {
+                HostKind = HostKind.Blazor,
+                ServiceScope = ServiceScope.Client,
+                Environment = builder.HostEnvironment.Environment,
+                Configuration = builder.Configuration,
+            });
+
+            // Creating plugins
+            var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
+            // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
+            pluginHostBuilder.UsePlugins(
+                typeof(TodosClientModule),
+                typeof(TodosBlazorUIModule));
+            var plugins = await pluginHostBuilder.BuildAsync();
+            services.AddSingleton(plugins);
 
             var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
             var apiBaseUri = new Uri($"{baseUri}api/");
@@ -56,25 +78,14 @@ namespace ActualChat.UI.Blazor.Host
             });
             fusion.AddAuthentication().AddRestEaseClient().AddBlazor();
 
-            // Using modules to register everything else
-            var hostInfo = new HostInfo() {
-                HostKind = HostKind.Blazor,
-                ServiceScope = ServiceScope.Client,
-                Environment = builder.HostEnvironment.Environment,
-                Configuration = builder.Configuration,
-            };
-            services.UseModules()
-                .ConfigureModuleServices(s => {
-                    s.AddSingleton(log);
-                    s.AddSingleton(hostInfo);
-                })
-                .Add<TodosClientModule>()
-                .Use();
+            // Injecting plugin services
+            plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
 
-            ConfigureBlazorServerServices(services);
+            // Blazor Server services
+            ConfigureBlazorServerServices(services, plugins);
         }
 
-        public static void ConfigureBlazorServerServices(IServiceCollection services)
+        public static void ConfigureBlazorServerServices(IServiceCollection services, IPluginHost plugins)
         {
             // Blazorise
             services.AddBlazorise().AddBootstrapProviders().AddFontAwesomeIcons();
@@ -84,7 +95,7 @@ namespace ActualChat.UI.Blazor.Host
             fusion.AddFusionTime();
 
             // Default update delay is 0.5s
-            services.AddTransient<IUpdateDelayer>(_ => new UpdateDelayer(0.5));
+            services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
         }
     }
 }

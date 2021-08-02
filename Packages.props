@@ -11,7 +11,7 @@
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>5.0.3</SystemNetHttpJsonVersion>
-    <StlFusionVersion>1.4.*</StlFusionVersion>
+    <StlFusionVersion>1.5.15</StlFusionVersion>
     <MicrosoftExtensionsVersion>5.0.0</MicrosoftExtensionsVersion>
   </PropertyGroup>
 
@@ -75,6 +75,7 @@
     <PackageReference Update="RestEase" Version="1.5.*" />
     <PackageReference Update="StackExchange.Redis" Version="2.2.*" />
     <PackageReference Update="Stl" Version="$(StlFusionVersion)" />
+    <PackageReference Update="Stl.Plugins" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.Server" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.Client" Version="$(StlFusionVersion)" />
