@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>ActualChat.Voice</RootNamespace>
+        <AssemblyName>ActualChat.Voice</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Core\Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="Stl.Fusion.EntityFramework" />
+        <PackageReference Include="Stl.Fusion.EntityFramework.Npgsql" />
+    </ItemGroup>
+
+</Project>
