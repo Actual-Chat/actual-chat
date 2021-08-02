@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Host;
+using ActualChat.Hosting;
 using ActualChat.Todos;
 using ActualChat.Users;
 using ActualChat.Voice;
@@ -29,8 +30,8 @@ var host = Host.CreateDefaultBuilder()
         .UseStartup<Startup>())
     .Build();
 
-var dbInitializers = host.Services.GetServices<IDbInitializer>();
+var dbInitializers = host.Services.GetServices<IDataInitializer>();
 foreach (var dbInitializer in dbInitializers)
-    await dbInitializer.InitializeDb(true);
+    await dbInitializer.Initialize(true);
 
 await host.RunAsync();

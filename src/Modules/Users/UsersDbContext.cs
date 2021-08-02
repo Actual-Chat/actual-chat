@@ -1,5 +1,6 @@
 using System;
 using ActualChat.Db;
+using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using Stl.DependencyInjection;
@@ -19,7 +20,7 @@ namespace ActualChat.Users
         public UsersDbContext(DbContextOptions options) : base(options) { }
     }
 
-    [RegisterService(typeof(IDbInitializer), IsEnumerable = true)]
+    [RegisterService(typeof(IDataInitializer), IsEnumerable = true)]
     public class UsersDbInitializer : DbInitializer<UsersDbContext>
     {
         public UsersDbInitializer(IServiceProvider services) : base(services) { }
