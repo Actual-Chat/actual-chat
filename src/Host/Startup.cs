@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using ActualChat.Todos;
 using ActualChat.UI.Blazor.Host;
 using ActualChat.Users;
+using ActualChat.Voice;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -129,6 +130,7 @@ namespace ActualChat.Host
                 })
                 .Add<UsersModule>()
                 .Add<TodosModule>()
+                .Add<VoiceModule>()
                 .Use();
         }
 

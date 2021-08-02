@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Modules\Users\Users.csproj" />
     <ProjectReference Include="..\Modules\Todos\Todos.csproj" />
+    <ProjectReference Include="..\Modules\Voice\Voice.csproj" />
     <ProjectReference Include="..\UI.Blazor.Host\UI.Blazor.Host.csproj" />
   </ItemGroup>
 

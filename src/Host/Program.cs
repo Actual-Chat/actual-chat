@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using ActualChat.Host;
 using ActualChat.Todos;
 using ActualChat.Users;
+using ActualChat.Voice;
 
 var host = Host.CreateDefaultBuilder()
     .ConfigureHostConfiguration(builder => {
@@ -37,5 +38,10 @@ var todosDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<T
 await using var todosDbContext = todosDbContextFactory.CreateDbContext();
 await todosDbContext.Database.EnsureDeletedAsync();
 await todosDbContext.Database.EnsureCreatedAsync();
+
+var voiceDbContextFactory = host.Services.GetRequiredService<IDbContextFactory<VoiceDbContext>>();
+await using var voiceDbContext = voiceDbContextFactory.CreateDbContext();
+await voiceDbContext.Database.EnsureDeletedAsync();
+await voiceDbContext.Database.EnsureCreatedAsync();
 
 await host.RunAsync();
