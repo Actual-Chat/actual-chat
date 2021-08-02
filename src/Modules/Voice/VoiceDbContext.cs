@@ -1,5 +1,6 @@
 ﻿using System;
 using ActualChat.Db;
+using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Stl.DependencyInjection;
 
@@ -12,7 +13,7 @@ namespace ActualChat.Voice
         public VoiceDbContext(DbContextOptions options) : base(options) { }
     }
 
-    [RegisterService(typeof(IDbInitializer), IsEnumerable = true)]
+    [RegisterService(typeof(IDataInitializer), IsEnumerable = true)]
     public class VoiceDbInitializer : DbInitializer<VoiceDbContext>
     {
         public VoiceDbInitializer(IServiceProvider services) : base(services) { }
