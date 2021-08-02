@@ -1,13 +1,14 @@
 using System.Threading;
 using System.Threading.Tasks;
+using ActualChat.Hosting;
 using RestEase;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Client;
 using Stl.Fusion.Extensions;
 
-namespace ActualChat.Todos
+namespace ActualChat.Todos.Client
 {
-    [RegisterRestEaseReplicaService(typeof(ITodoService))]
+    [RegisterRestEaseReplicaService(typeof(ITodoService), Scope = nameof(ServiceScope.Client))]
     [BasePath("todo")]
     public interface ITodoClientDef
     {

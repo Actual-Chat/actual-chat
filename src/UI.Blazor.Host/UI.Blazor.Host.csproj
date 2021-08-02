@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
-    <ProjectReference Include="..\Modules\Todos.Contracts\Todos.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Todos.Client\Todos.Client.csproj" />
     <ProjectReference Include="..\Modules\Todos.UI.Blazor\Todos.UI.Blazor.csproj" />
   </ItemGroup>
 
