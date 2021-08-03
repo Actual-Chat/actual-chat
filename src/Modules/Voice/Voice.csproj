@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Ulid" Version="1.2.6" />
+    <PackageReference Include="Ulid" />
   </ItemGroup>
 
 </Project>
