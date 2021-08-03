@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Stl.Plugins" />
     <PackageReference Include="Stl.Fusion.Client" />
+    <PackageReference Include="Ulid" />
   </ItemGroup>
 
 </Project>

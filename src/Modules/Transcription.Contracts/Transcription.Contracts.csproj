@@ -1,13 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <RootNamespace>ActualChat.Transcription</RootNamespace>
-        <AssemblyName>ActualChat.Transcription</AssemblyName>
-    </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace>ActualChat.Transcription</RootNamespace>
+    <AssemblyName>ActualChat.Transcription.Contracts</AssemblyName>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <PackageReference Include="Stl.Fusion" />
-      <PackageReference Include="Ulid" />
-    </ItemGroup>
-    
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Core.csproj" />
+  </ItemGroup>
+
 </Project>
