@@ -9,4 +9,8 @@
     <ProjectReference Include="..\..\Db\Db.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Ulid" Version="1.2.6" />
+  </ItemGroup>
+
 </Project>

@@ -14,6 +14,7 @@
     <PackageReference Include="Stl.Fusion.EntityFramework" />
     <PackageReference Include="Stl.Fusion.EntityFramework.Npgsql" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Ulid" Version="1.2.6" />
   </ItemGroup>
 
 </Project>
