@@ -1,0 +1,42 @@
+﻿@page "/voice"
+@inherits ComputedStateComponent<int>
+<h1>Voice Transcription</h1>
+
+<AuthorizeView>
+    <NotAuthorized>
+        <SignInDropdown Why="to use this page" />
+    </NotAuthorized>
+    <Authorized>
+        <Row>
+            <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnTablet">
+                <Paragraph>
+                </Paragraph>
+
+                <Form @onsubmit="Create" Margin="Margin.Is3.OnY">
+                    <Addons>
+                        <Addon AddonType="AddonType.Start">
+                            <Button Type="@ButtonType.Button" Clicked="Create" Color="Color.Primary">
+                                <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
+                            </Button>
+                        </Addon>
+                    </Addons>
+                </Form>
+            </Column>
+        </Row>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    protected override Task<int> ComputeState(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(1);
+    }
+
+    private Task Create()
+    {
+        // var todo = new Todo("", NewTodoTitle);
+        // NewTodoTitle = "";
+        // CommandRunner.Run(new AddOrUpdateTodoCommand(Session, todo));
+        return Task.CompletedTask;
+    }
+}

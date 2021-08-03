@@ -6,8 +6,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Stl.Fusion" Version="1.5.15" />
-      <PackageReference Include="Ulid" Version="1.2.6" />
+      <PackageReference Include="Stl.Fusion" />
+      <PackageReference Include="Ulid" />
     </ItemGroup>
     
 </Project>

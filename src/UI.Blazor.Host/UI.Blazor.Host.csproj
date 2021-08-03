@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Modules\Voice.UI.Blazor\Voice.UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
     <ProjectReference Include="..\Modules\Todos.Client\Todos.Client.csproj" />
     <ProjectReference Include="..\Modules\Todos.UI.Blazor\Todos.UI.Blazor.csproj" />
