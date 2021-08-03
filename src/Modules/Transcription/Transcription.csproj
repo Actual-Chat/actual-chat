@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>ActualChat.Transcription</RootNamespace>
+        <AssemblyName>ActualChat.Transcription</AssemblyName>
+    </PropertyGroup>
+
+</Project>
