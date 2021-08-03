@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <RootNamespace>ActualChat.Transcription</RootNamespace>
-        <AssemblyName>ActualChat.Transcription</AssemblyName>
-    </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace>ActualChat.Transcription</RootNamespace>
+    <AssemblyName>ActualChat.Transcription</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj"/>
+  </ItemGroup>
 
 </Project>
