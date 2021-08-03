@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <RootNamespace>ActualChat.Voice.UI.Blazor</RootNamespace>
+        <AssemblyName>ActualChat.Voice.UI.Blazor</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Stl.Fusion.Client" />
+    </ItemGroup>
+
+</Project>

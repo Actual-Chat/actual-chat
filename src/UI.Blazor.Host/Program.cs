@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Todos;
 using ActualChat.Todos.Client;
 using ActualChat.Todos.UI.Blazor;
+using ActualChat.Voice.UI.Blazor;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
@@ -57,7 +58,8 @@ namespace ActualChat.UI.Blazor.Host
             // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
             pluginHostBuilder.UsePlugins(
                 typeof(TodosClientModule),
-                typeof(TodosBlazorUIModule));
+                typeof(TodosBlazorUIModule),
+                typeof(VoiceBlazorUIModule));
             var plugins = await pluginHostBuilder.BuildAsync();
             services.AddSingleton(plugins);
 
