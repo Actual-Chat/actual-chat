@@ -1,6 +1,6 @@
 ﻿using Stl.DependencyInjection;
 
-namespace ActualChat.Voice
+namespace ActualChat.Audio
 {
     [RegisterSettings("ActualChat.Audio")]
     public class AudioSettings
