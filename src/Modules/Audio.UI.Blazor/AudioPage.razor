@@ -13,11 +13,12 @@
                 <Paragraph>
                 </Paragraph>
 
-                <Form @onsubmit="Create" Margin="Margin.Is3.OnY">
+                <Form @onsubmit="StartRecording" Margin="Margin.Is3.OnY">
                     <Addons>
                         <Addon AddonType="AddonType.Start">
-                            <Button Type="@ButtonType.Button" Clicked="Create" Color="Color.Primary">
+                            <Button Type="@ButtonType.Button" Clicked="ToggleRecording" Color="@ToggleColor">
                                 <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
+                                @ToggleText
                             </Button>
                         </Addon>
                     </Addons>
@@ -28,16 +29,53 @@
 </AuthorizeView>
 
 @code {
+    private IJSObjectReference JsRecorderRef { get; set; } = null!;
+    private bool IsRecording { get; set; } = false;
+    private Color ToggleColor { get; set; } = Color.Secondary;
+    private string ToggleText { get; set; } = "Start Recording";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) {
+            // DotNetRecorderRef = DotNetObjectReference.Create<IRecorderBackend>(this);
+            JsRecorderRef = await JS.InvokeAsync<IJSObjectReference>("import", "./js/audio-recorder.js");
+            await JsRecorderRef.InvokeVoidAsync("initialize");
+        }
+    }
+    
     protected override Task<int> ComputeState(CancellationToken cancellationToken)
     {
         return Task.FromResult(1);
     }
 
-    private Task Create()
+    private async Task StartRecording()
     {
+        await JsRecorderRef.InvokeVoidAsync("startRecording");
         // var todo = new Todo("", NewTodoTitle);
         // NewTodoTitle = "";
         // CommandRunner.Run(new AddOrUpdateTodoCommand(Session, todo));
-        return Task.CompletedTask;
     }
+
+    private async Task StopRecording()
+    {
+        await JsRecorderRef.InvokeVoidAsync("stopRecording");
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (IsRecording)
+        {
+            await StopRecording();
+            ToggleColor = Color.Secondary;
+            ToggleText = "Start Recording";
+        }
+        else
+        {
+            await StartRecording();
+            ToggleColor = Color.Primary;
+            ToggleText = "Recording...";
+        }
+        IsRecording = !IsRecording;
+    }
+
 }
