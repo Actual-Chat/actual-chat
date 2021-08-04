@@ -1,6 +1,11 @@
 ﻿@page "/voice"
-@inject IJSRuntime JS
 @inherits ComputedStateComponent<int>
+@implements IAudioRecorderBackend
+@inject IJSRuntime JS
+@inject IAudioRecorder AudioRecorder
+@inject Session Session
+@inject UICommandRunner CommandRunner
+@inject ILogger<AudioPage> Log
 <h1>Voice Transcription</h1>
 
 <AuthorizeView>
@@ -30,16 +35,27 @@
 
 @code {
     private IJSObjectReference JsRecorderRef { get; set; } = null!;
+    private DotNetObjectReference<IAudioRecorderBackend> DotNetRecorderRef { get; set; } = null!;
+    
     private bool IsRecording { get; set; } = false;
     private Color ToggleColor { get; set; } = Color.Secondary;
     private string ToggleText { get; set; } = "Start Recording";
+    
+    public override void Dispose()
+    {
+        base.Dispose();
+        DotNetRecorderRef?.Dispose();
+        JsRecorderRef?.DisposeAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            // DotNetRecorderRef = DotNetObjectReference.Create<IRecorderBackend>(this);
+            DotNetRecorderRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+            Debug.Assert(DotNetRecorderRef != null);
+            
             JsRecorderRef = await JS.InvokeAsync<IJSObjectReference>("import", "./js/audio-recorder.js");
-            await JsRecorderRef.InvokeVoidAsync("initialize");
+            await JsRecorderRef.InvokeVoidAsync("initialize", DotNetRecorderRef);
         }
     }
     
@@ -51,8 +67,6 @@
     private async Task StartRecording()
     {
         await JsRecorderRef.InvokeVoidAsync("startRecording");
-        // var todo = new Todo("", NewTodoTitle);
-        // NewTodoTitle = "";
         // CommandRunner.Run(new AddOrUpdateTodoCommand(Session, todo));
     }
 
@@ -76,6 +90,24 @@
             ToggleText = "Recording...";
         }
         IsRecording = !IsRecording;
+    }
+
+    [JSInvokable]
+    public Task RecordingStarted()
+    {
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task AudioDataAvailable(string dataAsBase64)
+    {
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task RecordingStopped()
+    {
+        return Task.CompletedTask;
     }
 
 }

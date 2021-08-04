@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using ActualChat.Audio.Client;
 using ActualChat.Hosting;
 using ActualChat.Todos;
 using ActualChat.Todos.Client;
@@ -59,6 +60,7 @@ namespace ActualChat.UI.Blazor.Host
             pluginHostBuilder.UsePlugins(
                 typeof(TodosClientModule),
                 typeof(TodosBlazorUIModule),
+                typeof(AudioClientModule),
                 typeof(AudioBlazorUIModule));
             var plugins = await pluginHostBuilder.BuildAsync();
             services.AddSingleton(plugins);
