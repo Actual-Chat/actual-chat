@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.Voice</RootNamespace>
-    <AssemblyName>ActualChat.Voice</AssemblyName>
+    <RootNamespace>ActualChat.Audio</RootNamespace>
+    <AssemblyName>ActualChat.Audio</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

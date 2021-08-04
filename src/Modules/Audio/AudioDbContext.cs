@@ -4,7 +4,7 @@ using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Stl.DependencyInjection;
 
-namespace ActualChat.Voice
+namespace ActualChat.Audio
 {
     public class AudioDbContext : DbContext
     {

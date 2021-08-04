@@ -8,7 +8,7 @@ using Stl.Fusion.Extensions;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
 
-namespace ActualChat.Voice
+namespace ActualChat.Audio
 {
     public class AudioModule : HostModule
     {

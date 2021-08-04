@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <RootNamespace>ActualChat.Voice</RootNamespace>
-        <AssemblyName>ActualChat.Voice.Contracts</AssemblyName>
+        <RootNamespace>ActualChat.Audio</RootNamespace>
+        <AssemblyName>ActualChat.Audio.Contracts</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\Core\Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Stl" />
     </ItemGroup>
 
 </Project>
