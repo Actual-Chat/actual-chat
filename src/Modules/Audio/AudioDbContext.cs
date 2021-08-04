@@ -6,15 +6,15 @@ using Stl.DependencyInjection;
 
 namespace ActualChat.Voice
 {
-    public class VoiceDbContext : DbContext
+    public class AudioDbContext : DbContext
     {
         public DbSet<DbAudioRecord> AudioRecords { get; protected set; } = null!;
 
-        public VoiceDbContext(DbContextOptions options) : base(options) { }
+        public AudioDbContext(DbContextOptions options) : base(options) { }
     }
 
     [RegisterService(typeof(IDataInitializer), IsEnumerable = true)]
-    public class VoiceDbInitializer : DbInitializer<VoiceDbContext>
+    public class VoiceDbInitializer : DbInitializer<AudioDbContext>
     {
         public VoiceDbInitializer(IServiceProvider services) : base(services) { }
     }
