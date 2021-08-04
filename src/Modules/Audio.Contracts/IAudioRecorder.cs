@@ -6,9 +6,9 @@ namespace ActualChat.Audio
 {
     public interface IAudioRecorder
     {
-        Task<Symbol> Initialize(InitializeAudioRecorderCommand audioRecorderCommand, CancellationToken cancellationToken = default);
+        Task<Symbol> Initialize(InitializeAudioRecorderCommand command, CancellationToken cancellationToken = default);
         
-        Task AppendAudio(AppendAudioCommand appendAudioCommand, CancellationToken cancellationToken = default);
+        Task AppendAudio(AppendAudioCommand command, Symbol recordingId, CancellationToken cancellationToken = default);
     }
 
 }
