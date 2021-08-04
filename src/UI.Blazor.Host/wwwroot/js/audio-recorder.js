@@ -1,13 +1,27 @@
-let recorder = null;
+let recording = null;
+let lastBackend = null;
 
 const sampleRate = 16000;
 
-export function isRecording() {
-    return recorder !== null && recorder.getState() === 'recording';
+async function blobToBase64(blob) {
+    return new Promise((resolve, _) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+    });
 }
 
-export async function initialize() {
-    if (recorder !== null) return;
+export function isRecording() {
+    return recording !== null && recording.recorder !== null && recording.recorder.getState() === 'recording';
+}
+
+export async function initialize(backend) {
+    if (recording !== null) return;
+    if (backend === undefined || backend === null) {
+        console.error("Audio Recorder backend is undefined");
+    }
+ 
+    lastBackend = backend;
     // Temporarily
     if(typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
         alert('Please allow to use microphone.');
@@ -32,7 +46,7 @@ export async function initialize() {
         },
         video: false
     });
-    recorder = RecordRTC(stream, {
+    let recorder = RecordRTC(stream, {
         type: 'audio',
         mimeType: 'audio/webm; codecs=opus',
         sampleRate: sampleRate,
@@ -42,29 +56,44 @@ export async function initialize() {
         timeSlice: 320,
         disableLogs: false,
         // as soon as the stream is available
-        ondataavailable(blob) {
-            console.log("audio blob is ready, Blob: %s", blob);
-            // if(!me.eventService.getIsPlaying()) {
-            //     me.ioService.sendBinaryStream(blob);
-            //     me.waveform.visualize();
-            // }
+        ondataavailable: (blob) => {
+            let base64 = blobToBase64(blob);
+            console.log("audio blob is ready, Blob length: %d", base64.length);
+
+            backend.invokeMethodAsync('AudioDataAvailable', base64);
         }
     });
+    
+    recorder.stopRecordingAsync = () => {
+        return new Promise((resolve,_) => {
+            recorder.stopRecording(resolve);
+        }); 
+    };
+
+    recording = {
+        backend: backend,
+        recorder: recorder
+    };
 }
 
 export async function startRecording() {
     if (isRecording())
         return null;
     
-    await initialize();
+    if (recording === null) {
+        await initialize(lastBackend);
+    }
     
-    recorder.startRecording();
+    recording.recorder.startRecording();
+    await recording.backend.invokeMethodAsync('RecordingStarted');
 }
 
 export async function stopRecording() {
     if (!isRecording())
         return null;
-
-    recorder.stopRecording();
-    recorder = null;
+    
+    let r = recording;
+    recording = null;
+    await r.recorder.stopRecordingAsync();
+    await r.backend.invokeMethodAsync('RecordingStopped');
 }

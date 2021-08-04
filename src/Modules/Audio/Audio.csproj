@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Db\Db.csproj" />
+    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

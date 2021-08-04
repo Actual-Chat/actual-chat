@@ -14,8 +14,8 @@ namespace ActualChat.Audio
     }
 
     [RegisterService(typeof(IDataInitializer), IsEnumerable = true)]
-    public class VoiceDbInitializer : DbInitializer<AudioDbContext>
+    public class AudioDbInitializer : DbInitializer<AudioDbContext>
     {
-        public VoiceDbInitializer(IServiceProvider services) : base(services) { }
+        public AudioDbInitializer(IServiceProvider services) : base(services) { }
     }
 }
