@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
-        <RootNamespace>ActualChat.Voice.UI.Blazor</RootNamespace>
-        <AssemblyName>ActualChat.Voice.UI.Blazor</AssemblyName>
+        <RootNamespace>ActualChat.Audio.UI.Blazor</RootNamespace>
+        <AssemblyName>ActualChat.Audio.UI.Blazor</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>

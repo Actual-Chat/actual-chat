@@ -39,7 +39,7 @@ export async function initialize() {
         desiredSampleRate: sampleRate,
         bufferSize: 4096,
         numberOfAudioChannels: 1,
-        timeSlice: 500,
+        timeSlice: 320,
         disableLogs: false,
         // as soon as the stream is available
         ondataavailable(blob) {
