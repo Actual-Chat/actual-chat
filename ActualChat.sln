@@ -33,15 +33,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.Host", "src\UI.Bl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Todos.Client", "src\Modules\Todos.Client\Todos.Client.csproj", "{D06F73CE-7842-4CCF-AA26-0257BA85B9D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Voice", "src\Modules\Voice\Voice.csproj", "{AC4542E4-54B8-4090-82F7-4B3A86CB9645}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio", "src\Modules\Audio\Audio.csproj", "{AC4542E4-54B8-4090-82F7-4B3A86CB9645}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription", "src\Modules\Transcription\Transcription.csproj", "{AFB9D20E-4A53-4265-B93A-8475022D0F41}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.Contracts", "src\Modules\Transcription.Contracts\Transcription.Contracts.csproj", "{821232D7-2239-46FC-B1D7-AF5494AACA3A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Voice.UI.Blazor", "src\Modules\Voice.UI.Blazor\Voice.UI.Blazor.csproj", "{7EE28B65-D3B9-4EC2-819A-9B6645E4384E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio.UI.Blazor", "src\Modules\Audio.UI.Blazor\Audio.UI.Blazor.csproj", "{7EE28B65-D3B9-4EC2-819A-9B6645E4384E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Voice.Contracts", "src\Modules\Voice.Contracts\Voice.Contracts.csproj", "{70ACF043-75F4-4EDE-A4C7-8B3DC17C934E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio.Contracts", "src\Modules\Audio.Contracts\Audio.Contracts.csproj", "{70ACF043-75F4-4EDE-A4C7-8B3DC17C934E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
