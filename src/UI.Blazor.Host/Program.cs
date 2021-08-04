@@ -59,7 +59,7 @@ namespace ActualChat.UI.Blazor.Host
             pluginHostBuilder.UsePlugins(
                 typeof(TodosClientModule),
                 typeof(TodosBlazorUIModule),
-                typeof(VoiceBlazorUIModule));
+                typeof(AudioBlazorUIModule));
             var plugins = await pluginHostBuilder.BuildAsync();
             services.AddSingleton(plugins);
 

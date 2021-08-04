@@ -10,11 +10,11 @@ using Stl.Plugins;
 
 namespace ActualChat.Voice
 {
-    public class VoiceModule : HostModule
+    public class AudioModule : HostModule
     {
-        public VoiceModule(IPluginInfoProvider.Query _) : base(_) { }
+        public AudioModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public VoiceModule(IPluginHost plugins) : base(plugins) { }
+        public AudioModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
@@ -23,17 +23,17 @@ namespace ActualChat.Voice
 
             base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            var settings = services.BuildServiceProvider().GetRequiredService<VoiceSettings>();
+            var settings = services.BuildServiceProvider().GetRequiredService<AudioSettings>();
 
             var fusion = services.AddFusion();
             fusion.AddSandboxedKeyValueStore();
 
-            services.AddDbContextFactory<VoiceDbContext>(builder => {
+            services.AddDbContextFactory<AudioDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            services.AddDbContextServices<VoiceDbContext>(b => {
+            services.AddDbContextServices<AudioDbContext>(b => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
