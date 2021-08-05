@@ -8,15 +8,18 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" />
-    <PackageReference Include="UAParser" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Modules\Audio.Client\Audio.Client.csproj" />
-    <ProjectReference Include="..\Modules\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
+    <ProjectReference Include="..\Modules\Audio\Client\Client.csproj" />
+    <ProjectReference Include="..\Modules\Audio\UI.Blazor\UI.Blazor.csproj" />
+    <ProjectReference Include="..\Modules\Chat\Client\Client.csproj" />
+    <ProjectReference Include="..\Modules\Chat\UI.Blazor\UI.Blazor.csproj" />
+    <ProjectReference Include="..\Modules\Todos\Client\Client.csproj" />
+    <ProjectReference Include="..\Modules\Todos\UI.Blazor\UI.Blazor.csproj" />
+    <ProjectReference Include="..\Modules\Users\Client\Client.csproj" />
+    <ProjectReference Include="..\Modules\Users\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
-    <ProjectReference Include="..\Modules\Todos.Client\Todos.Client.csproj" />
-    <ProjectReference Include="..\Modules\Todos.UI.Blazor\Todos.UI.Blazor.csproj" />
   </ItemGroup>
 
 </Project>

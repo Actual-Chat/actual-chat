@@ -1,0 +1,113 @@
+﻿@page "/voice"
+@inherits ComputedStateComponent<int>
+@implements IAudioRecorderJSBackend
+@inject IJSRuntime _js
+@inject IAudioRecorder _audioRecorder
+@inject Session _session
+@inject UICommandRunner _cmd
+@inject ILogger<AudioPage> _log
+
+<h1>Voice Transcription</h1>
+
+<AuthorizeView>
+    <NotAuthorized>
+        <SignInDropdown Why="to use this page" />
+    </NotAuthorized>
+    <Authorized>
+        <Row>
+            <Column ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnTablet">
+                <Paragraph>
+                </Paragraph>
+
+                <Form @onsubmit="StartRecording" Margin="Margin.Is3.OnY">
+                    <Addons>
+                        <Addon AddonType="AddonType.Start">
+                            <Button Type="@ButtonType.Button" Clicked="ToggleRecording" Color="@ToggleColor">
+                                <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
+                                @ToggleText
+                            </Button>
+                        </Addon>
+                    </Addons>
+                </Form>
+            </Column>
+        </Row>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private IJSObjectReference JsRecorderRef { get; set; } = null!;
+    private DotNetObjectReference<IAudioRecorderJSBackend> DotNetRecorderRef { get; set; } = null!;
+
+    private bool IsRecording { get; set; } = false;
+    private Color ToggleColor { get; set; } = Color.Secondary;
+    private string ToggleText { get; set; } = "Start Recording";
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        DotNetRecorderRef?.Dispose();
+        JsRecorderRef?.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) {
+            DotNetRecorderRef = DotNetObjectReference.Create<IAudioRecorderJSBackend>(this);
+            Debug.Assert(DotNetRecorderRef != null!);
+
+            JsRecorderRef = await _js.InvokeAsync<IJSObjectReference>("import", "./js/audio-recorder.js");
+            await JsRecorderRef.InvokeVoidAsync("initialize", DotNetRecorderRef);
+        }
+    }
+
+    protected override Task<int> ComputeState(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(1);
+    }
+
+    private async Task StartRecording()
+    {
+        await JsRecorderRef.InvokeVoidAsync("startRecording");
+        // CommandRunner.Run(new AddOrUpdateTodoCommand(Session, todo));
+    }
+
+    private async Task StopRecording()
+    {
+        await JsRecorderRef.InvokeVoidAsync("stopRecording");
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (IsRecording)
+        {
+            await StopRecording();
+            ToggleColor = Color.Secondary;
+            ToggleText = "Start Recording";
+        }
+        else
+        {
+            await StartRecording();
+            ToggleColor = Color.Primary;
+            ToggleText = "Recording...";
+        }
+        IsRecording = !IsRecording;
+    }
+
+    [JSInvokable]
+    public Task RecordingStarted()
+    {
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task AudioDataAvailable(string dataAsBase64)
+    {
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task RecordingStopped()
+    {
+        return Task.CompletedTask;
+    }
+}

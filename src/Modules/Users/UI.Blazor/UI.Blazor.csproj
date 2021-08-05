@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <RootNamespace>ActualChat.Users.UI.Blazor</RootNamespace>
+    <AssemblyName>ActualChat.Users.UI.Blazor</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
+    <ProjectReference Include="..\Contract\Contract.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="UAParser" />
+  </ItemGroup>
+
+</Project>

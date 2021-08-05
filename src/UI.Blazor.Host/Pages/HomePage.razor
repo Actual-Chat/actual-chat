@@ -1,27 +1,9 @@
 ﻿@page "/"
-@inject NavigationManager Navigator
+@inject NavigationManager _navigator
 
-<div class="jumbotron">
-    <h1 class="display-4">
-        <a href="https://github.com/servicetitan/Stl.Fusion" target="_blank">TodoApp: Fusion+Blazor Template</a>
-    </h1>
+@code {
 
-    <p>To create your own app based on it:</p>
-    <ul>
-        <li>Copy it to a new folder</li>
-        <li>Search for "ActualChat" everywhere in the new solution and replace it to your own project name</li>
-        <li>Modify whatever you like!</li>
-    </ul>
+    protected override void OnInitialized()
+        => _navigator.NavigateTo("/todo");
 
-    <p>Note that <a href="/swagger" target="_blank">Swagger API browser</a> is already bundled.</p>
-
-    <hr class="my-4">
-    <p class="lead">Please share your feedback once you're done playing with it!</p>
-    <p class="lead">
-        <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Large"
-                To="https://forms.gle/TpGkmTZttukhDMRB6"
-                Target="Target.Blank">
-            Share your feedback
-        </Button>
-    </p>
-</div>
+}
