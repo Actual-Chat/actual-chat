@@ -1,9 +1,12 @@
-﻿using ActualChat.Hosting;
+﻿using System;
+using ActualChat.Audio.Db;
+using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
 using Stl.Fusion.EntityFramework;
+using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
@@ -37,6 +40,13 @@ namespace ActualChat.Audio.Module
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
+                services.AddSingleton(new CompletionProducer.Options {
+                    IsLoggingEnabled = true,
+                });
+                b.AddDbOperations((_, o) => {
+                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
+                });
+                b.AddNpgsqlDbOperationLogChangeTracking();
             });
         }
     }

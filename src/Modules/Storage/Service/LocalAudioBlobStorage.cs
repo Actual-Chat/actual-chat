@@ -2,11 +2,13 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Stl.DependencyInjection;
 using Stl.Text;
 using Storage.Net;
 
 namespace ActualChat.Storage
 {
+    [RegisterService(typeof(IBlobStorage))]
     public class LocalAudioBlobStorage : IBlobStorage
     {
         private readonly global::Storage.Net.Blobs.IBlobStorage _blobStorage;
@@ -28,7 +30,7 @@ namespace ActualChat.Storage
         public async Task<Stream> Read(Symbol blobId, CancellationToken cancellationToken = default)
         {
             if (blobId.IsEmpty) return Stream.Null;
-            
+
             return await _blobStorage.OpenReadAsync(GetBlobPath(blobId), cancellationToken);
         }
 

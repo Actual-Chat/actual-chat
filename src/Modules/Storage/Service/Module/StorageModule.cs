@@ -8,7 +8,6 @@ namespace ActualChat.Storage.Module
     public class StorageModule : HostModule
     {
         public StorageModule(IPluginInfoProvider.Query _) : base(_) { }
-
         [ServiceConstructor]
         public StorageModule(IPluginHost plugins) : base(plugins) { }
 
@@ -18,7 +17,7 @@ namespace ActualChat.Storage.Module
                 return; // Server-side only module
 
             base.InjectServices(services);
-            
+
             var settings = services.BuildServiceProvider().GetRequiredService<StorageSettings>();
             if (settings.StorageType == "disk") services.AddTransient<LocalAudioBlobStorage>();
         }
