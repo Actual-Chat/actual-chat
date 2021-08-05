@@ -15,6 +15,6 @@ namespace ActualChat.Audio
         public Moment ClientStartTime { get; init; } = CpuClock.Now;
     }
 
-    public record AppendAudioCommand(Moment ClientOffset, Base64Encoded Data) : ICommand<Unit>
+    public record AppendAudioCommand(Symbol RecordingId, Moment ClientOffset, Base64Encoded Data) : ICommand<Unit>
     { }
 }

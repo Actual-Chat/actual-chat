@@ -27,10 +27,10 @@ namespace ActualChat.Audio.Controllers
             return _audioRecorder.Initialize(command, cancellationToken);
         }
 
-        [HttpPost("{recordingId}/segments")]
-        public Task AppendAudio([FromBody] AppendAudioCommand command, [FromRoute] Symbol recordingId, CancellationToken cancellationToken = default)
+        [HttpPost("append")]
+        public Task AppendAudio([FromBody] AppendAudioCommand command, CancellationToken cancellationToken = default)
         {
-            return _audioRecorder.AppendAudio(command, recordingId, cancellationToken);
+            return _audioRecorder.AppendAudio(command, cancellationToken);
         }
     }
 }
