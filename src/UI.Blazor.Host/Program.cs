@@ -87,7 +87,7 @@ namespace ActualChat.UI.Blazor.Host
                 var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
                 o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
             });
-            fusion.AddAuthentication().AddRestEaseClient().AddBlazor();
+            fusion.AddAuthentication().AddBlazor();
 
             // Injecting plugin services
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));

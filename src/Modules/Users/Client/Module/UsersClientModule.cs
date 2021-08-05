@@ -1,6 +1,8 @@
 ﻿using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
+using Stl.Fusion;
+using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Users.Client.Module
@@ -15,6 +17,10 @@ namespace ActualChat.Users.Client.Module
         {
             if (HostInfo.ServiceScope != ServiceScope.Client)
                 return; // Client-side only module
+
+            var fusion = services.AddFusion();
+            var fusionAuth = fusion.AddAuthentication();
+            fusionAuth.AddRestEaseClient();
 
             base.InjectServices(services);
         }

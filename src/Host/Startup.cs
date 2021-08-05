@@ -22,7 +22,6 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
-using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Collections;
 using Stl.Plugins;
@@ -76,36 +75,7 @@ namespace ActualChat.Host
             var fusion = services.AddFusion();
             var fusionServer = fusion.AddWebServer();
             var fusionClient = fusion.AddRestEaseClient();
-            var fusionAuth = fusion.AddAuthentication().AddServer(
-                signInControllerOptionsBuilder: (_, options) => {
-                    options.DefaultScheme = MicrosoftAccountDefaults.AuthenticationScheme;
-                },
-                authHelperOptionsBuilder: (_, options) => {
-                    options.NameClaimKeys = Array.Empty<string>();
-                });
-
-            // ASP.NET Core authentication providers
-            services.AddAuthentication(options => {
-                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            }).AddCookie(options => {
-                options.LoginPath = "/signIn";
-                options.LogoutPath = "/signOut";
-                if (Env.IsDevelopment())
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-            }).AddMicrosoftAccount(options => {
-                options.ClientId = HostSettings.MicrosoftAccountClientId;
-                options.ClientSecret = HostSettings.MicrosoftAccountClientSecret;
-                // That's for personal account authentication flow
-                options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
-                options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-            }).AddGitHub(options => {
-                options.ClientId = HostSettings.GitHubClientId;
-                options.ClientSecret = HostSettings.GitHubClientSecret;
-                options.Scope.Add("read:user");
-                options.Scope.Add("user:email");
-                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-            });
+            var fusionAuth = fusion.AddAuthentication();
 
             // Web
             services.AddRouting();
