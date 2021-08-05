@@ -104,6 +104,7 @@
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="2.1.*" />
     <PackageReference Update="ZString" Version="2.4.*" />
+    <PackageReference Update="Storage.Net" Version="9.2.*" />
     <!-- Legacy support only -->
     <PackageReference Update="IndexRange" Version="1.0.*" />
     <PackageReference Update="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
