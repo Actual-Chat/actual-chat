@@ -1,6 +1,5 @@
 using System.Threading;
 using System.Threading.Tasks;
-using ActualChat.Hosting;
 using RestEase;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Client;
