@@ -40,9 +40,6 @@ namespace ActualChat.Audio.Module
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-                services.AddSingleton(new CompletionProducer.Options {
-                    IsLoggingEnabled = true,
-                });
                 b.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
