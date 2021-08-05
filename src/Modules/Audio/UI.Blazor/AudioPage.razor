@@ -68,7 +68,7 @@
             {
                 Session = _session, 
                 AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 }, 
-                ClientStartTime = CpuClock.Now
+                ClientStartOffset = CpuClock.Now
             });
 
             RecordingId = result.Result;
