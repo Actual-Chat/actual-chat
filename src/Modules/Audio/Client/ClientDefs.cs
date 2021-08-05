@@ -13,7 +13,7 @@ namespace ActualChat.Audio.Client
         [Post]
         Task<Symbol> Initialize([Body] InitializeAudioRecorderCommand command, CancellationToken cancellationToken = default);
         
-        [Post("{recordingId}/segments")]
-        Task AppendAudio([Body] AppendAudioCommand command, [Path] Symbol recordingId, CancellationToken cancellationToken = default);
+        [Post("append")]
+        Task AppendAudio([Body] AppendAudioCommand command, CancellationToken cancellationToken = default);
     }
 }

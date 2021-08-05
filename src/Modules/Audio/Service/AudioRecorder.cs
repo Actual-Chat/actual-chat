@@ -17,7 +17,7 @@ namespace ActualChat.Audio
             _authService = authService;
         }
 
-        public async Task<Symbol> Initialize(InitializeAudioRecorderCommand command, CancellationToken cancellationToken = default)
+        public virtual async Task<Symbol> Initialize(InitializeAudioRecorderCommand command, CancellationToken cancellationToken = default)
         {
             if (Computed.IsInvalidating()) return default!;
             
@@ -27,11 +27,11 @@ namespace ActualChat.Audio
             return Ulid.NewUlid().ToString();
         }
 
-        public async Task AppendAudio(AppendAudioCommand command, Symbol recordingId, CancellationToken cancellationToken = default)
+        public virtual async Task AppendAudio(AppendAudioCommand command, CancellationToken cancellationToken = default)
         {
             if (Computed.IsInvalidating()) return;
             
-            var (offset, data) = command;
+            var (recordingId, offset, data) = command;
 
             await Task.CompletedTask;
         }
