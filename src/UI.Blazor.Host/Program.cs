@@ -1,11 +1,14 @@
 using System;
 using System.Threading.Tasks;
-using ActualChat.Audio.Client;
+using ActualChat.Audio.Client.Module;
+using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Chat.Client.Module;
+using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Hosting;
-using ActualChat.Todos;
-using ActualChat.Todos.Client;
-using ActualChat.Todos.UI.Blazor;
-using ActualChat.Voice.UI.Blazor;
+using ActualChat.Todos.Client.Module;
+using ActualChat.Todos.UI.Blazor.Module;
+using ActualChat.Users.Client.Module;
+using ActualChat.Users.UI.Blazor.Module;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
@@ -18,7 +21,6 @@ using Stl.Fusion;
 using Stl.Fusion.Client;
 using Stl.OS;
 using Stl.DependencyInjection;
-using Stl.Extensibility;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.UI;
@@ -61,7 +63,12 @@ namespace ActualChat.UI.Blazor.Host
                 typeof(TodosClientModule),
                 typeof(TodosBlazorUIModule),
                 typeof(AudioClientModule),
-                typeof(AudioBlazorUIModule));
+                typeof(AudioBlazorUIModule),
+                typeof(ChatClientModule),
+                typeof(ChatBlazorUIModule),
+                typeof(UsersClientModule),
+                typeof(UsersBlazorUIModule)
+                );
             var plugins = await pluginHostBuilder.BuildAsync();
             services.AddSingleton(plugins);
 
