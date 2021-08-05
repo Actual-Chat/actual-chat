@@ -1,5 +1,8 @@
 ﻿@page "/voice"
 @inherits ComputedStateComponent<int>
+@using Stl.Async
+@using Stl.Text
+@using Stl.Time
 @implements IAudioRecorderJSBackend
 @inject IJSRuntime _js
 @inject IAudioRecorder _audioRecorder
@@ -37,6 +40,7 @@
 @code {
     private IJSObjectReference JsRecorderRef { get; set; } = null!;
     private DotNetObjectReference<IAudioRecorderJSBackend> DotNetRecorderRef { get; set; } = null!;
+    private Symbol RecordingId { get; set; } = Symbol.Empty;
 
     private bool IsRecording { get; set; } = false;
     private Color ToggleColor { get; set; } = Color.Secondary;
@@ -58,6 +62,17 @@
             JsRecorderRef = await _js.InvokeAsync<IJSObjectReference>("import", "./js/audio-recorder.js");
             await JsRecorderRef.InvokeVoidAsync("initialize", DotNetRecorderRef);
         }
+        if (RecordingId.IsEmpty)
+        {
+            var result = await _cmd.Run(new InitializeAudioRecorderCommand
+            {
+                Session = _session, 
+                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 }, 
+                ClientStartTime = CpuClock.Now
+            });
+
+            RecordingId = result.Result;
+        }
     }
 
     protected override Task<int> ComputeState(CancellationToken cancellationToken)
@@ -68,7 +83,6 @@
     private async Task StartRecording()
     {
         await JsRecorderRef.InvokeVoidAsync("startRecording");
-        // CommandRunner.Run(new AddOrUpdateTodoCommand(Session, todo));
     }
 
     private async Task StopRecording()
@@ -102,6 +116,8 @@
     [JSInvokable]
     public Task AudioDataAvailable(string dataAsBase64)
     {
+        _cmd.Run(new AppendAudioCommand(RecordingId, CpuClock.Now, dataAsBase64)).Ignore();
+        
         return Task.CompletedTask;
     }
 
