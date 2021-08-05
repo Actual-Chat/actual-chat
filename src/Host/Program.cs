@@ -1,15 +1,12 @@
 using System.Collections.Generic;
-using ActualChat.Db;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Host;
 using ActualChat.Hosting;
-using ActualChat.Todos;
-using ActualChat.Users;
-using ActualChat.Voice;
 
 var host = Host.CreateDefaultBuilder()
     .ConfigureHostConfiguration(builder => {
@@ -31,7 +28,7 @@ var host = Host.CreateDefaultBuilder()
     .Build();
 
 var dbInitializers = host.Services.GetServices<IDataInitializer>();
-foreach (var dbInitializer in dbInitializers)
-    await dbInitializer.Initialize(true);
+var initTasks = dbInitializers.Select(i => i.Initialize(true)).ToArray();
+await Task.WhenAll(initTasks);
 
 await host.RunAsync();

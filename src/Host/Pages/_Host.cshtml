@@ -5,14 +5,14 @@
 @using Stl.Async
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
-@inject ServerAuthHelper ServerAuthHelper
-@inject HostSettings HostSettings
+@inject ServerAuthHelper _serverAuthHelper
+@inject HostSettings _hostSettings
 @{
-    Task.Run(() => ServerAuthHelper.UpdateAuthState(HttpContext)).Ignore();
-    var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var sessionId = ServerAuthHelper.Session.Id.Value;
+    Task.Run(() => _serverAuthHelper.UpdateAuthState(HttpContext)).Ignore();
+    var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);
+    var sessionId = _serverAuthHelper.Session.Id.Value;
     var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
-    var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
+    var isCloseWindowRequest = _serverAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     Layout = null;
 }
 
