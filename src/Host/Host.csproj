@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Modules\Audio\Service\Service.csproj" />
     <ProjectReference Include="..\Modules\Chat\Service\Service.csproj" />
+    <ProjectReference Include="..\Modules\Storage\Service\Service.csproj" />
     <ProjectReference Include="..\Modules\Todos\Service\Service.csproj" />
     <ProjectReference Include="..\Modules\Transcription\Service\Service.csproj" />
     <ProjectReference Include="..\Modules\Users\Service\Service.csproj" />

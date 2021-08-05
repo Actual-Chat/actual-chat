@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Stl;
 
-namespace ActualChat.Audio
+namespace ActualChat.Audio.Db
 {
     [Table("AudioRecords")]
     public class DbAudioRecord : IHasId<long>
