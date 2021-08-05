@@ -56,11 +56,13 @@ export async function initialize(backend) {
         timeSlice: 320,
         disableLogs: false,
         // as soon as the stream is available
-        ondataavailable: (blob) => {
-            let base64 = blobToBase64(blob);
+        ondataavailable: async (blob) => {
+            let typePrefix = `data:${blob.type};base64,`;
+            let base64Typed = await blobToBase64(blob);
+            let base64 = base64Typed.substr(typePrefix.length);
             console.log("audio blob is ready, Blob length: %d", base64.length);
 
-            backend.invokeMethodAsync('AudioDataAvailable', base64);
+            await backend.invokeMethodAsync('AudioDataAvailable', base64);
         }
     });
     
