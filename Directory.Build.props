@@ -4,9 +4,9 @@
     <Authors>ActualChat, Inc.</Authors>
     <Company>ActualChat, Inc.</Company>
     <Copyright>Copyright ActualChat, Inc.</Copyright>
-    <BaseName>ActualChat</BaseName>
 
     <!-- Custom properties -->
+    <BaseName>ActualChat</BaseName>
     <ProjectName>$([System.IO.Path]::GetFileNameWithoutExtension('$(MSBuildProjectFile)'))</ProjectName>
     <ProjectGroupName>$([System.IO.Path]::GetFileName($([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)../..'))))</ProjectGroupName>
 
