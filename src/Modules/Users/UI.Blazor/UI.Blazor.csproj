@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.Users.UI.Blazor</RootNamespace>
-    <AssemblyName>ActualChat.Users.UI.Blazor</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

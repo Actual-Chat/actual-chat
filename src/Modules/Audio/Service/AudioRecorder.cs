@@ -5,13 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Audio.Db;
-using ActualChat.Storage;
 using Microsoft.Extensions.Logging;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
-using Stl.Generators.Internal;
 using Stl.Serialization;
 using Stl.Text;
 using Stl.Time;
@@ -23,9 +21,8 @@ namespace ActualChat.Audio
     {
         private static readonly TimeSpan CleanupInterval = new TimeSpan(0, 0, 10);
         private static readonly TimeSpan SegmentLength = new TimeSpan(0, 1, 0);
-        
+
         private readonly IAuthService _authService;
-        // private readonly IBlobStorage _blobStorage;
         private readonly Generator<string> _idGenerator;
         // AY:
         // - ConcurrentQueue is a bit of excess here, I guess - a normal queue would be fine
@@ -33,10 +30,9 @@ namespace ActualChat.Audio
         //   prob. it's ok to just write for now
         private readonly ConcurrentDictionary<Symbol, Queue<(int, Moment, Base64Encoded)>> _dataCapacitor;
 
-        public AudioRecorder(IServiceProvider services, IAuthService authService, IBlobStorage blobStorage) : base(services)
+        public AudioRecorder(IServiceProvider services, IAuthService authService) : base(services)
         {
             _authService = authService;
-            // _blobStorage = blobStorage;
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
             _dataCapacitor = new ConcurrentDictionary<Symbol, Queue<(int, Moment, Base64Encoded)>>();
         }
@@ -76,18 +72,18 @@ namespace ActualChat.Audio
                 recordingId.Value,
                 command.Index,
                 command.Data.Count);
-            
+
             // Push to real-time pipeline
             // TBD
-            
-            
+
+
             // Buffering...
             _dataCapacitor.AddOrUpdate(
                 recordingId,
                 r => new Queue<(int, Moment, Base64Encoded)>(new []{ (index, offset, data) }),
                 (r, q) => {
                     q.Enqueue((index, offset, data));
-                    return q; 
+                    return q;
                 }
             );
 
@@ -99,7 +95,7 @@ namespace ActualChat.Audio
             while (true) {
                 await Task.Delay(CleanupInterval, cancellationToken);
                 if (cancellationToken.IsCancellationRequested) return;
-                
+
                 await FlushBufferedSegments();
             }
         }
@@ -108,10 +104,10 @@ namespace ActualChat.Audio
         {
             foreach (var (recordingId, queue) in _dataCapacitor) {
                 // we definitely will have multi-threading issues with this implementation .. will do something
-                
+
                 // if (queue.TryPeek(out var tuple)) {
                 //     var (index, offset, data) = tuple;
-                //     
+                //
                 // }
             }
             return Task.CompletedTask;
