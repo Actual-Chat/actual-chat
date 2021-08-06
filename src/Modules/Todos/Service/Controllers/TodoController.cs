@@ -1,13 +1,11 @@
-using System;
 using System.Threading;
 using System.Threading.Tasks;
-using ActualChat.Todos;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.Server;
 
-namespace ActualChat.Host.Controllers
+namespace ActualChat.Todos.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController, JsonifyErrors]
