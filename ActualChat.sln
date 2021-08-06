@@ -23,56 +23,56 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.Host", "src\UI.Bl
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E3E06115-E461-44C2-AE04-1F973E0067AF}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Modules", "Modules", "{382FB5ED-19C3-4A97-9A93-98338AE9A508}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{382FB5ED-19C3-4A97-9A93-98338AE9A508}"
 ProjectSection(SolutionItems) = preProject
-	src\Modules\Directory.Build.props = src\Modules\Directory.Build.props
+	src\Services\Directory.Build.props = src\Services\Directory.Build.props
 EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Audio", "Audio", "{1CE0CC27-4F28-4687-B8F4-E1A5F7975BC4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Modules\Audio\Contract\Contract.csproj", "{E5122AC2-183B-4F91-9170-668BED75FA91}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Services\Audio\Contract\Contract.csproj", "{E5122AC2-183B-4F91-9170-668BED75FA91}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Modules\Audio\Client\Client.csproj", "{3085F27B-CCF7-4D8B-8C42-6C80DE899701}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Services\Audio\Client\Client.csproj", "{3085F27B-CCF7-4D8B-8C42-6C80DE899701}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Modules\Audio\Service\Service.csproj", "{8AD824D3-5929-40FE-AE9F-0C49423F1736}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Services\Audio\Service\Service.csproj", "{8AD824D3-5929-40FE-AE9F-0C49423F1736}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Modules\Audio\UI.Blazor\UI.Blazor.csproj", "{80E1466D-E3FC-4FD3-94D8-393381D335D8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Services\Audio\UI.Blazor\UI.Blazor.csproj", "{80E1466D-E3FC-4FD3-94D8-393381D335D8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chat", "Chat", "{2AFC898B-25BA-411C-8D68-CE9F837B8845}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Modules\Chat\Client\Client.csproj", "{7FF5B722-7290-4BD2-984A-C7E6016888E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Services\Chat\Client\Client.csproj", "{7FF5B722-7290-4BD2-984A-C7E6016888E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Modules\Chat\Contract\Contract.csproj", "{33DD3459-7BA5-402B-9D27-544020187D55}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Services\Chat\Contract\Contract.csproj", "{33DD3459-7BA5-402B-9D27-544020187D55}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Modules\Chat\Service\Service.csproj", "{CD44F9B9-3B5C-438B-960C-1A9660492D79}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Services\Chat\Service\Service.csproj", "{CD44F9B9-3B5C-438B-960C-1A9660492D79}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Modules\Chat\UI.Blazor\UI.Blazor.csproj", "{5F7D06EC-48CB-4442-B919-68FF265A8E32}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Services\Chat\UI.Blazor\UI.Blazor.csproj", "{5F7D06EC-48CB-4442-B919-68FF265A8E32}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Todos", "Todos", "{E5454F4F-8587-430E-B690-155E69801292}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Modules\Todos\Client\Client.csproj", "{306DCB50-50CB-42E3-A2D3-CC704A8A7E1C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Services\Todos\Client\Client.csproj", "{306DCB50-50CB-42E3-A2D3-CC704A8A7E1C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Modules\Todos\Contract\Contract.csproj", "{666C4D5C-C132-4AFC-8174-9A438AF68588}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Services\Todos\Contract\Contract.csproj", "{666C4D5C-C132-4AFC-8174-9A438AF68588}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Modules\Todos\Service\Service.csproj", "{A4A303BC-69A7-407A-80C7-1DC5A22A8B0C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Services\Todos\Service\Service.csproj", "{A4A303BC-69A7-407A-80C7-1DC5A22A8B0C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Modules\Todos\UI.Blazor\UI.Blazor.csproj", "{3D9B6FF4-0D39-4BEF-B78D-57FAC3770A9F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Services\Todos\UI.Blazor\UI.Blazor.csproj", "{3D9B6FF4-0D39-4BEF-B78D-57FAC3770A9F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Transcription", "Transcription", "{8384AC67-A8C9-46AC-A16C-6B46EF8E979E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Modules\Transcription\Contract\Contract.csproj", "{04BB2C46-C32F-4662-9C62-21662EF6D297}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Services\Transcription\Contract\Contract.csproj", "{04BB2C46-C32F-4662-9C62-21662EF6D297}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Modules\Transcription\Service\Service.csproj", "{52C99BE4-9608-4466-97BB-67EACCF18E5E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Services\Transcription\Service\Service.csproj", "{52C99BE4-9608-4466-97BB-67EACCF18E5E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Users", "Users", "{922B2CF2-ABF9-4E9F-8B4B-D147D77333A2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Modules\Users\Client\Client.csproj", "{9441F592-0C45-4C12-A404-5E0715F020F1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "src\Services\Users\Client\Client.csproj", "{9441F592-0C45-4C12-A404-5E0715F020F1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Modules\Users\Contract\Contract.csproj", "{03C0AE64-46E4-4F67-B76E-CC9E76AAE816}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contract", "src\Services\Users\Contract\Contract.csproj", "{03C0AE64-46E4-4F67-B76E-CC9E76AAE816}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Modules\Users\Service\Service.csproj", "{FA5437AC-EEC7-48D4-B156-6F4A3047358E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Services\Users\Service\Service.csproj", "{FA5437AC-EEC7-48D4-B156-6F4A3047358E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Modules\Users\UI.Blazor\UI.Blazor.csproj", "{0E4BE433-48F8-47F2-A1C7-D07364BF759C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor", "src\Services\Users\UI.Blazor\UI.Blazor.csproj", "{0E4BE433-48F8-47F2-A1C7-D07364BF759C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blobs", "src\Blobs\Blobs.csproj", "{2905477E-8832-49EF-84A8-A1E5B4D5E69D}"
 EndProject

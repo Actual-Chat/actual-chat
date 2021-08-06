@@ -15,11 +15,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Modules\Audio\Service\Service.csproj" />
-    <ProjectReference Include="..\Modules\Chat\Service\Service.csproj" />
-    <ProjectReference Include="..\Modules\Todos\Service\Service.csproj" />
-    <ProjectReference Include="..\Modules\Transcription\Service\Service.csproj" />
-    <ProjectReference Include="..\Modules\Users\Service\Service.csproj" />
+    <ProjectReference Include="..\Services\Audio\Service\Service.csproj" />
+    <ProjectReference Include="..\Services\Chat\Service\Service.csproj" />
+    <ProjectReference Include="..\Services\Todos\Service\Service.csproj" />
+    <ProjectReference Include="..\Services\Transcription\Service\Service.csproj" />
+    <ProjectReference Include="..\Services\Users\Service\Service.csproj" />
     <ProjectReference Include="..\UI.Blazor.Host\UI.Blazor.Host.csproj" />
   </ItemGroup>
 
