@@ -1,13 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.Audio</RootNamespace>
-    <AssemblyName>ActualChat.Audio.Service</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Blobs\Blobs.csproj" />
     <ProjectReference Include="..\..\..\Db\Db.csproj" />
-    <ProjectReference Include="..\..\Storage\Contract\Contract.csproj" />
     <ProjectReference Include="..\Contract\Contract.csproj" />
   </ItemGroup>
 

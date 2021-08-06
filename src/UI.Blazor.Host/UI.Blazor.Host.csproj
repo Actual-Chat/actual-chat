@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.UI.Blazor.Host</RootNamespace>
-    <AssemblyName>ActualChat.UI.Blazor.Host</AssemblyName>
+    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
