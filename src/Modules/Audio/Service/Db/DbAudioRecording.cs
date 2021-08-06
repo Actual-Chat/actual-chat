@@ -10,9 +10,9 @@ namespace ActualChat.Audio.Db
     public class DbAudioRecording : IHasId<string>
     {
         [Key]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         
-        public string UserId { get; set; }
+        public string UserId { get; set; } = string.Empty;
         
         // We need chat reference there
         
@@ -27,7 +27,7 @@ namespace ActualChat.Audio.Db
         public int SampleRate { get; set; }
         
         [StringLength(5)]
-        public string Language { get; set; }
+        public string Language { get; set; } = "en-us";
         
         public List<DbAudioSegment> Segments { get; set; } = new();
     }
