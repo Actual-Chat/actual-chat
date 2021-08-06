@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.Db</RootNamespace>
-    <AssemblyName>ActualChat.Db</AssemblyName>
+    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
