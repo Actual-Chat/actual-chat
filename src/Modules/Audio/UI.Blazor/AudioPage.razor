@@ -41,6 +41,7 @@
     private IJSObjectReference JsRecorderRef { get; set; } = null!;
     private DotNetObjectReference<IAudioRecorderJSBackend> DotNetRecorderRef { get; set; } = null!;
     private Symbol RecordingId { get; set; } = Symbol.Empty;
+    private int Index { get; set; } = 0;
 
     private bool IsRecording { get; set; } = false;
     private Color ToggleColor { get; set; } = Color.Secondary;
@@ -116,7 +117,7 @@
     [JSInvokable]
     public Task AudioDataAvailable(string dataAsBase64)
     {
-        _cmd.Run(new AppendAudioCommand(RecordingId, CpuClock.Now, dataAsBase64)).Ignore();
+        _cmd.Run(new AppendAudioCommand(RecordingId, Index++, CpuClock.Now, dataAsBase64)).Ignore();
         
         return Task.CompletedTask;
     }
