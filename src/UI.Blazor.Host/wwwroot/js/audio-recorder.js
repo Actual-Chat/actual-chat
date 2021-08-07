@@ -1,5 +1,6 @@
 let recording = null;
-let lastBackend = null;
+let currentBackend = null;
+let isMicrophoneAvailable = false;
 
 const sampleRate = 16000;
 
@@ -21,7 +22,7 @@ export async function initialize(backend) {
         console.error("Audio Recorder backend is undefined");
     }
  
-    lastBackend = backend;
+    currentBackend = backend;
     // Temporarily
     if(typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
         alert('Please allow to use microphone.');
@@ -30,60 +31,73 @@ export async function initialize(backend) {
             alert('This browser seems supporting deprecated getUserMedia API.');
         }
     }
-    let stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-            channelCount: 1,
-            sampleRate: sampleRate,
-            autoGainControl: {
-                ideal: true
-            },
-            echoCancellation: {
-                ideal: true
-            },
-            noiseSuppression: {
-                ideal: true
-            }
-        },
-        video: false
-    });
-    let recorder = RecordRTC(stream, {
-        type: 'audio',
-        mimeType: 'audio/webm; codecs=opus',
-        sampleRate: sampleRate,
-        desiredSampleRate: sampleRate,
-        bufferSize: 4096,
-        numberOfAudioChannels: 1,
-        timeSlice: 320,
-        disableLogs: false,
-        // as soon as the stream is available
-        ondataavailable: async (blob) => {
-            let typePrefix = `data:${blob.type};base64,`;
-            let base64Typed = await blobToBase64(blob);
-            let base64 = base64Typed.substr(typePrefix.length);
-            console.log("audio blob is ready, Blob length: %d", base64.length);
-
-            await backend.invokeMethodAsync('AudioDataAvailable', base64);
-        }
-    });
-    
-    recorder.stopRecordingAsync = () => {
-        return new Promise((resolve,_) => {
-            recorder.stopRecording(resolve);
-        }); 
-    };
-
-    recording = {
-        backend: backend,
-        recorder: recorder
-    };
+    else {
+        isMicrophoneAvailable = true;
+    }
 }
 
 export async function startRecording() {
     if (isRecording())
         return null;
+    if (currentBackend === null) {
+        console.error("Audio Recorder backend is undefined. Call 'initialize' first");
+        return null;
+    }
+    if (!isMicrophoneAvailable)
+    {
+        console.error("Microphone is unavailable");
+        return null;
+    }
     
+    let backend = currentBackend;
     if (recording === null) {
-        await initialize(lastBackend);
+        let stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: sampleRate,
+                autoGainControl: {
+                    ideal: true
+                },
+                echoCancellation: {
+                    ideal: true
+                },
+                noiseSuppression: {
+                    ideal: true
+                }
+            },
+            video: false
+        });
+        let recorder = RecordRTC(stream, {
+            type: 'audio',
+            mimeType: 'audio/webm; codecs=opus',
+            sampleRate: sampleRate,
+            desiredSampleRate: sampleRate,
+            bufferSize: 4096,
+            numberOfAudioChannels: 1,
+            timeSlice: 320,
+            disableLogs: false,
+            // as soon as the stream is available
+            ondataavailable: async (blob) => {
+                let typePrefix = `data:${blob.type};base64,`;
+                let base64Typed = await blobToBase64(blob);
+                let base64 = base64Typed.substr(typePrefix.length);
+                console.log("audio blob is ready, Blob length: %d", base64.length);
+
+                await backend.invokeMethodAsync('AudioDataAvailable', base64);
+            }
+        });
+
+        recorder.stopRecordingAsync = () => {
+            return new Promise((resolve,_) => {
+                recorder.stopRecording(resolve);
+            });
+        };
+
+        recording = {
+            backend: backend,
+            recorder: recorder,
+            stream: stream
+        };
     }
     
     recording.recorder.startRecording();
@@ -97,5 +111,7 @@ export async function stopRecording() {
     let r = recording;
     recording = null;
     await r.recorder.stopRecordingAsync();
+    r.stream.getAudioTracks().forEach(t => t.stop());
+    r.stream.getVideoTracks().forEach(t => t.stop());
     await r.backend.invokeMethodAsync('RecordingStopped');
 }
