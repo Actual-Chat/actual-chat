@@ -4,7 +4,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Contract\Contract.csproj"/>
+    <ProjectReference Include="..\Contract\Contract.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Speech.V1" />
   </ItemGroup>
 
 </Project>
