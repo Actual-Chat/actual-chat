@@ -4,7 +4,6 @@ using Stl.DependencyInjection;
 
 namespace ActualChat.Users
 {
-    [RegisterSettings("ActualChat.Users")]
     public class UsersSettings
     {
         // DBs

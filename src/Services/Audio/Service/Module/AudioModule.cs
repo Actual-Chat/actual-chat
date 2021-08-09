@@ -27,14 +27,18 @@ namespace ActualChat.Audio.Module
         {
             if (HostInfo.ServiceScope != ServiceScope.Server)
                 return; // Server-side only module
-
-            base.InjectServices(services);
+            
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+            services.AddSettings<AudioSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<AudioSettings>();
+            
+            services.AddSingleton<IDataInitializer, AudioDbInitializer>();
 
             var fusion = services.AddFusion();
             fusion.AddSandboxedKeyValueStore();
 
+            fusion.AddComputeService<IAudioRecorder, AudioRecorder>();
+            
             services.AddDbContextFactory<AudioDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)

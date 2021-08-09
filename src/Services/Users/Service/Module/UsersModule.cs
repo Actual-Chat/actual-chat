@@ -36,9 +36,12 @@ namespace ActualChat.Users.Module
             if (HostInfo.ServiceScope != ServiceScope.Server)
                 return; // Server-side only module
 
-            base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+            services.AddSettings<UsersSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<UsersSettings>();
+
+            services.AddSingleton<IDataInitializer, UsersDbInitializer>();
+            
             var fusion = services.AddFusion();
 
             services.AddDbContextFactory<UsersDbContext>(builder => {
