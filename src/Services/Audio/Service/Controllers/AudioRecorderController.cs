@@ -32,5 +32,11 @@ namespace ActualChat.Audio.Controllers
         {
             return _audioRecorder.AppendAudio(command, cancellationToken);
         }
+
+        [HttpDelete]
+        public Task Complete([FromBody] CompleteAudioRecording command, CancellationToken cancellationToken = default)
+        {
+            return _audioRecorder.Complete(command, cancellationToken);
+        }
     }
 }

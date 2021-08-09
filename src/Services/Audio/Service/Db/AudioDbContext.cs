@@ -18,7 +18,8 @@ namespace ActualChat.Audio.Db
                 .HasConversion<string>();
             audioRecording
                 .HasMany(e => e.Segments)
-                .WithOne();
+                .WithOne(s => s.AudioRecording)
+                .HasForeignKey(s => s.RecordingId);
 
             var audioSegment = modelBuilder.Entity<DbAudioSegment>();
             audioSegment.HasKey(e => new { e.RecordingId, e.Index });

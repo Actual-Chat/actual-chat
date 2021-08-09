@@ -11,6 +11,8 @@ namespace ActualChat.Audio
         Task<Symbol> Initialize(InitializeAudioRecorderCommand command, CancellationToken cancellationToken = default);
         [CommandHandler]
         Task AppendAudio(AppendAudioCommand command, CancellationToken cancellationToken = default);
+        [CommandHandler]
+        Task Complete(CompleteAudioRecording command, CancellationToken cancellationToken = default);
     }
-
+    
 }
