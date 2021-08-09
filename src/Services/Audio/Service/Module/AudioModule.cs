@@ -1,5 +1,6 @@
 ﻿using System;
 using ActualChat.Audio.Db;
+using ActualChat.Blobs;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,6 +61,7 @@ namespace ActualChat.Audio.Module
                     return true;
                 return false;
             });
+            services.AddSingleton<IBlobStorageProvider, LocalBlobStorageProvider>();
         }
     }
 }
