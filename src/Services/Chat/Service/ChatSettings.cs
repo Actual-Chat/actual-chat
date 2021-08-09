@@ -2,7 +2,6 @@
 
 namespace ActualChat.Chat
 {
-    [RegisterSettings("ActualChat.Chat")]
     public class ChatSettings
     {
         public string Db { get; set; } =
