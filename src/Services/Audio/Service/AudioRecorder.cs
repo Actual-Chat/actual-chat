@@ -16,7 +16,6 @@ using Stl.Time;
 
 namespace ActualChat.Audio
 {
-    [RegisterComputeService(typeof(IAudioRecorder))]
     public class AudioRecorder : DbServiceBase<AudioDbContext>, IAudioRecorder
     {
         private static readonly TimeSpan CleanupInterval = new TimeSpan(0, 0, 10);

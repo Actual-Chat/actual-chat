@@ -6,7 +6,6 @@ using Stl.Text;
 
 namespace ActualChat.Audio.Client
 {
-    [RegisterRestEaseReplicaService(typeof(IAudioRecorder))]
     [BasePath("audio-recorders")]
     public interface IAudioRecorderClientDef
     {

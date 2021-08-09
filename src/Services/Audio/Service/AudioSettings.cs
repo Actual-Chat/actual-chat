@@ -2,7 +2,6 @@
 
 namespace ActualChat.Audio
 {
-    [RegisterSettings("ActualChat.Audio")]
     public class AudioSettings
     {
         public string Db { get; set; } =

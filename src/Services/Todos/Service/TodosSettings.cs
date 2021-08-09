@@ -2,7 +2,6 @@ using Stl.DependencyInjection;
 
 namespace ActualChat.Todos
 {
-    [RegisterSettings("ActualChat.Todos")]
     public class TodosSettings
     {
         // DBs

@@ -28,12 +28,16 @@ namespace ActualChat.Todos.Module
             if (HostInfo.ServiceScope != ServiceScope.Server)
                 return; // Server-side only module
 
-            base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+            services.AddSettings<TodosSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<TodosSettings>();
+
+            services.AddSingleton<IDataInitializer, TodosDbInitializer>();
 
             var fusion = services.AddFusion();
             fusion.AddSandboxedKeyValueStore();
+
+            fusion.AddComputeService<ITodoService, TodoService>();
 
             services.AddDbContextFactory<TodosDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
