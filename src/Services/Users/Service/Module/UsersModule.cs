@@ -7,12 +7,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Stl.CommandR;
+using Stl.CommandR.Configuration;
 using Stl.DependencyInjection;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
+using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Npgsql;
+using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Operations.Internal;
 using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
@@ -61,6 +65,20 @@ namespace ActualChat.Users.Module
                 b.AddDbAuthentication<DbAppUser, DbAppSessionInfo>((_, options) => {
                     options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
                 });
+            });
+            services.AddCommander().AddHandlerFilter((handler, commandType) => {
+                // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
+                if (handler is not InterfaceCommandHandler<ICommand> ich)
+                    return true;
+                if (ich.ServiceType != typeof(DbOperationScopeProvider<UsersDbContext>))
+                    return true;
+                // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
+                var commandAssembly = commandType.Assembly;
+                if (commandAssembly == typeof(EditUserCommand).Assembly && commandType.Namespace == typeof(EditUserCommand).Namespace)
+                    return true;
+                if (commandAssembly == typeof(Speaker).Assembly)
+                    return true;
+                return false;
             });
 
             // Auth services
