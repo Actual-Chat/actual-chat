@@ -1,6 +1,8 @@
 ﻿using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
+using Stl.Fusion;
+using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.Client.Module
@@ -15,8 +17,9 @@ namespace ActualChat.Audio.Client.Module
         {
             if (HostInfo.ServiceScope != ServiceScope.Client)
                 return; // Client-side only module
-
-            base.InjectServices(services);
+            
+            var fusionClient = services.AddFusion().AddRestEaseClient();
+            fusionClient.AddReplicaService<IAudioRecorder, IAudioRecorderClientDef>();
         }
     }
 }
