@@ -100,28 +100,21 @@ namespace ActualChat.Audio
             }
             
             // Initialize hasn't been completed or Recording has already been completed
-            if (!_dataCapacitor.ContainsKey(recordingId)) return;
+            if (!_dataCapacitor.TryGetValue(recordingId, out var tuple)) return;
 
-            // Buffering...
-            _dataCapacitor.AddOrUpdate(
-                recordingId,
-                r => throw new InvalidOperationException("Channel should already be there"),
-                (r, tuple) => {
-                    var (channel, _) = tuple;
-                    while (!channel.Writer.TryWrite(command)) { }
-                    return tuple;
-                }
-            );
+            var (channel, _) = tuple;
+            await channel.Writer.WriteAsync(command, cancellationToken);;
         }
 
         public virtual async Task Complete(CompleteAudioRecording command, CancellationToken cancellationToken = default)
         {
             if (Computed.IsInvalidating()) return;
-            
-            _dataCapacitor.TryRemove(command.RecordingId, out var tuple);
-            var (channel, flushTask) = tuple;
-            channel.Writer.Complete();
-            await flushTask.WithFakeCancellation(cancellationToken);
+
+            if (_dataCapacitor.TryRemove(command.RecordingId, out var tuple)) {
+                var (channel, flushTask) = tuple;
+                channel.Writer.Complete();
+                await flushTask.WithFakeCancellation(cancellationToken);
+            }
         }
 
         private async Task FlushBufferedSegments(
