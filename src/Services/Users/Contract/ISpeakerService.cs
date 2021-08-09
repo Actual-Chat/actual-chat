@@ -4,7 +4,7 @@ using Stl.Fusion;
 
 namespace ActualChat.Users
 {
-    public interface ISpeakerInfo
+    public interface ISpeakerService
     {
         [ComputeMethod(KeepAliveTime = 10)]
         Task<Speaker?> TryGet(string id, CancellationToken cancellationToken = default);
