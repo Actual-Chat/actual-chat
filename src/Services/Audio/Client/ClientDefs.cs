@@ -15,5 +15,8 @@ namespace ActualChat.Audio.Client
         
         [Post("append")]
         Task AppendAudio([Body] AppendAudioCommand command, CancellationToken cancellationToken = default);
+        
+        [Delete]
+        Task Complete([Body] CompleteAudioRecording command, CancellationToken cancellationToken = default);
     }
 }

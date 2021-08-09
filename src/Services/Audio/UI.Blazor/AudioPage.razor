@@ -63,17 +63,6 @@
             JsRecorderRef = await _js.InvokeAsync<IJSObjectReference>("import", "./js/audio-recorder.js");
             await JsRecorderRef.InvokeVoidAsync("initialize", DotNetRecorderRef);
         }
-        if (RecordingId.IsEmpty)
-        {
-            var result = await _cmd.Run(new InitializeAudioRecorderCommand
-            {
-                Session = _session, 
-                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 }, 
-                ClientStartOffset = CpuClock.Now
-            });
-
-            RecordingId = result.Result;
-        }
     }
 
     protected override Task<int> ComputeState(CancellationToken cancellationToken)
@@ -109,9 +98,19 @@
     }
 
     [JSInvokable]
-    public Task RecordingStarted()
+    public async Task RecordingStarted()
     {
-        return Task.CompletedTask;
+        if (RecordingId.IsEmpty)
+        {
+            var result = await _cmd.Run(new InitializeAudioRecorderCommand
+            {
+                Session = _session, 
+                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 }, 
+                ClientStartOffset = CpuClock.Now
+            });
+
+            RecordingId = result.Result;
+        }
     }
 
     [JSInvokable]
@@ -125,6 +124,9 @@
     [JSInvokable]
     public Task RecordingStopped()
     {
+        _cmd.Run(new CompleteAudioRecording(RecordingId)).Ignore();
+        
+        RecordingId = Symbol.Empty;
         return Task.CompletedTask;
     }
 }
