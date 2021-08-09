@@ -21,8 +21,6 @@ namespace ActualChat.Users.Client.Module
             var fusion = services.AddFusion();
             var fusionAuth = fusion.AddAuthentication();
             fusionAuth.AddRestEaseClient();
-
-            base.InjectServices(services);
         }
     }
 }

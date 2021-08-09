@@ -26,9 +26,11 @@ namespace ActualChat.Chat.Module
             if (HostInfo.ServiceScope != ServiceScope.Server)
                 return; // Server-side only module
 
-            base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+            services.AddSettings<ChatSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<ChatSettings>();
+
+            services.AddSingleton<IDataInitializer, ChatDbInitializer>();
 
             var fusion = services.AddFusion();
             fusion.AddSandboxedKeyValueStore();

@@ -15,8 +15,6 @@ namespace ActualChat.Chat.Client.Module
         {
             if (HostInfo.ServiceScope != ServiceScope.Client)
                 return; // Client-side only module
-
-            base.InjectServices(services);
         }
     }
 }
