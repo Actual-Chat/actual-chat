@@ -15,7 +15,7 @@ namespace ActualChat.Users.Client.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            if (HostInfo.ServiceScope != ServiceScope.Client)
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
                 return; // Client-side only module
 
             var fusion = services.AddFusion();

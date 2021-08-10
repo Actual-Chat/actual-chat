@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -25,6 +26,7 @@ using Stl.Fusion.Server;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Collections;
 using Stl.Plugins;
+using Stl.Text;
 
 namespace ActualChat.Host
 {
@@ -60,7 +62,9 @@ namespace ActualChat.Host
             // Other services shared together with plugins
             services.AddSingleton(new HostInfo() {
                 HostKind = HostKind.WebServer,
-                ServiceScope = ServiceScope.Server,
+                RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
+                    .Add(ServiceScope.Server)
+                    .Add(ServiceScope.BlazorUI),
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
             });
@@ -92,9 +96,6 @@ namespace ActualChat.Host
 
             // Injecting plugin services
             Plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
-
-            // Blazor Server services
-            Program.ConfigureBlazorServerServices(services, Plugins);
         }
 
         public void Configure(IApplicationBuilder app)

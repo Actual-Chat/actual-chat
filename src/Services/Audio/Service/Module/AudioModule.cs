@@ -25,20 +25,15 @@ namespace ActualChat.Audio.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            if (HostInfo.ServiceScope != ServiceScope.Server)
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
-            
+
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<AudioSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<AudioSettings>();
-            
             services.AddSingleton<IDataInitializer, AudioDbInitializer>();
 
             var fusion = services.AddFusion();
-            fusion.AddSandboxedKeyValueStore();
-
-            fusion.AddComputeService<IAudioRecorder, AudioRecorder>();
-            
             services.AddDbContextFactory<AudioDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
@@ -65,7 +60,9 @@ namespace ActualChat.Audio.Module
                     return true;
                 return false;
             });
-            services.AddSingleton<IBlobStorageProvider, LocalBlobStorageProvider>();
+
+            // Module's own services
+            fusion.AddComputeService<IAudioRecorder, AudioRecorder>();
         }
     }
 }

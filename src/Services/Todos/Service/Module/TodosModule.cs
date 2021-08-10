@@ -25,20 +25,15 @@ namespace ActualChat.Todos.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            if (HostInfo.ServiceScope != ServiceScope.Server)
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<TodosSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<TodosSettings>();
-
             services.AddSingleton<IDataInitializer, TodosDbInitializer>();
 
             var fusion = services.AddFusion();
-            fusion.AddSandboxedKeyValueStore();
-
-            fusion.AddComputeService<ITodoService, TodoService>();
-
             services.AddDbContextFactory<TodosDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
@@ -52,8 +47,8 @@ namespace ActualChat.Todos.Module
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
                 dbContext.AddNpgsqlDbOperationLogChangeTracking();
-
                 dbContext.AddKeyValueStore();
+                fusion.AddSandboxedKeyValueStore();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<TodosDbContext> handler
@@ -69,6 +64,9 @@ namespace ActualChat.Todos.Module
                     return true;
                 return false;
             });
+
+            // Module's own services
+            fusion.AddComputeService<ITodoService, TodoService>();
         }
     }
 }
