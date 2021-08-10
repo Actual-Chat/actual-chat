@@ -32,6 +32,7 @@ namespace ActualChat.Audio
 
         private readonly IAuthService _authService;
         private readonly IBlobStorageProvider _blobStorageProvider;
+        private readonly ILogger<AudioRecorder> _log;
 
         private readonly Generator<string> _idGenerator;
         // AY:
@@ -41,10 +42,11 @@ namespace ActualChat.Audio
         private readonly ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)> _dataCapacitor;
         
 
-        public AudioRecorder(IServiceProvider services, IAuthService authService, IBlobStorageProvider blobStorageProvider) : base(services)
+        public AudioRecorder(IServiceProvider services, IAuthService authService, IBlobStorageProvider blobStorageProvider, ILogger<AudioRecorder> log) : base(services)
         {
             _authService = authService;
             _blobStorageProvider = blobStorageProvider;
+            _log = log;
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
             _dataCapacitor = new ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)>();
         }
@@ -59,7 +61,7 @@ namespace ActualChat.Audio
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
 
             var recordingId = _idGenerator.Next();
-            Log.LogInformation($"{nameof(Initialize)}, RecordingId = {{RecordingId}}", recordingId);
+            _log.LogInformation($"{nameof(Initialize)}, RecordingId = {{RecordingId}}", recordingId);
             dbContext.AudioRecordings.Add(new DbAudioRecording {
                 Id = recordingId,
                 UserId = user.Id,
@@ -83,7 +85,7 @@ namespace ActualChat.Audio
             if (Computed.IsInvalidating()) return;
 
             var (recordingId, index, offset, data) = command;
-            Log.LogTrace($"{nameof(AppendAudio)}, RecordingId = {{RecordingId}}, Index = {{Index}}, DataLength = {{DataLength}}",
+            _log.LogTrace($"{nameof(AppendAudio)}, RecordingId = {{RecordingId}}, Index = {{Index}}, DataLength = {{DataLength}}",
                 recordingId.Value,
                 command.Index,
                 command.Data.Count);
@@ -141,7 +143,7 @@ namespace ActualChat.Audio
             {
                 await using var dbContext = CreateDbContext(true);
                 
-                Log.LogInformation($"{nameof(FlushBufferedSegments)}, RecordingId = {{RecordingId}}", recordingId);
+                _log.LogInformation($"{nameof(FlushBufferedSegments)}, RecordingId = {{RecordingId}}", recordingId);
                 dbContext.AudioSegments.Add(new DbAudioSegment {
                     RecordingId = recordingId,
                     Index = 0,

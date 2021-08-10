@@ -15,12 +15,8 @@ namespace ActualChat.Transcription
 
         public Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task<Transcript> GetTranscript(Symbol transcriptId, CancellationToken cancellationToken = default) => throw new System.NotImplementedException();
+        public Task<ImmutableArray<TranscriptFragmentVariant>> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
-        public Task<TranscriptSummary> GetSummary(Symbol transcriptId, CancellationToken cancellationToken = default) => throw new System.NotImplementedException();
-
-        public Task<TranscriptAudioSummary> GetAudioSummary(Symbol transcriptId, CancellationToken cancellationToken = default) => throw new System.NotImplementedException();
-
-        public Task<ImmutableArray<TranscriptFragment>> GetFragments(Symbol transcriptId, PageRef<int> page, CancellationToken cancellationToken = default) => throw new System.NotImplementedException();
+        public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 }

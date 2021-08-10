@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Reactive;
 using ActualChat.Audio;
 using Stl.CommandR;
@@ -8,9 +9,16 @@ namespace ActualChat.Transcription
 {
     public record BeginTranscriptionCommand : ICommand<Symbol>
     {
+        public Symbol RecordingId { get; init; } = Symbol.Empty;
         public TranscriptionOptions Options { get; init; } = new();
         public AudioFormat AudioFormat { get; init; } = new();
-        public Base64Encoded Data { get; init; } = default;
+
+        public void Deconstruct(out Symbol recordingId, out TranscriptionOptions options, out AudioFormat format)
+        {
+            recordingId = RecordingId;
+            options = Options;
+            format = AudioFormat;
+        }
     }
 
     public record AppendTranscriptionCommand(Symbol TranscriptId, Base64Encoded Data) : ICommand<Unit>
@@ -21,5 +29,15 @@ namespace ActualChat.Transcription
     public record EndTranscriptionCommand(Symbol TranscriptId) : ICommand<Unit>
     {
         public EndTranscriptionCommand() : this(Symbol.Empty) { }
+    }
+    
+    public record AckTranscriptionCommand(Symbol TranscriptId, int Index) : ICommand<Unit>
+    {
+        public AckTranscriptionCommand() : this(Symbol.Empty, default) { }
+    }
+
+    public record PollTranscriptionCommand(Symbol TranscriptId, int Index) : ICommand<ImmutableArray<TranscriptFragment>>
+    {
+        public PollTranscriptionCommand() : this(Symbol.Empty, default) { }
     }
 }
