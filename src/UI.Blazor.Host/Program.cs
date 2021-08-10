@@ -61,7 +61,7 @@ namespace ActualChat.UI.Blazor.Host
             var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
             // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
             pluginHostBuilder.UsePlugins(
-                typeof(UIBlazorCoreModule),
+                typeof(BlazorUICoreModule),
                 typeof(TodosClientModule),
                 typeof(TodosBlazorUIModule),
                 typeof(AudioClientModule),
