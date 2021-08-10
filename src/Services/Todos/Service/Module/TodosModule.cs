@@ -44,16 +44,16 @@ namespace ActualChat.Todos.Module
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            services.AddDbContextServices<TodosDbContext>(b => {
+            services.AddDbContextServices<TodosDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-                b.AddDbOperations((_, o) => {
+                dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                b.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlDbOperationLogChangeTracking();
 
-                b.AddKeyValueStore();
+                dbContext.AddKeyValueStore();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<TodosDbContext> handler

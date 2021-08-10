@@ -40,19 +40,14 @@ namespace ActualChat.Chat.Module
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            services.AddDbContextServices<ChatDbContext>(b => {
+            services.AddDbContextServices<ChatDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-            });
-            services.AddDbContextServices<ChatDbContext>(b => {
-                services.AddSingleton(new CompletionProducer.Options {
-                    IsLoggingEnabled = true,
-                });
-                b.AddDbOperations((_, o) => {
+                dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                b.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlDbOperationLogChangeTracking();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler

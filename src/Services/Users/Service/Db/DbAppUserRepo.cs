@@ -25,8 +25,7 @@ namespace ActualChat.Users.Db
                 speakerId = SpeakerIdGenerator.Next();
             }
             user = user with {
-                Identities = user.Identities.SetItem(
-                    new UserIdentity("ActualChat.Speaker", speakerId), "")
+                Identities = user.Identities.SetItem(Speaker.GetUserIdentity(speakerId), "")
             };
             var dbUser = new DbAppUser() {
                 Name = user.Name,
