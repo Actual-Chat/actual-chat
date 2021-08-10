@@ -49,14 +49,14 @@ namespace ActualChat.Users.Module
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            services.AddDbContextServices<UsersDbContext>(b => {
+            services.AddDbContextServices<UsersDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-                b.AddDbOperations((_, o) => {
+                dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                b.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlDbOperationLogChangeTracking();
 
                 // Authentication-related DbContext services
 
@@ -65,9 +65,13 @@ namespace ActualChat.Users.Module
                 services.TryAddTransient<IDbUserRepo<UsersDbContext>>(c => c.GetRequiredService<DbAppUserRepo>());
 
                 // Adding DB authentication services
-                b.AddDbAuthentication<DbAppUser, DbAppSessionInfo>((_, options) => {
+                dbContext.AddDbAuthentication<DbAppUser, DbAppSessionInfo>((_, options) => {
                     options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
                 });
+                dbContext.AddDbEntityResolver<string, DbUserIdentity>();
+                dbContext.AddDbEntityResolver<string, DbSpeakerState>();
+                services.TryAddSingleton<DbAppUserByNameResolver>();
+                services.TryAddSingleton<DbAppUserBySpeakerIdResolver>();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
