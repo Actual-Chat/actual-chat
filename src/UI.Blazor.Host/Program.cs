@@ -7,6 +7,7 @@ using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Hosting;
 using ActualChat.Todos.Client.Module;
 using ActualChat.Todos.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Blazorise;
@@ -60,6 +61,7 @@ namespace ActualChat.UI.Blazor.Host
             var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
             // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
             pluginHostBuilder.UsePlugins(
+                typeof(UIBlazorCoreModule),
                 typeof(TodosClientModule),
                 typeof(TodosBlazorUIModule),
                 typeof(AudioClientModule),
@@ -87,7 +89,6 @@ namespace ActualChat.UI.Blazor.Host
                 var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
                 o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
             });
-            fusion.AddAuthentication().AddBlazor();
 
             // Injecting plugin services
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));

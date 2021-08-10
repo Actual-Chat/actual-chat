@@ -44,14 +44,14 @@ namespace ActualChat.Audio.Module
                 if (isDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
-            services.AddDbContextServices<AudioDbContext>(b => {
+            services.AddDbContextServices<AudioDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-                b.AddDbOperations((_, o) => {
+                dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                b.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlDbOperationLogChangeTracking();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
