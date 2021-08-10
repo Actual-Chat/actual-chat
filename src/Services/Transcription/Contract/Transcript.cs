@@ -1,5 +1,8 @@
+using System;
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using ActualChat.Audio;
+using Stl.Serialization;
 using Stl.Text;
 
 namespace ActualChat.Transcription
@@ -35,6 +38,23 @@ namespace ActualChat.Transcription
         public string SpeakerId { get; init; } = "";
         public double Confidence { get; init; } = 1;
     }
+    
+    [Serializable]
+    public class TranscriptFragmentVariant : Variant<TranscriptFragment>
+    {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
+        public TranscriptSpeechFragment? Speech { get => Get<TranscriptSpeechFragment>(); init => Set(value); }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
+        public TranscriptSilenceFragment? Silence { get => Get<TranscriptSilenceFragment>(); init => Set(value); }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
+        public TranscriptOtherAudioFragment? Other { get => Get<TranscriptOtherAudioFragment>(); init => Set(value); }
+
+        [JsonConstructor]
+        public TranscriptFragmentVariant() { }
+        [Newtonsoft.Json.JsonConstructor]
+        public TranscriptFragmentVariant(TranscriptFragment? value) : base(value) { }
+    }
+
 
     // Summaries
 
