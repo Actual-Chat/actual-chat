@@ -12,6 +12,10 @@ namespace ActualChat.Chat.UI.Blazor.Module
         [ServiceConstructor]
         public ChatBlazorUIModule(IPluginHost plugins) : base(plugins) { }
 
-        public override void InjectServices(IServiceCollection services) { }
+        public override void InjectServices(IServiceCollection services)
+        {
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+                return; // Blazor UI only module
+        }
     }
 }

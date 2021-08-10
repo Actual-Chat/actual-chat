@@ -13,6 +13,10 @@ namespace ActualChat.Todos.UI.Blazor.Module
         [ServiceConstructor]
         public TodosBlazorUIModule(IPluginHost plugins) : base(plugins) { }
 
-        public override void InjectServices(IServiceCollection services) { }
+        public override void InjectServices(IServiceCollection services)
+        {
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
+                return; // Blazor UI only module
+        }
     }
 }

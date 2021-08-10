@@ -9,7 +9,6 @@ using Stl.Fusion;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.Extensions;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
 
@@ -23,18 +22,15 @@ namespace ActualChat.Chat.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            if (HostInfo.ServiceScope != ServiceScope.Server)
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<ChatSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<ChatSettings>();
-
             services.AddSingleton<IDataInitializer, ChatDbInitializer>();
 
             var fusion = services.AddFusion();
-            fusion.AddSandboxedKeyValueStore();
-
             services.AddDbContextFactory<ChatDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
