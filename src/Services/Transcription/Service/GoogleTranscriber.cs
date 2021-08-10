@@ -4,16 +4,12 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio;
-using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using Stl.Async;
-using Stl.Channels;
-using Stl.Fusion.Extensions;
 using Stl.Text;
 
 namespace ActualChat.Transcription
@@ -58,7 +54,8 @@ namespace ActualChat.Transcription
             var responseStream =  streamingRecognizeStream.GetResponseStream();
             var reader = new TranscriptionBuffer(responseStream);
             var cts = new CancellationTokenSource();
-            reader.Start(cts.Token).Ignore();
+            // reader.Start(cts.Token).ContinueWith(t
+                // => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
             
             _transcriptionStreams.TryAdd(transcriptId,
                 new TranscriptionStream(streamingRecognizeStream, reader, cts));
@@ -81,18 +78,20 @@ namespace ActualChat.Transcription
             // Initialize hasn't been completed or Recording has already been completed
             if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream)) return;
 
-            var (writer, _, _) = transcriptionStream;
+            var (writer, reader, cts) = transcriptionStream;
             await writer.WriteAsync(new StreamingRecognizeRequest {
                 AudioContent = ByteString.CopyFrom(data.Data)
             });
+            
+            reader.Start(cts.Token).ContinueWith(t
+                => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
         }
 
         public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default)
         {
-            var (transcriptId) = command;
-            _log.LogInformation($"{nameof(AppendTranscription)}, TranscriptId = {{TranscriptId}}", transcriptId);
+            _log.LogInformation($"{nameof(EndTranscription)}, TranscriptId = {{TranscriptId}}", command.TranscriptId);
             
-            if (_transcriptionStreams.TryRemove(transcriptId, out var tuple)) {
+            if (_transcriptionStreams.TryRemove(command.TranscriptId, out var tuple)) {
                 var (writer, _, _) = tuple;
                 await writer.WriteCompleteAsync();
             }
@@ -135,8 +134,10 @@ namespace ActualChat.Transcription
             }
         }
         
-        private record TranscriptionStream(SpeechClient.StreamingRecognizeStream Writer, TranscriptionBuffer Reader,
-            CancellationTokenSource cancellationTokenSource);
+        private record TranscriptionStream(
+            SpeechClient.StreamingRecognizeStream Writer, 
+            TranscriptionBuffer Reader,
+            CancellationTokenSource CancellationTokenSource);
 
         private class TranscriptionBuffer
         {
@@ -146,12 +147,15 @@ namespace ActualChat.Transcription
 
             private int _index;
             private double _offset;
+            private int _startCalled;
 
             public TranscriptionBuffer(IAsyncEnumerable<StreamingRecognizeResponse> stream) => _stream = stream;
 
 
             public async Task Start(CancellationToken cancellationToken = default)
             {
+                if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0) return;
+                
                 await foreach (var response in _stream.WithCancellation(cancellationToken)) {
                     var fragmentVariant = MapResponse(response);
                     if (fragmentVariant != null) 
@@ -188,6 +192,8 @@ namespace ActualChat.Transcription
             private TranscriptFragmentVariant? MapResponse(StreamingRecognizeResponse response)
             {
                 if (response.Error != null) {
+                    // Temporarily
+                    throw new InvalidOperationException(response.Error.Message);
                     return null;
                 }
                 foreach (var result in response.Results.Where(r => r.IsFinal)) {
