@@ -7,17 +7,15 @@ using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module
 {
-    public class UIBlazorCoreModule : HostModule
+    public class BlazorUICoreModule : HostModule
     {
-        public UIBlazorCoreModule(IPluginInfoProvider.Query _) : base(_) { }
+        public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public UIBlazorCoreModule(IPluginHost plugins) : base(plugins) { }
+        public BlazorUICoreModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
-            base.InjectServices(services);
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-
             var fusion = services.AddFusion();
             fusion.AddAuthentication().AddBlazor();
         }
