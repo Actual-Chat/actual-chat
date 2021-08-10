@@ -11,7 +11,6 @@ using Stl.CommandR;
 using Stl.CommandR.Configuration;
 using Stl.DependencyInjection;
 using Stl.Fusion;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -19,8 +18,6 @@ using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Operations.Internal;
 using Stl.Fusion.Server;
-using Stl.Fusion.Server.Authentication;
-using Stl.Fusion.Server.Controllers;
 using Stl.Plugins;
 
 namespace ActualChat.Users.Module
@@ -33,17 +30,39 @@ namespace ActualChat.Users.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            if (HostInfo.ServiceScope != ServiceScope.Server)
+            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<UsersSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<UsersSettings>();
-
             services.AddSingleton<IDataInitializer, UsersDbInitializer>();
-            
-            var fusion = services.AddFusion();
 
+            // ASP.NET Core authentication providers
+            services.AddAuthentication(options => {
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            }).AddCookie(options => {
+                options.LoginPath = "/signIn";
+                options.LogoutPath = "/signOut";
+                if (isDevelopmentInstance)
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+            }).AddMicrosoftAccount(options => {
+                options.ClientId = settings.MicrosoftAccountClientId;
+                options.ClientSecret = settings.MicrosoftAccountClientSecret;
+                // That's for personal account authentication flow
+                options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
+                options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            }).AddGitHub(options => {
+                options.ClientId = settings.GitHubClientId;
+                options.ClientSecret = settings.GitHubClientSecret;
+                options.Scope.Add("read:user");
+                options.Scope.Add("user:email");
+                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            });
+
+            // Fusion services
+            var fusion = services.AddFusion();
             services.AddDbContextFactory<UsersDbContext>(builder => {
                 builder.UseNpgsql(settings.Db);
                 if (isDevelopmentInstance)
@@ -58,16 +77,16 @@ namespace ActualChat.Users.Module
                 });
                 dbContext.AddNpgsqlDbOperationLogChangeTracking();
 
-                // Authentication-related DbContext services
-
                 // Overriding repositories
                 services.TryAddSingleton<DbAppUserRepo>();
                 services.TryAddTransient<IDbUserRepo<UsersDbContext>>(c => c.GetRequiredService<DbAppUserRepo>());
 
-                // Adding DB authentication services
+                // DB authentication services
                 dbContext.AddDbAuthentication<DbAppUser, DbAppSessionInfo>((_, options) => {
                     options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
                 });
+
+                // Additional entity resolvers
                 dbContext.AddDbEntityResolver<string, DbUserIdentity>();
                 dbContext.AddDbEntityResolver<string, DbSpeakerState>();
                 services.TryAddSingleton<DbAppUserByNameResolver>();
@@ -98,28 +117,9 @@ namespace ActualChat.Users.Module
                     options.NameClaimKeys = Array.Empty<string>();
                 });
 
-            // ASP.NET Core authentication providers
-            services.AddAuthentication(options => {
-                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            }).AddCookie(options => {
-                options.LoginPath = "/signIn";
-                options.LogoutPath = "/signOut";
-                if (isDevelopmentInstance)
-                    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
-            }).AddMicrosoftAccount(options => {
-                options.ClientId = settings.MicrosoftAccountClientId;
-                options.ClientSecret = settings.MicrosoftAccountClientSecret;
-                // That's for personal account authentication flow
-                options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
-                options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-            }).AddGitHub(options => {
-                options.ClientId = settings.GitHubClientId;
-                options.ClientSecret = settings.GitHubClientSecret;
-                options.Scope.Add("read:user");
-                options.Scope.Add("user:email");
-                options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-            });
+            // Module's own services
+            fusion.AddComputeService<ISpeakerService, SpeakerService>();
+            fusion.AddComputeService<ISpeakerStateService, SpeakerStateService>();
         }
     }
 }

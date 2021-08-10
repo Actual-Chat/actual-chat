@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor.Module;
@@ -26,6 +27,7 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.UI;
 using Stl.Plugins;
+using Stl.Text;
 
 namespace ActualChat.UI.Blazor.Host
 {
@@ -52,7 +54,9 @@ namespace ActualChat.UI.Blazor.Host
             // Other services shared with plugins
             services.AddSingleton(new HostInfo() {
                 HostKind = HostKind.Blazor,
-                ServiceScope = ServiceScope.Client,
+                RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
+                    .Add(ServiceScope.Client)
+                    .Add(ServiceScope.BlazorUI),
                 Environment = builder.HostEnvironment.Environment,
                 Configuration = builder.Configuration,
             });
@@ -92,22 +96,6 @@ namespace ActualChat.UI.Blazor.Host
 
             // Injecting plugin services
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
-
-            // Blazor Server services
-            ConfigureBlazorServerServices(services, plugins);
-        }
-
-        public static void ConfigureBlazorServerServices(IServiceCollection services, IPluginHost plugins)
-        {
-            // Blazorise
-            services.AddBlazorise().AddBootstrapProviders().AddFontAwesomeIcons();
-
-            // Other UI-related services
-            var fusion = services.AddFusion();
-            fusion.AddFusionTime();
-
-            // Default update delay is 0.5s
-            services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
         }
     }
 }
