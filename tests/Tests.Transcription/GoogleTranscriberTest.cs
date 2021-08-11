@@ -1,10 +1,14 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using ActualChat.Audio;
 using ActualChat.Transcription;
 using FluentAssertions;
+using Google.Cloud.Speech.V1P1Beta1;
+using Google.Protobuf;
 using Microsoft.Extensions.Logging.Abstractions;
+using NetBox.Extensions;
 using Stl.Serialization;
 using Stl.Testing;
 using Xunit;
@@ -55,7 +59,7 @@ namespace ActualChat.Tests
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,
-                    SampleRate = 16_000
+                    SampleRate = 48000
                 },
                 Options = new TranscriptionOptions {
                     Language = "ru-RU",
@@ -66,20 +70,18 @@ namespace ActualChat.Tests
             };
             var transcriptId = await transcriber.BeginTranscription(command);
             var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
+            await transcriber.AppendTranscription(new AppendTranscriptionCommand {
+                TranscriptId = transcriptId,
+                Data = new Base64Encoded(audioBytes)
+            });
 
 
-
-            for (int i = 0; i < 100; i++) {
-                await Task.Delay(100);
-                await transcriber.AppendTranscription(new AppendTranscriptionCommand {
-                    TranscriptId = transcriptId,
-                    Data = new Base64Encoded(audioBytes)
-                });
-                
-                
-                var result = await transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, 0));
-                Out.WriteLine(result.Length.ToString());
-            }
+            // for (int i = 0; i < 100; i++) {
+            //     await Task.Delay(100);
+            //     
+            //     var result = await transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, 0));
+            //     Out.WriteLine(result.Length.ToString());
+            // }
 
             await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
             
@@ -89,5 +91,70 @@ namespace ActualChat.Tests
             // Out.WriteLine(result[0].Speech!.Text);
         }
 
+        [Fact]
+        public async Task GoogleRecognizeTest()
+        {
+            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
+            var audio = RecognitionAudio.FromBytes(audioBytes);
+            var client = await SpeechClient.CreateAsync();
+            var config = new RecognitionConfig
+            {
+                Encoding = RecognitionConfig.Types.AudioEncoding.WebmOpus,
+                SampleRateHertz = 48000,
+                LanguageCode = LanguageCodes.Russian.Russia,
+                EnableAutomaticPunctuation = true
+            };
+            var response = await client.RecognizeAsync(config, audio);
+            Out.WriteLine(response.ToString());
+        }
+        
+        // [Fact(Skip = "Manual")]
+        [Fact]
+        public async Task GoogleStreamedRecognizeTest()
+        {
+            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
+            var client = await SpeechClient.CreateAsync();
+            var config = new RecognitionConfig
+            {
+                Encoding = RecognitionConfig.Types.AudioEncoding.WebmOpus,
+                SampleRateHertz = 48000,
+                LanguageCode = LanguageCodes.Russian.Russia,
+                EnableAutomaticPunctuation = true,
+                EnableWordConfidence = true,
+                EnableWordTimeOffsets = true
+            };
+            var streamingRecognize = client.StreamingRecognize();
+            await streamingRecognize.WriteAsync(new StreamingRecognizeRequest {
+                StreamingConfig = new StreamingRecognitionConfig {
+                    Config = config,
+                    InterimResults = true,
+                    SingleUtterance = false
+                }
+            });
+            
+            var writeTask = WriteToStream(streamingRecognize, audioBytes);
+            
+            await foreach (var response in streamingRecognize.GetResponseStream()) {
+                if (response.Error != null)
+                    Out.WriteLine(response.Error.Message);
+                else
+                    Out.WriteLine(response.ToString());
+            }
+
+            await writeTask;
+        }
+
+        private async Task WriteToStream(SpeechClient.StreamingRecognizeStream stream,  byte[] bytes)
+        {
+            foreach (var chunk in bytes.Chunk(2000)) {
+                await Task.Delay(300);
+                await stream.WriteAsync(new StreamingRecognizeRequest {
+                    AudioContent = ByteString.CopyFrom(chunk.ToArray())
+                });
+            }
+
+            await stream.WriteCompleteAsync();
+        }
     }
 }
+
