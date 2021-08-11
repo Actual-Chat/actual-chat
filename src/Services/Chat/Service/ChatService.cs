@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Reactive;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Users;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion;
 using Stl.Async;
+using Stl.Collections;
 using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
@@ -83,14 +86,14 @@ namespace ActualChat.Chat
             if (string.IsNullOrEmpty(chatId))
                 return null;
             if (chatId.StartsWith("public/")) {
-                var gameId = chatId[5..];
-                var game = await Games.TryGet(gameId, cancellationToken);
-                if (game == null)
+                var id = chatId[7..];
+                // if (id == null)
+                if (string.IsNullOrWhiteSpace(id))
                     return null;
-                return new Chat(chatId, ChatKind.Game) {
-                    OwnerIds = ImmutableHashSet<long>.Empty.Add(game.UserId),
-                    ParticipantIds = game.Players.Select(p => p.UserId).ToImmutableHashSet(),
-                    IsPublic = game.IsPublic,
+                return new Chat(chatId, ChatKind.Public) {
+                    OwnerIds = ImmutableHashSet<long>.Empty,
+                    ParticipantIds = ImmutableHashSet<long>.Empty,
+                    IsPublic = true,
                 };
             }
             if (chatId.StartsWith("p2p/")) {
@@ -115,6 +118,28 @@ namespace ActualChat.Chat
                     IsPublic = false,
                 };
             }
+            if (chatId.StartsWith("secret/")) {
+                var dividerIndex = chatId.IndexOf('/', 7);
+                if (dividerIndex < 0)
+                    return null;
+                if (!long.TryParse(chatId[4..dividerIndex], out var user1Id))
+                    return null;
+                if (!long.TryParse(chatId[(dividerIndex + 1)..], out var user2Id))
+                    return null;
+                if (user1Id >= user2Id)
+                    return null;
+                var user1 = await ChatUsers.TryGet(user1Id.ToString(), cancellationToken);
+                if (user1 == null)
+                    return null;
+                var user2 = await ChatUsers.TryGet(user2Id.ToString(), cancellationToken);
+                if (user2 == null)
+                    return null;
+                return new Chat(chatId, ChatKind.Secret) {
+                    OwnerIds = ImmutableHashSet<long>.Empty,
+                    ParticipantIds = ImmutableHashSet<long>.Empty.Add(user1Id).Add(user2Id),
+                    IsPublic = false,
+                };
+            }
             return null;
         }
 
@@ -132,8 +157,6 @@ namespace ActualChat.Chat
             if (chat.OwnerIds.Contains(userId))
                 return ChatPermission.Owner;
             if (chat.ParticipantIds.Contains(userId))
-                return ChatPermission.Write;
-            if (chat.Kind == ChatKind.Game)
                 return ChatPermission.Write;
             return 0;
         }
@@ -153,7 +176,7 @@ namespace ActualChat.Chat
             await using var dbContext = CreateDbContext();
             var dbMessages = dbContext.ChatMessages.AsQueryable();
             if (period.HasValue) {
-                var minCreatedAt = Clock.UtcNow - period.Value;
+                var minCreatedAt = Clocks.SystemClock.UtcNow - period.Value;
                 dbMessages = dbMessages.Where(m => m.DbChatId == chatId && m.CreatedAt >= minCreatedAt);
             } else {
                 dbMessages = dbMessages.Where(m => m.DbChatId == chatId);
@@ -180,14 +203,15 @@ namespace ActualChat.Chat
             var messages = dbMessages.Select(m => m.ToModel()).ToImmutableList();
 
             // Fetching users in parallel
-            var users = new Dictionary<long, AppUser>();
+            var users = new Dictionary<long, Speaker>();
             foreach (var pack in messages.PackBy(128)) {
                 var packUsers = await Task.WhenAll(
                     pack.Where(m => !users.ContainsKey(m.UserId))
-                        .Select(m => AppUsers.TryGet(m.UserId, cancellationToken)));
+                        .Select(m => ChatUsers.TryGet(m.UserId.ToString(), cancellationToken)));
                 foreach (var user in packUsers)
                     if (user != null)
-                        users.TryAdd(user.Id, user);
+                        if (long.TryParse(user.Id.ToString(), out var userId))
+                            users.TryAdd(userId, user);
             }
 
             return new ChatPage(chatId, limit) {
