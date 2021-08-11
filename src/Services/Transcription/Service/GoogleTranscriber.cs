@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Audio;
-using Google.Cloud.Speech.V1;
+using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using Stl.Async;
@@ -54,8 +54,8 @@ namespace ActualChat.Transcription
             var responseStream =  streamingRecognizeStream.GetResponseStream();
             var reader = new TranscriptionBuffer(responseStream);
             var cts = new CancellationTokenSource();
-            // reader.Start(cts.Token).ContinueWith(t
-                // => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
+            reader.Start(cts.Token).ContinueWith(t
+                => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
             
             _transcriptionStreams.TryAdd(transcriptId,
                 new TranscriptionStream(streamingRecognizeStream, reader, cts));
@@ -82,9 +82,6 @@ namespace ActualChat.Transcription
             await writer.WriteAsync(new StreamingRecognizeRequest {
                 AudioContent = ByteString.CopyFrom(data.Data)
             });
-            
-            reader.Start(cts.Token).ContinueWith(t
-                => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
         }
 
         public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default)
@@ -128,9 +125,9 @@ namespace ActualChat.Transcription
                 case AudioCodec.Flac:
                     return RecognitionConfig.Types.AudioEncoding.Flac;
                 case AudioCodec.Opus:
-                    return RecognitionConfig.Types.AudioEncoding.OggOpus;
+                    return RecognitionConfig.Types.AudioEncoding.WebmOpus;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(codec), codec, null);
+                    return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
             }
         }
         
