@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Users.Db;
@@ -14,20 +15,25 @@ using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.Operations;
-using Stl.Internal;
 
 namespace ActualChat.Users
 {
     public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
-        protected IDbUserRepo<UsersDbContext> DbUserRepo { get; }
+        protected IServerSideAuthService AuthService { get; }
+        protected ISpeakerService SpeakerService { get; }
+        protected ISpeakerNameService SpeakerNameService { get; }
         protected ISpeakerStateService SpeakerStateService { get; }
+        protected IDbUserRepo<UsersDbContext, DbUser, string> DbUserRepo { get; }
 
         public AuthServiceCommandFilters(IServiceProvider services)
             : base(services)
         {
-            DbUserRepo = services.GetRequiredService<IDbUserRepo<UsersDbContext>>();
+            AuthService = services.GetRequiredService<IServerSideAuthService>();
+            SpeakerService = services.GetRequiredService<ISpeakerService>();
+            SpeakerNameService = services.GetRequiredService<ISpeakerNameService>();
             SpeakerStateService = services.GetRequiredService<ISpeakerStateService>();
+            DbUserRepo = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
         }
 
         // Takes care of invalidation of IsOnlineAsync once user signs in
@@ -48,8 +54,8 @@ namespace ActualChat.Users
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
-            var userId = long.Parse(sessionInfo.UserId);
-            var dbUser = (DbAppUser?) await DbUserRepo.TryGet(dbContext, userId, cancellationToken);
+            var userId = sessionInfo.UserId;
+            var dbUser = await DbUserRepo.TryGet(dbContext, userId, cancellationToken);
             if (dbUser == null)
                 return; // Should never happen, but if it somehow does, there is no extra to do in this case
             var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken);
@@ -57,14 +63,46 @@ namespace ActualChat.Users
                 dbUser.Name = newName;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
-            var speaker = new Speaker(dbUser.SpeakerId, dbUser.Name);
+            var speaker = new Speaker(dbUser.Id, dbUser.Name);
             context.Operation().Items.Set(speaker);
         }
+
+
+        // Validates user name on edit
+        [CommandHandler(IsFilter = true, Priority = 1)]
+        protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
+        {
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating()) {
+                await context.InvokeRemainingHandlers(cancellationToken);
+                if (command.Name != null)
+                    SpeakerService.TryGetByName(command.Name, default).Ignore();
+                return;
+            }
+            if (command.Name != null) {
+                var error = SpeakerNameService.ValidateName(command.Name);
+                if (error != null)
+                    throw error;
+
+                var user = await AuthService.GetUser(command.Session, cancellationToken);
+                user = user.MustBeAuthenticated();
+                var userId = user.Id;
+
+                await using var dbContext = CreateDbContext();
+                var isNameUsed = await dbContext.Users.AsQueryable()
+                    .AnyAsync(u => u.Name == command.Name && u.Id != userId, cancellationToken);
+                if (isNameUsed)
+                    throw new InvalidOperationException("This name is already used by someone else.");
+            }
+            await context.InvokeRemainingHandlers(cancellationToken);
+        }
+
+        // Private methods
 
         private async Task<string> NormalizeName(
             UsersDbContext dbContext,
             string name,
-            long userId,
+            string userId,
             CancellationToken cancellationToken = default)
         {
             // Normalizing name

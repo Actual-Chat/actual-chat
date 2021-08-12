@@ -5,25 +5,20 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <AspNetCoreVersion>5.0.8</AspNetCoreVersion>
+    <AspNetCoreVersion>5.0.9</AspNetCoreVersion>
     <AspNetCoreVersion3>3.*</AspNetCoreVersion3>
     <EntityFrameworkCoreVersion>$(AspNetCoreVersion)</EntityFrameworkCoreVersion>
+    <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
+    <EntityFrameworkCoreNpgsqlVersion>5.0.7</EntityFrameworkCoreNpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>5.0.3</SystemNetHttpJsonVersion>
-    <StlFusionVersion>1.6.1</StlFusionVersion>
     <MicrosoftExtensionsVersion>5.0.0</MicrosoftExtensionsVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(LegacyBuild)' != 'true'">
-    <EntityFrameworkCoreVersion>5.0.6</EntityFrameworkCoreVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(LegacyBuild)' == 'true'">
-    <EntityFrameworkCoreVersion>3.*</EntityFrameworkCoreVersion>
+    <StlFusionVersion>1.7.8</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
-    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.8" />
+    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="$(AspNetCoreVersion)" />
     <PackageReference Update="Blazorise" Version="$(BlazoriseVersion)" />
     <PackageReference Update="Blazorise.Bootstrap" Version="$(BlazoriseVersion)" />
     <PackageReference Update="Blazorise.DataGrid" Version="$(BlazoriseVersion)" />
@@ -35,6 +30,7 @@
     <PackageReference Update="DataAnnotationsValidatorNetStandard" Version="1.0.*" />
     <PackageReference Update="Enums.NET" Version="4.0.*" />
     <PackageReference Update="FluentAssertions" Version="5.10.*" />
+    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*" />
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*" />
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />
     <PackageReference Update="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)" />
@@ -65,8 +61,8 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.SqlServer" Version="$(EntityFrameworkCoreVersion)" />
-    <PackageReference Update="Npgsql" Version="$(EntityFrameworkCoreVersion)" />
-    <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreVersion)" />
+    <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)" />
+    <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageReference Update="Microsoft.Identity.Web" Version="1.14.*" />
     <PackageReference Update="MsgPack.Cli" Version="1.0.*" />
     <PackageReference Update="Newtonsoft.Json" Version="13.0.*" />
@@ -83,7 +79,8 @@
     <PackageReference Update="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)" />
-    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.1.4" />
+    <PackageReference Update="Storage.Net" Version="9.3.*" />
+    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.1.5" />
     <PackageReference Update="System.Collections.Immutable" Version="5.0.*" />
     <PackageReference Update="System.ComponentModel.Annotations" Version="5.0.*" />
     <PackageReference Update="System.Configuration.ConfigurationManager" Version="5.0.*" />
@@ -104,8 +101,6 @@
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="2.1.*" />
     <PackageReference Update="ZString" Version="2.4.*" />
-    <PackageReference Update="Storage.Net" Version="9.2.*" />
-    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*" />
 
     <!-- Legacy support only -->
     <PackageReference Update="IndexRange" Version="1.0.*" />
