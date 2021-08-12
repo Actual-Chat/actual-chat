@@ -20,7 +20,6 @@ namespace ActualChat.Users
             return null;
         }
 
-
         public ReadOnlySpan<char> ParseName(ref ReadOnlySpan<char> text)
         {
             var name = text;
