@@ -87,7 +87,6 @@ namespace ActualChat.Chat
                 return null;
             if (chatId.StartsWith("public/")) {
                 var id = chatId[7..];
-                // if (id == null)
                 if (string.IsNullOrWhiteSpace(id))
                     return null;
                 return new Chat(chatId, ChatKind.Public) {
