@@ -72,6 +72,9 @@ export async function startRecording() {
             mimeType: 'audio/webm; codecs=opus',
             sampleRate: sampleRate,
             desiredSampleRate: sampleRate,
+            audioBitsPerSecond: 32 * 1024,
+            checkForInactiveTracks: true,
+            audioBitrateMode: "variable",
             bufferSize: 4096,
             numberOfAudioChannels: 1,
             timeSlice: 320,
@@ -110,8 +113,8 @@ export async function stopRecording() {
     
     let r = recording;
     recording = null;
-    await r.recorder.stopRecordingAsync();
     r.stream.getAudioTracks().forEach(t => t.stop());
     r.stream.getVideoTracks().forEach(t => t.stop());
+    await r.recorder.stopRecordingAsync();
     await r.backend.invokeMethodAsync('RecordingStopped');
 }

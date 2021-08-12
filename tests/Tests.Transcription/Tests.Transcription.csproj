@@ -15,6 +15,13 @@
 
   <ItemGroup>
     <None Update="data\file.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\1.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\2.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\3.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\4.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\56.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\789.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\boy.webm" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
