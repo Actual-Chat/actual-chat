@@ -77,20 +77,16 @@ namespace ActualChat.Users.Module
                 });
                 dbContext.AddNpgsqlDbOperationLogChangeTracking();
 
-                // Overriding repositories
-                services.TryAddSingleton<DbAppUserRepo>();
-                services.TryAddTransient<IDbUserRepo<UsersDbContext>>(c => c.GetRequiredService<DbAppUserRepo>());
+                // Overriding / adding extra DbAuthentication services
+                services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
+                services.TryAddSingleton<DbUserByNameResolver>();
+                dbContext.AddDbEntityResolver<string, DbUserIdentity<string>>();
+                dbContext.AddDbEntityResolver<string, DbSpeakerState>();
 
                 // DB authentication services
-                dbContext.AddDbAuthentication<DbAppUser, DbAppSessionInfo>((_, options) => {
+                dbContext.AddDbAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
                     options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
                 });
-
-                // Additional entity resolvers
-                dbContext.AddDbEntityResolver<string, DbUserIdentity>();
-                dbContext.AddDbEntityResolver<string, DbSpeakerState>();
-                services.TryAddSingleton<DbAppUserByNameResolver>();
-                services.TryAddSingleton<DbAppUserBySpeakerIdResolver>();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
@@ -118,8 +114,12 @@ namespace ActualChat.Users.Module
                 });
 
             // Module's own services
+            services.AddSingleton<ISpeakerNameService, SpeakerNameService>();
             fusion.AddComputeService<ISpeakerService, SpeakerService>();
             fusion.AddComputeService<ISpeakerStateService, SpeakerStateService>();
+            var commander = services.AddCommander();
+            commander.AddCommandService<AuthServiceCommandFilters>();
+
         }
     }
 }
