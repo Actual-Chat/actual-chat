@@ -13,7 +13,7 @@ namespace ActualChat.Users
     {
         protected IServerSideAuthService AuthService { get; }
         protected IDbUserRepo<UsersDbContext, DbUser, string> DbUserRepo { get; }
-        protected DbEntityResolver<UsersDbContext, string, DbUser> DbUserResolver { get; }
+        protected IDbEntityResolver<string, DbUser> DbUserResolver { get; }
         protected DbUserByNameResolver DbUserByNameResolver { get; }
         protected ISpeakerNameService SpeakerNameService { get; }
 
@@ -21,7 +21,7 @@ namespace ActualChat.Users
         {
             AuthService = services.GetRequiredService<IServerSideAuthService>();
             DbUserRepo = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-            DbUserResolver = services.GetRequiredService<DbEntityResolver<UsersDbContext, string, DbUser>>();
+            DbUserResolver = services.DbEntityResolver<string, DbUser>();
             DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
             SpeakerNameService = services.GetRequiredService<ISpeakerNameService>();
         }
