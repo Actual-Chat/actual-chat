@@ -9,13 +9,13 @@ namespace ActualChat.Users.Db
     [Table("SpeakerStates")]
     public class DbSpeakerState : IHasId<string>
     {
-        private DateTime _lastOnlineAt;
+        private DateTime _onlineCheckInAt;
 
         [Key] public string Id { get; set; } = "";
 
-        public DateTime LastOnlineAt {
-            get => _lastOnlineAt.DefaultKind(DateTimeKind.Utc);
-            set => _lastOnlineAt = value.DefaultKind(DateTimeKind.Utc);
+        public DateTime OnlineCheckInAt {
+            get => _onlineCheckInAt.DefaultKind(DateTimeKind.Utc);
+            set => _onlineCheckInAt = value.DefaultKind(DateTimeKind.Utc);
         }
     }
 }

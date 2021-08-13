@@ -42,7 +42,7 @@ namespace ActualChat.Users
         {
             var context = CommandContext.GetCurrent();
 
-            // Invoking command handler(s) with lower priority
+            // Invoke command handler(s) with lower priority
             await context.InvokeRemainingHandlers(cancellationToken);
 
             if (Computed.IsInvalidating()) {
@@ -52,6 +52,7 @@ namespace ActualChat.Users
                 return;
             }
 
+            // Let's try to fix auto-generated user name here
             await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
             var userId = sessionInfo.UserId;
@@ -94,6 +95,8 @@ namespace ActualChat.Users
                 if (isNameUsed)
                     throw new InvalidOperationException("This name is already used by someone else.");
             }
+
+            // Invoke command handler(s) with lower priority
             await context.InvokeRemainingHandlers(cancellationToken);
         }
 
