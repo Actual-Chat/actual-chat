@@ -14,8 +14,8 @@ namespace ActualChat.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             var fusion = services.AddFusion();
+            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
         }
     }
 }
