@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -71,6 +72,9 @@ namespace ActualChat.Users.Module
             services.AddDbContextServices<UsersDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
+                });
+                services.AddTransient(c => new DbOperationScope<UsersDbContext>(c) {
+                    IsolationLevel = IsolationLevel.Serializable,
                 });
                 dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);

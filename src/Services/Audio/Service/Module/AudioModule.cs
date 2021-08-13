@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Blobs;
 using ActualChat.Hosting;
@@ -42,6 +43,9 @@ namespace ActualChat.Audio.Module
             services.AddDbContextServices<AudioDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
+                });
+                services.AddTransient(c => new DbOperationScope<AudioDbContext>(c) {
+                    IsolationLevel = IsolationLevel.Serializable,
                 });
                 dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
