@@ -24,7 +24,7 @@ namespace ActualChat.Users
         {
             var cutoffTime = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
             var speakerState = await DbSpeakerStateResolver.TryGet(speakerId, cancellationToken);
-            return speakerState?.LastOnlineAt > cutoffTime;
+            return speakerState?.OnlineCheckInAt > cutoffTime;
         }
     }
 }

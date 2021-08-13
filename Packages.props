@@ -14,7 +14,7 @@
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>5.0.3</SystemNetHttpJsonVersion>
     <MicrosoftExtensionsVersion>5.0.0</MicrosoftExtensionsVersion>
-    <StlFusionVersion>1.7.18</StlFusionVersion>
+    <StlFusionVersion>1.8.3</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">

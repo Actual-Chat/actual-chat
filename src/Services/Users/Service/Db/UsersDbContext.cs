@@ -7,6 +7,7 @@ namespace ActualChat.Users.Db
     public class UsersDbContext : DbContext
     {
         public DbSet<DbSpeakerState> SpeakerStates { get; protected set; } = null!;
+
         // Stl.Fusion.EntityFramework tables
         public DbSet<DbUser> Users { get; protected set; } = null!;
         public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
