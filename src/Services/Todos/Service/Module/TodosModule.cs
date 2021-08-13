@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,9 @@ namespace ActualChat.Todos.Module
             services.AddDbContextServices<TodosDbContext>(dbContext => {
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
+                });
+                services.AddTransient(c => new DbOperationScope<TodosDbContext>(c) {
+                    IsolationLevel = IsolationLevel.Serializable,
                 });
                 dbContext.AddDbOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
