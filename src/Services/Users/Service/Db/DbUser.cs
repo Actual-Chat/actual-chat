@@ -13,10 +13,5 @@ namespace ActualChat.Users.Db
             get => _createdAt.DefaultKind(DateTimeKind.Utc);
             set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
         }
-
-        public override User ToModel(IServiceProvider services)
-        {
-            return base.ToModel(services);
-        }
     }
 }

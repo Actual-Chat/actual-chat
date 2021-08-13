@@ -76,19 +76,19 @@ namespace ActualChat.Users.Module
                 services.AddTransient(c => new DbOperationScope<UsersDbContext>(c) {
                     IsolationLevel = IsolationLevel.Serializable,
                 });
-                dbContext.AddDbOperations((_, o) => {
+                dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                dbContext.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlOperationLogChangeTracking();
 
                 // Overriding / adding extra DbAuthentication services
                 services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
                 services.TryAddSingleton<DbUserByNameResolver>();
-                dbContext.AddDbEntityResolver<string, DbUserIdentity<string>>();
-                dbContext.AddDbEntityResolver<string, DbSpeakerState>();
+                dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
+                dbContext.AddEntityResolver<string, DbSpeakerState>();
 
                 // DB authentication services
-                dbContext.AddDbAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
+                dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
                     options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
                 });
             });

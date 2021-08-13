@@ -44,10 +44,10 @@ namespace ActualChat.Chat.Module
                 services.AddTransient(c => new DbOperationScope<ChatDbContext>(c) {
                     IsolationLevel = IsolationLevel.Serializable,
                 });
-                dbContext.AddDbOperations((_, o) => {
+                dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                dbContext.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlOperationLogChangeTracking();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler

@@ -47,10 +47,10 @@ namespace ActualChat.Todos.Module
                 services.AddTransient(c => new DbOperationScope<TodosDbContext>(c) {
                     IsolationLevel = IsolationLevel.Serializable,
                 });
-                dbContext.AddDbOperations((_, o) => {
+                dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                dbContext.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlOperationLogChangeTracking();
                 dbContext.AddKeyValueStore();
                 fusion.AddSandboxedKeyValueStore();
             });
