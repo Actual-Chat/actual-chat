@@ -8,14 +8,14 @@ namespace ActualChat.Audio.Ebml
     public ref struct EbmlReader
     {
         private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
+        private readonly Stack<Element> _containers;
         
         private SpanReader _spanReader;
 
         private Element _container;
         private Element _element;
         private EbmlEntryType _entryType;
-        private ElementDescriptor _currentDescriptor;
-
+        
 
         public EbmlReader(ReadOnlySpan<byte> span) : this(span, (uint)span.Length)
         { }
@@ -23,15 +23,15 @@ namespace ActualChat.Audio.Ebml
         public EbmlReader(ReadOnlySpan<byte> span, uint maxBytesToRead)
         {
             _entryType = EbmlEntryType.None;
-            _container = new Element(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.EBMLDescriptor);
+            _container = new Element(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.UnknownDescriptor);
             _element = Element.Empty;
             _spanReader = new SpanReader(span);
-            _currentDescriptor = MatroskaSpecification.EBMLDescriptor;
+            _containers = new Stack<Element>(16);
         }
 
         public EbmlEntryType EbmlEntryType => _entryType;
 
-        public ElementDescriptor CurrentDescriptor => _currentDescriptor;
+        public ElementDescriptor CurrentDescriptor => _element.Descriptor;
 
         public bool Read()
         {
@@ -39,8 +39,8 @@ namespace ActualChat.Audio.Ebml
                 
             }
             else {
-                var hasData = Skip(_element.Remaining);
-                if (!hasData) return false;
+                var skipped = Skip(_element.Remaining);
+                if (!skipped) return false;
 
                 _container.Remaining -= _element.Size;
                 _element = _container;
@@ -51,7 +51,18 @@ namespace ActualChat.Audio.Ebml
                 }
             }
 
-            return ReadElement();
+            var hasElement = ReadElement();
+            if (!hasElement) return false;
+            
+            if (_element.Type != ElementType.MasterElement) return hasElement;
+            
+            EnterContainer();
+            while (Read()) {
+                        
+            }
+            LeaveContainer();
+
+            return true;
         }
         
         private bool Skip(ulong length)
@@ -83,8 +94,6 @@ namespace ActualChat.Audio.Ebml
             var isValid = MatroskaSpecification.ElementDescriptors.TryGetValue(identifier, out var elementDescriptor);
             if (!isValid)  throw new EbmlDataFormatException("invalid element identifier value - not white-listed");
             
-            _currentDescriptor = elementDescriptor!;
-
             var (sizeStatus,size) = _spanReader.ReadVInt(8);
             if (!sizeStatus)
                 return false;
@@ -92,18 +101,39 @@ namespace ActualChat.Audio.Ebml
             var sizeValue = size.Value;
             if (sizeValue > _container.Remaining) {
                 if (identifier.EncodedValue != MatroskaSpecification.Cluster && identifier.EncodedValue != MatroskaSpecification.Segment) {
-                    _element = new Element(identifier, UnknownSize, _currentDescriptor);
+                    _element = new Element(identifier, UnknownSize, elementDescriptor!);
                     return false;
                 }
 
                 if (sizeValue != UnknownSize) {
-                    _element = new Element(identifier, sizeValue, _currentDescriptor);
+                    _element = new Element(identifier, sizeValue, elementDescriptor!);
                     return false;
                 }
             }
             
-            _element = new Element(identifier, sizeValue, _currentDescriptor);
+            _element = new Element(identifier, sizeValue, elementDescriptor!);
+         
             return true;
+        }
+        
+        private void EnterContainer()
+        {
+            if (_element.HasInvalidIdentifier || _element.Size != _element.Remaining || (_element.Type != ElementType.None && _element.Type != ElementType.MasterElement)) 
+                throw new InvalidOperationException();
+            
+            _containers.Push(_container);
+            _container = _element;
+            _element = Element.Empty;
+        }
+        
+        private bool LeaveContainer()
+        {
+            if (_containers.Count == 0) throw new InvalidOperationException();
+            
+            _container.Remaining -= _element.Size;
+            _element = _container;
+            _container = _containers.Pop();
+            return Skip(_element.Remaining);
         }
         
         private struct Element
