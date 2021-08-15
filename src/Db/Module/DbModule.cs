@@ -1,9 +1,7 @@
-﻿using System;
-using ActualChat.Hosting;
+﻿using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
-using Stl.Fusion.EntityFramework;
 using Stl.Plugins;
 
 namespace ActualChat.Db.Module
