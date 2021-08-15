@@ -1,4 +1,5 @@
-﻿using ActualChat.Hosting;
+﻿using System;
+using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
@@ -20,7 +21,7 @@ namespace ActualChat.Db.Module
 
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             var fusion = services.AddFusion();
-            services.AddCommandReprocessor();
+            fusion.AddOperationReprocessor();
         }
     }
 }
