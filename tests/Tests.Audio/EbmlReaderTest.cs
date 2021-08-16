@@ -34,7 +34,7 @@ namespace ActualChat.Tests
         private void Parse(Span<byte> span)
         {
             var reader = new EbmlReader(span);
-            while (reader.Read()) {
+            while (reader.Read(span.Length)) {
                 Out.WriteLine(reader.CurrentDescriptor.ToString());
                 
             }

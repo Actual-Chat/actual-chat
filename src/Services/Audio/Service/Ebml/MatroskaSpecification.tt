@@ -45,12 +45,36 @@ namespace ActualChat.Audio.Ebml
     internal static class MatroskaSpecification
     {
 <#
+    var isList = new List<string>
+    {
+        "Cluster",
+        "TrackEntry",
+        "SimpleBlock",
+        "Block",
+        "BlockAdditional",
+        "BlockGroup",
+        "BlockVirtual",
+        "EncryptedBlock",
+        "Tag",
+        "SimpleTag",
+        "Target",
+        "ContentCompression",
+        "ContentEncoding",
+        "CuetrackPosition",
+        "CuePoint",
+        "CueReference",
+        "SignatureSlot",
+        "SignatureElementList",
+        "SignedElement"
+    };
+
     var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), XmlFile)).Elements()
         .Select(e => new
         { 
             Name = e.Attribute("name").Value.Replace("CRC-32", "CRC32"),
             Path = e.Attribute("path").Value,
             Id = e.Attribute("id").Value,
+            IsList = isList.Contains(e.Attribute("name").Value),
             ElementType = e.Attribute("type").Value,
             Required = (e.Attribute("minOccurs") != null ? int.Parse(e.Attribute("minOccurs").Value) : 0) > 0,
             Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
@@ -62,6 +86,7 @@ namespace ActualChat.Audio.Ebml
             Name = e.Attribute("name").Value,
             Path = e.Attribute("path").Value,
             Id = e.Attribute("id").Value,
+            IsList = isList.Contains(e.Attribute("name").Value),
             ElementType = e.Attribute("type").Value,
             Required = (e.Attribute("minOccurs") != null ? int.Parse(e.Attribute("minOccurs").Value) : 0) > 0,
             Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
@@ -74,6 +99,7 @@ namespace ActualChat.Audio.Ebml
             Name = "Unknown",
             Path = string.Empty,
             Id = "0x7FFF",
+            IsList = false,
             ElementType = "None",
             Required = false,
             Documentation = "Unknown element"
@@ -157,7 +183,7 @@ namespace ActualChat.Audio.Ebml
         /// <summary><#=(element.Required ? "[Required] " : "")#><#=element.Documentation.Replace("\n", "").Replace("      ", "")#></summary>
         public const ulong <#=element.Name#> = <#=element.Id#>;
         public static readonly ElementDescriptor <#=element.Name#>Descriptor
-            = new (<#=element.Name#>, nameof(<#=element.Name#>), ElementType.<#=elementType#>);
+            = new (<#=element.Name#>, nameof(<#=element.Name#>), ElementType.<#=elementType#>, <#=element.IsList.ToString().ToLowerInvariant()#>);
 
 <#
     }

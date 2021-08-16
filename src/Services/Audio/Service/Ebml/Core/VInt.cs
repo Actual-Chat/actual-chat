@@ -51,7 +51,7 @@ namespace ActualChat.Audio.Ebml
             (1L << 56) - 1
         };
 
-        private readonly sbyte _length;
+        private readonly byte _length;
 
 
 
@@ -61,7 +61,7 @@ namespace ActualChat.Audio.Ebml
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             EncodedValue = encodedValue;
-            _length = (sbyte)length;
+            _length = (byte)length;
         }
         
         public ulong EncodedValue { get; }
@@ -76,7 +76,7 @@ namespace ActualChat.Audio.Ebml
                 return isShortest && !IsReserved;
             }
         }
-        public int Length => _length;
+        public uint Length => _length;
 
         public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
 

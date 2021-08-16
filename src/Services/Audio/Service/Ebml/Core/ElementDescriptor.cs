@@ -15,8 +15,8 @@ namespace ActualChat.Audio.Ebml
         /// <param name="identifier"></param>
         /// <param name="name"></param>
         /// <param name="type"></param>
-        public ElementDescriptor(ulong identifier, string name, ElementType type)
-            : this(VInt.FromEncoded(identifier), name, type)
+        public ElementDescriptor(ulong identifier, string name, ElementType type, bool listEntry)
+            : this(VInt.FromEncoded(identifier), name, type, listEntry)
         {
         }
 
@@ -26,8 +26,8 @@ namespace ActualChat.Audio.Ebml
         /// <param name="identifier"></param>
         /// <param name="name"></param>
         /// <param name="type"></param>
-        public ElementDescriptor(long identifier, string name, ElementType type)
-            : this(VInt.FromEncoded((ulong)identifier), name, type)
+        public ElementDescriptor(long identifier, string name, ElementType type, bool listEntry)
+            : this(VInt.FromEncoded((ulong)identifier), name, type, listEntry)
         {
         }
 
@@ -38,7 +38,7 @@ namespace ActualChat.Audio.Ebml
         /// <param name="name">the element name or <code>null</code> if the name is not known</param>
         /// <param name="type">the element type or <code>null</code> if the type is not known</param>
         /// <exception cref="ArgumentNullException">if <code>identifier</code> is <code>null</code></exception>
-        private ElementDescriptor(VInt identifier, string name, ElementType type)
+        private ElementDescriptor(VInt identifier, string name, ElementType type, bool listEntry)
         {
             if (!identifier.IsValidIdentifier && type != ElementType.None)
                 throw new ArgumentException("Value is not valid identifier", nameof(identifier));
@@ -46,7 +46,10 @@ namespace ActualChat.Audio.Ebml
             Identifier = identifier;
             Name = name;
             Type = type;
+            ListEntry = listEntry;
         }
+        
+        public bool ListEntry { get; }
 
         /// <summary>
         /// Returns the element identifier.
@@ -103,7 +106,7 @@ namespace ActualChat.Audio.Ebml
         /// <returns></returns>
         public ElementDescriptor Named(string name)
         {
-            return new ElementDescriptor(Identifier, name, Type);
+            return new ElementDescriptor(Identifier, name, Type, ListEntry);
         }
     }
 }
