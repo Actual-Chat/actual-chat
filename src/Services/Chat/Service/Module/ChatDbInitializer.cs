@@ -1,4 +1,5 @@
 using System;
+using ActualChat.Chat.Db;
 using ActualChat.Db;
 
 namespace ActualChat.Chat.Module

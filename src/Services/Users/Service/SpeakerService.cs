@@ -11,24 +11,24 @@ namespace ActualChat.Users
 {
     public class SpeakerService : DbServiceBase<UsersDbContext>, ISpeakerService
     {
-        protected IServerSideAuthService AuthService { get; }
-        protected IDbUserRepo<UsersDbContext, DbUser, string> DbUserRepo { get; }
+        protected IServerSideAuthService Auth { get; }
+        protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
         protected IDbEntityResolver<string, DbUser> DbUserResolver { get; }
         protected DbUserByNameResolver DbUserByNameResolver { get; }
-        protected ISpeakerNameService SpeakerNameService { get; }
+        protected ISpeakerNameService SpeakerNames { get; }
 
         public SpeakerService(IServiceProvider services) : base(services)
         {
-            AuthService = services.GetRequiredService<IServerSideAuthService>();
-            DbUserRepo = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+            Auth = services.GetRequiredService<IServerSideAuthService>();
+            DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
             DbUserResolver = services.DbEntityResolver<string, DbUser>();
             DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
-            SpeakerNameService = services.GetRequiredService<ISpeakerNameService>();
+            SpeakerNames = services.GetRequiredService<ISpeakerNameService>();
         }
 
-        public virtual async Task<Speaker?> TryGet(string speakerId, CancellationToken cancellationToken = default)
+        public virtual async Task<Speaker?> TryGet(string userId, CancellationToken cancellationToken = default)
         {
-            var dbUser = await DbUserResolver.TryGet(speakerId, cancellationToken);
+            var dbUser = await DbUserResolver.TryGet(userId, cancellationToken);
             if (dbUser == null)
                 return null;
             return new Speaker(dbUser.Id, dbUser.Name);

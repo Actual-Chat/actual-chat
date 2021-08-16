@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using ActualChat.Chat.Db;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,7 +58,7 @@ namespace ActualChat.Chat.Module
                     return true;
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
-                if (commandAssembly == typeof(Channel).Assembly)
+                if (commandAssembly == typeof(Chat).Assembly)
                     return true;
                 return false;
             });
