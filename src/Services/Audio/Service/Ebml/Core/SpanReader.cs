@@ -43,6 +43,15 @@ namespace System.IO
 
         public ReadOnlySpan<byte> Tail => _currentSpan[Position..];
 
+        public ReadOnlySpan<byte> ReadSpan(int length)
+        {
+            var span = _currentSpan[Position..(Position + length)];
+
+            Position += length;
+            
+            return  span;
+        }
+
         public bool ReadBoolean() => ReadByte() != 0;
 
         public byte ReadByte()
@@ -74,6 +83,47 @@ namespace System.IO
 
         public ulong ReadULong() => Read<ulong>();
 
+        
+        
+        public double ReadFloat(int size)
+        {
+            var num = ReadULong(size);
+            switch (size)
+            {
+                case 4:
+                    return new Union { ULong = num }.Float;
+                case 8:
+                    return new Union { ULong = num }.Double;
+                default:
+                    throw new EbmlDataFormatException("Incorrect float length");
+            }
+        }
+        
+        public long ReadLong(int size)
+        {
+            long result = _currentSpan[Position];
+            for (var i = 1; i < size; i++) result = (result << 8) | (uint)(_currentSpan[Position + i] & 0xFF);
+            
+            Position += size;
+            
+            return result;
+        }
+
+        public ulong ReadULong(int size)
+        {
+            ulong result = 0;
+            for (var i = 0; i < size; i++) result = (result << 8) | _currentSpan[Position + i];
+            
+            Position += size;
+            
+            return result;
+        }
+
+        public string ReadAsciiString(int size) => ReadString(Encoding.ASCII, size);
+        
+        public string ReadUtf8String(int size) => ReadString(Encoding.UTF8, size);
+        
+       
         public decimal ReadDecimal()
         {
             var length = sizeof(decimal);
@@ -286,6 +336,18 @@ namespace System.IO
 
             return (false, VInt.Unknown);
         }
+        
+        private string ReadString(Encoding decoder, int size)
+        {
+            if (size == 0)
+                return string.Empty;
+
+            var result = decoder.GetString(_currentSpan.Slice(Position, size));
+
+            Position += size;
+            return result;
+        }
+        
 
         // Copied from https://referencesource.microsoft.com/#mscorlib/system/io/binaryreader.cs,409
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -335,6 +397,20 @@ namespace System.IO
             }
 
             return _singleChar[0];
+        }
+        
+        [StructLayout(LayoutKind.Explicit)]
+        private struct Union
+        {
+            [FieldOffset(0)]
+            public uint UInt;
+            [FieldOffset(0)]
+            public float Float;
+
+            [FieldOffset(0)]
+            public ulong ULong;
+            [FieldOffset(0)]
+            public double Double;
         }
     }
 }
