@@ -22,7 +22,6 @@ using System.Collections.Generic;
 using System.CodeDom.Compiler;
 using System.Runtime.CompilerServices;
 using System.IO;
-using System.Runtime.CompilerServices;
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable InconsistentNaming
 // ReSharper disable ClassNeverInstantiated.Global
@@ -210,9 +209,9 @@ namespace ActualChat.Audio.Ebml.Models
     var masters = elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path).ToList();
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillScalar(this BaseModel model, ElementDescriptor descriptor, int size, SpanReader reader)
+        public static void FillScalar(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, int size, ref SpanReader reader)
         {
-            switch (descriptor.Identifier.EncodedValue) {
+            switch (containerDescriptor.Identifier.EncodedValue) {
 <#
     foreach (var master in masters)
     {
@@ -231,7 +230,7 @@ namespace ActualChat.Audio.Ebml.Models
         }
 #>
                 case MatroskaSpecification.<#=master.Name#>:
-                    ((<#=className#>)model).FillScalar(descriptor, size, reader);
+                    ((<#=className#>)model).FillScalar(descriptor, size, ref reader);
                     break;
 <#
     }
@@ -240,9 +239,9 @@ namespace ActualChat.Audio.Ebml.Models
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillComplex(this BaseModel model, ElementDescriptor descriptor, BaseModel propertyModel)
+        public static void FillComplex(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, BaseModel propertyModel)
         {
-            switch (descriptor.Identifier.EncodedValue) {
+            switch (containerDescriptor.Identifier.EncodedValue) {
 <#
     foreach (var master in masters)
     {
@@ -270,9 +269,9 @@ namespace ActualChat.Audio.Ebml.Models
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillListEntry(this BaseModel model, ElementDescriptor descriptor, object listEntry)
+        public static void FillListEntry(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, object listEntry)
         {
-            switch (descriptor.Identifier.EncodedValue) {
+            switch (containerDescriptor.Identifier.EncodedValue) {
 <#
     foreach (var master in masters)
     {
@@ -318,7 +317,7 @@ namespace ActualChat.Audio.Ebml.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillScalar(this <#= className #> model, ElementDescriptor descriptor, int size, SpanReader reader)
+        public static void FillScalar(this <#= className #> model, ElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             if (descriptor.Type == ElementType.MasterElement)
                 throw new InvalidOperationException("Can't read master elements directly from the reader");
@@ -339,13 +338,13 @@ namespace ActualChat.Audio.Ebml.Models
                 var propertyName = Pluralize(sub, field);
                 var methodSuffix = sub.ElementType switch
                 {
-                    "utf-8" => "String()",
-                    "string" => "String()",
+                    "utf-8" => "Utf8String(size)",
+                    "string" => "AsciiString(size)",
                     "binary" => "Bytes(size)",
                     "date" => "DateTime()",
-                    "float" => "Float()",
-                    "uinteger" => "ULong()",
-                    "integer" => "Long()",
+                    "float" => "Float(size)",
+                    "uinteger" => "ULong(size)",
+                    "integer" => "Long(size)",
                     _ => "???"
                 };
                 var methodPrefix = sub.Name == "TrackType" ? "(TrackType?)" : string.Empty;
@@ -417,8 +416,8 @@ namespace ActualChat.Audio.Ebml.Models
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillListEntry(this <#= className #> model, ElementDescriptor descriptor, object listItem)
         {
-            if (descriptor.Type != ElementType.MasterElement)
-                throw new InvalidOperationException("ElementDescriptor should have 'master' type");
+            if (descriptor.Type != ElementType.MasterElement && descriptor.Type != ElementType.Binary)
+                throw new InvalidOperationException("ElementDescriptor should have 'master' or 'binary' type");
             
             switch (descriptor.Identifier.EncodedValue) {
 <#
