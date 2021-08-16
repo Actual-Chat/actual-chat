@@ -1,15 +1,21 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
 
-namespace ActualChat.Chat
+namespace ActualChat.Chat.Db
 {
     public class ChatDbContext : DbContext
     {
-        public DbSet<DbChatMessage> ChatMessages { get; protected set; } = null!;
+        public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
 
         // Stl.Fusion.EntityFramework tables
         public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
         public ChatDbContext(DbContextOptions options) : base(options) { }
+
+        protected override void OnModelCreating(ModelBuilder model)
+        {
+            model.Entity<DbChatEntry>()
+                .HasKey(e => new {e.ChatId, e.Id});
+        }
     }
 }

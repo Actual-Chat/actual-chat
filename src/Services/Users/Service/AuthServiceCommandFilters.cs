@@ -20,20 +20,20 @@ namespace ActualChat.Users
 {
     public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
-        protected IServerSideAuthService AuthService { get; }
-        protected ISpeakerService SpeakerService { get; }
-        protected ISpeakerNameService SpeakerNameService { get; }
-        protected ISpeakerStateService SpeakerStateService { get; }
-        protected IDbUserRepo<UsersDbContext, DbUser, string> DbUserRepo { get; }
+        protected IServerSideAuthService Auth { get; }
+        protected ISpeakerService Speakers { get; }
+        protected ISpeakerNameService SpeakerNames { get; }
+        protected ISpeakerStateService SpeakerStates { get; }
+        protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
         public AuthServiceCommandFilters(IServiceProvider services)
             : base(services)
         {
-            AuthService = services.GetRequiredService<IServerSideAuthService>();
-            SpeakerService = services.GetRequiredService<ISpeakerService>();
-            SpeakerNameService = services.GetRequiredService<ISpeakerNameService>();
-            SpeakerStateService = services.GetRequiredService<ISpeakerStateService>();
-            DbUserRepo = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+            Auth = services.GetRequiredService<IServerSideAuthService>();
+            Speakers = services.GetRequiredService<ISpeakerService>();
+            SpeakerNames = services.GetRequiredService<ISpeakerNameService>();
+            SpeakerStates = services.GetRequiredService<ISpeakerStateService>();
+            DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
         }
 
         // Takes care of invalidation of IsOnlineAsync once user signs in
@@ -48,7 +48,7 @@ namespace ActualChat.Users
             if (Computed.IsInvalidating()) {
                 var invSpeaker = context.Operation().Items.TryGet<Speaker>();
                 if (invSpeaker != null)
-                    SpeakerStateService.IsOnline(invSpeaker.Id, default).Ignore();
+                    SpeakerStates.IsOnline(invSpeaker.Id, default).Ignore();
                 return;
             }
 
@@ -56,7 +56,7 @@ namespace ActualChat.Users
             await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
             var userId = sessionInfo.UserId;
-            var dbUser = await DbUserRepo.TryGet(dbContext, userId, cancellationToken);
+            var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken);
             if (dbUser == null)
                 return; // Should never happen, but if it somehow does, there is no extra to do in this case
             var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken);
@@ -77,15 +77,15 @@ namespace ActualChat.Users
             if (Computed.IsInvalidating()) {
                 await context.InvokeRemainingHandlers(cancellationToken);
                 if (command.Name != null)
-                    SpeakerService.TryGetByName(command.Name, default).Ignore();
+                    Speakers.TryGetByName(command.Name, default).Ignore();
                 return;
             }
             if (command.Name != null) {
-                var error = SpeakerNameService.ValidateName(command.Name);
+                var error = SpeakerNames.ValidateName(command.Name);
                 if (error != null)
                     throw error;
 
-                var user = await AuthService.GetUser(command.Session, cancellationToken);
+                var user = await Auth.GetUser(command.Session, cancellationToken);
                 user = user.MustBeAuthenticated();
                 var userId = user.Id;
 
