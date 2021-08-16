@@ -11,9 +11,7 @@ namespace ActualChat.Chat
     {
         // Commands
         [CommandHandler]
-        Task<ChatMessage> Post(Chat.PostCommand command, CancellationToken cancellationToken = default);
-        [CommandHandler]
-        Task Delete(Chat.DeleteCommand command, CancellationToken cancellationToken = default);
+        Task<ChatEntry> Post(ChatCommands.AddText command, CancellationToken cancellationToken = default);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
