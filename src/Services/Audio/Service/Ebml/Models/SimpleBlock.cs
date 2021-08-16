@@ -19,7 +19,7 @@ namespace ActualChat.Audio.Ebml.Models
         /// </summary>
         public bool IsDiscardable { get; private set; }
 
-        public override void Parse(Span<byte> span)
+        public override void Parse(ReadOnlySpan<byte> span)
         {
             base.Parse(span);
 

@@ -175,12 +175,12 @@ namespace System.IO
         #region VInt
         public int Write(VInt vint, int? position = null)
         {
-            int p = vint.Length;
+            int p = (int)vint.Length;
             for (var data = vint.EncodedValue; --p >= 0; data >>= 8)
             {
                 Span[(position ?? Position) + p] = (byte)(data & 0xff);
             }
-            return UpdatePosition(vint.Length, position);
+            return UpdatePosition((int)vint.Length, position);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
