@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Buffers;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using ActualChat.Audio.Ebml;
@@ -10,7 +11,6 @@ namespace System.IO
         private const int SizeOfGuid = 16;
         private const int MaxCharBytesSize = 128;
 
-        public readonly ReadOnlySpan<byte> Span;
         private readonly ReadOnlySpan<byte> _currentSpan;
         private readonly Encoding _encoding;
         private readonly Decoder _decoder;
@@ -28,7 +28,6 @@ namespace System.IO
 
         public SpanReader(ReadOnlySpan<byte> span, Encoding encoding)
         {
-            Span = span;
             Length = span.Length;
             Position = 0;
             _currentSpan = span;
@@ -41,6 +40,8 @@ namespace System.IO
             _singleChar = new char[1];
             _decimalBits = new int[4];
         }
+
+        public ReadOnlySpan<byte> Tail => _currentSpan[Position..];
 
         public bool ReadBoolean() => ReadByte() != 0;
 
@@ -76,7 +77,7 @@ namespace System.IO
         public decimal ReadDecimal()
         {
             var length = sizeof(decimal);
-            var buffer = Span.Slice(Position, length);
+            var buffer = _currentSpan.Slice(Position, length);
 
             _decimalBits[0] = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
             _decimalBits[1] = buffer[4] | (buffer[5] << 8) | (buffer[6] << 16) | (buffer[7] << 24);

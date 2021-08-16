@@ -46,7 +46,7 @@ namespace ActualChat.Audio.Ebml.Models
 
         public byte[]? Data { get; private set; }
 
-        public virtual void Parse(Span<byte> span)
+        public virtual void Parse(ReadOnlySpan<byte> span)
         {
             var spanReader = new SpanReader(span);
 

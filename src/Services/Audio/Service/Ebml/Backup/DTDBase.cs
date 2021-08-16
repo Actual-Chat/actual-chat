@@ -29,48 +29,48 @@ namespace ActualChat.Audio.Ebml.Backup
     {
         protected static ElementDescriptor Container(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.MasterElement);
+            return new ElementDescriptor(id, name, ElementType.MasterElement, true);
         }
 
         protected static ElementDescriptor Binary(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.Binary);
+            return new ElementDescriptor(id, name, ElementType.Binary, true);
         }
 
         protected static ElementDescriptor Uint(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.UnsignedInteger);
+            return new ElementDescriptor(id, name, ElementType.UnsignedInteger, false);
         }
 
         protected static ElementDescriptor Int(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.SignedInteger);
+            return new ElementDescriptor(id, name, ElementType.SignedInteger, false);
         }
 
         protected static ElementDescriptor Ascii(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.AsciiString);
+            return new ElementDescriptor(id, name, ElementType.AsciiString, false);
         }
 
         protected static ElementDescriptor Utf8(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.Utf8String);
+            return new ElementDescriptor(id, name, ElementType.Utf8String, false);
         }
 
         protected static ElementDescriptor Float(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.Float);
+            return new ElementDescriptor(id, name, ElementType.Float, false);
         }
 
         protected static ElementDescriptor Date(long id, string name = "")
         {
-            return new ElementDescriptor(id, name, ElementType.Date);
+            return new ElementDescriptor(id, name, ElementType.Date, false);
         }
 
         public class MasterElementDescriptor : ElementDescriptor
         {
-            protected MasterElementDescriptor(long identifier, string name = "") : base(identifier, name,
-                ElementType.MasterElement)
+            protected MasterElementDescriptor(long identifier, string name = "") 
+                : base(identifier, name, ElementType.MasterElement, false)
             {
             }
         }
