@@ -60,7 +60,7 @@ namespace ActualChat.Chat
             var now = Clocks.SystemClock.Now;
             var dbChatEntry = new DbChatEntry() {
                 ChatId = chatId,
-                Kind = ChatEntryKind.Text,
+                ContentType = ChatContentType.Text,
                 UserId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,

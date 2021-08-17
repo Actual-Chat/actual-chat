@@ -7,12 +7,8 @@ using Stl.Time;
 namespace ActualChat.Chat.Db
 {
     [Table("ChatEntries")]
-    [Index(nameof(ChatId), nameof(BeginsAt))]
-    [Index(nameof(UserId), nameof(BeginsAt), nameof(ChatId))]
-    [Index(nameof(UserId), nameof(ChatId), nameof(BeginsAt))]
-    [Index(nameof(ChatId), nameof(Id), nameof(BeginsAt))]
-    [Index(nameof(UserId), nameof(Id), nameof(BeginsAt), nameof(ChatId))]
-    [Index(nameof(UserId), nameof(ChatId), nameof(Id), nameof(BeginsAt))]
+    [Index(nameof(ChatId), nameof(BeginsAt), nameof(EndsAt), nameof(ContentType))]
+    [Index(nameof(ChatId), nameof(EndsAt), nameof(BeginsAt), nameof(ContentType))]
     public class DbChatEntry : IHasId<long>
     {
         private DateTime _beginsAt;
@@ -20,9 +16,7 @@ namespace ActualChat.Chat.Db
 
         public long Id { get; set; } = 0;
         public string ChatId { get; set; } = "";
-        public bool IsRemoved { get; set; }
 
-        public ChatEntryKind Kind { get; set; }
         public string UserId { get; set; } = "";
 
         public DateTime BeginsAt {
@@ -37,14 +31,15 @@ namespace ActualChat.Chat.Db
 
         public double Duration { get; set; }
 
+        public ChatContentType ContentType { get; set; }
         public string Content { get; set; } = "";
 
         public ChatEntry ToModel()
-            => new(Kind, Id) {
-                IsRemoved = IsRemoved,
+            => new(Id) {
                 UserId = UserId,
                 BeginsAt = BeginsAt,
                 EndsAt = EndsAt,
+                ContentType = ContentType,
                 Content = Content,
             };
 
@@ -52,12 +47,11 @@ namespace ActualChat.Chat.Db
         {
             if (model.Id != 0)
                 Id = model.Id;
-            Kind = model.Kind;
-            IsRemoved = model.IsRemoved;
             UserId = model.UserId;
             BeginsAt = model.BeginsAt;
             EndsAt = model.EndsAt;
             Duration = model.Duration;
+            ContentType = model.ContentType;
             Content = model.Content;
         }
     }
