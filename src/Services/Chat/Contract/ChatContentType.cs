@@ -1,6 +1,6 @@
 namespace ActualChat.Chat
 {
-    public enum ChatEntryKind
+    public enum ChatContentType
     {
         Text = 0x0,
         Audio = 0x1,
