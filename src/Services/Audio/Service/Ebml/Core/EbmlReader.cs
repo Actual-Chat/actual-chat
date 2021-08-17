@@ -17,6 +17,7 @@ namespace ActualChat.Audio.Ebml
         private Element _container;
         private Element _element;
         private BaseModel _entry;
+        private bool _resume;
 
 
         public EbmlReader(ReadOnlySpan<byte> span) : this(span, (uint)span.Length)
@@ -29,6 +30,17 @@ namespace ActualChat.Audio.Ebml
             _spanReader = new SpanReader(span);
             _containers = new Stack<Element>(16);
             _entry = BaseModel.Empty;
+            _resume = false;
+        }
+        
+        private EbmlReader(State state, ReadOnlySpan<byte> span)
+        {
+            _container = state.ContainerElement;
+            _element = Element.Empty;
+            _spanReader = new SpanReader(span);
+            _containers = new Stack<Element>(16);
+            _entry = state.Container;
+            _resume = true;
         }
 
         public EbmlEntryType EbmlEntryType =>  _entry switch {
@@ -39,23 +51,49 @@ namespace ActualChat.Audio.Ebml
             _ => throw new InvalidOperationException()
         };
 
+        public static EbmlReader FromState(State state)
+        {
+            return new EbmlReader(state, ReadOnlySpan<byte>.Empty);
+        }
+
         public BaseModel Entry => _entry;
 
         public ElementDescriptor CurrentDescriptor => _element.Descriptor;
 
+        public ReadOnlySpan<byte> Tail => _spanReader.Tail;
+
+        public State GetState()
+        {
+            return new State(Tail.ToArray(), _container, _entry);
+        }
+        
+        public EbmlReader WithNewSource(ReadOnlySpan<byte> span)
+        {
+            return new EbmlReader(GetState(), span);
+        }
+
         public bool Read()
         {
+            if (_resume) {
+                _resume = false;
+                return ReadInternal(true);
+            }
             var hasElement = ReadElement(_spanReader.Length);
             if (!hasElement) return false;
             
-            return _element.Type != ElementType.MasterElement || ReadInternal(_spanReader.Length);
+            return _element.Type != ElementType.MasterElement || ReadInternal();
         }
 
-        private bool ReadInternal(int readUntil)
+        private bool ReadInternal(bool resume = false)
         {
-            var isSuccess = true;
-            EnterContainer();
-            var container = _container.Descriptor.CreateInstance();
+            BaseModel container;
+            if (resume)
+                container = _entry;
+            else {
+                EnterContainer();
+                container = _container.Descriptor.CreateInstance();
+            }
+
             var beginPosition = _spanReader.Position;
             var endPosition = _container.Size == UnknownSize 
                 ? int.MaxValue 
@@ -66,7 +104,6 @@ namespace ActualChat.Audio.Ebml
 
                 var canRead = ReadElement(endPosition);
                 if (!canRead) {
-                    // isSuccess = false;
                     _entry = container;
                     _element = _container;
                     _spanReader.Position = beginPosition;
@@ -82,7 +119,7 @@ namespace ActualChat.Audio.Ebml
                 }
                 if (_element.Descriptor.Type == ElementType.MasterElement) {
                     var complex = _element.Descriptor;
-                    if (ReadInternal(endPosition)) {
+                    if (ReadInternal()) {
                         if (CurrentDescriptor.ListEntry)
                             container.FillListEntry(_container.Descriptor, complex, _entry!);
                         else
@@ -131,7 +168,7 @@ namespace ActualChat.Audio.Ebml
             LeaveContainer();
             _entry = container;
 
-            return isSuccess;
+            return true;
         }
         
         
@@ -152,7 +189,6 @@ namespace ActualChat.Audio.Ebml
 
             var eof = Math.Min(readUntil, _spanReader.Length);
             var sizeValue = size.Value;
-            // TODO: decide whether we need to rollback position
             if (_spanReader.Position + (int)sizeValue > eof) {
                 if (identifier.EncodedValue != MatroskaSpecification.Cluster &&
                     identifier.EncodedValue != MatroskaSpecification.Segment) {
@@ -190,29 +226,19 @@ namespace ActualChat.Audio.Ebml
             _container = _containers.Pop();
             return true;
         }
-        
-        private struct Element
+
+        public readonly struct State
         {
-            public static readonly Element Empty = new Element(VInt.UnknownSize(2), 0, MatroskaSpecification.UnknownDescriptor);
+            public readonly byte[] Remaining;
+            internal readonly Element ContainerElement;
+            internal readonly BaseModel Container;
 
-            public Element(VInt identifier, ulong sizeValue, ElementDescriptor descriptor)
+            public State(byte[] remaining, Element containerElement, BaseModel container)
             {
-                Descriptor = descriptor;
-                Identifier = identifier;
-                Size = sizeValue;
+                Remaining = remaining;
+                ContainerElement = containerElement;
+                Container = container;
             }
-
-            public ElementDescriptor Descriptor { get; }
-
-            public readonly VInt Identifier;
-
-            public readonly ulong Size;
-
-            public ElementType Type => Descriptor.Type;
-
-            public bool IsEmpty => !Identifier.IsValidIdentifier && Size == 0 && Type == ElementType.None;
-
-            public bool HasInvalidIdentifier => !Identifier.IsValidIdentifier;
         }
     }
 }
