@@ -6,8 +6,8 @@ using Stl.Time;
 
 namespace ActualChat.Users.Db
 {
-    [Table("SpeakerStates")]
-    public class DbSpeakerState : IHasId<string>
+    [Table("UserStates")]
+    public class DbUserState : IHasId<string>
     {
         private DateTime _onlineCheckInAt;
 

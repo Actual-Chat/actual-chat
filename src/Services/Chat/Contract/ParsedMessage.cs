@@ -45,9 +45,9 @@ namespace ActualChat.Chat
             => Text.Replace("@", "@@");
     }
 
-    public record UserMention(Speaker User) : MessageFragment
+    public record UserMention(UserInfo User) : MessageFragment
     {
-        public UserMention() : this(Speaker.None) { }
+        public UserMention() : this(UserInfo.None) { }
         public override string ToString() => Format();
         public override string Format(bool editable = false)
             => editable ? "@" + User.Name : $"@user[{User.Id}]";

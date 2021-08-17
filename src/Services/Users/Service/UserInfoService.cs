@@ -9,37 +9,37 @@ using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users
 {
-    public class SpeakerService : DbServiceBase<UsersDbContext>, ISpeakerService
+    public class UserInfoService : DbServiceBase<UsersDbContext>, IUserInfoService
     {
         protected IServerSideAuthService Auth { get; }
         protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
         protected IDbEntityResolver<string, DbUser> DbUserResolver { get; }
         protected DbUserByNameResolver DbUserByNameResolver { get; }
-        protected ISpeakerNameService SpeakerNames { get; }
+        protected IUserNameService UserNames { get; }
 
-        public SpeakerService(IServiceProvider services) : base(services)
+        public UserInfoService(IServiceProvider services) : base(services)
         {
             Auth = services.GetRequiredService<IServerSideAuthService>();
             DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
             DbUserResolver = services.DbEntityResolver<string, DbUser>();
             DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
-            SpeakerNames = services.GetRequiredService<ISpeakerNameService>();
+            UserNames = services.GetRequiredService<IUserNameService>();
         }
 
-        public virtual async Task<Speaker?> TryGet(string userId, CancellationToken cancellationToken = default)
+        public virtual async Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken = default)
         {
             var dbUser = await DbUserResolver.TryGet(userId, cancellationToken);
             if (dbUser == null)
                 return null;
-            return new Speaker(dbUser.Id, dbUser.Name);
+            return new UserInfo(dbUser.Id, dbUser.Name);
         }
 
-        public virtual async Task<Speaker?> TryGetByName(string name, CancellationToken cancellationToken = default)
+        public virtual async Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken = default)
         {
             var dbUser = await DbUserByNameResolver.TryGet(name, cancellationToken);
             if (dbUser == null)
                 return null;
-            return new Speaker(dbUser.Id, dbUser.Name);
+            return new UserInfo(dbUser.Id, dbUser.Name);
         }
     }
 }

@@ -21,18 +21,18 @@ namespace ActualChat.Users
     public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
         protected IServerSideAuthService Auth { get; }
-        protected ISpeakerService Speakers { get; }
-        protected ISpeakerNameService SpeakerNames { get; }
-        protected ISpeakerStateService SpeakerStates { get; }
+        protected IUserInfoService UserInfos { get; }
+        protected IUserNameService UserNames { get; }
+        protected IUserStateService UserStates { get; }
         protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
         public AuthServiceCommandFilters(IServiceProvider services)
             : base(services)
         {
             Auth = services.GetRequiredService<IServerSideAuthService>();
-            Speakers = services.GetRequiredService<ISpeakerService>();
-            SpeakerNames = services.GetRequiredService<ISpeakerNameService>();
-            SpeakerStates = services.GetRequiredService<ISpeakerStateService>();
+            UserInfos = services.GetRequiredService<IUserInfoService>();
+            UserNames = services.GetRequiredService<IUserNameService>();
+            UserStates = services.GetRequiredService<IUserStateService>();
             DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
         }
 
@@ -46,9 +46,9 @@ namespace ActualChat.Users
             await context.InvokeRemainingHandlers(cancellationToken);
 
             if (Computed.IsInvalidating()) {
-                var invSpeaker = context.Operation().Items.TryGet<Speaker>();
-                if (invSpeaker != null)
-                    SpeakerStates.IsOnline(invSpeaker.Id, default).Ignore();
+                var invUserInfo = context.Operation().Items.TryGet<UserInfo>();
+                if (invUserInfo != null)
+                    UserStates.IsOnline(invUserInfo.Id, default).Ignore();
                 return;
             }
 
@@ -64,8 +64,8 @@ namespace ActualChat.Users
                 dbUser.Name = newName;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
-            var speaker = new Speaker(dbUser.Id, dbUser.Name);
-            context.Operation().Items.Set(speaker);
+            var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
+            context.Operation().Items.Set(userInfo);
         }
 
 
@@ -77,11 +77,11 @@ namespace ActualChat.Users
             if (Computed.IsInvalidating()) {
                 await context.InvokeRemainingHandlers(cancellationToken);
                 if (command.Name != null)
-                    Speakers.TryGetByName(command.Name, default).Ignore();
+                    UserInfos.TryGetByName(command.Name, default).Ignore();
                 return;
             }
             if (command.Name != null) {
-                var error = SpeakerNames.ValidateName(command.Name);
+                var error = UserNames.ValidateName(command.Name);
                 if (error != null)
                     throw error;
 
