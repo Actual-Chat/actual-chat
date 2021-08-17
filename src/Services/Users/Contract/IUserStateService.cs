@@ -4,9 +4,9 @@ using Stl.Fusion;
 
 namespace ActualChat.Users
 {
-    public interface ISpeakerStateService
+    public interface IUserStateService
     {
         [ComputeMethod(KeepAliveTime = 10)]
-        Task<bool> IsOnline(string speakerId, CancellationToken cancellationToken = default);
+        Task<bool> IsOnline(string userId, CancellationToken cancellationToken = default);
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using Stl.DependencyInjection;
 
 namespace ActualChat.Users
 {
