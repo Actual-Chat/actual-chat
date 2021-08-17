@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ActualChat.Users
 {
-    public class SpeakerNameService : ISpeakerNameService
+    public class UserNameService : IUserNameService
     {
         public ValidationException? ValidateName(in ReadOnlySpan<char> name)
         {

@@ -26,13 +26,13 @@ namespace ActualChat.Chat
     {
         private readonly Lazy<IMessageParser> _messageParserLazy;
         protected IAuthService AuthService { get; }
-        protected ISpeakerService Speakers { get; }
+        protected IUserInfoService UserInfos { get; }
         protected IMessageParser MessageParser => _messageParserLazy.Value;
 
         public ChatService(IServiceProvider services) : base(services)
         {
             AuthService = services.GetRequiredService<IAuthService>();
-            Speakers = services.GetRequiredService<ISpeakerService>();
+            UserInfos = services.GetRequiredService<IUserInfoService>();
             _messageParserLazy = new Lazy<IMessageParser>(services.GetRequiredService<IMessageParser>);
         }
 
@@ -145,20 +145,20 @@ namespace ActualChat.Chat
             var entries = dbEntries.Select(m => m.ToModel()).ToImmutableList();
 
             // Fetching users in parallel
-            var speakers = new Dictionary<Symbol, Speaker>();
+            var users = new Dictionary<Symbol, UserInfo>();
             foreach (var entriesPack in entries.PackBy(128)) {
-                var speakersPack = await Task.WhenAll(
+                var usersPack = await Task.WhenAll(
                     entriesPack
-                        .Where(e => !speakers.ContainsKey(e.UserId))
-                        .Select(e => Speakers.TryGet(e.UserId, cancellationToken)));
-                foreach (var speaker in speakersPack)
-                    if (speaker != null)
-                        speakers.TryAdd(speaker.Id, speaker);
+                        .Where(e => !users.ContainsKey(e.UserId))
+                        .Select(e => UserInfos.TryGet(e.UserId, cancellationToken)));
+                foreach (var user in usersPack)
+                    if (user != null)
+                        users.TryAdd(user.Id, user);
             }
 
             return new ChatPage(chatId, limit) {
                 Entries = entries,
-                Speakers = speakers.ToImmutableDictionary(),
+                Users = users.ToImmutableDictionary(),
             };
         }
 
