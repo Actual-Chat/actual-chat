@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Blobs;
 using ActualChat.Hosting;
@@ -43,10 +44,13 @@ namespace ActualChat.Audio.Module
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-                dbContext.AddDbOperations((_, o) => {
+                services.AddTransient(c => new DbOperationScope<AudioDbContext>(c) {
+                    IsolationLevel = IsolationLevel.Serializable,
+                });
+                dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                dbContext.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlOperationLogChangeTracking();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler

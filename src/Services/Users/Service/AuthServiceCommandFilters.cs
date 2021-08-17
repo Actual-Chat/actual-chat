@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Users.Db;
@@ -14,20 +15,25 @@ using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.Operations;
-using Stl.Internal;
 
 namespace ActualChat.Users
 {
     public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
-        protected IDbUserRepo<UsersDbContext> DbUserRepo { get; }
-        protected ISpeakerStateService SpeakerStateService { get; }
+        protected IServerSideAuthService Auth { get; }
+        protected ISpeakerService Speakers { get; }
+        protected ISpeakerNameService SpeakerNames { get; }
+        protected ISpeakerStateService SpeakerStates { get; }
+        protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
         public AuthServiceCommandFilters(IServiceProvider services)
             : base(services)
         {
-            DbUserRepo = services.GetRequiredService<IDbUserRepo<UsersDbContext>>();
-            SpeakerStateService = services.GetRequiredService<ISpeakerStateService>();
+            Auth = services.GetRequiredService<IServerSideAuthService>();
+            Speakers = services.GetRequiredService<ISpeakerService>();
+            SpeakerNames = services.GetRequiredService<ISpeakerNameService>();
+            SpeakerStates = services.GetRequiredService<ISpeakerStateService>();
+            DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
         }
 
         // Takes care of invalidation of IsOnlineAsync once user signs in
@@ -36,20 +42,21 @@ namespace ActualChat.Users
         {
             var context = CommandContext.GetCurrent();
 
-            // Invoking command handler(s) with lower priority
+            // Invoke command handler(s) with lower priority
             await context.InvokeRemainingHandlers(cancellationToken);
 
             if (Computed.IsInvalidating()) {
                 var invSpeaker = context.Operation().Items.TryGet<Speaker>();
                 if (invSpeaker != null)
-                    SpeakerStateService.IsOnline(invSpeaker.Id, default).Ignore();
+                    SpeakerStates.IsOnline(invSpeaker.Id, default).Ignore();
                 return;
             }
 
+            // Let's try to fix auto-generated user name here
             await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
-            var userId = long.Parse(sessionInfo.UserId);
-            var dbUser = (DbAppUser?) await DbUserRepo.TryGet(dbContext, userId, cancellationToken);
+            var userId = sessionInfo.UserId;
+            var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken);
             if (dbUser == null)
                 return; // Should never happen, but if it somehow does, there is no extra to do in this case
             var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken);
@@ -57,14 +64,48 @@ namespace ActualChat.Users
                 dbUser.Name = newName;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
-            var speaker = new Speaker(dbUser.SpeakerId, dbUser.Name);
+            var speaker = new Speaker(dbUser.Id, dbUser.Name);
             context.Operation().Items.Set(speaker);
         }
+
+
+        // Validates user name on edit
+        [CommandHandler(IsFilter = true, Priority = 1)]
+        protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
+        {
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating()) {
+                await context.InvokeRemainingHandlers(cancellationToken);
+                if (command.Name != null)
+                    Speakers.TryGetByName(command.Name, default).Ignore();
+                return;
+            }
+            if (command.Name != null) {
+                var error = SpeakerNames.ValidateName(command.Name);
+                if (error != null)
+                    throw error;
+
+                var user = await Auth.GetUser(command.Session, cancellationToken);
+                user = user.MustBeAuthenticated();
+                var userId = user.Id;
+
+                await using var dbContext = CreateDbContext();
+                var isNameUsed = await dbContext.Users.AsQueryable()
+                    .AnyAsync(u => u.Name == command.Name && u.Id != userId, cancellationToken);
+                if (isNameUsed)
+                    throw new InvalidOperationException("This name is already used by someone else.");
+            }
+
+            // Invoke command handler(s) with lower priority
+            await context.InvokeRemainingHandlers(cancellationToken);
+        }
+
+        // Private methods
 
         private async Task<string> NormalizeName(
             UsersDbContext dbContext,
             string name,
-            long userId,
+            string userId,
             CancellationToken cancellationToken = default)
         {
             // Normalizing name

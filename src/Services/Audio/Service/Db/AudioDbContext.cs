@@ -7,6 +7,7 @@ namespace ActualChat.Audio.Db
     {
         public DbSet<DbAudioRecording> AudioRecordings { get; protected set; } = null!;
         public DbSet<DbAudioSegment> AudioSegments { get; protected set; } = null!;
+
         // Stl.Fusion.EntityFramework tables
         public DbSet<DbOperation> Operations { get; protected set; } = null!;
 

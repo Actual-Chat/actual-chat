@@ -1,7 +1,6 @@
 using System;
+using ActualChat.Chat.Db;
 using ActualChat.Db;
-using ActualChat.Hosting;
-using Stl.DependencyInjection;
 
 namespace ActualChat.Chat.Module
 {

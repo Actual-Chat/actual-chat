@@ -6,6 +6,7 @@ using System.Reactive;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.Operations;
+using Stl.Text;
 
 namespace ActualChat.Chat
 {
@@ -24,32 +26,31 @@ namespace ActualChat.Chat
     {
         private readonly Lazy<IMessageParser> _messageParserLazy;
         protected IAuthService AuthService { get; }
-        protected ISpeakerService ChatUsers { get; }
+        protected ISpeakerService Speakers { get; }
         protected IMessageParser MessageParser => _messageParserLazy.Value;
 
         public ChatService(IServiceProvider services) : base(services)
         {
             AuthService = services.GetRequiredService<IAuthService>();
-            ChatUsers = services.GetRequiredService<ISpeakerService>();
+            Speakers = services.GetRequiredService<ISpeakerService>();
             _messageParserLazy = new Lazy<IMessageParser>(services.GetRequiredService<IMessageParser>);
         }
 
         // Commands
 
-        public virtual async Task<ChatMessage> Post(
-            Chat.PostCommand command, CancellationToken cancellationToken = default)
+        public virtual async Task<ChatEntry> Post(
+            ChatCommands.AddText command, CancellationToken cancellationToken = default)
         {
             var (session, chatId, text) = command;
             var context = CommandContext.GetCurrent();
             if (Computed.IsInvalidating()) {
-                var invChatMessage = context.Operation().Items.Get<ChatMessage>();
+                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
                 PseudoGetTail(chatId, default).Ignore();
                 return null!;
             }
 
             var user = await AuthService.GetUser(session, cancellationToken);
-            user = user.MustBeAuthenticated();
-            var userId = long.Parse(user.Id);
+            user.MustBeAuthenticated();
             var cp = await GetPermissions(session, chatId, cancellationToken);
             if ((cp & ChatPermission.Write) != ChatPermission.Write)
                 throw new SecurityException("You can't post to this chat.");
@@ -57,25 +58,20 @@ namespace ActualChat.Chat
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
-            var chatMessage = new ChatMessage(Ulid.NewUlid().ToString(), chatId) {
-                UserId = userId,
-                CreatedAt = now,
-                EditedAt = now,
-                Text = parsedMessage.Format(),
+            var dbChatEntry = new DbChatEntry() {
+                ChatId = chatId,
+                Kind = ChatEntryKind.Text,
+                UserId = user.Id,
+                BeginsAt = now,
+                EndsAt = now,
+                Content = parsedMessage.Format(),
             };
-            var dbChatMessage = new DbChatMessage();
-            dbChatMessage.UpdateFrom(chatMessage);
-            dbContext.Add(dbChatMessage);
+            dbContext.Add(dbChatEntry);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            context.Operation().Items.Set(chatMessage);
-            return chatMessage;
-        }
-
-        public virtual Task Delete(
-            Chat.DeleteCommand command, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
+            var chatEntry = dbChatEntry.ToModel();
+            context.Operation().Items.Set(chatEntry);
+            return chatEntry;
         }
 
         // Queries
@@ -85,61 +81,10 @@ namespace ActualChat.Chat
         {
             if (string.IsNullOrEmpty(chatId))
                 return null;
-            if (chatId.StartsWith("public/")) {
-                var id = chatId[7..];
-                if (string.IsNullOrWhiteSpace(id))
-                    return null;
-                return new Chat(chatId, ChatKind.Public) {
-                    OwnerIds = ImmutableHashSet<long>.Empty,
-                    ParticipantIds = ImmutableHashSet<long>.Empty,
-                    IsPublic = true,
-                };
-            }
-            if (chatId.StartsWith("p2p/")) {
-                var dividerIndex = chatId.IndexOf('/', 4);
-                if (dividerIndex < 0)
-                    return null;
-                if (!long.TryParse(chatId[4..dividerIndex], out var user1Id))
-                    return null;
-                if (!long.TryParse(chatId[(dividerIndex + 1)..], out var user2Id))
-                    return null;
-                if (user1Id >= user2Id)
-                    return null;
-                var user1 = await ChatUsers.TryGet(user1Id.ToString(), cancellationToken);
-                if (user1 == null)
-                    return null;
-                var user2 = await ChatUsers.TryGet(user2Id.ToString(), cancellationToken);
-                if (user2 == null)
-                    return null;
-                return new Chat(chatId, ChatKind.P2P) {
-                    OwnerIds = ImmutableHashSet<long>.Empty,
-                    ParticipantIds = ImmutableHashSet<long>.Empty.Add(user1Id).Add(user2Id),
-                    IsPublic = false,
-                };
-            }
-            if (chatId.StartsWith("secret/")) {
-                var dividerIndex = chatId.IndexOf('/', 7);
-                if (dividerIndex < 0)
-                    return null;
-                if (!long.TryParse(chatId[4..dividerIndex], out var user1Id))
-                    return null;
-                if (!long.TryParse(chatId[(dividerIndex + 1)..], out var user2Id))
-                    return null;
-                if (user1Id >= user2Id)
-                    return null;
-                var user1 = await ChatUsers.TryGet(user1Id.ToString(), cancellationToken);
-                if (user1 == null)
-                    return null;
-                var user2 = await ChatUsers.TryGet(user2Id.ToString(), cancellationToken);
-                if (user2 == null)
-                    return null;
-                return new Chat(chatId, ChatKind.Secret) {
-                    OwnerIds = ImmutableHashSet<long>.Empty,
-                    ParticipantIds = ImmutableHashSet<long>.Empty.Add(user1Id).Add(user2Id),
-                    IsPublic = false,
-                };
-            }
-            return null;
+            return new Chat(chatId) {
+                OwnerIds = ImmutableHashSet<string>.Empty,
+                IsPublic = false,
+            };
         }
 
         public virtual async Task<ChatPermission> GetPermissions(
@@ -149,14 +94,12 @@ namespace ActualChat.Chat
             if (!user.IsAuthenticated)
                 return 0;
             var chat = await TryGet(chatId, cancellationToken);
-            if (chat == null || chat.Kind == ChatKind.Unknown)
+            if (chat == null)
                 return 0;
-
-            var userId = long.Parse(user.Id);
-            if (chat.OwnerIds.Contains(userId))
+            if (chat.OwnerIds.Contains(user.Id))
                 return ChatPermission.Owner;
-            if (chat.ParticipantIds.Contains(userId))
-                return ChatPermission.Write;
+            if (chat.IsPublic)
+                return ChatPermission.Read;
             return 0;
         }
 
@@ -173,12 +116,12 @@ namespace ActualChat.Chat
         {
             await PseudoGetTail(chatId, default);
             await using var dbContext = CreateDbContext();
-            var dbMessages = dbContext.ChatMessages.AsQueryable();
+            var dbMessages = dbContext.ChatEntries.AsQueryable();
             if (period.HasValue) {
                 var minCreatedAt = Clocks.SystemClock.UtcNow - period.Value;
-                dbMessages = dbMessages.Where(m => m.DbChatId == chatId && m.CreatedAt >= minCreatedAt);
+                dbMessages = dbMessages.Where(m => m.ChatId == chatId && m.BeginsAt >= minCreatedAt);
             } else {
-                dbMessages = dbMessages.Where(m => m.DbChatId == chatId);
+                dbMessages = dbMessages.Where(m => m.ChatId == chatId);
             }
             return await dbMessages.LongCountAsync(cancellationToken);
         }
@@ -194,28 +137,28 @@ namespace ActualChat.Chat
             await using var dbContext = CreateDbContext();
 
             // Fetching messages
-            var dbMessages = await dbContext.ChatMessages.AsQueryable()
-                .Where(m => m.DbChatId == chatId)
+            var dbEntries = await dbContext.ChatEntries.AsQueryable()
+                .Where(m => m.ChatId == chatId)
                 .OrderByDescending(m => m.Id)
                 .Take(limit)
                 .ToListAsync(cancellationToken);
-            var messages = dbMessages.Select(m => m.ToModel()).ToImmutableList();
+            var entries = dbEntries.Select(m => m.ToModel()).ToImmutableList();
 
             // Fetching users in parallel
-            var users = new Dictionary<long, Speaker>();
-            foreach (var pack in messages.PackBy(128)) {
-                var packUsers = await Task.WhenAll(
-                    pack.Where(m => !users.ContainsKey(m.UserId))
-                        .Select(m => ChatUsers.TryGet(m.UserId.ToString(), cancellationToken)));
-                foreach (var user in packUsers)
-                    if (user != null)
-                        if (long.TryParse(user.Id.ToString(), out var userId))
-                            users.TryAdd(userId, user);
+            var speakers = new Dictionary<Symbol, Speaker>();
+            foreach (var entriesPack in entries.PackBy(128)) {
+                var speakersPack = await Task.WhenAll(
+                    entriesPack
+                        .Where(e => !speakers.ContainsKey(e.UserId))
+                        .Select(e => Speakers.TryGet(e.UserId, cancellationToken)));
+                foreach (var speaker in speakersPack)
+                    if (speaker != null)
+                        speakers.TryAdd(speaker.Id, speaker);
             }
 
             return new ChatPage(chatId, limit) {
-                Messages = messages,
-                Users = users.ToImmutableDictionary(),
+                Entries = entries,
+                Speakers = speakers.ToImmutableDictionary(),
             };
         }
 

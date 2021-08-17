@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Data;
+using ActualChat.Chat.Db;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,10 +42,13 @@ namespace ActualChat.Chat.Module
                 services.AddSingleton(new CompletionProducer.Options {
                     IsLoggingEnabled = true,
                 });
-                dbContext.AddDbOperations((_, o) => {
+                services.AddTransient(c => new DbOperationScope<ChatDbContext>(c) {
+                    IsolationLevel = IsolationLevel.Serializable,
+                });
+                dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
-                dbContext.AddNpgsqlDbOperationLogChangeTracking();
+                dbContext.AddNpgsqlOperationLogChangeTracking();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
@@ -53,7 +58,7 @@ namespace ActualChat.Chat.Module
                     return true;
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
-                if (commandAssembly == typeof(Channel).Assembly)
+                if (commandAssembly == typeof(Chat).Assembly)
                     return true;
                 return false;
             });
