@@ -9,6 +9,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio.Db;
+using ActualChat.Audio.Ebml;
+using ActualChat.Audio.Ebml.Models;
 using ActualChat.Blobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
@@ -125,18 +127,43 @@ namespace ActualChat.Audio
         {
             var lastOffset = recordingStartOffset.ToUnixEpoch();
             var metaData = new List<SegmentMetaDataEntry>();
-            await using var buffer = MemoryStreamManager.GetStream(nameof(AudioRecorder));
+            EBML? ebml = null; 
+            Segment? segment = null;
+            
+            // await using var buffer = MemoryStreamManager.GetStream(nameof(AudioRecorder));
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
                 var currentOffset = clientEndOffset.ToUnixEpoch();
                 metaData.Add(new SegmentMetaDataEntry(index, lastOffset, currentOffset - lastOffset));
                 lastOffset = currentOffset;
-                await buffer.WriteAsync(base64Encoded.Data);
+                // await buffer.WriteAsync(base64Encoded.Data);
+                void Parse(byte[] data)
+                {
+                    var reader = new EbmlReader(data);
+                    var clusters = new List<Cluster>(1);
+                    while (reader.Read())
+                        switch (reader.EbmlEntryType) {
+                            case EbmlEntryType.None:
+                                throw new InvalidOperationException();
+                            case EbmlEntryType.EBML:
+                                ebml = (EBML?)reader.Entry;
+                                break;
+                            case EbmlEntryType.Segment:
+                                segment = (Segment?)reader.Entry;
+                                break;
+                            case EbmlEntryType.Cluster:
+                                clusters.Add((Cluster)reader.Entry);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException();
+                        }
+                    
+                }
             }
 
-            buffer.Position = 0;
+            // buffer.Position = 0;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{Ulid.NewUlid().ToString()}";
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
-            var persistBlob = blobStorage.WriteAsync(blobId, buffer);
+            var persistBlob = blobStorage.WriteAsync(blobId, null);
             var persistSegment = PersistSegment();
 
             async Task PersistSegment()
