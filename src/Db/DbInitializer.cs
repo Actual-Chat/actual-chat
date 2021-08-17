@@ -17,8 +17,8 @@ namespace ActualChat.Db
             await using var dbContext = DbContextFactory.CreateDbContext();
             var db = dbContext.Database;
             if (recreate)
-                await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+                await db.EnsureDeletedAsync(cancellationToken);
+            await db.EnsureCreatedAsync(cancellationToken);
         }
     }
 }
