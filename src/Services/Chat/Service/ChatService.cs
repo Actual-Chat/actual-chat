@@ -24,16 +24,13 @@ namespace ActualChat.Chat
     // [ComputeService, ServiceAlias(typeof(IChatService))]
     public class ChatService : DbServiceBase<ChatDbContext>, IChatService
     {
-        private readonly Lazy<IMessageParser> _messageParserLazy;
         protected IAuthService AuthService { get; }
         protected IUserInfoService UserInfos { get; }
-        protected IMessageParser MessageParser => _messageParserLazy.Value;
 
         public ChatService(IServiceProvider services) : base(services)
         {
             AuthService = services.GetRequiredService<IAuthService>();
             UserInfos = services.GetRequiredService<IUserInfoService>();
-            _messageParserLazy = new Lazy<IMessageParser>(services.GetRequiredService<IMessageParser>);
         }
 
         // Commands
@@ -54,17 +51,16 @@ namespace ActualChat.Chat
             var cp = await GetPermissions(session, chatId, cancellationToken);
             if ((cp & ChatPermission.Write) != ChatPermission.Write)
                 throw new SecurityException("You can't post to this chat.");
-            var parsedMessage = await MessageParser.Parse(text, cancellationToken);
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
             var dbChatEntry = new DbChatEntry() {
                 ChatId = chatId,
-                ContentType = ChatContentType.Text,
                 UserId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,
-                Content = parsedMessage.Format(),
+                ContentType = ChatContentType.Text,
+                Content = text,
             };
             dbContext.Add(dbChatEntry);
             await dbContext.SaveChangesAsync(cancellationToken);
