@@ -6,18 +6,18 @@ namespace ActualChat.Chat
     {
         // Base type for any chat command
 
-        public abstract record Base(Session Session, string ChatId)
+        public abstract record Any(Session Session, string ChatId)
             : ISessionCommand
         { }
 
-        public abstract record Base<TResult>(Session Session, string ChatId)
-            : Base(Session, ChatId), ISessionCommand<TResult>
+        public abstract record Any<TResult>(Session Session, string ChatId)
+            : Any(Session, ChatId), ISessionCommand<TResult>
         { }
 
         // Actual commands
 
         public record AddText(Session Session, string ChatId, string Text)
-            : Base<ChatEntry>(Session, ChatId) {
+            : Any<ChatEntry>(Session, ChatId) {
             public AddText() : this(Session.Null, "", "") { }
         }
     }
