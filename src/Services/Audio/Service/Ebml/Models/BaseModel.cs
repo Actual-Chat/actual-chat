@@ -4,6 +4,7 @@ namespace ActualChat.Audio.Ebml.Models
     public abstract class BaseModel
     {
         public static readonly BaseModel Empty = new EmptyModel();
+        public abstract ElementDescriptor Descriptor { get; }
         
         [MatroskaElementDescriptor(MatroskaSpecification.Void)]
         public byte[]? Void { get; set; }
@@ -14,6 +15,6 @@ namespace ActualChat.Audio.Ebml.Models
 
     public sealed class EmptyModel : BaseModel
     {
-        
+        public override ElementDescriptor Descriptor => MatroskaSpecification.UnknownDescriptor;
     }
 }
