@@ -139,6 +139,8 @@ namespace ActualChat.Audio.Ebml.Models
     [MatroskaElementDescriptor(MatroskaSpecification.<#=master.Name#>)]
     public sealed class <#=className#> : <#= master.IsRoot ? "RootEntry" : "BaseModel"#>
     {
+        public override ElementDescriptor Descriptor => MatroskaSpecification.<#=master.Name#>Descriptor;
+
 <#
         var subs = master.SubElements.Where(sub => !sub.IsRoot).OrderBy(e => e.Path);
         foreach (var sub in subs)
@@ -317,7 +319,7 @@ namespace ActualChat.Audio.Ebml.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillScalar(this <#= className #> model, ElementDescriptor descriptor, int size, ref SpanReader reader)
+        private static void FillScalar(this <#= className #> model, ElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             if (descriptor.Type == ElementType.MasterElement)
                 throw new InvalidOperationException("Can't read master elements directly from the reader");
@@ -370,7 +372,7 @@ namespace ActualChat.Audio.Ebml.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillComplex(this <#= className #> model, ElementDescriptor descriptor, BaseModel propertyModel)
+        private static void FillComplex(this <#= className #> model, ElementDescriptor descriptor, BaseModel propertyModel)
         {
             if (descriptor.Type != ElementType.MasterElement)
                 throw new InvalidOperationException("ElementDescriptor should have 'master' type");
@@ -414,7 +416,7 @@ namespace ActualChat.Audio.Ebml.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillListEntry(this <#= className #> model, ElementDescriptor descriptor, object listItem)
+        private static void FillListEntry(this <#= className #> model, ElementDescriptor descriptor, object listItem)
         {
             if (descriptor.Type != ElementType.MasterElement && descriptor.Type != ElementType.Binary)
                 throw new InvalidOperationException("ElementDescriptor should have 'master' or 'binary' type");

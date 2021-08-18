@@ -40,7 +40,7 @@ namespace ActualChat.Audio.Ebml
             _spanReader = new SpanReader(span);
             _containers = new Stack<Element>(16);
             _entry = state.Container;
-            _resume = true;
+            _resume = state.Remaining.Length > 0;
         }
 
         public EbmlEntryType EbmlEntryType =>  _entry switch {
@@ -56,7 +56,12 @@ namespace ActualChat.Audio.Ebml
             return new EbmlReader(state, ReadOnlySpan<byte>.Empty);
         }
 
-        public BaseModel Entry => _entry;
+        public RootEntry Entry => _entry switch {
+            Cluster cluster => cluster,
+            EBML ebml => ebml,
+            Segment segment => segment,
+            _ => throw new InvalidOperationException($"Entry should be of type {nameof(RootEntry)}, but currently it is {_entry.GetType().Name}")
+        };
 
         public ElementDescriptor CurrentDescriptor => _element.Descriptor;
 
@@ -64,7 +69,7 @@ namespace ActualChat.Audio.Ebml
 
         public State GetState()
         {
-            return new State(Tail.ToArray(), _container, _entry);
+            return new State(Tail, _spanReader.Position, _container, _entry);
         }
         
         public EbmlReader WithNewSource(ReadOnlySpan<byte> span)
@@ -229,13 +234,18 @@ namespace ActualChat.Audio.Ebml
 
         public readonly struct State
         {
+            // TODO: AK - think about getting rid of array 
             public readonly byte[] Remaining;
+            public readonly int Position;
             internal readonly Element ContainerElement;
             internal readonly BaseModel Container;
 
-            public State(byte[] remaining, Element containerElement, BaseModel container)
+            public bool IsEmpty => Container == null;
+
+            public State(ReadOnlySpan<byte> span, int position, Element containerElement, BaseModel container)
             {
-                Remaining = remaining;
+                Remaining = span.ToArray();
+                Position = position;
                 ContainerElement = containerElement;
                 Container = container;
             }
