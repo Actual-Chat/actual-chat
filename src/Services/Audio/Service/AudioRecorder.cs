@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -129,22 +130,36 @@ namespace ActualChat.Audio
             var metaData = new List<SegmentMetaDataEntry>();
             EBML? ebml = null; 
             Segment? segment = null;
+            EbmlReader.State readerState = new EbmlReader.State();
+            var clusters = new List<Cluster>();
             
-            // await using var buffer = MemoryStreamManager.GetStream(nameof(AudioRecorder));
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
                 var currentOffset = clientEndOffset.ToUnixEpoch();
                 metaData.Add(new SegmentMetaDataEntry(index, lastOffset, currentOffset - lastOffset));
                 lastOffset = currentOffset;
                 // await buffer.WriteAsync(base64Encoded.Data);
-                void Parse(byte[] data)
+                // var rr = new EbmlReader();
+                var remainingLength = readerState.Remaining?.Length ?? 0;
+                using var bufferLease = MemoryPool<byte>.Shared.Rent(remainingLength + base64Encoded.Count);
+                if (remainingLength > 0) 
+                    readerState.Remaining.CopyTo(bufferLease.Memory);
+                base64Encoded.Data.CopyTo(bufferLease.Memory[remainingLength..]);
+                
+                var (cs, s) = ReadClusters(
+                    readerState.IsEmpty 
+                        ? new EbmlReader() 
+                        : EbmlReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span));
+                clusters.AddRange(cs);
+                
+                (IReadOnlyList<Cluster>,EbmlReader.State) ReadClusters(EbmlReader reader)
                 {
-                    var reader = new EbmlReader(data);
                     var clusters = new List<Cluster>(1);
                     while (reader.Read())
                         switch (reader.EbmlEntryType) {
                             case EbmlEntryType.None:
                                 throw new InvalidOperationException();
                             case EbmlEntryType.EBML:
+                                // TODO: add support of EBML Stream where multiple headers and segments can appear
                                 ebml = (EBML?)reader.Entry;
                                 break;
                             case EbmlEntryType.Segment:
@@ -156,15 +171,58 @@ namespace ActualChat.Audio
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }
-                    
+
+                    return (clusters, reader.GetState());
                 }
             }
 
-            // buffer.Position = 0;
+            await FlushSegment(recordingId, metaData, ebml, segment, clusters);
+        }
+
+        private async Task FlushSegment(Symbol recordingId, IReadOnlyList<SegmentMetaDataEntry> metaData, EBML ebml, Segment segment, IReadOnlyList<Cluster> clusters)
+        {
+            var minBufferSize = 64*1024;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{Ulid.NewUlid().ToString()}";
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
-            var persistBlob = blobStorage.WriteAsync(blobId, null);
+            await using var stream = MemoryStreamManager.GetStream(nameof(AudioRecorder));
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
+
+            var ebmlWritten = WriteEntry(new EbmlWriter(bufferLease.Memory.Span), ebml);
+            var segmentWritten = WriteEntry(new EbmlWriter(bufferLease.Memory.Span), segment);
+            if (!ebmlWritten)
+                throw new InvalidOperationException("Can't write EBML entry");
+            if (!segmentWritten)
+                throw new InvalidOperationException("Can't write Segment entry");
+
+            foreach (var cluster in clusters) {
+                var memory = bufferLease.Memory;
+                var clusterWritten = WriteEntry(new EbmlWriter(memory.Span), cluster);
+                if (clusterWritten) continue;
+                
+                var cycleNumber = 0;
+                var bufferSize = minBufferSize;
+                while (true) {
+                    bufferSize *= 2;
+                    cycleNumber++;
+                    using var extendedBufferLease = MemoryPool<byte>.Shared.Rent(bufferSize);
+                    if (WriteEntry(new EbmlWriter(extendedBufferLease.Memory.Span), cluster))
+                        break;
+                    if (cycleNumber >= 10)
+                        break;
+                }
+            }
+            
+            var persistBlob = blobStorage.WriteAsync(blobId, stream);
             var persistSegment = PersistSegment();
+
+            bool WriteEntry(EbmlWriter writer, RootEntry entry)
+            {
+                if (!writer.Write(entry))
+                    return false;
+                
+                stream?.Write(writer.Written);
+                return true;
+            }
 
             async Task PersistSegment()
             {
