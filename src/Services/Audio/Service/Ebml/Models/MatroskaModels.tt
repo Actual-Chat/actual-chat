@@ -114,7 +114,7 @@ namespace ActualChat.Audio.Ebml.Models
             Required = false,
             Documentation = "Unknown element"
         }
-    }).OrderBy(e => e.Path).ToList();
+    }).ToList();
 
     var deprecated = new List<string> { "TrackTimestampScale" };
    
@@ -125,7 +125,6 @@ namespace ActualChat.Audio.Ebml.Models
     Loop(elements, segment, "", deprecated);
     
     var skip = new List<string> { "Block", "SimpleBlock", "SimpleTag", "TrackTimestampScale" };
-
 
     foreach (var master in elements.Where(e => (e.ElementType == "master" || e.ElementType == "None") && !skip.Contains(e.Name)).OrderBy(e => e.Path))
     {
@@ -146,7 +145,7 @@ namespace ActualChat.Audio.Ebml.Models
         public override ElementDescriptor Descriptor => MatroskaSpecification.<#=master.Name#>Descriptor;
 
 <#
-        var subs = master.SubElements.Where(sub => !sub.IsRoot).OrderBy(e => e.Path);
+        var subs = master.SubElements.Where(sub => !sub.IsRoot);
         foreach (var sub in subs)
         {
             string field = sub.Name;
@@ -223,8 +222,118 @@ namespace ActualChat.Audio.Ebml.Models
     }
 
 <#  } #>
+
     public static class ModelExtensions
     {
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Write(this BaseModel? model, ref SpanWriter writer)
+        {
+            if (model == null)
+                return true;
+            
+            switch (model.Descriptor.Identifier.EncodedValue) {
+<#
+
+    var masters = elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path).ToList();
+
+    foreach (var master in masters)
+    {
+        var hasSubs = master.SubElements.Any(sub => !sub.IsRoot);
+        if (!hasSubs)
+            continue;
+        
+        var className = master.Name;
+        if (className == "Tag")
+        {
+            className = "TagItem";
+        }
+        if (className == "ContentEncoding")
+        {
+            className = "ContentEncodingItem";
+        }
+#>
+                case MatroskaSpecification.<#=master.Name#>:
+                    return ((<#=className#>)model).Write(ref writer);
+<#
+    }
+#>
+                default:
+                    throw new EbmlDataFormatException($"Unexpected ebml element '{model.Descriptor.Identifier}'");
+            }
+        }
+
+<#
+    foreach (var master in elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path))
+    {
+        var className = master.Name;
+        if (className == "Tag")
+        {
+            className = "TagItem";
+        }
+        if (className == "ContentEncoding")
+        {
+            className = "ContentEncodingItem";
+        }
+#>
+      
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Write(this <#= className#>? model, ref SpanWriter writer)
+        {
+            if (model == null)
+                return true;
+            
+            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.<#=master.Name#>, model.GetSize(), ref writer))
+                return false;
+<#
+        var subs = master.SubElements.Where(sub => !sub.IsRoot).ToList();
+        if (subs.Count > 0)
+        {
+            foreach (var sub in subs)
+            {
+                string field = sub.Name;
+                if (sub.Name == "Tag")
+                {
+                    field = "TagItem";
+                }
+                if (sub.Name == "ContentEncoding")
+                {
+                    field = "ContentEncodingItem";
+                }
+                
+                var stringEncoding = string.Empty;
+                if (sub.ElementType == "string")
+                {
+                    stringEncoding = ", true";
+                }
+                else if (sub.ElementType == "utf-8")
+                {
+                    stringEncoding = ", false";
+                }
+                
+                var name = Pluralize(sub, field);
+                if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
+                {
+#>
+            EbmlHelper.WriteEbmlElement(MatroskaSpecification.<#= sub.Name #>, <#= sub.Name == "TrackType" ? "(ulong?)" : ""#>model.<#= name #><#= stringEncoding #>, ref writer);
+<#
+                }
+                else
+                {
+#>
+            model.<#= name #><#= sub.Required ? "" : "?"#>.Write(ref writer);
+<#
+                }
+            }
+        }
+#>            
+            return true;
+        }
+<#
+    }
+#>
+
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BaseModel CreateInstance(this ElementDescriptor descriptor)
         {
@@ -255,9 +364,7 @@ namespace ActualChat.Audio.Ebml.Models
                     throw new InvalidOperationException("Unknown master element: " + descriptor.Identifier);
             }
         }
-<#
-    var masters = elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path).ToList();
-#>
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillScalar(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, int size, ref SpanReader reader)
         {
@@ -361,8 +468,7 @@ namespace ActualChat.Audio.Ebml.Models
             className = "ContentEncodingItem";
         }
         var subs =
-            master.SubElements.Where(sub => !sub.IsRoot && sub.ElementType != "master" && !sub.IsList).OrderBy(
-                e => e.Path).ToList();
+            master.SubElements.Where(sub => !sub.IsRoot && sub.ElementType != "master" && !sub.IsList).ToList();
         if (subs.Count > 0)
         {
 #>
@@ -414,7 +520,6 @@ namespace ActualChat.Audio.Ebml.Models
         }
         var complexSubs =
             master.SubElements.Where(sub => !sub.IsRoot && sub.ElementType == "master" && !sub.IsList)
-                .OrderBy(e => e.Path)
                 .ToList();
         if (complexSubs.Count > 0)
         {
@@ -458,7 +563,6 @@ namespace ActualChat.Audio.Ebml.Models
         
         var listSubs =
             master.SubElements.Where(sub => !sub.IsRoot && sub.IsList)
-                .OrderBy(e => e.Path)
                 .ToList();
         if (listSubs.Count > 0)
         {

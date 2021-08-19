@@ -23,10 +23,20 @@ namespace ActualChat.Audio.Ebml
         
         public ReadOnlySpan<byte> Written => _spanWriter.Span[.._spanWriter.Position];
 
+        public int Position => _spanWriter.Position; 
+
         public bool Write(BaseModel entry)
         {
-            // TODO: capture writer position before and restore it in case of failure of underlying write attempt
-            throw new NotImplementedException();
+            if (entry == null)
+                throw new ArgumentNullException(nameof(entry));
+            
+            var beforePosition = _spanWriter.Position;
+            var success = entry.Write(ref _spanWriter);
+            if (success) return true;
+            
+            _spanWriter.Position = beforePosition;
+            return false;
+
         }
 
         public bool Write(EBML ebml)
