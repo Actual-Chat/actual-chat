@@ -34,12 +34,12 @@ namespace ActualChat.Audio.Ebml
             _entry = ebml;
             var beginPosition = _spanWriter.Position;
             _spanWriter.Write(MatroskaSpecification.EBMLDescriptor.Identifier);
-            _spanWriter.Write(VInt.GetSizeOf(31));
+            // _spanWriter.Write(VInt.GetSizeOf(31));
             _spanWriter.Write(MatroskaSpecification.EBMLVersionDescriptor.Identifier);
-            _spanWriter.Write(VInt.GetSizeOf(ebml.EBMLVersion));
+            // _spanWriter.Write(VInt.GetSizeOf(ebml.EBMLVersion));
             _spanWriter.Write(ebml.EBMLVersion);
             _spanWriter.Write(MatroskaSpecification.EBMLReadVersionDescriptor.Identifier);
-            _spanWriter.Write(VInt.GetSizeOf(ebml.EBMLReadVersion));
+            // _spanWriter.Write(VInt.GetSizeOf(ebml.EBMLReadVersion));
             _spanWriter.Write(ebml.EBMLReadVersion);
             /*00000  Header (5 bytes)
 00000   Name:                                 172351395 (0xA45DFA3)

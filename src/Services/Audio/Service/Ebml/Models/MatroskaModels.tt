@@ -41,6 +41,7 @@ namespace ActualChat.Audio.Ebml.Models
 <#
     var isList = new List<string>
     {
+        "Seek",
         "Cluster",
         "TrackEntry",
         "SimpleBlock",
@@ -115,13 +116,16 @@ namespace ActualChat.Audio.Ebml.Models
         }
     }).OrderBy(e => e.Path).ToList();
 
+    var deprecated = new List<string> { "TrackTimestampScale" };
+   
     var ebml = elements.FirstOrDefault(e => e.Name == "EBML");
-    Loop(elements, ebml, "");
+    Loop(elements, ebml, "", deprecated);
 
     var segment = elements.FirstOrDefault(e => e.Name == "Segment");
-    Loop(elements, segment, "");
+    Loop(elements, segment, "", deprecated);
+    
+    var skip = new List<string> { "Block", "SimpleBlock", "SimpleTag", "TrackTimestampScale" };
 
-    var skip = new List<string> { "Block", "SimpleBlock", "SimpleTag" };
 
     foreach (var master in elements.Where(e => (e.ElementType == "master" || e.ElementType == "None") && !skip.Contains(e.Name)).OrderBy(e => e.Path))
     {
@@ -172,6 +176,50 @@ namespace ActualChat.Audio.Ebml.Models
             }
         }
 #>
+
+        public override ulong GetSize() {
+            var size = 0UL;
+<#
+        foreach (var sub in subs)
+        {
+            string field = sub.Name;
+            if (sub.Name == "Tag")
+            {
+                field = "TagItem";
+            }
+            if (sub.Name == "ContentEncoding")
+            {
+                field = "ContentEncodingItem";
+            }
+
+            var stringEncoding = string.Empty;
+            if (sub.ElementType == "string")
+            {
+                stringEncoding = ", true";
+            }
+            else if (sub.ElementType == "utf-8")
+            {
+                stringEncoding = ", false";
+            }
+            
+            var name = Pluralize(sub, field);
+
+            if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
+            {
+#>
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.<#= sub.Name #>, <#= sub.Name == "TrackType" ? "(ulong?)" : ""#><#= name #><#= stringEncoding #>);
+<#
+            }
+            else
+            {
+#>
+            size += <#= name #><#= sub.Required ? "" : "?"#>.GetSize()<#= sub.Required ? "" : "?? 0UL"#>;
+<#
+            }
+        }
+#>
+            return size;
+        }
     }
 
 <#  } #>
@@ -469,12 +517,15 @@ namespace ActualChat.Audio.Ebml.Models
         return elementName.Contains("Block") && elementName != "BlockAddIDExtraData";
     }
 
-    public void Loop(List<Element> all, Element current, string parentPath)
+    public void Loop(List<Element> all, Element current, string parentPath, List<string> skip)
     {
-        current.SubElements = all.Where(e => e.Path.StartsWith(parentPath + "\\" + current.Name) && e.Level == current.Level + 1).ToList();
+        current.SubElements = all
+            .Where(e => e.Path.StartsWith(parentPath + "\\" + current.Name) && e.Level == current.Level + 1)
+            .Where(s => !skip.Contains(s.Name))
+            .ToList();
         foreach (var sub in current.SubElements)
         {
-            Loop(all, sub, current.Path);
+            Loop(all, sub, current.Path, skip);
         }
     }
 
