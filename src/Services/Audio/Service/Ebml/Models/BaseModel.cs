@@ -11,10 +11,13 @@ namespace ActualChat.Audio.Ebml.Models
 
         [MatroskaElementDescriptor(MatroskaSpecification.CRC32)]
         public byte[]? CRC32 { get; set; }
+
+        public abstract ulong GetSize();
     }
 
     public sealed class EmptyModel : BaseModel
     {
         public override ElementDescriptor Descriptor => MatroskaSpecification.UnknownDescriptor;
+        public override ulong GetSize() => 0UL;
     }
 }

@@ -69,5 +69,16 @@ namespace ActualChat.Audio.Ebml.Models
 
             Data = span[spanReader.Position..].ToArray();
         }
+
+        public virtual ulong GetSize()
+        {
+            var size = 0UL;
+            size += EbmlHelper.GetSize(TrackNumber);
+            size += 2;
+            size += 1;
+            size += (ulong?)Data?.Length ?? 0UL;
+            
+            return size;
+        }
     }
 }

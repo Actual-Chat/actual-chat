@@ -16,5 +16,16 @@
 
         [MatroskaElementDescriptor(MatroskaSpecification.TagBinary)]
         public byte[]? TagBinary { get; set; }
+        
+        public ulong GetSize()
+        {
+            var size = 0UL;
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.TagName, TagName, false);
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.TagLanguage, TagLanguage, true);
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.TagDefault, TagDefault);
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.TagString, TagString, false);
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.TagBinary, TagBinary);
+            return size;
+        }
     }
 }
