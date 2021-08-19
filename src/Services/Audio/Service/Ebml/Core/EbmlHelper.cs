@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -9,6 +10,8 @@ namespace ActualChat.Audio.Ebml
 {
     public static class EbmlHelper
     {
+        private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(ulong value)
         {
@@ -196,6 +199,191 @@ namespace ActualChat.Audio.Ebml
         public static ulong GetSize(this IReadOnlyList<SimpleTag>? list)
         {
             return list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlMasterElement(ulong identifier, ulong size, ref SpanWriter writer)
+        {
+            if (size != UnknownSize) {
+                var totalSize = GetMasterElementSize(identifier, size) + size;
+                if (writer.Position + (int)totalSize > writer.Length)
+                    return false;
+            }
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(size));
+
+            return true;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, ulong value, ref SpanWriter writer)
+        {
+            var totalSize = GetElementSize(identifier, value);
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(GetSize(value)));
+            writer.Write(VInt.FromValue(value));
+
+            return true;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer)
+        {
+            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, long value, ref SpanWriter writer)
+        {
+            var totalSize = GetElementSize(identifier, value);
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(GetSize(value)));
+            writer.Write(VInt.FromValue(value));
+
+            return true;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer)
+        {
+            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, DateTime value, ref SpanWriter writer)
+        {
+            var totalSize = GetElementSize(identifier, value);
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            return WriteEbmlElement(identifier, value.Ticks, ref writer);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer)
+        {
+            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, double value, ref SpanWriter writer)
+        {
+            var totalSize = GetElementSize(identifier, value);
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(GetSize(value)));
+            writer.Write(value);
+
+            return true;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer)
+        {
+            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, float value, ref SpanWriter writer)
+        {
+            var totalSize = GetElementSize(identifier, value);
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(GetSize(value)));
+            writer.Write(value);
+
+            return true;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer)
+        {
+            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, string? value, bool isAscii, ref SpanWriter writer)
+        {
+            if (value == null)
+                return true;
+
+            var size = GetSize(value, isAscii);
+            var totalSize =  GetSize(identifier) + size + 1;
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(size));
+
+            var encoding = isAscii ? Encoding.ASCII : Encoding.UTF8;
+            writer.Write(value, encoding);
+
+            return true;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WriteEbmlElement(ulong identifier, byte[]? value, ref SpanWriter writer)
+        {
+            if (value == null)
+                return true;
+
+            var size = GetElementSize(identifier, value);
+            var totalSize =  GetSize(identifier) + size + 1;
+            if (writer.Position + (int)totalSize > writer.Length)
+                return false;
+
+            writer.Write(VInt.FromEncoded(identifier));
+            writer.Write(VInt.EncodeSize(size));
+            writer.Write(value);
+
+            return true;
+        }
+
+        public static bool Write(this IReadOnlyList<BaseModel>? models, ref SpanWriter writer)
+        {
+            if (models == null)
+                return true;
+
+            foreach (var model in models)
+                if (!model?.Write(ref writer) ?? true)
+                    return false;
+
+            return true;
+        }
+        
+        public static bool Write(this IReadOnlyList<Block>? blocks, ref SpanWriter writer)
+        {
+            if (blocks == null)
+                return true;
+
+            foreach (var block in blocks)
+                if (!block?.Write(ref writer) ?? true)
+                    return false;
+
+            return true;
+        }
+        
+        public static bool Write(this IReadOnlyList<SimpleTag>? tags, ref SpanWriter writer)
+        {
+            if (tags == null)
+                return true;
+
+            foreach (var tag in tags)
+                if (!tag?.Write(ref writer) ?? true)
+                    return false;
+
+            return true;
         }
     }
 }

@@ -20,7 +20,7 @@ namespace ActualChat.Tests
         }
         
         [Fact]
-        public async Task BasicReaderTest()
+        public async Task BasicWriterTest()
         {
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
             using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
@@ -33,9 +33,15 @@ namespace ActualChat.Tests
 
             using var writeBufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
             var writeBuffer = writeBufferLease.Memory;
-            var ebmlWritten = Write(new EbmlWriter(writeBuffer.Span), entry1);
-
+            var (ebmlWritten, position1) = Write(new EbmlWriter(writeBuffer.Span), entry1);
             ebmlWritten.Should().BeTrue();
+            
+            var (segmentWritten, position2) = Write(new EbmlWriter(writeBuffer.Span[position1..]), entry2);
+            segmentWritten.Should().BeTrue();
+            
+            var (clusterWritten, position3) = Write(new EbmlWriter(writeBuffer.Span[(position1+position2)..]), entry3);
+            clusterWritten.Should().BeTrue();
+
 
             (RootEntry, EbmlReader.State) Parse(EbmlReader reader)
             {
@@ -43,11 +49,22 @@ namespace ActualChat.Tests
                 return (reader.Entry, reader.GetState());
             }
 
-            bool Write(EbmlWriter writer, RootEntry entry)
+            (bool success, int position) Write(EbmlWriter writer, RootEntry entry)
             {
-                return writer.Write(entry);
+                var success = writer.Write(entry);
+                return (success, writer.Position);
             }
         }
+
+        [Fact]
+        public void CastTest()
+        {
+            long value = -300;
+            ulong uvalue = (ulong)Math.Abs(value) | (1UL << (8*3 - 1));
+            
+            Out.WriteLine(uvalue.ToString("X"));
+        }
         
+
     }
 }

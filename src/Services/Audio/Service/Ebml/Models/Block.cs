@@ -44,6 +44,7 @@ namespace ActualChat.Audio.Ebml.Models
         /// </summary>
         public Lacing Lacing { get; private set; }
 
+        // TODO: AK [OPTIMIZE] Try to get rid of byte array and replace with e.g. Memory<byte>
         public byte[]? Data { get; private set; }
 
         public virtual void Parse(ReadOnlySpan<byte> span)
@@ -70,7 +71,7 @@ namespace ActualChat.Audio.Ebml.Models
             Data = span[spanReader.Position..].ToArray();
         }
 
-        public virtual ulong GetSize()
+        public ulong GetSize()
         {
             var size = 0UL;
             size += EbmlHelper.GetSize(TrackNumber);
@@ -79,6 +80,18 @@ namespace ActualChat.Audio.Ebml.Models
             size += (ulong?)Data?.Length ?? 0UL;
             
             return size;
+        }
+
+        public virtual bool Write(ref SpanWriter writer)
+        {
+            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.Block, GetSize(), ref writer))
+                return false;
+            
+            writer.Write(VInt.EncodeSize(TrackNumber));
+            writer.Write(TimeCode);
+            writer.Write(Flags);
+            writer.Write(Data);
+            return true;
         }
     }
 }

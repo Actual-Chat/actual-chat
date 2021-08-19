@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace ActualChat.Audio.Ebml.Models
 {
@@ -25,6 +26,18 @@ namespace ActualChat.Audio.Ebml.Models
 
             IsKeyFrame = (Flags & KeyFrameBit) == KeyFrameBit;
             IsDiscardable = (Flags & DiscardableBit) == DiscardableBit;
+        }
+        
+        public override bool Write(ref SpanWriter writer)
+        {
+            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.SimpleBlock, GetSize(), ref writer))
+                return false;
+            
+            writer.Write(VInt.EncodeSize(TrackNumber));
+            writer.Write(TimeCode);
+            writer.Write(Flags);
+            writer.Write(Data);
+            return true;
         }
     }
 }
