@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Audio.Ebml.Models
+﻿using System.IO;
+
+namespace ActualChat.Audio.Ebml.Models
 {
     public sealed class SimpleTag
     {
@@ -26,6 +28,20 @@
             size += EbmlHelper.GetElementSize(MatroskaSpecification.TagString, TagString, false);
             size += EbmlHelper.GetElementSize(MatroskaSpecification.TagBinary, TagBinary);
             return size;
+        }
+
+        public bool Write(ref SpanWriter writer)
+        {
+            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.SimpleTag, GetSize(), ref writer))
+                return false;
+            
+            EbmlHelper.WriteEbmlElement(MatroskaSpecification.TagName, TagName, false, ref writer);
+            EbmlHelper.WriteEbmlElement(MatroskaSpecification.TagLanguage, TagLanguage, true, ref writer);
+            EbmlHelper.WriteEbmlElement(MatroskaSpecification.TagDefault, TagDefault, ref writer);
+            EbmlHelper.WriteEbmlElement(MatroskaSpecification.TagString, TagString, false, ref writer);
+            EbmlHelper.WriteEbmlElement(MatroskaSpecification.TagBinary, TagBinary, ref writer);
+
+            return true;
         }
     }
 }

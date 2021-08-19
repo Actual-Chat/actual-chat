@@ -43,21 +43,21 @@ namespace ActualChat.Audio.Ebml.Backup
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
         }
 
-        /// <summary>
-        /// Starts nested stream. Upon disposal of nested stream, the size is calculated and written to nested element header.
-        /// Example:
-        /// using(var data = writer.StartMasterElement(InnerDataElementId))
-        /// {
-        ///     data.WriteInt(DataItem1Id, 139874)
-        ///     data.WriteUtf(DataItem2Id, "Hello world");
-        /// }
-        /// </summary>
-        /// <param name="elementId"></param>
-        /// <returns></returns>
-        public MasterBlockWriter StartMasterElement(VInt elementId)
-        {
-            return new MasterBlockWriter(this, elementId);
-        }
+        // /// <summary>
+        // /// Starts nested stream. Upon disposal of nested stream, the size is calculated and written to nested element header.
+        // /// Example:
+        // /// using(var data = writer.StartMasterElement(InnerDataElementId))
+        // /// {
+        // ///     data.WriteInt(DataItem1Id, 139874)
+        // ///     data.WriteUtf(DataItem2Id, "Hello world");
+        // /// }
+        // /// </summary>
+        // /// <param name="elementId"></param>
+        // /// <returns></returns>
+        // public MasterBlockWriter StartMasterElement(VInt elementId)
+        // {
+        //     return new MasterBlockWriter(this, elementId);
+        // }
 
         /// <summary>
         /// Writes element header
@@ -118,8 +118,10 @@ namespace ActualChat.Audio.Ebml.Backup
         /// <returns></returns>
         public int Write(VInt elementId, DateTime dateTime)
         {
-            var d = (dateTime - EbmlReader.MilleniumStart).Ticks * 100;
-            return elementId.Write(_stream) + EncodeWidth(8).Write(_stream) + WriteInt(d, 8);
+            // var d = (dateTime - EbmlReader.MilleniumStart).Ticks * 100;
+            // return elementId.Write(_stream) + EncodeWidth(8).Write(_stream) + WriteInt(d, 8);
+
+            throw new NotImplementedException();
         }
 
         /// <summary>

@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace ActualChat.Audio.Ebml
 {
@@ -95,24 +96,15 @@ namespace ActualChat.Audio.Ebml
             
             var marker = 1UL << (7 * length);
 
-            if (length == 0)
-                while (DataBitsMask[++length] <= value)
-                    marker = 1UL << (7 * length);
+            if (length == 0) {
+                while (DataBitsMask[++length] <= value) { }
+                marker = 1UL << (7 * length);
+            }
 
             if (length > 0 && (DataBitsMask[length] | marker) <= value)
                 throw new ArgumentException("Specified width is not sufficient to encode value", nameof(value));
 
             return new VInt(value | marker, length);
-        }
-
-        public static VInt MakeId(ulong elementId)
-        {
-            if (elementId > MaxElementIdValue)
-                throw new ArgumentException("Value exceed VInt capacity", nameof(elementId));
-
-            var id = EncodeSize(elementId);
-            Debug.Assert(id._length <= 4);
-            return id;
         }
 
         public static VInt UnknownSize(int length)
@@ -140,6 +132,19 @@ namespace ActualChat.Audio.Ebml
                 throw new ArgumentException("Width marker does not match its position", nameof(encodedValue));
 
             return new VInt(encodedValue, extraBytes + 1);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static VInt FromValue(ulong value)
+        {
+            return new VInt(value, (int)EbmlHelper.GetSize(value));
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static VInt FromValue(long value)
+        {
+            var size = (int)EbmlHelper.GetSize(value);
+            return value > 0 ? new VInt((ulong)value, size) : new VInt((ulong)-value | (1UL << ((8*size) - 1)) , size);
         }
 
         public static VInt Read(Stream source, int maxLength, byte[]? buffer)
