@@ -8,21 +8,21 @@ namespace ActualChat.Chat.Markup
     public class Markup
     {
         public string Text { get; init; } = "";
-        public MarkupTokens.Any[] Tokens { get; init; } = Array.Empty<MarkupTokens.Any>();
+        public MarkupParts.Any[] Parts { get; init; } = Array.Empty<MarkupParts.Any>();
 
         public Markup() { }
-        public Markup(string text, params MarkupTokens.Any[] tokens)
+        public Markup(string text, MarkupParts.Any[] parts)
         {
             Text = text;
-            Tokens = tokens;
+            Parts = parts;
         }
 
         public override string ToString()
         {
-            var sElements = Tokens.Select(e => e.ToString()).ToDelimitedString($",{Environment.NewLine}  ");
-            if (!string.IsNullOrEmpty(sElements))
-                sElements = $",{Environment.NewLine}  {sElements}";
-            return $"{GetType().Name}({SystemJsonSerializer.Default.Write(Text)}{sElements})";
+            var sParts = Parts.Select(e => e.ToString()).ToDelimitedString($",{Environment.NewLine}  ");
+            if (!string.IsNullOrEmpty(sParts))
+                sParts = $",{Environment.NewLine}  {sParts}";
+            return $"{GetType().Name}({SystemJsonSerializer.Default.Write(Text)}{sParts})";
         }
     }
 }
