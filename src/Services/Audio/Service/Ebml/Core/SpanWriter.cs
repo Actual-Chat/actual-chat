@@ -51,13 +51,11 @@ namespace System.IO
             return UpdatePosition(1, position);
         }
 
-        public int Write(string value, int? position = null)
+        public int Write(string value, Encoding encoding, int? position = null)
         {
-            int numberOfBytes = _encoding.GetByteCount(value);
-            int bytesWritten = Write7BitEncodedInt(numberOfBytes, position);
-
-            var bytes = _encoding.GetBytes(value);
-            return bytesWritten + Write(bytes, position);
+            var written = encoding.GetBytes(value, Span[Position..]);
+            
+            return UpdatePosition(written, position);
         }
 
         public int Write(ReadOnlySpan<byte> byteSpan, int? position = null) => Write(byteSpan, byteSpan.Length, position);
