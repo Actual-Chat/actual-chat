@@ -167,54 +167,6 @@ namespace ActualChat.Audio.Ebml
             return new VInt(encodedValue, extraBytes + 1);
         }
 
-        public static VInt GetSizeOf(ulong value)
-        {
-            ulong length = 1;
-            if ((value & 0xFFFFFFFF00000000) != 0)
-            {
-                length += 4;
-                value >>= 32;
-            }
-            if ((value & 0xFFFF0000) != 0)
-            {
-                length += 2;
-                value >>= 16;
-            }
-            if ((value & 0xFF00) != 0) length++;
-
-            return EncodeSize(length);
-        }
-        
-        public static VInt GetSizeOf(long value)
-        {
-            ulong v = (ulong)value;
-            if (value < 0)
-                v = ~v;
-            ulong length = 1;
-            if ((v & 0xFFFFFFFF00000000) != 0)
-            {
-                length += 4;
-                v >>= 32;
-            }
-            if ((v & 0xFFFF0000) != 0)
-            {
-                length += 2;
-                v >>= 16;
-            }
-            if ((v & 0xFF00) != 0)
-            {
-                length += 1;
-                v >>= 8;
-            }
-            // We have at most 8 bits left.
-            // Is the most significant bit set (or cleared for a negative number),
-            // then we need an extra byte for the sign bit.
-            if ((v & 0x80) != 0)
-                length++;
-
-            return EncodeSize(length);
-        }
-
         public int Write(Stream stream)
         {
             if (stream == null) throw new ArgumentNullException(nameof(stream));
