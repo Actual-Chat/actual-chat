@@ -21,7 +21,6 @@ using System;
 using System.Collections.Generic;
 using System.CodeDom.Compiler;
 using System.Runtime.CompilerServices;
-using System.IO;
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 // ReSharper disable InconsistentNaming
 // ReSharper disable ClassNeverInstantiated.Global
@@ -36,7 +35,7 @@ using System.IO;
 //     Based on "https://github.com/ietf-wg-cellar/matroska-specification/blob/master/ebml_matroska.xml".
 // </auto-generated>
 //--------------------------------------------------------------------------------------------------------
-namespace ActualChat.Audio.Ebml.Models
+namespace ActualChat.Audio.WebM.Models
 {
 <#
     var isList = new List<string>
@@ -494,16 +493,18 @@ namespace ActualChat.Audio.Ebml.Models
                 var propertyName = Pluralize(sub, field);
                 var methodSuffix = sub.ElementType switch
                 {
-                    "utf-8" => "Utf8String(size)",
-                    "string" => "AsciiString(size)",
-                    "binary" => "Bytes(size)",
-                    "date" => "DateTime()",
-                    "float" => "Float(size)",
-                    "uinteger" => "ULong(size)",
-                    "integer" => "Long(size)",
+                    "utf-8" => "Utf8String(size)!",
+                    "string" => "AsciiString(size)!",
+                    "binary" => "Bytes(size)!",
+                    "date" => "DateTime()!.Value",
+                    "float" => "Float(size)!.Value",
+                    "uinteger" => "ULong(size)!.Value",
+                    "integer" => "Long(size)!.Value",
                     _ => "???"
                 };
-                var methodPrefix = sub.Name == "TrackType" ? "(TrackType?)" : string.Empty;
+                var methodPrefix = sub.Name == "TrackType" 
+                    ? "(TrackType?)" 
+                    : string.Empty;
 #>
                 case MatroskaSpecification.<#= sub.Name #>:
                     model.<#= propertyName #> = <#= methodPrefix #>reader.Read<#= methodSuffix #>;

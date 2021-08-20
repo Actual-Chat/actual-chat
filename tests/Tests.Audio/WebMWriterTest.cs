@@ -64,24 +64,83 @@ namespace ActualChat.Tests
             using var readBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
             using var writeBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
             var readBuffer = readBufferLease.Memory;
-            var writeBuffer = readBufferLease.Memory;
+            var writeBuffer = writeBufferLease.Memory;
             WebMReader.State currentState = default;
             var bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Position..]);
             while(bytesRead > 0) {
                 var (elements, state) 
                     = Parse(currentState.IsEmpty 
-                        ? new WebMReader(readBuffer.Span) 
-                        : WebMReader.FromState(currentState).WithNewSource(readBuffer.Span[..bytesRead]));
+                        ? new WebMReader(readBuffer.Span[..bytesRead]) 
+                        : WebMReader.FromState(currentState).WithNewSource(readBuffer.Span[..(currentState.Remaining + bytesRead)]));
                 currentState = state;
 
                 var endPosition = Write(new WebMWriter(writeBuffer.Span), elements);
                 
                 AssertBuffersAreSame(readBuffer.Span, writeBuffer.Span, endPosition);
 
-                readBuffer[currentState.Position..].CopyTo(readBuffer[..^currentState.Position]);
+                readBuffer.Slice(currentState.Position, currentState.Remaining).CopyTo(readBuffer[..currentState.Remaining]);
                 
                 bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
             }
+            
+            (IReadOnlyList<RootEntry>, WebMReader.State) Parse(WebMReader reader)
+            {
+                var result = new List<RootEntry>();
+                while (reader.Read()) 
+                    result.Add(reader.Entry);
+                return (result, reader.GetState());
+            }
+
+            int Write(WebMWriter writer, IReadOnlyList<RootEntry> elements)
+            {
+                foreach (var element in elements) {
+                    var success = writer.Write(element);
+                    success.Should().BeTrue();
+                }
+                return writer.Position;
+            }
+
+            void AssertBuffersAreSame(ReadOnlySpan<byte> read, ReadOnlySpan<byte> written, int endPosition)
+            {
+                var readSpan = read[..endPosition]; 
+                var writtenSpan = written[..endPosition]; 
+                for (int i = 0; i < endPosition; i++) {
+                    readSpan[i].Should().Be(writtenSpan[i], "should match at Index {0}", i);
+                }
+            }
+        }
+        
+        [Fact]
+        public async Task ReadWriteToFileTest()
+        {
+            await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
+            await using var outputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file-out.webm"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
+            using var readBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
+            using var writeBufferLease = MemoryPool<byte>.Shared.Rent(100 * 1024);
+            var readBuffer = readBufferLease.Memory;
+            var writeBuffer = writeBufferLease.Memory;
+            WebMReader.State currentState = default;
+            var bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Position..]);
+            int endPosition = 0;
+            while(bytesRead > 0) {
+                var (elements, state) 
+                    = Parse(currentState.IsEmpty 
+                        ? new WebMReader(readBuffer.Span[..bytesRead]) 
+                        : WebMReader.FromState(currentState).WithNewSource(readBuffer.Span[..(currentState.Remaining + bytesRead)]));
+                currentState = state;
+
+                endPosition = Write(new WebMWriter(writeBuffer.Span), elements);
+
+                await outputStream.WriteAsync(writeBuffer[..endPosition]);
+                
+                readBuffer.Slice(currentState.Position, currentState.Remaining).CopyTo(readBuffer[..currentState.Remaining]);
+                
+                bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
+            }
+            endPosition = Write(new WebMWriter(writeBuffer.Span), (IReadOnlyList<RootEntry>)new[]{ (RootEntry)currentState.Container });
+            await outputStream.WriteAsync(writeBuffer[..endPosition]);
+            
+            outputStream.Flush();
             
             (IReadOnlyList<RootEntry>, WebMReader.State) Parse(WebMReader reader)
             {

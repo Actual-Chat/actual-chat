@@ -66,7 +66,8 @@ namespace ActualChat.Audio.WebM
 
         public State GetState()
         {
-            return new State(_resume, _spanReader.Position, _spanReader.Length - _spanReader.Position, _container, _entry);
+            var remaining = _spanReader.Length - _spanReader.Position;
+            return new State(_resume, _spanReader.Position, remaining, _container, _entry);
         }
         
         public WebMReader WithNewSource(ReadOnlySpan<byte> span)
@@ -113,7 +114,7 @@ namespace ActualChat.Audio.WebM
                     _entry = container;
                     _element = _container;
                     _spanReader.Position = beginPosition;
-                    if (_spanReader.Position != _spanReader.Length - 1)
+                    if (_spanReader.Position < _spanReader.Length)
                         _resume = true;
                     return false;
                 }
@@ -134,7 +135,7 @@ namespace ActualChat.Audio.WebM
                             container.FillComplex(_container.Descriptor, complex, _entry!);
                     }
                     else {
-                        if (_spanReader.Position != _spanReader.Length - 1)
+                        if (_spanReader.Position < _spanReader.Length)
                             _resume = true;
                         return false;
                     }
@@ -143,27 +144,27 @@ namespace ActualChat.Audio.WebM
                     switch (CurrentDescriptor.Identifier.EncodedValue) {
                         case MatroskaSpecification.Block:
                             var block = new Block();
-                            block.Parse(_spanReader.ReadSpan((int)_element.Size));
+                            block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
                             container.FillListEntry(_container.Descriptor, CurrentDescriptor, block);
                             break;
                         case MatroskaSpecification.BlockAdditional:
                             var blockAdditional = new BlockAdditional();
-                            blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size));
+                            blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
                             container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockAdditional);
                             break;
                         case MatroskaSpecification.BlockVirtual:
                             var blockVirtual = new BlockVirtual();
-                            blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size));
+                            blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
                             container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockVirtual);
                             break;
                         case MatroskaSpecification.EncryptedBlock:
                             var encryptedBlock = new EncryptedBlock();
-                            encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size));
+                            encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
                             container.FillListEntry(_container.Descriptor, CurrentDescriptor, encryptedBlock);
                             break;
                         case MatroskaSpecification.SimpleBlock:
                             var simpleBlock = new SimpleBlock();
-                            simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size));
+                            simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
                             container.FillListEntry(_container.Descriptor, CurrentDescriptor, simpleBlock);
                             break;
                         default:
@@ -185,34 +186,35 @@ namespace ActualChat.Audio.WebM
         
         private bool ReadElement(int readUntil)
         {
-            var (idStatus,identifier) = _spanReader.ReadVInt(4);
-            if (!idStatus)
+            var identifier = _spanReader.ReadVInt(4);
+            if (!identifier.HasValue)
                 return false;
-            
-            if (identifier.IsReserved) throw new EbmlDataFormatException("invalid element identifier value");
 
-            var isValid = MatroskaSpecification.ElementDescriptors.TryGetValue(identifier, out var elementDescriptor);
+            var idValue = identifier.Value;
+            if (idValue.IsReserved) throw new EbmlDataFormatException("invalid element identifier value");
+
+            var isValid = MatroskaSpecification.ElementDescriptors.TryGetValue(idValue, out var elementDescriptor);
             if (!isValid)  throw new EbmlDataFormatException("invalid element identifier value - not white-listed");
             
-            var (sizeStatus,size) = _spanReader.ReadVInt(8);
-            if (!sizeStatus)
+            var size = _spanReader.ReadVInt(8);
+            if (!size.HasValue)
                 return false;
 
             var eof = Math.Min(readUntil, _spanReader.Length);
-            var sizeValue = size.Value;
+            var sizeValue = size.Value.Value;
             if (_spanReader.Position + (int)sizeValue > eof) {
-                if (identifier.EncodedValue != MatroskaSpecification.Cluster &&
-                    identifier.EncodedValue != MatroskaSpecification.Segment) {
-                    _element = new Element(identifier, UnknownSize, elementDescriptor!);
+                if (idValue.EncodedValue != MatroskaSpecification.Cluster &&
+                    idValue.EncodedValue != MatroskaSpecification.Segment) {
+                    _element = new Element(idValue, UnknownSize, elementDescriptor!);
                     return false;
                 }
                 if (sizeValue != UnknownSize) {
-                    _element = new Element(identifier, sizeValue, elementDescriptor!);
+                    _element = new Element(idValue, sizeValue, elementDescriptor!);
                     return false;
                 }
             }
             
-            _element = new Element(identifier, sizeValue, elementDescriptor!);
+            _element = new Element(idValue, sizeValue, elementDescriptor!);
          
             return true;
         }
@@ -244,7 +246,7 @@ namespace ActualChat.Audio.WebM
             public readonly int Position;
             public readonly int Remaining;
             internal readonly Element ContainerElement;
-            internal readonly BaseModel Container;
+            public readonly BaseModel Container;
 
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             public bool IsEmpty => Container == null;
