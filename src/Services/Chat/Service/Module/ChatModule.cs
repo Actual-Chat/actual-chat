@@ -49,6 +49,11 @@ namespace ActualChat.Chat.Module
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
                 });
                 dbContext.AddNpgsqlOperationLogChangeTracking();
+
+                dbContext.AddEntityResolver<string, DbChat>((_, options) => {
+                    options.QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners);
+                });
+                dbContext.AddEntityResolver<string, DbChatEntry>();
             });
             services.AddCommander().AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler

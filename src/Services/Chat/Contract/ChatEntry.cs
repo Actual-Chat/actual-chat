@@ -5,10 +5,9 @@ using Stl.Time;
 
 namespace ActualChat.Chat
 {
-    public record ChatEntry(long Id)
+    public record ChatEntry(string ChatId, long Id)
     {
-        public bool IsRemoved { get; init; }
-        public Symbol UserId { get; init; }
+        public Symbol CreatorId { get; init; }
         public Moment BeginsAt { get; init; }
         public Moment EndsAt { get; init; }
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -16,6 +15,6 @@ namespace ActualChat.Chat
         public ChatContentType ContentType { get; init; }
         public string Content { get; init; } = "";
 
-        public ChatEntry() : this(0) { }
+        public ChatEntry() : this("", 0) { }
     }
 }
