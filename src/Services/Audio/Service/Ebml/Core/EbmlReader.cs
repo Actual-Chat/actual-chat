@@ -40,7 +40,7 @@ namespace ActualChat.Audio.Ebml
             _spanReader = new SpanReader(span);
             _containers = new Stack<Element>(16);
             _entry = state.Container;
-            _resume = state.Remaining.Length > 0;
+            _resume = state.NotCompleted;
         }
 
         public EbmlEntryType EbmlEntryType =>  _entry switch {
@@ -69,7 +69,7 @@ namespace ActualChat.Audio.Ebml
 
         public State GetState()
         {
-            return new State(Tail, _spanReader.Position, _container, _entry);
+            return new State(_resume, _spanReader.Position, _spanReader.Length - _spanReader.Position, _container, _entry);
         }
         
         public EbmlReader WithNewSource(ReadOnlySpan<byte> span)
@@ -84,7 +84,11 @@ namespace ActualChat.Audio.Ebml
                 return ReadInternal(true);
             }
             var hasElement = ReadElement(_spanReader.Length);
-            if (!hasElement) return false;
+            if (!hasElement) {
+                if (_spanReader.Position != _spanReader.Length - 1)
+                    _resume = true;
+                return false;
+            }
             
             return _element.Type != ElementType.MasterElement || ReadInternal();
         }
@@ -112,6 +116,8 @@ namespace ActualChat.Audio.Ebml
                     _entry = container;
                     _element = _container;
                     _spanReader.Position = beginPosition;
+                    if (_spanReader.Position != _spanReader.Length - 1)
+                        _resume = true;
                     return false;
                 }
                 
@@ -130,8 +136,11 @@ namespace ActualChat.Audio.Ebml
                         else
                             container.FillComplex(_container.Descriptor, complex, _entry!);
                     }
-                    else
+                    else {
+                        if (_spanReader.Position != _spanReader.Length - 1)
+                            _resume = true;
                         return false;
+                    }
                 }
                 else if (CurrentDescriptor.ListEntry)
                     switch (CurrentDescriptor.Identifier.EncodedValue) {
@@ -234,18 +243,20 @@ namespace ActualChat.Audio.Ebml
 
         public readonly struct State
         {
-            // TODO: AK - think about getting rid of array 
-            public readonly byte[] Remaining;
+            public readonly bool NotCompleted;
             public readonly int Position;
+            public readonly int Remaining;
             internal readonly Element ContainerElement;
             internal readonly BaseModel Container;
 
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             public bool IsEmpty => Container == null;
 
-            public State(ReadOnlySpan<byte> span, int position, Element containerElement, BaseModel container)
+            public State(bool resume, int position, int remaining, Element containerElement, BaseModel container)
             {
-                Remaining = span.ToArray();
+                NotCompleted = resume;
                 Position = position;
+                Remaining = remaining;
                 ContainerElement = containerElement;
                 Container = container;
             }
