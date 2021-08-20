@@ -14,10 +14,9 @@ namespace ActualChat.Chat.Db
         private DateTime _beginsAt;
         private DateTime _endsAt;
 
-        public long Id { get; set; } = 0;
         public string ChatId { get; set; } = "";
-
-        public string UserId { get; set; } = "";
+        public long Id { get; set; } = 0;
+        public string CreatorId { get; set; } = "";
 
         public DateTime BeginsAt {
             get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -35,24 +34,12 @@ namespace ActualChat.Chat.Db
         public string Content { get; set; } = "";
 
         public ChatEntry ToModel()
-            => new(Id) {
-                UserId = UserId,
+            => new(ChatId, Id) {
+                CreatorId = CreatorId,
                 BeginsAt = BeginsAt,
                 EndsAt = EndsAt,
                 ContentType = ContentType,
                 Content = Content,
             };
-
-        public void UpdateFrom(ChatEntry model)
-        {
-            if (model.Id != 0)
-                Id = model.Id;
-            UserId = model.UserId;
-            BeginsAt = model.BeginsAt;
-            EndsAt = model.EndsAt;
-            Duration = model.Duration;
-            ContentType = model.ContentType;
-            Content = model.Content;
-        }
     }
 }

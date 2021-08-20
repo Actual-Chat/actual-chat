@@ -22,21 +22,25 @@ using Stl.Text;
 namespace ActualChat.Chat
 {
     // [ComputeService, ServiceAlias(typeof(IChatService))]
-    public class ChatService : DbServiceBase<ChatDbContext>, IChatService
+    public class ChatService : DbServiceBase<ChatDbContext>, IServerSideChatService
     {
-        protected IAuthService AuthService { get; }
-        protected IUserInfoService UserInfos { get; }
+        protected IAuthService Auth { get; init; }
+        protected IUserInfoService UserInfos { get; init; }
+        protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
+        protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
-            AuthService = services.GetRequiredService<IAuthService>();
+            Auth = services.GetRequiredService<IAuthService>();
             UserInfos = services.GetRequiredService<IUserInfoService>();
+            DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+            DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
         }
 
         // Commands
 
         public virtual async Task<ChatEntry> Post(
-            ChatCommands.AddText command, CancellationToken cancellationToken = default)
+            ChatCommands.PostText command, CancellationToken cancellationToken = default)
         {
             var (session, chatId, text) = command;
             var context = CommandContext.GetCurrent();
@@ -46,17 +50,15 @@ namespace ActualChat.Chat
                 return null!;
             }
 
-            var user = await AuthService.GetUser(session, cancellationToken);
+            var user = await Auth.GetUser(session, cancellationToken);
             user.MustBeAuthenticated();
-            var cp = await GetPermissions(session, chatId, cancellationToken);
-            if ((cp & ChatPermission.Write) != ChatPermission.Write)
-                throw new SecurityException("You can't post to this chat.");
+            await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken);
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
             var dbChatEntry = new DbChatEntry() {
                 ChatId = chatId,
-                UserId = user.Id,
+                CreatorId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,
                 ContentType = ChatContentType.Text,
@@ -73,62 +75,67 @@ namespace ActualChat.Chat
         // Queries
 
         public virtual async Task<Chat?> TryGet(
-            string chatId, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(chatId))
-                return null;
-            return new Chat(chatId) {
-                OwnerIds = ImmutableHashSet<string>.Empty,
-                IsPublic = false,
-            };
-        }
-
-        public virtual async Task<ChatPermission> GetPermissions(
             Session session, string chatId, CancellationToken cancellationToken = default)
         {
-            var user = await AuthService.GetUser(session, cancellationToken);
-            if (!user.IsAuthenticated)
-                return 0;
+            var user = await Auth.GetUser(session, cancellationToken);
+            await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
+            return await TryGet(chatId, cancellationToken);
+        }
+
+        public virtual async Task<Chat?> TryGet(
+            string chatId, CancellationToken cancellationToken = default)
+        {
+            var dbChat = await DbChatResolver.TryGet(chatId, cancellationToken);
+            if (dbChat == null)
+                return null;
+            return dbChat.ToModel();
+        }
+
+        public virtual async Task<ChatPermissions> GetUserPermissions(
+            string chatId, string userId, CancellationToken cancellationToken = default)
+        {
             var chat = await TryGet(chatId, cancellationToken);
             if (chat == null)
                 return 0;
-            if (chat.OwnerIds.Contains(user.Id))
-                return ChatPermission.Owner;
+            if (chat.OwnerIds.Contains(userId))
+                return ChatPermissions.Owner;
             if (chat.IsPublic)
-                return ChatPermission.Read;
+                return ChatPermissions.Read;
             return 0;
         }
 
-        public virtual async Task<ChatPage> GetTail(Session session, string chatId, int limit, CancellationToken cancellationToken = default)
+        public virtual async Task<long> GetEntryCount(
+            string chatId, TimeRange? timeRange,
+            CancellationToken cancellationToken = default)
         {
-            var cp = await GetPermissions(session, chatId, cancellationToken);
-            if ((cp & ChatPermission.Read) != ChatPermission.Read)
-                throw new SecurityException("You can't access this chat.");
-            return await GetTail(chatId, limit, cancellationToken);
-        }
-
-        public virtual async Task<long> GetMessageCount(
-            string chatId, TimeSpan? period = null, CancellationToken cancellationToken = default)
-        {
-            await PseudoGetTail(chatId, default);
             await using var dbContext = CreateDbContext();
-            var dbMessages = dbContext.ChatEntries.AsQueryable();
-            if (period.HasValue) {
-                var minCreatedAt = Clocks.SystemClock.UtcNow - period.Value;
-                dbMessages = dbMessages.Where(m => m.ChatId == chatId && m.BeginsAt >= minCreatedAt);
-            } else {
-                dbMessages = dbMessages.Where(m => m.ChatId == chatId);
+            var dbMessages = dbContext.ChatEntries.AsQueryable()
+                .Where(m => m.ChatId == chatId);
+
+            if (timeRange.HasValue) {
+                var vTimeRange = timeRange.GetValueOrDefault();
+                if (!TimeLogCoverage.Default.IsValidUnit(vTimeRange))
+                    throw new InvalidOperationException($"Invalid {nameof(timeRange)}.");
+                var timeRangeStart = vTimeRange.Start.ToDateTimeClamped();
+                var timeRangeEnd = vTimeRange.End.ToDateTimeClamped();
+                dbMessages = dbMessages.Where(m => m.BeginsAt >= timeRangeStart && m.EndsAt < timeRangeEnd);
             }
+
             return await dbMessages.LongCountAsync(cancellationToken);
         }
 
-        // Protected methods
-
-        [ComputeMethod]
-        protected virtual async Task<ChatPage> GetTail(string chatId, int limit, CancellationToken cancellationToken = default)
+        public virtual async Task<ImmutableList<ChatEntry>> GetTail(
+            Session session, string chatId, CancellationToken cancellationToken = default)
         {
-            if (limit is < 1 or > 1000)
-                throw new ArgumentOutOfRangeException(nameof(limit));
+            var user = await Auth.GetUser(session, cancellationToken);
+            await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
+            return await GetTail(chatId, cancellationToken);
+        }
+
+        public virtual async Task<ImmutableList<ChatEntry>> GetTail(
+            string chatId, CancellationToken cancellationToken = default)
+        {
+            var limit = 64;
             await PseudoGetTail(chatId, default);
             await using var dbContext = CreateDbContext();
 
@@ -139,23 +146,28 @@ namespace ActualChat.Chat
                 .Take(limit)
                 .ToListAsync(cancellationToken);
             var entries = dbEntries.Select(m => m.ToModel()).ToImmutableList();
+            return entries;
+        }
 
-            // Fetching users in parallel
-            var users = new Dictionary<Symbol, UserInfo>();
-            foreach (var entriesPack in entries.PackBy(128)) {
-                var usersPack = await Task.WhenAll(
-                    entriesPack
-                        .Where(e => !users.ContainsKey(e.UserId))
-                        .Select(e => UserInfos.TryGet(e.UserId, cancellationToken)));
-                foreach (var user in usersPack)
-                    if (user != null)
-                        users.TryAdd(user.Id, user);
-            }
+        // Protected methods
 
-            return new ChatPage(chatId, limit) {
-                Entries = entries,
-                Users = users.ToImmutableDictionary(),
-            };
+        [ComputeMethod]
+        protected virtual async Task AssertHasPermissions(
+            string chatId, string userId, ChatPermissions permissions,
+            CancellationToken cancellationToken)
+        {
+            var chatPermissions = await GetUserPermissions(chatId, userId, cancellationToken);
+            if ((chatPermissions & permissions) != permissions)
+                throw new SecurityException("Not enough permissions.");
+        }
+
+        [ComputeMethod]
+        protected virtual async Task AssertHasPermissions(
+            Session session, string chatId, ChatPermissions permissions,
+            CancellationToken cancellationToken)
+        {
+            var user = await Auth.GetUser(session, cancellationToken);
+            await AssertHasPermissions(chatId, user.Id, permissions, cancellationToken);
         }
 
         // Invalidation-related
@@ -163,5 +175,6 @@ namespace ActualChat.Chat
         [ComputeMethod]
         protected virtual Task<Unit> PseudoGetTail(string chatId, CancellationToken cancellationToken)
             => TaskEx.UnitTask;
+
     }
 }

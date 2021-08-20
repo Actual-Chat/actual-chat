@@ -16,9 +16,9 @@ namespace ActualChat.Chat
 
         // Actual commands
 
-        public record AddText(Session Session, string ChatId, string Text)
+        public record PostText(Session Session, string ChatId, string Text)
             : Any<ChatEntry>(Session, ChatId) {
-            public AddText() : this(Session.Null, "", "") { }
+            public PostText() : this(Session.Null, "", "") { }
         }
     }
 }
