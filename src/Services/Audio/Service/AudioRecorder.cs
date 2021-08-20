@@ -10,8 +10,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio.Db;
-using ActualChat.Audio.Ebml;
-using ActualChat.Audio.Ebml.Models;
+using ActualChat.Audio.WebM;
+using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
@@ -130,7 +130,7 @@ namespace ActualChat.Audio
             var metaData = new List<SegmentMetaDataEntry>();
             EBML? ebml = null; 
             Segment? segment = null;
-            EbmlReader.State readerState = new EbmlReader.State();
+            WebMReader.State readerState = new WebMReader.State();
             var clusters = new List<Cluster>();
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
@@ -147,13 +147,13 @@ namespace ActualChat.Audio
                 
                 var (cs, s) = ReadClusters(
                     readerState.IsEmpty 
-                        ? new EbmlReader(bufferLease.Memory.Span) 
-                        : EbmlReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span));
+                        ? new WebMReader(bufferLease.Memory.Span) 
+                        : WebMReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span));
                 clusters.AddRange(cs);
                 
                 // TODO: AK reset last cluster after some blocks count
                 
-                (IReadOnlyList<Cluster>,EbmlReader.State) ReadClusters(EbmlReader reader)
+                (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader reader)
                 {
                     var result = new List<Cluster>(1);
                     while (reader.Read())
@@ -194,8 +194,8 @@ namespace ActualChat.Audio
             await using var stream = MemoryStreamManager.GetStream(nameof(AudioRecorder));
             using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
 
-            var ebmlWritten = WriteEntry(new EbmlWriter(bufferLease.Memory.Span), ebml);
-            var segmentWritten = WriteEntry(new EbmlWriter(bufferLease.Memory.Span), segment);
+            var ebmlWritten = WriteEntry(new WebMWriter(bufferLease.Memory.Span), ebml);
+            var segmentWritten = WriteEntry(new WebMWriter(bufferLease.Memory.Span), segment);
             if (!ebmlWritten)
                 throw new InvalidOperationException("Can't write EBML entry");
             if (!segmentWritten)
@@ -203,7 +203,7 @@ namespace ActualChat.Audio
 
             foreach (var cluster in clusters) {
                 var memory = bufferLease.Memory;
-                var clusterWritten = WriteEntry(new EbmlWriter(memory.Span), cluster);
+                var clusterWritten = WriteEntry(new WebMWriter(memory.Span), cluster);
                 if (clusterWritten) continue;
                 
                 var cycleNumber = 0;
@@ -212,7 +212,7 @@ namespace ActualChat.Audio
                     bufferSize *= 2;
                     cycleNumber++;
                     using var extendedBufferLease = MemoryPool<byte>.Shared.Rent(bufferSize);
-                    if (WriteEntry(new EbmlWriter(extendedBufferLease.Memory.Span), cluster))
+                    if (WriteEntry(new WebMWriter(extendedBufferLease.Memory.Span), cluster))
                         break;
                     if (cycleNumber >= 10)
                         break;
@@ -222,7 +222,7 @@ namespace ActualChat.Audio
             var persistBlob = blobStorage.WriteAsync(blobId, stream);
             var persistSegment = PersistSegment();
 
-            bool WriteEntry(EbmlWriter writer, RootEntry entry)
+            bool WriteEntry(WebMWriter writer, RootEntry entry)
             {
                 if (!writer.Write(entry))
                     return false;
