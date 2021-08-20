@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ActualChat.Audio.Ebml;
 using ActualChat.Audio.Ebml.Models;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
@@ -53,6 +54,59 @@ namespace ActualChat.Tests
             {
                 var success = writer.Write(entry);
                 return (success, writer.Position);
+            }
+        }
+
+        [Fact]
+        public async Task ReadWriteMatchTest()
+        {
+            await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
+            using var readBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
+            using var writeBufferLease = MemoryPool<byte>.Shared.Rent(10 * 1024);
+            var readBuffer = readBufferLease.Memory;
+            var writeBuffer = readBufferLease.Memory;
+            EbmlReader.State currentState = default;
+            var bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Position..]);
+            while(bytesRead > 0) {
+                var (elements, state) 
+                    = Parse(currentState.IsEmpty 
+                        ? new EbmlReader(readBuffer.Span) 
+                        : EbmlReader.FromState(currentState).WithNewSource(readBuffer.Span[..bytesRead]));
+                currentState = state;
+
+                var endPosition = Write(new EbmlWriter(writeBuffer.Span), elements);
+                
+                AssertBuffersAreSame(readBuffer.Span, writeBuffer.Span, endPosition);
+
+                readBuffer[currentState.Position..].CopyTo(readBuffer[..^currentState.Position]);
+                
+                bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
+            }
+            
+            (IReadOnlyList<RootEntry>, EbmlReader.State) Parse(EbmlReader reader)
+            {
+                var result = new List<RootEntry>();
+                while (reader.Read()) 
+                    result.Add(reader.Entry);
+                return (result, reader.GetState());
+            }
+
+            int Write(EbmlWriter writer, IReadOnlyList<RootEntry> elements)
+            {
+                foreach (var element in elements) {
+                    var success = writer.Write(element);
+                    success.Should().BeTrue();
+                }
+                return writer.Position;
+            }
+
+            void AssertBuffersAreSame(ReadOnlySpan<byte> read, ReadOnlySpan<byte> written, int endPosition)
+            {
+                var readSpan = read[..endPosition]; 
+                var writtenSpan = written[..endPosition]; 
+                for (int i = 0; i < endPosition; i++) {
+                    readSpan[i].Should().Be(writtenSpan[i], "should match at Index {0}", i);
+                }
             }
         }
 

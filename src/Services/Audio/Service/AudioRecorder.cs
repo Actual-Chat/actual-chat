@@ -132,28 +132,30 @@ namespace ActualChat.Audio
             Segment? segment = null;
             EbmlReader.State readerState = new EbmlReader.State();
             var clusters = new List<Cluster>();
-            
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
                 var currentOffset = clientEndOffset.ToUnixEpoch();
                 metaData.Add(new SegmentMetaDataEntry(index, lastOffset, currentOffset - lastOffset));
                 lastOffset = currentOffset;
-                // await buffer.WriteAsync(base64Encoded.Data);
-                // var rr = new EbmlReader();
-                var remainingLength = readerState.Remaining?.Length ?? 0;
-                using var bufferLease = MemoryPool<byte>.Shared.Rent(remainingLength + base64Encoded.Count);
+                var remainingLength = readerState.Remaining;
+                var buffer = bufferLease.Memory;
+                // TODO: AK - check length!!!
                 if (remainingLength > 0) 
-                    readerState.Remaining.CopyTo(bufferLease.Memory);
-                base64Encoded.Data.CopyTo(bufferLease.Memory[remainingLength..]);
+                    buffer[..^remainingLength].CopyTo(buffer[..remainingLength]);
+
+                base64Encoded.Data.CopyTo(buffer[remainingLength..]);
                 
                 var (cs, s) = ReadClusters(
                     readerState.IsEmpty 
-                        ? new EbmlReader() 
+                        ? new EbmlReader(bufferLease.Memory.Span) 
                         : EbmlReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span));
                 clusters.AddRange(cs);
                 
+                // TODO: AK reset last cluster after some blocks count
+                
                 (IReadOnlyList<Cluster>,EbmlReader.State) ReadClusters(EbmlReader reader)
                 {
-                    var clusters = new List<Cluster>(1);
+                    var result = new List<Cluster>(1);
                     while (reader.Read())
                         switch (reader.EbmlEntryType) {
                             case EbmlEntryType.None:
@@ -166,21 +168,26 @@ namespace ActualChat.Audio
                                 segment = (Segment?)reader.Entry;
                                 break;
                             case EbmlEntryType.Cluster:
-                                clusters.Add((Cluster)reader.Entry);
+                                result.Add((Cluster)reader.Entry);
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }
 
-                    return (clusters, reader.GetState());
+                    return (result, reader.GetState());
                 }
             }
 
-            await FlushSegment(recordingId, metaData, ebml, segment, clusters);
+            await FlushSegment(recordingId, metaData, ebml!, segment!, clusters);
         }
 
         private async Task FlushSegment(Symbol recordingId, IReadOnlyList<SegmentMetaDataEntry> metaData, EBML ebml, Segment segment, IReadOnlyList<Cluster> clusters)
         {
+            if (metaData == null) throw new ArgumentNullException(nameof(metaData));
+            if (ebml == null) throw new ArgumentNullException(nameof(ebml));
+            if (segment == null) throw new ArgumentNullException(nameof(segment));
+            if (clusters == null) throw new ArgumentNullException(nameof(clusters));
+
             var minBufferSize = 64*1024;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{Ulid.NewUlid().ToString()}";
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
