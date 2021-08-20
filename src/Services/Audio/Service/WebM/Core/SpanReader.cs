@@ -8,125 +8,133 @@ namespace ActualChat.Audio.WebM
     public ref struct SpanReader
     {
         private const int SizeOfGuid = 16;
-        private const int MaxCharBytesSize = 128;
 
-        private readonly ReadOnlySpan<byte> _currentSpan;
-        private readonly Encoding _encoding;
-        private readonly Decoder _decoder;
-        private readonly bool _has2BytesPerChar;
-        private readonly byte[] _charBytes;
-        private readonly char[] _singleChar;
+        private readonly ReadOnlySpan<byte> _span;
         private readonly int[] _decimalBits;
 
-        public int Length;
+        public readonly int Length;
         public int Position;
 
-        public SpanReader(ReadOnlySpan<byte> span) : this(span, new UTF8Encoding())
-        {
-        }
-
-        public SpanReader(ReadOnlySpan<byte> span, Encoding encoding)
+        public SpanReader(ReadOnlySpan<byte> span)
         {
             Length = span.Length;
             Position = 0;
-            _currentSpan = span;
+            _span = span;
 
-            _encoding = encoding;
-            _decoder = encoding.GetDecoder();
-
-            _has2BytesPerChar = encoding is UnicodeEncoding;
-            _charBytes = new byte[MaxCharBytesSize];
-            _singleChar = new char[1];
             _decimalBits = new int[4];
         }
 
-        public ReadOnlySpan<byte> Tail => _currentSpan[Position..];
+        public ReadOnlySpan<byte> Tail => _span[Position..];
 
-        public ReadOnlySpan<byte> ReadSpan(int length)
+        public ReadOnlySpan<byte> ReadSpan(int length, out bool success)
         {
-            var span = _currentSpan[Position..(Position + length)];
+            if (Position + length > _span.Length) {
+                success = false;
+                return ReadOnlySpan<byte>.Empty;
+            }
+            var span = _span[Position..(Position + length)];
 
             Position += length;
-            
+
+            success = true;
             return  span;
         }
 
-        public bool ReadBoolean() => ReadByte() != 0;
-
-        public byte ReadByte()
+        public bool? ReadBoolean()
         {
-            var result = _currentSpan[Position];
+            var result = ReadByte();
+            return result.HasValue ? result != 0 : null;
+        }
+
+        public byte? ReadByte()
+        {
+            if (Position >= _span.Length)
+                return null;
+            
+            var result = _span[Position];
+            
             Position += sizeof(byte);
+            
             return result;
         }
 
-        public sbyte ReadSByte() => (sbyte)ReadByte();
+        public sbyte? ReadSByte() => (sbyte?)ReadByte();
 
-        public char ReadChar() => (char)InternalReadOneChar();
+        public short? ReadShort() => Read<short>();
 
-        public short ReadShort() => Read<short>();
+        public short? ReadInt16() => ReadShort();
 
-        public short ReadInt16() => ReadShort();
+        public int? ReadInt() => ReadInt32();
 
-        public int ReadInt() => ReadInt32();
+        public ushort? ReadUShort() => Read<ushort>();
 
-        public ushort ReadUShort() => Read<ushort>();
+        public uint? ReadUInt() => ReadUInt32();
 
-        public uint ReadUInt() => ReadUInt32();
+        public uint? ReadUInt32() => Read<uint>();
 
-        public uint ReadUInt32() => Read<uint>();
+        public int? ReadInt32() => Read<int>();
 
-        public int ReadInt32() => Read<int>();
+        public long? ReadLong() => Read<long>();
 
-        public long ReadLong() => Read<long>();
-
-        public ulong ReadULong() => Read<ulong>();
+        public ulong? ReadULong() => Read<ulong>();
 
         
         
-        public double ReadFloat(int size)
+        public double? ReadFloat(int size)
         {
             var num = ReadULong(size);
+            if (!num.HasValue)
+                return null;
+            
             switch (size)
             {
                 case 4:
-                    return new Union { ULong = num }.Float;
+                    return new Union { ULong = num.Value }.Float;
                 case 8:
-                    return new Union { ULong = num }.Double;
+                    return new Union { ULong = num.Value }.Double;
                 default:
                     throw new EbmlDataFormatException("Incorrect float length");
             }
         }
         
-        public long ReadLong(int size)
+        public long? ReadLong(int size)
         {
-            long result = _currentSpan[Position];
-            for (var i = 1; i < size; i++) result = (result << 8) | (uint)(_currentSpan[Position + i] & 0xFF);
+            if (Position + size >= _span.Length)
+                return null;
+            
+            long result = _span[Position];
+            for (var i = 1; i < size; i++) result = (result << 8) | (uint)(_span[Position + i] & 0xFF);
             
             Position += size;
             
             return result;
         }
 
-        public ulong ReadULong(int size)
+        public ulong? ReadULong(int size)
         {
+            if (Position + size >= _span.Length)
+                return null;
+            
             ulong result = 0;
-            for (var i = 0; i < size; i++) result = (result << 8) | _currentSpan[Position + i];
+            for (var i = 0; i < size; i++) result = (result << 8) | _span[Position + i];
             
             Position += size;
             
             return result;
         }
 
-        public string ReadAsciiString(int size) => ReadString(Encoding.ASCII, size);
+        public string? ReadAsciiString(int size) => ReadString(Encoding.ASCII, size);
         
-        public string ReadUtf8String(int size) => ReadString(Encoding.UTF8, size);
+        public string? ReadUtf8String(int size) => ReadString(Encoding.UTF8, size);
         
        
-        public decimal ReadDecimal()
+        public decimal? ReadDecimal()
         {
             var length = sizeof(decimal);
-            var buffer = _currentSpan.Slice(Position, length);
+            if (Position + length >= _span.Length)
+                return null;
+            
+            var buffer = _span.Slice(Position, length);
 
             _decimalBits[0] = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
             _decimalBits[1] = buffer[4] | (buffer[5] << 8) | (buffer[6] << 16) | (buffer[7] << 24);
@@ -138,15 +146,18 @@ namespace ActualChat.Audio.WebM
             return new decimal(_decimalBits);
         }
 
-        public float ReadSingle() => ReadFloat();
+        public float? ReadSingle() => ReadFloat();
 
-        public float ReadFloat() => Read<float>();
+        public float? ReadFloat() => Read<float>();
 
-        public double ReadDouble() => Read<double>();
+        public double? ReadDouble() => Read<double>();
 
-        public byte[] ReadBytes(int length)
+        public byte[]? ReadBytes(int length)
         {
-            var result = _currentSpan.Slice(Position, length).ToArray();
+            if (Position + length >= _span.Length)
+                return null;
+            
+            var result = _span.Slice(Position, length).ToArray();
             Position += length;
             return result;
         }
@@ -155,74 +166,55 @@ namespace ActualChat.Audio.WebM
 
         public int ReadBytes(Span<byte> span, int start, int length)
         {
-            _currentSpan.Slice(Position + start, length).CopyTo(span);
+            if (Position + start + length >= _span.Length)
+                return -1;
+            
+            _span.Slice(Position + start, length).CopyTo(span);
             Position += length;
             return length;
         }
 
-        public string ReadString()
-        {
-            var stringLength = Read7BitEncodedInt();
-            var stringBytes = ReadBytes(stringLength);
-
-            return _encoding.GetString(stringBytes);
-        }
-
-        public DateTime ReadDateTime()
+        public DateTime? ReadDateTime()
         {
             var utcNowAsLong = ReadLong();
-            return DateTime.FromBinary(utcNowAsLong);
+            if (!utcNowAsLong.HasValue)
+                return null;
+            
+            return DateTime.FromBinary(utcNowAsLong.Value);
         }
 
-        public Guid ReadGuid()
+        public Guid? ReadGuid()
         {
-            return new Guid(ReadBytes(SizeOfGuid));
+            var bytes = ReadBytes(SizeOfGuid);
+            if (bytes is null)
+                return null;
+            
+            return new Guid(bytes);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T Read<T>() where T : unmanaged
+        public T? Read<T>() where T : unmanaged
         {
-            var newSpan = _currentSpan.Slice(Position);
+            var sizeOf = Unsafe.SizeOf<T>();
+            if (sizeOf + Position > _span.Length)
+                return null;
+            
+            var newSpan = _span[Position..];
             var result = MemoryMarshal.Read<T>(newSpan);
-            Position += Unsafe.SizeOf<T>();
+            Position += sizeOf;
 
             return result;
         }
 
-        // Copied from https://referencesource.microsoft.com/#mscorlib/system/io/binaryreader.cs,582
-        public int Read7BitEncodedIntOld()
-        {
-            // Read out an Int32 7 bits at a time.
-            // The high bit of the byte when 'on' means to continue reading more bytes.
-            int count = 0;
-            int shift = 0;
-            byte b;
-            do
-            {
-                // Check for a corrupted stream. Read a max of 5 bytes.
-                if (shift == 5 * 7) // 5 bytes max per Int32, shift += 7
-                {
-                    throw new FormatException("Too many bytes in what should have been a 7 bit encoded Int32.");
-                }
-
-                // ReadByte handles end of stream cases for us.
-                b = ReadByte();
-                count |= (b & 0x7F) << shift;
-                shift += 7;
-            } while ((b & 0x80) != 0);
-
-            return count;
-        }
-
         // Based on https://github.com/dotnet/runtime/blob/1d9e50cb4735df46d3de0cee5791e97295eaf588/src/libraries/System.Private.CoreLib/src/System/IO/BinaryReader.cs#L590
-        public int Read7BitEncodedInt()
+        public int? Read7BitEncodedInt()
         {
             // Unlike writing, we can't delegate to the 64-bit read on
             // 64-bit platforms. The reason for this is that we want to
             // stop consuming bytes if we encounter an integer overflow.
 
             uint result = 0;
-            byte byteReadJustNow;
+            byte? byteReadJustNow;
 
             // Read the integer 7 bits at a time. The high bit
             // of the byte when on means to continue reading more bytes.
@@ -237,12 +229,12 @@ namespace ActualChat.Audio.WebM
             {
                 // ReadByte handles end of stream cases for us.
                 byteReadJustNow = ReadByte();
-                result |= (byteReadJustNow & 0x7Fu) << shift;
+                if (!byteReadJustNow.HasValue)
+                    return null;
+                
+                result |= (byteReadJustNow.Value & 0x7Fu) << shift;
 
-                if (byteReadJustNow <= 0x7Fu)
-                {
-                    return (int)result; // early exit
-                }
+                if (byteReadJustNow <= 0x7Fu) return (int)result; // early exit
             }
 
             // Read the 5th byte. Since we already read 28 bits,
@@ -250,19 +242,19 @@ namespace ActualChat.Audio.WebM
             // and it must not have the high bit set.
 
             byteReadJustNow = ReadByte();
-            if (byteReadJustNow > 0b_1111u)
-            {
-                throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
-            }
+            if (!byteReadJustNow.HasValue)
+                return null;
+            
+            if (byteReadJustNow > 0b_1111u) throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
 
             result |= (uint)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
             return (int)result;
         }
 
-        public long Read7BitEncodedInt64()
+        public long? Read7BitEncodedInt64()
         {
             ulong result = 0;
-            byte byteReadJustNow;
+            byte? byteReadJustNow;
 
             // Read the integer 7 bits at a time. The high bit
             // of the byte when on means to continue reading more bytes.
@@ -277,12 +269,12 @@ namespace ActualChat.Audio.WebM
             {
                 // ReadByte handles end of stream cases for us.
                 byteReadJustNow = ReadByte();
-                result |= (byteReadJustNow & 0x7Ful) << shift;
+                if (!byteReadJustNow.HasValue)
+                    return null;
+                
+                result |= (byteReadJustNow.Value & 0x7Ful) << shift;
 
-                if (byteReadJustNow <= 0x7Fu)
-                {
-                    return (long)result; // early exit
-                }
+                if (byteReadJustNow <= 0x7Fu) return (long)result; // early exit
             }
 
             // Read the 10th byte. Since we already read 63 bits,
@@ -290,28 +282,21 @@ namespace ActualChat.Audio.WebM
             // and it must not have the high bit set.
 
             byteReadJustNow = ReadByte();
-            if (byteReadJustNow > 0b_1u)
-            {
-                throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
-            }
+            if (!byteReadJustNow.HasValue)
+                return null;
+            
+            if (byteReadJustNow > 0b_1u) throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
 
             result |= (ulong)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
             return (long)result;
         }
         
-        public bool Skip(int intLength)
+        public VInt? ReadVInt(int maxLength = 4)
         {
-            if (Position + intLength > Length)
-                return false;
-            
-            Position += intLength;
-            return true;
-        }
-
-        public (bool, VInt) ReadVInt(int maxLength = 4)
-        {
-            uint b1 = ReadByte();
-            ulong raw = b1;
+            uint? b1 = ReadByte();
+            if (!b1.HasValue)
+                return null;
+            ulong raw = b1.Value;
             uint mask = 0xFF00;
 
             for (int i = 0; i < maxLength; ++i)
@@ -324,78 +309,33 @@ namespace ActualChat.Audio.WebM
 
                 for (int j = 0; j < i; ++j)
                 {
-                    byte b = ReadByte();
+                    byte? b = ReadByte();
+                    if (!b.HasValue)
+                        return null;
 
-                    raw = (raw << 8) | b;
-                    value = (value << 8) | b;
+                    raw = (raw << 8) | b.Value;
+                    value = (value << 8) | b.Value;
                 }
 
-                return (true, VInt.EncodeSize(raw, i + 1));
+                return VInt.EncodeSize(raw, i + 1);
             }
 
-            return (false, VInt.Unknown);
+            return null;
         }
         
-        private string ReadString(Encoding decoder, int size)
+        private string? ReadString(Encoding decoder, int size)
         {
             if (size == 0)
                 return string.Empty;
 
-            var result = decoder.GetString(_currentSpan.Slice(Position, size));
+            if (Position + size >= _span.Length)
+                return null;
+            
+            var result = decoder.GetString(_span.Slice(Position, size));
 
             Position += size;
+            
             return result;
-        }
-        
-
-        // Copied from https://referencesource.microsoft.com/#mscorlib/system/io/binaryreader.cs,409
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private int InternalReadOneChar()
-        {
-            // I know having a separate InternalReadOneChar method seems a little redundant,
-            // but this makes a scenario like the security parser code 20% faster, in addition to the optimizations for UnicodeEncoding I put in InternalReadChars.   
-            int charsRead = 0;
-
-            while (charsRead == 0)
-            {
-                // We really want to know what the minimum number of bytes per char
-                // is for our encoding. Otherwise for UnicodeEncoding we'd have to do ~1+log(n) reads to read n characters.
-                // Assume 1 byte can be 1 char unless _has2BytesPerChar is true.
-                int numBytes = _has2BytesPerChar ? 2 : 1;
-
-                int r = ReadByte();
-                _charBytes[0] = (byte)r;
-
-                if (r == -1)
-                {
-                    numBytes = 0;
-                }
-
-                if (numBytes == 2)
-                {
-                    r = ReadByte();
-                    _charBytes[1] = (byte)r;
-
-                    if (r == -1)
-                    {
-                        numBytes = 1;
-                    }
-                }
-
-                if (numBytes == 0)
-                {
-                    throw new Exception("Found no bytes. We're outta here.");
-                }
-
-                charsRead = _decoder.GetChars(_charBytes, 0, numBytes, _singleChar, 0);
-            }
-
-            if (charsRead == 0)
-            {
-                return -1;
-            }
-
-            return _singleChar[0];
         }
         
         [StructLayout(LayoutKind.Explicit)]

@@ -18,6 +18,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>MatroskaModels.cs</LastGenOutput>
     </None>
+    <None Update="WebM\Models\MatroskaModels.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +33,9 @@
     <Compile Update="Ebml\Models\MatroskaModels.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="WebM\Models\MatroskaModels.cs">
       <DependentUpon>MatroskaModels.tt</DependentUpon>
     </Compile>
   </ItemGroup>

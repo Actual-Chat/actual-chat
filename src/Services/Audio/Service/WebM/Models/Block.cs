@@ -50,21 +50,19 @@ namespace ActualChat.Audio.WebM.Models
         {
             var spanReader = new SpanReader(span);
 
-            TrackNumber = spanReader.ReadVInt().Item2.Value;
-            TimeCode = spanReader.ReadShort();
-            Flags = spanReader.ReadByte();
+            TrackNumber = spanReader.ReadVInt()!.Value.Value;
+            TimeCode = spanReader.ReadShort()!.Value;
+            Flags = spanReader.ReadByte()!.Value;
 
             IsInvisible = (Flags & InvisibleBit) == InvisibleBit;
             Lacing = (Lacing)(Flags & LacingBits);
 
             if (Lacing != Lacing.No)
             {
-                NumFrames = spanReader.ReadByte();
+                NumFrames = spanReader.ReadByte()!.Value;
 
-                if (Lacing != Lacing.FixedSize)
-                {
-                    LaceCodedSizeOfEachFrame = spanReader.ReadByte();
-                }
+                if (Lacing != Lacing.FixedSize) 
+                    LaceCodedSizeOfEachFrame = spanReader.ReadByte()!.Value;
             }
 
             Data = span[spanReader.Position..].ToArray();

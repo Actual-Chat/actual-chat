@@ -3,9 +3,7 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -16,12 +14,10 @@ using ActualChat.Blobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
 using Stl.Async;
-using Stl.Channels;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
-using Stl.Serialization;
 using Stl.Text;
 using Stl.Time;
 
@@ -31,7 +27,7 @@ namespace ActualChat.Audio
     {
         private static readonly TimeSpan CleanupInterval = new TimeSpan(0, 0, 10);
         private static readonly TimeSpan SegmentLength = new TimeSpan(0, 1, 0);
-        private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new RecyclableMemoryStreamManager();
+        private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
 
         private readonly IAuthService _authService;
         private readonly IBlobStorageProvider _blobStorageProvider;
@@ -140,15 +136,17 @@ namespace ActualChat.Audio
                 var remainingLength = readerState.Remaining;
                 var buffer = bufferLease.Memory;
                 // TODO: AK - check length!!!
-                if (remainingLength > 0) 
-                    buffer[..^remainingLength].CopyTo(buffer[..remainingLength]);
+                
+                buffer.Slice(readerState.Position,remainingLength).CopyTo(buffer[..remainingLength]);
+                base64Encoded.Data.CopyTo(buffer[readerState.Remaining..]);
 
-                base64Encoded.Data.CopyTo(buffer[remainingLength..]);
+                var dataLength = readerState.Remaining + base64Encoded.Count;
                 
                 var (cs, s) = ReadClusters(
                     readerState.IsEmpty 
-                        ? new WebMReader(bufferLease.Memory.Span) 
-                        : WebMReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span));
+                        ? new WebMReader(bufferLease.Memory.Span[..dataLength]) 
+                        : WebMReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span[..dataLength]));
+                readerState = s;
                 clusters.AddRange(cs);
                 
                 // TODO: AK reset last cluster after some blocks count
@@ -177,6 +175,8 @@ namespace ActualChat.Audio
                     return (result, reader.GetState());
                 }
             }
+            
+            if (readerState.Container is Cluster c) clusters.Add(c);
 
             await FlushSegment(recordingId, metaData, ebml!, segment!, clusters);
         }
@@ -188,7 +188,7 @@ namespace ActualChat.Audio
             if (segment == null) throw new ArgumentNullException(nameof(segment));
             if (clusters == null) throw new ArgumentNullException(nameof(clusters));
 
-            var minBufferSize = 64*1024;
+            var minBufferSize = 32*1024;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{Ulid.NewUlid().ToString()}";
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
             await using var stream = MemoryStreamManager.GetStream(nameof(AudioRecorder));
@@ -218,7 +218,8 @@ namespace ActualChat.Audio
                         break;
                 }
             }
-            
+
+            stream.Position = 0;
             var persistBlob = blobStorage.WriteAsync(blobId, stream);
             var persistSegment = PersistSegment();
 
