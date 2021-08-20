@@ -29,7 +29,7 @@ namespace ActualChat.Tests
             
             bytesRead.Should().BeGreaterThan(3 * 1024);
 
-            var entries = Parse(buffer.Span).ToList();
+            var entries = Parse(buffer.Span[..bytesRead]).ToList();
             entries.Should().HaveCount(3);
             entries.Should().NotContainNulls();
             entries[0].Should().BeOfType<EBML>();
@@ -38,6 +38,22 @@ namespace ActualChat.Tests
             entries[2].As<Cluster>().SimpleBlocks.Should().HaveCount(10);
             entries[2].As<Cluster>().SimpleBlocks.Should().NotContainNulls();
         }
+        
+        [Fact]
+        public async Task ReaderSmallBufferTest()
+        {
+            await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+            var buffer = bufferLease.Memory;
+            var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
+            
+            var entries = Parse(buffer.Span[..0x26]).ToList();
+            entries.Should().HaveCount(2);
+            entries.Should().NotContainNulls();
+            entries[0].Should().BeOfType<EBML>();
+            entries[1].Should().BeOfType<EBML>();
+        }
+        
         
         [Fact]
         public async Task SequentalBlockReaderTest()
