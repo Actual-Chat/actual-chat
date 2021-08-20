@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using Stl.CommandR.Configuration;
@@ -11,16 +12,13 @@ namespace ActualChat.Chat
     {
         // Commands
         [CommandHandler]
-        Task<ChatEntry> Post(ChatCommands.AddText command, CancellationToken cancellationToken = default);
+        Task<ChatEntry> Post(ChatCommands.PostText command, CancellationToken cancellationToken = default);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(string chatId, CancellationToken cancellationToken = default);
+        Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken = default);
+
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPermission> GetPermissions(Session session, string chatId, CancellationToken cancellationToken = default);
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPage> GetTail(Session session, string chatId, int limit, CancellationToken cancellationToken = default);
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<long> GetMessageCount(string chatId, TimeSpan? period = null, CancellationToken cancellationToken = default);
+        Task<ImmutableList<ChatEntry>> GetTail(Session session, string chatId, CancellationToken cancellationToken = default);
     }
 }
