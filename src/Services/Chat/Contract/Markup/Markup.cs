@@ -8,10 +8,10 @@ namespace ActualChat.Chat.Markup
     public class Markup
     {
         public string Text { get; init; } = "";
-        public MarkupParts.Any[] Parts { get; init; } = Array.Empty<MarkupParts.Any>();
+        public MarkupParts.Part[] Parts { get; init; } = Array.Empty<MarkupParts.Part>();
 
         public Markup() { }
-        public Markup(string text, MarkupParts.Any[] parts)
+        public Markup(string text, MarkupParts.Part[] parts)
         {
             Text = text;
             Parts = parts;
