@@ -118,6 +118,7 @@ namespace ActualChat.Users.Module
                 });
 
             // Module's own services
+            services.AddMvc().AddApplicationPart(GetType().Assembly);
             services.AddSingleton<IUserNameService, UserNameService>();
             fusion.AddComputeService<IUserInfoService, UserInfoService>();
             fusion.AddComputeService<IUserStateService, UserStateService>();

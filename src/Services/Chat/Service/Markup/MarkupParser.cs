@@ -24,7 +24,7 @@ namespace ActualChat.Chat.Markup
 
         public virtual async Task<Markup> Parse(string text, CancellationToken cancellationToken = default)
         {
-            List<MarkupParts.Any> fragments = new();
+            List<MarkupParts.Part> fragments = new();
             var start = 0;
 
             void AddRawText(int length) {

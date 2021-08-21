@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Markup;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,6 +68,12 @@ namespace ActualChat.Chat.Module
                     return true;
                 return false;
             });
+
+            services.AddMvc().AddApplicationPart(GetType().Assembly);
+            services.AddSingleton<IMarkupParser, MarkupParser>();
+            fusion.AddComputeService<ChatService>();
+            services.AddSingleton(c => (IChatService) c.GetRequiredService<ChatService>());
+            services.AddSingleton(c => (IServerSideChatService) c.GetRequiredService<ChatService>());
         }
     }
 }
