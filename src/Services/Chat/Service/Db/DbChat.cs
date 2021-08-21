@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using Stl;
 using Stl.Time;
 
@@ -26,7 +25,6 @@ namespace ActualChat.Chat.Db
         }
 
         public List<DbChatOwner> Owners { get; set; } = new();
-
 
         public Chat ToModel()
             => new(Id) {

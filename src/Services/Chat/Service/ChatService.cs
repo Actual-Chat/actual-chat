@@ -17,6 +17,7 @@ using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.Operations;
+using Stl.Generators;
 using Stl.Text;
 
 namespace ActualChat.Chat
@@ -28,6 +29,7 @@ namespace ActualChat.Chat
         protected IUserInfoService UserInfos { get; init; }
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
+        protected Func<string> ChatIdGenerator { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
@@ -35,12 +37,42 @@ namespace ActualChat.Chat
             UserInfos = services.GetRequiredService<IUserInfoService>();
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
+            ChatIdGenerator = () => Ulid.NewUlid().ToString();
         }
 
         // Commands
 
+        public virtual async Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default)
+        {
+            var (session, title) = command;
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating())
+                return null!; // Nothing to invalidate
+
+            var user = await Auth.GetUser(session, cancellationToken);
+            user.MustBeAuthenticated();
+
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
+            var now = Clocks.SystemClock.Now;
+            var chatId = ChatIdGenerator.Invoke();
+            var dbChat = new DbChat() {
+                Id = chatId,
+                Title = title,
+                CreatorId = user.Id,
+                CreatedAt = now,
+                IsPublic = false,
+                Owners = new List<DbChatOwner>() { new () { ChatId = chatId, UserId = user.Id } },
+            };
+            dbContext.Add(dbChat);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            var chat = dbChat.ToModel();
+            context.Operation().Items.Set(chat);
+            return chat;
+        }
+
         public virtual async Task<ChatEntry> Post(
-            ChatCommands.PostText command, CancellationToken cancellationToken = default)
+            ChatCommands.Post command, CancellationToken cancellationToken = default)
         {
             var (session, chatId, text) = command;
             var context = CommandContext.GetCurrent();

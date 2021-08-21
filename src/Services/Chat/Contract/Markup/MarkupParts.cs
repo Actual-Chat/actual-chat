@@ -6,13 +6,13 @@ namespace ActualChat.Chat.Markup
 {
     public static partial class MarkupParts
     {
-        public abstract record Any(int Start, int Length)
+        public abstract record Part(int Start, int Length)
         {
             public ReadOnlySpan<char> GetSourceSpan(Markup markup)
                 => markup.Text.AsSpan(Start, Length);
         }
 
-        public abstract record Text(int Start, int Length) : Any(Start, Length)
+        public abstract record Text(int Start, int Length) : Part(Start, Length)
         {
             public abstract ReadOnlySpan<char> GetText(Markup markup);
         }
@@ -29,7 +29,7 @@ namespace ActualChat.Chat.Markup
                 => GetSourceSpan(markup)[1..];
         }
 
-        public record UserMention(int Start, int Length, UserInfo? User) : Any(Start, Length)
+        public record UserMention(int Start, int Length, UserInfo? User) : Part(Start, Length)
         { }
     }
 }
