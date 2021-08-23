@@ -184,7 +184,31 @@ namespace ActualChat.Audio.WebM
         {
             return GetSize(identifier) + GetCodedSize(size);
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong GetElementSize(ulong identifier, BaseModel? value)
+        {
+            return value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong GetElementSize(ulong identifier, IReadOnlyList<BaseModel>? value)
+        {
+            return value?.Aggregate(0UL, (size, m) => size + GetElementSize(identifier, m)) ?? 0UL;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong GetElementSize(ulong identifier, IReadOnlyList<Block>? value)
+        {
+            return value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong GetElementSize(ulong identifier, IReadOnlyList<SimpleTag>? value)
+        {
+            return value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+        }
+        
         public static ulong GetSize(this IReadOnlyList<BaseModel>? list)
         {
             return list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
@@ -348,7 +372,7 @@ namespace ActualChat.Audio.WebM
             if (value == null)
                 return true;
 
-            var size = GetElementSize(identifier, value);
+            var size = (ulong)value.Length;
             var totalSize =  GetSize(identifier) + size + 1;
             if (writer.Position + (int)totalSize > writer.Length)
                 return false;
