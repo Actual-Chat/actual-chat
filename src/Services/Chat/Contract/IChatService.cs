@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
+using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -21,6 +22,21 @@ namespace ActualChat.Chat
         Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken = default);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ImmutableList<ChatEntry>> GetTail(Session session, string chatId, CancellationToken cancellationToken = default);
+        Task<long> GetEntryCount(
+            Session session, string chatId, LongRange? idRange,
+            CancellationToken cancellationToken = default);
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<ChatPage> GetPage(
+            Session session, string chatId, LongRange idRange,
+            CancellationToken cancellationToken = default);
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<long> GetLastEntryId(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default);
+
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<ChatPermissions> GetPermissions(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default);
     }
 }
