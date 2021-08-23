@@ -25,8 +25,7 @@ namespace ActualChat.Audio
 {
     public class AudioRecorder : DbServiceBase<AudioDbContext>, IAudioRecorder
     {
-        private static readonly TimeSpan CleanupInterval = new TimeSpan(0, 0, 10);
-        private static readonly TimeSpan SegmentLength = new TimeSpan(0, 1, 0);
+        private static readonly TimeSpan SegmentLength = new TimeSpan(0, 0, 10);
         private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
 
         private readonly IAuthService _authService;
@@ -34,10 +33,6 @@ namespace ActualChat.Audio
         private readonly ILogger<AudioRecorder> _log;
 
         private readonly Generator<string> _idGenerator;
-        // AY:
-        // - ConcurrentQueue is a bit of excess here, I guess - a normal queue would be fine
-        // - It requires robust maintenance (mem leaks are easy to happen here), so
-        //   prob. it's ok to just write for now
         private readonly ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)> _dataCapacitor;
         
 
@@ -128,11 +123,13 @@ namespace ActualChat.Audio
             Segment? segment = null;
             WebMReader.State readerState = new WebMReader.State();
             var clusters = new List<Cluster>();
+            var currentSegmentDuration = 0d;
+            var lastIndex = 0;
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
                 var currentOffset = clientEndOffset.ToUnixEpoch();
-                metaData.Add(new SegmentMetaDataEntry(index, lastOffset, currentOffset - lastOffset));
-                lastOffset = currentOffset;
+                var duration = currentOffset - lastOffset;
+                metaData.Add(new SegmentMetaDataEntry(index, lastOffset, duration));
                 var remainingLength = readerState.Remaining;
                 var buffer = bufferLease.Memory;
                 // TODO: AK - check length!!!
@@ -148,8 +145,16 @@ namespace ActualChat.Audio
                         : WebMReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span[..dataLength]));
                 readerState = s;
                 clusters.AddRange(cs);
+                currentSegmentDuration += duration;
+
+                if (currentSegmentDuration >= SegmentLength.TotalSeconds && clusters.Count > 0) {
+                    currentSegmentDuration = 0;
+                    await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), index, lastOffset);
+                    clusters.Clear();
+                }
                 
-                // TODO: AK reset last cluster after some blocks count
+                lastOffset = currentOffset;
+                lastIndex = index;
                 
                 (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader reader)
                 {
@@ -178,12 +183,14 @@ namespace ActualChat.Audio
             
             if (readerState.Container is Cluster c) clusters.Add(c);
 
-            await FlushSegment(recordingId, metaData, ebml!, segment!, clusters);
+            await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), ++lastIndex, lastOffset);
         }
 
-        private async Task FlushSegment(Symbol recordingId, IReadOnlyList<SegmentMetaDataEntry> metaData, EBML ebml, Segment segment, IReadOnlyList<Cluster> clusters)
+        private async Task FlushSegment(Symbol recordingId, IReadOnlyList<SegmentMetaDataEntry> metaData, WebMDocument webM, int index, double offset)
         {
             if (metaData == null) throw new ArgumentNullException(nameof(metaData));
+            if (webM == null) throw new ArgumentNullException(nameof(webM));
+            var (ebml, segment, clusters) = webM;
             if (ebml == null) throw new ArgumentNullException(nameof(ebml));
             if (segment == null) throw new ArgumentNullException(nameof(segment));
             if (clusters == null) throw new ArgumentNullException(nameof(clusters));
@@ -239,8 +246,8 @@ namespace ActualChat.Audio
                 _log.LogInformation($"{nameof(FlushBufferedSegments)}, RecordingId = {{RecordingId}}", recordingId);
                 dbContext.AudioSegments.Add(new DbAudioSegment {
                     RecordingId = recordingId,
-                    Index = 0,
-                    Offset = 0d,
+                    Index = index,
+                    Offset = offset,
                     Duration = metaData.Sum(md => md.Duration),
                     BlobId = blobId,
                     BlobMetadata = JsonSerializer.Serialize(metaData)
