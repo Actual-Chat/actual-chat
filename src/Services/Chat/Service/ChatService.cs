@@ -146,7 +146,7 @@ namespace ActualChat.Chat
 
             if (timeRange.HasValue) {
                 var vTimeRange = timeRange.GetValueOrDefault();
-                if (!TimeLogCoverage.Default.IsValidUnit(vTimeRange))
+                if (!TimeLogCover.Default.IsValidSpan(vTimeRange))
                     throw new InvalidOperationException($"Invalid {nameof(timeRange)}.");
                 var timeRangeStart = vTimeRange.Start.ToDateTimeClamped();
                 var timeRangeEnd = vTimeRange.End.ToDateTimeClamped();
