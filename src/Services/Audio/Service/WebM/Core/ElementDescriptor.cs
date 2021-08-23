@@ -3,41 +3,19 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.Audio.WebM
 {
-    /// <summary>
-    /// Defines the EBML element description.
-    /// </summary>
     public class ElementDescriptor
     {
-        /// <summary>
-        /// Initializes a new instance of the <code>ElementDescriptor</code> class.
-        /// </summary>
-        /// <param name="identifier"></param>
-        /// <param name="name"></param>
-        /// <param name="type"></param>
-        public ElementDescriptor(ulong identifier, string name, ElementType type, bool listEntry)
-            : this(VInt.FromEncoded(identifier), name, type, listEntry)
+        public ElementDescriptor(ulong identifier, string name, ElementType type, string? defaultvalue, bool listEntry)
+            : this(VInt.FromEncoded(identifier), name, type, defaultvalue, listEntry)
         {
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <code>ElementDescriptor</code> class.
-        /// </summary>
-        /// <param name="identifier"></param>
-        /// <param name="name"></param>
-        /// <param name="type"></param>
-        public ElementDescriptor(long identifier, string name, ElementType type, bool listEntry)
-            : this(VInt.FromEncoded((ulong)identifier), name, type, listEntry)
+        public ElementDescriptor(long identifier, string name, ElementType type, string? defaultValue, bool listEntry)
+            : this(VInt.FromEncoded((ulong)identifier), name, type, defaultValue, listEntry)
         {
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <code>ElementDescriptor</code> class.
-        /// </summary>
-        /// <param name="identifier">the element identifier</param>
-        /// <param name="name">the element name or <code>null</code> if the name is not known</param>
-        /// <param name="type">the element type or <code>null</code> if the type is not known</param>
-        /// <exception cref="ArgumentNullException">if <code>identifier</code> is <code>null</code></exception>
-        private ElementDescriptor(VInt identifier, string name, ElementType type, bool listEntry)
+        private ElementDescriptor(VInt identifier, string name, ElementType type,string? defaultValue, bool listEntry)
         {
             if (!identifier.IsValidIdentifier && type != ElementType.None)
                 throw new ArgumentException("Value is not valid identifier", nameof(identifier));
@@ -45,28 +23,19 @@ namespace ActualChat.Audio.WebM
             Identifier = identifier;
             Name = name;
             Type = type;
+            DefaultValue = defaultValue;
             ListEntry = listEntry;
         }
         
         public bool ListEntry { get; }
 
-        /// <summary>
-        /// Returns the element identifier.
-        /// </summary>
-        /// <value>the element identifier in the encoded form</value>
         public VInt Identifier { get; }
 
-        /// <summary>
-        /// Returns the element name.
-        /// </summary>
-        /// <value>the element name or &lt;code&gt;null&lt;/code&gt; if the name is not known</value>
         public string? Name { get; }
 
-        /// <summary>
-        /// Returns the element type.
-        /// </summary>
-        /// <value>the element type or &lt;code&gt;null&lt;/code&gt; if the type is not known</value>
         public ElementType Type { get; }
+        
+        public string? DefaultValue { get; }
 
         public override int GetHashCode()
         {
@@ -79,16 +48,12 @@ namespace ActualChat.Audio.WebM
 
         public override bool Equals(object? obj)
         {
-            if (this == obj)
-            {
-                return true;
-            }
+            if (this == obj) return true;
+            
             if (obj is ElementDescriptor o2)
-            {
                 return Identifier.Equals(o2.Identifier)
-                    && Equals(Name, o2.Name)
-                    && Type == o2.Type;
-            }
+                       && Equals(Name, o2.Name)
+                       && Type == o2.Type;
             return false;
         }
 
@@ -98,14 +63,9 @@ namespace ActualChat.Audio.WebM
             return $"{Name}:{Type} - id:{Identifier}";
         }
 
-        /// <summary>
-        /// Returns a new descriptor with updated name.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
         public ElementDescriptor Named(string name)
         {
-            return new ElementDescriptor(Identifier, name, Type, ListEntry);
+            return new ElementDescriptor(Identifier, name, Type, DefaultValue, ListEntry);
         }
     }
 }
