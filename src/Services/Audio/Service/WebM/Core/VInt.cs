@@ -21,7 +21,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * */
 
 using System;
-using System.IO;
 using System.Runtime.CompilerServices;
 
 namespace ActualChat.Audio.WebM
@@ -147,44 +146,6 @@ namespace ActualChat.Audio.WebM
         {
             var size = (int)EbmlHelper.GetSize(value);
             return value > 0 ? new VInt((ulong)value, size) : new VInt((ulong)-value | (1UL << ((8*size) - 1)) , size);
-        }
-
-        public static VInt Read(Stream source, int maxLength, byte[]? buffer)
-        {
-            buffer ??= new byte[maxLength];
-
-            if (source.ReadFully(buffer, 0, 1) == 0) throw new EndOfStreamException();
-
-            if (buffer[0] == 0)
-                throw new EbmlDataFormatException("Length bigger than 8 is not supported");
-            // TODO handle EBMLMaxSizeWidth
-
-            var extraBytes = (buffer[0] & 0xf0) != 0
-                ? ExtraBytesSize[buffer[0] >> 4]
-                : 4 + ExtraBytesSize[buffer[0]];
-
-            if (extraBytes + 1 > maxLength)
-                throw new EbmlDataFormatException(
-                    $"Expected VInt with a max length of {maxLength}. Got {extraBytes + 1}");
-
-            if (source.ReadFully(buffer, 1, extraBytes) != extraBytes) throw new EndOfStreamException();
-
-            ulong encodedValue = buffer[0];
-            for (var i = 0; i < extraBytes; i++) encodedValue = (encodedValue << 8) | buffer[i + 1];
-            return new VInt(encodedValue, extraBytes + 1);
-        }
-
-        public int Write(Stream stream)
-        {
-            if (stream == null) throw new ArgumentNullException(nameof(stream));
-
-            var buffer = new byte[Length];
-
-            var p = Length;
-            for (var data = EncodedValue; --p >= 0; data >>= 8) buffer[p] = (byte)(data & 0xff);
-
-            stream.Write(buffer, 0, buffer.Length);
-            return buffer.Length;
         }
 
         public override int GetHashCode()
