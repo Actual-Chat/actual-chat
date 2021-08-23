@@ -181,49 +181,63 @@ namespace ActualChat.Audio.WebM.Models
         public override ulong GetSize() {
             var size = 0UL;
 <#
-        foreach (var sub in subs)
+        // TODO: HardCode unknown size for Segment and Cluster. Acccording to the spec Clusters should be child element of the segment, but it's not convinient for streaming.
+        if (master.Name == "Segment" || master.Name == "Cluster")
         {
-            string field = sub.Name;
-            if (sub.Name == "Tag")
-            {
-                field = "TagItem";
-            }
-            if (sub.Name == "ContentEncoding")
-            {
-                field = "ContentEncodingItem";
-            }
+#>
+            size = 0xFF_FFFF_FFFF_FFFF;
+<# 
+        }
+        else
+        {
 
-            var stringEncoding = string.Empty;
-            if (sub.ElementType == "string")
+            foreach (var sub in subs)
             {
-                stringEncoding = ", true";
-            }
-            else if (sub.ElementType == "utf-8")
-            {
-                stringEncoding = ", false";
-            }
-            
-            var name = Pluralize(sub, field);
+                string field = sub.Name;
+                if (sub.Name == "Tag")
+                {
+                    field = "TagItem";
+                }
+                if (sub.Name == "ContentEncoding")
+                {
+                    field = "ContentEncodingItem";
+                }
 
-            if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
-            {
-                string defaultOffset = "";
-                    if (master.Name != "EBML" && sub.Name != "TimestampScale" && sub.Name != "Channels" &&  sub.DefaultValue != null && sub.ElementType != "string" && !sub.DefaultValue.Contains("p"))
+                var stringEncoding = string.Empty;
+                if (sub.ElementType == "string")
+                {
+                    stringEncoding = ", true";
+                }
+                else if (sub.ElementType == "utf-8")
+                {
+                    stringEncoding = ", false";
+                }
+
+                var name = Pluralize(sub, field);
+
+
+                if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
+                {
+                    string defaultOffset = "";
+                    if (master.Name != "EBML" && sub.Name != "TimestampScale" && sub.Name != "Channels" &&
+                        sub.DefaultValue != null && sub.ElementType != "string" && !sub.DefaultValue.Contains("p"))
                     {
                         defaultOffset = "    ";
 #>
-            if (<#= name #> != <#=sub.DefaultValue#>)
+            if (<#= name #> != <#= sub.DefaultValue #>)
 <#
                     }
 #>
-            <#=defaultOffset#>size += EbmlHelper.GetElementSize(MatroskaSpecification.<#= sub.Name #>, <#= sub.Name == "TrackType" ? "(ulong?)" : ""#><#= name #><#= stringEncoding #>);
+            <#= defaultOffset #>size += EbmlHelper.GetElementSize(MatroskaSpecification.<#= sub.Name #>, <#=
+                            sub.Name == "TrackType" ? "(ulong?)" : "" #><#= name #><#= stringEncoding #>);
 <#
-            }
-            else
-            {
+                }
+                else
+                {
 #>
-            size += <#= name #><#= sub.Required ? "" : "?"#>.GetSize()<#= sub.Required ? "" : "?? 0UL"#>;
+            size += EbmlHelper.GetElementSize(MatroskaSpecification.<#= sub.Name #>, <#= name #>);
 <#
+                }
             }
         }
 #>
