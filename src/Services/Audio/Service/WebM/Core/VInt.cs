@@ -57,7 +57,7 @@ namespace ActualChat.Audio.WebM
 
         private VInt(ulong encodedValue, int length)
         {
-            if (length < 1 || length > 8)
+            if (length < 1 || (length > 8 && encodedValue != UnknownSizeValue))
                 throw new ArgumentOutOfRangeException(nameof(length));
 
             EncodedValue = encodedValue;
@@ -87,8 +87,11 @@ namespace ActualChat.Audio.WebM
             if (length < 0 || length > 8)
                 throw new ArgumentOutOfRangeException(nameof(length));
             
-            if (value == UnknownSizeValue && length <= 8)
-                return new VInt(value, length);
+            if (value == MaxValue)
+                return new VInt(UnknownSizeValue, 8);
+            
+            if (value == UnknownSizeValue)
+                return new VInt(value, 8);
                 
             if (value > MaxSizeValue)
                 throw new ArgumentException("Value exceed VInt capacity", nameof(value));

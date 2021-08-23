@@ -8,10 +8,16 @@ namespace ActualChat.Audio.WebM
         private SpanWriter _spanWriter;
         
 
-        public WebMWriter(Span<byte> span)
+        public WebMWriter(Span<byte> span, bool segmentHasUnknownSize = true, bool clusterHasUnknownSize = true)
         {
             _spanWriter = new SpanWriter(span);
+            
+            SegmentHasUnknownSize = segmentHasUnknownSize;
+            ClusterHasUnknownSize = clusterHasUnknownSize;
         }
+        
+        public bool SegmentHasUnknownSize { get; }
+        public bool ClusterHasUnknownSize { get; }
 
         public ReadOnlySpan<byte> Written => _spanWriter.Span[.._spanWriter.Position];
 
@@ -30,6 +36,5 @@ namespace ActualChat.Audio.WebM
             return false;
 
         }
-
     }
 }
