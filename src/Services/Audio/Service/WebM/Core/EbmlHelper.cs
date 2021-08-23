@@ -61,22 +61,13 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetSize(double value)
-        {
-            return 8;
-        }
-        
+        public static ulong GetSize(double value) => 8;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetSize(float value)
-        {
-            return 4;
-        }
-        
+        public static ulong GetSize(float value) => 4;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetSize(DateTime value)
-        {
-            return 8;
-        }
+        public static ulong GetSize(DateTime value) => 8;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(string value, bool isAscii)
@@ -108,121 +99,61 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, ulong value)
-        {
-            return GetSize(identifier) + GetSize(value) + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, ulong value) => GetSize(identifier) + GetSize(value) + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, ulong? value)
-        {
-            return value.HasValue ? GetElementSize(identifier, value.Value) : 0;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, ulong? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, long? value)
-        {
-            return value.HasValue ? GetElementSize(identifier, value.Value) : 0;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, long? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, long value)
-        {
-            return GetSize(identifier) + GetSize(value) + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, long value) => GetSize(identifier) + GetSize(value) + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, double value)
-        {
-            return GetSize(identifier) + GetSize(value) + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, double value) => GetSize(identifier) + GetSize(value) + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, double? value)
-        {
-            return value.HasValue ? GetElementSize(identifier, value.Value) : 0;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, double? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, float value)
-        {
-            return GetSize(identifier) + GetSize(value) + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, float value) => GetSize(identifier) + GetSize(value) + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, float? value)
-        {
-            return value.HasValue ? GetElementSize(identifier, value.Value) : 0;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, float? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, DateTime value)
-        {
-            return GetSize(identifier) + GetSize(value) + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, DateTime value) => GetSize(identifier) + GetSize(value) + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, DateTime? value)
-        {
-            return value.HasValue ? GetElementSize(identifier, value.Value) : 0;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, DateTime? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, byte[]? value)
-        {
-            return value == null ? 0UL : GetSize(identifier) + (ulong)value.Length + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, byte[]? value) => value == null ? 0UL : GetSize(identifier) + (ulong)value.Length + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, string? value, bool isAscii)
-        {
-            return value == null ? 0UL : GetSize(identifier) + GetSize(value, isAscii) + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, string? value, bool isAscii) => value == null ? 0UL : GetSize(identifier) + GetSize(value, isAscii) + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetMasterElementSize(ulong identifier, ulong size)
-        {
-            return GetSize(identifier) + GetCodedSize(size);
-        }
-        
+        public static ulong GetMasterElementSize(ulong identifier, ulong size) => GetSize(identifier) + GetCodedSize(size);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, BaseModel? value)
-        {
-            return value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, BaseModel? value) => value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, IReadOnlyList<BaseModel>? value)
-        {
-            return value?.Aggregate(0UL, (size, m) => size + GetElementSize(identifier, m)) ?? 0UL;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, IReadOnlyList<BaseModel>? value) => value?.Aggregate(0UL, (size, m) => size + GetElementSize(identifier, m)) ?? 0UL;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, IReadOnlyList<Block>? value)
-        {
-            return value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
-        }
-        
+        public static ulong GetElementSize(ulong identifier, IReadOnlyList<Block>? value) => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetElementSize(ulong identifier, IReadOnlyList<SimpleTag>? value)
-        {
-            return value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
-        }
-        
-        public static ulong GetSize(this IReadOnlyList<BaseModel>? list)
-        {
-            return list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
-        }
-        
-        public static ulong GetSize(this IReadOnlyList<Block>? list)
-        {
-            return list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
-        }
-        
-        public static ulong GetSize(this IReadOnlyList<SimpleTag>? list)
-        {
-            return list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
-        }
+        public static ulong GetElementSize(ulong identifier, IReadOnlyList<SimpleTag>? value) => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+
+        public static ulong GetSize(this IReadOnlyList<BaseModel>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+
+        public static ulong GetSize(this IReadOnlyList<Block>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+
+        public static ulong GetSize(this IReadOnlyList<SimpleTag>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlMasterElement(ulong identifier, ulong size, ref SpanWriter writer)
@@ -254,11 +185,8 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer)
-        {
-            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
-        }
-        
+        public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, long value, ref SpanWriter writer)
         {
@@ -274,11 +202,8 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer)
-        {
-            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
-        }
-        
+        public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, DateTime value, ref SpanWriter writer)
         {
@@ -290,10 +215,7 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer)
-        {
-            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
-        }
+        public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, double value, ref SpanWriter writer)
@@ -310,11 +232,8 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer)
-        {
-            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
-        }
-        
+        public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, float value, ref SpanWriter writer)
         {
@@ -341,11 +260,8 @@ namespace ActualChat.Audio.WebM
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer)
-        {
-            return value == null || WriteEbmlElement(identifier, value.Value, ref writer);
-        }
-        
+        public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, string? value, bool isAscii, ref SpanWriter writer)
         {
