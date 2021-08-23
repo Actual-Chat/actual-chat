@@ -80,7 +80,7 @@ namespace ActualChat.Audio.WebM
 
         
         
-        public double? ReadFloat(int size)
+        public float? ReadFloat(int size)
         {
             var num = ReadULong(size);
             if (!num.HasValue)
@@ -89,9 +89,10 @@ namespace ActualChat.Audio.WebM
             switch (size)
             {
                 case 4:
-                    return new Union { ULong = num.Value }.Float;
+                    return new Union { UInt = (uint)num.Value }.Float;
                 case 8:
-                    return new Union { ULong = num.Value }.Double;
+                    // return new Union { ULong = num.Value }.Double;
+                    throw new NotSupportedException("Unable to read double (8-byte length)");
                 default:
                     throw new EbmlDataFormatException("Incorrect float length");
             }
@@ -336,20 +337,6 @@ namespace ActualChat.Audio.WebM
             Position += size;
             
             return result;
-        }
-        
-        [StructLayout(LayoutKind.Explicit)]
-        private struct Union
-        {
-            [FieldOffset(0)]
-            public uint UInt;
-            [FieldOffset(0)]
-            public float Float;
-
-            [FieldOffset(0)]
-            public ulong ULong;
-            [FieldOffset(0)]
-            public double Double;
         }
     }
 }
