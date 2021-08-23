@@ -2,7 +2,7 @@ using System;
 using System.Text.Json.Serialization;
 using Stl.Collections;
 
-namespace ActualChat
+namespace ActualChat.Mathematics
 {
     [Serializable]
     public readonly struct LinearMap

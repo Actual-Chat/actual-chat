@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using Stl.Fusion;
+using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -11,15 +12,18 @@ namespace ActualChat.Chat
         Task<Chat?> TryGet(string chatId, CancellationToken cancellationToken = default);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPermissions> GetUserPermissions(
-            string chatId, string userId, CancellationToken cancellationToken = default);
-
-        [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetEntryCount(
-            string chatId, TimeRange? timeRange,
+            string chatId, LongRange? idRange,
             CancellationToken cancellationToken = default);
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<ChatPage> GetPage(
+            string chatId, LongRange idRange,
+            CancellationToken cancellationToken = default);
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<long> GetLastEntryId(string chatId, CancellationToken cancellationToken = default);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ImmutableList<ChatEntry>> GetTail(string chatId, CancellationToken cancellationToken = default);
+        Task<ChatPermissions> GetPermissions(
+            string chatId, string userId, CancellationToken cancellationToken = default);
     }
 }

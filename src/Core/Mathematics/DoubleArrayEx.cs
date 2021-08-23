@@ -1,6 +1,6 @@
 using System;
 
-namespace ActualChat
+namespace ActualChat.Mathematics
 {
     public static class DoubleArrayEx
     {
