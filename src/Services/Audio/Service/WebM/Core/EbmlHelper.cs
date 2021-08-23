@@ -298,9 +298,20 @@ namespace ActualChat.Audio.WebM
             if (writer.Position + (int)totalSize > writer.Length)
                 return false;
 
+            var size = GetSize(value);
             writer.Write(VInt.FromEncoded(identifier));
-            writer.Write(VInt.EncodeSize(GetSize(value)));
-            writer.Write(value);
+            writer.Write(VInt.EncodeSize(size));
+            if (size == 4) {
+                var uInt = new Union { Float = value }.UInt;
+                for (int i = 1; i <= 4; i++) {
+                    var bytes = 4 - i;
+                    var bits = bytes * 8;
+                    var bElement = (byte)((uInt >> bits) & 0xFFU);
+                    writer.Write(bElement);
+                }
+            }
+            else
+                throw new NotSupportedException("Unable to write double (8-byte length)");
 
             return true;
         }
