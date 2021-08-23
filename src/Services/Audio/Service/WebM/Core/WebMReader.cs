@@ -120,7 +120,9 @@ namespace ActualChat.Audio.WebM
                 }
                 
                 if (_element.Identifier.EncodedValue == MatroskaSpecification.Cluster) {
-                    LeaveContainer();
+                    if (_container.Identifier.EncodedValue != MatroskaSpecification.Cluster)
+                        LeaveContainer();
+                    
                     _entry = container;
                     _element = _container;
                     _spanReader.Position = beginPosition;
@@ -247,9 +249,6 @@ namespace ActualChat.Audio.WebM
             internal readonly EbmlElement ContainerElement;
             public readonly BaseModel Container;
 
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            public bool IsEmpty => Container == null;
-
             public State(bool resume, int position, int remaining, EbmlElement containerElement, BaseModel container)
             {
                 NotCompleted = resume;
@@ -258,6 +257,9 @@ namespace ActualChat.Audio.WebM
                 ContainerElement = containerElement;
                 Container = container;
             }
+
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            public bool IsEmpty => Container == null;
         }
     }
 }

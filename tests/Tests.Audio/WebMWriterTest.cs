@@ -26,7 +26,7 @@ namespace ActualChat.Tests
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
             using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
             var buffer = bufferLease.Memory;
-            var bytesRead =await inputStream.ReadAsync(buffer);
+            var bytesRead = await inputStream.ReadAsync(buffer);
 
             var (entry1, state1) = Parse(new WebMReader(buffer.Span));
             var (entry2, state2) = Parse(WebMReader.FromState(state1).WithNewSource(buffer.Span[state1.Position..]));
@@ -137,7 +137,7 @@ namespace ActualChat.Tests
                 
                 bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
             }
-            endPosition = Write(new WebMWriter(writeBuffer.Span), (IReadOnlyList<RootEntry>)new[]{ (RootEntry)currentState.Container });
+            endPosition = Write(new WebMWriter(writeBuffer.Span), new[]{ (RootEntry)currentState.Container! });
             await outputStream.WriteAsync(writeBuffer[..endPosition]);
             
             outputStream.Flush();
@@ -157,15 +157,6 @@ namespace ActualChat.Tests
                     success.Should().BeTrue();
                 }
                 return writer.Position;
-            }
-
-            void AssertBuffersAreSame(ReadOnlySpan<byte> read, ReadOnlySpan<byte> written, int endPosition)
-            {
-                var readSpan = read[..endPosition]; 
-                var writtenSpan = written[..endPosition]; 
-                for (int i = 0; i < endPosition; i++) {
-                    readSpan[i].Should().Be(writtenSpan[i], "should match at Index {0}", i);
-                }
             }
         }
 
