@@ -109,26 +109,26 @@ namespace ActualChat.Audio.WebM
         } 
     }).OrderBy(e => e.Path).ToList();
 #>
-        private static readonly Dictionary<VInt, ElementDescriptor> _elementDescriptorsByVInt = new(<#=elements.Count#>);
-        private static readonly Dictionary<ulong, ElementDescriptor> _elementDescriptorsByIdentifier = new(<#=elements.Count#>);
+        private static readonly Dictionary<VInt, EbmlElementDescriptor> _elementDescriptorsByVInt = new(<#=elements.Count#>);
+        private static readonly Dictionary<ulong, EbmlElementDescriptor> _elementDescriptorsByIdentifier = new(<#=elements.Count#>);
 
         /// <summary>
         /// Gets a dictionary of all Matroska elements.
         /// </summary>
-        public static IReadOnlyDictionary<VInt, ElementDescriptor> ElementDescriptors => _elementDescriptorsByVInt;
+        public static IReadOnlyDictionary<VInt, EbmlElementDescriptor> ElementDescriptors => _elementDescriptorsByVInt;
 
         /// <summary>
         /// Gets a dictionary of all Matroska elements.
         /// </summary>
-        public static IReadOnlyDictionary<ulong, ElementDescriptor> ElementDescriptorsByIdentifier => _elementDescriptorsByIdentifier;
+        public static IReadOnlyDictionary<ulong, EbmlElementDescriptor> ElementDescriptorsByIdentifier => _elementDescriptorsByIdentifier;
 
         static MatroskaSpecification()
         {
             var fields = typeof(MatroskaSpecification).GetFields(BindingFlags.Public | BindingFlags.Static);
 
-            foreach (FieldInfo field in fields.Where(ft => ft.FieldType == typeof(ElementDescriptor)))
+            foreach (FieldInfo field in fields.Where(ft => ft.FieldType == typeof(EbmlElementDescriptor)))
             {
-                var value = (ElementDescriptor)field.GetValue(null)!;
+                var value = (EbmlElementDescriptor)field.GetValue(null)!;
                 _elementDescriptorsByVInt.Add(value.Identifier, value);
             }
 
@@ -185,8 +185,8 @@ namespace ActualChat.Audio.WebM
 #>
         /// <summary><#=(element.Required ? "[Required] " : "")#><#=element.Documentation.Replace("\n", "").Replace("      ", "")#></summary>
         public const ulong <#=element.Name#> = <#=element.Id#>;
-        public static readonly ElementDescriptor <#=element.Name#>Descriptor
-            = new (<#=element.Name#>, nameof(<#=element.Name#>), ElementType.<#=elementType#>, <#= defaultValue#>, <#=element.IsList.ToString().ToLowerInvariant()#>);
+        public static readonly EbmlElementDescriptor <#=element.Name#>Descriptor
+            = new (<#=element.Name#>, nameof(<#=element.Name#>), EbmlElementType.<#=elementType#>, <#= defaultValue#>, <#=element.IsList.ToString().ToLowerInvariant()#>);
 
 <#
     }
