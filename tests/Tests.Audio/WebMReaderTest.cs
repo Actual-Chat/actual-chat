@@ -25,7 +25,7 @@ namespace ActualChat.Tests
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
             using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
             var buffer = bufferLease.Memory;
-            var bytesRead =await inputStream.ReadAsync(buffer);
+            var bytesRead = await inputStream.ReadAsync(buffer);
             
             bytesRead.Should().BeGreaterThan(3 * 1024);
 
