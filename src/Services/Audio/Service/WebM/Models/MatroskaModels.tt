@@ -80,6 +80,7 @@ namespace ActualChat.Audio.WebM.Models
             Level = e.Attribute("path").Value.Count(c => c == '\\'),
             Id = e.Attribute("id").Value,
             ElementType = e.Attribute("type").Value,
+            DefaultValue = e.Attribute("default")?.Value,
             Required = (e.Attribute("minOccurs") != null ? int.Parse(e.Attribute("minOccurs").Value) : 0) > 0,
             Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
         });
@@ -95,6 +96,7 @@ namespace ActualChat.Audio.WebM.Models
             Level = e.Attribute("path").Value.Count(c => c == '\\'),
             Id = e.Attribute("id").Value,
             ElementType = e.Attribute("type").Value,
+            DefaultValue = e.Attribute("default")?.Value,
             Required = (e.Attribute("minOccurs") != null ? int.Parse(e.Attribute("minOccurs").Value) : 0) > 0,
             Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
         });
@@ -110,6 +112,7 @@ namespace ActualChat.Audio.WebM.Models
             Level = 0,
             Id = "0x7FFF",
             ElementType = "None",
+            DefaultValue= null,
             Required = false,
             Documentation = "Unknown element"
         }
@@ -313,8 +316,16 @@ namespace ActualChat.Audio.WebM.Models
                 var name = Pluralize(sub, field);
                 if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
                 {
+                    string defaultOffset = "";
+                    if (master.Name != "EBML" &&  sub.DefaultValue != null && sub.ElementType != "string" && !sub.DefaultValue.Contains("p"))
+                    {
+                        defaultOffset = "    ";
 #>
-            EbmlHelper.WriteEbmlElement(MatroskaSpecification.<#= sub.Name #>, <#= sub.Name == "TrackType" ? "(ulong?)" : ""#>model.<#= name #><#= stringEncoding #>, ref writer);
+            if (model.<#= name #> != <#=sub.DefaultValue#>)
+<#
+                    }
+#>
+            <#=defaultOffset#>EbmlHelper.WriteEbmlElement(MatroskaSpecification.<#= sub.Name #>, <#= sub.Name == "TrackType" ? "(ulong?)" : ""#>model.<#= name #><#= stringEncoding #>, ref writer);
 <#
                 }
                 else
@@ -645,7 +656,13 @@ namespace ActualChat.Audio.WebM.Models
             fixRequired = " = null!;";
         }
 
-        return "public " + propertyType + " " + name + " { get; set; }" + fixRequired;
+        string defaultAssignment = "";
+        if (property.DefaultValue != null && propertyType != "string" && !property.DefaultValue.Contains("p"))
+        {
+            defaultAssignment = " = " + property.DefaultValue + ";";
+        }
+
+        return "public " + propertyType + " " + name + " { get; set; }" + fixRequired + defaultAssignment;
     }
 
     public string GetPropertyType(Element property, string field)
@@ -724,9 +741,10 @@ namespace ActualChat.Audio.WebM.Models
         public string Path;
         public string Id;
         public string ElementType;
+        public string? DefaultValue;
         public bool Required;
         public string Documentation;
-        public int Level;       
+        public int Level;
 
         public List<Element> SubElements = new List<Element>();
     }
