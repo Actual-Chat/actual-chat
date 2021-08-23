@@ -7,12 +7,12 @@ namespace ActualChat.Audio.WebM
     public ref struct WebMReader
     {
         private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
-        private readonly Stack<Element> _containers;
+        private readonly Stack<EbmlElement> _containers;
         
         private SpanReader _spanReader;
 
-        private Element _container;
-        private Element _element;
+        private EbmlElement _container;
+        private EbmlElement _element;
         private BaseModel _entry;
         private bool _resume;
 
@@ -22,10 +22,10 @@ namespace ActualChat.Audio.WebM
 
         public WebMReader(ReadOnlySpan<byte> span, uint maxBytesToRead)
         {
-            _container = new Element(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.UnknownDescriptor);
-            _element = Element.Empty;
+            _container = new EbmlElement(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.UnknownDescriptor);
+            _element = EbmlElement.Empty;
             _spanReader = new SpanReader(span);
-            _containers = new Stack<Element>(16);
+            _containers = new Stack<EbmlElement>(16);
             _entry = BaseModel.Empty;
             _resume = false;
         }
@@ -33,9 +33,9 @@ namespace ActualChat.Audio.WebM
         private WebMReader(State state, ReadOnlySpan<byte> span)
         {
             _container = state.ContainerElement;
-            _element = Element.Empty;
+            _element = EbmlElement.Empty;
             _spanReader = new SpanReader(span);
-            _containers = new Stack<Element>(16);
+            _containers = new Stack<EbmlElement>(16);
             _entry = state.Container;
             _resume = state.NotCompleted;
         }
@@ -44,7 +44,7 @@ namespace ActualChat.Audio.WebM
             null => EbmlEntryType.None,
             Cluster => EbmlEntryType.Cluster,
             Segment => EbmlEntryType.Segment,
-            EBML => EbmlEntryType.EBML,
+            EBML => EbmlEntryType.Ebml,
             _ => throw new InvalidOperationException()
         };
 
@@ -60,7 +60,7 @@ namespace ActualChat.Audio.WebM
             _ => throw new InvalidOperationException($"Entry should be of type {nameof(RootEntry)}, but currently it is {_entry.GetType().Name}")
         };
 
-        public ElementDescriptor CurrentDescriptor => _element.Descriptor;
+        public EbmlElementDescriptor CurrentDescriptor => _element.Descriptor;
 
         public ReadOnlySpan<byte> Tail => _spanReader.Tail;
 
@@ -88,7 +88,7 @@ namespace ActualChat.Audio.WebM
                 return false;
             }
             
-            return _element.Type != ElementType.MasterElement || ReadInternal();
+            return _element.Type != EbmlElementType.MasterElement || ReadInternal();
         }
 
         private bool ReadInternal(bool resume = false)
@@ -126,7 +126,7 @@ namespace ActualChat.Audio.WebM
                     _spanReader.Position = beginPosition;
                     return true;
                 }
-                if (_element.Descriptor.Type == ElementType.MasterElement) {
+                if (_element.Descriptor.Type == EbmlElementType.MasterElement) {
                     var complex = _element.Descriptor;
                     if (ReadInternal()) {
                         if (CurrentDescriptor.ListEntry)
@@ -183,7 +183,6 @@ namespace ActualChat.Audio.WebM
             return true;
         }
         
-        
         private bool ReadElement(int readUntil)
         {
             var identifier = _spanReader.ReadVInt(4);
@@ -205,30 +204,30 @@ namespace ActualChat.Audio.WebM
             if (_spanReader.Position + (int)sizeValue > eof) {
                 if (idValue.EncodedValue != MatroskaSpecification.Cluster &&
                     idValue.EncodedValue != MatroskaSpecification.Segment) {
-                    _element = new Element(idValue, UnknownSize, elementDescriptor!);
+                    _element = new EbmlElement(idValue, UnknownSize, elementDescriptor!);
                     return false;
                 }
                 if (sizeValue != UnknownSize) {
-                    _element = new Element(idValue, sizeValue, elementDescriptor!);
+                    _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
                     return false;
                 }
             }
             
-            _element = new Element(idValue, sizeValue, elementDescriptor!);
+            _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
          
             return true;
         }
         
         private void EnterContainer()
         {
-            if (_element.Type != ElementType.None && _element.Type != ElementType.MasterElement)
+            if (_element.Type != EbmlElementType.None && _element.Type != EbmlElementType.MasterElement)
                 throw new InvalidOperationException();
-            if (_element.Type == ElementType.MasterElement && _element.HasInvalidIdentifier)
+            if (_element.Type == EbmlElementType.MasterElement && _element.HasInvalidIdentifier)
                 throw new InvalidOperationException();
             
             _containers.Push(_container);
             _container = _element;
-            _element = Element.Empty;
+            _element = EbmlElement.Empty;
         }
         
         private bool LeaveContainer()
@@ -245,13 +244,13 @@ namespace ActualChat.Audio.WebM
             public readonly bool NotCompleted;
             public readonly int Position;
             public readonly int Remaining;
-            internal readonly Element ContainerElement;
+            internal readonly EbmlElement ContainerElement;
             public readonly BaseModel Container;
 
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             public bool IsEmpty => Container == null;
 
-            public State(bool resume, int position, int remaining, Element containerElement, BaseModel container)
+            public State(bool resume, int position, int remaining, EbmlElement containerElement, BaseModel container)
             {
                 NotCompleted = resume;
                 Position = position;

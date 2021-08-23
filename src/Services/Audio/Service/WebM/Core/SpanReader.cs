@@ -77,8 +77,6 @@ namespace ActualChat.Audio.WebM
         public long? ReadLong() => Read<long>();
 
         public ulong? ReadULong() => Read<ulong>();
-
-        
         
         public float? ReadFloat(int size)
         {
@@ -128,7 +126,6 @@ namespace ActualChat.Audio.WebM
         
         public string? ReadUtf8String(int size) => ReadString(Encoding.UTF8, size);
         
-       
         public decimal? ReadDecimal()
         {
             var length = sizeof(decimal);

@@ -158,7 +158,7 @@ namespace ActualChat.Audio
                         switch (reader.EbmlEntryType) {
                             case EbmlEntryType.None:
                                 throw new InvalidOperationException();
-                            case EbmlEntryType.EBML:
+                            case EbmlEntryType.Ebml:
                                 // TODO: add support of EBML Stream where multiple headers and segments can appear
                                 ebml = (EBML?)reader.Entry;
                                 break;

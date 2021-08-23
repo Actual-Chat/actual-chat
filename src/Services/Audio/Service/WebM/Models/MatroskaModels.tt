@@ -144,7 +144,7 @@ namespace ActualChat.Audio.WebM.Models
     [MatroskaElementDescriptor(MatroskaSpecification.<#=master.Name#>)]
     public sealed class <#=className#> : <#= master.IsRoot ? "RootEntry" : "BaseModel"#>
     {
-        public override ElementDescriptor Descriptor => MatroskaSpecification.<#=master.Name#>Descriptor;
+        public override EbmlElementDescriptor Descriptor => MatroskaSpecification.<#=master.Name#>Descriptor;
 
 <#
         var subs = master.SubElements.Where(sub => !sub.IsRoot);
@@ -367,9 +367,9 @@ namespace ActualChat.Audio.WebM.Models
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static BaseModel CreateInstance(this ElementDescriptor descriptor)
+        public static BaseModel CreateInstance(this EbmlElementDescriptor descriptor)
         {
-            if (descriptor.Type != ElementType.MasterElement)
+            if (descriptor.Type != EbmlElementType.MasterElement)
                 throw new InvalidOperationException("Can't create instances of non-master element");
 
             switch (descriptor.Identifier.EncodedValue) {
@@ -398,7 +398,7 @@ namespace ActualChat.Audio.WebM.Models
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillScalar(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, int size, ref SpanReader reader)
+        public static void FillScalar(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
 <#
@@ -428,7 +428,7 @@ namespace ActualChat.Audio.WebM.Models
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillComplex(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, BaseModel propertyModel)
+        public static void FillComplex(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
 <#
@@ -458,7 +458,7 @@ namespace ActualChat.Audio.WebM.Models
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void FillListEntry(this BaseModel model, ElementDescriptor containerDescriptor, ElementDescriptor descriptor, object listEntry)
+        public static void FillListEntry(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, object listEntry)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
 <#
@@ -505,9 +505,9 @@ namespace ActualChat.Audio.WebM.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void FillScalar(this <#= className #> model, ElementDescriptor descriptor, int size, ref SpanReader reader)
+        private static void FillScalar(this <#= className #> model, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
-            if (descriptor.Type == ElementType.MasterElement)
+            if (descriptor.Type == EbmlElementType.MasterElement)
                 throw new InvalidOperationException("Can't read master elements directly from the reader");
             
             switch (descriptor.Identifier.EncodedValue) {
@@ -559,10 +559,10 @@ namespace ActualChat.Audio.WebM.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void FillComplex(this <#= className #> model, ElementDescriptor descriptor, BaseModel propertyModel)
+        private static void FillComplex(this <#= className #> model, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
-            if (descriptor.Type != ElementType.MasterElement)
-                throw new InvalidOperationException("ElementDescriptor should have 'master' type");
+            if (descriptor.Type != EbmlElementType.MasterElement)
+                throw new InvalidOperationException("EbmlElementDescriptor should have 'master' type");
             
             switch (descriptor.Identifier.EncodedValue) {
 <#
@@ -602,10 +602,10 @@ namespace ActualChat.Audio.WebM.Models
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void FillListEntry(this <#= className #> model, ElementDescriptor descriptor, object listItem)
+        private static void FillListEntry(this <#= className #> model, EbmlElementDescriptor descriptor, object listItem)
         {
-            if (descriptor.Type != ElementType.MasterElement && descriptor.Type != ElementType.Binary)
-                throw new InvalidOperationException("ElementDescriptor should have 'master' or 'binary' type");
+            if (descriptor.Type != EbmlElementType.MasterElement && descriptor.Type != EbmlElementType.Binary)
+                throw new InvalidOperationException("EbmlElementDescriptor should have 'master' or 'binary' type");
             
             switch (descriptor.Identifier.EncodedValue) {
 <#
