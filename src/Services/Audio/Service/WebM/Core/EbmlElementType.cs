@@ -1,6 +1,6 @@
 namespace ActualChat.Audio.WebM
 {
-    public enum ElementType
+    public enum EbmlElementType
     {
         SignedInteger,
 

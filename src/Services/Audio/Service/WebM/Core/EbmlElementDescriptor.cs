@@ -3,21 +3,21 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.Audio.WebM
 {
-    public class ElementDescriptor
+    public class EbmlElementDescriptor
     {
-        public ElementDescriptor(ulong identifier, string name, ElementType type, string? defaultvalue, bool listEntry)
+        public EbmlElementDescriptor(ulong identifier, string name, EbmlElementType type, string? defaultvalue, bool listEntry)
             : this(VInt.FromEncoded(identifier), name, type, defaultvalue, listEntry)
         {
         }
 
-        public ElementDescriptor(long identifier, string name, ElementType type, string? defaultValue, bool listEntry)
+        public EbmlElementDescriptor(long identifier, string name, EbmlElementType type, string? defaultValue, bool listEntry)
             : this(VInt.FromEncoded((ulong)identifier), name, type, defaultValue, listEntry)
         {
         }
 
-        private ElementDescriptor(VInt identifier, string name, ElementType type,string? defaultValue, bool listEntry)
+        private EbmlElementDescriptor(VInt identifier, string name, EbmlElementType type,string? defaultValue, bool listEntry)
         {
-            if (!identifier.IsValidIdentifier && type != ElementType.None)
+            if (!identifier.IsValidIdentifier && type != EbmlElementType.None)
                 throw new ArgumentException("Value is not valid identifier", nameof(identifier));
 
             Identifier = identifier;
@@ -33,7 +33,7 @@ namespace ActualChat.Audio.WebM
 
         public string? Name { get; }
 
-        public ElementType Type { get; }
+        public EbmlElementType Type { get; }
         
         public string? DefaultValue { get; }
 
@@ -42,7 +42,7 @@ namespace ActualChat.Audio.WebM
             int result = 17;
             result = 37*result + Identifier.GetHashCode();
             result = 37*result + (Name == null ? 0 : Name.GetHashCode());
-            result = 37*result + (Type == ElementType.None ? 0 : Type.GetHashCode());
+            result = 37*result + (Type == EbmlElementType.None ? 0 : Type.GetHashCode());
             return result;
         }
 
@@ -50,7 +50,7 @@ namespace ActualChat.Audio.WebM
         {
             if (this == obj) return true;
             
-            if (obj is ElementDescriptor o2)
+            if (obj is EbmlElementDescriptor o2)
                 return Identifier.Equals(o2.Identifier)
                        && Equals(Name, o2.Name)
                        && Type == o2.Type;
@@ -63,9 +63,9 @@ namespace ActualChat.Audio.WebM
             return $"{Name}:{Type} - id:{Identifier}";
         }
 
-        public ElementDescriptor Named(string name)
+        public EbmlElementDescriptor Named(string name)
         {
-            return new ElementDescriptor(Identifier, name, Type, DefaultValue, ListEntry);
+            return new EbmlElementDescriptor(Identifier, name, Type, DefaultValue, ListEntry);
         }
     }
 }
