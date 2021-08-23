@@ -3,9 +3,6 @@ using System.IO;
 
 namespace ActualChat.Audio.WebM
 {
-    /// <summary>
-    ///     Thrown to indicate the EBML data format violation.
-    /// </summary>
     public class EbmlDataFormatException : IOException
     {
         public EbmlDataFormatException()
