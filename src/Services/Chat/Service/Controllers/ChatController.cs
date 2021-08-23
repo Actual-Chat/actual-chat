@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Server;
+using Stl.Time;
 
 namespace ActualChat.Chat.Controllers
 {
@@ -43,7 +44,27 @@ namespace ActualChat.Chat.Controllers
             => _chats.TryGet(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
-        public Task<ImmutableList<ChatEntry>> GetTail(Session session, string chatId, CancellationToken cancellationToken = default)
-            => _chats.GetTail(session, chatId, cancellationToken);
+        public Task<long> GetEntryCount(
+            Session session, string chatId, LongRange? idRange,
+            CancellationToken cancellationToken = default)
+            => _chats.GetEntryCount(session, chatId, idRange, cancellationToken);
+
+        [HttpGet, Publish]
+        public Task<ChatPage> GetPage(
+            Session session, string chatId, LongRange idRange,
+            CancellationToken cancellationToken = default)
+            => _chats.GetPage(session, chatId, idRange, cancellationToken);
+
+        [HttpGet, Publish]
+        public Task<long> GetLastEntryId(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default)
+            => _chats.GetLastEntryId(session, chatId, cancellationToken);
+
+        [HttpGet, Publish]
+        public Task<ChatPermissions> GetPermissions(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default)
+            => _chats.GetPermissions(session, chatId, cancellationToken);
     }
 }
