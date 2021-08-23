@@ -177,7 +177,5 @@ namespace ActualChat.Tests
             
             Out.WriteLine(uvalue.ToString("X"));
         }
-        
-
     }
 }
