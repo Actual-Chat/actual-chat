@@ -37,7 +37,7 @@ namespace ActualChat.Chat
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
             ChatIdGenerator = () => Ulid.NewUlid().ToString();
-            IdRangeCover = LongLogCover.Default;
+            IdRangeCover = LogCover.Default.Long;
         }
 
         // Commands
