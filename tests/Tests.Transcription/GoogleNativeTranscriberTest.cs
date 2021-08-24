@@ -2,19 +2,14 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using ActualChat.Audio;
-using ActualChat.Transcription;
-using FluentAssertions;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using Microsoft.Extensions.Logging.Abstractions;
 using NetBox.Extensions;
-using Stl.Serialization;
 using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Tests.Transcription
 {
     public class GoogleNativeTranscriberTest : TestBase
     {
@@ -22,7 +17,7 @@ namespace ActualChat.Tests
         {
         }
 
-        [Fact]
+        [Fact(Skip = "Manual")]
         public async Task GoogleRecognizeTest()
         {
             var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
@@ -39,8 +34,7 @@ namespace ActualChat.Tests
             Out.WriteLine(response.ToString());
         }
         
-        // [Fact(Skip = "Manual")]
-        [Fact]
+        [Fact(Skip = "Manual")]
         public async Task GoogleStreamedRecognizeTest()
         {
             var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
@@ -75,7 +69,7 @@ namespace ActualChat.Tests
             await writeTask;
         }
         
-        [Fact]
+        [Fact(Skip = "Manual")]
         public async Task GoogleMultiFileStreamedRecognizeTest()
         {
             var audio1 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "1.webm"));
