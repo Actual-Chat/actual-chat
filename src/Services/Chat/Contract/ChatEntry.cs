@@ -10,10 +10,14 @@ namespace ActualChat.Chat
         public Symbol CreatorId { get; init; }
         public Moment BeginsAt { get; init; }
         public Moment EndsAt { get; init; }
-        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-        public double Duration => (EndsAt - BeginsAt).TotalSeconds;
         public ChatContentType ContentType { get; init; }
         public string Content { get; init; } = "";
+        public string RecordingId { get; init; } = "";
+
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public double Duration => (EndsAt - BeginsAt).TotalSeconds;
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public bool IsRecording => !string.IsNullOrEmpty(RecordingId);
 
         public ChatEntry() : this("", 0) { }
     }
