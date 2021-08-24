@@ -45,13 +45,13 @@ namespace ActualChat.Chat.Controllers
 
         [HttpGet, Publish]
         public Task<long> GetEntryCount(
-            Session session, string chatId, LongRange? idRange,
+            Session session, string chatId, Range<long>? idRange,
             CancellationToken cancellationToken = default)
             => _chats.GetEntryCount(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPage> GetPage(
-            Session session, string chatId, LongRange idRange,
+            Session session, string chatId, Range<long> idRange,
             CancellationToken cancellationToken = default)
             => _chats.GetPage(session, chatId, idRange, cancellationToken);
 
