@@ -16,6 +16,7 @@ using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.Operations;
+using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -27,7 +28,7 @@ namespace ActualChat.Chat
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
         protected Func<string> ChatIdGenerator { get; init; }
-        protected LongLogCover IdRangeCover { get; init; }
+        protected ILogCover<long, long> IdRangeCover { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
@@ -123,7 +124,7 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<long> GetEntryCount(
-            Session session, string chatId, LongRange? idRange,
+            Session session, string chatId, Range<long>? idRange,
             CancellationToken cancellationToken = default)
         {
             var user = await Auth.GetUser(session, cancellationToken);
@@ -132,7 +133,7 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<long> GetEntryCount(
-            string chatId, LongRange? idRange,
+            string chatId, Range<long>? idRange,
             CancellationToken cancellationToken = default)
         {
             await using var dbContext = CreateDbContext();
@@ -141,8 +142,7 @@ namespace ActualChat.Chat
 
             if (idRange.HasValue) {
                 var idRangeValue = idRange.GetValueOrDefault();
-                if (!IdRangeCover.IsValidSpan(idRangeValue))
-                    throw new InvalidOperationException($"Invalid {nameof(idRange)}.");
+                IdRangeCover.AssertValidRange(idRangeValue);
                 dbMessages = dbMessages.Where(m =>
                     m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
             }
@@ -151,7 +151,7 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<ChatPage> GetPage(
-            Session session, string chatId, LongRange idRange, CancellationToken cancellationToken = default)
+            Session session, string chatId, Range<long> idRange, CancellationToken cancellationToken = default)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
@@ -159,7 +159,7 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<ChatPage> GetPage(
-            string chatId, LongRange idRange, CancellationToken cancellationToken = default)
+            string chatId, Range<long> idRange, CancellationToken cancellationToken = default)
         {
             await using var dbContext = CreateDbContext();
             var dbEntries = await dbContext.ChatEntries.AsQueryable()
@@ -168,7 +168,11 @@ namespace ActualChat.Chat
                 .OrderBy(m => m.Id)
                 .ToListAsync(cancellationToken);
             var entries = dbEntries.Select(m => m.ToModel()).ToImmutableArray();
-            return new ChatPage() { Entries = entries };
+            var timeRange = new Range<Moment>(entries.Min(e => e.BeginsAt), entries.Max(e => e.EndsAt));
+            return new ChatPage() {
+                Entries = entries,
+                TimeRange = timeRange,
+            };
         }
 
         public async Task<long> GetLastEntryId(
@@ -237,7 +241,7 @@ namespace ActualChat.Chat
         {
             if (!isUpdate)
                 GetEntryCount(chatId, null, default).Ignore();
-            foreach (var idRange in IdRangeCover.GetSpans(chatEntryId)) {
+            foreach (var idRange in IdRangeCover.GetRanges(chatEntryId)) {
                 GetPage(chatId, idRange, default).Ignore();
                 if (!isUpdate)
                     GetEntryCount(chatId, idRange, default).Ignore();

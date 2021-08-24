@@ -13,11 +13,11 @@ namespace ActualChat.Chat
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetEntryCount(
-            string chatId, LongRange? idRange,
+            string chatId, Range<long>? idRange,
             CancellationToken cancellationToken = default);
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPage> GetPage(
-            string chatId, LongRange idRange,
+            string chatId, Range<long> idRange,
             CancellationToken cancellationToken = default);
         [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetLastEntryId(string chatId, CancellationToken cancellationToken = default);
