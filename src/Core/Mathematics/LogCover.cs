@@ -1,19 +1,23 @@
 using System;
 using System.Collections.Generic;
+using ActualChat.Mathematics.Internal;
 using Stl;
+using Stl.Time;
 
 namespace ActualChat.Mathematics
 {
-    public interface ILogCover<TPoint, TSize>
+    public abstract class LogCover<TPoint, TSize>
         where TPoint : notnull
         where TSize : notnull
     {
-        public TPoint Zero { get; }
-        public TSize MinRangeSize { get; }
-        public TSize MaxRangeSize { get; }
-        public int RangeSizeFactor { get; }
-        public TSize[] RangeSizes { get; }
-        public ISizeMeasure<TPoint, TSize> SizeMeasure { get; }
+        private TSize[]? _rangeSizes;
+
+        public TPoint Zero { get; init; } = default!;
+        public TSize MinRangeSize { get; init; } = default!;
+        public TSize MaxRangeSize { get; init; } = default!;
+        public int RangeSizeFactor { get; init; } = 4;
+        public SizeMeasure<TPoint, TSize> Measure { get; init; } = null!;
+        public TSize[] RangeSizes => _rangeSizes ??= GetRangeSizes();
 
         public void AssertValidRange(Range<TPoint> range)
         {
@@ -21,9 +25,9 @@ namespace ActualChat.Mathematics
                 throw new NotSupportedException("Invalid range boundaries.");
         }
 
-        public bool IsValidRange(Range<TPoint> range)
+        public virtual bool IsValidRange(Range<TPoint> range)
         {
-            var sizeMeasure = SizeMeasure;
+            var sizeMeasure = Measure;
             var size = sizeMeasure.GetDistance(range);
             for (var i = 0; i < RangeSizes.Length; i++) {
                 var rangeSize = RangeSizes[i];
@@ -35,17 +39,17 @@ namespace ActualChat.Mathematics
             return false;
         }
 
-        public TPoint GetRangeStart(TPoint innerPoint, int rangeSizeIndex)
+        public virtual TPoint GetRangeStart(TPoint innerPoint, int rangeSizeIndex)
         {
-            var sizeMeasure = SizeMeasure;
+            var sizeMeasure = Measure;
             var size = RangeSizes[rangeSizeIndex];
             var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, innerPoint), size);
             return sizeMeasure.SubtractOffset(innerPoint, offset);
         }
 
-        public IEnumerable<Range<TPoint>> GetRanges(TPoint innerPoint)
+        public virtual IEnumerable<Range<TPoint>> GetRanges(TPoint innerPoint)
         {
-            var sizeMeasure = SizeMeasure;
+            var sizeMeasure = Measure;
             foreach (var size in RangeSizes) {
                 var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, innerPoint), size);
                 var start = sizeMeasure.SubtractOffset(innerPoint, offset);
@@ -53,9 +57,9 @@ namespace ActualChat.Mathematics
             }
         }
 
-        public Option<Range<TPoint>> TryGetRange(Range<TPoint> innerRange)
+        public virtual Option<Range<TPoint>> TryGetRange(Range<TPoint> innerRange)
         {
-            var sizeMeasure = SizeMeasure;
+            var sizeMeasure = Measure;
             var comparer = Comparer<TSize>.Default;
 
             var minSize = sizeMeasure.GetDistance(innerRange);
@@ -67,6 +71,7 @@ namespace ActualChat.Mathematics
                 var size = RangeSizes[i];
                 if (comparer.Compare(size, minSize) > 0) {
                     var start = GetRangeStart(innerRange.Start, i);
+                    // ~ if (start + size >= innerRange.End) ...
                     if (comparer.Compare(size, sizeMeasure.GetDistance(start, innerRange.End)) >= 0)
                         return Option.Some<Range<TPoint>>((start, sizeMeasure.AddOffset(start, size)));
                 }
@@ -78,5 +83,26 @@ namespace ActualChat.Mathematics
             => TryGetRange(innerRange).IsSome(out var value)
                 ? value
                 : throw new ArgumentOutOfRangeException(nameof(innerRange));
+
+        // Protected methods
+
+        protected abstract TSize[] GetRangeSizes();
+    }
+
+    public static class LogCover
+    {
+        public static class Default
+        {
+            public static LogCover<long, long> Long { get; } = new LongLogCover();
+            public static LogCover<double, double> Double { get; } = new DoubleLogCover();
+            public static LogCover<Moment, TimeSpan> Moment { get; } = new MomentLogCover();
+        }
+
+        public static ConvertingLogCover<TPoint, TSize> New<TPoint, TSize>(
+            DoubleLogCover baseCover,
+            ConvertingSizeMeasure<TPoint, TSize> sizeMeasure)
+            where TPoint : notnull
+            where TSize : notnull
+            => new(baseCover, sizeMeasure);
     }
 }
