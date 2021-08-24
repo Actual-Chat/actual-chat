@@ -9,7 +9,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="bunit" Version="1.2.49" />
+      <PackageReference Include="bunit" />
     </ItemGroup>
 
 </Project>
