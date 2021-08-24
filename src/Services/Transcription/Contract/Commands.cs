@@ -40,4 +40,6 @@ namespace ActualChat.Transcription
     {
         public PollTranscriptionCommand() : this(Symbol.Empty, default) { }
     }
+
+    public record PollResult(bool ContinuePolling, ImmutableArray<TranscriptFragmentVariant> Fragments);
 }

@@ -1,14 +1,13 @@
 using System;
+using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Audio;
 using ActualChat.Transcription;
 using FluentAssertions;
-using Google.Cloud.Speech.V1P1Beta1;
-using Google.Protobuf;
 using Microsoft.Extensions.Logging.Abstractions;
-using NetBox.Extensions;
 using Stl.Serialization;
 using Stl.Testing;
 using Xunit;
@@ -69,135 +68,71 @@ namespace ActualChat.Tests.Transcription
                 }
             };
             var transcriptId = await transcriber.BeginTranscription(command);
-            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
-            await transcriber.AppendTranscription(new AppendTranscriptionCommand {
-                TranscriptId = transcriptId,
-                Data = new Base64Encoded(audioBytes)
-            });
+            var feedTask = FeedTranscriber(transcriber);
+            var cts = new CancellationTokenSource();
+            var pollTask = PollResults(transcriber, cts.Token);
 
-
-            // for (int i = 0; i < 100; i++) {
-            //     await Task.Delay(100);
-            //
-            //     var result = await transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, 0));
-            //     Out.WriteLine(result.Length.ToString());
-            // }
+            await feedTask;
+            //     
 
             await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
+            
+            
 
-            // result.Should().NotBeNull();
-            // result.Length.Should().BePositive();
+            await pollTask;
 
-            // Out.WriteLine(result[0].Speech!.Text);
-        }
 
-        [Fact]
-        public async Task GoogleRecognizeTest()
-        {
-            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
-            var audio = RecognitionAudio.FromBytes(audioBytes);
-            var client = await SpeechClient.CreateAsync();
-            var config = new RecognitionConfig
+            async Task FeedTranscriber(ITranscriber t)
             {
-                Encoding = RecognitionConfig.Types.AudioEncoding.WebmOpus,
-                SampleRateHertz = 48000,
-                LanguageCode = LanguageCodes.Russian.Russia,
-                EnableAutomaticPunctuation = true
-            };
-            var response = await client.RecognizeAsync(config, audio);
-            Out.WriteLine(response.ToString());
-        }
-
-        // [Fact(Skip = "Manual")]
-        [Fact]
-        public async Task GoogleStreamedRecognizeTest()
-        {
-            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"));
-            var client = await SpeechClient.CreateAsync();
-            var config = new RecognitionConfig
-            {
-                Encoding = RecognitionConfig.Types.AudioEncoding.WebmOpus,
-                SampleRateHertz = 48000,
-                LanguageCode = LanguageCodes.Russian.Russia,
-                EnableAutomaticPunctuation = true,
-                EnableWordConfidence = true,
-                EnableWordTimeOffsets = true
-            };
-            var streamingRecognize = client.StreamingRecognize();
-            await streamingRecognize.WriteAsync(new StreamingRecognizeRequest {
-                StreamingConfig = new StreamingRecognitionConfig {
-                    Config = config,
-                    InterimResults = true,
-                    SingleUtterance = false
-                }
-            });
-
-            var writeTask = WriteToStream(streamingRecognize, audioBytes);
-
-            await foreach (var response in streamingRecognize.GetResponseStream()) {
-                if (response.Error != null)
-                    Out.WriteLine(response.Error.Message);
-                else
-                    Out.WriteLine(response.ToString());
-            }
-
-            await writeTask;
-        }
-
-        [Fact]
-        public async Task GoogleMultiFileStreamedRecognizeTest()
-        {
-            var audio1 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "1.webm"));
-            var audio2 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "2.webm"));
-            var audio3 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "3.webm"));
-            var audio4 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "4.webm"));
-            var audio56 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "56.webm"));
-            var audio789 = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "789.webm"));
-            var audioboy = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "boy.webm"));
-            var client = await SpeechClient.CreateAsync();
-            var config = new RecognitionConfig
-            {
-                Encoding = RecognitionConfig.Types.AudioEncoding.WebmOpus,
-                SampleRateHertz = 48000,
-                LanguageCode = LanguageCodes.Russian.Russia,
-                EnableAutomaticPunctuation = true,
-                EnableWordConfidence = true,
-                EnableWordTimeOffsets = true
-            };
-            var streamingRecognize = client.StreamingRecognize();
-            await streamingRecognize.WriteAsync(new StreamingRecognizeRequest {
-                StreamingConfig = new StreamingRecognitionConfig {
-                    Config = config,
-                    InterimResults = true,
-                    SingleUtterance = false
-                }
-            });
-
-            var writeTask = WriteToStream(streamingRecognize, audio1,audio2,audio3,audio4,audio56,audio789,audioboy);
-
-            await foreach (var response in streamingRecognize.GetResponseStream()) {
-                if (response.Error != null)
-                    Out.WriteLine(response.Error.Message);
-                else
-                    Out.WriteLine(response.ToString());
-            }
-
-            await writeTask;
-        }
-
-        private async Task WriteToStream(SpeechClient.StreamingRecognizeStream stream,  params byte[][] byteArrays)
-        {
-            foreach (var bytes in byteArrays) {
-                foreach (var chunk in bytes.Chunk(200)) {
-                    await Task.Delay(30);
-                    await stream.WriteAsync(new StreamingRecognizeRequest {
-                        AudioContent = ByteString.CopyFrom(chunk.ToArray())
+                await foreach (var chunk in ReadAudioFileSimulatingSpeech())
+                    await t.AppendTranscription(new AppendTranscriptionCommand {
+                        TranscriptId = transcriptId,
+                        Data = chunk
                     });
-                }
             }
+        
 
-            await stream.WriteCompleteAsync();
+            async Task PollResults(ITranscriber t, CancellationToken token)
+            {
+                var index = 0;
+                while (true) {
+                    if (token.IsCancellationRequested)
+                        break;
+            
+                    var result = await t.PollTranscription(new PollTranscriptionCommand(transcriptId, index), token);
+                    if (!result.ContinuePolling)
+                        break;
+            
+                    Out.WriteLine("Result:");
+                    foreach (var fragmentVariant in result.Fragments) {
+                        if (index < fragmentVariant.Value!.Index)
+                            index = fragmentVariant.Value!.Index;
+                        
+                        Out.WriteLine(fragmentVariant.ToString());
+                        if (fragmentVariant.Speech is { IsFinal: true }) 
+                            break;
+                    }
+        
+
+                    index++;
+                }
+            
+            
+            }
+        }
+
+        private async IAsyncEnumerable<Base64Encoded> ReadAudioFileSimulatingSpeech()
+        {
+            await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+            var buffer = bufferLease.Memory;
+            var bytesRead = await inputStream.ReadAsync(buffer);
+            while (bytesRead > 0) {
+                await Task.Delay(320);
+                
+                yield return new Base64Encoded(buffer[..bytesRead].ToArray());
+                bytesRead = await inputStream.ReadAsync(buffer);
+            }
         }
     }
 }
-

@@ -15,7 +15,8 @@ namespace ActualChat.Transcription
 
         public Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task<ImmutableArray<TranscriptFragmentVariant>> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<PollResult> PollTranscription(PollTranscriptionCommand command,
+            CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
         public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
