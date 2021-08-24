@@ -11,7 +11,7 @@ using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Tests.Audio
 {
     public class WebMReaderTest : TestBase
     {
@@ -26,7 +26,7 @@ namespace ActualChat.Tests
             using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
             var buffer = bufferLease.Memory;
             var bytesRead = await inputStream.ReadAsync(buffer);
-            
+
             bytesRead.Should().BeGreaterThan(3 * 1024);
 
             var entries = Parse(buffer.Span[..bytesRead]).ToList();
@@ -38,7 +38,7 @@ namespace ActualChat.Tests
             entries[2].As<Cluster>().SimpleBlocks.Should().HaveCount(10);
             entries[2].As<Cluster>().SimpleBlocks.Should().NotContainNulls();
         }
-        
+
         [Fact]
         public async Task ReaderSmallBufferTest()
         {
@@ -46,15 +46,15 @@ namespace ActualChat.Tests
             using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
             var buffer = bufferLease.Memory;
             var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
-            
+
             var entries = Parse(buffer.Span[..0x26]).ToList();
             entries.Should().HaveCount(2);
             entries.Should().NotContainNulls();
             entries[0].Should().BeOfType<EBML>();
             entries[1].Should().BeOfType<EBML>();
         }
-        
-        
+
+
         [Fact]
         public async Task SequentalBlockReaderTest()
         {
@@ -65,7 +65,7 @@ namespace ActualChat.Tests
             var buffer2 = bufferLease2.Memory;
             var bytesRead1 = await inputStream.ReadAsync(buffer1);
             var bytesRead2 = await inputStream.ReadAsync(buffer2);
-            
+
             bytesRead1.Should().BeGreaterThan(3 * 1024);
             bytesRead2.Should().BeGreaterThan(3 * 1024);
 
@@ -83,19 +83,19 @@ namespace ActualChat.Tests
         {
             var result = new List<BaseModel>();
             var reader = new WebMReader(span);
-            while (reader.Read()) 
+            while (reader.Read())
                 result.Add(reader.Entry);
             result.Add(reader.Entry);
             return result;
         }
-        
+
         private List<BaseModel> Parse(Span<byte> span1, Span<byte> span2)
         {
             var result = new List<BaseModel>();
             var reader = new WebMReader(span1);
-            while (reader.Read()) 
+            while (reader.Read())
                 result.Add(reader.Entry);
-            
+
             // using var bufferLease1 = MemoryPool<byte>.Shared.Rent(3 * 1024);
             if (!reader.Tail.IsEmpty) {
                 using var bufferLease = MemoryPool<byte>.Shared.Rent(span2.Length + reader.Tail.Length);
@@ -106,7 +106,7 @@ namespace ActualChat.Tests
             }
             else
                 reader = reader.WithNewSource(span2);
-            while (reader.Read()) 
+            while (reader.Read())
                 result.Add(reader.Entry);
             result.Add(reader.Entry);
             return result;

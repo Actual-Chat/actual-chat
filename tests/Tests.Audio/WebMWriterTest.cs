@@ -12,14 +12,14 @@ using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Tests.Audio
 {
     public class WebMWriterTest : TestBase
     {
         public WebMWriterTest(ITestOutputHelper @out) : base(@out)
         {
         }
-        
+
         [Fact]
         public async Task BasicWriterTest()
         {
@@ -36,10 +36,10 @@ namespace ActualChat.Tests
             var writeBuffer = writeBufferLease.Memory;
             var (ebmlWritten, position1) = Write(new WebMWriter(writeBuffer.Span), entry1);
             ebmlWritten.Should().BeTrue();
-            
+
             var (segmentWritten, position2) = Write(new WebMWriter(writeBuffer.Span[position1..]), entry2);
             segmentWritten.Should().BeTrue();
-            
+
             var (clusterWritten, position3) = Write(new WebMWriter(writeBuffer.Span[(position1+position2)..]), entry3);
             clusterWritten.Should().BeTrue();
 
@@ -68,25 +68,25 @@ namespace ActualChat.Tests
             WebMReader.State currentState = default;
             var bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Position..]);
             while(bytesRead > 0) {
-                var (elements, state) 
-                    = Parse(currentState.IsEmpty 
-                        ? new WebMReader(readBuffer.Span[..bytesRead]) 
+                var (elements, state)
+                    = Parse(currentState.IsEmpty
+                        ? new WebMReader(readBuffer.Span[..bytesRead])
                         : WebMReader.FromState(currentState).WithNewSource(readBuffer.Span[..(currentState.Remaining + bytesRead)]));
                 currentState = state;
 
                 var endPosition = Write(new WebMWriter(writeBuffer.Span), elements);
-                
+
                 AssertBuffersAreSame(readBuffer.Span, writeBuffer.Span, endPosition);
 
                 readBuffer.Slice(currentState.Position, currentState.Remaining).CopyTo(readBuffer[..currentState.Remaining]);
-                
+
                 bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
             }
-            
+
             (IReadOnlyList<RootEntry>, WebMReader.State) Parse(WebMReader reader)
             {
                 var result = new List<RootEntry>();
-                while (reader.Read()) 
+                while (reader.Read())
                     result.Add(reader.Entry);
                 return (result, reader.GetState());
             }
@@ -102,14 +102,14 @@ namespace ActualChat.Tests
 
             void AssertBuffersAreSame(ReadOnlySpan<byte> read, ReadOnlySpan<byte> written, int endPosition)
             {
-                var readSpan = read[..endPosition]; 
-                var writtenSpan = written[..endPosition]; 
+                var readSpan = read[..endPosition];
+                var writtenSpan = written[..endPosition];
                 for (int i = 0; i < endPosition; i++) {
                     readSpan[i].Should().Be(writtenSpan[i], "should match at Index {0}", i);
                 }
             }
         }
-        
+
         [Fact]
         public async Task ReadWriteToFileTest()
         {
@@ -123,29 +123,29 @@ namespace ActualChat.Tests
             var bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Position..]);
             int endPosition = 0;
             while(bytesRead > 0) {
-                var (elements, state) 
-                    = Parse(currentState.IsEmpty 
-                        ? new WebMReader(readBuffer.Span[..bytesRead]) 
+                var (elements, state)
+                    = Parse(currentState.IsEmpty
+                        ? new WebMReader(readBuffer.Span[..bytesRead])
                         : WebMReader.FromState(currentState).WithNewSource(readBuffer.Span[..(currentState.Remaining + bytesRead)]));
                 currentState = state;
 
                 endPosition = Write(new WebMWriter(writeBuffer.Span), elements);
 
                 await outputStream.WriteAsync(writeBuffer[..endPosition]);
-                
+
                 readBuffer.Slice(currentState.Position, currentState.Remaining).CopyTo(readBuffer[..currentState.Remaining]);
-                
+
                 bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
             }
             endPosition = Write(new WebMWriter(writeBuffer.Span), new[]{ (RootEntry)currentState.Container! });
             await outputStream.WriteAsync(writeBuffer[..endPosition]);
-            
+
             outputStream.Flush();
-            
+
             (IReadOnlyList<RootEntry>, WebMReader.State) Parse(WebMReader reader)
             {
                 var result = new List<RootEntry>();
-                while (reader.Read()) 
+                while (reader.Read())
                     result.Add(reader.Entry);
                 return (result, reader.GetState());
             }
@@ -165,7 +165,7 @@ namespace ActualChat.Tests
         {
             long value = -300;
             ulong uvalue = (ulong)Math.Abs(value) | (1UL << (8*3 - 1));
-            
+
             Out.WriteLine(uvalue.ToString("X"));
         }
     }
