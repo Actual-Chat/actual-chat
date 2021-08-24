@@ -15,7 +15,7 @@ namespace ActualChat.Tests
         [Fact]
         public void MomentLogCoverTest()
         {
-            var c = MomentLogCover.Default;
+            var c = LogCover.Default.Moment;
             c.MinRangeSize.Should().Be(TimeSpan.FromMinutes(3));
             c.RangeSizeFactor.Should().Be(4);
             c.RangeSizes.First().Should().Be(c.MinRangeSize);
@@ -36,7 +36,7 @@ namespace ActualChat.Tests
         [Fact]
         public void LongLogCoverTest()
         {
-            var c = LongLogCover.Default;
+            var c = LogCover.Default.Long;
             c.MinRangeSize.Should().Be(16);
             c.RangeSizeFactor.Should().Be(4);
             c.RangeSizes.First().Should().Be(c.MinRangeSize);

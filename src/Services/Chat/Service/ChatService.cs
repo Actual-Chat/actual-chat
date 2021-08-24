@@ -28,7 +28,7 @@ namespace ActualChat.Chat
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
         protected Func<string> ChatIdGenerator { get; init; }
-        protected ILogCover<long, long> IdRangeCover { get; init; }
+        protected LogCover<long, long> IdRangeCover { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
