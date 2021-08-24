@@ -4,7 +4,7 @@ using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Tests.Audio
 {
     public class VIntTests : TestBase
     {
@@ -19,7 +19,7 @@ namespace ActualChat.Tests
             vint.Length.Should().Be(1);
             vint.EncodedValue.Should().Be(0x9FUL);
         }
-        
+
         [Fact]
         public void EncodeSizeTwoBytesTest()
         {
@@ -27,7 +27,7 @@ namespace ActualChat.Tests
             vint.Length.Should().Be(2);
             vint.EncodedValue.Should().Be(0x726E);
         }
-        
+
         [Fact]
         public void EncodeSizeThreeBytesTest()
         {

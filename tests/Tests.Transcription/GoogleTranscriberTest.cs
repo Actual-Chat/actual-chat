@@ -14,7 +14,7 @@ using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Tests.Transcription
 {
     public class GoogleTranscriberTest : TestBase
     {
@@ -47,7 +47,7 @@ namespace ActualChat.Tests
             transcriptId.Should().NotBeNull();
             transcriptId.Value.Should().NotBeNullOrEmpty();
         }
-        
+
         [Fact]
         public async Task BasicTranscriptionTest()
         {
@@ -78,16 +78,16 @@ namespace ActualChat.Tests
 
             // for (int i = 0; i < 100; i++) {
             //     await Task.Delay(100);
-            //     
+            //
             //     var result = await transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, 0));
             //     Out.WriteLine(result.Length.ToString());
             // }
 
             await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
-            
+
             // result.Should().NotBeNull();
             // result.Length.Should().BePositive();
-            
+
             // Out.WriteLine(result[0].Speech!.Text);
         }
 
@@ -107,7 +107,7 @@ namespace ActualChat.Tests
             var response = await client.RecognizeAsync(config, audio);
             Out.WriteLine(response.ToString());
         }
-        
+
         // [Fact(Skip = "Manual")]
         [Fact]
         public async Task GoogleStreamedRecognizeTest()
@@ -131,9 +131,9 @@ namespace ActualChat.Tests
                     SingleUtterance = false
                 }
             });
-            
+
             var writeTask = WriteToStream(streamingRecognize, audioBytes);
-            
+
             await foreach (var response in streamingRecognize.GetResponseStream()) {
                 if (response.Error != null)
                     Out.WriteLine(response.Error.Message);
@@ -143,7 +143,7 @@ namespace ActualChat.Tests
 
             await writeTask;
         }
-        
+
         [Fact]
         public async Task GoogleMultiFileStreamedRecognizeTest()
         {
@@ -172,9 +172,9 @@ namespace ActualChat.Tests
                     SingleUtterance = false
                 }
             });
-            
+
             var writeTask = WriteToStream(streamingRecognize, audio1,audio2,audio3,audio4,audio56,audio789,audioboy);
-            
+
             await foreach (var response in streamingRecognize.GetResponseStream()) {
                 if (response.Error != null)
                     Out.WriteLine(response.Error.Message);

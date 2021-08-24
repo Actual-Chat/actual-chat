@@ -1,16 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
-    <RootNamespace>$(BaseName).Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Core.csproj" />
-    <ProjectReference Include="..\..\src\Blobs\Blobs.csproj" />
-    <ProjectReference Include="..\..\src\Db\Db.csproj" />
     <ProjectReference Include="..\..\src\Services\Audio\Contract\Contract.csproj" />
     <ProjectReference Include="..\..\src\Services\Audio\Service\Service.csproj" />
+    <ProjectReference Include="..\..\src\Testing\Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
