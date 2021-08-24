@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using Stl.Async;
+using Stl.Channels;
 using Stl.Text;
 
 namespace ActualChat.Transcription
@@ -52,7 +54,7 @@ namespace ActualChat.Transcription
             });
             var transcriptId = $"{recordingId}-{Ulid.NewUlid().ToString()}";
             var responseStream =  streamingRecognizeStream.GetResponseStream();
-            var reader = new TranscriptionBuffer(responseStream);
+            var reader = new TranscriptionBuffer(responseStream, _log);
             var cts = new CancellationTokenSource();
             reader.Start(cts.Token).ContinueWith(t
                 => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
@@ -94,15 +96,16 @@ namespace ActualChat.Transcription
             }
         }
 
-        public Task<ImmutableArray<TranscriptFragmentVariant>> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default)
+        public async Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default)
         {
             var (transcriptId, index) = command;
             _log.LogInformation($"{nameof(PollTranscription)}, TranscriptId = {{TranscriptId}}, Index = {{Index}}", transcriptId, index);
 
             if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream))
-                return Task.FromResult(ImmutableArray<TranscriptFragmentVariant>.Empty);
+                return new PollResult(false, ImmutableArray<TranscriptFragmentVariant>.Empty);
 
-            return Task.FromResult(transcriptionStream.Reader.GetResults(index));
+            var fragments = await transcriptionStream.Reader.GetResults(index, cancellationToken);
+            return new PollResult(true, fragments);
         }
 
         public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default)
@@ -138,64 +141,94 @@ namespace ActualChat.Transcription
 
         private class TranscriptionBuffer
         {
+            private const int PollWaitDelay = 10_000;
+            
             private readonly IAsyncEnumerable<StreamingRecognizeResponse> _stream;
-            private readonly ConcurrentQueue<TranscriptFragmentVariant> _bufferedResult = new();
+            private readonly ILogger<GoogleTranscriber> _logger;
+
+            private readonly Channel<TranscriptFragmentVariant> _channel =
+                Channel.CreateUnbounded<TranscriptFragmentVariant>(new UnboundedChannelOptions{ SingleWriter = true });
+            private readonly LinkedList<TranscriptFragmentVariant> _bufferedResults = new();
             private readonly object _lock = new();
 
             private int _index;
             private double _offset;
             private int _startCalled;
 
-            public TranscriptionBuffer(IAsyncEnumerable<StreamingRecognizeResponse> stream) => _stream = stream;
+            public TranscriptionBuffer(IAsyncEnumerable<StreamingRecognizeResponse> stream, ILogger<GoogleTranscriber> logger)
+            {
+                _stream = stream;
+                _logger = logger;
+            }
 
 
             public async Task Start(CancellationToken cancellationToken = default)
             {
-                if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0) return;
+                if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0) 
+                    return;
 
                 await foreach (var response in _stream.WithCancellation(cancellationToken)) {
                     var fragmentVariant = MapResponse(response);
                     if (fragmentVariant != null)
-                        _bufferedResult.Enqueue(fragmentVariant);
+                        await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
                 }
+
+                _channel.Writer.Complete();
             }
 
-            public ImmutableArray<TranscriptFragmentVariant> GetResults(int startingIndex)
+            public async Task<ImmutableArray<TranscriptFragmentVariant>> GetResults(int startingIndex, CancellationToken cancellationToken)
             {
-                return _bufferedResult
-                    .SkipWhile(f => f.Value!.Index < startingIndex)
-                    .ToImmutableArray();
+                lock (_lock) {
+                    var result = _bufferedResults
+                        .SkipWhile(r => r.Value!.Index < startingIndex)
+                        .ToImmutableArray();
+                    if (result.Length > 0)
+                        return result;
+                }
+
+                var readWait = _channel.Reader.WaitToReadAsync(cancellationToken).AsTask();
+                var delayWait = Task.Delay(PollWaitDelay, cancellationToken);
+                await Task.WhenAny(readWait, delayWait);
+                if (readWait.Status != TaskStatus.RanToCompletion)
+                    return ImmutableArray<TranscriptFragmentVariant>.Empty;
+                
+                var freshResults = new List<TranscriptFragmentVariant>();
+                lock (_lock)
+                    while (_channel.Reader.TryRead(out var item)) {
+                        freshResults.Add(item);
+                        _bufferedResults.AddLast(item);
+                    }
+
+                return freshResults.ToImmutableArray();
+
             }
 
             public void FreeBuffer(int beforeIndex)
             {
-                if (!_bufferedResult.TryPeek(out var fragment))
-                    return;
-
-                if (fragment.Value!.Index > beforeIndex)
-                    return;
-
                 lock (_lock) {
-                    if (!_bufferedResult.TryPeek(out fragment))
+                    if (_bufferedResults.Count == 0)
                         return;
 
-                    if (fragment.Value!.Index > beforeIndex)
+                    if (_bufferedResults.First!.Value.Value!.Index > beforeIndex)
                         return;
 
-                    while (fragment.Value!.Index <= beforeIndex && _bufferedResult.TryDequeue(out fragment)) { }
+                    while (_bufferedResults.First!.Value.Value!.Index <= beforeIndex) 
+                        _bufferedResults.RemoveFirst();
                 }
             }
 
             private TranscriptFragmentVariant? MapResponse(StreamingRecognizeResponse response)
             {
                 if (response.Error != null) {
-                    // Temporarily
-                    throw new InvalidOperationException(response.Error.Message);
-#pragma warning disable 162
-                    return null;
-#pragma warning restore 162
+                    _logger.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
+                    return new TranscriptFragmentVariant(
+                        new TranscriptErrorFragment(response.Error.Code, response.Error.Message) {
+                            Index = _index++,
+                            StartOffset = _offset,
+                            Duration = 0d
+                        });
                 }
-                foreach (var result in response.Results.Where(r => r.IsFinal)) {
+                foreach (var result in response.Results) {
                     var alternative = result.Alternatives.First();
                     var endTime = result.ResultEndTime;
                     var endOffset = endTime.ToTimeSpan().TotalSeconds;
@@ -204,7 +237,8 @@ namespace ActualChat.Transcription
                         Confidence = alternative.Confidence,
                         Text = alternative.Transcript,
                         StartOffset = _offset,
-                        Duration = endOffset - _offset
+                        Duration = endOffset - _offset,
+                        IsFinal = result.IsFinal
                     };
                     _offset = endOffset;
                     // one final result in the response
