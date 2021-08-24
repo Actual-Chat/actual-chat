@@ -1,8 +1,8 @@
 using System;
 
-namespace ActualChat.Mathematics
+namespace ActualChat.Mathematics.Internal
 {
-    public sealed class ConvertingSizeMeasure<TPoint, TSize> : ISizeMeasure<TPoint, TSize>
+    public sealed class ConvertingSizeMeasure<TPoint, TSize> : SizeMeasure<TPoint, TSize>
         where TPoint : notnull
         where TSize : notnull
     {
@@ -23,18 +23,18 @@ namespace ActualChat.Mathematics
             SizeFromDouble = sizeFromDouble;
         }
 
-        public TSize GetDistance(TPoint start, TPoint end)
+        public override TSize GetDistance(TPoint start, TPoint end)
             => SizeFromDouble(PointToDouble(end) - PointToDouble(start));
-        public TPoint AddOffset(TPoint point, TSize offset)
+        public override TPoint AddOffset(TPoint point, TSize offset)
             => PointFromDouble(PointToDouble(point) + SizeToDouble(offset));
 
-        public TSize Add(TSize first, TSize second)
+        public override TSize Add(TSize first, TSize second)
             => SizeFromDouble(SizeToDouble(first) + SizeToDouble(second));
-        public TSize Subtract(TSize first, TSize second)
+        public override TSize Subtract(TSize first, TSize second)
             => SizeFromDouble(SizeToDouble(first) - SizeToDouble(second));
-        public TSize Multiply(TSize size, double multiplier)
+        public override TSize Multiply(TSize size, double multiplier)
             => SizeFromDouble(SizeToDouble(size) * multiplier);
-        public TSize Modulo(TSize size, TSize modulo)
+        public override TSize Modulo(TSize size, TSize modulo)
             => SizeFromDouble(SizeToDouble(size) % SizeToDouble(modulo));
     }
 }
