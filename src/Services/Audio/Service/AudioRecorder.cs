@@ -1,24 +1,23 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio.Db;
+using ActualChat.Audio.WebM;
+using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
 using Stl.Async;
-using Stl.Channels;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
-using Stl.Serialization;
 using Stl.Text;
 using Stl.Time;
 
@@ -26,19 +25,14 @@ namespace ActualChat.Audio
 {
     public class AudioRecorder : DbServiceBase<AudioDbContext>, IAudioRecorder
     {
-        private static readonly TimeSpan CleanupInterval = new TimeSpan(0, 0, 10);
-        private static readonly TimeSpan SegmentLength = new TimeSpan(0, 1, 0);
-        private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new RecyclableMemoryStreamManager();
+        private static readonly TimeSpan SegmentLength = new TimeSpan(0, 0, 10);
+        private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
 
         private readonly IAuthService _authService;
         private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly ILogger<AudioRecorder> _log;
 
         private readonly Generator<string> _idGenerator;
-        // AY:
-        // - ConcurrentQueue is a bit of excess here, I guess - a normal queue would be fine
-        // - It requires robust maintenance (mem leaks are easy to happen here), so
-        //   prob. it's ok to just write for now
         private readonly ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)> _dataCapacitor;
         
 
@@ -125,19 +119,125 @@ namespace ActualChat.Audio
         {
             var lastOffset = recordingStartOffset.ToUnixEpoch();
             var metaData = new List<SegmentMetaDataEntry>();
-            await using var buffer = MemoryStreamManager.GetStream(nameof(AudioRecorder));
+            EBML? ebml = null; 
+            Segment? segment = null;
+            WebMReader.State readerState = new WebMReader.State();
+            var clusters = new List<Cluster>();
+            var currentSegmentDuration = 0d;
+            var lastIndex = 0;
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
                 var currentOffset = clientEndOffset.ToUnixEpoch();
-                metaData.Add(new SegmentMetaDataEntry(index, lastOffset, currentOffset - lastOffset));
-                lastOffset = currentOffset;
-                await buffer.WriteAsync(base64Encoded.Data);
-            }
+                var duration = currentOffset - lastOffset;
+                metaData.Add(new SegmentMetaDataEntry(index, lastOffset, duration));
+                var remainingLength = readerState.Remaining;
+                var buffer = bufferLease.Memory;
+                // TODO: AK - check length!!!
+                
+                buffer.Slice(readerState.Position,remainingLength).CopyTo(buffer[..remainingLength]);
+                base64Encoded.Data.CopyTo(buffer[readerState.Remaining..]);
 
-            buffer.Position = 0;
+                var dataLength = readerState.Remaining + base64Encoded.Count;
+                
+                var (cs, s) = ReadClusters(
+                    readerState.IsEmpty 
+                        ? new WebMReader(bufferLease.Memory.Span[..dataLength]) 
+                        : WebMReader.FromState(readerState).WithNewSource(bufferLease.Memory.Span[..dataLength]));
+                readerState = s;
+                clusters.AddRange(cs);
+                currentSegmentDuration += duration;
+
+                if (currentSegmentDuration >= SegmentLength.TotalSeconds && clusters.Count > 0) {
+                    currentSegmentDuration = 0;
+                    await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), index, lastOffset);
+                    clusters.Clear();
+                }
+                
+                lastOffset = currentOffset;
+                lastIndex = index;
+                
+                (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader reader)
+                {
+                    var result = new List<Cluster>(1);
+                    while (reader.Read())
+                        switch (reader.EbmlEntryType) {
+                            case EbmlEntryType.None:
+                                throw new InvalidOperationException();
+                            case EbmlEntryType.Ebml:
+                                // TODO: add support of EBML Stream where multiple headers and segments can appear
+                                ebml = (EBML?)reader.Entry;
+                                break;
+                            case EbmlEntryType.Segment:
+                                segment = (Segment?)reader.Entry;
+                                break;
+                            case EbmlEntryType.Cluster:
+                                result.Add((Cluster)reader.Entry);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException();
+                        }
+
+                    return (result, reader.GetState());
+                }
+            }
+            
+            if (readerState.Container is Cluster c) clusters.Add(c);
+
+            await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), ++lastIndex, lastOffset);
+        }
+
+        private async Task FlushSegment(Symbol recordingId, IReadOnlyList<SegmentMetaDataEntry> metaData, WebMDocument webM, int index, double offset)
+        {
+            if (metaData == null) throw new ArgumentNullException(nameof(metaData));
+            if (webM == null) throw new ArgumentNullException(nameof(webM));
+            var (ebml, segment, clusters) = webM;
+            if (ebml == null) throw new ArgumentNullException(nameof(ebml));
+            if (segment == null) throw new ArgumentNullException(nameof(segment));
+            if (clusters == null) throw new ArgumentNullException(nameof(clusters));
+
+            var minBufferSize = 32*1024;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{Ulid.NewUlid().ToString()}";
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
-            var persistBlob = blobStorage.WriteAsync(blobId, buffer);
+            await using var stream = MemoryStreamManager.GetStream(nameof(AudioRecorder));
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
+
+            var ebmlWritten = WriteEntry(new WebMWriter(bufferLease.Memory.Span), ebml);
+            var segmentWritten = WriteEntry(new WebMWriter(bufferLease.Memory.Span), segment);
+            if (!ebmlWritten)
+                throw new InvalidOperationException("Can't write EBML entry");
+            if (!segmentWritten)
+                throw new InvalidOperationException("Can't write Segment entry");
+
+            foreach (var cluster in clusters) {
+                var memory = bufferLease.Memory;
+                var clusterWritten = WriteEntry(new WebMWriter(memory.Span), cluster);
+                if (clusterWritten) continue;
+                
+                var cycleNumber = 0;
+                var bufferSize = minBufferSize;
+                while (true) {
+                    bufferSize *= 2;
+                    cycleNumber++;
+                    using var extendedBufferLease = MemoryPool<byte>.Shared.Rent(bufferSize);
+                    if (WriteEntry(new WebMWriter(extendedBufferLease.Memory.Span), cluster))
+                        break;
+                    if (cycleNumber >= 10)
+                        break;
+                }
+            }
+
+            stream.Position = 0;
+            var persistBlob = blobStorage.WriteAsync(blobId, stream);
             var persistSegment = PersistSegment();
+
+            bool WriteEntry(WebMWriter writer, RootEntry entry)
+            {
+                if (!writer.Write(entry))
+                    return false;
+                
+                stream?.Write(writer.Written);
+                return true;
+            }
 
             async Task PersistSegment()
             {
@@ -146,8 +246,8 @@ namespace ActualChat.Audio
                 _log.LogInformation($"{nameof(FlushBufferedSegments)}, RecordingId = {{RecordingId}}", recordingId);
                 dbContext.AudioSegments.Add(new DbAudioSegment {
                     RecordingId = recordingId,
-                    Index = 0,
-                    Offset = 0d,
+                    Index = index,
+                    Offset = offset,
                     Duration = metaData.Sum(md => md.Duration),
                     BlobId = blobId,
                     BlobMetadata = JsonSerializer.Serialize(metaData)

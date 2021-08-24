@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
+using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -11,16 +13,30 @@ namespace ActualChat.Chat
     {
         // Commands
         [CommandHandler]
-        Task<ChatEntry> Post(ChatCommands.AddText command, CancellationToken cancellationToken = default);
+        Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default);
+        [CommandHandler]
+        Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken = default);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(string chatId, CancellationToken cancellationToken = default);
+        Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken = default);
+
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPermission> GetPermissions(Session session, string chatId, CancellationToken cancellationToken = default);
+        Task<long> GetEntryCount(
+            Session session, string chatId, Range<long>? idRange,
+            CancellationToken cancellationToken = default);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPage> GetTail(Session session, string chatId, int limit, CancellationToken cancellationToken = default);
+        Task<ChatPage> GetPage(
+            Session session, string chatId, Range<long> idRange,
+            CancellationToken cancellationToken = default);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<long> GetMessageCount(string chatId, TimeSpan? period = null, CancellationToken cancellationToken = default);
+        Task<long> GetLastEntryId(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default);
+
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<ChatPermissions> GetPermissions(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default);
     }
 }

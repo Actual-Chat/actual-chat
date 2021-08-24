@@ -9,4 +9,42 @@
     <ProjectReference Include="..\Contract\Contract.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Ebml\MatroskaSpecification.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaSpecification.cs</LastGenOutput>
+    </None>
+    <None Update="Ebml\Models\MatroskaModels.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
+    </None>
+    <None Update="WebM\Models\MatroskaModels.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
+    </None>
+    <None Update="WebM\MatroskaSpecification.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaSpecification.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Ebml\MatroskaSpecification.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaSpecification.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Ebml\Models\MatroskaModels.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="WebM\Models\MatroskaModels.cs">
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="WebM\MatroskaSpecification.cs">
+      <DependentUpon>MatroskaSpecification.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
 </Project>

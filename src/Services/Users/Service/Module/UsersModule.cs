@@ -85,7 +85,7 @@ namespace ActualChat.Users.Module
                 services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
                 services.TryAddSingleton<DbUserByNameResolver>();
                 dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
-                dbContext.AddEntityResolver<string, DbSpeakerState>();
+                dbContext.AddEntityResolver<string, DbUserState>();
 
                 // DB authentication services
                 dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
@@ -102,7 +102,7 @@ namespace ActualChat.Users.Module
                 var commandAssembly = commandType.Assembly;
                 if (commandAssembly == typeof(EditUserCommand).Assembly && commandType.Namespace == typeof(EditUserCommand).Namespace)
                     return true;
-                if (commandAssembly == typeof(Speaker).Assembly)
+                if (commandAssembly == typeof(UserInfo).Assembly)
                     return true;
                 return false;
             });
@@ -118,9 +118,10 @@ namespace ActualChat.Users.Module
                 });
 
             // Module's own services
-            services.AddSingleton<ISpeakerNameService, SpeakerNameService>();
-            fusion.AddComputeService<ISpeakerService, SpeakerService>();
-            fusion.AddComputeService<ISpeakerStateService, SpeakerStateService>();
+            services.AddMvc().AddApplicationPart(GetType().Assembly);
+            services.AddSingleton<IUserNameService, UserNameService>();
+            fusion.AddComputeService<IUserInfoService, UserInfoService>();
+            fusion.AddComputeService<IUserStateService, UserStateService>();
             var commander = services.AddCommander();
             commander.AddCommandService<AuthServiceCommandFilters>();
 

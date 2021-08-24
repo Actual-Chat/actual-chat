@@ -1,14 +1,11 @@
-﻿using System.Collections.Immutable;
-using ActualChat.Users;
-using Stl.Text;
+using System.Collections.Immutable;
+using Stl.Time;
 
 namespace ActualChat.Chat
 {
-    public record ChatPage(string ChatId, int Limit)
+    public record ChatPage
     {
-        public ImmutableList<ChatEntry> Entries { get; init; } = ImmutableList<ChatEntry>.Empty;
-        public ImmutableDictionary<Symbol, Speaker> Speakers { get; init; } = ImmutableDictionary<Symbol, Speaker>.Empty;
-
-        public ChatPage() : this("", 0) { }
+        public ImmutableArray<ChatEntry> Entries { get; init; }
+        public Range<Moment> TimeRange { get; init; }
     }
 }

@@ -162,7 +162,7 @@
 
     protected override async Task<List<SessionModel>> ComputeState(CancellationToken cancellationToken)
     {
-        var sessions = await _authService.GetUserSessions(_session, cancellationToken).ConfigureAwait(false);
+        var sessions = await _authService.GetUserSessions(_session, cancellationToken);
         var result = new List<SessionModel>();
 
         foreach (var session in sessions) {

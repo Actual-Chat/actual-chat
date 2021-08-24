@@ -38,7 +38,7 @@ namespace ActualChat.Transcription
         public string SpeakerId { get; init; } = "";
         public double Confidence { get; init; } = 1;
     }
-    
+
     [Serializable]
     public class TranscriptFragmentVariant : Variant<TranscriptFragment>
     {

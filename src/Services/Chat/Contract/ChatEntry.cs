@@ -5,16 +5,20 @@ using Stl.Time;
 
 namespace ActualChat.Chat
 {
-    public record ChatEntry(ChatEntryKind Kind, long Id)
+    public record ChatEntry(string ChatId, long Id)
     {
-        public bool IsRemoved { get; init; }
-        public Symbol UserId { get; init; }
+        public Symbol CreatorId { get; init; }
         public Moment BeginsAt { get; init; }
         public Moment EndsAt { get; init; }
+        public ChatContentType ContentType { get; init; }
+        public string Content { get; init; } = "";
+        public string RecordingId { get; init; } = "";
+
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
         public double Duration => (EndsAt - BeginsAt).TotalSeconds;
-        public string Content { get; init; } = "";
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public bool IsRecording => !string.IsNullOrEmpty(RecordingId);
 
-        public ChatEntry() : this(ChatEntryKind.Text, 0) { }
+        public ChatEntry() : this("", 0) { }
     }
 }

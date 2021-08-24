@@ -70,6 +70,7 @@ namespace ActualChat.Todos.Module
             });
 
             // Module's own services
+            services.AddMvc().AddApplicationPart(GetType().Assembly);
             fusion.AddComputeService<ITodoService, TodoService>();
         }
     }

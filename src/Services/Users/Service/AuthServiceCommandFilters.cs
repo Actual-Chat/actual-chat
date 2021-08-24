@@ -21,18 +21,18 @@ namespace ActualChat.Users
     public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
         protected IServerSideAuthService Auth { get; }
-        protected ISpeakerService Speakers { get; }
-        protected ISpeakerNameService SpeakerNames { get; }
-        protected ISpeakerStateService SpeakerStates { get; }
+        protected IUserInfoService UserInfos { get; }
+        protected IUserNameService UserNames { get; }
+        protected IUserStateService UserStates { get; }
         protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
         public AuthServiceCommandFilters(IServiceProvider services)
             : base(services)
         {
             Auth = services.GetRequiredService<IServerSideAuthService>();
-            Speakers = services.GetRequiredService<ISpeakerService>();
-            SpeakerNames = services.GetRequiredService<ISpeakerNameService>();
-            SpeakerStates = services.GetRequiredService<ISpeakerStateService>();
+            UserInfos = services.GetRequiredService<IUserInfoService>();
+            UserNames = services.GetRequiredService<IUserNameService>();
+            UserStates = services.GetRequiredService<IUserStateService>();
             DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
         }
 
@@ -46,14 +46,14 @@ namespace ActualChat.Users
             await context.InvokeRemainingHandlers(cancellationToken);
 
             if (Computed.IsInvalidating()) {
-                var invSpeaker = context.Operation().Items.TryGet<Speaker>();
-                if (invSpeaker != null)
-                    SpeakerStates.IsOnline(invSpeaker.Id, default).Ignore();
+                var invUserInfo = context.Operation().Items.TryGet<UserInfo>();
+                if (invUserInfo != null)
+                    UserStates.IsOnline(invUserInfo.Id, default).Ignore();
                 return;
             }
 
             // Let's try to fix auto-generated user name here
-            await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
             var userId = sessionInfo.UserId;
             var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken);
@@ -64,10 +64,9 @@ namespace ActualChat.Users
                 dbUser.Name = newName;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
-            var speaker = new Speaker(dbUser.Id, dbUser.Name);
-            context.Operation().Items.Set(speaker);
+            var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
+            context.Operation().Items.Set(userInfo);
         }
-
 
         // Validates user name on edit
         [CommandHandler(IsFilter = true, Priority = 1)]
@@ -77,11 +76,11 @@ namespace ActualChat.Users
             if (Computed.IsInvalidating()) {
                 await context.InvokeRemainingHandlers(cancellationToken);
                 if (command.Name != null)
-                    Speakers.TryGetByName(command.Name, default).Ignore();
+                    UserInfos.TryGetByName(command.Name, default).Ignore();
                 return;
             }
             if (command.Name != null) {
-                var error = SpeakerNames.ValidateName(command.Name);
+                var error = UserNames.ValidateName(command.Name);
                 if (error != null)
                     throw error;
 
@@ -98,6 +97,40 @@ namespace ActualChat.Users
 
             // Invoke command handler(s) with lower priority
             await context.InvokeRemainingHandlers(cancellationToken);
+        }
+
+        // Updates online presence state
+        [CommandHandler(IsFilter = true, Priority = 1)]
+        public virtual async Task SetupSession(
+            SetupSessionCommand command, CancellationToken cancellationToken = default)
+        {
+            var context = CommandContext.GetCurrent();
+            await context.InvokeRemainingHandlers(cancellationToken);
+
+            var sessionInfo = context.Operation().Items.Get<SessionInfo>();
+            if (sessionInfo?.IsAuthenticated != true)
+                return;
+            var userId = sessionInfo.UserId;
+
+            if (Computed.IsInvalidating()) {
+                var c = Computed.TryGetExisting(() => UserStates.IsOnline(userId, default));
+                if (c?.IsConsistent() == true && (!c.IsValue(out var v) || !v)) {
+                    // We invalidate only when there is a cached value, and it is
+                    // either false or an error, because the only change that may happen
+                    // due to sign-in is that this value becomes true.
+                    UserStates.IsOnline(userId, default).Ignore();
+                }
+                return;
+            }
+
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
+            var userState = await dbContext.UserStates.FindAsync(ComposeKey(userId));
+            if (userState == null) {
+                userState = new DbUserState() { UserId = userId };
+                dbContext.Add(userState);
+            }
+            userState.OnlineCheckInAt = Clocks.SystemClock.Now;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         // Private methods
