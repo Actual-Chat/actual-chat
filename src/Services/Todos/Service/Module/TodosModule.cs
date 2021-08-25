@@ -45,7 +45,7 @@ namespace ActualChat.Todos.Module
                     IsLoggingEnabled = true,
                 });
                 services.AddTransient(c => new DbOperationScope<TodosDbContext>(c) {
-                    IsolationLevel = IsolationLevel.Snapshot,
+                    IsolationLevel = IsolationLevel.RepeatableRead,
                 });
                 dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
