@@ -4,14 +4,13 @@
 @using ActualChat.UI.Blazor
 @using ActualChat.UI.Blazor.Host
 @using Microsoft.AspNetCore.Html
-@using Stl.Async
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
 @inject ServerAuthHelper _serverAuthHelper
 @inject HostSettings _hostSettings
 @inject RenderingContext _renderingContext
 @{
-    Task.Run(() => _serverAuthHelper.UpdateAuthState(HttpContext)).Ignore();
+    await _serverAuthHelper.UpdateAuthState(HttpContext);
     var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);
     var sessionId = _serverAuthHelper.Session.Id.Value;
     var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
@@ -60,7 +59,7 @@
                     break;
                 }
                 catch (InvalidOperationException) {
-                    if (++errorCount > 3)
+                    if (++errorCount > 0)
                         throw;
                 }
                 finally {
