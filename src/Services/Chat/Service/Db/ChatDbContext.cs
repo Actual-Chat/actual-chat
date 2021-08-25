@@ -16,10 +16,6 @@ namespace ActualChat.Chat.Db
 
         protected override void OnModelCreating(ModelBuilder model)
         {
-            // DbChatEntry
-            model.Entity<DbChatEntry>()
-                .HasKey(e => new {e.ChatId, e.Id});
-
             // DbChatOwner
             model.Entity<DbChatOwner>()
                 .HasKey(e => new { e.ChatId, e.UserId});

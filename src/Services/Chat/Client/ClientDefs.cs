@@ -18,7 +18,23 @@ namespace ActualChat.Chat.Client
         // Queries
         [Get(nameof(TryGet))]
         Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken = default);
-        [Get(nameof(GetTail))]
-        Task<ImmutableList<ChatEntry>> GetTail(Session session, string chatId, CancellationToken cancellationToken = default);
+
+        [Get(nameof(GetEntryCount))]
+        Task<long> GetEntryCount(
+            Session session, string chatId, Range<long>? idRange,
+            CancellationToken cancellationToken = default);
+        [Get(nameof(GetPage))]
+        Task<ChatPage> GetPage(
+            Session session, string chatId, Range<long> idRange,
+            CancellationToken cancellationToken = default);
+        [Get(nameof(GetLastEntryId))]
+        Task<long> GetLastEntryId(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default);
+
+        [Get(nameof(GetPermissions))]
+        Task<ChatPermissions> GetPermissions(
+            Session session, string chatId,
+            CancellationToken cancellationToken = default);
     }
 }
