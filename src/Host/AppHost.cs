@@ -47,6 +47,7 @@ namespace ActualChat.Host
             var dbInitializers = Host.Services.GetServices<IDataInitializer>();
             var initTasks = dbInitializers.Select(i => i.Initialize(recreate, cancellationToken)).ToArray();
             await Task.WhenAll(initTasks);
+            await Task.Delay(100, cancellationToken); //
         }
 
         public virtual Task Start(CancellationToken cancellationToken = default)

@@ -1,9 +1,10 @@
 ﻿@page "/"
-@inject NavigationManager _navigator
+@using ActualChat.Chat
+@inject NavigationManager _nav
 
 @code {
 
     protected override void OnInitialized()
-        => _navigator.NavigateTo("/todo");
+        => _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
 
 }

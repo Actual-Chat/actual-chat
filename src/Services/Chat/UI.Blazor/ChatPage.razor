@@ -1,0 +1,42 @@
+@page "/chat/{ChatId}"
+@inherits ComputedStateComponent<ChatPageModel>
+@inject IChatService _chats
+@inject Session _session
+@inject UICommandRunner _cmd
+@inject NavigationManager _nav
+@inject ILogger<ChatPage> _log
+
+@{
+    var error = State.Error;
+    var model = State.LatestNonErrorValue;
+    if (model.IsUnavailable)
+        _nav.Unavailable("chat");
+    if (model.MustLogin)
+        _nav.Login("to view this chat");
+}
+
+<h1>Chat</h1>
+
+<WhenException Exception="@error"/>
+
+<h2><Badge Color="Color.Dark">TBD.</Badge></h2>
+
+<p>It's the little details that are vital. Little things make big things happen.</p>
+
+@code {
+    [CascadingParameter]
+    public Task<AuthState> AuthState { get; set; } = null!;
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
+    {
+        var user = (await AuthState).User;
+        var chat = await _chats.TryGet(_session, ChatId, cancellationToken);
+        if (chat == null)
+            return new ChatPageModel() { IsUnavailable = true };
+        if (!user.IsAuthenticated && !chat.IsPublic)
+            return new ChatPageModel() { MustLogin = true };
+        return new ChatPageModel();
+    }
+}

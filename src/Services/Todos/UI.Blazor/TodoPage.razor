@@ -66,11 +66,9 @@
     private bool HasMore { get; set; }
     private string NewTodoTitle { get; set; } = "";
     private DateTime LastStateUpdateTime { get; set; } = DateTime.UtcNow;
-    // AuthState property below seemingly does nothing, right?
-    // But try to comment out this line & sign-in + sign-out.
-    // See the error badge stays there for a while now?
-    // Check your explanation on our Discord: https://discord.gg/EKEwv6d
-    [CascadingParameter] protected Task<AuthState> AuthState { get; set; } = null!;
+
+    [CascadingParameter]
+    public Task<AuthState> AuthState { get; set; } = null!;
 
     protected override async Task<Todo[]> ComputeState(CancellationToken cancellationToken)
     {
