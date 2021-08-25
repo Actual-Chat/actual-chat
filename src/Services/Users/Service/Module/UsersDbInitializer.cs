@@ -4,10 +4,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Db;
 using ActualChat.Users.Db;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Authentication.Commands;
+using Stl.Fusion.EntityFramework;
+using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users.Module
 {
@@ -20,16 +23,33 @@ namespace ActualChat.Users.Module
             await base.Initialize(cancellationToken);
             if (ShouldRecreateDb) {
                 var auth = Services.GetRequiredService<IServerSideAuthService>();
-                var session = Services.GetRequiredService<ISessionFactory>().CreateSession();
-                UserConstants.AdminSession = session;
+                var sessionFactory = Services.GetRequiredService<ISessionFactory>();
+                var dbContextFactory = Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
 
                 // Creating admin user
-                var user = new User("", "Admin").WithIdentity(new UserIdentity("internal", "admin"));
+                await using var dbContext = dbContextFactory.CreateDbContext().ReadWrite();
+                var adminIdentity = new UserIdentity("internal", "admin");
+                dbContext.Users.Add(new DbUser() {
+                    Id = UserConstants.AdminUserId,
+                    Name = "Admin",
+                    Identities = {
+                        new DbUserIdentity<string>() {
+                            DbUserId = UserConstants.AdminUserId,
+                            Id = adminIdentity.Id,
+                            Secret = "",
+                        },
+                    }
+                });
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                // Signing in to admin session
+                var session = sessionFactory.CreateSession();
+                var user = await auth.TryGetUser(UserConstants.AdminUserId, cancellationToken)
+                    ?? throw new InvalidOperationException("Failed to create 'admin' user.");
                 await auth.SignIn(
                     new SignInCommand(session, user, user.Identities.Keys.Single()).MarkServerSide(),
                     cancellationToken);
-                user = await auth.GetUser(session, cancellationToken);
-                UserConstants.AdminUserId = user.Id;
+                UserConstants.AdminSession = session;
             }
         }
     }

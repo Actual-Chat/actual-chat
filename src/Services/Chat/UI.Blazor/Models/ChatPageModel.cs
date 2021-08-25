@@ -4,6 +4,7 @@ namespace ActualChat.Chat.UI.Blazor.Models
     {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
-        public bool RedirectToDefaultChat { get; init; }
+
+        public Chat? Chat { get; init; }
     }
 }

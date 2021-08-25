@@ -48,8 +48,9 @@ namespace ActualChat.UI.Blazor.Host
         public static async Task ConfigureServices(IServiceCollection services, WebAssemblyHostBuilder builder)
         {
             // Logging
-            builder.Logging.SetMinimumLevel(LogLevel.Warning);
-            builder.Logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
+            var logging = builder.Logging;
+            logging.SetMinimumLevel(LogLevel.Information);
+            // logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
 
             // Other services shared with plugins
             services.AddSingleton(new HostInfo() {
