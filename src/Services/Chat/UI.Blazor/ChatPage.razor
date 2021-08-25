@@ -16,10 +16,9 @@
     if (model.MustLogin)
         _nav.Login("to view this chat");
     var chat = model.Chat ?? new();
-    _log.LogInformation("Renderding; Chat.Id = {ChatId}", chat.Id);
 }
 
-<h1>"@chat.Title" chat</h1>
+<h1>"@(chat.Title.NullIfEmpty() ?? "Loading...")" chat</h1>
 
 <WhenException Exception="@error"/>
 

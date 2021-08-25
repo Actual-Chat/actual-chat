@@ -39,6 +39,7 @@ namespace ActualChat.Chat.Module
                     Title = "The Actual One",
                     CreatedAt = Clocks.SystemClock.Now,
                     CreatorId = adminUserId,
+                    IsPublic = true,
                     Owners = {
                         new DbChatOwner() {
                             ChatId = defaultChatId,
