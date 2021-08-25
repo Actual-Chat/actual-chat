@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -9,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ActualChat.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Stl.Async;
 
 namespace ActualChat.Host
 {
@@ -42,12 +45,39 @@ namespace ActualChat.Host
             return Task.CompletedTask;
         }
 
-        public virtual async Task Initialize(bool recreate, CancellationToken cancellationToken = default)
+        public virtual async Task Initialize(bool shouldRecreateDb, CancellationToken cancellationToken = default)
         {
-            var dbInitializers = Host.Services.GetServices<IDataInitializer>();
-            var initTasks = dbInitializers.Select(i => i.Initialize(recreate, cancellationToken)).ToArray();
-            await Task.WhenAll(initTasks);
-            await Task.Delay(100, cancellationToken); //
+            var log = Host.Services.GetRequiredService<ILogger<AppHost>>();
+
+            async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<Unit> taskSource)
+            {
+                try {
+                    log.LogInformation("{DbInitializer} started", dbInitializer.GetType().Name);
+                    await dbInitializer.Initialize(cancellationToken);
+                    log.LogInformation("{DbInitializer} completed", dbInitializer.GetType().Name);
+                    taskSource.TrySetResult(default);
+                }
+                catch (OperationCanceledException) {
+                    taskSource.TrySetCanceled(cancellationToken);
+                }
+                catch (Exception e) {
+                    log.LogError(e, "{DbInitializer} failed", dbInitializer.GetType());
+                    taskSource.TrySetException(e);
+                }
+            }
+
+            var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
+                .ToDictionary(i => i, i => TaskSource.New<Unit>(true));
+            var initializeTasks = initializeTaskSources
+                .ToDictionary(kv => kv.Key, kv => (Task) kv.Value.Task);
+            foreach (var (dbInitializer, _) in initializeTasks) {
+                dbInitializer.ShouldRecreateDb = shouldRecreateDb;
+                dbInitializer.InitializeTasks = initializeTasks;
+            }
+            var tasks = initializeTaskSources
+                .Select(kv => InitializeOne(kv.Key, kv.Value))
+                .ToArray();
+            await Task.WhenAll(tasks);
         }
 
         public virtual Task Start(CancellationToken cancellationToken = default)
