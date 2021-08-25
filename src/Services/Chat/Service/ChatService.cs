@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Chat.Db;
 using ActualChat.Mathematics;
 using ActualChat.Users;
+using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Async;
@@ -88,8 +90,15 @@ namespace ActualChat.Chat
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
+            var id = 1 + await dbContext.ChatEntries.AsQueryable()
+                .Where(e => e.ChatId == chatId)
+                .OrderByDescending(e => e.Id)
+                .Select(e => e.Id)
+                .FirstOrDefaultAsync(cancellationToken);
             var dbChatEntry = new DbChatEntry() {
                 ChatId = chatId,
+                Id = id,
+                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
                 CreatorId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,
@@ -110,8 +119,11 @@ namespace ActualChat.Chat
             Session session, string chatId, CancellationToken cancellationToken = default)
         {
             var user = await Auth.GetUser(session, cancellationToken);
+            var chat = await TryGet(chatId, cancellationToken);
+            if (chat == null)
+                return null;
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
-            return await TryGet(chatId, cancellationToken);
+            return chat;
         }
 
         public virtual async Task<Chat?> TryGet(
@@ -175,7 +187,7 @@ namespace ActualChat.Chat
             };
         }
 
-        public async Task<long> GetLastEntryId(
+        public virtual async Task<long> GetLastEntryId(
             Session session, string chatId, CancellationToken cancellationToken = default)
         {
             var user = await Auth.GetUser(session, cancellationToken);
@@ -183,30 +195,20 @@ namespace ActualChat.Chat
             return await GetLastEntryId(chatId, cancellationToken);
         }
 
-        public async Task<long> GetLastEntryId(string chatId, CancellationToken cancellationToken = default)
+        public virtual async Task<long> GetLastEntryId(string chatId, CancellationToken cancellationToken = default)
         {
             await using var dbContext = CreateDbContext();
-            var dbChatEntry = await dbContext.ChatEntries.AsQueryable()
+            var lastId = await dbContext.ChatEntries.AsQueryable()
+                .Where(e => e.ChatId == chatId)
                 .OrderByDescending(e => e.Id)
+                .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken);
-            return dbChatEntry?.Id ?? -1;
-        }
-
-        // Protected methods
-
-        [ComputeMethod]
-        protected virtual async Task AssertHasPermissions(
-            string chatId, string userId, ChatPermissions permissions,
-            CancellationToken cancellationToken)
-        {
-            var chatPermissions = await GetPermissions(chatId, userId, cancellationToken);
-            if ((chatPermissions & permissions) != permissions)
-                throw new SecurityException("Not enough permissions.");
+            return lastId;
         }
 
         // Permissions
 
-        public async Task<ChatPermissions> GetPermissions(
+        public virtual async Task<ChatPermissions> GetPermissions(
             Session session, string chatId, CancellationToken cancellationToken = default)
         {
             var user = await Auth.GetUser(session, cancellationToken);
@@ -221,6 +223,8 @@ namespace ActualChat.Chat
                 return 0;
             if (chat.OwnerIds.Contains(userId))
                 return ChatPermissions.Owner;
+            if (ChatConstants.DefaultChatId == chatId)
+                return ChatPermissions.Owner;
             if (chat.IsPublic)
                 return ChatPermissions.Read;
             return 0;
@@ -229,12 +233,23 @@ namespace ActualChat.Chat
         // Protected methods
 
         [ComputeMethod]
-        protected virtual async Task AssertHasPermissions(
+        protected virtual async Task<Unit> AssertHasPermissions(
             Session session, string chatId, ChatPermissions permissions,
             CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
-            await AssertHasPermissions(chatId, user.Id, permissions, cancellationToken);
+            return await AssertHasPermissions(chatId, user.Id, permissions, cancellationToken);
+        }
+
+        [ComputeMethod]
+        protected virtual async Task<Unit> AssertHasPermissions(
+            string chatId, string userId, ChatPermissions permissions,
+            CancellationToken cancellationToken)
+        {
+            var chatPermissions = await GetPermissions(chatId, userId, cancellationToken);
+            if ((chatPermissions & permissions) != permissions)
+                throw new SecurityException("Not enough permissions.");
+            return default;
         }
 
         protected void InvalidateChatPages(string chatId, long chatEntryId, bool isUpdate = false)

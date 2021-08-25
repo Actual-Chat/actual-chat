@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Linq.Expressions;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Markup;
 using ActualChat.Hosting;

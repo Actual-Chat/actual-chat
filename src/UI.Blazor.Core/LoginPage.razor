@@ -1,0 +1,32 @@
+@page "/login"
+@page "/login/{RedirectTo}"
+@page "/login/{Reason}/{RedirectTo}"
+@inject NavigationManager _nav
+
+<h1>Sign in</h1>
+
+You must sign in @(Reason.NullIfEmpty() ?? "to use this page").
+
+<AuthorizeView>
+    <NotAuthorized>
+        <SignInDropdown />
+    </NotAuthorized>
+    <Authorized>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter]
+    public Task<AuthState> AuthState { get; set; } = null!;
+    [Parameter]
+    public string? Reason { get; set; }
+    [Parameter]
+    public string? RedirectTo { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authState = await AuthState;
+        if (authState.User.IsAuthenticated)
+            _nav.NavigateTo(RedirectTo.NullIfEmpty() ?? "/");
+    }
+}
