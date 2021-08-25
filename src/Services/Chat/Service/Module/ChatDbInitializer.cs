@@ -6,9 +6,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.CommandR;
 using Stl.Fusion.Authentication;
-using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Chat.Module
 {
@@ -16,22 +14,19 @@ namespace ActualChat.Chat.Module
     {
         public ChatDbInitializer(IServiceProvider services) : base(services) { }
 
-        public override async Task Initialize(bool recreate, CancellationToken cancellationToken = default)
+        public override async Task Initialize(CancellationToken cancellationToken)
         {
-            await base.Initialize(recreate, cancellationToken);
-            if (recreate) {
-                var commander = Services.Commander();
+            await base.Initialize(cancellationToken);
+            var dependencies = InitializeTasks
+                .Where(kv => kv.Key.GetType().Name.StartsWith("Users"))
+                .Select(kv => kv.Value)
+                .ToArray();
+            await Task.WhenAll(dependencies);
+
+            if (ShouldRecreateDb) {
                 var auth = Services.GetRequiredService<IServerSideAuthService>();
                 var chats = Services.GetRequiredService<IServerSideChatService>();
-                var session = Services.GetRequiredService<ISessionFactory>().CreateSession();
-
-                // Creating admin user
-                var user = new User("", "Admin").WithIdentity(new UserIdentity("internal", "admin"));
-                await auth.SignIn(
-                    new SignInCommand(session, user, user.Identities.Keys.Single()).MarkServerSide(),
-                    cancellationToken);
-                user = await auth.GetUser(session, cancellationToken);
-                UserConstants.AdminId = user.Id;
+                var session = UserConstants.AdminSession;
 
                 // Creating "The Actual One" chat
                 var chat = await chats.Create(new ChatCommands.Create(session, "The Actual One"), cancellationToken);

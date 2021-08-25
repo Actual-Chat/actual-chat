@@ -18,6 +18,7 @@ using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.Operations;
+using Stl.Generators;
 using Stl.Time;
 
 namespace ActualChat.Chat
@@ -29,7 +30,6 @@ namespace ActualChat.Chat
         protected IUserInfoService UserInfos { get; init; }
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
-        protected Func<string> ChatIdGenerator { get; init; }
         protected LogCover<long, long> IdRangeCover { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
@@ -38,7 +38,6 @@ namespace ActualChat.Chat
             UserInfos = services.GetRequiredService<IUserInfoService>();
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
-            ChatIdGenerator = () => Ulid.NewUlid().ToString();
             IdRangeCover = LogCover.Default.Long;
         }
 
@@ -56,14 +55,14 @@ namespace ActualChat.Chat
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
-            var chatId = ChatIdGenerator.Invoke();
+            var id = RandomStringGenerator.Default.Next(8, RandomStringGenerator.Base32Alphabet);
             var dbChat = new DbChat() {
-                Id = chatId,
+                Id = id,
                 Title = title,
                 CreatorId = user.Id,
                 CreatedAt = now,
                 IsPublic = false,
-                Owners = new List<DbChatOwner>() { new () { ChatId = chatId, UserId = user.Id } },
+                Owners = new List<DbChatOwner>() { new () { ChatId = id, UserId = user.Id } },
             };
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken);

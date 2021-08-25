@@ -32,7 +32,7 @@ namespace ActualChat.Chat.Module
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<ChatSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<ChatSettings>();
-            services.AddSingleton<IDataInitializer, ChatDbInitializer>();
+            services.AddSingleton<IDbInitializer, ChatDbInitializer>();
 
             var fusion = services.AddFusion();
             services.AddDbContextFactory<ChatDbContext>(builder => {
