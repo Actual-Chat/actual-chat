@@ -48,7 +48,7 @@ namespace ActualChat.Transcription
             await streamingRecognizeStream.WriteAsync(new StreamingRecognizeRequest {
                 StreamingConfig = new StreamingRecognitionConfig {
                     Config = config,
-                    InterimResults = false,
+                    InterimResults = true,
                     SingleUtterance = false
                 }
             });
@@ -237,11 +237,10 @@ namespace ActualChat.Transcription
                         Confidence = alternative.Confidence,
                         Text = alternative.Transcript,
                         StartOffset = _offset,
-                        Duration = endOffset - _offset,
+                        Duration = Math.Round(endOffset - _offset, 3, MidpointRounding.AwayFromZero),
                         IsFinal = result.IsFinal
                     };
                     _offset = endOffset;
-                    // one final result in the response
                     return new TranscriptFragmentVariant(fragment);
                 }
 
