@@ -1,6 +1,7 @@
 @page "/chat/{ChatId}"
 @inherits ComputedStateComponent<ChatPageModel>
 @inject IChatService _chats
+@inject IAuthService _auth
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject NavigationManager _nav

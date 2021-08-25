@@ -59,10 +59,12 @@ namespace ActualChat.Host
                 }
                 catch (OperationCanceledException) {
                     taskSource.TrySetCanceled(cancellationToken);
+                    throw;
                 }
                 catch (Exception e) {
                     log.LogError(e, "{DbInitializer} failed", dbInitializer.GetType());
                     taskSource.TrySetException(e);
+                    throw;
                 }
             }
 
@@ -78,6 +80,7 @@ namespace ActualChat.Host
                 .Select(kv => InitializeOne(kv.Key, kv.Value))
                 .ToArray();
             await Task.WhenAll(tasks);
+            await Task.Delay(100, cancellationToken); // Just in case
         }
 
         public virtual Task Start(CancellationToken cancellationToken = default)
