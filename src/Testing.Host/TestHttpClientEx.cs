@@ -8,11 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Testing
 {
-    public static class HostTestingEx
+    public static class TestHttpClientEx
     {
-        public static BlazorTester NewBlazorTester(this AppHost appHost)
-            => new(appHost);
-
         public static HttpClient NewClient(this AppHost appHost)
             => new() { BaseAddress = new Uri(appHost.GetUrl()) };
 
