@@ -11,15 +11,15 @@
 @{
     var error = State.Error;
     var model = State.LatestNonErrorValue;
-    if (model.RedirectToDefaultChat)
-        _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}", true); // Redirects to /chat on WASM w/ "hard reload"
     if (model.IsUnavailable)
         _nav.Unavailable("chat");
     if (model.MustLogin)
         _nav.Login("to view this chat");
+    var chat = model.Chat ?? new();
+    _log.LogInformation("Renderding; Chat.Id = {ChatId}", chat.Id);
 }
 
-<h1>Chat</h1>
+<h1>"@chat.Title" chat</h1>
 
 <WhenException Exception="@error"/>
 
@@ -33,16 +33,24 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
+    protected override Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(ChatId))
-            return new ChatPageModel() { RedirectToDefaultChat = true };
+            _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
+        return base.OnParametersSetAsync();
+    }
+
+    protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
+    {
+        var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
         var user = (await AuthState).User;
-        var chat = await _chats.TryGet(_session, ChatId, cancellationToken);
+        var chat = await _chats.TryGet(_session, chatId, cancellationToken);
         if (chat == null)
             return new ChatPageModel() { IsUnavailable = true };
         if (!user.IsAuthenticated && !chat.IsPublic)
             return new ChatPageModel() { MustLogin = true };
-        return new ChatPageModel();
+        return new ChatPageModel() {
+            Chat = chat,
+        };
     }
 }

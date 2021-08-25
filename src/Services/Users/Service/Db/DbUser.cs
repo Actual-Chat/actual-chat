@@ -1,5 +1,4 @@
 using System;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Time;
 
