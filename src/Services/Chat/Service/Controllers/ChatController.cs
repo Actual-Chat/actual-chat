@@ -40,7 +40,7 @@ namespace ActualChat.Chat.Controllers
         // Queries
 
         [HttpGet, Publish]
-        Task<Chat?> IChatService.TryGet(Session session, string chatId, CancellationToken cancellationToken)
+        public Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken)
             => _chats.TryGet(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
