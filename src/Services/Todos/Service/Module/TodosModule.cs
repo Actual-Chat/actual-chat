@@ -32,7 +32,7 @@ namespace ActualChat.Todos.Module
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<TodosSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<TodosSettings>();
-            services.AddSingleton<IDataInitializer, TodosDbInitializer>();
+            services.AddSingleton<IDbInitializer, TodosDbInitializer>();
 
             var fusion = services.AddFusion();
             services.AddDbContextFactory<TodosDbContext>(builder => {

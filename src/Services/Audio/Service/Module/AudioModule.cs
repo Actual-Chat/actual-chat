@@ -32,7 +32,7 @@ namespace ActualChat.Audio.Module
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<AudioSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<AudioSettings>();
-            services.AddSingleton<IDataInitializer, AudioDbInitializer>();
+            services.AddSingleton<IDbInitializer, AudioDbInitializer>();
 
             var fusion = services.AddFusion();
             services.AddDbContextFactory<AudioDbContext>(builder => {

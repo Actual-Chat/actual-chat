@@ -37,7 +37,7 @@ namespace ActualChat.Users.Module
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             services.AddSettings<UsersSettings>();
             var settings = services.BuildServiceProvider().GetRequiredService<UsersSettings>();
-            services.AddSingleton<IDataInitializer, UsersDbInitializer>();
+            services.AddSingleton<IDbInitializer, UsersDbInitializer>();
 
             // ASP.NET Core authentication providers
             services.AddAuthentication(options => {
