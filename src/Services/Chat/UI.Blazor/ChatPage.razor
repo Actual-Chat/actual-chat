@@ -1,3 +1,4 @@
+@page "/chat"
 @page "/chat/{ChatId}"
 @inherits ComputedStateComponent<ChatPageModel>
 @inject IChatService _chats
@@ -10,6 +11,8 @@
 @{
     var error = State.Error;
     var model = State.LatestNonErrorValue;
+    if (model.RedirectToDefaultChat)
+        _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}", true); // Redirects to /chat on WASM w/ "hard reload"
     if (model.IsUnavailable)
         _nav.Unavailable("chat");
     if (model.MustLogin)
@@ -32,6 +35,8 @@
 
     protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(ChatId))
+            return new ChatPageModel() { RedirectToDefaultChat = true };
         var user = (await AuthState).User;
         var chat = await _chats.TryGet(_session, ChatId, cancellationToken);
         if (chat == null)

@@ -59,7 +59,7 @@
                     break;
                 }
                 catch (InvalidOperationException) {
-                    if (++errorCount > 0)
+                    if (++errorCount > 3)
                         throw;
                 }
                 finally {
