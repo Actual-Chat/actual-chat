@@ -5,7 +5,7 @@ using Stl.Testing;
 
 namespace ActualChat.Testing
 {
-    public static class TestHosts
+    public static class TestHostFactory
     {
         public static async Task<AppHost> NewAppHost(Action<AppHost>? configure = null)
         {

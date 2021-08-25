@@ -8,10 +8,8 @@
     var summary = State.ValueOrDefault ?? new();
 }
 
-@if (summary != null) {
-    <Badge Color="Color.Success"><b>@summary.DoneCount</b> done</Badge>
-    <Badge Color="Color.Primary"><b>@summary.Count</b> total</Badge>
-}
+<Badge Color="Color.Success"><b>@summary.DoneCount</b> done</Badge>
+<Badge Color="Color.Primary"><b>@summary.Count</b> total</Badge>
 
 @code {
     protected override Task<TodoSummary> ComputeState(CancellationToken cancellationToken)
