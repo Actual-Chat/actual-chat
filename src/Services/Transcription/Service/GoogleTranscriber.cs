@@ -179,7 +179,7 @@ namespace ActualChat.Transcription
                                 break;
 
                             previousText = speechFragment.Text;
-                            var (text, offset, duration) =
+                            var (text, textIndex, offset, duration) =
                                 cutter.CutMemoized(new(speechFragment.Text, speechFragment.Duration));
                             var newSpeechFragment = new TranscriptSpeechFragment {
                                 Index = speechFragment.Index,
