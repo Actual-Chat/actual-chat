@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ActualChat.Mathematics.Internal;
 using Stl.Time;
 
@@ -9,7 +10,6 @@ namespace ActualChat.Mathematics
         where TSize : notnull
     {
         public TPoint ZeroPoint { get; init; } = default!;
-        public TSize ZeroSize { get; init; } = default!;
 
         public abstract TSize GetDistance(TPoint start, TPoint end);
         public abstract TPoint AddOffset(TPoint point, TSize offset);
@@ -19,12 +19,15 @@ namespace ActualChat.Mathematics
         public abstract TSize Multiply(TSize size, double multiplier);
         public abstract TSize Modulo(TSize size, TSize modulo);
 
-        public TSize GetDistance(Range<TPoint> range)
-            => GetDistance(range.End, range.Start);
+        public bool IsZeroPoint(TPoint point)
+            => EqualityComparer<TPoint>.Default.Equals(ZeroPoint, point);
+
+        public TSize GetSize(Range<TPoint> range)
+            => GetDistance(range.Start, range.End);
         public TPoint SubtractOffset(TPoint point, TSize offset)
             => AddOffset(point, ToNegative(offset));
         public TSize ToNegative(TSize size)
-            => Subtract(ZeroSize, size);
+            => Subtract(default!, size);
     }
 
     public static class SizeMeasure

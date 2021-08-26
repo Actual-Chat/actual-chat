@@ -11,9 +11,9 @@ namespace ActualChat.Chat.Client
     {
         // Commands
         [Post(nameof(Create))]
-        Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default);
+        Task<Chat> Create([Body] ChatCommands.Create command, CancellationToken cancellationToken = default);
         [Post(nameof(Post))]
-        Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken = default);
+        Task<ChatEntry> Post([Body] ChatCommands.Post command, CancellationToken cancellationToken = default);
 
         // Queries
         [Get(nameof(TryGet))]

@@ -17,11 +17,11 @@ namespace ActualChat.Mathematics.Internal
             ConvertingMeasure = convertingMeasure;
             Measure = convertingMeasure;
             Zero = ConvertingMeasure.PointFromDouble(BaseLogCover.Zero);
-            MinRangeSize = ConvertingMeasure.SizeFromDouble(BaseLogCover.MinRangeSize);
-            MaxRangeSize = ConvertingMeasure.SizeFromDouble(BaseLogCover.MaxRangeSize);
+            MinTileSize = ConvertingMeasure.SizeFromDouble(BaseLogCover.MinTileSize);
+            MaxTileSize = ConvertingMeasure.SizeFromDouble(BaseLogCover.MaxTileSize);
         }
 
-        protected override TSize[] GetRangeSizes()
-            => BaseLogCover.RangeSizes.Select(s => ConvertingMeasure.SizeFromDouble(s)).ToArray();
+        protected override TSize[] GetTileSizes()
+            => BaseLogCover.TileSizes.Select(s => ConvertingMeasure.SizeFromDouble(s)).ToArray();
     }
 }
