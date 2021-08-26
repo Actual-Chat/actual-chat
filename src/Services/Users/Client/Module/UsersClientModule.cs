@@ -19,8 +19,11 @@ namespace ActualChat.Users.Client.Module
                 return; // Client-side only module
 
             var fusion = services.AddFusion();
-            var fusionAuth = fusion.AddAuthentication();
-            fusionAuth.AddRestEaseClient();
+            var fusionClient = services.AddFusion().AddRestEaseClient();
+            var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
+
+            fusionClient.AddReplicaService<IUserInfoService, IUserInfoClientDef>();
+            fusionClient.AddReplicaService<IUserStateService, IUserStateClientDef>();
         }
     }
 }

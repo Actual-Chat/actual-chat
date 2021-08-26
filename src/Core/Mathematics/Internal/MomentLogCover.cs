@@ -8,9 +8,9 @@ namespace ActualChat.Mathematics.Internal
         public MomentLogCover()
             : this(new DoubleLogCover() {
                 Zero = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).ToMoment().ToUnixEpoch(),
-                MinRangeSize = TimeSpan.FromMinutes(3).TotalSeconds,
-                MaxRangeSize = TimeSpan.FromMinutes(3 * Math.Pow(4, 10)).TotalSeconds, // ~ almost 6 years
-                RangeSizeFactor = 4,
+                MinTileSize = TimeSpan.FromMinutes(3).TotalSeconds,
+                MaxTileSize = TimeSpan.FromMinutes(3 * Math.Pow(4, 10)).TotalSeconds, // ~ almost 6 years
+                TileSizeFactor = 4,
             })
         { }
 

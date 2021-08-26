@@ -8,6 +8,11 @@ namespace ActualChat.Mathematics.Internal
         public override long Add(long first, long second) => first + second;
         public override long Subtract(long first, long second) => first - second;
         public override long Multiply(long size, double multiplier) => (long) (size * multiplier);
-        public override long Modulo(long size, long modulo) => size % modulo;
+
+        public override long Modulo(long size, long modulo)
+        {
+            var result = size % modulo;
+            return result >= 0 ? result : modulo + result;
+        }
     }
 }

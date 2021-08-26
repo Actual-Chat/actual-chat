@@ -1,3 +1,5 @@
+using System;
+
 namespace ActualChat.Chat.UI.Blazor.Models
 {
     public record ChatPageModel
@@ -6,5 +8,6 @@ namespace ActualChat.Chat.UI.Blazor.Models
         public bool MustLogin { get; init; }
 
         public Chat? Chat { get; init; }
+        public ChatEntry[] Entries { get; init; } = Array.Empty<ChatEntry>();
     }
 }
