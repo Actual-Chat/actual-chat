@@ -12,7 +12,8 @@ namespace ActualChat.Chat.Db
     [Index(nameof(ChatId), nameof(Id))]
     [Index(nameof(ChatId), nameof(BeginsAt), nameof(EndsAt), nameof(ContentType))]
     [Index(nameof(ChatId), nameof(EndsAt), nameof(BeginsAt), nameof(ContentType))]
-    public class DbChatEntry : IHasId<long>
+    [Index(nameof(ChatId), nameof(Version))]
+    public class DbChatEntry : IHasId<long>, IHasWritableVersion<long>
     {
         public static string GetCompositeId(string chatId, long id)
             => ZString.Format("{0}:{1}", chatId, id);
@@ -23,7 +24,8 @@ namespace ActualChat.Chat.Db
         [Key]
         public string CompositeId { get; set; } = "";
         public string ChatId { get; set; } = "";
-        public long Id { get; set; } = 0;
+        public long Id { get; set; }
+        [ConcurrencyCheck] public long Version { get; set; }
         public string CreatorId { get; set; } = "";
 
         public DateTime BeginsAt {

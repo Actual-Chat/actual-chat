@@ -29,6 +29,7 @@ namespace ActualChat.Chat.Module
 
             if (ShouldRecreateDb) {
                 var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
+                var versionProvider = Services.GetRequiredService<IVersionProvider<long>>();
 
                 // Creating "The Actual One" chat
                 await using var dbContext = dbContextFactory.CreateDbContext().ReadWrite();
@@ -36,6 +37,7 @@ namespace ActualChat.Chat.Module
                 var adminUserId = UserConstants.AdminUserId;
                 dbContext.Chats.Add(new DbChat() {
                     Id = defaultChatId,
+                    Version = versionProvider.FirstVersion(),
                     Title = "The Actual One",
                     CreatedAt = Clocks.SystemClock.Now,
                     CreatorId = adminUserId,
