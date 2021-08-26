@@ -4,7 +4,7 @@ namespace ActualChat
 {
     public sealed class LongVersionProvider : IVersionProvider<long>
     {
-        public static IVersionProvider<long> Default { get; } = new LongVersionProvider(SystemClock.Instance);
+        public static IVersionProvider<long> Default { get; } = new LongVersionProvider(CoarseSystemClock.Instance);
 
         private readonly IMomentClock _clock;
 
