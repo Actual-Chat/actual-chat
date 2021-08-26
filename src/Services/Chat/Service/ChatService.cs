@@ -30,6 +30,7 @@ namespace ActualChat.Chat
         protected IUserInfoService UserInfos { get; init; }
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
+        protected IVersionProvider<long> VersionProvider { get; init; }
         protected LogCover<long, long> IdRangeCover { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
@@ -38,6 +39,7 @@ namespace ActualChat.Chat
             UserInfos = services.GetRequiredService<IUserInfoService>();
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
+            VersionProvider = services.GetRequiredService<IVersionProvider<long>>();
             IdRangeCover = LogCover.Default.Long;
         }
 
@@ -58,6 +60,7 @@ namespace ActualChat.Chat
             var id = RandomStringGenerator.Default.Next(8, RandomStringGenerator.Base32Alphabet);
             var dbChat = new DbChat() {
                 Id = id,
+                Version = VersionProvider.FirstVersion(),
                 Title = title,
                 CreatorId = user.Id,
                 CreatedAt = now,
@@ -95,9 +98,10 @@ namespace ActualChat.Chat
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken);
             var dbChatEntry = new DbChatEntry() {
+                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
                 ChatId = chatId,
                 Id = id,
-                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
+                Version = VersionProvider.FirstVersion(),
                 CreatorId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,

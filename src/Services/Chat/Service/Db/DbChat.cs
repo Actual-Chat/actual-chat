@@ -10,11 +10,12 @@ using Stl.Time;
 namespace ActualChat.Chat.Db
 {
     [Table("Chats")]
-    public class DbChat : IHasId<string>
+    public class DbChat : IHasId<string>, IHasWritableVersion<long>
     {
         private DateTime _createdAt;
 
         [Key] public string Id { get; set; } = "";
+        [ConcurrencyCheck] public long Version { get; set; }
         public string Title { get; set; } = "";
         public string CreatorId { get; set; } = "";
         public bool IsPublic { get; set; }

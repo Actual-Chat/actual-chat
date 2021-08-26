@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
 using Stl.Plugins;
+using Stl.Time;
 
 namespace ActualChat.Module
 {
@@ -16,6 +17,8 @@ namespace ActualChat.Module
         {
             var fusion = services.AddFusion();
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+
+            services.AddSingleton<IVersionProvider<long>>(c => new LongVersionProvider(c.Clocks().CoarseSystemClock));
         }
     }
 }
