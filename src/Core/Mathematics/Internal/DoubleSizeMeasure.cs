@@ -8,6 +8,11 @@ namespace ActualChat.Mathematics.Internal
         public override double Add(double first, double second) => first + second;
         public override double Subtract(double first, double second) => first - second;
         public override double Multiply(double size, double multiplier) => size * multiplier;
-        public override double Modulo(double size, double modulo) => size % modulo;
+
+        public override double Modulo(double size, double modulo)
+        {
+            var result = size % modulo;
+            return result >= 0 ? result : modulo + result;
+        }
     }
 }

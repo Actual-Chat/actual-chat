@@ -7,15 +7,15 @@ namespace ActualChat.Mathematics.Internal
     {
         public LongLogCover()
         {
-            MinRangeSize = 16;
-            MaxRangeSize = 16_384;
+            MinTileSize = 16;
+            MaxTileSize = 16_384;
             Measure = SizeMeasure.Long;
         }
 
-        protected override long[] GetRangeSizes()
+        protected override long[] GetTileSizes()
             => Enumerable.Range(0, int.MaxValue)
-                .Select(i => MinRangeSize * (long) Math.Pow(RangeSizeFactor, i))
-                .TakeWhile(size => size <= MaxRangeSize)
+                .Select(i => MinTileSize * (long) Math.Pow(TileSizeFactor, i))
+                .TakeWhile(size => size <= MaxTileSize)
                 .ToArray();
     }
 }

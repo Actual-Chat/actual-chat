@@ -1,10 +1,8 @@
-using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Server;
-using Stl.Time;
 
 namespace ActualChat.Chat.Controllers
 {
@@ -24,14 +22,14 @@ namespace ActualChat.Chat.Controllers
         // Commands
 
         [HttpPost]
-        public Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default)
+        public Task<Chat> Create([FromBody] ChatCommands.Create command, CancellationToken cancellationToken = default)
         {
             command.UseDefaultSession(_sessionResolver);
             return _chats.Create(command, cancellationToken);
         }
 
         [HttpPost]
-        public Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken = default)
+        public Task<ChatEntry> Post([FromBody] ChatCommands.Post command, CancellationToken cancellationToken = default)
         {
             command.UseDefaultSession(_sessionResolver);
             return _chats.Post(command, cancellationToken);
