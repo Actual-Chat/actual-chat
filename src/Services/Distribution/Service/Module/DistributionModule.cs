@@ -22,9 +22,10 @@ namespace ActualChat.Distribution.Module
             var multiplexer = ConnectionMultiplexer.Connect(settings.Redis);
             services.AddSingleton<IConnectionMultiplexer>(multiplexer);
             services.AddTransient<IHubRegistrar,HubRegistrar>();
-            services.AddTransient<IStreamingService<AudioMessage>, AudioStreamingService>();
-            services.AddTransient<IStreamingService<VideoMessage>, VideoStreamingService>();
-            services.AddTransient<IStreamingService<TranscriptMessage>, TranscriptStreamingService>();
+            services.AddTransient<StreamingServiceHub>();
+            services.AddTransient<IStreamingService<AudioMessage>, StreamingService<AudioMessage>>();
+            services.AddTransient<IStreamingService<VideoMessage>, StreamingService<VideoMessage>>();
+            services.AddTransient<IStreamingService<TranscriptMessage>, StreamingService<TranscriptMessage>>();
             services.AddTransient<IServerSideStreamingService<AudioMessage>, ServerSideStreamingService<AudioMessage>>();
             services.AddTransient<IServerSideStreamingService<VideoMessage>, ServerSideStreamingService<VideoMessage>>();
             services.AddTransient<IServerSideStreamingService<TranscriptMessage>, ServerSideStreamingService<TranscriptMessage>>();
