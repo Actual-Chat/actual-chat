@@ -15,8 +15,6 @@
     <ProjectReference Include="..\Services\Audio\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Services\Chat\Client\Client.csproj" />
     <ProjectReference Include="..\Services\Chat\UI.Blazor\UI.Blazor.csproj" />
-    <ProjectReference Include="..\Services\Todos\Client\Client.csproj" />
-    <ProjectReference Include="..\Services\Todos\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Services\Users\Client\Client.csproj" />
     <ProjectReference Include="..\Services\Users\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
