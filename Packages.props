@@ -101,6 +101,7 @@
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="2.1.*" />
     <PackageReference Update="ZString" Version="2.4.*" />
+    <PackageReference Update="Microsoft.Playwright" Version="1.14.1" />
 
     <!-- Build / test time only -->
     <PackageReference Update="FluentAssertions" Version="6.1.*" />
@@ -115,5 +116,6 @@
     <PackageReference Update="coverlet.collector" Version="3.1.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="bunit" Version="1.2.49" />
+    <PackageReference Update="Microsoft.Playwright" Version="1.14.1" />
   </ItemGroup>
 </Project>
