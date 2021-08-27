@@ -30,7 +30,7 @@
 
     private async Task Post()
     {
-        if (string.IsNullOrEmpty(ChatId))
+        if (ChatId.IsNullOrEmpty())
             return;
         var (_, ce) = await _cmd.Run(new ChatCommands.Post(_session, ChatId, Message));
         if (ce.IsFailed)

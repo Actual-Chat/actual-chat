@@ -54,7 +54,7 @@
 
     protected override Task OnParametersSetAsync()
     {
-        if (string.IsNullOrEmpty(ChatId))
+        if (ChatId.IsNullOrEmpty())
             _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
         return base.OnParametersSetAsync();
     }
