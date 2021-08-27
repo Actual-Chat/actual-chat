@@ -17,8 +17,6 @@ namespace ActualChat.Module
         {
             var fusion = services.AddFusion();
             var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-
-            services.AddSingleton<IVersionProvider<long>>(c => new LongVersionProvider(c.Clocks().CoarseSystemClock));
         }
     }
 }

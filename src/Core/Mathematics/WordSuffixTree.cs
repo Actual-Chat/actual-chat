@@ -61,7 +61,7 @@ namespace ActualChat.Mathematics
                 else
                     break;
             }
- 
+
             return new (currentNode, path);
         }
 
@@ -125,7 +125,7 @@ namespace ActualChat.Mathematics
             if (subKey.Count > 0) {
                 var edge = foundNode.GetEdge(subKey[0]);
 
-                var label = edge.Label;
+                var label = edge!.Label;
                 if (label.Count > subKey.Count && label[subKey.Count] == word)
                     return new (true, foundNode);
 
@@ -146,7 +146,7 @@ namespace ActualChat.Mathematics
             var wEdge = foundNode.GetEdge(word);
             if (wEdge == null)
                 return (false, foundNode);
-            
+
             if (remainder.Count == wEdge.Label.Count && StartsWith(remainder, wEdge.Label)) {
                 // update payload of destination NodeA<T>
                 wEdge.Target.AddRef(value);

@@ -27,7 +27,6 @@ namespace ActualChat.Chat
         protected IUserInfoService UserInfos { get; init; }
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
-        protected IVersionProvider<long> VersionProvider { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
@@ -35,7 +34,6 @@ namespace ActualChat.Chat
             UserInfos = services.GetRequiredService<IUserInfoService>();
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
-            VersionProvider = services.GetRequiredService<IVersionProvider<long>>();
         }
 
         // Commands
@@ -55,7 +53,7 @@ namespace ActualChat.Chat
             var id = RandomStringGenerator.Default.Next(8, RandomStringGenerator.Base32Alphabet);
             var dbChat = new DbChat() {
                 Id = id,
-                Version = VersionProvider.FirstVersion(),
+                Version = VersionGenerator.NextVersion(),
                 Title = title,
                 CreatorId = user.Id,
                 CreatedAt = now,
@@ -96,7 +94,7 @@ namespace ActualChat.Chat
                 CompositeId = DbChatEntry.GetCompositeId(chatId, id),
                 ChatId = chatId,
                 Id = id,
-                Version = VersionProvider.FirstVersion(),
+                Version = VersionGenerator.NextVersion(),
                 CreatorId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,
