@@ -1,25 +1,24 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.SignalR;
+using ActualChat.Distribution.Client.Module;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace ActualChat.Distribution.Client
 {
-
     public class VideoStreamingServiceClient : IStreamingService<VideoMessage>
     {
-        private readonly HubConnection _hubConnection;
+        private readonly IHubConnectionSentinel _hubConnectionSentinel;
 
-        public VideoStreamingServiceClient(HubConnection hubConnection)
+        public VideoStreamingServiceClient(IHubConnectionSentinel hubConnectionSentinel)
         {
-            _hubConnection = hubConnection;
-            // TODO: AK - We need to initialize hub!!!
+            _hubConnectionSentinel = hubConnectionSentinel;
         }
 
-        public Task<ChannelReader<VideoMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public async Task<ChannelReader<VideoMessage>> GetStream(string streamId, CancellationToken cancellationToken)
         {
-            return _hubConnection.StreamAsChannelCoreAsync<VideoMessage>("GetVideoStream", new object[] { streamId }, cancellationToken);
+            var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
+            return await hubConnection.StreamAsChannelCoreAsync<VideoMessage>("GetVideoStream", new object[] { streamId }, cancellationToken);
         }
     }
 }
