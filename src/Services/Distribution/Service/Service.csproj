@@ -2,13 +2,21 @@
 
   <PropertyGroup>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Contract\Contract.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MessagePack" />
+    <PackageReference Include="Microsoft.AspNetCore.Routing" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
     <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 

@@ -30,6 +30,8 @@
     <PackageReference Update="Enums.NET" Version="4.0.*" />
     <PackageReference Update="FluentAssertions" Version="5.10.*" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*" />
+    <PackageReference Update="MessagePack" Version="2.3.*" />
+    <PackageReference Update="MessagePack.Annotations" Version="2.3.*" />
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*" />
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />
     <PackageReference Update="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)" />
@@ -41,7 +43,9 @@
     <PackageReference Update="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
     <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)" />
     <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)" />
+    <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*" />
     <PackageReference Update="Microsoft.AspNetCore.SignalR" Version="1.1.*"/>
+    <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="5.0.*" />
     <PackageReference Update="Microsoft.Data.SqlClient" Version="3.0.*" />
     <PackageReference Update="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
@@ -62,6 +66,7 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.SqlServer" Version="$(EntityFrameworkCoreVersion)" />
     <PackageReference Update="Microsoft.Identity.Web" Version="1.14.*" />
+    <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.0.*" />
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageReference Update="MsgPack.Cli" Version="1.0.*" />
@@ -101,6 +106,7 @@
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="2.1.*" />
     <PackageReference Update="ZString" Version="2.4.*" />
+    
 
     <!-- Build / test time only -->
     <PackageReference Update="FluentAssertions" Version="6.1.*" />
