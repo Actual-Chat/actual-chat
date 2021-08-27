@@ -1,8 +1,8 @@
 using ActualChat.Hosting;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion;
-using Stl.Fusion.Client;
 using Stl.Plugins;
 
 namespace ActualChat.Distribution.Client.Module
@@ -18,9 +18,16 @@ namespace ActualChat.Distribution.Client.Module
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
                 return; // Client-side only module
 
-            
-            // var fusionClient = services.AddFusion().AddRestEaseClient();
-            // fusionClient.AddReplicaService<ITodoService, ITodoClientDef>();
+            var navigationManager = services.BuildServiceProvider().GetRequiredService<NavigationManager>();
+            var streamConnection = new HubConnectionBuilder()
+                .WithUrl(navigationManager.ToAbsoluteUri("/api/stream"))
+                .WithAutomaticReconnect()
+                .Build();
+            services.AddSingleton(streamConnection);
+            services.AddSingleton<IHubConnectionSentinel, HubConnectionSentinel>();
+            services.AddTransient<IStreamingService<AudioMessage>, AudioStreamingServiceClient>();
+            services.AddTransient<IStreamingService<VideoMessage>, VideoStreamingServiceClient>();
+            services.AddTransient<IStreamingService<TranscriptMessage>, TranscriptStreamingServiceClient>();
         }
     }
 }

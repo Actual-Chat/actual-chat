@@ -7,9 +7,7 @@ namespace ActualChat.Distribution.Module
     {
         public void RegisterHubs(IEndpointRouteBuilder endpoints)
         {
-            endpoints.MapHub<AudioStreamingService>("api/audio-stream");
-            endpoints.MapHub<VideoStreamingService>("api/video-stream");
-            endpoints.MapHub<TranscriptStreamingService>("api/transcription-stream");
+            endpoints.MapHub<StreamingServiceHub>("/api/stream");
         }
     }
 }
