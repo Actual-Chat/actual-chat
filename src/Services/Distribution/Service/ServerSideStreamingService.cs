@@ -1,0 +1,37 @@
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+using MessagePack;
+using Microsoft.Toolkit.HighPerformance.Buffers;
+using StackExchange.Redis;
+using StackExchange.Redis.KeyspaceIsolation;
+
+namespace ActualChat.Distribution
+{
+    public class ServerSideStreamingService<TMessage> : IServerSideStreamingService<TMessage>
+    {
+        private readonly IConnectionMultiplexer _redis;
+
+        public ServerSideStreamingService(IConnectionMultiplexer redis)
+        {
+            _redis = redis;
+        }
+
+        public async Task PublishStream(string streamId, ChannelReader<TMessage> source, CancellationToken cancellationToken)
+        {
+            var db = _redis.GetDatabase().WithKeyPrefix(nameof(TMessage));
+            var key = new RedisKey(streamId);
+            
+            while (await source.WaitToReadAsync(cancellationToken))
+            while (source.TryRead(out var message)) {
+                var bufferWriter = new ArrayPoolBufferWriter<byte>();
+                MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard, cancellationToken);
+                var serialized = bufferWriter.WrittenMemory;
+                
+                db.StreamAdd(key, Consts.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
+            }
+            
+            db.StreamAdd(key, Consts.StatusKey,  Consts.Completed, maxLength: 1000, useApproximateMaxLength: true);
+        }
+    }
+}
