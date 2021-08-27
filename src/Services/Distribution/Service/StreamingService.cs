@@ -9,10 +9,9 @@ using StackExchange.Redis.KeyspaceIsolation;
 
 namespace ActualChat.Distribution
 {
-    public abstract class StreamingService<TMessage>: Hub<IStreamingService<TMessage>>, IStreamingService<TMessage>
+    public class StreamingService<TMessage>: Hub<IStreamingService<TMessage>>, IStreamingService<TMessage>
     {
         private readonly IConnectionMultiplexer _redis;
-        // private readonly IHubContext<DistributionHub, IDistributionService> _hubContext;
         
         public StreamingService(IConnectionMultiplexer redis)
         {

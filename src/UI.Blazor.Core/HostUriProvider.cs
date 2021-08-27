@@ -1,7 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Components;
 
-namespace ActualChat.Host
+namespace ActualChat.UI.Blazor
 {
     public class HostUriProvider : IHostUriProvider
     {

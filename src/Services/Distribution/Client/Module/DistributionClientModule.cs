@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
@@ -21,6 +22,11 @@ namespace ActualChat.Distribution.Client.Module
             var streamConnection = new HubConnectionBuilder()
                 .WithUrl(hostUriProvider.GetAbsoluteUri("/api/stream"))
                 .WithAutomaticReconnect()
+                // .ConfigureLogging(logging =>
+                // {
+                //     // logging.AddConsole();
+                //     logging.SetMinimumLevel(LogLevel.Debug);
+                // })
                 .Build();
             services.AddSingleton(streamConnection);
             services.AddSingleton<IHubConnectionSentinel, HubConnectionSentinel>();
