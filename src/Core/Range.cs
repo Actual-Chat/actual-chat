@@ -1,14 +1,18 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Stl.Serialization;
 
 namespace ActualChat
 {
+    [Serializable]
     public readonly struct Range<T> : IEquatable<Range<T>>
         where T : notnull
     {
         public T Start { get; } // Typically inclusive
         public T End { get; } // Typically exclusive
+        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+        public bool IsEmpty => EqualityComparer<T>.Default.Equals(Start, End);
 
         [JsonConstructor, Newtonsoft.Json.JsonConstructor]
         public Range(T start, T end)

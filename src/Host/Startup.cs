@@ -53,6 +53,7 @@ namespace ActualChat.Host
                 if (Env.IsDevelopment()) {
                     logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
                     logging.AddFilter("Microsoft.AspNetCore.Hosting", LogLevel.Information);
+                    // logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Transaction", LogLevel.Debug);
                     logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
                     logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
                 }

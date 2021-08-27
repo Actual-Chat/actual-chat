@@ -1,3 +1,4 @@
+@page "/chat"
 @page "/chat/{ChatId}"
 @inherits ComputedStateComponent<ChatPageModel>
 @inject IChatService _chats
@@ -14,15 +15,36 @@
         _nav.Unavailable("chat");
     if (model.MustLogin)
         _nav.Login("to view this chat");
+    var chat = model.Chat ?? new();
+    var entries = model.Entries;
 }
 
-<h1>Chat</h1>
+<h1>"@(chat.Title.NullIfEmpty() ?? "Loading...")" chat</h1>
 
 <WhenException Exception="@error"/>
 
-<h2><Badge Color="Color.Dark">TBD.</Badge></h2>
+<Table Narrow="true" Striped="true" Margin="Margin.Is3.OnY">
+    <TableHeader ThemeContrast="ThemeContrast.Dark">
+        <TableRow>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Message</TableHeaderCell>
+        </TableRow>
+    </TableHeader>
+    <TableBody>
+        @foreach(var entry in entries.Where(e => e.ContentType == ChatContentType.Text)) {
+            <TableRow>
+                <TableRowCell Style="width: 20%; max-width: 33%">
+                    <UserNameBadge UserId="@entry.CreatorId" />
+                </TableRowCell>
+                <TableRowCell Style="width: auto; min-width: 67%">
+                    @entry.Content
+                </TableRowCell>
+            </TableRow>
+        }
+    </TableBody>
+</Table>
 
-<p>It's the little details that are vital. Little things make big things happen.</p>
+<ChatMessageEditor ChatId="@chat.Id" />
 
 @code {
     [CascadingParameter]
@@ -30,14 +52,30 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
+    protected override Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(ChatId))
+            _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
+        return base.OnParametersSetAsync();
+    }
+
     protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
     {
+        var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
         var user = (await AuthState).User;
-        var chat = await _chats.TryGet(_session, ChatId, cancellationToken);
+        var chat = await _chats.TryGet(_session, chatId, cancellationToken);
         if (chat == null)
             return new ChatPageModel() { IsUnavailable = true };
         if (!user.IsAuthenticated && !chat.IsPublic)
             return new ChatPageModel() { MustLogin = true };
-        return new ChatPageModel();
+
+        var lastId = await _chats.GetLastEntryId(_session, chatId, cancellationToken);
+        var idTiles = ChatConstants.IdLogCover.GetTileCover((lastId - 100, lastId + 1)); // Just to check it works
+        var pages = await Task.WhenAll(idTiles.Select(idTile =>
+            _chats.GetPage(_session, chatId, idTile, cancellationToken)));
+        return new ChatPageModel() {
+            Chat = chat,
+            Entries = pages.SelectMany(p => p.Entries).ToArray(),
+        };
     }
 }

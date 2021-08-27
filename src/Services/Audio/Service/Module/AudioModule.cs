@@ -45,7 +45,7 @@ namespace ActualChat.Audio.Module
                     IsLoggingEnabled = true,
                 });
                 services.AddTransient(c => new DbOperationScope<AudioDbContext>(c) {
-                    IsolationLevel = IsolationLevel.Serializable,
+                    IsolationLevel = IsolationLevel.RepeatableRead,
                 });
                 dbContext.AddOperations((_, o) => {
                     o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);

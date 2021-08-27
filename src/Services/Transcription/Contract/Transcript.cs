@@ -51,6 +51,8 @@ namespace ActualChat.Transcription
         public TranscriptSilenceFragment? Silence { get => Get<TranscriptSilenceFragment>(); init => Set(value); }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
         public TranscriptOtherAudioFragment? Other { get => Get<TranscriptOtherAudioFragment>(); init => Set(value); }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
+        public TranscriptErrorFragment? Error { get => Get<TranscriptErrorFragment>(); init => Set(value); }
 
         [JsonConstructor]
         public TranscriptFragmentVariant() { }

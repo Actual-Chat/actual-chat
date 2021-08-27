@@ -7,9 +7,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Chat.Db;
-using ActualChat.Mathematics;
 using ActualChat.Users;
-using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Async;
@@ -19,7 +17,6 @@ using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.Operations;
 using Stl.Generators;
-using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -30,7 +27,7 @@ namespace ActualChat.Chat
         protected IUserInfoService UserInfos { get; init; }
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
-        protected LogCover<long, long> IdRangeCover { get; init; }
+        protected IVersionProvider<long> VersionProvider { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
@@ -38,7 +35,7 @@ namespace ActualChat.Chat
             UserInfos = services.GetRequiredService<IUserInfoService>();
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
-            IdRangeCover = LogCover.Default.Long;
+            VersionProvider = services.GetRequiredService<IVersionProvider<long>>();
         }
 
         // Commands
@@ -58,6 +55,7 @@ namespace ActualChat.Chat
             var id = RandomStringGenerator.Default.Next(8, RandomStringGenerator.Base32Alphabet);
             var dbChat = new DbChat() {
                 Id = id,
+                Version = VersionProvider.FirstVersion(),
                 Title = title,
                 CreatorId = user.Id,
                 CreatedAt = now,
@@ -95,9 +93,10 @@ namespace ActualChat.Chat
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken);
             var dbChatEntry = new DbChatEntry() {
+                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
                 ChatId = chatId,
                 Id = id,
-                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
+                Version = VersionProvider.FirstVersion(),
                 CreatorId = user.Id,
                 BeginsAt = now,
                 EndsAt = now,
@@ -153,7 +152,7 @@ namespace ActualChat.Chat
 
             if (idRange.HasValue) {
                 var idRangeValue = idRange.GetValueOrDefault();
-                IdRangeCover.AssertValidRange(idRangeValue);
+                ChatConstants.IdLogCover.AssertIsTile(idRangeValue);
                 dbMessages = dbMessages.Where(m =>
                     m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
             }
@@ -172,6 +171,8 @@ namespace ActualChat.Chat
         public virtual async Task<ChatPage> GetPage(
             string chatId, Range<long> idRange, CancellationToken cancellationToken = default)
         {
+            ChatConstants.IdLogCover.AssertIsTile(idRange);
+
             await using var dbContext = CreateDbContext();
             var dbEntries = await dbContext.ChatEntries.AsQueryable()
                 .Where(m => m.ChatId == chatId)
@@ -179,11 +180,7 @@ namespace ActualChat.Chat
                 .OrderBy(m => m.Id)
                 .ToListAsync(cancellationToken);
             var entries = dbEntries.Select(m => m.ToModel()).ToImmutableArray();
-            var timeRange = new Range<Moment>(entries.Min(e => e.BeginsAt), entries.Max(e => e.EndsAt));
-            return new ChatPage() {
-                Entries = entries,
-                TimeRange = timeRange,
-            };
+            return new ChatPage() { Entries = entries };
         }
 
         public virtual async Task<long> GetLastEntryId(
@@ -255,7 +252,7 @@ namespace ActualChat.Chat
         {
             if (!isUpdate)
                 GetEntryCount(chatId, null, default).Ignore();
-            foreach (var idRange in IdRangeCover.GetRanges(chatEntryId)) {
+            foreach (var idRange in ChatConstants.IdLogCover.GetCoveringTiles(chatEntryId)) {
                 GetPage(chatId, idRange, default).Ignore();
                 if (!isUpdate)
                     GetEntryCount(chatId, idRange, default).Ignore();

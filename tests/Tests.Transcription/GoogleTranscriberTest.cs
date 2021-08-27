@@ -73,14 +73,10 @@ namespace ActualChat.Tests.Transcription
             var pollTask = PollResults(transcriber, cts.Token);
 
             await feedTask;
-            //     
 
             await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
-            
-            
 
             await pollTask;
-
 
             async Task FeedTranscriber(ITranscriber t)
             {
@@ -89,6 +85,7 @@ namespace ActualChat.Tests.Transcription
                         TranscriptId = transcriptId,
                         Data = chunk
                     });
+                await Task.Delay(300); // additional delay, google doesn't return final results otherwise. 
             }
         
 

@@ -23,7 +23,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>TodoApp: Fusion+Blazor Template</title>
+    <title>Actual Chat</title>
     <base href="~/" />
     <link href="css/app.css" rel="stylesheet" />
     <partial name="Blazorise.Head" />
@@ -59,7 +59,7 @@
                     break;
                 }
                 catch (InvalidOperationException) {
-                    if (++errorCount > 0)
+                    if (++errorCount > 3)
                         throw;
                 }
                 finally {

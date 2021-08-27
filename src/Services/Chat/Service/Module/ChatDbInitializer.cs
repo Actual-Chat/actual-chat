@@ -5,8 +5,12 @@ using System.Threading.Tasks;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
+using Stl.Fusion.EntityFramework;
+using Stl.Fusion.EntityFramework.Authentication;
+using Stl.Time;
 
 namespace ActualChat.Chat.Module
 {
@@ -24,13 +28,28 @@ namespace ActualChat.Chat.Module
             await Task.WhenAll(dependencies);
 
             if (ShouldRecreateDb) {
-                var auth = Services.GetRequiredService<IServerSideAuthService>();
-                var chats = Services.GetRequiredService<IServerSideChatService>();
-                var session = UserConstants.AdminSession;
+                var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
+                var versionProvider = Services.GetRequiredService<IVersionProvider<long>>();
 
                 // Creating "The Actual One" chat
-                var chat = await chats.Create(new ChatCommands.Create(session, "The Actual One"), cancellationToken);
-                ChatConstants.DefaultChatId = chat.Id;
+                await using var dbContext = dbContextFactory.CreateDbContext().ReadWrite();
+                var defaultChatId = ChatConstants.DefaultChatId;
+                var adminUserId = UserConstants.AdminUserId;
+                dbContext.Chats.Add(new DbChat() {
+                    Id = defaultChatId,
+                    Version = versionProvider.FirstVersion(),
+                    Title = "The Actual One",
+                    CreatedAt = Clocks.SystemClock.Now,
+                    CreatorId = adminUserId,
+                    IsPublic = true,
+                    Owners = {
+                        new DbChatOwner() {
+                            ChatId = defaultChatId,
+                            UserId = adminUserId,
+                        },
+                    },
+                });
+                await dbContext.SaveChangesAsync(cancellationToken);
             }
         }
     }

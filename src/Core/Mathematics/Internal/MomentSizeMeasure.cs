@@ -11,7 +11,13 @@ namespace ActualChat.Mathematics.Internal
         public override TimeSpan Add(TimeSpan first, TimeSpan second) => first + second;
         public override TimeSpan Subtract(TimeSpan first, TimeSpan second) => first - second;
         public override TimeSpan Multiply(TimeSpan size, double multiplier) => size * multiplier;
+
         public override TimeSpan Modulo(TimeSpan size, TimeSpan modulo)
-            => TimeSpan.FromTicks(size.Ticks % modulo.Ticks);
+        {
+            var result = size.Ticks % modulo.Ticks;
+            if (result < 0)
+                result += modulo.Ticks;
+            return TimeSpan.FromTicks(result);
+        }
     }
 }

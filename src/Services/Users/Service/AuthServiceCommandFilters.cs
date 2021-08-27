@@ -66,6 +66,8 @@ namespace ActualChat.Users
             }
             var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
             context.Operation().Items.Set(userInfo);
+
+            await MarkOnline(userId, cancellationToken);
         }
 
         // Validates user name on edit
@@ -111,7 +113,14 @@ namespace ActualChat.Users
             if (sessionInfo?.IsAuthenticated != true)
                 return;
             var userId = sessionInfo.UserId;
+            await MarkOnline(userId, cancellationToken);
+        }
 
+
+        // Private methods
+
+        private async Task MarkOnline(string userId, CancellationToken cancellationToken = default)
+        {
             if (Computed.IsInvalidating()) {
                 var c = Computed.TryGetExisting(() => UserStates.IsOnline(userId, default));
                 if (c?.IsConsistent() == true && (!c.IsValue(out var v) || !v)) {
@@ -129,11 +138,10 @@ namespace ActualChat.Users
                 userState = new DbUserState() { UserId = userId };
                 dbContext.Add(userState);
             }
+
             userState.OnlineCheckInAt = Clocks.SystemClock.Now;
             await dbContext.SaveChangesAsync(cancellationToken);
         }
-
-        // Private methods
 
         private async Task<string> NormalizeName(
             UsersDbContext dbContext,

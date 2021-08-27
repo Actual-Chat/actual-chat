@@ -11,7 +11,6 @@ using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using Stl.Async;
-using Stl.Channels;
 using Stl.Text;
 
 namespace ActualChat.Transcription
@@ -40,7 +39,7 @@ namespace ActualChat.Transcription
                 LanguageCode = options.Language,
                 EnableAutomaticPunctuation = options.IsPunctuationEnabled,
                 DiarizationConfig = new SpeakerDiarizationConfig {
-                    EnableSpeakerDiarization = options.IsDiarizationEnabled,
+                    EnableSpeakerDiarization = true,//options.IsDiarizationEnabled,
                     MaxSpeakerCount = options.MaxSpeakerCount ?? 5
                 }
             };
@@ -48,7 +47,7 @@ namespace ActualChat.Transcription
             await streamingRecognizeStream.WriteAsync(new StreamingRecognizeRequest {
                 StreamingConfig = new StreamingRecognitionConfig {
                     Config = config,
-                    InterimResults = false,
+                    InterimResults = true,
                     SingleUtterance = false
                 }
             });
@@ -56,7 +55,7 @@ namespace ActualChat.Transcription
             var responseStream =  streamingRecognizeStream.GetResponseStream();
             var reader = new TranscriptionBuffer(responseStream, _log);
             var cts = new CancellationTokenSource();
-            reader.Start(cts.Token).ContinueWith(t
+            reader.Start(cts.Token).ContinueWith(_
                 => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
 
             _transcriptionStreams.TryAdd(transcriptId,
@@ -80,7 +79,7 @@ namespace ActualChat.Transcription
             // Initialize hasn't been completed or Recording has already been completed
             if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream)) return;
 
-            var (writer, reader, cts) = transcriptionStream;
+            var (writer, _, _) = transcriptionStream;
             await writer.WriteAsync(new StreamingRecognizeRequest {
                 AudioContent = ByteString.CopyFrom(data.Data)
             });
@@ -167,10 +166,35 @@ namespace ActualChat.Transcription
                 if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0) 
                     return;
 
+                var cutter = new StablePrefixCutter();
+                var previousText = string.Empty;
                 await foreach (var response in _stream.WithCancellation(cancellationToken)) {
-                    var fragmentVariant = MapResponse(response);
-                    if (fragmentVariant != null)
-                        await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
+                    var fragmentVariants = MapResponse(response);
+                    foreach (var fragmentVariant in fragmentVariants) {
+                        var speechFragment = fragmentVariant.Speech;
+                        if ((speechFragment?.StartOffset ?? 0) != 0)
+                            await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
+                        else if (speechFragment != null) {
+                            if (previousText == speechFragment.Text)
+                                break;
+
+                            previousText = speechFragment.Text;
+                            var (text, textIndex, offset, duration) =
+                                cutter.CutMemoized(new(speechFragment.Text, speechFragment.Duration));
+                            var newSpeechFragment = new TranscriptSpeechFragment {
+                                Index = speechFragment.Index,
+                                Confidence = speechFragment.Confidence,
+                                Text = text,
+                                StartOffset = offset,
+                                Duration = duration,
+                                IsFinal = false,
+                                SpeakerId = speechFragment.SpeakerId
+                            };
+                            await _channel.Writer.WriteAsync(new TranscriptFragmentVariant(newSpeechFragment), cancellationToken);
+                        }
+                        else
+                            await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
+                    }
                 }
 
                 _channel.Writer.Complete();
@@ -217,16 +241,16 @@ namespace ActualChat.Transcription
                 }
             }
 
-            private TranscriptFragmentVariant? MapResponse(StreamingRecognizeResponse response)
+            private IReadOnlyList<TranscriptFragmentVariant> MapResponse(StreamingRecognizeResponse response)
             {
                 if (response.Error != null) {
                     _logger.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
-                    return new TranscriptFragmentVariant(
+                    return new [] { new TranscriptFragmentVariant(
                         new TranscriptErrorFragment(response.Error.Code, response.Error.Message) {
                             Index = _index++,
                             StartOffset = _offset,
                             Duration = 0d
-                        });
+                        })};
                 }
                 foreach (var result in response.Results) {
                     var alternative = result.Alternatives.First();
@@ -236,16 +260,34 @@ namespace ActualChat.Transcription
                         Index = _index++,
                         Confidence = alternative.Confidence,
                         Text = alternative.Transcript,
-                        StartOffset = _offset,
-                        Duration = endOffset - _offset,
+                        StartOffset = 0,
+                        Duration = endOffset,
                         IsFinal = result.IsFinal
                     };
                     _offset = endOffset;
-                    // one final result in the response
-                    return new TranscriptFragmentVariant(fragment);
+                    if (!result.IsFinal || !(alternative.Words?.Count > 0))
+                        return new[] { new TranscriptFragmentVariant(fragment) };
+                    
+                    var list = new List<TranscriptFragmentVariant>();
+                    for (var i = 0; i < alternative.Words.Count; i++) {
+                        var wordInfo = alternative.Words[i];
+                        var startOffset = wordInfo.StartTime.ToTimeSpan().TotalSeconds;
+                        var wordFragment = new TranscriptSpeechFragment {
+                            Index = _index++,
+                            Confidence = wordInfo.Confidence,
+                            Text = wordInfo.Word,
+                            StartOffset = startOffset,
+                            Duration = Math.Round(wordInfo.EndTime.ToTimeSpan().TotalSeconds - startOffset, 3, MidpointRounding.AwayFromZero),
+                            IsFinal = i == alternative.Words.Count - 1,
+                            SpeakerId = wordInfo.SpeakerTag.ToString()
+                        };
+                        list.Add(new TranscriptFragmentVariant(wordFragment));
+                    }
+
+                    return list;
                 }
 
-                return null;
+                return ImmutableArray<TranscriptFragmentVariant>.Empty;
             }
         }
     }

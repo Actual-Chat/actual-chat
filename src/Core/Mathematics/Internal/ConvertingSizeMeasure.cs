@@ -34,7 +34,14 @@ namespace ActualChat.Mathematics.Internal
             => SizeFromDouble(SizeToDouble(first) - SizeToDouble(second));
         public override TSize Multiply(TSize size, double multiplier)
             => SizeFromDouble(SizeToDouble(size) * multiplier);
+
         public override TSize Modulo(TSize size, TSize modulo)
-            => SizeFromDouble(SizeToDouble(size) % SizeToDouble(modulo));
+        {
+            var doubleModulo = SizeToDouble(modulo);
+            var result = SizeToDouble(size) % doubleModulo;
+            if (result < 0)
+                result += doubleModulo;
+            return SizeFromDouble(result);
+        }
     }
 }
