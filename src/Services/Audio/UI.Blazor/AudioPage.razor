@@ -3,12 +3,14 @@
 @using Stl.Async
 @using Stl.Text
 @using Stl.Time
+@using ActualChat.Distribution
 @implements IAudioRecorderJSBackend
 @inject IJSRuntime _js
 @inject IAudioRecorder _audioRecorder
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject ILogger<AudioPage> _log
+@inject IStreamingService<AudioMessage> _audioStreaming
 
 <h1>Voice Transcription</h1>
 
