@@ -29,10 +29,14 @@ namespace ActualChat.Distribution.Client.Module
         {
             var random = new Random();
             var delayInterval = 500;
-            while (true)
+            var attempt = 0;
+            while (attempt < 10)
                 try {
+                    attempt++;
                     if (_hubConnection.State == HubConnectionState.Disconnected)
                         await _hubConnection.StartAsync(token);
+                    else
+                        return;
                 }
                 catch when (token.IsCancellationRequested) {
                     return;

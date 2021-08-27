@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using ActualChat.Distribution.Module;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Host;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
