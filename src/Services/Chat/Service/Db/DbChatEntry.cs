@@ -52,7 +52,7 @@ namespace ActualChat.Chat.Db
                 EndsAt = EndsAt,
                 ContentType = ContentType,
                 Content = Content,
-                RecordingId = RecordingId ?? "",
+                StreamId = RecordingId ?? "",
             };
     }
 }
