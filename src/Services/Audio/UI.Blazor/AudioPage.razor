@@ -112,6 +112,8 @@
             });
 
             RecordingId = result.Result;
+            
+            var reader = await _audioStreaming.GetStream("random-number", CancellationToken.None);
         }
     }
 

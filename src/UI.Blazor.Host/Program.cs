@@ -5,6 +5,7 @@ using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Distribution.Client.Module;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
@@ -66,6 +67,7 @@ namespace ActualChat.UI.Blazor.Host
             pluginHostBuilder.UsePlugins(
                 typeof(BlazorUICoreModule),
                 typeof(AudioClientModule),
+                typeof(DistributionClientModule),
                 typeof(AudioBlazorUIModule),
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),
