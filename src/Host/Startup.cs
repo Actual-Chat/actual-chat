@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ActualChat.Distribution.Module;
@@ -94,6 +95,8 @@ namespace ActualChat.Host
                     Title = "ActualChat API", Version = "v1"
                 });
             });
+
+            services.AddTransient<IHostUriProvider, HostUriProvider>();
 
             // Injecting plugin services
             Plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));

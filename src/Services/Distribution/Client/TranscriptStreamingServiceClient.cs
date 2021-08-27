@@ -1,25 +1,25 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using ActualChat.Distribution.Client.Module;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace ActualChat.Distribution.Client
 {
-
     public class TranscriptStreamingServiceClient : IStreamingService<TranscriptMessage>
     {
-        private readonly HubConnection _hubConnection;
+        private readonly IHubConnectionSentinel _hubConnectionSentinel;
 
-        public TranscriptStreamingServiceClient(HubConnection hubConnection)
+        public TranscriptStreamingServiceClient(IHubConnectionSentinel hubConnectionSentinel)
         {
-            _hubConnection = hubConnection;
-            // TODO: AK - We need to initialize hub!!!
+            _hubConnectionSentinel = hubConnectionSentinel;
         }
 
-        public Task<ChannelReader<TranscriptMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public async Task<ChannelReader<TranscriptMessage>> GetStream(string streamId, CancellationToken cancellationToken)
         {
-            return _hubConnection.StreamAsChannelCoreAsync<TranscriptMessage>("GetTranscriptStream", new object[] { streamId }, cancellationToken);
+            var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
+            return await hubConnection.StreamAsChannelCoreAsync<TranscriptMessage>("GeTranscriptStream", new object[] { streamId }, cancellationToken);
         }
     }
 }

@@ -1,25 +1,24 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.SignalR;
+using ActualChat.Distribution.Client.Module;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace ActualChat.Distribution.Client
 {
-
     public class AudioStreamingServiceClient : IStreamingService<AudioMessage>
     {
-        private readonly HubConnection _hubConnection;
+        private readonly IHubConnectionSentinel _hubConnectionSentinel;
 
-        public AudioStreamingServiceClient(HubConnection hubConnection)
+        public AudioStreamingServiceClient(IHubConnectionSentinel hubConnectionSentinel)
         {
-            _hubConnection = hubConnection;
-            // TODO: AK - We need to initialize hub!!!
+            _hubConnectionSentinel = hubConnectionSentinel;
         }
 
-        public Task<ChannelReader<AudioMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public async Task<ChannelReader<AudioMessage>> GetStream(string streamId, CancellationToken cancellationToken)
         {
-            return _hubConnection.StreamAsChannelCoreAsync<AudioMessage>("GetAudioStream", new object[] { streamId }, cancellationToken);
+            var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
+            return await hubConnection.StreamAsChannelCoreAsync<AudioMessage>("GetAudioStream", new object[] { streamId }, cancellationToken);
         }
     }
 }

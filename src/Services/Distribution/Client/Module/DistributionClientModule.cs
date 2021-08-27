@@ -1,5 +1,4 @@
 using ActualChat.Hosting;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
@@ -18,9 +17,9 @@ namespace ActualChat.Distribution.Client.Module
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
                 return; // Client-side only module
 
-            var navigationManager = services.BuildServiceProvider().GetRequiredService<NavigationManager>();
+            var hostUriProvider = services.BuildServiceProvider().GetRequiredService<IHostUriProvider>();
             var streamConnection = new HubConnectionBuilder()
-                .WithUrl(navigationManager.ToAbsoluteUri("/api/stream"))
+                .WithUrl(hostUriProvider.GetAbsoluteUri("/api/stream"))
                 .WithAutomaticReconnect()
                 .Build();
             services.AddSingleton(streamConnection);
