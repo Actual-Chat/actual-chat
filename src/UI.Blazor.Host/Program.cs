@@ -6,8 +6,6 @@ using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Hosting;
-using ActualChat.Todos.Client.Module;
-using ActualChat.Todos.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -67,8 +65,6 @@ namespace ActualChat.UI.Blazor.Host
             // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
             pluginHostBuilder.UsePlugins(
                 typeof(BlazorUICoreModule),
-                typeof(TodosClientModule),
-                typeof(TodosBlazorUIModule),
                 typeof(AudioClientModule),
                 typeof(AudioBlazorUIModule),
                 typeof(ChatClientModule),
