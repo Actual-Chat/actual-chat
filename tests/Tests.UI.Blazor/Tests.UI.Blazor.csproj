@@ -7,4 +7,8 @@
     <ProjectReference Include="..\..\src\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Playwright" />
+  </ItemGroup>
+
 </Project>
