@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Stl;
 using Stl.Collections;
 using Stl.Serialization;
 
@@ -20,7 +21,7 @@ namespace ActualChat.Chat.Markup
         public override string ToString()
         {
             var sParts = Parts.Select(e => e.ToString()).ToDelimitedString($",{Environment.NewLine}  ");
-            if (!string.IsNullOrEmpty(sParts))
+            if (!sParts.IsNullOrEmpty())
                 sParts = $",{Environment.NewLine}  {sParts}";
             return $"{GetType().Name}({SystemJsonSerializer.Default.Write(Text)}{sParts})";
         }
