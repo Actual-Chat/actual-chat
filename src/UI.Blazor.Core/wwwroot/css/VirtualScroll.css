@@ -1,0 +1,15 @@
+﻿.virtual-scroll {
+    /* display: flex; */
+    /* flex-direction: column; */
+    /* align-content: stretch; */
+    overflow-y: auto;
+}
+
+.virtual-scroll .content {
+    position: relative;
+}
+
+.virtual-scroll .item {
+    position: absolute;
+    overflow: hidden;
+}
