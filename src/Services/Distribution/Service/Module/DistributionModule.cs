@@ -1,27 +1,37 @@
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.SignalR;
+using StackExchange.Redis;
+using Stl.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.Distribution.Module
 {
     public class DistributionModule : HostModule
     {
-        public DistributionModule(IPluginInfoProvider.Query _) : base(_)
-        {
-        }
-
-        public DistributionModule(IPluginHost plugins) : base(plugins)
-        {
-        }
+        public DistributionModule(IPluginInfoProvider.Query _) : base(_) { }
+        [ServiceConstructor]
+        public DistributionModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            services.AddSignalR();
-            // TODO: Register some hub discovery services
+            services.AddSettings<DistributionSettings>();
+            var settings = services.BuildServiceProvider().GetRequiredService<DistributionSettings>();
+            var multiplexer = ConnectionMultiplexer.Connect(settings.Redis);
+            services.AddSingleton<IConnectionMultiplexer>(multiplexer);
+            services.AddTransient<IHubRegistrar,HubRegistrar>();
+            services.AddTransient<StreamingServiceHub>();
+            services.AddTransient<IStreamingService<AudioMessage>, StreamingService<AudioMessage>>();
+            services.AddTransient<IStreamingService<VideoMessage>, StreamingService<VideoMessage>>();
+            services.AddTransient<IStreamingService<TranscriptMessage>, StreamingService<TranscriptMessage>>();
+            services.AddTransient<IServerSideStreamingService<AudioMessage>, ServerSideStreamingService<AudioMessage>>();
+            services.AddTransient<IServerSideStreamingService<VideoMessage>, ServerSideStreamingService<VideoMessage>>();
+            services.AddTransient<IServerSideStreamingService<TranscriptMessage>, ServerSideStreamingService<TranscriptMessage>>();
+            
+            services.AddSignalR()
+                .AddMessagePackProtocol(); // TODO: no AOT compilation support yet 
         }
     }
 }

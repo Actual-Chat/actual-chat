@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Users.UI.Blazor.Models;
 using Microsoft.AspNetCore.Components;
+using Stl;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Blazor;
 
@@ -20,7 +21,7 @@ namespace ActualChat.Users.UI.Blazor
 
         protected override async Task<UserBadgeModel> ComputeState(CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(UserId))
+            if (UserId.IsNullOrEmpty())
                 return new UserBadgeModel();
 
             var userInfo = await UserInfos.TryGet(UserId, cancellationToken);

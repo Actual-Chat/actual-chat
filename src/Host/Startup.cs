@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using ActualChat.Distribution.Module;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Host;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -94,11 +97,13 @@ namespace ActualChat.Host
                 });
             });
 
+            services.AddTransient<IHostUriProvider, HostUriProvider>();
+
             // Injecting plugin services
             Plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
         }
 
-        public void Configure(IApplicationBuilder app)
+        public void Configure(IApplicationBuilder app, IHubRegistrar hubRegistrar)
         {
             // This server serves static content from Blazor Client,
             // and since we don't copy it to local wwwroot,
@@ -147,7 +152,7 @@ namespace ActualChat.Host
             app.UseSwaggerUI(c => {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
             });
-
+            
             // API controllers
             app.UseRouting();
             app.UseAuthentication();
@@ -156,6 +161,7 @@ namespace ActualChat.Host
                 endpoints.MapBlazorHub();
                 endpoints.MapFusionWebSocketServer();
                 endpoints.MapControllers();
+                endpoints.MapHubs(hubRegistrar);
                 endpoints.MapFallbackToPage("/_Host");
             });
         }

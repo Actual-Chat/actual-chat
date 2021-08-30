@@ -6,11 +6,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using Stl;
 using Stl.Time;
+using Stl.Versioning;
 
 namespace ActualChat.Chat.Db
 {
     [Table("Chats")]
-    public class DbChat : IHasId<string>, IHasWritableVersion<long>
+    public class DbChat : IHasId<string>, IHasMutableVersion<long>
     {
         private DateTime _createdAt;
 
