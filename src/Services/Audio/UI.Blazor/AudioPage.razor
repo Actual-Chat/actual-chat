@@ -97,6 +97,8 @@
             ToggleText = "Recording...";
         }
         IsRecording = !IsRecording;
+        
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -113,7 +115,10 @@
 
             RecordingId = result.Result;
             
-            var reader = await _audioStreaming.GetStream("random-number", CancellationToken.None);
+            var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
+            await foreach (var audioMessage in reader.ReadAllAsync()) {
+                Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
+            }
         }
     }
 

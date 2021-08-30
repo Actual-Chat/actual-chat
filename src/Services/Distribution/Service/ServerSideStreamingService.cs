@@ -24,14 +24,34 @@ namespace ActualChat.Distribution
             
             while (await source.WaitToReadAsync(cancellationToken))
             while (source.TryRead(out var message)) {
-                var bufferWriter = new ArrayPoolBufferWriter<byte>();
+                using var bufferWriter = new ArrayPoolBufferWriter<byte>();
                 MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard, cancellationToken);
                 var serialized = bufferWriter.WrittenMemory;
                 
-                db.StreamAdd(key, Consts.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
+                await db.StreamAddAsync(key, Consts.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
             }
+
+            await Complete(streamId, cancellationToken);
+        }
+
+        public async Task Publish(string streamId, TMessage message, CancellationToken cancellationToken)
+        {
+            var db = _redis.GetDatabase().WithKeyPrefix(nameof(TMessage));
+            var key = new RedisKey(streamId);
             
-            db.StreamAdd(key, Consts.StatusKey,  Consts.Completed, maxLength: 1000, useApproximateMaxLength: true);
+            using var bufferWriter = new ArrayPoolBufferWriter<byte>();
+            MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard, cancellationToken);
+            var serialized = bufferWriter.WrittenMemory;
+                
+            await db.StreamAddAsync(key, Consts.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
+        }
+
+        public async Task Complete(string streamId, CancellationToken cancellationToken)
+        {
+            var db = _redis.GetDatabase().WithKeyPrefix(nameof(TMessage));
+            var key = new RedisKey(streamId);
+            
+            await db.StreamAddAsync(key, Consts.StatusKey,  Consts.Completed, maxLength: 1000, useApproximateMaxLength: true);
         }
     }
 }
