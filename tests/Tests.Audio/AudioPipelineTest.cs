@@ -103,7 +103,6 @@ namespace ActualChat.Tests.Audio
             var audioStreaming = services.GetRequiredService<IStreamingService<AudioMessage>>();
             var transcriptStreaming = services.GetRequiredService<IStreamingService<TranscriptMessage>>();
 
-
             var initializeCommand = new InitializeAudioRecorderCommand {
                 Session = session,
                 Language = "RU-ru",
@@ -120,12 +119,16 @@ namespace ActualChat.Tests.Audio
 
             var pushTask = PushAudioData(recordingId, audioRecorder);
             var readTask = ReadDistributedData(recordingId, audioStreaming);
+            var readTranscriptTask = ReadTranscribedData(recordingId, transcriptStreaming);
 
             var writtenSize = await pushTask;
             await Task.Delay(1000); // Iron pants
             
             await audioRecorder.Complete(new CompleteAudioRecording(recordingId));
             var readSize = await readTask;
+            var transcribed = await readTranscriptTask;
+
+            transcribed.Should().BeGreaterThan(0);
 
             readSize.Should().Be(writtenSize);
         }
@@ -137,6 +140,20 @@ namespace ActualChat.Tests.Audio
             var streamId = $"{recordingId}-{0:D4}";
             var audioReader = await sr.GetStream(streamId, CancellationToken.None);
             await foreach (var message in audioReader.ReadAllAsync()) size += message.Chunk.Length;
+
+            return size;
+        }
+        
+        async Task<int> ReadTranscribedData(Symbol recordingId, IStreamingService<TranscriptMessage> sr)
+        {
+            var size = 0;
+            //TODO: AK - we need to figure out how to notify consumers about new streamID - with new ChatEntry?
+            var streamId = $"{recordingId}-{0:D4}";
+            var audioReader = await sr.GetStream(streamId, CancellationToken.None);
+            await foreach (var message in audioReader.ReadAllAsync()) {
+                Out.WriteLine(message.Text);
+                size = message.TextIndex + message.Text.Length;
+            }
 
             return size;
         }

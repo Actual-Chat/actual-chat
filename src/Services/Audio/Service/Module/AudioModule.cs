@@ -3,6 +3,7 @@ using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Blobs;
 using ActualChat.Hosting;
+using ActualChat.Transcription;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.CommandR;

@@ -1,23 +1,22 @@
-﻿using ActualChat.Hosting;
+using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion;
 using Stl.Plugins;
 
-namespace ActualChat.Blobs.Module
+namespace ActualChat.Transcription.Module
 {
-    public class BlobsModule : HostModule
+    public class TranscriptionModule: HostModule
     {
-        public BlobsModule(IPluginInfoProvider.Query _) : base(_) { }
+        public TranscriptionModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public BlobsModule(IPluginHost plugins) : base(plugins) { }
+        public TranscriptionModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
+            services.AddSingleton<ITranscriber, GoogleTranscriber>();
         }
     }
 }

@@ -20,15 +20,5 @@ namespace ActualChat.Transcription
         
         // probably we should combine Poll and Ack into one method to reduce chattiness
         Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default);
-
-        // [ComputeMethod]
-        // Task<Transcript> GetTranscript(Symbol transcriptId, CancellationToken cancellationToken = default);
-        // [ComputeMethod]
-        // Task<TranscriptSummary> GetSummary(Symbol transcriptId, CancellationToken cancellationToken = default);
-        // [ComputeMethod]
-        // Task<TranscriptAudioSummary> GetAudioSummary(Symbol transcriptId, CancellationToken cancellationToken = default);
-        // [ComputeMethod]
-        // Task<ImmutableArray<TranscriptFragment>> GetFragments(
-        //     Symbol transcriptId, PageRef<int> page, CancellationToken cancellationToken = default);
     }
 }
