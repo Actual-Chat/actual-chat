@@ -36,7 +36,11 @@ namespace ActualChat.Audio
         private readonly ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)> _dataCapacitor;
         
 
-        public AudioRecorder(IServiceProvider services, IAuthService authService, IBlobStorageProvider blobStorageProvider, ILogger<AudioRecorder> log) : base(services)
+        public AudioRecorder(
+            IServiceProvider services,
+            IAuthService authService,
+            IBlobStorageProvider blobStorageProvider,
+            ILogger<AudioRecorder> log) : base(services)
         {
             _authService = authService;
             _blobStorageProvider = blobStorageProvider;
