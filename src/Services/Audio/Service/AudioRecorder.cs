@@ -11,6 +11,7 @@ using ActualChat.Audio.Db;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
+using ActualChat.Distribution;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
 using Stl.Async;
@@ -30,23 +31,26 @@ namespace ActualChat.Audio
 
         private readonly IAuthService _authService;
         private readonly IBlobStorageProvider _blobStorageProvider;
+        private readonly IServerSideStreamingService<AudioMessage> _streamingService;
         private readonly ILogger<AudioRecorder> _log;
 
         private readonly Generator<string> _idGenerator;
-        private readonly ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)> _dataCapacitor;
+        private readonly ConcurrentDictionary<Symbol, RecordingState> _dataCapacitor;
         
 
         public AudioRecorder(
             IServiceProvider services,
             IAuthService authService,
             IBlobStorageProvider blobStorageProvider,
+            IServerSideStreamingService<AudioMessage> streamingService,
             ILogger<AudioRecorder> log) : base(services)
         {
             _authService = authService;
             _blobStorageProvider = blobStorageProvider;
+            _streamingService = streamingService;
             _log = log;
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
-            _dataCapacitor = new ConcurrentDictionary<Symbol, (Channel<AppendAudioCommand>, Task)>();
+            _dataCapacitor = new ConcurrentDictionary<Symbol,RecordingState>();
         }
 
         public virtual async Task<Symbol> Initialize(InitializeAudioRecorderCommand command, CancellationToken cancellationToken = default)
@@ -73,7 +77,9 @@ namespace ActualChat.Audio
             await dbContext.SaveChangesAsync(cancellationToken);
             
             var channel = Channel.CreateUnbounded<AppendAudioCommand>(new UnboundedChannelOptions{ SingleReader = true });
-            _dataCapacitor.TryAdd(recordingId, (channel, FlushBufferedSegments(recordingId, command.ClientStartOffset, channel)));
+            var recordingState = new RecordingState(channel);
+            recordingState.ProcessAudioTask = FlushBufferedSegments(recordingId, command.ClientStartOffset, recordingState);
+            _dataCapacitor.TryAdd(recordingId, recordingState);
 
             return recordingId;
         }
@@ -82,15 +88,13 @@ namespace ActualChat.Audio
         {
             if (Computed.IsInvalidating()) return;
 
-            var (recordingId, index, offset, data) = command;
+            var (recordingId, index, _, data) = command;
             _log.LogTrace($"{nameof(AppendAudio)}, RecordingId = {{RecordingId}}, Index = {{Index}}, DataLength = {{DataLength}}",
                 recordingId.Value,
-                command.Index,
-                command.Data.Count);
+                index,
+                data.Count);
 
-            // Push to real-time pipeline
-            // TBD
-
+            
             // Waiting for Initialize
             var waitAttempts = 0;
             while (!_dataCapacitor.ContainsKey(recordingId) && waitAttempts < 5) {
@@ -101,8 +105,13 @@ namespace ActualChat.Audio
             // Initialize hasn't been completed or Recording has already been completed
             if (!_dataCapacitor.TryGetValue(recordingId, out var tuple)) return;
 
-            var (channel, _) = tuple;
-            await channel.Writer.WriteAsync(command, cancellationToken);;
+            var (channel, _, segment) = tuple;
+            var streamId = $"{recordingId}-{segment:D4}";
+            var message = new AudioMessage(command.Data.Data);
+            var processChunk = channel.Writer.WriteAsync(command, cancellationToken);
+            // Push to real-time pipeline
+            var distributeChunk = _streamingService.Publish(streamId, message, cancellationToken);
+            await Task.WhenAll(processChunk.AsTask(), distributeChunk);
         }
 
         public virtual async Task Complete(CompleteAudioRecording command, CancellationToken cancellationToken = default)
@@ -110,7 +119,7 @@ namespace ActualChat.Audio
             if (Computed.IsInvalidating()) return;
 
             if (_dataCapacitor.TryRemove(command.RecordingId, out var tuple)) {
-                var (channel, flushTask) = tuple;
+                var (channel, flushTask, _) = tuple;
                 channel.Writer.Complete();
                 await flushTask.WithFakeCancellation(cancellationToken);
             }
@@ -119,8 +128,9 @@ namespace ActualChat.Audio
         private async Task FlushBufferedSegments(
             Symbol recordingId, 
             Moment recordingStartOffset,
-            Channel<AppendAudioCommand> channel)
+            RecordingState state)
         {
+            var channel = state.AudioInput;
             var lastOffset = recordingStartOffset.ToUnixEpoch();
             var metaData = new List<SegmentMetaDataEntry>();
             EBML? ebml = null; 
@@ -128,7 +138,6 @@ namespace ActualChat.Audio
             WebMReader.State readerState = new WebMReader.State();
             var clusters = new List<Cluster>();
             var currentSegmentDuration = 0d;
-            var lastIndex = 0;
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
                 var currentOffset = clientEndOffset.ToUnixEpoch();
@@ -153,12 +162,14 @@ namespace ActualChat.Audio
 
                 if (currentSegmentDuration >= SegmentLength.TotalSeconds && clusters.Count > 0) {
                     currentSegmentDuration = 0;
-                    await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), index, lastOffset);
+                    await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), state.CurrentSegment, lastOffset);
                     clusters.Clear();
                 }
                 
                 lastOffset = currentOffset;
-                lastIndex = index;
+                var streamId = $"{recordingId}-{state.CurrentSegment:D4}";
+                await _streamingService.Complete(streamId, CancellationToken.None);
+                state.StartNextSegment();
                 
                 (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader reader)
                 {
@@ -187,7 +198,7 @@ namespace ActualChat.Audio
             
             if (readerState.Container is Cluster c) clusters.Add(c);
 
-            await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), ++lastIndex, lastOffset);
+            await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), state.CurrentSegment, lastOffset);
         }
 
         private async Task FlushSegment(Symbol recordingId, IReadOnlyList<SegmentMetaDataEntry> metaData, WebMDocument webM, int index, double offset)
@@ -264,5 +275,31 @@ namespace ActualChat.Audio
 
         private record SegmentMetaDataEntry(int Index, double Offset, double Duration);
 
+        private class RecordingState
+        {
+            public RecordingState(Channel<AppendAudioCommand> audioInput)
+            {
+                AudioInput = audioInput;
+                CurrentSegment = 0;
+            }
+
+            public Channel<AppendAudioCommand> AudioInput { get; }
+            
+            public Task ProcessAudioTask { get; set; } = null!;
+
+            public int CurrentSegment { get; private set; }
+
+            public void StartNextSegment()
+            {
+                CurrentSegment++;
+            }
+
+            public void Deconstruct(out Channel<AppendAudioCommand> channel, out Task processTask, out int currentSegment)
+            {
+                channel = AudioInput;
+                processTask = ProcessAudioTask;
+                currentSegment = CurrentSegment;
+            }
+        } 
     }
 }
