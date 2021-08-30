@@ -205,11 +205,12 @@ namespace ActualChat.Audio
         {
             if (metaData == null) throw new ArgumentNullException(nameof(metaData));
             if (webM == null) throw new ArgumentNullException(nameof(webM));
-            var (ebml, segment, clusters) = webM;
-            if (ebml == null) throw new ArgumentNullException(nameof(ebml));
-            if (segment == null) throw new ArgumentNullException(nameof(segment));
-            if (clusters == null) throw new ArgumentNullException(nameof(clusters));
+            if (!webM.IsValid) {
+                _log.LogWarning("Skip flushing audio segments for {{RecordingId}}. WebM document is invalid", recordingId);
+                return;
+            }
 
+            var (ebml, segment, clusters) = webM;
             var minBufferSize = 32*1024;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{Ulid.NewUlid().ToString()}";
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
