@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -52,6 +53,9 @@ namespace ActualChat.Distribution
             var key = new RedisKey(streamId);
             
             await db.StreamAddAsync(key, Consts.StatusKey,  Consts.Completed, maxLength: 1000, useApproximateMaxLength: true);
+
+            // TODO: AK - AY please review
+            Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(_ => db.KeyDelete(key));
         }
     }
 }
