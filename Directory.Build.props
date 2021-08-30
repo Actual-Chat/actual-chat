@@ -17,6 +17,7 @@
     <Nullable>enable</Nullable>
     <DefaultLanguage>en-US</DefaultLanguage>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!--
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <Features>strict;pdb-path-determinism</Features>
@@ -24,6 +25,7 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <NoPackageAnalysis>false</NoPackageAnalysis>
     <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
+    -->
 
     <!-- Defaults for web projects -->
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
@@ -38,9 +40,11 @@
     <WarningsAsErrors>true</WarningsAsErrors>
 
     <!-- Deterministic -->
+    <!--
     <Deterministic>false</Deterministic>
     <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
     <PathMap>'$(SolutionDir)'=/_/</PathMap>
+    -->
   </PropertyGroup>
 
   <ItemGroup Condition="$(DeterministicSourcePaths) == 'true'">
