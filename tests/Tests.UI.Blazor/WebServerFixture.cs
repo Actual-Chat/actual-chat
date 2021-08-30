@@ -12,8 +12,8 @@ namespace ActualChat.Tests.UI.Blazor
     public class WebServerFixture : IAsyncLifetime, IDisposable
     {
         private readonly IHost _host;
-        private IPlaywright Playwright { get; set; }
-        public IBrowser Browser { get; private set; }
+        private IPlaywright? Playwright { get; set; }
+        public IBrowser? Browser { get; private set; }
         public string BaseUrl { get; }
 
         public WebServerFixture()
