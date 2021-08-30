@@ -159,14 +159,5 @@ namespace ActualChat.Tests.Audio
                 return writer.Position;
             }
         }
-
-        [Fact]
-        public void CastTest()
-        {
-            long value = -300;
-            ulong uvalue = (ulong)Math.Abs(value) | (1UL << (8*3 - 1));
-
-            Out.WriteLine(uvalue.ToString("X"));
-        }
     }
 }
