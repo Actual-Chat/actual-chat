@@ -77,7 +77,7 @@ namespace ActualChat.Audio
             await dbContext.SaveChangesAsync(cancellationToken);
             
             var channel = Channel.CreateUnbounded<AppendAudioCommand>(new UnboundedChannelOptions{ SingleReader = true });
-            var recordingState = new RecordingState(channel);
+            var recordingState = new RecordingState(recordingId, channel);
             recordingState.ProcessAudioTask = FlushBufferedSegments(recordingId, command.ClientStartOffset, recordingState);
             _dataCapacitor.TryAdd(recordingId, recordingState);
 
@@ -163,13 +163,14 @@ namespace ActualChat.Audio
                 if (currentSegmentDuration >= SegmentLength.TotalSeconds && clusters.Count > 0) {
                     currentSegmentDuration = 0;
                     await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), state.CurrentSegment, lastOffset);
+                    // TODO: AK - suspicious lack of the CancellationToken
+                    await _streamingService.Complete(state.StreamId, CancellationToken.None);
+                    state.StartNextSegment();
+                    
                     clusters.Clear();
                 }
                 
                 lastOffset = currentOffset;
-                var streamId = $"{recordingId}-{state.CurrentSegment:D4}";
-                await _streamingService.Complete(streamId, CancellationToken.None);
-                state.StartNextSegment();
                 
                 (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader reader)
                 {
@@ -198,6 +199,7 @@ namespace ActualChat.Audio
             
             if (readerState.Container is Cluster c) clusters.Add(c);
 
+            await _streamingService.Complete(state.StreamId, CancellationToken.None);
             await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), state.CurrentSegment, lastOffset);
         }
 
@@ -278,8 +280,12 @@ namespace ActualChat.Audio
 
         private class RecordingState
         {
-            public RecordingState(Channel<AppendAudioCommand> audioInput)
+            private readonly Symbol _recordingId;
+
+            public RecordingState(Symbol recordingId, Channel<AppendAudioCommand> audioInput)
             {
+                _recordingId = recordingId;
+                
                 AudioInput = audioInput;
                 CurrentSegment = 0;
             }
@@ -289,6 +295,8 @@ namespace ActualChat.Audio
             public Task ProcessAudioTask { get; set; } = null!;
 
             public int CurrentSegment { get; private set; }
+
+            public string StreamId => $"{_recordingId}-{CurrentSegment:D4}";
 
             public void StartNextSegment()
             {
