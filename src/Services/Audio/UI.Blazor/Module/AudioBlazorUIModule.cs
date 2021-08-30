@@ -1,4 +1,8 @@
-﻿using ActualChat.Hosting;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using ActualChat.Distribution.Client.Module;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
@@ -11,6 +15,9 @@ namespace ActualChat.Audio.UI.Blazor.Module
         public AudioBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
         public AudioBlazorUIModule(IPluginHost plugins) : base(plugins) { }
+
+        public override IEnumerable<Type> Dependencies =>
+            base.Dependencies.Concat(new[] { typeof(DistributionClientModule) });
 
         public override void InjectServices(IServiceCollection services)
         {
