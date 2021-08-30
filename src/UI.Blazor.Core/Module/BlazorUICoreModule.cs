@@ -37,6 +37,7 @@ namespace ActualChat.UI.Blazor.Module
 
             // Default update delay is 0.5s
             services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
+            services.AddTransient<IHostUriProvider, HostUriProvider>();
         }
     }
 }

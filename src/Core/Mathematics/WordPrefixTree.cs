@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using Castle.Core.Internal;
 
 namespace ActualChat.Mathematics
 {
@@ -16,7 +15,7 @@ namespace ActualChat.Mathematics
 
         public void Add(IReadOnlyList<string> phrase, TValue value)
         {
-            if (phrase.IsNullOrEmpty())
+            if (phrase.Count == 0)
                 return;
 
             var (foundNode, remaining) = TraverseDeeper(_root, phrase);
@@ -56,7 +55,7 @@ namespace ActualChat.Mathematics
                     return new(currentNode, path.Skip(level).ToList());
                 currentNode = next;
             }
- 
+
             return new (currentNode, ImmutableList<string>.Empty);
         }
 
