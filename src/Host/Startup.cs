@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ActualChat.Distribution.Module;
+using ActualChat.Host.Internal;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Host;
@@ -101,6 +102,7 @@ namespace ActualChat.Host
 
             // Injecting plugin services
             Plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
+            services.AddSingleton<HostPluginHelper>();
         }
 
         public void Configure(IApplicationBuilder app, IHubRegistrar hubRegistrar)
@@ -152,7 +154,7 @@ namespace ActualChat.Host
             app.UseSwaggerUI(c => {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
             });
-            
+
             // API controllers
             app.UseRouting();
             app.UseAuthentication();

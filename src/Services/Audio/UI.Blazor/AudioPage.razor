@@ -4,8 +4,9 @@
 @using Stl.Text
 @using Stl.Time
 @using ActualChat.Distribution
-@implements IAudioRecorderJSBackend
+@implements IAudioRecorderBackend
 @inject IJSRuntime _js
+@inject JSModule _jsModule;
 @inject IAudioRecorder _audioRecorder
 @inject Session _session
 @inject UICommandRunner _cmd
@@ -40,8 +41,8 @@
 </AuthorizeView>
 
 @code {
-    private IJSObjectReference JsRecorderRef { get; set; } = null!;
-    private DotNetObjectReference<IAudioRecorderJSBackend> DotNetRecorderRef { get; set; } = null!;
+    private IJSObjectReference? ModuleRef { get; set; }
+    private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
     private Symbol RecordingId { get; set; } = Symbol.Empty;
     private int Index { get; set; } = 0;
 
@@ -52,19 +53,16 @@
     public override void Dispose()
     {
         base.Dispose();
-        DotNetRecorderRef?.Dispose();
-        JsRecorderRef?.DisposeAsync();
+        ComponentRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) {
-            DotNetRecorderRef = DotNetObjectReference.Create<IAudioRecorderJSBackend>(this);
-            Debug.Assert(DotNetRecorderRef != null!);
-
-            JsRecorderRef = await _js.InvokeAsync<IJSObjectReference>("import", "./js/audio-recorder.js");
-            await JsRecorderRef.InvokeVoidAsync("initialize", DotNetRecorderRef);
-        }
+        if (ModuleRef != null || !firstRender)
+            return;
+        ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
+        ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+        await ModuleRef.InvokeVoidAsync("initialize", ComponentRef);
     }
 
     protected override Task<int> ComputeState(CancellationToken cancellationToken)
@@ -74,12 +72,12 @@
 
     private async Task StartRecording()
     {
-        await JsRecorderRef.InvokeVoidAsync("startRecording");
+        await ModuleRef!.InvokeVoidAsync("startRecording");
     }
 
     private async Task StopRecording()
     {
-        await JsRecorderRef.InvokeVoidAsync("stopRecording");
+        await ModuleRef!.InvokeVoidAsync("stopRecording");
     }
 
     private async Task ToggleRecording()
@@ -97,7 +95,7 @@
             ToggleText = "Recording...";
         }
         IsRecording = !IsRecording;
-        
+
         StateHasChanged();
     }
 
@@ -108,13 +106,13 @@
         {
             var result = await _cmd.Run(new InitializeAudioRecorderCommand
             {
-                Session = _session, 
-                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 }, 
+                Session = _session,
+                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 },
                 ClientStartOffset = CpuClock.Now
             });
 
             RecordingId = result.Result;
-            
+
             var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
             await foreach (var audioMessage in reader.ReadAllAsync()) {
                 Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
@@ -126,7 +124,7 @@
     public Task AudioDataAvailable(string dataAsBase64)
     {
         _cmd.Run(new AppendAudioCommand(RecordingId, Index++, CpuClock.Now, dataAsBase64)).Ignore();
-        
+
         return Task.CompletedTask;
     }
 
@@ -134,7 +132,7 @@
     public Task RecordingStopped()
     {
         _cmd.Run(new CompleteAudioRecording(RecordingId)).Ignore();
-        
+
         RecordingId = Symbol.Empty;
         return Task.CompletedTask;
     }

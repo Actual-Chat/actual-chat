@@ -2,7 +2,7 @@
 
 namespace ActualChat.Audio.UI.Blazor
 {
-    public interface IAudioRecorderJSBackend
+    public interface IAudioRecorderBackend
     {
         Task RecordingStarted();
         Task AudioDataAvailable(string dataAsBase64);
