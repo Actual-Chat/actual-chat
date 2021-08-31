@@ -1,5 +1,3 @@
-using Stl.DependencyInjection;
-
 namespace ActualChat.Host
 {
     public class HostSettings

@@ -2,7 +2,6 @@
 using ActualChat.Web.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion;
 using Stl.Plugins;
 
 namespace ActualChat.Web.Module
@@ -18,9 +17,7 @@ namespace ActualChat.Web.Module
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            var fusion = services.AddFusion();
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            var mvcBuilder = services.AddMvcCore(options => {
+            services.AddMvcCore(options => {
                 options.ModelBinderProviders.Insert(0, new RangeModelBinderProvider());
             });
         }
