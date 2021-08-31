@@ -5,22 +5,23 @@ using System.Threading.Tasks;
 using MessagePack;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
+using Stl.Text;
 
 namespace ActualChat.Distribution
 {
-    public class StreamingService<TMessage> : IStreamingService<TMessage>
+    public class ServerSideAudioStreamingService : ServerSideStreamingService<AudioMessage>, IServerSideAudioStreamingService
     {
-        protected readonly IConnectionMultiplexer Redis;
-
-        public StreamingService(IConnectionMultiplexer redis)
-            => Redis = redis;
-
-        public Task<ChannelReader<TMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public ServerSideAudioStreamingService(IConnectionMultiplexer redis) : base(redis)
         {
-            var db = GetDatabase();
-            var key = new RedisKey(streamId);
+        }
 
-            var channel = Channel.CreateBounded<TMessage>(
+        public Task<ChannelReader<AudioMessage>> GetStream(Symbol recordingId, CancellationToken cancellationToken)
+        {
+            
+            var db = GetDatabase();
+            var key = new RedisKey(recordingId);
+
+            var channel = Channel.CreateBounded<AudioMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -34,7 +35,7 @@ namespace ActualChat.Distribution
 
             return Task.FromResult(channel.Reader);
 
-            async Task ReadRedisStream(ChannelWriter<TMessage> writer, IDatabase d, RedisKey k, CancellationToken ct)
+            async Task ReadRedisStream(ChannelWriter<AudioMessage> writer, IDatabase d, RedisKey k, CancellationToken ct)
             {
                 Exception? localException = null;
                 var position = (RedisValue)"0-0";
@@ -50,7 +51,7 @@ namespace ActualChat.Distribution
                                 if (isCompleted) return;
 
                                 var serialized = (ReadOnlyMemory<byte>)entry[StreamingConstants.MessageKey];
-                                var message = MessagePackSerializer.Deserialize<TMessage>(
+                                var message = MessagePackSerializer.Deserialize<AudioMessage>(
                                     serialized,
                                     MessagePackSerializerOptions.Standard, ct);
                                 await writer.WriteAsync(message, ct);
@@ -70,9 +71,7 @@ namespace ActualChat.Distribution
             }
         }
 
-        // Protected methods
-
-        protected virtual IDatabase GetDatabase()
-            => Redis.GetDatabase().WithKeyPrefix(typeof(TMessage).Name);
+        protected override IDatabase GetDatabase() 
+            => Redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);
     }
 }
