@@ -7,12 +7,12 @@ namespace ActualChat.Distribution
 {
     public class StreamingServiceHub : Hub
     {
-        private readonly IStreamingService<AudioMessage> _audioStreamingService;
+        private readonly IAudioStreamingService _audioStreamingService;
         private readonly IStreamingService<VideoMessage> _videoStreamingService;
         private readonly IStreamingService<TranscriptMessage> _transcriptStreamingService;
 
         public StreamingServiceHub(
-            IStreamingService<AudioMessage> audioStreamingService,
+            IAudioStreamingService audioStreamingService,
             IStreamingService<VideoMessage> videoStreamingService,
             IStreamingService<TranscriptMessage> transcriptStreamingService)
         {
