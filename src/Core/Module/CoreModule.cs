@@ -2,8 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
+using Stl.Fusion.Extensions;
 using Stl.Plugins;
-using Stl.Time;
 
 namespace ActualChat.Module
 {
@@ -16,6 +16,7 @@ namespace ActualChat.Module
         public override void InjectServices(IServiceCollection services)
         {
             var fusion = services.AddFusion();
+            fusion.AddFusionTime();
         }
     }
 }

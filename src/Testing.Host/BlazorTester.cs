@@ -2,12 +2,13 @@ using System;
 using ActualChat.Host;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Playwright;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 
 namespace ActualChat.Testing
 {
-    public class BlazorTester : TestContext
+    public class BlazorTester : TestContext, IWebTester
     {
         private readonly IServiceScope _serviceScope;
 
@@ -15,6 +16,7 @@ namespace ActualChat.Testing
         public IServiceProvider AppServices => AppHost.Services;
         public IServiceProvider ScopedAppServices => _serviceScope!.ServiceProvider;
         public Session Session { get; }
+        public UriMapper UriMapper => AppServices.GetRequiredService<UriMapper>();
         public IServerSideAuthService Auth => AppServices.GetRequiredService<IServerSideAuthService>();
 
         public BlazorTester(AppHost appHost)
