@@ -46,11 +46,11 @@ namespace ActualChat.Distribution
                         var entries = await d.StreamReadAsync(k, position, 10);
                         if (entries != null)
                             foreach (var entry in entries) {
-                                var status = entry[DistributionConstants.StatusKey];
-                                var isCompleted = status != RedisValue.Null && status == DistributionConstants.Completed;
+                                var status = entry[StreamingConstants.StatusKey];
+                                var isCompleted = status != RedisValue.Null && status == StreamingConstants.Completed;
                                 if (isCompleted) return;
 
-                                var serialized = (ReadOnlyMemory<byte>)entry[DistributionConstants.MessageKey];
+                                var serialized = (ReadOnlyMemory<byte>)entry[StreamingConstants.MessageKey];
                                 var message = MessagePackSerializer.Deserialize<TMessage>(
                                     serialized,
                                     MessagePackSerializerOptions.Standard, ct);
@@ -59,7 +59,7 @@ namespace ActualChat.Distribution
                                 position = entry.Id;
                             }
                         else
-                            await Task.Delay(DistributionConstants.EmptyStreamDelay, ct);
+                            await Task.Delay(StreamingConstants.EmptyStreamDelay, ct);
                     }
                 }
                 catch (Exception ex) {
