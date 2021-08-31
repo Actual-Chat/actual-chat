@@ -8,7 +8,13 @@ namespace ActualChat.Distribution
 {
     [MessagePackObject]
     public record AudioMessage([property: MessagePack.Key(0)] byte[] Chunk);
-
+    
+    [MessagePackObject]
+    public record AudioRecordMessage(
+        [property: Key(0)] int Index,
+        [property: Key(1)] double ClientEndOffset,
+        [property: Key(2)] byte[] Chunk);
+    
     [MessagePackObject]
     public record VideoMessage([property: MessagePack.Key(0)] byte[] Chunk);
 

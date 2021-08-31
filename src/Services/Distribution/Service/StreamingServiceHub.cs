@@ -29,5 +29,8 @@ namespace ActualChat.Distribution
 
         public Task<ChannelReader<TranscriptMessage>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
             => _transcriptStreamingService.GetStream(streamId, cancellationToken);
+
+        public Task UploadAudioStream(string recordingId, ChannelReader<AudioRecordMessage> source, CancellationToken cancellationToke)
+            => _audioStreamingService.UploadStream(recordingId, source, cancellationToke);
     }
 }
