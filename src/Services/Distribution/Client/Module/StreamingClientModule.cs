@@ -7,11 +7,11 @@ using Stl.Plugins;
 
 namespace ActualChat.Distribution.Client.Module
 {
-    public class DistributionClientModule : HostModule
+    public class StreamingClientModule : HostModule
     {
-        public DistributionClientModule(IPluginInfoProvider.Query _) : base(_) { }
+        public StreamingClientModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public DistributionClientModule(IPluginHost plugins) : base(plugins) { }
+        public StreamingClientModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {

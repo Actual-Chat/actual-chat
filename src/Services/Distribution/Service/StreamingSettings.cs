@@ -1,6 +1,6 @@
 namespace ActualChat.Distribution
 {
-    public class DistributionSettings
+    public class StreamingSettings
     {
         public string Redis { get; set; } = "localhost";
     }
