@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="NUnit" />
   </ItemGroup>
 
 </Project>
