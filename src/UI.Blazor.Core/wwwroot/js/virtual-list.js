@@ -1,8 +1,8 @@
 export function create(elementRef, backendRef) {
-    return new VirtualScroll(elementRef, backendRef)
+    return new VirtualList(elementRef, backendRef)
 }
 
-export class VirtualScroll {
+export class VirtualList {
     constructor(elementRef, backendRef) {
         this.elementRef = elementRef;
         this.backendRef = backendRef;
