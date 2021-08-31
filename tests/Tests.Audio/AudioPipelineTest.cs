@@ -122,7 +122,7 @@ namespace ActualChat.Tests.Audio
             var readTranscriptTask = ReadTranscribedData(recordingId, transcriptStreaming);
 
             var writtenSize = await pushTask;
-            await Task.Delay(1000); // Iron pants
+            // await Task.Delay(2000); // Iron pants
             
             await audioRecorder.Complete(new CompleteAudioRecording(recordingId));
             var readSize = await readTask;
@@ -133,7 +133,7 @@ namespace ActualChat.Tests.Audio
             readSize.Should().Be(writtenSize);
         }
         
-        async Task<int> ReadDistributedData(Symbol recordingId, IStreamingService<AudioMessage> sr)
+        private static async Task<int> ReadDistributedData(Symbol recordingId, IStreamingService<AudioMessage> sr)
         {
             var size = 0;
             //TODO: AK - we need to figure out how to notify consumers about new streamID - with new ChatEntry?
@@ -144,7 +144,7 @@ namespace ActualChat.Tests.Audio
             return size;
         }
         
-        async Task<int> ReadTranscribedData(Symbol recordingId, IStreamingService<TranscriptMessage> sr)
+        private async Task<int> ReadTranscribedData(Symbol recordingId, IStreamingService<TranscriptMessage> sr)
         {
             var size = 0;
             //TODO: AK - we need to figure out how to notify consumers about new streamID - with new ChatEntry?
@@ -158,7 +158,7 @@ namespace ActualChat.Tests.Audio
             return size;
         }
 
-        async Task<int> PushAudioData(Symbol recordingId, IAudioRecorder ar)
+        private static async Task<int> PushAudioData(Symbol recordingId, IAudioRecorder ar)
         {
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
