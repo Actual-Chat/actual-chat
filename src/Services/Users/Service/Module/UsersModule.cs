@@ -23,20 +23,18 @@ using Stl.Plugins;
 
 namespace ActualChat.Users.Module
 {
-    public class UsersHostModule : HostModule
+    public class UsersModule : HostModule<UsersSettings>
     {
-        public UsersHostModule(IPluginInfoProvider.Query _) : base(_) { }
+        public UsersModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public UsersHostModule(IPluginHost plugins) : base(plugins) { }
+        public UsersModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
+            base.InjectServices(services);
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            services.AddSettings<UsersSettings>();
-            var settings = services.BuildServiceProvider().GetRequiredService<UsersSettings>();
             services.AddSingleton<IDbInitializer, UsersDbInitializer>();
 
             // ASP.NET Core authentication providers
@@ -45,18 +43,18 @@ namespace ActualChat.Users.Module
             }).AddCookie(options => {
                 options.LoginPath = "/signIn";
                 options.LogoutPath = "/signOut";
-                if (isDevelopmentInstance)
+                if (IsDevelopmentInstance)
                     options.Cookie.SecurePolicy = CookieSecurePolicy.None;
             }).AddMicrosoftAccount(options => {
-                options.ClientId = settings.MicrosoftAccountClientId;
-                options.ClientSecret = settings.MicrosoftAccountClientSecret;
+                options.ClientId = Settings.MicrosoftAccountClientId;
+                options.ClientSecret = Settings.MicrosoftAccountClientSecret;
                 // That's for personal account authentication flow
                 options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
                 options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
                 options.CorrelationCookie.SameSite = SameSiteMode.Lax;
             }).AddGitHub(options => {
-                options.ClientId = settings.GitHubClientId;
-                options.ClientSecret = settings.GitHubClientSecret;
+                options.ClientId = Settings.GitHubClientId;
+                options.ClientSecret = Settings.GitHubClientSecret;
                 options.Scope.Add("read:user");
                 options.Scope.Add("user:email");
                 options.CorrelationCookie.SameSite = SameSiteMode.Lax;
@@ -65,8 +63,8 @@ namespace ActualChat.Users.Module
             // Fusion services
             var fusion = services.AddFusion();
             services.AddDbContextFactory<UsersDbContext>(builder => {
-                builder.UseNpgsql(settings.Db);
-                if (isDevelopmentInstance)
+                builder.UseNpgsql(Settings.Db);
+                if (IsDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
             services.AddDbContextServices<UsersDbContext>(dbContext => {
@@ -77,7 +75,7 @@ namespace ActualChat.Users.Module
                     IsolationLevel = IsolationLevel.RepeatableRead,
                 });
                 dbContext.AddOperations((_, o) => {
-                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
+                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
                 });
                 dbContext.AddNpgsqlOperationLogChangeTracking();
 
