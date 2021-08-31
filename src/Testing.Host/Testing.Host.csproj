@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" />
+    <PackageReference Include="Microsoft.Playwright" />
   </ItemGroup>
 
 </Project>

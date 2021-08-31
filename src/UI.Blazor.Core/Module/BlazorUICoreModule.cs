@@ -33,7 +33,6 @@ namespace ActualChat.UI.Blazor.Module
             services.AddBlazorise().AddBootstrapProviders().AddFontAwesomeIcons();
 
             // Other UI-related services
-            fusion.AddFusionTime();
             services.AddScoped<JSModule>();
             services.AddScoped<RenderingContext>();
             // Default update delay is 0.5s
