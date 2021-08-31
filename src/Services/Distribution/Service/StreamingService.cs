@@ -13,11 +13,12 @@ namespace ActualChat.Distribution
     {
         private readonly IConnectionMultiplexer _redis;
 
-        public StreamingService(IConnectionMultiplexer redis) => _redis = redis;
+        public StreamingService(IConnectionMultiplexer redis)
+            => _redis = redis;
 
         public Task<ChannelReader<TMessage>> GetStream(string streamId, CancellationToken cancellationToken)
         {
-            var db = _redis.GetDatabase().WithKeyPrefix(nameof(TMessage));
+            var db = GetDatabase();
             var key = new RedisKey(streamId);
 
             var channel = Channel.CreateBounded<TMessage>(
@@ -45,11 +46,11 @@ namespace ActualChat.Distribution
                         var entries = await d.StreamReadAsync(k, position, 10);
                         if (entries != null)
                             foreach (var entry in entries) {
-                                var status = entry[Consts.StatusKey];
-                                var isCompleted = status != RedisValue.Null && status == Consts.Completed;
+                                var status = entry[DistributionConstants.StatusKey];
+                                var isCompleted = status != RedisValue.Null && status == DistributionConstants.Completed;
                                 if (isCompleted) return;
 
-                                var serialized = (ReadOnlyMemory<byte>)entry[Consts.MessageKey];
+                                var serialized = (ReadOnlyMemory<byte>)entry[DistributionConstants.MessageKey];
                                 var message = MessagePackSerializer.Deserialize<TMessage>(
                                     serialized,
                                     MessagePackSerializerOptions.Standard, ct);
@@ -58,7 +59,7 @@ namespace ActualChat.Distribution
                                 position = entry.Id;
                             }
                         else
-                            await Task.Delay(Consts.EmptyStreamDelay, ct);
+                            await Task.Delay(DistributionConstants.EmptyStreamDelay, ct);
                     }
                 }
                 catch (Exception ex) {
@@ -69,5 +70,10 @@ namespace ActualChat.Distribution
                 }
             }
         }
+
+        // Protected methods
+
+        protected virtual IDatabase GetDatabase()
+            => _redis.GetDatabase().WithKeyPrefix(typeof(TMessage).Name);
     }
 }

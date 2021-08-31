@@ -1,6 +1,6 @@
 namespace ActualChat.Distribution
 {
-    public static class Consts
+    public static class DistributionConstants
     {
         public const string Completed = "completed";
         public const string MessageKey = "m";
