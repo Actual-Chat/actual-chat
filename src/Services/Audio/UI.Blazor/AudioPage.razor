@@ -4,6 +4,7 @@
 @using Stl.Text
 @using Stl.Time
 @using ActualChat.Distribution
+@using System.Threading.Channels
 @implements IAudioRecorderBackend
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
@@ -11,7 +12,7 @@
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject ILogger<AudioPage> _log
-@inject IStreamingService<AudioMessage> _audioStreaming
+@inject IAudioStreamingService _audioStreaming
 
 <h1>Voice Transcription</h1>
 
@@ -44,7 +45,8 @@
     private IJSObjectReference? ModuleRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
     private Symbol RecordingId { get; set; } = Symbol.Empty;
-    private int Index { get; set; } = 0;
+    private ChannelWriter<AudioRecordMessage>? Writer { get; set; }
+    private int Index { get; set; }
 
     private bool IsRecording { get; set; } = false;
     private Color ToggleColor { get; set; } = Color.Secondary;
@@ -112,6 +114,17 @@
             });
 
             RecordingId = result.Result;
+            
+            var channel = Channel.CreateBounded<AudioRecordMessage>(
+                new BoundedChannelOptions(100) {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleReader = true,
+                    SingleWriter = true,
+                    AllowSynchronousContinuations = true
+                });
+            Writer = channel.Writer;
+
+            await _audioStreaming.UploadStream(RecordingId, channel.Reader, CancellationToken.None);
 
             var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
             await foreach (var audioMessage in reader.ReadAllAsync()) {
@@ -121,11 +134,13 @@
     }
 
     [JSInvokable]
-    public Task AudioDataAvailable(string dataAsBase64)
+    public async Task AudioDataAvailable(string dataAsBase64)
     {
-        _cmd.Run(new AppendAudioCommand(RecordingId, Index++, CpuClock.Now, dataAsBase64)).Ignore();
+        if (Writer != null) {
+            var base64 = Base64Encoded.Decode(dataAsBase64);
 
-        return Task.CompletedTask;
+            await Writer.WriteAsync(new AudioRecordMessage(Index++, CpuClock.Now.EpochOffset.TotalSeconds, base64.Data));
+        }
     }
 
     [JSInvokable]
@@ -133,6 +148,7 @@
     {
         _cmd.Run(new CompleteAudioRecording(RecordingId)).Ignore();
 
+        Writer?.Complete();
         RecordingId = Symbol.Empty;
         return Task.CompletedTask;
     }
