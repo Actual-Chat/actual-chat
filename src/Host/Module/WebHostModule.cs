@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ActualChat.Distribution.Module;
@@ -7,6 +8,8 @@ using ActualChat.Host.Internal;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +74,14 @@ namespace ActualChat.Host.Module
                     Title = "ActualChat API", Version = "v1"
                 });
             });
+
+            // Everything else
+            services.AddSingleton(c => {
+                var server = c.GetRequiredService<IServer>();
+                var serverAddressesFeature = server.Features.Get<IServerAddressesFeature>();
+                var baseUri = new Uri(serverAddressesFeature.Addresses.First());
+                return new UriMapper(baseUri);
+            });
         }
 
         public virtual void ConfigureApp(IApplicationBuilder app, IHubRegistrar hubRegistrar)
@@ -79,28 +90,11 @@ namespace ActualChat.Host.Module
             // and since we don't copy it to local wwwroot,
             // we need to find Client's wwwroot in bin/(Debug/Release) folder
             // and set it as this server's content root.
-            var baseDir = (PathString) (Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "");
-            var binCfgPart = Regex.Match(baseDir.Value, @"[\\/]bin[\\/]\w+[\\/]").Value;
-            var wwwRootPath = baseDir & "wwwroot";
-            if (!Directory.Exists(Path.Combine(wwwRootPath, "_framework"))) {
-                // This is a regular build, not a build produced w/ "publish",
-                // so we remap wwwroot to the client's wwwroot folder
-                var relativeWwwRootPath = $"../../src/UI.Blazor.Host/{binCfgPart}/net5.0/wwwroot";
-                for (var i = 0; i < 4; i++) {
-                    wwwRootPath = baseDir & relativeWwwRootPath;
-                    if (Directory.Exists(wwwRootPath))
-                        break;
-                    relativeWwwRootPath = "../" + relativeWwwRootPath;
-
-                }
-                if (!Directory.Exists(wwwRootPath))
-                    throw new ApplicationException("Can't find 'wwwroot' folder.");
-            }
-            Env.WebRootPath = wwwRootPath;
+            Env.WebRootPath = GetWwwRoot();
             Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
             StaticWebAssetsLoader.UseStaticWebAssets(Env, Cfg);
 
-            if (Env.IsDevelopment()) {
+            if (IsDevelopmentInstance) {
                 app.UseDeveloperExceptionPage();
                 app.UseWebAssemblyDebugging();
             }
@@ -134,6 +128,29 @@ namespace ActualChat.Host.Module
                 endpoints.MapHubs(hubRegistrar);
                 endpoints.MapFallbackToPage("/_Host");
             });
+        }
+
+        public static PathString GetWwwRoot()
+        {
+            var assembly = typeof(WebHostModule).Assembly;
+            var baseDir = (PathString) (Path.GetDirectoryName(assembly.Location) ?? "");
+            var wwwRootPath = baseDir & "wwwroot";
+            if (Directory.Exists(wwwRootPath & "_framework"))
+                return wwwRootPath.ToAbsolute();
+
+            // This is a regular build, not a build produced w/ "publish",
+            // so we remap wwwroot to the client's wwwroot folder
+            var binCfgPart = Regex.Match(baseDir.Value, @"[\\/]bin[\\/]\w+[\\/]").Value;
+            var relativeWwwRootPath = $"../../src/UI.Blazor.Host/{binCfgPart}/net5.0/wwwroot";
+            for (var i = 0; i < 4; i++) {
+                wwwRootPath = baseDir & relativeWwwRootPath;
+                if (Directory.Exists(wwwRootPath))
+                    break;
+                relativeWwwRootPath = "../" + relativeWwwRootPath;
+            }
+            if (!Directory.Exists(wwwRootPath))
+                throw new ApplicationException("Can't find 'wwwroot' folder.");
+            return wwwRootPath.ToAbsolute();
         }
     }
 }
