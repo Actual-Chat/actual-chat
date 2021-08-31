@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Stl.Collections;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.Hosting

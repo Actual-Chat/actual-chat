@@ -25,7 +25,6 @@ namespace ActualChat.UI.Blazor.Module
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
                 return; // Blazor UI only module
 
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             var fusion = services.AddFusion();
             var fusionAuth = fusion.AddAuthentication();
             fusionAuth.AddBlazor();
@@ -37,10 +36,11 @@ namespace ActualChat.UI.Blazor.Module
             fusion.AddFusionTime();
             services.AddScoped<JSModule>();
             services.AddScoped<RenderingContext>();
-
             // Default update delay is 0.5s
             services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
-            services.AddTransient<IHostUriProvider, HostUriProvider>();
+
+            // Misc. services
+            services.AddTransient<IHostUriMapper, HostUriMapper>();
         }
     }
 }

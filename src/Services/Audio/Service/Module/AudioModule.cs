@@ -13,13 +13,12 @@ using Stl.Fusion;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.Extensions;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.Module
 {
-    public class AudioModule : HostModule
+    public class AudioModule : HostModule<AudioSettings>
     {
         public AudioModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
@@ -27,18 +26,16 @@ namespace ActualChat.Audio.Module
 
         public override void InjectServices(IServiceCollection services)
         {
+            base.InjectServices(services);
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            services.AddSettings<AudioSettings>();
-            var settings = services.BuildServiceProvider().GetRequiredService<AudioSettings>();
             services.AddSingleton<IDbInitializer, AudioDbInitializer>();
 
             var fusion = services.AddFusion();
             services.AddDbContextFactory<AudioDbContext>(builder => {
-                builder.UseNpgsql(settings.Db);
-                if (isDevelopmentInstance)
+                builder.UseNpgsql(Settings.Db);
+                if (IsDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
             services.AddDbContextServices<AudioDbContext>(dbContext => {
@@ -49,7 +46,7 @@ namespace ActualChat.Audio.Module
                     IsolationLevel = IsolationLevel.RepeatableRead,
                 });
                 dbContext.AddOperations((_, o) => {
-                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
+                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
                 });
                 dbContext.AddNpgsqlOperationLogChangeTracking();
             });
