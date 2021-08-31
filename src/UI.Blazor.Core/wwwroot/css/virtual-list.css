@@ -1,0 +1,15 @@
+﻿.virtual-list {
+    /* display: flex; */
+    /* flex-direction: column; */
+    /* align-content: stretch; */
+    overflow-y: auto;
+}
+
+.virtual-list .content {
+    position: relative;
+}
+
+.virtual-list .item {
+    position: absolute;
+    overflow: hidden;
+}

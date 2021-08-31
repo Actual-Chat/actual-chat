@@ -1,0 +1,98 @@
+@typeparam TItem
+@implements IVirtualListBackend
+@implements IAsyncDisposable
+@using System.Linq
+@using ActualChat.UI.Blazor.Internal
+@using Microsoft.AspNetCore.Components
+@using Stl.Async
+@using System.Collections.Immutable
+@using Stl.Collections
+@inject IJSRuntime JS
+@inject JSModule JSModule
+
+@{
+}
+
+@*
+<div class="@Class virtual-list" style="@Style" @ref="Ref">
+    <div class="content" style="height: @(state.Height)px">
+        <div class="measurement">
+
+        </div>
+        @foreach (var item in items) {
+            <div class="item" style="height: @(ItemHeight)px; top: @((state.SkipCount + item.Index) * ItemHeight)px;">
+                @ChildContent(item.Item)
+            </div>
+        }
+    </div>
+</div>
+*@
+
+@code {
+
+    public record ViewState
+    {
+        public IVirtualListBackend.ClientViewInfo ClientViewInfo { get; init; } = IVirtualListBackend.ClientViewInfo.Default;
+        public double Position { get; init; }
+        public ImmutableList<string> OrderedKeys { get; init; } = ImmutableList<string>.Empty;
+        public ImmutableDictionary<string, Entry> Entries { get; init; } = ImmutableDictionary<string, Entry>.Empty;
+    }
+
+    public record Entry
+    {
+        public string Key { get; init; } = "";
+        public TItem Item { get; init; } = default!;
+        public double? Height { get; init; }
+    }
+
+    private IJSObjectReference? ModuleRef { get; set; } // Shouldn't be disposed
+    private IJSObjectReference? JSComponentRef { get; set; }
+    private DotNetObjectReference<IVirtualListBackend>? ComponentRef { get; set; }
+    private ViewState State { get; set; } = new();
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+    [Parameter] public IVirtualListSource<TItem> Source { get; set; } = null!;
+    [Parameter] public RenderFragment<TItem> ChildContent { get; set; } = null!;
+
+    public ElementReference Ref { get; set; }
+
+    public virtual async ValueTask DisposeAsync()
+    {
+        if (JSComponentRef != null) {
+            await JSComponentRef.InvokeVoidAsync("dispose");
+            await JSComponentRef.DisposeAsync();
+        }
+        ComponentRef?.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ModuleRef != null || !firstRender)
+            return;
+        ModuleRef = await JSModule.Import(typeof(IVirtualListBackend).Assembly, "js/virtual-list.js");
+        ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
+        JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
+        JSComponentRef.InvokeVoidAsync("pushStateUpdate").Ignore();
+    }
+
+    [JSInvokable]
+    public void UpdateClientSideState(IVirtualListBackend.ClientSideState clientSideState)
+    {
+        var entries = State.Entries;
+        foreach (var (key, height) in clientSideState.ItemHeights) {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (!entries.TryGetValue(key, out var entry) || entry.Height == height)
+                continue;
+            entries = entries.SetItem(key, entry with { Height = height });
+        }
+        if (entries == State.Entries && clientSideState.ViewInfo == State.ClientViewInfo)
+            return;
+        State = State with {
+            ClientViewInfo = clientSideState.ViewInfo,
+            Entries = entries
+        };
+        StateHasChanged();
+    }
+
+}

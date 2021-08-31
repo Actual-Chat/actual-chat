@@ -14,6 +14,8 @@ namespace ActualChat.UI.Blazor.Module
 {
     public class BlazorUICoreModule : HostModule, IBlazorUIModule
     {
+        public string[] StyleSheetPaths => new [] {"css/virtual-list.css"};
+
         public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
         public BlazorUICoreModule(IPluginHost plugins) : base(plugins) { }
@@ -33,6 +35,7 @@ namespace ActualChat.UI.Blazor.Module
 
             // Other UI-related services
             fusion.AddFusionTime();
+            services.AddScoped<JSModule>();
             services.AddScoped<RenderingContext>();
 
             // Default update delay is 0.5s

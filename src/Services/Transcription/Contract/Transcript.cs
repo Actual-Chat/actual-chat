@@ -35,6 +35,8 @@ namespace ActualChat.Transcription
     public record TranscriptSpeechFragment : TranscriptFragment
     {
         public string Text { get; init; } = "";
+
+        public int TextIndex { get; init; } = 0;
         public string SpeakerId { get; init; } = "";
         public double Confidence { get; init; } = 1;
         public bool IsFinal { get; init; }

@@ -4,6 +4,7 @@ services:
     image: "redis:alpine"
     ports:
      - "6379:6379"
+
   db:
     image: "docker.io/bitnami/postgresql:13"
     environment:

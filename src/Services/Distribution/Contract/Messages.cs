@@ -15,25 +15,8 @@ namespace ActualChat.Distribution
     [MessagePackObject]
     public record TranscriptMessage(
         [property: Key(0)] string Text, 
-        [property: Key(1)] string TextIndex,
+        [property: Key(1)] int TextIndex,
         [property: Key(2)] double StartOffset, 
         [property: Key(3)] double Duration);
-    //
-    // [Serializable]
-    // public class MessageVariant : Variant<ChatMessage>
-    // {
-    //     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
-    //     public AudioChatMessage? Audio { get => Get<AudioChatMessage>(); init => Set(value); }
-    //     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
-    //     public ChatEntryChatMessage? Chat { get => Get<ChatEntryChatMessage>(); init => Set(value); }
-    //     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
-    //     public TranscriptChatMessage? Transcript { get => Get<TranscriptChatMessage>(); init => Set(value); }
-    //     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull), Newtonsoft.Json.JsonIgnore]
-    //     public ChatMessage? Other { get => Get<ChatMessage>(); init => Set(value); }
-    //
-    //     [JsonConstructor]
-    //     public MessageVariant() { }
-    //     [Newtonsoft.Json.JsonConstructor]
-    //     public MessageVariant(ChatMessage? value) : base(value) { }
-    // }
+
 }
