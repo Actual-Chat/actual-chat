@@ -17,7 +17,7 @@ namespace ActualChat.Audio.UI.Blazor.Module
         public AudioBlazorUIModule(IPluginHost plugins) : base(plugins) { }
 
         public override IEnumerable<Type> Dependencies =>
-            base.Dependencies.Concat(new[] { typeof(DistributionClientModule) });
+            base.Dependencies.Concat(new[] { typeof(StreamingClientModule) });
 
         public override void InjectServices(IServiceCollection services)
         {

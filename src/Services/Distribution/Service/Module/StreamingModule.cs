@@ -6,19 +6,19 @@ using Stl.Plugins;
 
 namespace ActualChat.Distribution.Module
 {
-    public class DistributionModule : HostModule
+    public class StreamingModule : HostModule
     {
-        public DistributionModule(IPluginInfoProvider.Query _) : base(_) { }
+        public StreamingModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
-        public DistributionModule(IPluginHost plugins) : base(plugins) { }
+        public StreamingModule(IPluginHost plugins) : base(plugins) { }
 
         public override void InjectServices(IServiceCollection services)
         {
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            services.AddSettings<DistributionSettings>();
-            var settings = services.BuildServiceProvider().GetRequiredService<DistributionSettings>();
+            services.AddSettings<StreamingSettings>();
+            var settings = services.BuildServiceProvider().GetRequiredService<StreamingSettings>();
             var multiplexer = ConnectionMultiplexer.Connect(settings.Redis);
             services.AddSingleton<IConnectionMultiplexer>(multiplexer);
             services.AddTransient<IHubRegistrar,HubRegistrar>();
