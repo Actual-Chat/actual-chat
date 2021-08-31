@@ -18,9 +18,9 @@ namespace ActualChat.Distribution.Client.Module
                 return; // Client-side only module
 
             services.AddSingleton<HubConnection>(c => {
-                var uriMapper = c.GetRequiredService<UriMapper>();
+                var hostUriMapper = c.GetRequiredService<IHostUriMapper>();
                 var hubConnection = new HubConnectionBuilder()
-                    .WithUrl(uriMapper.ToAbsolute("/api/stream"))
+                    .WithUrl(hostUriMapper.GetAbsoluteUri("/api/stream"))
                     .WithAutomaticReconnect()
                     // .ConfigureLogging(logging =>
                     // {
