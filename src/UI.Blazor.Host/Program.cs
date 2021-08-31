@@ -67,7 +67,7 @@ namespace ActualChat.UI.Blazor.Host
             pluginHostBuilder.UsePlugins(
                 typeof(BlazorUICoreModule),
                 typeof(AudioClientModule),
-                typeof(DistributionClientModule),
+                typeof(StreamingClientModule),
                 typeof(AudioBlazorUIModule),
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),

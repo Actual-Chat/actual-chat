@@ -85,7 +85,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testing", "src\Testing\Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Web", "src\Web\Web.csproj", "{FD26DABB-FAD6-444B-A635-77B460A10D7D}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Distribution", "Distribution", "{0B1E2A8B-D023-45AC-A724-423A7A009A58}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Streaming", "Streaming", "{0B1E2A8B-D023-45AC-A724-423A7A009A58}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "src\Services\Distribution\Service\Service.csproj", "{573B28B9-7959-4AD2-85DE-F388BF08FAF9}"
 EndProject

@@ -28,7 +28,7 @@ namespace ActualChat.Distribution
                 MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard, cancellationToken);
                 var serialized = bufferWriter.WrittenMemory;
 
-                await db.StreamAddAsync(key, DistributionConstants.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
+                await db.StreamAddAsync(key, StreamingConstants.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
             }
 
             // TODO(AY): Should we complete w/ exceptions to mimic Channel<T> / IEnumerable<T> behavior here as well?
@@ -44,7 +44,7 @@ namespace ActualChat.Distribution
             MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard, cancellationToken);
             var serialized = bufferWriter.WrittenMemory;
 
-            await db.StreamAddAsync(key, DistributionConstants.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
+            await db.StreamAddAsync(key, StreamingConstants.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
         }
 
         public async Task Complete(string streamId, CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ namespace ActualChat.Distribution
             var db = GetDatabase();
             var key = new RedisKey(streamId);
 
-            await db.StreamAddAsync(key, DistributionConstants.StatusKey,  DistributionConstants.Completed, maxLength: 1000, useApproximateMaxLength: true);
+            await db.StreamAddAsync(key, StreamingConstants.StatusKey,  StreamingConstants.Completed, maxLength: 1000, useApproximateMaxLength: true);
 
             // TODO(AK): AY please review
             // TODO(AY): Store the key of completed stream to some persistent store & add a dedicated serv. to GC them?
