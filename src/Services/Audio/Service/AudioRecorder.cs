@@ -121,9 +121,9 @@ namespace ActualChat.Audio
             if (Computed.IsInvalidating()) return;
 
             if (_dataCapacitor.TryRemove(command.RecordingId, out var tuple)) {
-                var (channel, flushTask, _) = tuple;
+                var (channel, processTask, _) = tuple;
                 channel.Writer.Complete();
-                await flushTask.WithFakeCancellation(cancellationToken);
+                await processTask.WithFakeCancellation(cancellationToken);
             }
         }
 
@@ -267,7 +267,7 @@ namespace ActualChat.Audio
             {
                 var index = 0;
                 var result = await _transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, index), ct);
-                while (result.ContinuePolling)
+                while (result.ContinuePolling) {
                     foreach (var fragmentVariant in result.Fragments) {
                         if (fragmentVariant.Speech is { } speechFragment) {
                             var message = new TranscriptMessage(
@@ -282,9 +282,15 @@ namespace ActualChat.Audio
                         }
 
                         index = fragmentVariant.Value!.Index;
-                        await _transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, index), ct);
                     }
 
+                    index++;
+                    result = await _transcriber.PollTranscription(
+                        new PollTranscriptionCommand(transcriptId, index),
+                        ct);
+                }
+
+                writer.Complete();
                 await _transcriber.AckTranscription(new AckTranscriptionCommand(transcriptId, index), ct);
             }
         }

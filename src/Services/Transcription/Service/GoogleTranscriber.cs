@@ -55,11 +55,9 @@ namespace ActualChat.Transcription
             var responseStream =  streamingRecognizeStream.GetResponseStream();
             var reader = new TranscriptionBuffer(responseStream, _log);
             var cts = new CancellationTokenSource();
-            reader.Start(cts.Token).ContinueWith(_
-                => EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None).Ignore(), CancellationToken.None).Ignore();
-
+            var transcriptProcessor = reader.Start(cts.Token);
             _transcriptionStreams.TryAdd(transcriptId,
-                new TranscriptionStream(streamingRecognizeStream, reader, cts));
+                new TranscriptionStream(streamingRecognizeStream, reader, transcriptProcessor, cts));
 
             return transcriptId;
         }
@@ -79,8 +77,7 @@ namespace ActualChat.Transcription
             // Initialize hasn't been completed or Recording has already been completed
             if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream)) return;
 
-            var (writer, _, _) = transcriptionStream;
-            await writer.WriteAsync(new StreamingRecognizeRequest {
+            await transcriptionStream.Writer.WriteAsync(new StreamingRecognizeRequest {
                 AudioContent = ByteString.CopyFrom(data.Data)
             });
         }
@@ -88,10 +85,13 @@ namespace ActualChat.Transcription
         public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default)
         {
             _log.LogInformation($"{nameof(EndTranscription)}, TranscriptId = {{TranscriptId}}", command.TranscriptId);
-
-            if (_transcriptionStreams.TryRemove(command.TranscriptId, out var tuple)) {
-                var (writer, _, _) = tuple;
+            
+            if (_transcriptionStreams.TryGetValue(command.TranscriptId, out var tuple)) {
+                var (writer, _, transcriptProcessorTask, _) = tuple;
                 await writer.WriteCompleteAsync();
+                await transcriptProcessorTask;
+
+                _transcriptionStreams.TryRemove(command.TranscriptId, out _);
             }
         }
 
@@ -136,6 +136,7 @@ namespace ActualChat.Transcription
         private record TranscriptionStream(
             SpeechClient.StreamingRecognizeStream Writer,
             TranscriptionBuffer Reader,
+            Task TranscriptProcessor,
             CancellationTokenSource CancellationTokenSource);
 
         private class TranscriptionBuffer
