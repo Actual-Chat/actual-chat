@@ -69,8 +69,6 @@ namespace ActualChat.Tests.UI.Blazor
         {
             using var appHost = await TestHostFactory.NewAppHost();
             using var tester = appHost.NewBlazorTester();
-            // var sessionFactory = services.GetRequiredService<ISessionFactory>();
-            // var session = tester.Session;
             
             var user = new User("", "iqmulator1");
             await tester.SignIn(user);
