@@ -6,7 +6,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Db.Module
 {
-    public class DbModule : HostModule
+    public class DbModule : HostModule<DbSettings>
     {
         public DbModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
@@ -14,10 +14,10 @@ namespace ActualChat.Db.Module
 
         public override void InjectServices(IServiceCollection services)
         {
+            base.InjectServices(services);
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
             var fusion = services.AddFusion();
             fusion.AddOperationReprocessor();
         }

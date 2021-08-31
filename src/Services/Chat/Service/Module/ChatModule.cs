@@ -18,7 +18,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Chat.Module
 {
-    public class ChatModule : HostModule
+    public class ChatModule : HostModule<ChatSettings>
     {
         public ChatModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
@@ -26,18 +26,16 @@ namespace ActualChat.Chat.Module
 
         public override void InjectServices(IServiceCollection services)
         {
+            base.InjectServices(services);
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
                 return; // Server-side only module
 
-            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
-            services.AddSettings<ChatSettings>();
-            var settings = services.BuildServiceProvider().GetRequiredService<ChatSettings>();
             services.AddSingleton<IDbInitializer, ChatDbInitializer>();
 
             var fusion = services.AddFusion();
             services.AddDbContextFactory<ChatDbContext>(builder => {
-                builder.UseNpgsql(settings.Db);
-                if (isDevelopmentInstance)
+                builder.UseNpgsql(Settings.Db);
+                if (IsDevelopmentInstance)
                     builder.EnableSensitiveDataLogging();
             });
             services.AddDbContextServices<ChatDbContext>(dbContext => {
@@ -48,7 +46,7 @@ namespace ActualChat.Chat.Module
                     IsolationLevel = IsolationLevel.RepeatableRead,
                 });
                 dbContext.AddOperations((_, o) => {
-                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(isDevelopmentInstance ? 60 : 5);
+                    o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
                 });
                 dbContext.AddNpgsqlOperationLogChangeTracking();
 
