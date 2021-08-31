@@ -22,18 +22,12 @@ namespace ActualChat.Distribution
         }
 
         public Task<ChannelReader<AudioMessage>> GetAudioStream(string streamId, CancellationToken cancellationToken)
-        {
-            return _audioStreamingService.GetStream(streamId, cancellationToken); 
-        }
-        
+            => _audioStreamingService.GetStream(streamId, cancellationToken);
+
         public Task<ChannelReader<VideoMessage>> GetVideoStream(string streamId, CancellationToken cancellationToken)
-        {
-            return _videoStreamingService.GetStream(streamId, cancellationToken); 
-        }
-        
+            => _videoStreamingService.GetStream(streamId, cancellationToken);
+
         public Task<ChannelReader<TranscriptMessage>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
-        {
-            return _transcriptStreamingService.GetStream(streamId, cancellationToken); 
-        }
+            => _transcriptStreamingService.GetStream(streamId, cancellationToken);
     }
 }

@@ -185,6 +185,7 @@ namespace ActualChat.Transcription
                                 Index = speechFragment.Index,
                                 Confidence = speechFragment.Confidence,
                                 Text = text,
+                                TextIndex = textIndex,
                                 StartOffset = offset,
                                 Duration = duration,
                                 IsFinal = false,
