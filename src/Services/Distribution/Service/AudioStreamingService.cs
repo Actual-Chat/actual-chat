@@ -17,7 +17,7 @@ namespace ActualChat.Distribution
         {
         }
 
-        public async Task UploadStream(Symbol recordingId, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
+        public async Task UploadStream(Symbol recordingId, ChannelReader<AudioRecordMessage> source, CancellationToken cancellationToken)
         {
             var db = GetDatabase();
             var key = new RedisKey(recordingId);

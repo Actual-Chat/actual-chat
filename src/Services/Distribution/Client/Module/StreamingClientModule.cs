@@ -22,6 +22,7 @@ namespace ActualChat.Distribution.Client.Module
                 var hubConnection = new HubConnectionBuilder()
                     .WithUrl(hostUriMapper.GetAbsoluteUri("/api/stream"))
                     .WithAutomaticReconnect()
+                    .AddMessagePackProtocol()
                     // .ConfigureLogging(logging =>
                     // {
                     //     // logging.AddConsole();
@@ -31,6 +32,7 @@ namespace ActualChat.Distribution.Client.Module
                 return hubConnection;
             });
             services.AddSingleton<IHubConnectionSentinel, HubConnectionSentinel>();
+            services.AddTransient<IAudioStreamingService, AudioStreamingServiceClient>();
             services.AddTransient<IStreamingService<AudioMessage>, AudioStreamingServiceClient>();
             services.AddTransient<IStreamingService<VideoMessage>, VideoStreamingServiceClient>();
             services.AddTransient<IStreamingService<TranscriptMessage>, TranscriptStreamingServiceClient>();
