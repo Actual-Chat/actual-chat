@@ -15,7 +15,6 @@ using ActualChat.Distribution;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Logging;
 using Microsoft.IO;
-using Stl.Async;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
@@ -122,7 +121,10 @@ namespace ActualChat.Audio
 
             if (_dataCapacitor.TryRemove(command.RecordingId, out var state)) {
                 state.CancelProcessing();
-                await state.ProcessAudioTask;
+                try {
+                    await state.ProcessAudioTask;
+                }
+                catch (TaskCanceledException) { }
             }
         }
 
@@ -267,7 +269,7 @@ namespace ActualChat.Audio
             {
                 var index = 0;
                 var result = await _transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, index), ct);
-                while (result.ContinuePolling) {
+                while (result.ContinuePolling && !ct.IsCancellationRequested) {
                     foreach (var fragmentVariant in result.Fragments) {
                         if (fragmentVariant.Speech is { } speechFragment) {
                             var message = new TranscriptMessage(
@@ -281,10 +283,9 @@ namespace ActualChat.Audio
                             // TODO: AK - think about additional scenarios of transription error handling
                         }
 
-                        index = fragmentVariant.Value!.Index;
+                        index = fragmentVariant.Value!.Index + 1;
                     }
 
-                    index++;
                     result = await _transcriber.PollTranscription(
                         new PollTranscriptionCommand(transcriptId, index),
                         ct);
