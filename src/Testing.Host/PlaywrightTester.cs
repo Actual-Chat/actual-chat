@@ -55,7 +55,7 @@ namespace ActualChat.Testing
             await context.AddCookiesAsync(new [] {
                 new Cookie() {
                     Name = "FusionAuth.SessionId",
-                    Value = Session.Id.Value,
+                    Value = Session.Id,
                     Domain = "localhost",
                     Path = "/",
                     HttpOnly = true,
