@@ -65,6 +65,8 @@ namespace ActualChat.Audio.Module
 
             // Module's own services
             fusion.AddComputeService<IAudioRecorder, AudioRecorder>();
+
+            services.AddHostedService<AudioOrchestrator>();
         }
     }
 }
