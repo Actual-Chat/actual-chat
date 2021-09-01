@@ -104,7 +104,7 @@ namespace ActualChat.Transcription
                 return new PollResult(false, ImmutableArray<TranscriptFragmentVariant>.Empty);
 
             var fragments = await transcriptionStream.Reader.GetResults(index, cancellationToken);
-            return new PollResult(true, fragments);
+            return new PollResult(!cancellationToken.IsCancellationRequested, fragments);
         }
 
         public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default)
