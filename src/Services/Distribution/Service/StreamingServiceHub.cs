@@ -1,10 +1,12 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ActualChat.Distribution
 {
+    [Authorize]
     public class StreamingServiceHub : Hub
     {
         private readonly IAudioStreamingService _audioStreamingService;
