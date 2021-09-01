@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using MessagePack;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
-using Stl.Text;
 
 namespace ActualChat.Distribution
 {
@@ -15,7 +14,31 @@ namespace ActualChat.Distribution
         {
         }
 
-        public Task<ChannelReader<AudioRecordMessage>> GetStream(Symbol recordingId, CancellationToken cancellationToken)
+        public async Task<AudioRecording?> WaitForNewRecording(CancellationToken cancellationToken)
+        {
+            var db = GetDatabase();
+            var subscriber = Redis.GetSubscriber();
+            var queue = await subscriber.SubscribeAsync(StreamingConstants.AudioRecordingQueue);
+            while (true) {
+                if (cancellationToken.IsCancellationRequested)
+                    return null;
+                
+                await queue.ReadAsync(cancellationToken);
+
+                var value = await db.ListRightPopAsync(StreamingConstants.AudioRecordingQueue);
+                if (value.IsNullOrEmpty) // yet another consumer has already popped a value 
+                    continue;
+
+                var serialized = (ReadOnlyMemory<byte>)value;
+                var audioRecording = MessagePackSerializer.Deserialize<AudioRecording>(
+                    serialized,
+                    MessagePackSerializerOptions.Standard, 
+                    cancellationToken);
+                return audioRecording;
+            }
+        }
+
+        public Task<ChannelReader<AudioRecordMessage>> GetStream(RecordingId recordingId, CancellationToken cancellationToken)
         {
             
             var db = GetDatabase();

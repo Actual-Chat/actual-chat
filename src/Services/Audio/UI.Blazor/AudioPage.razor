@@ -44,7 +44,6 @@
 @code {
     private IJSObjectReference? ModuleRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
-    private Symbol RecordingId { get; set; } = Symbol.Empty;
     private ChannelWriter<AudioRecordMessage>? Writer { get; set; }
     private int Index { get; set; }
 
@@ -102,18 +101,18 @@
     }
 
     [JSInvokable]
-    public async Task RecordingStarted()
+    public Task RecordingStarted()
     {
-        if (RecordingId.IsEmpty)
+        if (Writer == null)
         {
-            var result = await _cmd.Run(new InitializeAudioRecorderCommand
-            {
-                Session = _session,
-                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
-                ClientStartOffset = CpuClock.Now
-            });
-
-            RecordingId = result.Result;
+            // var result = await _cmd.Run(new InitializeAudioRecorderCommand
+            // {
+            //     Session = _session,
+            //     AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            //     ClientStartOffset = CpuClock.Now
+            // });
+            //
+            // RecordingId = result.Result;
             
             var channel = Channel.CreateBounded<AudioRecordMessage>(
                 new BoundedChannelOptions(100) {
@@ -124,13 +123,19 @@
                 });
             Writer = channel.Writer;
 
-            _ = _audioStreaming.UploadStream(RecordingId, channel.Reader, CancellationToken.None);
+            var audioConfig = new AudioRecordingConfiguration(
+                new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+                "RU-ru",
+                CpuClock.Now.EpochOffset.TotalSeconds);
+            _ = _audioStreaming.UploadStream(audioConfig, channel.Reader, CancellationToken.None);
 
-            var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
-            await foreach (var audioMessage in reader.ReadAllAsync()) {
-                Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
-            }
+            // var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
+            // await foreach (var audioMessage in reader.ReadAllAsync()) {
+            //     Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
+            // }
         }
+        
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
@@ -146,10 +151,10 @@
     [JSInvokable]
     public Task RecordingStopped()
     {
-        _cmd.Run(new CompleteAudioRecording(RecordingId)).Ignore();
+        // _cmd.Run(new CompleteAudioRecording(RecordingId)).Ignore();
 
         Writer?.Complete();
-        RecordingId = Symbol.Empty;
+        Writer = null;
         return Task.CompletedTask;
     }
 }
