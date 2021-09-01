@@ -23,10 +23,12 @@ namespace ActualChat.Distribution.Module
             services.AddSingleton<IConnectionMultiplexer>(multiplexer);
             services.AddTransient<IHubRegistrar,HubRegistrar>();
             services.AddTransient<StreamingServiceHub>();
-            services.AddSingleton<IStreamingService<AudioMessage>, StreamingService<AudioMessage>>();
+            services.AddSingleton<IAudioStreamingService, AudioStreamingService>();
+            services.AddSingleton<IStreamingService<AudioMessage>, AudioStreamingService>();
             services.AddSingleton<IStreamingService<VideoMessage>, StreamingService<VideoMessage>>();
             services.AddSingleton<IStreamingService<TranscriptMessage>, StreamingService<TranscriptMessage>>();
-            services.AddSingleton<IServerSideStreamingService<AudioMessage>, ServerSideStreamingService<AudioMessage>>();
+            services.AddSingleton<IServerSideAudioStreamingService, ServerSideAudioStreamingService>();
+            services.AddSingleton<IServerSideStreamingService<AudioMessage>, ServerSideAudioStreamingService>();
             services.AddSingleton<IServerSideStreamingService<VideoMessage>, ServerSideStreamingService<VideoMessage>>();
             services.AddSingleton<IServerSideStreamingService<TranscriptMessage>, ServerSideStreamingService<TranscriptMessage>>();
             
