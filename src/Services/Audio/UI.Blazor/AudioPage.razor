@@ -109,7 +109,7 @@
             var result = await _cmd.Run(new InitializeAudioRecorderCommand
             {
                 Session = _session,
-                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 16_000 },
+                AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 ClientStartOffset = CpuClock.Now
             });
 
@@ -124,7 +124,7 @@
                 });
             Writer = channel.Writer;
 
-            await _audioStreaming.UploadStream(RecordingId, channel.Reader, CancellationToken.None);
+            _ = _audioStreaming.UploadStream(RecordingId, channel.Reader, CancellationToken.None);
 
             var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
             await foreach (var audioMessage in reader.ReadAllAsync()) {
