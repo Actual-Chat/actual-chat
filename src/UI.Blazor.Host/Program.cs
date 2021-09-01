@@ -13,6 +13,7 @@ using ActualChat.Users.UI.Blazor.Module;
 using Blazorise;
 using Blazorise.Bootstrap;
 using Blazorise.Icons.FontAwesome;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -95,6 +96,9 @@ namespace ActualChat.UI.Blazor.Host
 
             // Injecting plugin services
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
+            
+            // UriMapper
+            services.AddSingleton(c => new UriMapper(baseUri));
         }
     }
 }
