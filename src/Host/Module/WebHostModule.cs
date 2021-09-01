@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using ActualChat.Distribution.Module;
@@ -7,6 +8,8 @@ using ActualChat.Host.Internal;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,6 +73,14 @@ namespace ActualChat.Host.Module
                 c.SwaggerDoc("v1", new OpenApiInfo {
                     Title = "ActualChat API", Version = "v1"
                 });
+            });
+
+            // UriMapper
+            services.AddSingleton(c => {
+                var server = c.GetRequiredService<IServer>();
+                var serverAddressesFeature = server.Features.Get<IServerAddressesFeature>();
+                var baseUri = new Uri(serverAddressesFeature.Addresses.First());
+                return new UriMapper(baseUri);
             });
         }
 
