@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio;
 using ActualChat.Distribution;
@@ -61,7 +62,7 @@ namespace ActualChat.Tests.Audio
             var session = blazorTester.Session;
 
             var audioRecorder = services.GetRequiredService<IAudioRecorder>();
-            var audioStreaming = services.GetRequiredService<IStreamingService<AudioMessage>>();
+            var audioStreaming = services.GetRequiredService<IAudioStreamingService>();
 
 
             var initializeCommand = new InitializeAudioRecorderCommand {
@@ -78,7 +79,7 @@ namespace ActualChat.Tests.Audio
             initResult.Value.Should().NotBeNullOrWhiteSpace();
             var recordingId = initResult;
 
-            var pushTask = PushAudioData(recordingId, audioRecorder);
+            var pushTask = PushAudioData(recordingId, audioStreaming);
             var readTask = ReadDistributedData(recordingId, audioStreaming);
 
             var writtenSize = await pushTask;
@@ -100,7 +101,7 @@ namespace ActualChat.Tests.Audio
             var session = blazorTester.Session;
 
             var audioRecorder = services.GetRequiredService<IAudioRecorder>();
-            var audioStreaming = services.GetRequiredService<IStreamingService<AudioMessage>>();
+            var audioStreaming = services.GetRequiredService<IAudioStreamingService>();
             var transcriptStreaming = services.GetRequiredService<IStreamingService<TranscriptMessage>>();
 
             var initializeCommand = new InitializeAudioRecorderCommand {
@@ -117,7 +118,7 @@ namespace ActualChat.Tests.Audio
             initResult.Value.Should().NotBeNullOrWhiteSpace();
             var recordingId = initResult;
 
-            var pushTask = PushAudioData(recordingId, audioRecorder);
+            var pushTask = PushAudioData(recordingId, audioStreaming);
             var readTask = ReadDistributedData(recordingId, audioStreaming);
             var readTranscriptTask = ReadTranscribedData(recordingId, transcriptStreaming);
 
@@ -158,8 +159,18 @@ namespace ActualChat.Tests.Audio
             return size;
         }
 
-        private static async Task<int> PushAudioData(Symbol recordingId, IAudioRecorder ar)
+        private static async Task<int> PushAudioData(Symbol recordingId, IAudioStreamingService streamingService)
         {
+            var channel = Channel.CreateBounded<AudioRecordMessage>(
+                new BoundedChannelOptions(100) {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleReader = true,
+                    SingleWriter = true,
+                    AllowSynchronousContinuations = true
+                });
+
+            await streamingService.UploadStream(recordingId, channel.Reader, CancellationToken.None);
+            
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
             using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
@@ -169,12 +180,11 @@ namespace ActualChat.Tests.Audio
             size += bytesRead;
             while (bytesRead > 0) {
                 
-                var command = new AppendAudioCommand(
-                    recordingId,
+                var command = new AudioRecordMessage(
                     index++,
-                    CpuClock.Now, 
+                    CpuClock.Now.EpochOffset.TotalSeconds, 
                     readBuffer[..bytesRead].ToArray());
-                await ar.AppendAudio(command);
+                await channel.Writer.WriteAsync(command, CancellationToken.None);
 
                 // await Task.Delay(300); //emulate real-time speech delay
                 bytesRead = await inputStream.ReadAsync(readBuffer);

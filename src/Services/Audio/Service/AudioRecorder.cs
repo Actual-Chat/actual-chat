@@ -33,7 +33,7 @@ namespace ActualChat.Audio
         private readonly IAuthService _authService;
         private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly ITranscriber _transcriber;
-        private readonly IServerSideStreamingService<AudioMessage> _streamingService;
+        private readonly IServerSideAudioStreamingService _streamingService;
         private readonly IServerSideStreamingService<TranscriptMessage> _transcriptStreamingService;
         private readonly ILogger<AudioRecorder> _log;
 
@@ -46,7 +46,7 @@ namespace ActualChat.Audio
             IAuthService authService,
             IBlobStorageProvider blobStorageProvider,
             ITranscriber transcriber,
-            IServerSideStreamingService<AudioMessage> streamingService,
+            IServerSideAudioStreamingService streamingService,
             IServerSideStreamingService<TranscriptMessage> transcriptStreamingService,
             ILogger<AudioRecorder> log) : base(services)
         {
@@ -83,47 +83,46 @@ namespace ActualChat.Audio
             });
             await dbContext.SaveChangesAsync(cancellationToken);
             
-            var channel = Channel.CreateUnbounded<AppendAudioCommand>(new UnboundedChannelOptions{ SingleReader = true });
-            var recordingState = new RecordingState(recordingId, channel);
+            // var channel = Channel.CreateUnbounded<AppendAudioCommand>(new UnboundedChannelOptions{ SingleReader = true });
+            var recordingState = new RecordingState(recordingId);
             recordingState.ProcessAudioTask = ProcessAudioStream(recordingId, command.ClientStartOffset, recordingState);
             _dataCapacitor.TryAdd(recordingId, recordingState);
 
             return recordingId;
         }
 
-        public virtual async Task AppendAudio(AppendAudioCommand command, CancellationToken cancellationToken = default)
-        {
-            if (Computed.IsInvalidating()) return;
-
-            var (recordingId, index, _, data) = command;
-            _log.LogTrace($"{nameof(AppendAudio)}, RecordingId = {{RecordingId}}, Index = {{Index}}, DataLength = {{DataLength}}",
-                recordingId.Value,
-                index,
-                data.Count);
-
-            
-            // Waiting for Initialize
-            var waitAttempts = 0;
-            while (!_dataCapacitor.ContainsKey(recordingId) && waitAttempts < 5) {
-                await Task.Delay(10, cancellationToken);
-                waitAttempts++;
-            }
-            
-            // Initialize hasn't been completed or Recording has already been completed
-            if (!_dataCapacitor.TryGetValue(recordingId, out var state)) return;
-
-            var channel = state.AudioInput;
-            await channel.Writer.WriteAsync(command, cancellationToken);
-        }
+        // public virtual async Task AppendAudio(AppendAudioCommand command, CancellationToken cancellationToken = default)
+        // {
+        //     if (Computed.IsInvalidating()) return;
+        //
+        //     var (recordingId, index, _, data) = command;
+        //     _log.LogTrace($"{nameof(AppendAudio)}, RecordingId = {{RecordingId}}, Index = {{Index}}, DataLength = {{DataLength}}",
+        //         recordingId.Value,
+        //         index,
+        //         data.Count);
+        //
+        //     
+        //     // Waiting for Initialize
+        //     var waitAttempts = 0;
+        //     while (!_dataCapacitor.ContainsKey(recordingId) && waitAttempts < 5) {
+        //         await Task.Delay(10, cancellationToken);
+        //         waitAttempts++;
+        //     }
+        //     
+        //     // Initialize hasn't been completed or Recording has already been completed
+        //     if (!_dataCapacitor.TryGetValue(recordingId, out var state)) return;
+        //
+        //     var channel = state.AudioInput;
+        //     await channel.Writer.WriteAsync(command, cancellationToken);
+        // }
 
         public virtual async Task Complete(CompleteAudioRecording command, CancellationToken cancellationToken = default)
         {
             if (Computed.IsInvalidating()) return;
 
-            if (_dataCapacitor.TryRemove(command.RecordingId, out var tuple)) {
-                var (channel, processTask, _) = tuple;
-                channel.Writer.Complete();
-                await processTask.WithFakeCancellation(cancellationToken);
+            if (_dataCapacitor.TryRemove(command.RecordingId, out var state)) {
+                state.CancelProcessing();
+                await state.ProcessAudioTask;
             }
         }
 
@@ -132,7 +131,10 @@ namespace ActualChat.Audio
             Moment recordingStartOffset,
             RecordingState state)
         {
-            var channel = state.AudioInput;
+            // var channel = state.AudioInput;
+            var cancellationToken = state.CancellationToken;
+            var reader = await _streamingService.GetStream(recordingId, cancellationToken);
+            
             var lastOffset = recordingStartOffset.ToUnixEpoch();
             var metaData = new List<SegmentMetaDataEntry>();
             EBML? ebml = null; 
@@ -156,31 +158,30 @@ namespace ActualChat.Audio
                     MaxSpeakerCount = 1
                 }
             };
-            var transcriptId = await _transcriber.BeginTranscription(command, CancellationToken.None);
-            _ = DistributeTranscriptionResults(transcriptId, state.StreamId, CancellationToken.None);
+            var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
+            _ = DistributeTranscriptionResults(transcriptId, state.StreamId, cancellationToken);
             
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
-            await foreach (var (_, index, clientEndOffset, base64Encoded) in channel.Reader.ReadAllAsync()) {
+            await foreach (var (index, clientEndOffset, chunk) in reader.ReadAllAsync(cancellationToken)) {
                 var streamId = state.StreamId;
-                var message = new AudioMessage(base64Encoded.Data);
+                var message = new AudioMessage(chunk);
                 // Push to real-time pipeline
                 // TODO: AK - suspicious lack of the CancellationToken
-                var distributeChunk = _streamingService.Publish(streamId, message, CancellationToken.None);
-                var appendTranscriptionCommand = new AppendTranscriptionCommand(transcriptId, base64Encoded);
-                var transcribeChunk = _transcriber.AppendTranscription(appendTranscriptionCommand, CancellationToken.None);
+                var distributeChunk = _streamingService.Publish(streamId, message, cancellationToken);
+                var appendTranscriptionCommand = new AppendTranscriptionCommand(transcriptId, chunk);
+                var transcribeChunk = _transcriber.AppendTranscription(appendTranscriptionCommand, cancellationToken);
                 
                 
-                var currentOffset = clientEndOffset.ToUnixEpoch();
-                var duration = currentOffset - lastOffset;
+                var duration = clientEndOffset - lastOffset;
                 metaData.Add(new SegmentMetaDataEntry(index, lastOffset, duration));
                 var remainingLength = readerState.Remaining;
                 var buffer = bufferLease.Memory;
                 // TODO: AK - check length!!!
                 
                 buffer.Slice(readerState.Position,remainingLength).CopyTo(buffer[..remainingLength]);
-                base64Encoded.Data.CopyTo(buffer[readerState.Remaining..]);
+                chunk.CopyTo(buffer[readerState.Remaining..]);
 
-                var dataLength = readerState.Remaining + base64Encoded.Count;
+                var dataLength = readerState.Remaining + chunk.Length;
                 
                 var (cs, s) = ReadClusters(
                     readerState.IsEmpty 
@@ -202,41 +203,40 @@ namespace ActualChat.Audio
                         new WebMDocument(ebml!, segment!, clusters),
                         state.CurrentSegment,
                         lastOffset);
-                    // TODO: AK - suspicious lack of the CancellationToken
-                    await _streamingService.Complete(state.StreamId, CancellationToken.None);
+                    await _streamingService.Complete(state.StreamId, cancellationToken);
                     state.StartNextSegment();
                     
-                    transcriptId = await _transcriber.BeginTranscription(command);
-                    _ = DistributeTranscriptionResults(transcriptId, state.StreamId, CancellationToken.None);
+                    transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
+                    _ = DistributeTranscriptionResults(transcriptId, state.StreamId, cancellationToken);
                     
                     clusters.Clear();
                 }
                 
-                lastOffset = currentOffset;
+                lastOffset = clientEndOffset;
                 await Task.WhenAll(distributeChunk, transcribeChunk);
                 
-                (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader reader)
+                (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader webMReader)
                 {
                     var result = new List<Cluster>(1);
-                    while (reader.Read())
-                        switch (reader.EbmlEntryType) {
+                    while (webMReader.Read())
+                        switch (webMReader.EbmlEntryType) {
                             case EbmlEntryType.None:
                                 throw new InvalidOperationException();
                             case EbmlEntryType.Ebml:
                                 // TODO: add support of EBML Stream where multiple headers and segments can appear
-                                ebml = (EBML?)reader.Entry;
+                                ebml = (EBML?)webMReader.Entry;
                                 break;
                             case EbmlEntryType.Segment:
-                                segment = (Segment?)reader.Entry;
+                                segment = (Segment?)webMReader.Entry;
                                 break;
                             case EbmlEntryType.Cluster:
-                                result.Add((Cluster)reader.Entry);
+                                result.Add((Cluster)webMReader.Entry);
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }
 
-                    return (result, reader.GetState());
+                    return (result, webMReader.GetState());
                 }
             }
             
@@ -373,18 +373,19 @@ namespace ActualChat.Audio
         private class RecordingState
         {
             private readonly Symbol _recordingId;
+            private readonly CancellationTokenSource _cts;
 
-            public RecordingState(Symbol recordingId, Channel<AppendAudioCommand> audioInput)
+            public RecordingState(Symbol recordingId)
             {
                 _recordingId = recordingId;
+                _cts = new CancellationTokenSource();
                 
-                AudioInput = audioInput;
                 CurrentSegment = 0;
             }
 
-            public Channel<AppendAudioCommand> AudioInput { get; }
-            
             public Task ProcessAudioTask { get; set; } = null!;
+
+            public CancellationToken CancellationToken => _cts.Token;
 
             public int CurrentSegment { get; private set; }
 
@@ -395,11 +396,16 @@ namespace ActualChat.Audio
                 CurrentSegment++;
             }
 
-            public void Deconstruct(out Channel<AppendAudioCommand> channel, out Task processTask, out int currentSegment)
+            public void CancelProcessing()
             {
-                channel = AudioInput;
+                _cts.Cancel();
+            }
+
+            public void Deconstruct(out Task processTask, out int currentSegment, out CancellationToken cancellationToken)
+            {
                 processTask = ProcessAudioTask;
                 currentSegment = CurrentSegment;
+                cancellationToken = CancellationToken;
             }
         } 
     }

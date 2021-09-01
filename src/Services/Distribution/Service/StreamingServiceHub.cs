@@ -7,12 +7,12 @@ namespace ActualChat.Distribution
 {
     public class StreamingServiceHub : Hub
     {
-        private readonly IStreamingService<AudioMessage> _audioStreamingService;
+        private readonly IAudioStreamingService _audioStreamingService;
         private readonly IStreamingService<VideoMessage> _videoStreamingService;
         private readonly IStreamingService<TranscriptMessage> _transcriptStreamingService;
 
         public StreamingServiceHub(
-            IStreamingService<AudioMessage> audioStreamingService,
+            IAudioStreamingService audioStreamingService,
             IStreamingService<VideoMessage> videoStreamingService,
             IStreamingService<TranscriptMessage> transcriptStreamingService)
         {
@@ -29,5 +29,8 @@ namespace ActualChat.Distribution
 
         public Task<ChannelReader<TranscriptMessage>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
             => _transcriptStreamingService.GetStream(streamId, cancellationToken);
+
+        public Task UploadAudioStream(string recordingId, ChannelReader<AudioRecordMessage> source, CancellationToken cancellationToke)
+            => _audioStreamingService.UploadStream(recordingId, source, cancellationToke);
     }
 }
