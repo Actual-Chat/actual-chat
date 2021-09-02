@@ -8,6 +8,6 @@ namespace ActualChat.Distribution
     public interface IServerSideAudioStreamingService : IServerSideStreamingService<AudioMessage>
     {
         Task<AudioRecording?> WaitForNewRecording(CancellationToken cancellationToken);
-        Task<ChannelReader<AudioRecordMessage>> GetStream(RecordingId recordingId, CancellationToken cancellationToken);
+        Task<ChannelReader<AudioMessage>> GetStream(RecordingId recordingId, CancellationToken cancellationToken);
     }
 }

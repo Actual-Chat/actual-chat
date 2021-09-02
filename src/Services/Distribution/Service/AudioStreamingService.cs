@@ -24,7 +24,7 @@ namespace ActualChat.Distribution
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
         }
 
-        public async Task<RecordingId> UploadStream(AudioRecordingConfiguration config, ChannelReader<AudioRecordMessage> source, CancellationToken cancellationToken)
+        public async Task<RecordingId> UploadStream(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
         {
             var recordingId = _idGenerator.Next();
             _log.LogInformation($"{nameof(UploadStream)}, RecordingId = {{RecordingId}}", recordingId);
@@ -52,7 +52,7 @@ namespace ActualChat.Distribution
             await subscriber.PublishAsync(StreamingConstants.AudioRecordingQueue, string.Empty);
         }
 
-        private async Task InternalUpload(IDatabase db, RedisKey key, ChannelReader<AudioRecordMessage> source)
+        private async Task InternalUpload(IDatabase db, RedisKey key, ChannelReader<AudioMessage> source)
         {
             while (await source.WaitToReadAsync())
             while (source.TryRead(out var message)) {

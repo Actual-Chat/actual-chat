@@ -44,7 +44,7 @@
 @code {
     private IJSObjectReference? ModuleRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
-    private ChannelWriter<AudioRecordMessage>? Writer { get; set; }
+    private ChannelWriter<AudioMessage>? Writer { get; set; }
     private int Index { get; set; }
 
     private bool IsRecording { get; set; } = false;
@@ -114,7 +114,7 @@
             //
             // RecordingId = result.Result;
             
-            var channel = Channel.CreateBounded<AudioRecordMessage>(
+            var channel = Channel.CreateBounded<AudioMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -144,7 +144,7 @@
         if (Writer != null) {
             var base64 = Base64Encoded.Decode(dataAsBase64);
 
-            await Writer.WriteAsync(new AudioRecordMessage(Index++, CpuClock.Now.EpochOffset.TotalSeconds, base64.Data));
+            await Writer.WriteAsync(new AudioMessage(Index++, CpuClock.Now.EpochOffset.TotalSeconds, base64.Data));
         }
     }
 

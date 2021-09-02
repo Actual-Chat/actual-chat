@@ -31,10 +31,7 @@ namespace ActualChat.Distribution
         [property: Key(1)] AudioRecordingConfiguration Configuration);
     
     [MessagePackObject]
-    public record AudioMessage([property: MessagePack.Key(0)] byte[] Chunk);
-    
-    [MessagePackObject]
-    public record AudioRecordMessage(
+    public record AudioMessage(
         [property: Key(0)] int Index,
         [property: Key(1)] double ClientEndOffset,
         [property: Key(2)] byte[] Chunk);
