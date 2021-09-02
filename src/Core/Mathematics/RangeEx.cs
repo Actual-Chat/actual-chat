@@ -16,5 +16,19 @@ namespace ActualChat.Mathematics
 
         public static TimeSpan Size(this Range<DateTime> range)
             => range.End - range.Start;
+
+        // Geometry-related
+
+        public static Range<double> Move(this Range<double> range, double offset)
+            => new(range.Start + offset, range.End + offset);
+
+        public static bool Contains(this Range<double> range, double value)
+            => range.Start <= value && value < range.End;
+
+        public static Range<double> IntersectWith(this Range<double> range, Range<double> other)
+        {
+            var result = new Range<double>(Math.Max(range.Start, other.Start), Math.Min(range.End, other.End));
+            return result.Size() < 0 ? default : result;
+        }
     }
 }

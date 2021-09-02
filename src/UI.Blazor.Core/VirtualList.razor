@@ -1,59 +1,81 @@
 @typeparam TItem
+@inherits ComputedStateComponent<VirtualListResponse<TItem>>
 @implements IVirtualListBackend
 @implements IAsyncDisposable
-@using System.Linq
 @using ActualChat.UI.Blazor.Internal
-@using Microsoft.AspNetCore.Components
 @using Stl.Async
 @using System.Collections.Immutable
-@using Stl.Collections
+@using ActualChat.Mathematics
 @inject IJSRuntime JS
 @inject JSModule JSModule
 
 @{
+    var ri = GetNextRenderInfo();
 }
 
-@*
 <div class="@Class virtual-list" style="@Style" @ref="Ref">
-    <div class="content" style="height: @(state.Height)px">
+    <div class="content">
         <div class="measurement">
-
+            @foreach (var e in ri.MeasuringEntries) {
+                <div @key="e.Key" class="item" data-key="@e.Key">
+                    @ChildContent(e.Item)
+                </div>
+            }
         </div>
-        @foreach (var item in items) {
-            <div class="item" style="height: @(ItemHeight)px; top: @((state.SkipCount + item.Index) * ItemHeight)px;">
-                @ChildContent(item.Item)
+        <div class="spacer" style="height: @(ri.SpacerSize)px"></div>
+        @foreach (var e in ri.ShownEntries) {
+            <div @key="e.Key" class="item" data-key="@e.Key">
+                @ChildContent(e.Item)
             </div>
         }
     </div>
 </div>
-*@
+
+@{
+    LastRenderInfo = ri;
+}
 
 @code {
 
-    public record ViewState
+    public class Entry
     {
-        public IVirtualListBackend.ClientViewInfo ClientViewInfo { get; init; } = IVirtualListBackend.ClientViewInfo.Default;
-        public double Position { get; init; }
-        public ImmutableList<string> OrderedKeys { get; init; } = ImmutableList<string>.Empty;
-        public ImmutableDictionary<string, Entry> Entries { get; init; } = ImmutableDictionary<string, Entry>.Empty;
-    }
-
-    public record Entry
-    {
-        public string Key { get; init; } = "";
+        public string Key { get; init; } = null!;
         public TItem Item { get; init; } = default!;
-        public double? Height { get; init; }
+        public double Size { get; set; } = -1;
+        public bool IsSizeMeasured => Size >= 0;
     }
 
-    private IJSObjectReference? ModuleRef { get; set; } // Shouldn't be disposed
-    private IJSObjectReference? JSComponentRef { get; set; }
-    private DotNetObjectReference<IVirtualListBackend>? ComponentRef { get; set; }
-    private ViewState State { get; set; } = new();
+    public class RenderInfo
+    {
+        public long RenderIndex { get; set; } = 0;
+        public VirtualListResponse<TItem> Response { get; set; } = null!;
+        public ImmutableDictionary<string, Entry> EntryByKey { get; set; } = ImmutableDictionary<string, Entry>.Empty;
+        public List<Entry> Entries { get; set; } = null!;
+        public List<Entry> MeasuringEntries { get; set; } = null!;
+        public List<Entry> ShownEntries { get; set; } = null!;
+        public double ShownEntriesSize { get; set; }
+        public double SpacerSize { get; set; } // That's "prefix spacer"
+        public Range<double> Viewport { get; set; } // Relative to the top entry's top
+        public bool MustScroll { get; set; }
+
+        // Computed properties
+        public double ScrollOffset => SpacerSize + Viewport.Start;
+        public bool MustMeasure => MeasuringEntries.Count > 0;
+    }
+
+    protected IJSObjectReference? ModuleRef { get; set; } // Shouldn't be disposed
+    protected IJSObjectReference? JSComponentRef { get; set; }
+    protected DotNetObjectReference<IVirtualListBackend>? ComponentRef { get; set; }
+
+    protected RenderInfo? LastRenderInfo { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
-    [Parameter] public IVirtualListSource<TItem> Source { get; set; } = null!;
     [Parameter] public RenderFragment<TItem> ChildContent { get; set; } = null!;
+    [Parameter] public double SpacerSize { get; set; } = 100_000;
+    [Parameter] public double LoaderSize { get; set; } = 10_000;
+    [Parameter] public Func<VirtualListQuery, CancellationToken, Task<VirtualListResponse<TItem>>> Provider { get; set; } =
+        (_, _) => Task.FromResult(new VirtualListResponse<TItem>());
 
     public ElementReference Ref { get; set; }
 
@@ -66,33 +88,130 @@
         ComponentRef?.Dispose();
     }
 
+    protected override Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
+    {
+        var lri = LastRenderInfo;
+        if (lri == null)
+            return Provider.Invoke(new VirtualListQuery(default) { }, cancellationToken);
+        var startLoaderSize = lri.Viewport.Start;
+        var endLoaderSize = lri.ShownEntriesSize - lri.Viewport.End;
+        var query = new VirtualListQuery((lri.Entries[0].Key, lri.Entries[^1].Key)) {
+            MeanItemSize = lri.ShownEntriesSize / lri.ShownEntries.Count,
+            StartGapSize = Math.Max(0, LoaderSize - startLoaderSize),
+            EndGapSize = Math.Max(0, LoaderSize - endLoaderSize),
+        };
+        return Provider.Invoke(query, cancellationToken);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (ModuleRef != null || !firstRender)
+        if (firstRender) {
+            ModuleRef = await JSModule.Import(typeof(IVirtualListBackend).Assembly, "js/virtual-list.js");
+            ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
+            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
+        }
+        var lri = LastRenderInfo;
+        if (lri == null)
             return;
-        ModuleRef = await JSModule.Import(typeof(IVirtualListBackend).Assembly, "js/virtual-list.js");
-        ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-        JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
-        JSComponentRef.InvokeVoidAsync("pushStateUpdate").Ignore();
+        if (lri.MustMeasure || lri.MustScroll)
+            JSComponentRef?.InvokeVoidAsync("afterRender", lri.MustMeasure, lri.MustScroll, lri.ScrollOffset).Ignore();
     }
 
     [JSInvokable]
     public void UpdateClientSideState(IVirtualListBackend.ClientSideState clientSideState)
     {
-        var entries = State.Entries;
-        foreach (var (key, height) in clientSideState.ItemHeights) {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (!entries.TryGetValue(key, out var entry) || entry.Height == height)
-                continue;
-            entries = entries.SetItem(key, entry with { Height = height });
-        }
-        if (entries == State.Entries && clientSideState.ViewInfo == State.ClientViewInfo)
+        var lri = LastRenderInfo;
+        if (lri == null || clientSideState.RenderIndex < lri.RenderIndex)
             return;
-        State = State with {
-            ClientViewInfo = clientSideState.ViewInfo,
-            Entries = entries
-        };
-        StateHasChanged();
+
+        var entrySizeChanged = false;
+        foreach (var (key, size) in clientSideState.ItemSizes) {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (!lri.EntryByKey.TryGetValue(key, out var entry) || entry.Size == size)
+                continue;
+            entry.Size = size;
+            entrySizeChanged = true;
+        }
+        if (entrySizeChanged || clientSideState.Viewport != lri.Viewport) {
+            lri.Viewport = clientSideState.Viewport.Move(-lri.SpacerSize);
+            StateHasChanged();
+        }
     }
 
+    protected virtual RenderInfo GetNextRenderInfo()
+    {
+        var ri = new RenderInfo();
+        var lri = LastRenderInfo;
+        var response = State.LatestNonErrorValue ?? new VirtualListResponse<TItem>();
+        if (lri == null) {
+            // First render
+            ri.RenderIndex = 0;
+            ri.Response = response;
+            ri.Entries = response.Items.Select(i => new Entry { Key = i.Key, Item = i.Value }).ToList();
+            ri.EntryByKey = ri.Entries.ToImmutableDictionary(e => e.Key);
+            ri.MeasuringEntries = ri.Entries.Where(e => !e.IsSizeMeasured).ToList();
+            ri.ShownEntries = ri.Entries.Where(e => e.IsSizeMeasured).ToList();
+            ri.ShownEntriesSize = ri.Entries.Sum(e => e.Size);
+            ri.Viewport = new(0, ri.ShownEntriesSize);
+            ri.SpacerSize = SpacerSize;
+        }
+        else {
+            ri.RenderIndex = lri.RenderIndex + 1;
+            ri.Response = response;
+            if (!ReferenceEquals(lri.Response, response)) {
+                ri.Entries = new List<Entry>();
+                ri.EntryByKey = ImmutableDictionary<string, Entry>.Empty;
+                foreach (var (key, item) in response.Items) {
+                    var entry = lri.EntryByKey.GetValueOrDefault(key) ?? new Entry { Key = key, Item = item };
+                    ri.Entries.Add(entry);
+                    ri.EntryByKey = ri.EntryByKey.Add(key, entry);
+                }
+            }
+            ri.MeasuringEntries = ri.Entries.Where(e => !e.IsSizeMeasured).ToList();
+            ri.ShownEntries = ri.Entries.Where(e => e.IsSizeMeasured).ToList();
+            ri.ShownEntriesSize = ri.Entries.Sum(e => e.Size);
+            ri.Viewport = lri.Viewport;
+            // Adjust the new spacer size:
+            // 1. Find the first entry in lri.ShownEntries that intersects with the viewport & exists in ri.ShownEntries
+            var (oldEntry, oldRange) = GetEntryRanges(lri.ShownEntries).FirstOrDefault(p =>
+                    p.Range.IntersectWith(lri.Viewport).Size() > 0 &&
+                    ri.EntryByKey.ContainsKey(p.Entry.Key));
+            if (oldEntry != null!) {
+                // 2. Compute its new range
+                var (_, newRange) = GetEntryRanges(ri.ShownEntries).Single(pair => pair.Entry == oldEntry);
+                // 3. Compute new spacer size
+                ri.SpacerSize = lri.SpacerSize + oldRange.Start - newRange.Start;
+            }
+            else {
+                // All the entries visible in the viewport are gone after the update;
+                // let's try to compute spacer size based on the invisible ones
+                (oldEntry, oldRange) = GetEntryRanges(lri.ShownEntries).FirstOrDefault(p =>
+                    ri.EntryByKey.ContainsKey(p.Entry.Key));
+                if (oldEntry != null!) {
+                    var (_, newRange) = GetEntryRanges(ri.ShownEntries).Single(pair => pair.Entry == oldEntry);
+                    ri.SpacerSize = lri.SpacerSize + oldRange.Start - newRange.Start;
+                }
+                else {
+                    // Everything is new, so let's scroll to the very top
+                    ri.SpacerSize = SpacerSize;
+                    ri.Viewport = new(0, lri.Viewport.Size());
+                    ri.MustScroll = true;
+                }
+            }
+            if (ri.Response.StartIsFixed) {
+                ri.SpacerSize = 0;
+                ri.MustScroll = true;
+            }
+        }
+        return ri;
+    }
+
+    protected static IEnumerable<(Entry Entry, Range<double> Range)> GetEntryRanges(List<Entry> entries)
+    {
+        var range = default(Range<double>);
+        foreach (var entry in entries) {
+            range = new(range.End, range.End + entry.Size);
+            yield return (entry, range);
+        }
+    }
 }
