@@ -19,7 +19,13 @@ export class VirtualList {
     }
 
     pushStateUpdate() {
+        // TODO(AY): Make sure measurement happens only for what's needed
+        // TODO(AY): Use ResizeObserver to track item size changes
         this.backendRef.invokeMethodAsync("UpdateClientSideState", this.getState());
+    }
+
+    afterRender(mustMeasure, mustScroll, scrollOffset) {
+        // TODO(AY): Implement this
     }
 
     getState() {

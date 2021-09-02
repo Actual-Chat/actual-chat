@@ -9,7 +9,11 @@
     position: relative;
 }
 
-.virtual-list .item {
+.virtual-list .content .measurement {
+    visibility: hidden;
+}
+
+.virtual-list .content .item {
     position: absolute;
     overflow: hidden;
 }
