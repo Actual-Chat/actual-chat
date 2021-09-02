@@ -4,6 +4,7 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio.WebM
 {
+    // TODO(AK): implement reading of Blocks (now the smallest entry is Cluster which has ~30 sec duration)!!!
     public ref struct WebMReader
     {
         private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;

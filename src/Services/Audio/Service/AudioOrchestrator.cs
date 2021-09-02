@@ -98,20 +98,16 @@ namespace ActualChat.Audio
             throw new NotImplementedException();
         }
 
-        private Task DistributeAudioStream(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
+        private Task DistributeAudioStream(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken) 
+            => _streamingService.PublishStream(audioStreamEntry.StreamId, audioStreamEntry.GetStream(), cancellationToken);
 
         private IAsyncEnumerable<AudioStreamEntry> SplitStreamBySilencePeriods(
             AudioRecording audioRecording,
-            ChannelReader<AudioRecordMessage> audioReader,
+            ChannelReader<AudioMessage> audioReader,
             CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var splitter = new AudioStreamSplitter();
+            return splitter.SplitBySilencePeriods(audioRecording, audioReader, cancellationToken);
         }
-
-
-        
     }
 }

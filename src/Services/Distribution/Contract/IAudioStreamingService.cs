@@ -7,6 +7,6 @@ namespace ActualChat.Distribution
 {
     public interface IAudioStreamingService : IStreamingService<AudioMessage>
     {
-        Task<RecordingId> UploadStream(AudioRecordingConfiguration audioConfig, ChannelReader<AudioRecordMessage> source, CancellationToken cancellationToken);
+        Task<RecordingId> UploadStream(AudioRecordingConfiguration audioConfig, ChannelReader<AudioMessage> source, CancellationToken cancellationToken);
     }
 }

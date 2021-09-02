@@ -161,7 +161,7 @@ namespace ActualChat.Tests.Audio
 
         private static async Task<int> PushAudioData(Symbol recordingId, IAudioStreamingService streamingService)
         {
-            var channel = Channel.CreateBounded<AudioRecordMessage>(
+            var channel = Channel.CreateBounded<AudioMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -180,7 +180,7 @@ namespace ActualChat.Tests.Audio
             size += bytesRead;
             while (bytesRead > 0) {
                 
-                var command = new AudioRecordMessage(
+                var command = new AudioMessage(
                     index++,
                     CpuClock.Now.EpochOffset.TotalSeconds, 
                     readBuffer[..bytesRead].ToArray());

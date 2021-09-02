@@ -166,9 +166,8 @@ namespace ActualChat.Audio
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (index, clientEndOffset, chunk) in reader.ReadAllAsync(cancellationToken)) {
                 var streamId = state.StreamId;
-                var message = new AudioMessage(chunk);
+                var message = new AudioMessage(index, clientEndOffset, chunk);
                 // Push to real-time pipeline
-                // TODO: AK - suspicious lack of the CancellationToken
                 var distributeChunk = _streamingService.Publish(streamId, message, cancellationToken);
                 var appendTranscriptionCommand = new AppendTranscriptionCommand(transcriptId, chunk);
                 var transcribeChunk = _transcriber.AppendTranscription(appendTranscriptionCommand, cancellationToken);

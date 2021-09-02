@@ -38,13 +38,13 @@ namespace ActualChat.Distribution
             }
         }
 
-        public Task<ChannelReader<AudioRecordMessage>> GetStream(RecordingId recordingId, CancellationToken cancellationToken)
+        public Task<ChannelReader<AudioMessage>> GetStream(RecordingId recordingId, CancellationToken cancellationToken)
         {
             
             var db = GetDatabase();
             var key = new RedisKey(recordingId);
 
-            var channel = Channel.CreateBounded<AudioRecordMessage>(
+            var channel = Channel.CreateBounded<AudioMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -58,7 +58,7 @@ namespace ActualChat.Distribution
 
             return Task.FromResult(channel.Reader);
 
-            async Task ReadRedisStream(ChannelWriter<AudioRecordMessage> writer, IDatabase d, RedisKey k, CancellationToken ct)
+            async Task ReadRedisStream(ChannelWriter<AudioMessage> writer, IDatabase d, RedisKey k, CancellationToken ct)
             {
                 Exception? localException = null;
                 var position = (RedisValue)"0-0";
@@ -74,7 +74,7 @@ namespace ActualChat.Distribution
                                 if (isCompleted) return;
 
                                 var serialized = (ReadOnlyMemory<byte>)entry[StreamingConstants.MessageKey];
-                                var message = MessagePackSerializer.Deserialize<AudioRecordMessage>(
+                                var message = MessagePackSerializer.Deserialize<AudioMessage>(
                                     serialized,
                                     MessagePackSerializerOptions.Standard, ct);
                                 await writer.WriteAsync(message, ct);

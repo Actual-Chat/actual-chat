@@ -4,27 +4,32 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Distribution;
-using ActualChat.Transcription;
 
 namespace ActualChat.Audio.Orchestration
 {
-    public sealed class AudioStreamSplitter
+    public readonly struct AudioStreamSplitter
     {
-        public AudioStreamSplitter()
-        {
-        }
-
         public async IAsyncEnumerable<AudioStreamEntry> SplitBySilencePeriods(
             AudioRecording audioRecording,
-            ChannelReader<AudioRecordMessage> audioReader,
+            ChannelReader<AudioMessage> audioReader,
             [EnumeratorCancellation]CancellationToken cancellationToken)
         {
+            var entryIndex = 0;
+            var streamId = GetStreamId(audioRecording.Id, entryIndex);
+            var metaData = new List<AudioMetaDataEntry>();
+            var entryChannel = Channel.CreateUnbounded<AudioMessage>(
+                new UnboundedChannelOptions {
+                    SingleReader = false,
+                    SingleWriter = true,
+                    AllowSynchronousContinuations = true
+                });
+            var audioStreamEntry = new AudioStreamEntry(audioRecording, streamId, metaData, entryChannel.Reader);
+            yield return audioStreamEntry;
+            
             var lastOffset = audioRecording.Configuration.ClientStartOffset;
-            var metaData = new List<MetaDataEntry>();
             EBML? ebml = null; 
             Segment? segment = null;
             WebMReader.State readerState = new WebMReader.State();
@@ -33,7 +38,7 @@ namespace ActualChat.Audio.Orchestration
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
             await foreach (var (index, clientEndOffset, chunk) in audioReader.ReadAllAsync(cancellationToken)) {
                 var duration = clientEndOffset - lastOffset;
-                metaData.Add(new MetaDataEntry(index, lastOffset, duration));
+                metaData.Add(new AudioMetaDataEntry(index, lastOffset, duration));
                 var remainingLength = readerState.Remaining;
                 var buffer = bufferLease.Memory;
                 
@@ -49,6 +54,11 @@ namespace ActualChat.Audio.Orchestration
                 readerState = s;
                 clusters.AddRange(cs);
                 currentSegmentDuration += duration;
+                
+                // we don't use WebMWriter yet because we can't read blocks directly yet. So we don't split actually
+                var audioMessage = new AudioMessage(index, clientEndOffset, chunk);
+                await entryChannel.Writer.WriteAsync(audioMessage, cancellationToken);
+                
 
                 // if (currentSegmentDuration >= SegmentLength.TotalSeconds && clusters.Count > 0) {
                 //     currentSegmentDuration = 0;
@@ -74,6 +84,7 @@ namespace ActualChat.Audio.Orchestration
                 lastOffset = clientEndOffset;
                 // await Task.WhenAll(distributeChunk, transcribeChunk);
                 
+                // TODO(AK): we should read blocks there
                 (IReadOnlyList<Cluster>,WebMReader.State) ReadClusters(WebMReader webMReader)
                 {
                     var result = new List<Cluster>(1);
@@ -98,16 +109,14 @@ namespace ActualChat.Audio.Orchestration
                     return (result, webMReader.GetState());
                 }
             }
-            
-            if (readerState.Container is Cluster c) clusters.Add(c);
 
+            entryChannel.Writer.Complete();
+            // if (readerState.Container is Cluster c) clusters.Add(c);
             // await _transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId), CancellationToken.None);
             // await _streamingService.Complete(state.StreamId, CancellationToken.None);
             // await FlushSegment(recordingId, metaData, new WebMDocument(ebml!, segment!, clusters), state.CurrentSegment, lastOffset);
-            
-            yield break;
-
-            throw new NotImplementedException();
         }
+
+        private string GetStreamId(RecordingId id, int index) => $"{id.Value}-{index:D4}";
     }
 }
