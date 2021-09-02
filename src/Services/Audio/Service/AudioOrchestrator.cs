@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using ActualChat.Audio.Orchestration;
 using ActualChat.Blobs;
 using ActualChat.Distribution;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Stl.Fusion.Authentication;
-using Stl.Text;
 
 namespace ActualChat.Audio
 {
@@ -62,7 +62,7 @@ namespace ActualChat.Audio
         private async Task StartAudioPipeline(AudioRecording recording, CancellationToken cancellationToken)
         {
             var audioReader = await _streamingService.GetStream(recording.Id, cancellationToken);
-            await foreach (var audioStreamEntry in SplitStreamBySilencePeriods(audioReader, cancellationToken)) {
+            await foreach (var audioStreamEntry in SplitStreamBySilencePeriods(recording, audioReader, cancellationToken)) {
                 var distributeStreamTask = DistributeAudioStream(audioStreamEntry, cancellationToken);
                 var chatEntryTask = PublishChatEntry(audioStreamEntry, cancellationToken);
 
@@ -103,22 +103,15 @@ namespace ActualChat.Audio
             throw new NotImplementedException();
         }
 
-        private IAsyncEnumerable<AudioStreamEntry> SplitStreamBySilencePeriods(ChannelReader<AudioRecordMessage> audioReader, CancellationToken cancellationToken)
+        private IAsyncEnumerable<AudioStreamEntry> SplitStreamBySilencePeriods(
+            AudioRecording audioRecording,
+            ChannelReader<AudioRecordMessage> audioReader,
+            CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
 
-        private readonly struct AudioStreamEntry
-        {
-            public AudioStreamEntry(Symbol streamId, ChannelReader<AudioRecordMessage> audioStream)
-            {
-                StreamId = streamId;
-                AudioStream = audioStream;
-            }
-
-            public Symbol StreamId { get; }
-            public ChannelReader<AudioRecordMessage> AudioStream { get; } 
-        }
+        
     }
 }
