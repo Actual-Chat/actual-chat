@@ -1,24 +1,30 @@
 ﻿.virtual-list {
-    display: flex;
-    flex-direction: column;
-    align-content: stretch;
     overflow-y: auto;
+    background: url("https://fakeimg.pl/100x100/?text=Loading...") repeat;
 }
 
 .virtual-list .content {
 }
 
-.virtual-list .content .measured {
+.virtual-list .items {
+    display: flex;
+    flex-direction: column;
+    align-content: stretch;
+}
+
+.virtual-list .items-measured {
     visibility: hidden;
-    height: 1px;
+    height: 0;
     overflow-y: hidden;
 }
 
-.virtual-list .content .shown {
+.virtual-list .items-shown {
+    background: white;
 }
 
-.virtual-list .content .shown .spacer {
+.virtual-list .item {
 }
 
-.virtual-list .content .item {
+.virtual-list .spacer-end {
+    height: 300px;
 }

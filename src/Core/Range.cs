@@ -39,7 +39,11 @@ namespace ActualChat
         // Equality
 
         public bool Equals(Range<T> other)
-            => Start.Equals(other.Start) && End.Equals(other.End);
+        {
+            var equalityComparer = EqualityComparer<T>.Default;
+            return equalityComparer.Equals(Start, other.Start) && equalityComparer.Equals(End, other.End);
+        }
+
         public override bool Equals(object? obj)
             => obj is Range<T> other && Equals(other);
         public override int GetHashCode()
