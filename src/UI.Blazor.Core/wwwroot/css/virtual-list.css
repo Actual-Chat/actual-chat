@@ -1,19 +1,24 @@
 ﻿.virtual-list {
-    /* display: flex; */
-    /* flex-direction: column; */
-    /* align-content: stretch; */
+    display: flex;
+    flex-direction: column;
+    align-content: stretch;
     overflow-y: auto;
 }
 
 .virtual-list .content {
-    position: relative;
 }
 
-.virtual-list .content .measurement {
+.virtual-list .content .measured {
     visibility: hidden;
+    height: 1px;
+    overflow-y: hidden;
+}
+
+.virtual-list .content .shown {
+}
+
+.virtual-list .content .shown .spacer {
 }
 
 .virtual-list .content .item {
-    position: absolute;
-    overflow: hidden;
 }

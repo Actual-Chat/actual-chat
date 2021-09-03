@@ -23,11 +23,9 @@
 
 <WhenException Exception="@error"/>
 
-@*
-<VirtualList style="height: 500px;" ItemHeight="50" Items="Enumerable.Range(0, 1000).ToArray()" >
+<VirtualList style="height: 400px;" Provider="GetVirtualListItems" >
     <div>@context</div>
 </VirtualList>
-*@
 
 <Table Narrow="true" Striped="true" Margin="Margin.Is3.OnY">
     <TableHeader ThemeContrast="ThemeContrast.Dark">
@@ -84,4 +82,30 @@
             Entries = pages.SelectMany(p => p.Entries).ToArray(),
         };
     }
+
+    private Task<VirtualListResponse<string>> GetVirtualListItems(VirtualListQuery query, CancellationToken cancellationToken)
+    {
+        if (query.KeyRange.IsEmpty)
+            query = query with { KeyRange = new Range<string>("0", "10") };
+
+        var startKey = int.Parse(query.KeyRange.Start);
+        if (query.ExpandStartBy > 0)
+            startKey -= (int) query.ExpandStartBy;
+        startKey = Math.Max(0, startKey);
+
+        var endKey = int.Parse(query.KeyRange.End);
+        if (query.ExpandEndBy > 0)
+            endKey += (int) query.ExpandEndBy;
+        endKey = Math.Min(10_000, endKey);
+
+        var items = Enumerable.Range(startKey, endKey - startKey + 1)
+            .Select(k => KeyValuePair.Create(k.ToString(), $"Item #{k}"))
+            .ToList();
+        var result = new VirtualListResponse<string>(items) {
+            HasVeryFirstItem = startKey == 0,
+            HasVeryLastItem = endKey == 10_000,
+        };
+        return Task.FromResult(result);
+    }
+
 }

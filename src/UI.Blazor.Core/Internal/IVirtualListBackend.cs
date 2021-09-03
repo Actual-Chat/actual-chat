@@ -9,7 +9,7 @@ namespace ActualChat.UI.Blazor.Internal
         public class ClientSideState
         {
             public long RenderIndex { get; set; }
-            public double ViewportOffset { get; set; } = 0;
+            public double ViewportOffset { get; set; } = 0; // Minus spacer size!
             public double ViewportSize { get; set; } = 1;
             [JsonIgnore, Newtonsoft.Json.JsonIgnore]
             public Range<double> Viewport => new(ViewportOffset, ViewportOffset + ViewportSize);
