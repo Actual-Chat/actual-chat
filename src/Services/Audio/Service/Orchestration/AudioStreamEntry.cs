@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Reactive;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -16,6 +15,7 @@ namespace ActualChat.Audio.Orchestration
         private readonly List<AudioMessage> _buffer;
         private readonly Channel<ChannelWriter<AudioMessage>> _readChannels;
         private readonly List<ChannelWriter<AudioMessage>> _activeReadChannels;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         private int _buffering = 0;
 
@@ -34,6 +34,7 @@ namespace ActualChat.Audio.Orchestration
             _readChannels = Channel.CreateUnbounded<ChannelWriter<AudioMessage>>(
                 new UnboundedChannelOptions { SingleReader = true });
             _activeReadChannels = new List<ChannelWriter<AudioMessage>>();
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         public Symbol StreamId { get; }
@@ -41,52 +42,82 @@ namespace ActualChat.Audio.Orchestration
 
         public ChannelReader<AudioMessage> GetStream()
         {
-            if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0) _ = StartBuffering();
-
+            if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0) 
+                _ = StartBuffering(_cancellationTokenSource.Token);
+            
             var readChannel = Channel.CreateUnbounded<AudioMessage>(
                 new UnboundedChannelOptions { SingleWriter = true });
-            _readChannels.Writer.TryWrite(readChannel.Writer);
+            if (Volatile.Read(ref _buffering) == 2)
+                _ = FillWithBuffered(readChannel.Writer);
+            else
+                _readChannels.Writer.TryWrite(readChannel.Writer);
+
             return readChannel.Reader;
+
+            async Task FillWithBuffered(ChannelWriter<AudioMessage>  writer)
+            {
+                foreach (var message in _buffer) 
+                    await writer.WriteAsync(message);
+                
+                writer.Complete();
+            }
         }
 
-        private async Task StartBuffering()
+        public void CompleteBuffering()
         {
-            var cts = new CancellationTokenSource();
+            if (Interlocked.CompareExchange(ref _buffering, 2, 1) != 1) return;
+            
+            _readChannels.Writer.Complete();
+            _cancellationTokenSource.Cancel();
+        }
+
+        private async Task StartBuffering(CancellationToken cancellationToken)
+        {
             var readers = _readChannels.Reader;
             var messages = _audioStream;
             var readerAvailable = true;
-            while (true) {
+            var messageAvailable = true;
+            while (readerAvailable || messageAvailable) {
+                if (cancellationToken.IsCancellationRequested) {
+                    foreach (var reader in _activeReadChannels)
+                        reader.Complete();
+                    break;
+                }
                 var watForReader = readerAvailable 
-                    ? readers.WaitToReadAsync(cts.Token).AsTask()
+                    ? readers.WaitToReadAsync(cancellationToken).AsTask()
                     : Task.FromResult(false);
-                // ReSharper disable once MethodSupportsCancellation
-                var waitForMessage = messages.WaitToReadAsync().AsTask();
+                var waitForMessage = messageAvailable 
+                    ? messages.WaitToReadAsync(cancellationToken).AsTask()
+                    : Task.FromResult(false);
                 if (readerAvailable)
                     await Task.WhenAny(watForReader, waitForMessage);
+                
                 if (readerAvailable && watForReader.IsCompleted) {
                     readerAvailable = await watForReader;
                     if (readerAvailable)
                         while (readers.TryRead(out var reader)) {
-                            foreach (var bufferedMessage in _buffer) await reader.WriteAsync(bufferedMessage, cts.Token);
-                            _activeReadChannels.Add(reader);
+                            foreach (var bufferedMessage in _buffer)
+                                await reader.WriteAsync(bufferedMessage, cancellationToken);
+                            if (messageAvailable)
+                                _activeReadChannels.Add(reader);
+                            else
+                                reader.Complete();
                         }
                 }
-                if (waitForMessage.IsCompleted)
-                {
-                    var messageAvailable = await waitForMessage;
-                    if (!messageAvailable) {
-                    
-                    }
-                    else {
-                    
-                    }
+                
+                if (messageAvailable && waitForMessage.IsCompleted) {
+                    messageAvailable = await waitForMessage;
+                    if (messageAvailable)
+                        while (messages.TryRead(out var message)) {
+                            _buffer.Add(message);
+                            foreach (var reader in _activeReadChannels) 
+                                await reader.WriteAsync(message, cancellationToken);
+                        }
+                    else
+                        foreach (var reader in _activeReadChannels)
+                            reader.Complete();
                 }
             }
-            // await foreach (var audioMessage in _audioStream.ReadAllAsync()) {
-            //     _buffer.Add(audioMessage);
-            // }
-
-            throw new System.NotImplementedException();
         }
 
         // TODO(AK): Actually we can build precise Cue index with bit-perfect offset to blocks\clusters
