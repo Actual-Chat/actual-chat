@@ -698,3 +698,8 @@ dotnet_naming_symbols.any_typeparam.applicable_kinds = type_parameter
 indent_style = space
 indent_size = 4
 tab_width = 4
+
+[*.{csproj,props}]
+indent_style = space
+indent_size = 2
+tab_width = 2

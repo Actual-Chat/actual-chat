@@ -1,23 +1,19 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio.Orchestration;
-using ActualChat.Blobs;
 using ActualChat.Distribution;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Stl.Fusion.Authentication;
 using Stl.Text;
 
 namespace ActualChat.Audio
 {
     public class AudioOrchestrator : BackgroundService
     {
-        private readonly IAuthService _authService;
         private readonly ITranscriber _transcriber;
         private readonly AudioPersistService _audioPersistService;
         private readonly IServerSideAudioStreamingService _streamingService;
@@ -25,14 +21,12 @@ namespace ActualChat.Audio
         private readonly ILogger<AudioOrchestrator> _log;
 
         public AudioOrchestrator(
-            IAuthService authService,
             ITranscriber transcriber,
             AudioPersistService audioPersistService,
             IServerSideAudioStreamingService streamingService,
             IServerSideStreamingService<TranscriptMessage> transcriptStreamingService,
             ILogger<AudioOrchestrator> log)
         {
-            _authService = authService;
             _transcriber = transcriber;
             _audioPersistService = audioPersistService;
             _streamingService = streamingService;
@@ -52,7 +46,7 @@ namespace ActualChat.Audio
             }
         }
 
-        private async Task<AudioRecording?> WaitForNewRecording(CancellationToken cancellationToken)
+        internal async Task<AudioRecording?> WaitForNewRecording(CancellationToken cancellationToken)
         {
             var recording = await _streamingService.WaitForNewRecording(cancellationToken);
             while (recording == null && !cancellationToken.IsCancellationRequested) 
@@ -61,7 +55,7 @@ namespace ActualChat.Audio
             return recording;
         }
 
-        private async Task StartAudioPipeline(AudioRecording recording, CancellationToken cancellationToken)
+        internal async Task StartAudioPipeline(AudioRecording recording, CancellationToken cancellationToken)
         {
             var audioReader = await _streamingService.GetStream(recording.Id, cancellationToken);
             await foreach (var audioStreamEntry in SplitStreamBySilencePeriods(recording, audioReader, cancellationToken)) {

@@ -68,7 +68,8 @@ namespace ActualChat.Audio.Module
             fusion.AddComputeService<IAudioRecorder, AudioRecorder>();
 
             services.AddSingleton<AudioPersistService>();
-            services.AddHostedService<AudioOrchestrator>();
+            services.AddSingleton<AudioOrchestrator>();
+            services.AddHostedService<AudioOrchestrator>(sp => sp.GetService<AudioOrchestrator>()!);
         }
     }
 }
