@@ -18,23 +18,23 @@ namespace ActualChat.Audio
     public class AudioOrchestrator : BackgroundService
     {
         private readonly IAuthService _authService;
-        private readonly IBlobStorageProvider _blobStorageProvider;
         private readonly ITranscriber _transcriber;
+        private readonly AudioPersistService _audioPersistService;
         private readonly IServerSideAudioStreamingService _streamingService;
         private readonly IServerSideStreamingService<TranscriptMessage> _transcriptStreamingService;
         private readonly ILogger<AudioOrchestrator> _log;
 
         public AudioOrchestrator(
             IAuthService authService,
-            IBlobStorageProvider blobStorageProvider,
             ITranscriber transcriber,
+            AudioPersistService audioPersistService,
             IServerSideAudioStreamingService streamingService,
             IServerSideStreamingService<TranscriptMessage> transcriptStreamingService,
             ILogger<AudioOrchestrator> log)
         {
             _authService = authService;
-            _blobStorageProvider = blobStorageProvider;
             _transcriber = transcriber;
+            _audioPersistService = audioPersistService;
             _streamingService = streamingService;
             _transcriptStreamingService = transcriptStreamingService;
             _log = log;
@@ -78,9 +78,10 @@ namespace ActualChat.Audio
 
         }
 
-        private Task PersistStreamEntry(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
+        private async Task PersistStreamEntry(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var audioEntry = await audioStreamEntry.GetEntryOnCompletion(cancellationToken);
+            await _audioPersistService.Persist(audioEntry, cancellationToken);
         }
 
         private async Task DistributeTranscriptionResults(

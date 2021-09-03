@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using ActualChat.Audio.Db;
+using ActualChat.Audio.Orchestration;
 using ActualChat.Blobs;
 using ActualChat.Hosting;
 using ActualChat.Transcription;
@@ -66,6 +67,7 @@ namespace ActualChat.Audio.Module
             // Module's own services
             fusion.AddComputeService<IAudioRecorder, AudioRecorder>();
 
+            services.AddSingleton<AudioPersistService>();
             services.AddHostedService<AudioOrchestrator>();
         }
     }
