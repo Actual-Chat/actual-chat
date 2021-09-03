@@ -68,7 +68,7 @@ namespace ActualChat.Audio
                 var distributeStreamTask = DistributeAudioStream(audioStreamEntry, cancellationToken);
                 var chatEntryTask = PublishChatEntry(audioStreamEntry, cancellationToken);
 
-                var transcriptionResults = await Transcribe(audioStreamEntry, cancellationToken);
+                var transcriptionResults = Transcribe(audioStreamEntry, cancellationToken);
                 _ = DistributeTranscriptionResults(transcriptionResults, cancellationToken);
 
                 _ = PersistStreamEntry(audioStreamEntry, cancellationToken);
