@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Stl.Fusion.Authentication;
+using Stl.Text;
 
 namespace ActualChat.Audio
 {
@@ -82,20 +84,76 @@ namespace ActualChat.Audio
         }
 
         private Task DistributeTranscriptionResults(
-            IAsyncEnumerable<TranscriptFragmentVariant> transcriptionResults,
+            IAsyncEnumerable<TranscriptMessage> transcriptionResults,
             CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        private async Task<IAsyncEnumerable<TranscriptFragmentVariant>> Transcribe(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
+        private async IAsyncEnumerable<TranscriptMessage> Transcribe(AudioStreamEntry audioStreamEntry, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var (recordingId, configuration) = audioStreamEntry.AudioRecording;
+            // TODO: AK - read actual config
+            var command = new BeginTranscriptionCommand {
+                RecordingId = recordingId.Value,
+                AudioFormat = new AudioFormat {
+                    Codec = AudioCodec.Opus,
+                    ChannelCount = 1,
+                    SampleRate = 48_000
+                },
+                Options = new TranscriptionOptions {
+                    Language = "ru-RU",
+                    IsDiarizationEnabled = false,
+                    IsPunctuationEnabled = true,
+                    MaxSpeakerCount = 1
+                }
+            };
+            var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
+
+            var reader = audioStreamEntry.GetStream();
+            _ = PushAudioStreamForTranscription(transcriptId, reader, cancellationToken);
+
+            var index = 0;
+            var result = await _transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, index), cancellationToken);
+            while (result.ContinuePolling && !cancellationToken.IsCancellationRequested) {
+                foreach (var fragmentVariant in result.Fragments) {
+                    if (fragmentVariant.Speech is { } speechFragment) {
+                        var message = new TranscriptMessage(
+                            speechFragment.Text,
+                            speechFragment.TextIndex,
+                            speechFragment.StartOffset,
+                            speechFragment.Duration);
+                        yield return message;
+                    }
+                    else if (fragmentVariant.Error != null) {
+                        // TODO(AK) - think about additional scenarios of transcription error handling
+                    }
+
+                    index = fragmentVariant.Value!.Index + 1;
+                }
+
+                result = await _transcriber.PollTranscription(
+                    new PollTranscriptionCommand(transcriptId, index),
+                    cancellationToken);
+            }
+
+            await _transcriber.AckTranscription(new AckTranscriptionCommand(transcriptId, index), cancellationToken);
+
+            async Task PushAudioStreamForTranscription(Symbol tId, ChannelReader<AudioMessage> r, CancellationToken ct)
+            {
+                await foreach (var (_,_, chunk) in r.ReadAllAsync(ct)) {
+                    var appendCommand = new AppendTranscriptionCommand(tId, chunk);
+                    await _transcriber.AppendTranscription(appendCommand, ct);
+                }
+
+                await _transcriber.EndTranscription(new EndTranscriptionCommand(tId), ct);
+            }
         }
 
         private Task PublishChatEntry(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            // TODO(AK): Implement creating of a chat entry
+            return Task.CompletedTask;
         }
 
         private Task DistributeAudioStream(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken) 

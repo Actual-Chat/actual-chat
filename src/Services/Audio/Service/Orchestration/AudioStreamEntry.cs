@@ -113,11 +113,15 @@ namespace ActualChat.Audio.Orchestration
                             foreach (var reader in _activeReadChannels) 
                                 await reader.WriteAsync(message, cancellationToken);
                         }
-                    else
+                    else {
                         foreach (var reader in _activeReadChannels)
                             reader.Complete();
+                        _activeReadChannels.Clear();
+                    }
                 }
             }
+            
+            _activeReadChannels.Clear();
         }
 
         // TODO(AK): Actually we can build precise Cue index with bit-perfect offset to blocks\clusters
