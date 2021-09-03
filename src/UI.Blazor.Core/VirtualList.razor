@@ -6,8 +6,9 @@
 @using Stl.Async
 @using System.Collections.Immutable
 @using ActualChat.Mathematics
-@inject IJSRuntime JS
-@inject JSModule JSModule
+@inject IJSRuntime _js
+@inject JSModule _jsModule
+@inject ILogger<VirtualList<TItem>> _log
 
 @{
     var ri = GetNextRenderInfo();
@@ -15,21 +16,24 @@
 
 <div @ref="Ref" class="@Class virtual-list" style="@Style" data-render-index="@ri.RenderIndex">
     <div class="content">
-        <div class="measured">
+        <div class="items items-measured">
             @foreach (var e in ri.MeasuringEntries) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
                     @ChildContent(e.Item)
                 </div>
             }
         </div>
-        <div class="shown">
-            <div class="spacer" style="height: @(ri.SpacerSize)px"></div>
+        <div class="spacer spacer-start" style="height: @(ri.SpacerSize)px"></div>
+        <div class="items items-shown">
             @foreach (var e in ri.ShownEntries) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
                     @ChildContent(e.Item)
                 </div>
             }
         </div>
+        @if (!ri.Response.HasVeryLastItem) {
+            <div class="spacer spacer-end"></div>
+        }
     </div>
 </div>
 
@@ -61,7 +65,6 @@
         public bool MustScroll { get; set; }
 
         // Computed properties
-        public double ScrollOffset => SpacerSize + Viewport.Start;
         public bool MustMeasure => MeasuringEntries.Count > 0;
     }
 
@@ -69,17 +72,19 @@
     protected IJSObjectReference? JSComponentRef { get; set; }
     protected DotNetObjectReference<IVirtualListBackend>? ComponentRef { get; set; }
     protected RenderInfo? LastRenderInfo { get; set; }
+    protected VirtualListQuery? LastQuery { get; set; }
+    protected VirtualListQuery NextQuery { get; set; } = new(default);
     protected double TotalMeasuredItemSize { get; set; }
     protected long TotalMeasuredItemCount { get; set; }
+    protected double MeanItemSize => TotalMeasuredItemSize / TotalMeasuredItemCount;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
     [Parameter] public RenderFragment<TItem> ChildContent { get; set; } = null!;
-    [Parameter] public double SpacerSize { get; set; } = 200;
-    [Parameter] public double LoaderSize { get; set; } = 100;
+    [Parameter] public double SpacerSize { get; set; } = 100_000;
+    [Parameter] public double LoadZoneSize { get; set; } = 500;
     [Parameter] public Func<VirtualListQuery, CancellationToken, Task<VirtualListResponse<TItem>>> Provider { get; set; } =
         (_, _) => Task.FromResult(new VirtualListResponse<TItem>());
-    public double MeanItemSize => TotalMeasuredItemSize / TotalMeasuredItemCount;
 
     public ElementReference Ref { get; set; }
 
@@ -94,57 +99,72 @@
 
     protected override Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
     {
-        var lri = LastRenderInfo;
-        if (lri == null)
-            return Provider.Invoke(new VirtualListQuery(default) { }, cancellationToken);
-        var startLoaderSize = lri.Viewport.Start;
-        var endLoaderSize = lri.ShownEntriesSize - lri.Viewport.End;
-        var meanItemSize = MeanItemSize;
-        var keyRange = lri.Entries.Count > 0
-            ? new Range<string>(lri.Entries[0].Key, lri.Entries[^1].Key)
-            : default;
-        var query = new VirtualListQuery(keyRange) {
-            ExpandStartBy = Math.Max(0, LoaderSize - startLoaderSize) / meanItemSize,
-            ExpandEndBy = Math.Max(0, LoaderSize - endLoaderSize) / meanItemSize,
-        };
+        var query = NextQuery;
+        LastQuery = query;
         return Provider.Invoke(query, cancellationToken);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ModuleRef = await JSModule.Import(typeof(IVirtualListBackend).Assembly, "js/virtual-list.js");
+            ModuleRef = await _jsModule.Import(typeof(IVirtualListBackend).Assembly, "js/virtual-list.js");
             ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
         }
-        var lri = LastRenderInfo;
-        if (lri == null)
+        var ri = LastRenderInfo;
+        if (ri == null)
             return;
-        if (lri.MustMeasure || lri.MustScroll)
-            JSComponentRef?.InvokeVoidAsync("afterRender", lri.MustMeasure, lri.MustScroll, lri.ScrollOffset).Ignore();
+        if (ri.MustMeasure || ri.MustScroll)
+            JSComponentRef?.InvokeVoidAsync("afterRender", ri.MustMeasure, false, ri.MustScroll, ri.Viewport.Start).Ignore();
     }
 
     [JSInvokable]
     public void UpdateClientSideState(IVirtualListBackend.ClientSideState clientSideState)
     {
-        var lri = LastRenderInfo;
-        if (lri == null || clientSideState.RenderIndex < lri.RenderIndex)
+        var ri = LastRenderInfo;
+        if (ri == null || clientSideState.RenderIndex < ri.RenderIndex)
             return;
 
         var entrySizeChanged = false;
         foreach (var (key, size) in clientSideState.ItemSizes) {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (!lri.EntryByKey.TryGetValue(key, out var entry) || entry.Size == size)
+            if (!ri.EntryByKey.TryGetValue(key, out var entry) || entry.Size == size)
                 continue;
             entry.Size = size;
             TotalMeasuredItemSize += size;
             TotalMeasuredItemCount++;
             entrySizeChanged = true;
         }
-        if (entrySizeChanged || clientSideState.Viewport != lri.Viewport) {
-            lri.Viewport = clientSideState.Viewport;
-            StateHasChanged();
+        if (entrySizeChanged || clientSideState.Viewport != ri.Viewport) {
+            ri.Viewport = clientSideState.Viewport;
+            NextQuery = GetQuery();
+            if (LastQuery == NextQuery)
+                StateHasChanged();
+            else
+                State.Recompute().Ignore();
         }
+    }
+
+    protected virtual VirtualListQuery GetQuery()
+    {
+        var ri = LastRenderInfo;
+        if (ri == null || ri.ShownEntries.Count == 0)
+            return new VirtualListQuery(default);
+
+        var loaderZone = new Range<double>(ri.Viewport.Start - LoadZoneSize, ri.Viewport.End + LoadZoneSize);
+        var entryRanges = GetEntryRanges(ri.ShownEntries).ToList();
+        var (firstEntry, firstRange) = entryRanges.FirstOrDefault(p => p.Range.IntersectWith(loaderZone).Size() > 0);
+        if (firstEntry == null!)
+            return new VirtualListQuery(default);
+        var (lastEntry, lastRange) = entryRanges.LastOrDefault(p => p.Range.IntersectWith(loaderZone).Size() > 0);
+        var keyRange = new Range<string>(firstEntry.Key, lastEntry.Key);
+        var itemSize = MeanItemSize;
+        var expandStartBy = (firstRange.IntersectWith(loaderZone).Start - loaderZone.Start) / itemSize;
+        var expandEndBy = (loaderZone.End - lastRange.IntersectWith(loaderZone).End) / itemSize;
+        return new VirtualListQuery(keyRange) {
+            ExpandStartBy = Math.Round(expandStartBy, 1),
+            ExpandEndBy = Math.Round(expandEndBy, 1),
+        };
     }
 
     protected virtual RenderInfo GetNextRenderInfo()
@@ -211,7 +231,7 @@
                     ri.MustScroll = true;
                 }
             }
-            if (ri.Response.HasVeryFirstItem) {
+            if (ri.Response.HasVeryFirstItem && ri.SpacerSize != 0) {
                 ri.SpacerSize = 0;
                 ri.MustScroll = true; // That's because the spacer size has changed
             }
