@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using ActualChat.Audio.WebM;
 using ActualChat.Distribution;
 using Stl.Async;
 using Stl.Text;
@@ -10,7 +13,9 @@ namespace ActualChat.Audio.Orchestration
 {
     public sealed class AudioStreamEntry
     {
-        private readonly IReadOnlyList<AudioMetaDataEntry> _metaDataEntries;
+        private readonly WebMDocumentBuilder _documentBuilder;
+        private readonly IReadOnlyList<AudioMetaDataEntry> _metaData;
+        private readonly double _offset;
         private readonly ChannelReader<AudioMessage> _audioStream;
         private readonly List<AudioMessage> _buffer;
         private readonly Channel<ChannelWriter<AudioMessage>> _readChannels;
@@ -21,14 +26,20 @@ namespace ActualChat.Audio.Orchestration
 
 
         public AudioStreamEntry(
+            int index,
             AudioRecording audioRecording,
-            Symbol streamId,
-            IReadOnlyList<AudioMetaDataEntry> metaDataEntries,
+            WebMDocumentBuilder documentBuilder,
+            IReadOnlyList<AudioMetaDataEntry> metaData,
+            double offset,
             ChannelReader<AudioMessage> audioStream)
         {
-            _metaDataEntries = metaDataEntries;
+            var streamId = GetStreamId(audioRecording.Id, index);
+            _documentBuilder = documentBuilder;
+            _metaData = metaData;
+            _offset = offset;
             AudioRecording = audioRecording;
             StreamId = streamId;
+            Index = index;
             _audioStream = audioStream;
             _buffer = new List<AudioMessage>();
             _readChannels = Channel.CreateUnbounded<ChannelWriter<AudioMessage>>(
@@ -38,6 +49,7 @@ namespace ActualChat.Audio.Orchestration
         }
 
         public Symbol StreamId { get; }
+        public int Index { get; }
         public AudioRecording AudioRecording { get; }
 
         public ChannelReader<AudioMessage> GetStream()
@@ -125,11 +137,20 @@ namespace ActualChat.Audio.Orchestration
         }
 
         // TODO(AK): Actually we can build precise Cue index with bit-perfect offset to blocks\clusters
-        public async Task<IReadOnlyList<AudioMetaDataEntry>> GetMetaDataOnCompletion(CancellationToken cancellationToken)
+        public async Task<AudioEntry> GetEntryOnCompletion(CancellationToken cancellationToken)
         {
             await _audioStream.Completion.WithFakeCancellation(cancellationToken);
-            return _metaDataEntries;
+            return new AudioEntry(
+                Index, 
+                StreamId,
+                AudioRecording,
+                _documentBuilder.ToDocument(),
+                _metaData,
+                _offset,
+                _metaData.Sum(md => md.Duration));
         }
+        
+        private string GetStreamId(RecordingId id, int index) => $"{id.Value}-{index:D4}";
         
     }
 }
