@@ -69,7 +69,7 @@ namespace ActualChat.Audio
                 var chatEntryTask = PublishChatEntry(audioStreamEntry, cancellationToken);
 
                 var transcriptionResults = Transcribe(audioStreamEntry, cancellationToken);
-                _ = DistributeTranscriptionResults(transcriptionResults, cancellationToken);
+                _ = DistributeTranscriptionResults(audioStreamEntry.StreamId, transcriptionResults, cancellationToken);
 
                 _ = PersistStreamEntry(audioStreamEntry, cancellationToken);
 
@@ -83,11 +83,32 @@ namespace ActualChat.Audio
             throw new NotImplementedException();
         }
 
-        private Task DistributeTranscriptionResults(
+        private async Task DistributeTranscriptionResults(
+            Symbol streamId,
             IAsyncEnumerable<TranscriptMessage> transcriptionResults,
             CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var channel = Channel.CreateBounded<TranscriptMessage>(
+                new BoundedChannelOptions(100) {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleReader = true,
+                    SingleWriter = true,
+                    AllowSynchronousContinuations = true
+                });
+
+            var publishTask = _transcriptStreamingService.PublishStream(streamId, channel.Reader, cancellationToken);
+
+            _ = PushTranscriptionResults(channel.Writer, cancellationToken);
+
+            await publishTask;
+            
+            async Task PushTranscriptionResults(ChannelWriter<TranscriptMessage> writer, CancellationToken ct)
+            {
+                await foreach (var message in transcriptionResults.WithCancellation(ct))
+                    await writer.WriteAsync(message, ct);
+                
+                writer.Complete();
+            }
         }
 
         private async IAsyncEnumerable<TranscriptMessage> Transcribe(AudioStreamEntry audioStreamEntry, [EnumeratorCancellation] CancellationToken cancellationToken)
