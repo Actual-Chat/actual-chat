@@ -69,7 +69,7 @@ namespace ActualChat.Audio.Module
 
             services.AddSingleton<AudioPersistService>();
             services.AddSingleton<AudioOrchestrator>();
-            services.AddHostedService<AudioOrchestrator>(sp => sp.GetService<AudioOrchestrator>()!);
+            services.AddHostedService<AudioOrchestrator>(sp => sp.GetRequiredService<AudioOrchestrator>());
         }
     }
 }
