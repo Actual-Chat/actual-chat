@@ -6,8 +6,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
-    <ProjectReference Include="..\..\Distribution\Client\Client.csproj" />
-    <ProjectReference Include="..\..\Distribution\Contract\Contract.csproj" />
+    <ProjectReference Include="..\..\Streaming\Client\Client.csproj" />
+    <ProjectReference Include="..\..\Streaming\Contract\Contract.csproj" />
     <ProjectReference Include="..\Contract\Contract.csproj" />
   </ItemGroup>
 

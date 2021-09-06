@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.Distribution.Client.Module
+namespace ActualChat.Streaming.Client.Module
 {
     public class StreamingClientModule : HostModule
     {

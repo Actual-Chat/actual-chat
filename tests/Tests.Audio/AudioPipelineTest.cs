@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio;
-using ActualChat.Distribution;
+using ActualChat.Streaming;
 using ActualChat.Testing;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;

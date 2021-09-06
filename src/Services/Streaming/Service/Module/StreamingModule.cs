@@ -4,7 +4,7 @@ using StackExchange.Redis;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.Distribution.Module
+namespace ActualChat.Streaming.Module
 {
     public class StreamingModule : HostModule
     {

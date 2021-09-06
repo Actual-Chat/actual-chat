@@ -5,8 +5,9 @@ using System.Threading.Tasks;
 using MessagePack;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
+using Stl.Async;
 
-namespace ActualChat.Distribution
+namespace ActualChat.Streaming
 {
     public class StreamingService<TMessage> : IStreamingService<TMessage>
     {
@@ -18,7 +19,6 @@ namespace ActualChat.Distribution
         public Task<ChannelReader<TMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken)
         {
             var db = GetDatabase();
-            var key = new RedisKey(streamId);
 
             var channel = Channel.CreateBounded<TMessage>(
                 new BoundedChannelOptions(100) {
@@ -29,21 +29,23 @@ namespace ActualChat.Distribution
                 });
 
             _ = ReadRedisStream(
-                channel.Writer, db, key,
+                channel.Writer, db, streamId,
                 cancellationToken);
 
             return Task.FromResult(channel.Reader);
 
-            async Task ReadRedisStream(ChannelWriter<TMessage> writer, IDatabase d, RedisKey k, CancellationToken ct)
+            async Task ReadRedisStream(ChannelWriter<TMessage> writer, IDatabase d, StreamId id, CancellationToken ct)
             {
+                var key = new RedisKey(id);
+
                 Exception? localException = null;
                 var position = (RedisValue)"0-0";
                 try {
                     while (true) {
                         if (ct.IsCancellationRequested) return;
 
-                        var entries = await d.StreamReadAsync(k, position, 10);
-                        if (entries != null)
+                        var entries = await d.StreamReadAsync(key, position, 10);
+                        if (entries?.Length > 0)
                             foreach (var entry in entries) {
                                 var status = entry[StreamingConstants.StatusKey];
                                 var isCompleted = status != RedisValue.Null && status == StreamingConstants.Completed;
@@ -58,7 +60,10 @@ namespace ActualChat.Distribution
                                 position = entry.Id;
                             }
                         else
-                            await Task.Delay(StreamingConstants.EmptyStreamDelay, ct);
+                            await WaitForNewMessage(streamId, cancellationToken)
+                                .WithTimeout(
+                                    TimeSpan.FromMilliseconds(StreamingConstants.EmptyStreamDelay),
+                                    cancellationToken);
                     }
                 }
                 catch (Exception ex) {
@@ -74,5 +79,12 @@ namespace ActualChat.Distribution
 
         protected virtual IDatabase GetDatabase()
             => Redis.GetDatabase().WithKeyPrefix(typeof(TMessage).Name);
+        
+        private async Task WaitForNewMessage(StreamId streamId, CancellationToken cancellationToken)
+        {
+            var subscriber = Redis.GetSubscriber();
+            var queue = await subscriber.SubscribeAsync(StreamingConstants.BuildChannelName(streamId));
+            await queue.ReadAsync(cancellationToken);
+        }
     }
 }

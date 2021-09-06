@@ -1,7 +1,7 @@
 using ActualChat.Audio;
 using MessagePack;
 
-namespace ActualChat.Distribution
+namespace ActualChat.Streaming
 {
     [MessagePackObject]
     public readonly struct RecordingId

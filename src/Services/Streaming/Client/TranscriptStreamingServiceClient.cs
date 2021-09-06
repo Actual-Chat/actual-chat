@@ -1,11 +1,10 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using ActualChat.Distribution.Client.Module;
-using Microsoft.AspNetCore.SignalR;
+using ActualChat.Streaming.Client.Module;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace ActualChat.Distribution.Client
+namespace ActualChat.Streaming.Client
 {
     public class TranscriptStreamingServiceClient : IStreamingService<TranscriptMessage>
     {

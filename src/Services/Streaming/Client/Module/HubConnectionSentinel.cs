@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 
-namespace ActualChat.Distribution.Client.Module
+namespace ActualChat.Streaming.Client.Module
 {
     public class HubConnectionSentinel : IHubConnectionSentinel
     {

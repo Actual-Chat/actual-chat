@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
-namespace ActualChat.Distribution
+namespace ActualChat.Streaming
 {
     [Authorize]
     public class StreamingServiceHub : Hub

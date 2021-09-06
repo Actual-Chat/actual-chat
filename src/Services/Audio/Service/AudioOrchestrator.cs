@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio.Orchestration;
-using ActualChat.Distribution;
+using ActualChat.Streaming;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
