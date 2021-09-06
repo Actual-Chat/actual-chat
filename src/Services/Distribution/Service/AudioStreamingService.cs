@@ -24,10 +24,10 @@ namespace ActualChat.Distribution
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
         }
 
-        public async Task<RecordingId> UploadStream(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
+        public async Task<RecordingId> UploadRecording(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
         {
             var recordingId = _idGenerator.Next();
-            _log.LogInformation($"{nameof(UploadStream)}, RecordingId = {{RecordingId}}", recordingId);
+            _log.LogInformation($"{nameof(UploadRecording)}, RecordingId = {{RecordingId}}", recordingId);
             
             var db = GetDatabase();
             var key = new RedisKey(recordingId);

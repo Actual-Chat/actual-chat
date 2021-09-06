@@ -135,7 +135,7 @@ namespace ActualChat.Audio
         {
             // var channel = state.AudioInput;
             var cancellationToken = state.CancellationToken;
-            var reader = await _streamingService.GetStream(recordingId.Value, cancellationToken);
+            var reader = await _streamingService.GetRecording(recordingId.Value, cancellationToken);
             
             var lastOffset = recordingStartOffset.ToUnixEpoch();
             var metaData = new List<SegmentMetaDataEntry>();

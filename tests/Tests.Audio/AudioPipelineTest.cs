@@ -169,7 +169,7 @@ namespace ActualChat.Tests.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            _ = streamingService.UploadStream(null, channel.Reader, CancellationToken.None);
+            _ = streamingService.UploadRecording(null, channel.Reader, CancellationToken.None);
             
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);

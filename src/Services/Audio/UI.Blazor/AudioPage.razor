@@ -127,7 +127,7 @@
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = _audioStreaming.UploadStream(audioConfig, channel.Reader, CancellationToken.None);
+            _ = _audioStreaming.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
 
             // var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
             // await foreach (var audioMessage in reader.ReadAllAsync()) {

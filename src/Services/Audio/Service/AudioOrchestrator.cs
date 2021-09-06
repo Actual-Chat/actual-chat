@@ -20,6 +20,8 @@ namespace ActualChat.Audio
         private readonly IServerSideStreamingService<TranscriptMessage> _transcriptStreamingService;
         private readonly ILogger<AudioOrchestrator> _log;
 
+        internal static bool SkipAutoStart { get; set; }
+
         public AudioOrchestrator(
             ITranscriber transcriber,
             AudioPersistService audioPersistService,
@@ -36,6 +38,9 @@ namespace ActualChat.Audio
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if(SkipAutoStart)
+                return;
+            
             while (true) {
                 // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out 
                 var recording = await WaitForNewRecording(stoppingToken);
@@ -57,7 +62,7 @@ namespace ActualChat.Audio
 
         internal async Task StartAudioPipeline(AudioRecording recording, CancellationToken cancellationToken)
         {
-            var audioReader = await _streamingService.GetStream(recording.Id, cancellationToken);
+            var audioReader = await _streamingService.GetRecording(recording.Id, cancellationToken);
             await foreach (var audioStreamEntry in SplitStreamBySilencePeriods(recording, audioReader, cancellationToken)) {
                 var distributeStreamTask = DistributeAudioStream(audioStreamEntry, cancellationToken);
                 var chatEntryTask = PublishChatEntry(audioStreamEntry, cancellationToken);

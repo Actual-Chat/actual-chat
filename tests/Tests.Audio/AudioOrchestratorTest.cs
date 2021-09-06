@@ -22,7 +22,7 @@ namespace ActualChat.Tests.Audio
     {
         public AudioOrchestratorTest(ITestOutputHelper @out) : base(@out)
         {
-            
+            AudioOrchestrator.SkipAutoStart = true;
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace ActualChat.Tests.Audio
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = streamingService.UploadStream(audioConfig, channel.Reader, CancellationToken.None);
+            _ = streamingService.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
             
             var recording = await recordingTask;
@@ -115,7 +115,7 @@ namespace ActualChat.Tests.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            _ = streamingService.UploadStream(audioConfig, channel.Reader, CancellationToken.None);
+            _ = streamingService.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
             
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
