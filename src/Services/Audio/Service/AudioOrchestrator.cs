@@ -84,7 +84,7 @@ namespace ActualChat.Audio
         }
 
         private async Task DistributeTranscriptionResults(
-            Symbol streamId,
+            StreamId streamId,
             IAsyncEnumerable<TranscriptMessage> transcriptionResults,
             CancellationToken cancellationToken)
         {

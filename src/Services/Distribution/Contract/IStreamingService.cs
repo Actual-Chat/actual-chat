@@ -6,6 +6,6 @@ namespace ActualChat.Distribution
 {
     public interface IStreamingService<TMessage>
     {
-        Task<ChannelReader<TMessage>> GetStream(string streamId, CancellationToken cancellationToken);
+        Task<ChannelReader<TMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken);
     }
 }

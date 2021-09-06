@@ -16,7 +16,7 @@ namespace ActualChat.Distribution.Client
             _hubConnectionSentinel = hubConnectionSentinel;
         }
 
-        public async Task<ChannelReader<TranscriptMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public async Task<ChannelReader<TranscriptMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken)
         {
             var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
             return await hubConnection.StreamAsChannelCoreAsync<TranscriptMessage>("GeTranscriptStream", new object[] { streamId }, cancellationToken);

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MessagePack;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
+using Stl.Async;
 
 namespace ActualChat.Distribution
 {
@@ -42,7 +43,6 @@ namespace ActualChat.Distribution
         {
             
             var db = GetDatabase();
-            var key = new RedisKey(recordingId);
 
             var channel = Channel.CreateBounded<AudioMessage>(
                 new BoundedChannelOptions(100) {
@@ -53,48 +53,69 @@ namespace ActualChat.Distribution
                 });
 
             _ = ReadRedisStream(
-                channel.Writer, db, key,
+                channel.Writer, recordingId, db,
                 cancellationToken);
 
             return Task.FromResult(channel.Reader);
-
-            async Task ReadRedisStream(ChannelWriter<AudioMessage> writer, IDatabase d, RedisKey k, CancellationToken ct)
-            {
-                Exception? localException = null;
-                var position = (RedisValue)"0-0";
-                try {
-                    while (true) {
-                        if (ct.IsCancellationRequested) return;
-
-                        var entries = await d.StreamReadAsync(k, position, 10);
-                        if (entries != null)
-                            foreach (var entry in entries) {
-                                var status = entry[StreamingConstants.StatusKey];
-                                var isCompleted = status != RedisValue.Null && status == StreamingConstants.Completed;
-                                if (isCompleted) return;
-
-                                var serialized = (ReadOnlyMemory<byte>)entry[StreamingConstants.MessageKey];
-                                var message = MessagePackSerializer.Deserialize<AudioMessage>(
-                                    serialized,
-                                    MessagePackSerializerOptions.Standard, ct);
-                                await writer.WriteAsync(message, ct);
-
-                                position = entry.Id;
-                            }
-                        else
-                            await Task.Delay(StreamingConstants.EmptyStreamDelay, ct);
-                    }
-                }
-                catch (Exception ex) {
-                    localException = ex;
-                }
-                finally {
-                    writer.Complete(localException);
-                }
-            }
         }
 
         protected override IDatabase GetDatabase() 
             => Redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);
+
+        private async Task ReadRedisStream(ChannelWriter<AudioMessage> writer, RecordingId recordingId, IDatabase database, CancellationToken cancellationToken)
+        {
+            var key = new RedisKey(recordingId);
+            
+            Exception? localException = null;
+            var position = (RedisValue)"0-0";
+            try {
+                while (true) {
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    var entries = await database.StreamReadAsync(key, position, 10);
+                    if (entries?.Length > 0)
+                        foreach (var entry in entries) {
+                            var status = entry[StreamingConstants.StatusKey];
+                            var isCompleted = status != RedisValue.Null && status == StreamingConstants.Completed;
+                            if (isCompleted) return;
+
+                            var serialized = (ReadOnlyMemory<byte>)entry[StreamingConstants.MessageKey];
+                            var message = MessagePackSerializer.Deserialize<AudioMessage>(
+                                serialized,
+                                MessagePackSerializerOptions.Standard,
+                                cancellationToken);
+                            await writer.WriteAsync(message, cancellationToken);
+
+                            position = entry.Id;
+                        }
+                    else
+                        await WaitForNewMessage(recordingId, cancellationToken)
+                            .WithTimeout(
+                                TimeSpan.FromMilliseconds(StreamingConstants.EmptyStreamDelay),
+                                cancellationToken);
+                }
+            }
+            catch (Exception ex) {
+                localException = ex;
+            }
+            finally {
+                try {
+                    var subscriber = Redis.GetSubscriber();
+                    await subscriber.UnsubscribeAsync(StreamingConstants.BuildChannelName(recordingId));
+                }
+                catch {
+                    // ignored
+                }
+
+                writer.Complete(localException);
+            }
+        }
+
+        private async Task WaitForNewMessage(RecordingId recordingId, CancellationToken cancellationToken)
+        {
+            var subscriber = Redis.GetSubscriber();
+            var queue = await subscriber.SubscribeAsync(StreamingConstants.BuildChannelName(recordingId));
+            await queue.ReadAsync(cancellationToken);
+        }
     }
 }

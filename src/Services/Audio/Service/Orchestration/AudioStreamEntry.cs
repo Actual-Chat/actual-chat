@@ -33,7 +33,7 @@ namespace ActualChat.Audio.Orchestration
             double offset,
             ChannelReader<AudioMessage> audioStream)
         {
-            var streamId = GetStreamId(audioRecording.Id, index);
+            var streamId = new StreamId(audioRecording.Id, index);
             _documentBuilder = documentBuilder;
             _metaData = metaData;
             _offset = offset;
@@ -48,7 +48,7 @@ namespace ActualChat.Audio.Orchestration
             _cancellationTokenSource = new CancellationTokenSource();
         }
 
-        public Symbol StreamId { get; }
+        public StreamId StreamId { get; }
         public int Index { get; }
         public AudioRecording AudioRecording { get; }
 
@@ -149,8 +149,5 @@ namespace ActualChat.Audio.Orchestration
                 _offset,
                 _metaData.Sum(md => md.Duration));
         }
-        
-        private string GetStreamId(RecordingId id, int index) => $"{id.Value}-{index:D4}";
-        
     }
 }

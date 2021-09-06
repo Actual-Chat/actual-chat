@@ -7,7 +7,7 @@ namespace ActualChat.Audio.Orchestration
 {
     public record AudioEntry(
         int Index,
-        Symbol StreamId,
+        StreamId StreamId,
         AudioRecording Recording,
         WebMDocument Document,
         IReadOnlyList<AudioMetaDataEntry> MetaData,
