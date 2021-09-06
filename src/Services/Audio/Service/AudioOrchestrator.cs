@@ -56,7 +56,8 @@ namespace ActualChat.Audio
             var recording = await _streamingService.WaitForNewRecording(cancellationToken);
             while (recording == null && !cancellationToken.IsCancellationRequested) 
                 recording = await _streamingService.WaitForNewRecording(cancellationToken);
-            
+
+            cancellationToken.ThrowIfCancellationRequested();
             return recording;
         }
 

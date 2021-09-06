@@ -33,10 +33,10 @@ namespace ActualChat.Tests.Audio
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
-            await Task.Delay(100);
+            await Task.Delay(50);
             recordingTask.IsCompleted.Should().Be(false);
             cts.Cancel();
-            await Task.Delay(100);
+            await Task.Delay(50);
             recordingTask.Status.Should().Be(TaskStatus.Canceled);
         }
         
@@ -95,7 +95,7 @@ namespace ActualChat.Tests.Audio
         
         private static async Task<int> ReadDistributedData(RecordingId recordingId, IStreamingService<AudioMessage> sr)
         {
-            var streamId = $"{recordingId}-{0:D4}";
+            var streamId = new StreamId(recordingId, 0);
             var audioReader = await sr.GetStream(streamId, CancellationToken.None);
 
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
