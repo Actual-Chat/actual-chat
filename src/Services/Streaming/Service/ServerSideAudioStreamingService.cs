@@ -24,7 +24,17 @@ namespace ActualChat.Streaming
                 if (cancellationToken.IsCancellationRequested)
                     return null;
                 
-                await queue.ReadAsync(cancellationToken);
+                using var cts = new CancellationTokenSource();
+                var ctsToken = cts.Token;
+                await using var _ = cancellationToken
+                    .Register(state => ((CancellationTokenSource) state!).Cancel(), cts)
+                    .ToAsyncDisposableAdapter();
+
+                var message = await queue.ReadAsync(ctsToken)
+                    .AsTask()
+                    .WithTimeout(TimeSpan.FromSeconds(StreamingConstants.NoRecordingsDelay), cancellationToken);
+                if (message.IsNone())
+                    cts.Cancel();
 
                 var value = await db.ListRightPopAsync(StreamingConstants.AudioRecordingQueue);
                 if (value.IsNullOrEmpty) // yet another consumer has already popped a value 
@@ -91,7 +101,7 @@ namespace ActualChat.Streaming
                     else
                         await WaitForNewMessage(recordingId, cancellationToken)
                             .WithTimeout(
-                                TimeSpan.FromMilliseconds(StreamingConstants.EmptyStreamDelay),
+                                TimeSpan.FromSeconds(StreamingConstants.EmptyStreamDelay),
                                 cancellationToken);
                 }
             }

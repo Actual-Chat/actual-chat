@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\Services\Streaming\Contract\Contract.csproj" />
+    <ProjectReference Include="..\..\src\Services\Streaming\Service\Service.csproj" />
+    <ProjectReference Include="..\..\src\Testing.Host\Testing.Host.csproj" />
     <ProjectReference Include="..\..\src\Testing\Testing.csproj" />
   </ItemGroup>
 
