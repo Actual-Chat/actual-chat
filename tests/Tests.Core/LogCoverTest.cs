@@ -75,6 +75,14 @@ namespace ActualChat.Tests
                     (0, 256),
                     (256, 256 + 16),
                 });
+
+            c.GetTileCover((-65, 257))
+                .Should().BeEquivalentTo(new Range<long>[] {
+                    (-80, -64),
+                    (-64, 0),
+                    (0, 256),
+                    (256, 256 + 16),
+                });
         }
     }
 }
