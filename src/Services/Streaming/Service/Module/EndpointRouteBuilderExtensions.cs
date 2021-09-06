@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Routing;
 
-namespace ActualChat.Distribution.Module
+namespace ActualChat.Streaming.Module
 {
     public static class EndpointRouteBuilderExtensions
     {

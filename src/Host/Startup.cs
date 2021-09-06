@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Linq;
-using ActualChat.Distribution.Module;
+using ActualChat.Streaming.Module;
 using ActualChat.Host.Internal;
 using ActualChat.Host.Module;
 using ActualChat.Hosting;

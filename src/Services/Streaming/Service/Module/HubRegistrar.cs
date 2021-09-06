@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 
-namespace ActualChat.Distribution.Module
+namespace ActualChat.Streaming.Module
 {
     public sealed class HubRegistrar : IHubRegistrar
     {

@@ -1,4 +1,4 @@
-namespace ActualChat.Distribution
+namespace ActualChat.Streaming
 {
     public class StreamingSettings
     {

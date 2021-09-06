@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Testing
+﻿namespace ActualChat.Testing
 {
     public class Class1 { }
 }

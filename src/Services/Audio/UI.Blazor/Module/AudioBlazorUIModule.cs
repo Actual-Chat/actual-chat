@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using ActualChat.Distribution.Client.Module;
 using ActualChat.Hosting;
+using ActualChat.Streaming.Client.Module;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;

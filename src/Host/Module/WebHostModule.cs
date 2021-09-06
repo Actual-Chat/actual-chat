@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using ActualChat.Distribution.Module;
+using ActualChat.Streaming.Module;
 using ActualChat.Host.Internal;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Builder;

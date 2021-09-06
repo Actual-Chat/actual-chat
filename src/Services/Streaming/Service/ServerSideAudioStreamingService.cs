@@ -7,7 +7,7 @@ using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
 using Stl.Async;
 
-namespace ActualChat.Distribution
+namespace ActualChat.Streaming
 {
     public class ServerSideAudioStreamingService : ServerSideStreamingService<AudioMessage>, IServerSideAudioStreamingService
     {

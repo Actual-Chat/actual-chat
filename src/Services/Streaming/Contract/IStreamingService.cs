@@ -2,7 +2,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace ActualChat.Distribution
+namespace ActualChat.Streaming
 {
     public interface IStreamingService<TMessage>
     {
