@@ -75,6 +75,7 @@ namespace ActualChat.Chat
             var context = CommandContext.GetCurrent();
             if (Computed.IsInvalidating()) {
                 var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+                GetLastEntryId(chatId, default).Ignore();
                 InvalidateChatPages(chatId, invChatEntry.Id, false);
                 return null!;
             }
