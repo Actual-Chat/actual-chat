@@ -30,13 +30,12 @@ namespace ActualChat.Distribution
             _log.LogInformation($"{nameof(UploadRecording)}, RecordingId = {{RecordingId}}", recordingId);
             
             var db = GetDatabase();
-            var key = new RedisKey(recordingId);
 
-            // TODO(AK): lack of await \ error handling and CancellationToken
-            _ = InternalUpload(db, key, source);
+            var uploadTask = InternalUpload(db, recordingId, source, cancellationToken);
 
             await NotifyNewAudioRecording(db, recordingId, config, cancellationToken);
-
+            await uploadTask;
+            
             return recordingId;
         }
 
@@ -51,21 +50,40 @@ namespace ActualChat.Distribution
             var subscriber = Redis.GetSubscriber();
             await subscriber.PublishAsync(StreamingConstants.AudioRecordingQueue, string.Empty);
         }
-
-        private async Task InternalUpload(IDatabase db, RedisKey key, ChannelReader<AudioMessage> source)
+        
+        private async Task NotifyNewAudioMessage(string recordingId)
         {
-            while (await source.WaitToReadAsync())
-            while (source.TryRead(out var message)) {
-                using var bufferWriter = new ArrayPoolBufferWriter<byte>();
-                MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard);
-                var serialized = bufferWriter.WrittenMemory;
+            var subscriber = Redis.GetSubscriber();
+            await subscriber.PublishAsync(StreamingConstants.BuildChannelName(new RecordingId(recordingId)),string.Empty);
+        }
 
-                await db.StreamAddAsync(
-                    key,
-                  StreamingConstants.MessageKey,
-                  serialized,
-                    maxLength: 1000,
-                    useApproximateMaxLength: true);
+        private async Task InternalUpload(
+            IDatabase db,
+            string recordingId,
+            ChannelReader<AudioMessage> source,
+            CancellationToken cancellationToken)
+        {
+            var key = new RedisKey(recordingId);
+
+            while (await source.WaitToReadAsync(cancellationToken)) {
+                while (source.TryRead(out var message)) {
+                    using var bufferWriter = new ArrayPoolBufferWriter<byte>();
+                    MessagePackSerializer.Serialize(
+                        bufferWriter,
+                        message,
+                        MessagePackSerializerOptions.Standard,
+                        cancellationToken);
+                    var serialized = bufferWriter.WrittenMemory;
+
+                    await db.StreamAddAsync(
+                        key,
+                        StreamingConstants.MessageKey,
+                        serialized,
+                        maxLength: 1000,
+                        useApproximateMaxLength: true);
+                }
+
+                await NotifyNewAudioMessage(recordingId);
             }
 
             // TODO(AY): Should we complete w/ exceptions to mimic Channel<T> / IEnumerable<T> behavior here as well?

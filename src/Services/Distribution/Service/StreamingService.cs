@@ -15,7 +15,7 @@ namespace ActualChat.Distribution
         public StreamingService(IConnectionMultiplexer redis)
             => Redis = redis;
 
-        public Task<ChannelReader<TMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public Task<ChannelReader<TMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken)
         {
             var db = GetDatabase();
             var key = new RedisKey(streamId);

@@ -1,9 +1,5 @@
-using System;
-using System.Text.Json.Serialization;
 using ActualChat.Audio;
 using MessagePack;
-using Stl.Serialization;
-using Stl.Text;
 
 namespace ActualChat.Distribution
 {
@@ -17,6 +13,21 @@ namespace ActualChat.Distribution
 
         public static implicit operator RecordingId(string value) => new(value);
         public static implicit operator string(RecordingId id) => id.Value;
+    }
+    
+    [MessagePackObject]
+    public readonly struct StreamId
+    {
+        public StreamId(RecordingId id, int index) : this ($"{id.Value}-{index:D4}")
+        { }
+
+        private StreamId(string value) => Value = value;
+
+        [Key(0)]
+        public string Value { get; init; }
+
+        public static implicit operator StreamId(string value) => new(value);
+        public static implicit operator string(StreamId id) => id.Value;
     }
     
     [MessagePackObject]

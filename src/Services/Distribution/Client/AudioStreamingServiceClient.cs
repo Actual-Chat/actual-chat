@@ -15,7 +15,7 @@ namespace ActualChat.Distribution.Client
             _hubConnectionSentinel = hubConnectionSentinel;
         }
 
-        public async Task<ChannelReader<AudioMessage>> GetStream(string streamId, CancellationToken cancellationToken)
+        public async Task<ChannelReader<AudioMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken)
         {
             var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
             return await hubConnection.StreamAsChannelCoreAsync<AudioMessage>("GetAudioStream", new object[] { streamId }, cancellationToken);

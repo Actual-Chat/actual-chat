@@ -9,5 +9,15 @@ namespace ActualChat.Distribution
         public const string AudioRecordingPrefix = "audio-rec";
         public const string AudioRecordingQueue = "audio-rec-queue";
         public const int EmptyStreamDelay = 100;
+
+        public static string BuildChannelName(RecordingId recordingId)
+        {
+            return $"{AudioRecordingPrefix}-{recordingId.Value}";
+        }
+        
+        public static string BuildChannelName(StreamId recordingId)
+        {
+            return $"{AudioRecordingPrefix}-{recordingId.Value}";
+        }
     }
 }
