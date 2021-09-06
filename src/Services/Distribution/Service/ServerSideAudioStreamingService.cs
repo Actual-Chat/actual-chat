@@ -38,7 +38,7 @@ namespace ActualChat.Distribution
             }
         }
 
-        public Task<ChannelReader<AudioMessage>> GetStream(RecordingId recordingId, CancellationToken cancellationToken)
+        public Task<ChannelReader<AudioMessage>> GetRecording(RecordingId recordingId, CancellationToken cancellationToken)
         {
             
             var db = GetDatabase();
