@@ -52,10 +52,11 @@ namespace ActualChat.Streaming
 
                 if (firstCycle) {
                     firstCycle = false;
-                    _ = NotifyNewAudioRecording(db, key, config, cancellationToken);
+                    _ = NotifyNewAudioRecording(db, recordingId, config, cancellationToken);
                 }
                 _ = NotifyNewAudioMessage(recordingId);
             }
+            if (firstCycle) _ = NotifyNewAudioRecording(db, recordingId, config, cancellationToken);
 
             // TODO(AY): Should we complete w/ exceptions to mimic Channel<T> / IEnumerable<T> behavior here as well?
             await db.StreamAddAsync(
@@ -73,7 +74,7 @@ namespace ActualChat.Streaming
             return recordingId;
         }
 
-        private async Task NotifyNewAudioRecording(IDatabase db, string recordingId, AudioRecordingConfiguration config, CancellationToken cancellationToken)
+        private async Task NotifyNewAudioRecording(IDatabase db, RecordingId recordingId, AudioRecordingConfiguration config, CancellationToken cancellationToken)
         {
             var recording = new AudioRecording(recordingId, config);
             using var bufferWriter = new ArrayPoolBufferWriter<byte>();

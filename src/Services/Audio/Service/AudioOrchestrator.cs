@@ -20,7 +20,7 @@ namespace ActualChat.Audio
         private readonly IServerSideStreamingService<TranscriptMessage> _transcriptStreamingService;
         private readonly ILogger<AudioOrchestrator> _log;
 
-        internal static bool SkipAutoStart { get; set; }
+        public static bool SkipAutoStart { get; set; } = true;
 
         public AudioOrchestrator(
             ITranscriber transcriber,

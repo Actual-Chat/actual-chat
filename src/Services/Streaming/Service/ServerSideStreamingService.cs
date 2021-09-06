@@ -47,6 +47,7 @@ namespace ActualChat.Streaming
                 }
                 _ = NotifyNewMessage(streamId);
             }
+            if (firstCycle) _ = NotifyNewStream(db, streamId);
 
             // TODO(AY): Should we complete w/ exceptions to mimic Channel<T> / IEnumerable<T> behavior here as well?
             await Complete(streamId, cancellationToken);

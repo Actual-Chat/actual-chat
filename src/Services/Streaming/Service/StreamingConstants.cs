@@ -8,7 +8,8 @@ namespace ActualChat.Streaming
         public const string StreamQueue = "queue";
         public const string AudioRecordingPrefix = "audio-rec";
         public const string AudioRecordingQueue = "audio-rec-queue";
-        public const int EmptyStreamDelay = 250;
+        public const double EmptyStreamDelay = 0.250d;
+        public const double NoRecordingsDelay = 25d;
 
         public static string BuildChannelName(RecordingId recordingId)
         {

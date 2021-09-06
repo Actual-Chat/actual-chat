@@ -62,7 +62,7 @@ namespace ActualChat.Streaming
                         else
                             await WaitForNewMessage(streamId, cancellationToken)
                                 .WithTimeout(
-                                    TimeSpan.FromMilliseconds(StreamingConstants.EmptyStreamDelay),
+                                    TimeSpan.FromSeconds(StreamingConstants.EmptyStreamDelay),
                                     cancellationToken);
                     }
                 }
