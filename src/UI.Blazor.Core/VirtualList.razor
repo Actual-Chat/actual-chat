@@ -17,7 +17,7 @@
 
 <div @ref="Ref" class="@Class virtual-list" style="@Style" data-render-index="@ri.RenderIndex">
     <div class="content">
-        <div class="items items-measured">
+        <div class="items items-unmeasured">
             @foreach (var e in ri.UnmeasuredEntries) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
                     @ChildContent(e.Item)
@@ -25,9 +25,9 @@
             }
         </div>
         <div class="spacer spacer-start" style="height: @(ri.SpacerSize)px"></div>
-        <div class="items items-shown">
+        <div class="items items-displayed">
             @foreach (var e in ri.Entries) {
-                <div @key="e.Key" class="item" data-key="@e.Key">
+                <div @key="e.Key" class="item" data-key="@e.Key" data-size="@e.Size">
                     @ChildContent(e.Item)
                 </div>
             }
@@ -66,9 +66,6 @@
         public bool IsViewLoaded { get; private set; }
         public bool MustScroll { get; set; }
         public bool MustScrollWhenDisplayedEntries { get; set; }
-
-        // Computed properties
-        public bool MustMeasure => UnmeasuredEntries.Count > 0;
 
         public void RecomputeCachedValues()
         {
@@ -118,11 +115,11 @@
         var ri = LastRenderInfo;
         if (ri == null)
             return;
-        _log.LogInformation("EntryRange: {EntryRange}, ViewRange: {ViewRange}", ri.EntryRange, ri.ViewRange);
+        // _log.LogInformation("AfterRender: {SpacerSize} | {EntryRange}, [ {ViewRange} ]", ri.SpacerSize, ri.EntryRange, ri.ViewRange);
         if (!ri.IsViewLoaded)
             TryRecomputeState();
-        if (ri.MustMeasure || ri.MustScroll)
-            JSComponentRef?.InvokeVoidAsync("afterRender", ri.MustMeasure, false, ri.MustScroll, ri.ViewRange.Start).Ignore();
+        if (JSComponentRef != null)
+            await JSComponentRef.InvokeVoidAsync("afterRender", ri.MustScroll, ri.ViewRange.Start);
     }
 
     [JSInvokable]
@@ -130,7 +127,7 @@
     {
         var ri = LastRenderInfo;
         if (ri == null || clientSideState.RenderIndex != ri.RenderIndex) {
-            _log.LogWarning("Skipped UpdateClientSideState");
+            _log.LogDebug("Skipped UpdateClientSideState due to outdated RenderIndex");
             return;
         }
 
@@ -151,17 +148,19 @@
             ri.RecomputeCachedValues();
         if (isEntrySizeChanged)
             StateHasChanged();
-        if (isViewRangeChanged || !prevIsViewLoaded || !ri.IsViewLoaded)
+        // "else" is used here because OnAfterRenderAsync runs all these checks anyway
+        else if (isViewRangeChanged || !prevIsViewLoaded || !ri.IsViewLoaded)
             TryRecomputeState();
     }
 
-    protected override async Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
+    protected override Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = NextQuery;
         LastQuery = query;
-        var result = await Provider.Invoke(query, cancellationToken);
-        _log.LogInformation("ComputeState -> {ItemKeys}", result.Items.Select(i => i.Key).ToDelimitedString());
-        return result;
+        return Provider.Invoke(query, cancellationToken);
+        // var result = await Provider.Invoke(query, cancellationToken);
+        // _log.LogInformation("ComputeState -> {ItemKeys}", result.Items.Select(i => i.Key).ToDelimitedString());
+        // return result;
     }
 
     protected void TryRecomputeState()
@@ -178,14 +177,18 @@
         var ri = LastRenderInfo;
         if (ri == null)
             return new VirtualListQuery(default);
-        if (ri.Entries.Count == 0)
+        if (ri.UnmeasuredEntries.Count != 0) // Let's wait for measurement to complete first
+            return LastQuery!;
+        if (ri.Entries.Count == 0) // No entries -> nothing to "align" to
             return LastQuery!;
 
         var loaderZone = new Range<double>(ri.ViewRange.Start - LoadZoneSize, ri.ViewRange.End + LoadZoneSize);
         var bufferZone = new Range<double>(ri.ViewRange.Start - BufferZoneSize, ri.ViewRange.End + BufferZoneSize);
+        // _log.LogInformation("GetQuery: {ViewRange} < {LoaderZone} < {BufferZone} | {EntryRange}", ri.ViewRange, loaderZone, bufferZone, ri.EntryRange);
         var entryRanges = GetEntryRanges(ri.Entries).ToList();
         var (firstEntry, firstRange) = entryRanges.FirstOrDefault(p => p.Range.IntersectWith(bufferZone).Size() > 0);
         var (lastEntry, lastRange) = entryRanges.LastOrDefault(p => p.Range.IntersectWith(bufferZone).Size() > 0);
+        // _log.LogDebug("GetQuery: EntryRanges: {EntryRanges}", entryRanges.Select(r => (r.Entry.Key, r.Range)).ToDelimitedString());
         if (firstEntry == null!) {
             // All entries are outside of the buffer zone
             if (entryRanges[0].Range.Start >= bufferZone.End) {
@@ -253,8 +256,10 @@
             if (sharedEntry != null!) {
                 // 2. Compute its new range
                 var (_, newRange) = GetEntryRanges(ri.Entries).Single(p => p.Entry == sharedEntry);
-                // 3. Compute new spacer size
-                ri.SpacerSize += oldRange.Start - newRange.Start;
+                // 3. Update SpacerSize & ViewRange
+                var offset = newRange.Start - oldRange.Start;
+                ri.SpacerSize -= offset;
+                ri.ViewRange = ri.ViewRange.Move(offset);
             }
             else {
                 // Everything is new, so let's scroll to the very top
