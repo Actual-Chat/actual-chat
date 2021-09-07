@@ -21,6 +21,7 @@ namespace ActualChat.Audio.Orchestration
         private readonly Channel<ChannelWriter<AudioMessage>> _readChannels;
         private readonly List<ChannelWriter<AudioMessage>> _activeReadChannels;
         private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly TaskCompletionSource _completionSource;
 
         private int _buffering = 0;
 
@@ -46,6 +47,7 @@ namespace ActualChat.Audio.Orchestration
                 new UnboundedChannelOptions { SingleReader = true });
             _activeReadChannels = new List<ChannelWriter<AudioMessage>>();
             _cancellationTokenSource = new CancellationTokenSource();
+            _completionSource = new TaskCompletionSource();
         }
 
         public StreamId StreamId { get; }
@@ -77,14 +79,17 @@ namespace ActualChat.Audio.Orchestration
 
         public void CompleteBuffering()
         {
-            if (Interlocked.CompareExchange(ref _buffering, 2, 1) != 1) return;
+            // TODO(AK): complete buffering there
+            Interlocked.Exchange(ref _buffering, 2); 
             
+            _completionSource.SetResult();
             _readChannels.Writer.Complete();
             _cancellationTokenSource.Cancel();
         }
 
         private async Task StartBuffering(CancellationToken cancellationToken)
         {
+            await Task.Yield();
             var readers = _readChannels.Reader;
             var messages = _audioStream;
             var readerAvailable = true;
@@ -139,7 +144,7 @@ namespace ActualChat.Audio.Orchestration
         // TODO(AK): Actually we can build precise Cue index with bit-perfect offset to blocks\clusters
         public async Task<AudioEntry> GetEntryOnCompletion(CancellationToken cancellationToken)
         {
-            await _audioStream.Completion.WithFakeCancellation(cancellationToken);
+            await _completionSource.Task.WithFakeCancellation(cancellationToken);
             return new AudioEntry(
                 Index, 
                 StreamId,
