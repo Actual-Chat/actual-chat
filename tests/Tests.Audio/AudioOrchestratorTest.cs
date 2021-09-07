@@ -93,6 +93,49 @@ namespace ActualChat.Tests.Audio
             readSize.Should().Be(writtenSize);
         }
         
+        [Fact]
+        public async Task PerformRecordingAndTranscriptionTest()
+        {
+            using var appHost = await TestHostFactory.NewAppHost();
+            var services = appHost.Services;
+            var orchestrator = services.GetRequiredService<AudioOrchestrator>();
+            var streamingService = services.GetRequiredService<IAudioStreamingService>(); 
+            var transcriptStreaming = services.GetRequiredService<IStreamingService<TranscriptMessage>>();
+            var cts = new CancellationTokenSource();
+            var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
+
+            var pushAudioTask = PushAudioData(streamingService);
+            
+            var recording = await recordingTask;
+            var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
+            
+            var readTask = ReadDistributedData(recording!.Id, streamingService);
+            var readTranscriptTask = ReadTranscribedData(recording!.Id, transcriptStreaming);
+            var writtenSize = await pushAudioTask;
+            var readSize = await readTask;
+            var transcribed = await readTranscriptTask;
+
+            transcribed.Should().BeGreaterThan(0);
+
+            await pipelineTask;
+            
+            readSize.Should().Be(writtenSize);
+        }
+        
+        private async Task<int> ReadTranscribedData(RecordingId recordingId, IStreamingService<TranscriptMessage> sr)
+        {
+            var size = 0;
+            //TODO: AK - we need to figure out how to notify consumers about new streamID - with new ChatEntry?
+            var streamId = new StreamId(recordingId, 0);
+            var audioReader = await sr.GetStream(streamId, CancellationToken.None);
+            await foreach (var message in audioReader.ReadAllAsync()) {
+                Out.WriteLine(message.Text);
+                size = message.TextIndex + message.Text.Length;
+            }
+
+            return size;
+        }
+        
         private static async Task<int> ReadDistributedData(RecordingId recordingId, IStreamingService<AudioMessage> sr)
         {
             var streamId = new StreamId(recordingId, 0);
