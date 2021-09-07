@@ -21,10 +21,10 @@ namespace ActualChat.Streaming.Client
             return await hubConnection.StreamAsChannelCoreAsync<AudioMessage>("GetAudioStream", new object[] { streamId }, cancellationToken);
         }
 
-        public async Task<RecordingId> UploadRecording(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
+        public async Task UploadRecording(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
         {
             var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
-            return await hubConnection.InvokeAsync<RecordingId>("UploadAudioStream", config, source, cancellationToken);
+            await hubConnection.SendCoreAsync("UploadAudioStream", new object[]{config, source}, cancellationToken);
         }
     }
 }

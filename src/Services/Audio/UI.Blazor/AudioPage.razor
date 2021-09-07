@@ -13,6 +13,7 @@
 @inject UICommandRunner _cmd
 @inject ILogger<AudioPage> _log
 @inject IAudioStreamingService _audioStreaming
+@inject IStreamingService<TranscriptMessage> _transcriptStreaming
 
 <h1>Voice Transcription</h1>
 
@@ -105,15 +106,6 @@
     {
         if (Writer == null)
         {
-            // var result = await _cmd.Run(new InitializeAudioRecorderCommand
-            // {
-            //     Session = _session,
-            //     AudioFormat = new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            //     ClientStartOffset = CpuClock.Now
-            // });
-            //
-            // RecordingId = result.Result;
-            
             var channel = Channel.CreateBounded<AudioMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -129,13 +121,29 @@
                 CpuClock.Now.EpochOffset.TotalSeconds);
             _ = _audioStreaming.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
 
-            // var reader = await _audioStreaming.GetStream($"{RecordingId}-0000", CancellationToken.None);
-            // await foreach (var audioMessage in reader.ReadAllAsync()) {
-            //     Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
-            // }
+            // _ = ReadAudio(recordingId);
+            // _ = ReadTranscription(recordingId);
         }
         
         return Task.CompletedTask;
+    }
+
+    private async Task ReadAudio(RecordingId recordingId)
+    {
+        var streamId = new StreamId(recordingId, 0);
+        var reader = await _audioStreaming.GetStream(streamId, CancellationToken.None);
+        await foreach (var audioMessage in reader.ReadAllAsync()) {
+            Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
+        }
+    }
+    
+    private async Task ReadTranscription(RecordingId recordingId)
+    {
+        var streamId = new StreamId(recordingId, 0);
+        var reader = await _transcriptStreaming.GetStream(streamId, CancellationToken.None);
+        await foreach (var transcriptMessage in reader.ReadAllAsync()) {
+            Console.WriteLine($"Got from server: {transcriptMessage.Text}");
+        }
     }
 
     [JSInvokable]

@@ -23,7 +23,7 @@ namespace ActualChat.Streaming
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
         }
 
-        public async Task<RecordingId> UploadRecording(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
+        public async Task UploadRecording(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
         {
             var recordingId = _idGenerator.Next();
             _log.LogInformation($"{nameof(UploadRecording)}, RecordingId = {{RecordingId}}", recordingId);
@@ -70,8 +70,6 @@ namespace ActualChat.Streaming
             Task.Delay(TimeSpan.FromMinutes(1), default)
                 .ContinueWith(_ => db.KeyDelete(key), CancellationToken.None)
                 .Ignore();
-            
-            return recordingId;
         }
 
         private async Task NotifyNewAudioRecording(IDatabase db, RecordingId recordingId, AudioRecordingConfiguration config, CancellationToken cancellationToken)
