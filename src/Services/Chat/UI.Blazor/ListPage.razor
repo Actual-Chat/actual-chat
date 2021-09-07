@@ -11,15 +11,16 @@
     private async Task<VirtualListResponse<(string Title, int Size)>> GetVirtualListItems(
         VirtualListQuery query, CancellationToken cancellationToken)
     {
-        if (query.KeyRange.IsEmpty)
-            query = query with { KeyRange = new Range<string>("500", "550") };
+        _log.LogInformation("GetVirtualListItems({Query})", query);
+        if (query.InclusiveKeyRange == default)
+            query = query with { InclusiveKeyRange = new Range<string>("500", "550") };
 
-        var startKey = int.Parse(query.KeyRange.Start);
+        var startKey = int.Parse(query.InclusiveKeyRange.Start);
         if (query.ExpandStartBy > 0)
             startKey -= (int) query.ExpandStartBy;
         startKey = Math.Max(0, startKey);
 
-        var endKey = int.Parse(query.KeyRange.End);
+        var endKey = int.Parse(query.InclusiveKeyRange.End);
         if (query.ExpandEndBy > 0)
             endKey += (int) query.ExpandEndBy;
         endKey = Math.Min(1_000, endKey);

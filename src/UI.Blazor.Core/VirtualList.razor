@@ -6,6 +6,7 @@
 @using Stl.Async
 @using System.Collections.Immutable
 @using ActualChat.Mathematics
+@using Stl.Collections
 @inject IJSRuntime _js
 @inject JSModule _jsModule
 @inject ILogger<VirtualList<TItem>> _log
@@ -63,6 +64,7 @@
         public double SpacerSize { get; set; } // That's "prefix spacer"
         public Range<double> Viewport { get; set; } // Relative to the top entry's top
         public bool MustScroll { get; set; }
+        public bool MustScrollWhenAnyShownEntries { get; set; }
 
         // Computed properties
         public bool MustMeasure => MeasuringEntries.Count > 0;
@@ -82,7 +84,7 @@
     [Parameter] public string Style { get; set; } = "";
     [Parameter] public RenderFragment<TItem> ChildContent { get; set; } = null!;
     [Parameter] public double SpacerSize { get; set; } = 100_000;
-    [Parameter] public double LoadZoneSize { get; set; } = 500;
+    [Parameter] public double LoadZoneSize { get; set; } = 100;
     [Parameter] public Func<VirtualListQuery, CancellationToken, Task<VirtualListResponse<TItem>>> Provider { get; set; } =
         (_, _) => Task.FromResult(new VirtualListResponse<TItem>());
 
@@ -97,11 +99,13 @@
         ComponentRef?.Dispose();
     }
 
-    protected override Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = NextQuery;
         LastQuery = query;
-        return Provider.Invoke(query, cancellationToken);
+        var result = await Provider.Invoke(query, cancellationToken);
+        _log.LogInformation("ComputeState -> {ItemKeys}", result.Items.Select(i => i.Key).ToDelimitedString());
+        return result;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -116,6 +120,8 @@
             return;
         if (ri.MustMeasure || ri.MustScroll)
             JSComponentRef?.InvokeVoidAsync("afterRender", ri.MustMeasure, false, ri.MustScroll, ri.Viewport.Start).Ignore();
+        if (ri.ShownEntries.Count == 0)
+            TryRecomputeState();
     }
 
     [JSInvokable]
@@ -135,35 +141,55 @@
             TotalMeasuredItemCount++;
             entrySizeChanged = true;
         }
-        if (entrySizeChanged || clientSideState.Viewport != ri.Viewport) {
+        var viewportChanged = clientSideState.Viewport != ri.Viewport;
+        if (viewportChanged)
             ri.Viewport = clientSideState.Viewport;
-            NextQuery = GetQuery();
-            if (LastQuery == NextQuery)
-                StateHasChanged();
-            else
-                State.Recompute().Ignore();
-        }
+        if (entrySizeChanged)
+            StateHasChanged();
+        if (viewportChanged || entrySizeChanged || ri.ShownEntries.Count == 0)
+            TryRecomputeState();
+    }
+
+    protected void TryRecomputeState()
+    {
+        if (!State.Computed.IsConsistent()) // Already recomputing
+            return;
+        NextQuery = GetQuery();
+        if (LastQuery != NextQuery)
+            State.Recompute().Ignore();
     }
 
     protected virtual VirtualListQuery GetQuery()
     {
         var ri = LastRenderInfo;
-        if (ri == null || ri.ShownEntries.Count == 0)
+        if (ri == null)
             return new VirtualListQuery(default);
+        if (ri.ShownEntries.Count == 0)
+            return LastQuery!;
 
         var loaderZone = new Range<double>(ri.Viewport.Start - LoadZoneSize, ri.Viewport.End + LoadZoneSize);
         var entryRanges = GetEntryRanges(ri.ShownEntries).ToList();
         var (firstEntry, firstRange) = entryRanges.FirstOrDefault(p => p.Range.IntersectWith(loaderZone).Size() > 0);
-        if (firstEntry == null!)
-            return new VirtualListQuery(default);
         var (lastEntry, lastRange) = entryRanges.LastOrDefault(p => p.Range.IntersectWith(loaderZone).Size() > 0);
+        if (firstEntry == null!) {
+            // All entries are outside of the loader zone
+            if (entryRanges[0].Range.Start >= loaderZone.End) {
+                // And they go after the loader zone
+                (firstEntry, firstRange) = entryRanges[0];
+                (lastEntry, lastRange) = entryRanges[0];
+            } else {
+                // They go before the loader zone
+                (firstEntry, firstRange) = entryRanges[^1];
+                (lastEntry, lastRange) = entryRanges[^1];
+            }
+        }
         var keyRange = new Range<string>(firstEntry.Key, lastEntry.Key);
         var itemSize = MeanItemSize;
-        var expandStartBy = (firstRange.IntersectWith(loaderZone).Start - loaderZone.Start) / itemSize;
-        var expandEndBy = (loaderZone.End - lastRange.IntersectWith(loaderZone).End) / itemSize;
+        var startGap = Math.Max(0, (firstRange.Start - loaderZone.Start) / itemSize);
+        var endGap = Math.Max(0, (loaderZone.End - lastRange.End) / itemSize);
         return new VirtualListQuery(keyRange) {
-            ExpandStartBy = Math.Round(expandStartBy, 1),
-            ExpandEndBy = Math.Round(expandEndBy, 1),
+            ExpandStartBy = Math.Round(startGap, 1),
+            ExpandEndBy = Math.Round(endGap, 1),
         };
     }
 
@@ -183,10 +209,14 @@
             ri.ShownEntriesSize = ri.Entries.Sum(e => e.Size);
             ri.Viewport = new(0, ri.ShownEntriesSize);
             ri.SpacerSize = SpacerSize;
+            ri.MustScrollWhenAnyShownEntries = true;
         }
         else {
             ri.RenderIndex = lri.RenderIndex + 1;
             ri.Response = response;
+            ri.Viewport = lri.Viewport;
+            ri.SpacerSize = lri.SpacerSize;
+            ri.MustScrollWhenAnyShownEntries = lri.MustScrollWhenAnyShownEntries;
             if (!ReferenceEquals(lri.Response, response)) {
                 ri.Entries = new List<Entry>();
                 ri.EntryByKey = ImmutableDictionary<string, Entry>.Empty;
@@ -203,38 +233,30 @@
             ri.MeasuringEntries = ri.Entries.Where(e => !e.IsSizeMeasured).ToList();
             ri.ShownEntries = ri.Entries.Where(e => e.IsSizeMeasured).ToList();
             ri.ShownEntriesSize = ri.Entries.Sum(e => e.Size);
-            ri.Viewport = lri.Viewport;
             // Adjust the new spacer size:
-            // 1. Find the first entry in lri.ShownEntries that intersects with the viewport & exists in ri.ShownEntries
-            var (oldEntry, oldRange) = GetEntryRanges(lri.ShownEntries).FirstOrDefault(p =>
-                    p.Range.IntersectWith(lri.Viewport).Size() > 0 &&
-                    ri.EntryByKey.ContainsKey(p.Entry.Key));
-            if (oldEntry != null!) {
+            // 1. Find the first entry in lri.ShownEntries that exists in ri.ShownEntries
+            var (sharedEntry, oldRange) = GetEntryRanges(lri.ShownEntries)
+                .FirstOrDefault(p => ri.EntryByKey.ContainsKey(p.Entry.Key));
+            if (sharedEntry != null!) {
                 // 2. Compute its new range
-                var (_, newRange) = GetEntryRanges(ri.ShownEntries).Single(pair => pair.Entry == oldEntry);
+                var (_, newRange) = GetEntryRanges(ri.ShownEntries).Single(p => p.Entry == sharedEntry);
                 // 3. Compute new spacer size
-                ri.SpacerSize = lri.SpacerSize + oldRange.Start - newRange.Start;
+                ri.SpacerSize += oldRange.Start - newRange.Start;
             }
             else {
-                // All the entries visible in the viewport are gone after the update;
-                // let's try to compute spacer size based on the invisible ones
-                (oldEntry, oldRange) = GetEntryRanges(lri.ShownEntries).FirstOrDefault(p =>
-                    ri.EntryByKey.ContainsKey(p.Entry.Key));
-                if (oldEntry != null!) {
-                    var (_, newRange) = GetEntryRanges(ri.ShownEntries).Single(pair => pair.Entry == oldEntry);
-                    ri.SpacerSize = lri.SpacerSize + oldRange.Start - newRange.Start;
-                }
-                else {
-                    // Everything is new, so let's scroll to the very top
-                    ri.SpacerSize = SpacerSize;
-                    ri.Viewport = new(0, lri.Viewport.Size());
-                    ri.MustScroll = true;
-                }
+                // Everything is new, so let's scroll to the very top
+                ri.SpacerSize = SpacerSize;
+                ri.Viewport = new(0, lri.Viewport.Size());
+                ri.MustScrollWhenAnyShownEntries = true;
             }
-            if (ri.Response.HasVeryFirstItem && ri.SpacerSize != 0) {
+            if (ri.MustScrollWhenAnyShownEntries && ri.ShownEntries.Count > 0) {
+                ri.SpacerSize = SpacerSize;
+                ri.Viewport = new(0, lri.Viewport.Size());
+                ri.MustScroll = true;
+                ri.MustScrollWhenAnyShownEntries = false;
+            }
+            if (ri.Response.HasVeryFirstItem)
                 ri.SpacerSize = 0;
-                ri.MustScroll = true; // That's because the spacer size has changed
-            }
         }
         return ri;
     }
