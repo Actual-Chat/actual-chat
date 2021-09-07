@@ -32,7 +32,7 @@ namespace ActualChat.Streaming
         public Task<ChannelReader<TranscriptMessage>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
             => _transcriptStreamingService.GetStream(streamId, cancellationToken);
 
-        public Task<RecordingId> UploadAudioStream(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToke)
+        public Task UploadAudioStream(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToke)
             => _audioStreamingService.UploadRecording(config, source, cancellationToke);
     }
 }
