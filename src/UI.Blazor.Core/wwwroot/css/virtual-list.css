@@ -12,13 +12,13 @@
     align-content: stretch;
 }
 
-.virtual-list .items-measured {
+.virtual-list .items-unmeasured {
     visibility: hidden;
     height: 0;
     overflow-y: hidden;
 }
 
-.virtual-list .items-shown {
+.virtual-list .items-displayed {
     background: white;
 }
 
