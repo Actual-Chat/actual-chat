@@ -42,6 +42,8 @@ namespace ActualChat.Audio.Orchestration
             ChannelWriter<AudioStreamEntry> entryWriter,
             CancellationToken cancellationToken)
         {
+            await Task.Yield();
+            
             var entryIndex = 0;
             var metaData = new List<AudioMetaDataEntry>();
             var documentBuilder = new WebMDocumentBuilder();
@@ -93,7 +95,8 @@ namespace ActualChat.Audio.Orchestration
             }
 
             entryWriter.Complete();
-            audioStreamEntry.CompleteBuffering();
+            audioChannel.Writer.Complete();
+            await audioStreamEntry.CompleteBuffering();
         }
 
         // TODO(AK): we should read blocks there

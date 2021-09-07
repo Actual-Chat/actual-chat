@@ -67,7 +67,7 @@ namespace ActualChat.Tests.Audio
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
                     SingleWriter = true,
-                    AllowSynchronousContinuations = true
+                    AllowSynchronousContinuations = false
                 });
 
             var size = 0;

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,7 +6,6 @@ using System.Threading.Tasks;
 using ActualChat.Audio.WebM;
 using ActualChat.Streaming;
 using Stl.Async;
-using Stl.Text;
 
 namespace ActualChat.Audio.Orchestration
 {
@@ -24,6 +22,7 @@ namespace ActualChat.Audio.Orchestration
         private readonly TaskCompletionSource _completionSource;
 
         private int _buffering = 0;
+        private Task? _bufferingTask;
 
 
         public AudioStreamEntry(
@@ -57,19 +56,28 @@ namespace ActualChat.Audio.Orchestration
         public ChannelReader<AudioMessage> GetStream()
         {
             if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0) 
-                _ = StartBuffering(_cancellationTokenSource.Token);
+                _bufferingTask = StartBuffering(_cancellationTokenSource.Token);
             
             var readChannel = Channel.CreateUnbounded<AudioMessage>(
                 new UnboundedChannelOptions { SingleWriter = true });
-            if (Volatile.Read(ref _buffering) == 2)
-                _ = FillWithBuffered(readChannel.Writer);
+            var buffering = Volatile.Read(ref _buffering);
+            if (buffering != 1)
+                _ = FillWithBuffered(readChannel.Writer, buffering);
             else
                 _readChannels.Writer.TryWrite(readChannel.Writer);
 
             return readChannel.Reader;
 
-            async Task FillWithBuffered(ChannelWriter<AudioMessage>  writer)
+            async Task FillWithBuffered(ChannelWriter<AudioMessage> writer, int state)
             {
+                if (state == 2) {
+                    await Task.Yield();
+                        
+                    Task? bufferingTask = null;
+                    while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
+                    await bufferingTask;
+                }
+                
                 foreach (var message in _buffer) 
                     await writer.WriteAsync(message);
                 
@@ -77,13 +85,25 @@ namespace ActualChat.Audio.Orchestration
             }
         }
 
-        public void CompleteBuffering()
+        public async Task CompleteBuffering()
         {
-            // TODO(AK): complete buffering there
-            Interlocked.Exchange(ref _buffering, 2); 
-            
-            _completionSource.SetResult();
+            var originalState = Interlocked.Exchange(ref _buffering, 2);
             _readChannels.Writer.Complete();
+            _completionSource.SetResult();
+            
+            if (originalState == 1) {
+                Task? bufferingTask = null;
+                while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
+                await bufferingTask;
+            }
+            else {
+                var startBufferingTask = StartBuffering(_cancellationTokenSource.Token);
+                Volatile.Write(ref _bufferingTask, _bufferingTask);
+                await startBufferingTask;
+            }
+
+            Volatile.Write(ref _buffering, 3);
+
             _cancellationTokenSource.Cancel();
         }
 
@@ -108,6 +128,8 @@ namespace ActualChat.Audio.Orchestration
                     : Task.FromResult(false);
                 if (readerAvailable)
                     await Task.WhenAny(watForReader, waitForMessage);
+                else
+                    await waitForMessage;
                 
                 if (readerAvailable && watForReader.IsCompleted) {
                     readerAvailable = await watForReader;
