@@ -98,7 +98,7 @@ namespace ActualChat.Audio.Orchestration
             }
             else {
                 var startBufferingTask = StartBuffering(_cancellationTokenSource.Token);
-                Volatile.Write(ref _bufferingTask, _bufferingTask);
+                Volatile.Write(ref _bufferingTask, startBufferingTask);
                 await startBufferingTask;
             }
 
