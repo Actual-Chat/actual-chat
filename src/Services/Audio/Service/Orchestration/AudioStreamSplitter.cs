@@ -26,7 +26,7 @@ namespace ActualChat.Audio.Orchestration
                 });
 
             // TODO(AK): add exception handling
-            _ = BuildStreamEntries(
+            var buildTask = BuildStreamEntries(
                 audioRecording,
                 audioReader,
                 entryChannel,
@@ -34,6 +34,8 @@ namespace ActualChat.Audio.Orchestration
             
             await foreach (var entry in entryChannel.Reader.ReadAllAsync(cancellationToken)) 
                 yield return entry;
+
+            await buildTask;
         }
 
         private async Task BuildStreamEntries(
@@ -51,7 +53,7 @@ namespace ActualChat.Audio.Orchestration
                 new UnboundedChannelOptions {
                     SingleReader = false,
                     SingleWriter = true,
-                    AllowSynchronousContinuations = true
+                    AllowSynchronousContinuations = false
                 });
             var audioStreamEntry = new AudioStreamEntry(
                 entryIndex,
