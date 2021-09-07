@@ -10,7 +10,7 @@ export class VirtualList {
         this.spacerRef = this.elementRef.querySelector(".spacer");
         this.shownItemsRef = this.elementRef.querySelector(".items-shown");
 
-        let pushMeasurements = e => this.afterRender(true, true, false, 0);
+        let pushMeasurements = e => this.afterRender(true, false, false, 0);
         let listenerOptions = { signal: this.abortController.signal };
         elementRef.addEventListener("scroll", pushMeasurements, listenerOptions);
         window.addEventListener("resize", pushMeasurements, listenerOptions);
@@ -20,16 +20,16 @@ export class VirtualList {
         this.abortController.abort();
     }
 
-    afterRender(mustMeasure, mustMeasureAll, mustScroll, viewportOffset) {
+    afterRender(mustMeasure, mustMeasureAll, mustScroll, viewOffset) {
         let shownItemsTop = this.shownItemsRef.getBoundingClientRect().top;
         let spacerTop = this.spacerRef.getBoundingClientRect().top;
         let spacerSize = shownItemsTop - spacerTop;
         if (mustScroll)
-            this.elementRef.scrollTo(0, viewportOffset + spacerSize);
+            this.elementRef.scrollTo(0, viewOffset + spacerSize);
         let state = {
             renderIndex: parseInt(this.elementRef.dataset["renderIndex"]),
-            viewportOffset: this.elementRef.scrollTop - spacerSize,
-            viewportSize: this.elementRef.getBoundingClientRect().height,
+            viewOffset: this.elementRef.scrollTop - spacerSize,
+            viewSize: this.elementRef.getBoundingClientRect().height,
             itemSizes: {}
         };
         if (mustMeasure) {
