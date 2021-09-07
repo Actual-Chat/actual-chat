@@ -1,0 +1,38 @@
+@page "/list"
+@inject ILogger<ListPage> _log
+
+<h1>VirtualList Test Page</h1>
+
+<VirtualList style="height: 600px;" Provider="GetVirtualListItems" >
+    <div style="height: @(context.Size)px">@context.Title</div>
+</VirtualList>
+
+@code {
+    private async Task<VirtualListResponse<(string Title, int Size)>> GetVirtualListItems(
+        VirtualListQuery query, CancellationToken cancellationToken)
+    {
+        if (query.KeyRange.IsEmpty)
+            query = query with { KeyRange = new Range<string>("500", "550") };
+
+        var startKey = int.Parse(query.KeyRange.Start);
+        if (query.ExpandStartBy > 0)
+            startKey -= (int) query.ExpandStartBy;
+        startKey = Math.Max(0, startKey);
+
+        var endKey = int.Parse(query.KeyRange.End);
+        if (query.ExpandEndBy > 0)
+            endKey += (int) query.ExpandEndBy;
+        endKey = Math.Min(1_000, endKey);
+
+        var items = Enumerable.Range(startKey, endKey - startKey + 1)
+            .Select(k => KeyValuePair.Create(k.ToString(), ($"Item #{k}", 20 + (k * 371) % 29)))
+            .ToList();
+        var result = new VirtualListResponse<(string, int)>(items) {
+            HasVeryFirstItem = startKey == 0,
+            HasVeryLastItem = endKey == 1_000,
+        };
+        await Task.Delay(200);
+        return result;
+    }
+
+}
