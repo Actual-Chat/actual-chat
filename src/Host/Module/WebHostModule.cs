@@ -65,7 +65,10 @@ namespace ActualChat.Host.Module
             // Web
             services.AddRouting();
             services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
-            services.AddServerSideBlazor(o => o.DetailedErrors = true);
+            services.AddServerSideBlazor(o => {
+                o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromSeconds(15);
+                o.DetailedErrors = true;
+            });
             fusionAuth.AddBlazor(_ => { }); // Must follow services.AddServerSideBlazor()!
 
             // Swagger & debug tools

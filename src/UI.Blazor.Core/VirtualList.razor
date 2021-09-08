@@ -1,7 +1,6 @@
 @typeparam TItem
 @inherits ComputedStateComponent<VirtualListResponse<TItem>>
 @implements IVirtualListBackend
-@implements IAsyncDisposable
 @using ActualChat.UI.Blazor.Internal
 @using Stl.Async
 @using System.Collections.Immutable
@@ -21,7 +20,7 @@
         <div class="items items-unmeasured">
             @foreach (var e in ri.UnmeasuredEntries) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
-                    @ChildContent(e.Item)
+                    @ItemTemplate(e.Item)
                 </div>
             }
         </div>
@@ -29,7 +28,7 @@
         <div class="items items-displayed">
             @foreach (var e in ri.Entries) {
                 <div @key="e.Key" class="item" data-key="@e.Key" data-size="@e.Size">
-                    @ChildContent(e.Item)
+                    @ItemTemplate(e.Item)
                 </div>
             }
         </div>
@@ -57,7 +56,7 @@
     {
         public long RenderIndex { get; set; } = 0;
         public VirtualListResponse<TItem> Response { get; set; } = null!;
-        public ImmutableDictionary<string, Entry> EntryByKey { get; set; } = ImmutableDictionary<string, Entry>.Empty;
+        public Dictionary<string, Entry> EntryByKey { get; set; } = null!;
         public List<Entry> LoadedEntries { get; set; } = null!;
         public List<Entry> UnmeasuredEntries { get; set; } = null!;
         public List<Entry> Entries { get; set; } = null!;
@@ -95,7 +94,7 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
-    [Parameter] public RenderFragment<TItem> ChildContent { get; set; } = null!;
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; } = null!;
     [Parameter] public double SpacerSize { get; set; } = 100_000;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
@@ -104,13 +103,14 @@
 
     public ElementReference Ref { get; set; }
 
-    public virtual async ValueTask DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         if (JSComponentRef != null) {
             await JSComponentRef.InvokeVoidAsync("dispose");
             await JSComponentRef.DisposeAsync();
         }
         ComponentRef?.Dispose();
+        await base.DisposeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -230,7 +230,7 @@
             ri.RenderIndex = 0;
             ri.Response = response;
             ri.LoadedEntries = response.Items.Select(i => new Entry { Key = i.Key, Item = i.Value }).ToList();
-            ri.EntryByKey = ri.LoadedEntries.ToImmutableDictionary(e => e.Key);
+            ri.EntryByKey = ri.LoadedEntries.ToDictionary(e => e.Key);
             ri.UnmeasuredEntries = ri.LoadedEntries.Where(e => !e.IsSizeMeasured).ToList();
             ri.Entries = ri.LoadedEntries.Where(e => e.IsSizeMeasured).ToList();
             ri.ViewRange = ri.EntryRange;
@@ -245,11 +245,13 @@
             ri.MustScrollWhenDisplayedEntries = lri.MustScrollWhenDisplayedEntries;
             if (!ReferenceEquals(lri.Response, response)) {
                 ri.LoadedEntries = new List<Entry>();
-                ri.EntryByKey = ImmutableDictionary<string, Entry>.Empty;
+                ri.EntryByKey = new Dictionary<string, Entry>();
                 foreach (var (key, item) in response.Items) {
-                    var entry = lri.EntryByKey.GetValueOrDefault(key) ?? new Entry { Key = key, Item = item };
+                    var entry = new Entry { Key = key, Item = item };
+                    if (lri.EntryByKey.TryGetValue(key, out var existingEntry))
+                        entry.Size = existingEntry.Size;
                     ri.LoadedEntries.Add(entry);
-                    ri.EntryByKey = ri.EntryByKey.Add(key, entry);
+                    ri.EntryByKey.Add(key, entry);
                 }
             }
             else {
@@ -263,7 +265,7 @@
             var (sharedEntry, oldRange) = lri.EntryRanges.FirstOrDefault(p => ri.EntryByKey.ContainsKey(p.Entry.Key));
             if (sharedEntry != null!) {
                 // 2. Compute its new range
-                var (_, newRange) = GetEntryRanges(ri.Entries).Single(p => p.Entry == sharedEntry);
+                var (_, newRange) = GetEntryRanges(ri.Entries).Single(p => p.Entry.Key == sharedEntry.Key);
                 // 3. Update SpacerSize & ViewRange
                 var offset = newRange.Start - oldRange.Start;
                 ri.SpacerSize -= offset;
