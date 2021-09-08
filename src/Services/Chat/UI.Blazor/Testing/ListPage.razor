@@ -5,12 +5,12 @@
 <h1>VirtualList Test Page</h1>
 
 <VirtualList style="height: 600px;" Provider="GetVirtualListItems">
-    <ItemTemplate>
+    <Item>
         <div style="font-size: @(context.FontSize)em">
             <div style="font-weight: bold">@context.Title</div>
             <div>@context.Description</div>
         </div>
-    </ItemTemplate>
+    </Item>
 </VirtualList>
 
 @code {

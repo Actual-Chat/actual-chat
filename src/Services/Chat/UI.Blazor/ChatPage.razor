@@ -21,7 +21,7 @@
 
 <h1>"@(chat.Title.NullIfEmpty() ?? "Loading...")" chat</h1>
 
-<WhenException Exception="@error"/>
+<WhenError Error="@error"/>
 
 <Table Narrow="true" Striped="true" Margin="Margin.Is3.OnY">
     <TableHeader ThemeContrast="ThemeContrast.Dark">
