@@ -52,10 +52,10 @@
     private Color ToggleColor { get; set; } = Color.Secondary;
     private string ToggleText { get; set; } = "Start Recording";
 
-    public override void Dispose()
+    public override ValueTask DisposeAsync()
     {
-        base.Dispose();
         ComponentRef?.Dispose();
+        return base.DisposeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -124,7 +124,7 @@
             // _ = ReadAudio(recordingId);
             // _ = ReadTranscription(recordingId);
         }
-        
+
         return Task.CompletedTask;
     }
 
@@ -136,7 +136,7 @@
             Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
         }
     }
-    
+
     private async Task ReadTranscription(RecordingId recordingId)
     {
         var streamId = new StreamId(recordingId, 0);

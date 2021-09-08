@@ -54,7 +54,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing
 
         private TestListItem CreateItem(int key, int seed)
         {
-            var rnd = new Random(key + seed);
+            var rnd = new Random(key + (key + seed) / 10);
             return new TestListItem(
                 key,
                 $"#{key}",
