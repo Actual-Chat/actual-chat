@@ -13,7 +13,7 @@
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>5.0.3</SystemNetHttpJsonVersion>
     <MicrosoftExtensionsVersion>5.0.0</MicrosoftExtensionsVersion>
-    <StlFusionVersion>1.8.28</StlFusionVersion>
+    <StlFusionVersion>1.8.33</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -106,7 +106,7 @@
     <PackageReference Update="UAParser" Version="3.1.*" />
     <PackageReference Update="Ulid" Version="1.2.*" />
     <PackageReference Update="xunit" Version="2.4.1" />
-    <PackageReference Update="Xunit.DependencyInjection.Logging" Version="2.1.*" />
+    <PackageReference Update="Xunit.DependencyInjection.Logging" Version="7.5.*" />
     <PackageReference Update="ZString" Version="2.4.*" />
 
 

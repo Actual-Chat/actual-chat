@@ -1,10 +1,10 @@
-@if (Exception != null) {
-    <Error @key="@Exception" Title="Action failed!" Dismissed="@Dismissed">@Exception.Message</Error>
+@if (Error != null) {
+    <Error @key="@Error" Title="Action failed!" Dismissed="@Dismissed">@Error.Message</Error>
 }
 
 @code {
     [Parameter]
-    public Exception? Exception { get; set; }
+    public Exception? Error { get; set; }
     [Parameter]
     public EventCallback Dismissed { get; set; }
 }

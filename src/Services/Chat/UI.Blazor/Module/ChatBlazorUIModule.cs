@@ -1,7 +1,9 @@
-﻿using ActualChat.Hosting;
+﻿using ActualChat.Chat.UI.Blazor.Testing;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
+using Stl.Fusion;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.UI.Blazor.Module
@@ -16,6 +18,9 @@ namespace ActualChat.Chat.UI.Blazor.Module
         {
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
                 return; // Blazor UI only module
+
+            var fusion = services.AddFusion();
+            fusion.AddComputeService<TestListService>();
         }
     }
 }
