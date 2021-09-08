@@ -13,6 +13,7 @@
 
 @{
     var ri = GetNextRenderInfo();
+    _log.LogInformation("Render");
 }
 
 <div @ref="Ref" class="@Class virtual-list" style="@Style" data-render-index="@ri.RenderIndex">
