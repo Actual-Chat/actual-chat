@@ -65,6 +65,7 @@
         public double SpacerSize { get; set; } // That's "prefix spacer"
         public Range<double> ViewRange { get; set; } // Relative to the top item's top
         public bool MustScroll { get; set; }
+        public bool MustScrollOnThisRender { get; set; }
 
         // Pre-computed properties
         public Range<double> DisplayedRange
@@ -133,10 +134,7 @@
         if (!ri.IsViewLoaded)
             TryRecomputeState();
         if (JSComponentRef != null) {
-            var willScroll = ri.MustScroll && ri.DisplayedItems.Count > 0;
-            if (willScroll)
-                ri.MustScroll = false;
-            await JSComponentRef.InvokeVoidAsync("afterRender", willScroll, ri.ViewRange.Start);
+            await JSComponentRef.InvokeVoidAsync("afterRender", ri.MustScrollOnThisRender, ri.ViewRange.Start);
         }
     }
 
@@ -341,8 +339,11 @@
         }
 
         // Fixups
-        if (ri.MustScroll)
+        if (ri.MustScroll && ri.DisplayedItems.Count != 0) {
             ri.SpacerSize = SpacerSize;
+            ri.MustScrollOnThisRender = true;
+            ri.MustScroll = false;
+        }
         if (ri.Response.HasVeryFirstItem)
             ri.SpacerSize = 0;
         return ri;

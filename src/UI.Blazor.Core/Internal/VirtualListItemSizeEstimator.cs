@@ -31,8 +31,10 @@ namespace ActualChat.UI.Blazor.Internal
         {
             _itemSizeSum += size;
             _itemCount++;
-            if (_itemCount >= ItemCountResetThreshold)
+            if (_itemCount >= ItemCountResetThreshold) {
                 _itemCount = ItemCountResetValue;
+                _itemSizeSum *= (double) ItemCountResetValue / ItemCountResetThreshold;
+            }
         }
 
         public void RemoveItem(double size)
@@ -47,8 +49,10 @@ namespace ActualChat.UI.Blazor.Internal
         {
             _responseFulfillmentRatioSum += fulfillmentRatio;
             _responseCount++;
-            if (_responseCount >= ResponseCountResetThreshold)
+            if (_responseCount >= ResponseCountResetThreshold) {
                 _responseCount = ResponseCountResetValue;
+                _responseFulfillmentRatioSum *= (double) ResponseCountResetValue / ResponseCountResetThreshold;
+            }
         }
     }
 }
