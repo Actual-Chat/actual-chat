@@ -1,10 +1,11 @@
-@page "/list"
-@inject ILogger<ListPage> _log
+@page "/test-list"
+@using ActualChat.Comparison
+@inject ILogger<TestListPage> _log
 @inject TestListService _listService
 
 <h1>VirtualList Test Page</h1>
 
-<VirtualList style="height: 600px;" Provider="GetVirtualListItems">
+<VirtualList style="height: 600px;" Provider="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
         <div style="font-size: @(context.FontSize)em">
             <div style="font-weight: bold">@context.Title</div>
@@ -17,5 +18,4 @@
     private Task<VirtualListResponse<TestListItem>> GetVirtualListItems(
         VirtualListQuery query, CancellationToken cancellationToken)
         => _listService.GetItems(query, cancellationToken);
-
 }

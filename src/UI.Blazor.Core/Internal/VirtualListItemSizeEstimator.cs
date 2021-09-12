@@ -2,47 +2,53 @@ using System;
 
 namespace ActualChat.UI.Blazor.Internal
 {
-    public interface IVirtualListItemSizeEstimator
+    public interface IVirtualListStatistics
     {
-        double EstimatedSize { get; }
-        void AddObservedSize(double size);
-        void RemoveObservedSize(double size);
+        double ItemSizeEstimate { get; }
+        double ResponseFulfillmentRatio { get; }
+
+        void AddItem(double size);
+        void AddResponse(double fulfillmentRatio);
+        void RemoveItem(double size);
     }
 
-    public class VirtualListItemSizeEstimator : IVirtualListItemSizeEstimator
+    public class VirtualListStatistics : IVirtualListStatistics
     {
-        private long _observationCount;
-        private double _sizeSum;
+        private long _itemCount = 1;
+        private double _itemSizeSum = 16;
+        private long _responseCount = 1;
+        private double _responseFulfillmentRatioSum = 1;
 
-        public long ObservationCountResetThreshold { get; }
-        public long ObservationCountResetValue { get; }
-        public double EstimatedSize => _sizeSum / _observationCount;
+        public long ItemCountResetThreshold { get; init; } = 1000;
+        public long ItemCountResetValue { get; init; } = 900;
+        public long ResponseCountResetThreshold { get; init; } = 10;
+        public long ResponseCountResetValue { get; init; } = 8;
 
-        public VirtualListItemSizeEstimator() : this(1000, 900) { }
-        public VirtualListItemSizeEstimator(long observationCountResetThreshold, long observationCountResetValue)
+        public double ItemSizeEstimate => _itemSizeSum / _itemCount;
+        public double ResponseFulfillmentRatio => _responseFulfillmentRatioSum / _responseCount;
+
+        public void AddItem(double size)
         {
-            if (observationCountResetThreshold < 1)
-                throw new ArgumentOutOfRangeException(nameof(observationCountResetThreshold));
-            if (observationCountResetValue < 1)
-                throw new ArgumentOutOfRangeException(nameof(observationCountResetValue));
-            ObservationCountResetThreshold = observationCountResetThreshold;
-            ObservationCountResetValue = observationCountResetValue;
+            _itemSizeSum += size;
+            _itemCount++;
+            if (_itemCount >= ItemCountResetThreshold)
+                _itemCount = ItemCountResetValue;
         }
 
-        public void AddObservedSize(double size)
+        public void RemoveItem(double size)
         {
-            _sizeSum += size;
-            _observationCount++;
-            if (_observationCount >= ObservationCountResetThreshold)
-                _observationCount = ObservationCountResetValue;
-        }
-
-        public void RemoveObservedSize(double size)
-        {
-            if (_observationCount <= 0)
+            if (_itemCount <= 0)
                 return;
-            _sizeSum -= size;
-            _observationCount--;
+            _itemSizeSum -= size;
+            _itemCount--;
+        }
+
+        public void AddResponse(double fulfillmentRatio)
+        {
+            _responseFulfillmentRatioSum += fulfillmentRatio;
+            _responseCount++;
+            if (_responseCount >= ResponseCountResetThreshold)
+                _responseCount = ResponseCountResetValue;
         }
     }
 }
