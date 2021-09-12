@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor
 {
-    public record VirtualListQuery(Range<string> InclusiveKeyRange)
+    public record VirtualListQuery(Range<string> IncludedRange)
     {
         public double ExpandStartBy { get; init; }
         public double ExpandEndBy { get; init; }
