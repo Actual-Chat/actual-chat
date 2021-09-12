@@ -26,30 +26,30 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         {
             var seed = (int) Math.Floor((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalSeconds);
             _log.LogInformation("GetItems({Query}), seed = {Seed}", query, seed);
-            var veryLastKey = 50 + seed * 2;
-            var veryFistKey = 0 - seed / 2;
+            var veryStart = -seed / 2;
+            var veryEnd = 100 + seed * 2;
             if (query.IncludedRange == default) {
-                var key = _resetToBottom ? veryLastKey : _resetToTop ? 0 : veryLastKey / 2;
+                var key = _resetToBottom ? veryEnd : _resetToTop ? 0 : veryStart + (veryEnd - veryStart) / 2;
                 query = query with { IncludedRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
             }
 
-            var startKey = int.Parse(query.IncludedRange.Start);
+            var start = int.Parse(query.IncludedRange.Start);
             if (query.ExpandStartBy > 0)
-                startKey -= (int) query.ExpandStartBy;
-            startKey = Math.Max(veryFistKey, startKey);
+                start -= (int) query.ExpandStartBy;
+            start = Math.Max(veryStart, start);
 
-            var endKey = int.Parse(query.IncludedRange.End);
+            var end = int.Parse(query.IncludedRange.End);
             if (query.ExpandEndBy > 0)
-                endKey += (int) query.ExpandEndBy;
-            endKey = Math.Min(veryLastKey, endKey);
+                end += (int) query.ExpandEndBy;
+            end = Math.Min(veryEnd, end);
 
             var result = VirtualListResponse.New(
                 Enumerable
-                    .Range(startKey, endKey - startKey + 1)
+                    .Range(start, end - start + 1)
                     .Select(key => CreateItem(key, seed)),
                 item => item.Key.ToString(),
-                startKey == veryFistKey,
-                endKey == veryLastKey);
+                start == veryStart,
+                end == veryEnd);
             await Task.Delay(100, cancellationToken);
             return result;
 

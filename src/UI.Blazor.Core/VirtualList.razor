@@ -64,8 +64,9 @@
         public List<ItemInfo> DisplayedItems { get; set; } = null!;
         public double SpacerSize { get; set; } // That's "prefix spacer"
         public Range<double> ViewRange { get; set; } // Relative to the top item's top
-        public bool MustScroll { get; set; }
-        public bool MustScrollOnThisRender { get; set; }
+        public bool MustScrollWhenNonEmpty { get; set; }
+        public bool MustScrollAfterRender { get; set; }
+        public bool IsScrollStopped { get; set; }
 
         // Pre-computed properties
         public Range<double> DisplayedRange
@@ -75,11 +76,11 @@
 
         // Computed properties
         public bool IsViewLoaded
-            => DisplayedRange.Contains(ViewRange) || Response.HasVeryFirstItem && Response.HasVeryLastItem;
+            => DisplayedRange.Expand(1).Contains(ViewRange) || Response.HasVeryFirstItem && Response.HasVeryLastItem;
         public bool IsViewingTop
-            => Response.HasVeryFirstItem && (DisplayedItems.Count == 0 || ViewRange.Overlaps(DisplayedItems[0].Range));
+            => Response.HasVeryFirstItem && (DisplayedItems.Count == 0 || ViewRange.Expand(1).Overlaps(DisplayedItems[0].Range));
         public bool IsViewingBottom
-            => Response.HasVeryLastItem && (DisplayedItems.Count == 0 || ViewRange.Overlaps(DisplayedItems[^1].Range));
+            => Response.HasVeryLastItem && (DisplayedItems.Count == 0 || ViewRange.Expand(1).Overlaps(DisplayedItems[^1].Range));
 
         public void UpdateRanges()
         {
@@ -99,7 +100,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
     [Parameter] public RenderFragment<TItem> Item { get; set; } = null!;
-    [Parameter] public double SpacerSize { get; set; } = 100_000;
+    [Parameter] public double SpacerSize { get; set; } = 4320;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
     [Parameter] public VirtualListScrollPreference ScrollPreference { get; set; } = VirtualListScrollPreference.Bottom;
@@ -131,43 +132,11 @@
         if (ri == null)
             return;
         // _log.LogInformation("AfterRender: {SpacerSize} | {DisplayedRange}, [ {ViewRange} ]", ri.SpacerSize, ri.DisplayedRange, ri.ViewRange);
-        if (!ri.IsViewLoaded)
-            TryRecomputeState();
         if (JSComponentRef != null) {
-            await JSComponentRef.InvokeVoidAsync("afterRender", ri.MustScrollOnThisRender, ri.ViewRange.Start);
+            var mustNotifyWhenScrollStops = ri.SpacerSize < SpacerSize / 2 || ri.SpacerSize > SpacerSize * 2;
+            await JSComponentRef.InvokeVoidAsync(
+                "afterRender", ri.MustScrollAfterRender, ri.ViewRange.Start, mustNotifyWhenScrollStops);
         }
-    }
-
-    [JSInvokable]
-    public void UpdateClientSideState(IVirtualListBackend.ClientSideState clientSideState)
-    {
-        var ri = LastRenderInfo;
-        if (ri == null || clientSideState.RenderIndex != ri.RenderIndex) {
-            _log.LogDebug("Skipped UpdateClientSideState due to outdated RenderIndex");
-            return;
-        }
-
-        var prevIsViewLoaded = ri.IsViewLoaded;
-        var isItemSizeChanged = false;
-        foreach (var (key, size) in clientSideState.ItemSizes) {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if (!ri.ItemByKey.TryGetValue(key, out var item) || item.Size == size)
-                continue;
-            if (item.IsMeasured)
-                Statistics.RemoveItem(item.Size);
-            Statistics.AddItem(size);
-            item.Range = new(0, size);
-            isItemSizeChanged = true;
-        }
-        var isViewRangeChanged = clientSideState.ViewRange != ri.ViewRange;
-        ri.ViewRange = clientSideState.ViewRange;
-        if (isItemSizeChanged) {
-            ri.UpdateRanges();
-            StateHasChanged();
-        }
-        // "else" is used here because OnAfterRenderAsync runs all these checks anyway
-        else if (isViewRangeChanged || !prevIsViewLoaded || !ri.IsViewLoaded)
-            TryRecomputeState();
     }
 
     protected override async Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
@@ -201,6 +170,42 @@
             _ = State.Recompute();
     }
 
+    [JSInvokable]
+    public void UpdateClientSideState(IVirtualListBackend.ClientSideState clientSideState)
+    {
+        var ri = LastRenderInfo;
+        if (ri == null || clientSideState.RenderIndex != ri.RenderIndex) {
+            _log.LogDebug("Skipped UpdateClientSideState due to outdated RenderIndex");
+            return;
+        }
+
+        var prevIsViewLoaded = ri.IsViewLoaded;
+        var isItemSizeChanged = false;
+        foreach (var (key, size) in clientSideState.ItemSizes) {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (!ri.ItemByKey.TryGetValue(key, out var item) || item.Size == size)
+                continue;
+            if (item.IsMeasured)
+                Statistics.RemoveItem(item.Size);
+            Statistics.AddItem(size);
+            item.Range = item.Range.Resize(size);
+            isItemSizeChanged = true;
+        }
+
+        var isViewRangeChanged = clientSideState.ViewRange != ri.ViewRange;
+        ri.ViewRange = clientSideState.ViewRange;
+        ri.IsScrollStopped = clientSideState.IsScrollStopped;
+
+        if (isItemSizeChanged) {
+            ri.UpdateRanges();
+            StateHasChanged();
+        }
+        else if (ri.IsScrollStopped)
+            StateHasChanged();
+        else if (isViewRangeChanged || !prevIsViewLoaded || !ri.IsViewLoaded)
+            TryRecomputeState();
+    }
+
     protected virtual VirtualListQuery GetQuery()
     {
         var ri = LastRenderInfo;
@@ -215,31 +220,21 @@
         var bufferZone = new Range<double>(ri.ViewRange.Start - BufferZoneSize, ri.ViewRange.End + BufferZoneSize);
         // _log.LogInformation("GetQuery: {ViewRange} < {LoaderZone} < {BufferZone} | {DisplayedRange}", ri.ViewRange, loaderZone, bufferZone, ri.DisplayedRange);
         var displayedItems = ri.DisplayedItems;
-        var startIndex = 0;
-        var endIndex = 0;
-        var itemCount = 0;
+        var startIndex = -1;
+        var endIndex = -1;
         for (var i = 0; i < displayedItems.Count; i++) {
             if (displayedItems[i].Range.IntersectWith(bufferZone).Size() > 0) {
-                if (itemCount == 0) {
+                endIndex = i;
+                if (startIndex < 0)
                     startIndex = i;
-                    endIndex = i;
-                    itemCount = 1;
-                }
-                else {
-                    endIndex = i;
-                    itemCount++;
-                }
             }
-            else if (itemCount != 0)
+            else if (startIndex >= 0)
                 break;
         }
-        if (itemCount == 0) {
-            // No items inside the bufferZone, so
-            // we'll take a single item: the first one or the last one
-            itemCount = 1;
-            startIndex = displayedItems[0].Range.End < bufferZone.Start ? 0 : displayedItems.Count - 1;
-            endIndex = startIndex;
-        }
+        if (startIndex < 0)
+            // No items inside the bufferZone, so we'll take the first or the last item
+            startIndex = endIndex = displayedItems[0].Range.End < bufferZone.Start ? 0 : displayedItems.Count - 1;
+
         var firstItem = displayedItems[startIndex];
         var lastItem = displayedItems[endIndex];
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
@@ -253,15 +248,15 @@
             ExpectedStartExpansion =  Math.Ceiling(startGap / itemSize),
             ExpectedEndExpansion =  Math.Ceiling(endGap / itemSize),
         };
-        if (ri.IsViewingBottom)
-            query = query with {
-                ExpandEndBy = MaxExpandBy,
-                ExpectedEndExpansion = 0,
-            };
         if (ri.IsViewingTop)
             query = query with {
                 ExpandStartBy = MaxExpandBy,
                 ExpectedStartExpansion = 0,
+            };
+        if (ri.IsViewingBottom)
+            query = query with {
+                ExpandEndBy = MaxExpandBy,
+                ExpectedEndExpansion = 0,
             };
         return query;
     }
@@ -281,7 +276,7 @@
             ri.DisplayedItems = ri.LoadedItems.Where(e => e.IsMeasured).ToList();
             ri.UpdateRanges();
             ri.ViewRange = ri.DisplayedRange;
-            ri.MustScroll = true;
+            ri.MustScrollWhenNonEmpty = true;
         }
         else {
             var viewSize = lri.ViewRange.Size();
@@ -289,21 +284,16 @@
             ri.Response = response;
             ri.ViewRange = lri.ViewRange;
             ri.SpacerSize = lri.SpacerSize;
-            ri.MustScroll = lri.MustScroll;
-            if (!ReferenceEquals(lri.Response, response)) {
-                ri.LoadedItems = new List<ItemInfo>();
-                ri.ItemByKey = new Dictionary<string, ItemInfo>();
-                foreach (var (key, item) in response.Items) {
-                    var itemInfo = new ItemInfo { Key = key, Item = item };
-                    if (lri.ItemByKey.TryGetValue(key, out var oldItemInfo))
-                        itemInfo.Range = oldItemInfo.Range;
-                    ri.LoadedItems.Add(itemInfo);
-                    ri.ItemByKey.Add(key, itemInfo);
-                }
-            }
-            else {
-                ri.LoadedItems = lri.LoadedItems;
-                ri.ItemByKey = lri.ItemByKey;
+            ri.MustScrollWhenNonEmpty = lri.MustScrollWhenNonEmpty;
+            ri.MustScrollAfterRender = lri.IsScrollStopped;
+            ri.LoadedItems = new List<ItemInfo>();
+            ri.ItemByKey = new Dictionary<string, ItemInfo>();
+            foreach (var (key, item) in response.Items) {
+                var newItem = new ItemInfo { Key = key, Item = item };
+                if (lri.ItemByKey.TryGetValue(key, out var oldItem1))
+                    newItem.Range = oldItem1.Range;
+                ri.LoadedItems.Add(newItem);
+                ri.ItemByKey.Add(key, newItem);
             }
             ri.UnmeasuredItems = ri.LoadedItems.Where(e => !e.IsMeasured).ToList();
             ri.DisplayedItems = ri.LoadedItems.Where(e => e.IsMeasured).ToList();
@@ -322,28 +312,28 @@
             else {
                 // Everything is new, so let's scroll to the very top
                 ri.ViewRange = new(0, viewSize);
-                ri.MustScroll = true;
+                ri.MustScrollWhenNonEmpty = true;
             }
 
             // Checking whether we should scroll to the top or to the bottom
             if (ri.DisplayedItems.Count > 0 && (lri.IsViewingTop || lri.IsViewingBottom)) {
-                ri.MustScroll = true;
+                ri.MustScrollWhenNonEmpty = true;
                 var displayedRange = ri.DisplayedRange;
                 var topViewRange = new Range<double>(0, viewSize);
                 var bottomViewRange = new Range<double>(displayedRange.End - viewSize, displayedRange.End);
-                if (ScrollPreference == VirtualListScrollPreference.Bottom)
-                    ri.ViewRange = lri.IsViewingBottom ? bottomViewRange : topViewRange;
-                else // ScrollPreference == VirtualListScrollPreference.Top
-                    ri.ViewRange = lri.IsViewingTop ? topViewRange : bottomViewRange;
+                ri.ViewRange = ScrollPreference == VirtualListScrollPreference.Bottom
+                    ? lri.IsViewingBottom ? bottomViewRange : topViewRange
+                    : lri.IsViewingTop ? topViewRange : bottomViewRange;
             }
         }
 
         // Fixups
-        if (ri.MustScroll && ri.DisplayedItems.Count != 0) {
-            ri.SpacerSize = SpacerSize;
-            ri.MustScrollOnThisRender = true;
-            ri.MustScroll = false;
+        if (ri.MustScrollWhenNonEmpty && ri.DisplayedItems.Count != 0) {
+            ri.MustScrollAfterRender = true;
+            ri.MustScrollWhenNonEmpty = false;
         }
+        if (ri.MustScrollAfterRender)
+            ri.SpacerSize = SpacerSize;
         if (ri.Response.HasVeryFirstItem)
             ri.SpacerSize = 0;
         return ri;

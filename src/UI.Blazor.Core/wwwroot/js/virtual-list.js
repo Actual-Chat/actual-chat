@@ -11,25 +11,52 @@ export class VirtualList {
         this.unmeasuredItemsRef = this.elementRef.querySelector(".items-unmeasured");
         this.displayedItemsRef = this.elementRef.querySelector(".items-displayed");
         this._updateClientSideStateTask = null;
+        this._onScrollStoppedTimeout = null;
 
-        let pushMeasurements = e => this.updateClientSideStateAsync(true);
+        let _onScroll = _ => this.updateClientSideStateAsync();
         let listenerOptions = { signal: this.abortController.signal };
-        elementRef.addEventListener("scroll", pushMeasurements, listenerOptions);
-        window.addEventListener("resize", pushMeasurements, listenerOptions);
+        elementRef.addEventListener("scroll", _onScroll, listenerOptions);
+        window.addEventListener("resize", _onScroll, listenerOptions);
     };
 
     dispose() {
         this.abortController.abort();
     }
 
-    afterRender(mustScroll, viewOffset) {
+    afterRender(mustScroll, viewOffset, mustNotifyWhenScrollStops) {
         let spacerSize = this.getSpacerSize();
         if (mustScroll)
             this.elementRef.scrollTo(0, viewOffset + spacerSize);
         let _ = this.updateClientSideStateAsync()
+        this.setupOnScroll(mustNotifyWhenScrollStops);
     }
 
-    async updateClientSideStateAsync(mustMeasureEverything = false) {
+    // Scroll stopped notification
+
+    setupOnScroll(mustNotifyWhenScrollStops) {
+        if (mustNotifyWhenScrollStops) {
+            if (this._onScrollStoppedTimeout == null)
+                this.onScroll();
+        } else {
+            if (this._onScrollStoppedTimeout != null)
+                clearTimeout(this._onScrollStoppedTimeout);
+            this._onScrollStoppedTimeout = null;
+        }
+    }
+
+    onScroll() {
+        if (this._onScrollStoppedTimeout != null)
+            clearTimeout(this._onScrollStoppedTimeout);
+        this._onScrollStoppedTimeout = setTimeout(() => this.onScrollStopped(), 1000);
+    }
+
+    onScrollStopped() {
+        let _ = this.updateClientSideStateAsync(true)
+    }
+
+    // UpdateClientSideState caller
+
+    async updateClientSideStateAsync(isScrollStopped = false) {
         if (this._updateClientSideStateTask != null) {
             // This call should run in the same order / non-concurrently
             await this._updateClientSideStateTask.then(v => v, _ => null);
@@ -38,17 +65,18 @@ export class VirtualList {
         let spacerSize = this.getSpacerSize();
         let state = {
             renderIndex: parseInt(this.elementRef.dataset["renderIndex"]),
+            isScrollStopped: isScrollStopped,
             viewOffset: this.elementRef.scrollTop - spacerSize,
             viewSize: this.elementRef.getBoundingClientRect().height,
             itemSizes: {}
         };
-        let items = this.elementRef.querySelectorAll(".items-unmeasured .item").values();
-        for (let item of items) {
-            let key = item.dataset["key"];
-            state.itemSizes[key] = item.getBoundingClientRect().height;
-        }
-        if (mustMeasureEverything) {
-            let items = this.elementRef.querySelectorAll(".items-displayed .item").values();
+        if (!isScrollStopped) {
+            let items = this.elementRef.querySelectorAll(".items-unmeasured .item").values();
+            for (let item of items) {
+                let key = item.dataset["key"];
+                state.itemSizes[key] = item.getBoundingClientRect().height;
+            }
+            items = this.elementRef.querySelectorAll(".items-displayed .item").values();
             for (let item of items) {
                 let key = item.dataset["key"];
                 let knownSize = parseFloat(item.dataset["size"])
@@ -57,8 +85,10 @@ export class VirtualList {
                     state.itemSizes[key] = size;
             }
         }
-        this._updateClientSideStatePromise = this.backendRef.invokeMethodAsync("UpdateClientSideState", state);
+        this._updateClientSideStateTask = this.backendRef.invokeMethodAsync("UpdateClientSideState", state);
     }
+
+    // Helpers
 
     getSpacerSize() {
         let entriesTop = this.displayedItemsRef.getBoundingClientRect().top;

@@ -8,6 +8,7 @@ namespace ActualChat.UI.Blazor.Internal
         public class ClientSideState
         {
             public long RenderIndex { get; set; }
+            public bool IsScrollStopped { get; set; }
             public double ViewOffset { get; set; } = 0; // Minus spacer size!
             public double ViewSize { get; set; } = 1;
             [JsonIgnore, Newtonsoft.Json.JsonIgnore]
