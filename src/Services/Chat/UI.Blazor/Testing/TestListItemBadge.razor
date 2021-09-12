@@ -1,0 +1,19 @@
+@inherits ComputedStateComponent<TestListItem>
+@inject TestListService _listService
+
+@{
+    var item = State.LatestNonErrorValue ?? new(0, "");
+}
+
+<div style="font-size: @(item.FontSize)em">
+    <div style="font-weight: bold">@item.Title</div>
+    <div>@item.Description</div>
+</div>
+
+@code {
+    [Parameter] public string Key { get; set; } = "";
+
+    protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)
+        => _listService.GetItem(Key, cancellationToken);
+
+}

@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor
 {
-    public enum VirtualListScrollPreference
+    public enum VirtualListStickyEdge
     {
         Bottom = 0,
         Top = 1,
