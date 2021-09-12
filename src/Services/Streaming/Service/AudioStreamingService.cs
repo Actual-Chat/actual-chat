@@ -65,11 +65,10 @@ namespace ActualChat.Streaming
                 StreamingConstants.Completed,
                 maxLength: 1000,
                 useApproximateMaxLength: true);
-            
+
             // TODO(AY): Store the key of completed stream to some persistent store & add a dedicated serv. to GC them?
-            Task.Delay(TimeSpan.FromMinutes(1), default)
-                .ContinueWith(_ => db.KeyDelete(key), CancellationToken.None)
-                .Ignore();
+            _ = Task.Delay(TimeSpan.FromMinutes(1), default)
+                .ContinueWith(_ => db.KeyDelete(key), CancellationToken.None);
         }
 
         private async Task NotifyNewAudioRecording(IDatabase db, RecordingId recordingId, AudioRecordingConfiguration config, CancellationToken cancellationToken)
@@ -79,11 +78,11 @@ namespace ActualChat.Streaming
             MessagePackSerializer.Serialize(bufferWriter, recording, MessagePackSerializerOptions.Standard, cancellationToken);
             var serialized = bufferWriter.WrittenMemory;
             db.ListLeftPush(StreamingConstants.AudioRecordingQueue, serialized);
-            
+
             var subscriber = Redis.GetSubscriber();
             await subscriber.PublishAsync(StreamingConstants.AudioRecordingQueue, string.Empty);
         }
-        
+
         private async Task NotifyNewAudioMessage(string recordingId)
         {
             var subscriber = Redis.GetSubscriber();
@@ -91,7 +90,7 @@ namespace ActualChat.Streaming
         }
 
 
-        protected override IDatabase GetDatabase() 
+        protected override IDatabase GetDatabase()
             => Redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);
     }
 }

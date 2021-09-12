@@ -34,7 +34,7 @@ namespace ActualChat.Streaming
                     var serialized = bufferWriter.WrittenMemory;
 
                     await db.StreamAddAsync(
-                        key, 
+                        key,
                         StreamingConstants.MessageKey,
                       serialized,
                         maxLength: 1000,
@@ -52,15 +52,15 @@ namespace ActualChat.Streaming
             // TODO(AY): Should we complete w/ exceptions to mimic Channel<T> / IEnumerable<T> behavior here as well?
             await Complete(streamId, cancellationToken);
         }
-        
+
         private async Task NotifyNewStream(IDatabase db, StreamId streamId)
         {
             db.ListLeftPush(StreamingConstants.StreamQueue, streamId.Value);
-            
+
             var subscriber = Redis.GetSubscriber();
             await subscriber.PublishAsync(StreamingConstants.StreamQueue, string.Empty);
         }
-        
+
         private async Task NotifyNewMessage(StreamId streamId)
         {
             var subscriber = Redis.GetSubscriber();
@@ -87,9 +87,8 @@ namespace ActualChat.Streaming
             await db.StreamAddAsync(key, StreamingConstants.StatusKey,  StreamingConstants.Completed, maxLength: 1000, useApproximateMaxLength: true);
 
             // TODO(AY): Store the key of completed stream to some persistent store & add a dedicated serv. to GC them?
-            Task.Delay(TimeSpan.FromMinutes(1), default)
-                .ContinueWith(_ => db.KeyDelete(key), CancellationToken.None)
-                .Ignore();
+            _ = Task.Delay(TimeSpan.FromMinutes(1), default)
+                .ContinueWith(_ => db.KeyDelete(key), CancellationToken.None);
         }
 
         // Protected methods

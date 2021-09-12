@@ -198,7 +198,7 @@
             return;
         NextQuery = GetQuery();
         if (LastQuery != NextQuery)
-            State.Recompute().Ignore();
+            _ = State.Recompute();
     }
 
     protected virtual VirtualListQuery GetQuery()
