@@ -15,6 +15,8 @@ namespace ActualChat.Chat.UI.Blazor.Testing
     {
         private static readonly string[] Words = {"best", "virtual", "scroll", "ever", "100%", "absolutely"};
         private readonly ILogger<TestListService> _log;
+        private bool _resetToTop = false;
+        private bool _resetToBottom = false;
 
         public TestListService(ILogger<TestListService> log) => _log = log;
 
@@ -24,11 +26,11 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         {
             var seed = (int) Math.Floor((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalSeconds);
             _log.LogInformation("GetItems({Query}), seed = {Seed}", query, seed);
-            var veryLastKey = 20 + seed / 2;
-            if (query.InclusiveKeyRange == default)
-                query = query with {
-                    InclusiveKeyRange = new Range<string>((veryLastKey - 10).ToString(), veryLastKey.ToString())
-                };
+            var veryLastKey = 50 + seed / 2;
+            if (query.InclusiveKeyRange == default) {
+                var key = _resetToBottom ? veryLastKey : _resetToTop ? 0 : veryLastKey / 2;
+                query = query with { InclusiveKeyRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
+            }
 
             var startKey = int.Parse(query.InclusiveKeyRange.Start);
             if (query.ExpandStartBy > 0)

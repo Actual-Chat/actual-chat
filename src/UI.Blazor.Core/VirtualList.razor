@@ -6,6 +6,7 @@
 @using System.Collections.Immutable
 @using ActualChat.Mathematics
 @using Stl.Collections
+@using Stl.Mathematics
 @inject IJSRuntime _js
 @inject JSModule _jsModule
 @inject ILogger<VirtualList<TItem>> _log
@@ -90,7 +91,7 @@
     protected RenderInfo? LastRenderInfo { get; set; }
     protected VirtualListQuery? LastQuery { get; set; }
     protected VirtualListQuery NextQuery { get; set; } = new(default);
-    protected IVirtualListItemSizeEstimator ItemSizeEstimator { get; set; } = new VirtualListItemSizeEstimator();
+    protected IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
@@ -100,6 +101,7 @@
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
     [Parameter] public Func<VirtualListQuery, CancellationToken, Task<VirtualListResponse<TItem>>> Provider { get; set; } =
         (_, _) => Task.FromResult(new VirtualListResponse<TItem>());
+    [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
 
     public ElementReference Ref { get; set; }
 
@@ -146,8 +148,8 @@
             if (!ri.ItemByKey.TryGetValue(key, out var item) || item.Size == size)
                 continue;
             if (item.IsSizeMeasured)
-                ItemSizeEstimator.RemoveObservedSize(item.Size);
-            ItemSizeEstimator.AddObservedSize(size);
+                Statistics.RemoveItem(item.Size);
+            Statistics.AddItem(size);
             item.Size = size;
             isItemSizeChanged = true;
         }
@@ -162,14 +164,26 @@
             TryRecomputeState();
     }
 
-    protected override Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<VirtualListResponse<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = NextQuery;
         LastQuery = query;
-        return Provider.Invoke(query, cancellationToken);
-        // var result = await Provider.Invoke(query, cancellationToken);
-        // _log.LogInformation("ComputeState -> {ItemKeys}", result.Items.Select(i => i.Key).ToDelimitedString());
-        // return result;
+        var response = await Provider.Invoke(query, cancellationToken);
+
+        // Adding statistics
+        var startExpansion = response.Items
+            .TakeWhile(i => KeyComparer.Compare(i.Key, query.InclusiveKeyRange.Start) < 0)
+            .Count();
+        var oldItemCount = response.Items
+            .Skip(startExpansion)
+            .TakeWhile(i => KeyComparer.Compare(i.Key, query.InclusiveKeyRange.End) <= 0)
+            .Count();
+        var endExpansion = response.Items.Count - startExpansion - oldItemCount;
+        if (query.ExpectedStartExpansion > 0.001 && !response.HasVeryFirstItem)
+            Statistics.AddResponse(startExpansion / query.ExpectedStartExpansion);
+        if (query.ExpectedEndExpansion > 0.001 && !response.HasVeryLastItem)
+            Statistics.AddResponse(endExpansion / query.ExpectedEndExpansion);
+        return response;
     }
 
     protected void TryRecomputeState()
@@ -195,28 +209,45 @@
         var bufferZone = new Range<double>(ri.ViewRange.Start - BufferZoneSize, ri.ViewRange.End + BufferZoneSize);
         // _log.LogInformation("GetQuery: {ViewRange} < {LoaderZone} < {BufferZone} | {DisplayedRange}", ri.ViewRange, loaderZone, bufferZone, ri.DisplayedRange);
         var displayedItemRanges = ri.DisplayedItemRanges;
-        var (firstItem, firstRange) = displayedItemRanges.FirstOrDefault(p => p.Range.IntersectWith(bufferZone).Size() > 0);
-        var (lastItem, lastRange) = displayedItemRanges.LastOrDefault(p => p.Range.IntersectWith(bufferZone).Size() > 0);
-        // _log.LogDebug("GetQuery: DisplayedItemRanges: {DisplayedItemRanges}", displayedItemRanges.Select(r => (r.Item.Key, r.Range)).ToDelimitedString());
-        if (firstItem == null!) {
-            // All entries are outside of the buffer zone
-            if (displayedItemRanges[0].Range.Start >= bufferZone.End) {
-                // And they go after the buffer zone, so we take only the first one & expand to the top
-                (firstItem, firstRange) = displayedItemRanges[0];
-                (lastItem, lastRange) = displayedItemRanges[0];
-            } else {
-                // They go before the buffer zone, so we take only the last one & expand to the bottom
-                (firstItem, firstRange) = displayedItemRanges[^1];
-                (lastItem, lastRange) = displayedItemRanges[^1];
+        var startIndex = 0;
+        var endIndex = 0;
+        var itemCount = 0;
+        for (var i = 0; i < displayedItemRanges.Count; i++) {
+            if (displayedItemRanges[i].Range.IntersectWith(bufferZone).Size() > 0) {
+                if (itemCount == 0) {
+                    startIndex = i;
+                    endIndex = i;
+                    itemCount = 1;
+                }
+                else {
+                    endIndex = i;
+                    itemCount++;
+                }
+            }
+            else {
+                if (itemCount != 0)
+                    break;
             }
         }
+        if (itemCount == 0) {
+            // No items inside the bufferZone, so
+            // we'll take a single item: the first one or the last one
+            itemCount = 1;
+            startIndex = displayedItemRanges[0].Range.End < bufferZone.Start ? 0 : displayedItemRanges.Count - 1;
+            endIndex = startIndex;
+        }
+        var (firstItem, firstRange) = displayedItemRanges[startIndex];
+        var (lastItem, lastRange) = displayedItemRanges[endIndex];
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
-        var itemSize = ItemSizeEstimator.EstimatedSize;
-        var startGap = Math.Max(0, (firstRange.Start - loaderZone.Start) / itemSize);
-        var endGap = Math.Max(0, (loaderZone.End - lastRange.End) / itemSize);
+        var startGap = Math.Max(0, firstRange.Start - loaderZone.Start);
+        var endGap = Math.Max(0, loaderZone.End - lastRange.End);
+        var itemSize = Statistics.ItemSizeEstimate;
+        var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
         return new VirtualListQuery(keyRange) {
-            ExpandStartBy = Math.Round(startGap, 1),
-            ExpandEndBy = Math.Round(endGap, 1),
+            ExpandStartBy = Math.Round(startGap / itemSize / responseFulfillmentRatio, 1),
+            ExpandEndBy = Math.Round(endGap / itemSize / responseFulfillmentRatio, 1),
+            ExpectedStartExpansion =  Math.Ceiling(startGap / itemSize),
+            ExpectedEndExpansion =  Math.Ceiling(endGap / itemSize),
         };
     }
 
