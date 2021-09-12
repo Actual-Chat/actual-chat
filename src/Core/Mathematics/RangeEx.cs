@@ -21,10 +21,13 @@ namespace ActualChat.Mathematics
 
         public static Range<double> Move(this Range<double> range, double offset)
             => new(range.Start + offset, range.End + offset);
+        public static Range<double> Expand(this Range<double> range, double offset)
+            => new(range.Start - offset, range.End + offset);
+        public static Range<double> Resize(this Range<double> range, double size)
+            => new(range.Start, range.Start + size);
 
         public static bool Contains(this Range<double> range, double value)
             => range.Start <= value && value < range.End;
-
         public static bool Contains(this Range<double> range, Range<double> containedRange)
             => range.Start <= containedRange.Start && containedRange.End <= range.End;
 

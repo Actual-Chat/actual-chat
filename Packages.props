@@ -13,11 +13,11 @@
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>5.0.3</SystemNetHttpJsonVersion>
     <MicrosoftExtensionsVersion>5.0.0</MicrosoftExtensionsVersion>
-    <StlFusionVersion>1.8.34</StlFusionVersion>
+    <StlFusionVersion>1.9.1</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
-    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.10" />
+    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.12" />
     <PackageReference Update="Blazorise" Version="$(BlazoriseVersion)" />
     <PackageReference Update="Blazorise.Bootstrap" Version="$(BlazoriseVersion)" />
     <PackageReference Update="Blazorise.DataGrid" Version="$(BlazoriseVersion)" />
@@ -87,7 +87,7 @@
     <PackageReference Update="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageReference Update="Storage.Net" Version="9.3.*" />
-    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.1.5" />
+    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.2.1" />
     <PackageReference Update="System.Collections.Immutable" Version="5.0.*" />
     <PackageReference Update="System.ComponentModel.Annotations" Version="5.0.*" />
     <PackageReference Update="System.Configuration.ConfigurationManager" Version="5.0.*" />
