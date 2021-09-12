@@ -48,7 +48,7 @@ namespace ActualChat.Users
             if (Computed.IsInvalidating()) {
                 var invUserInfo = context.Operation().Items.TryGet<UserInfo>();
                 if (invUserInfo != null)
-                    UserStates.IsOnline(invUserInfo.Id, default).Ignore();
+                    _ = UserStates.IsOnline(invUserInfo.Id, default);
                 return;
             }
 
@@ -78,7 +78,7 @@ namespace ActualChat.Users
             if (Computed.IsInvalidating()) {
                 await context.InvokeRemainingHandlers(cancellationToken);
                 if (command.Name != null)
-                    UserInfos.TryGetByName(command.Name, default).Ignore();
+                    _ = UserInfos.TryGetByName(command.Name, default);
                 return;
             }
             if (command.Name != null) {
@@ -127,7 +127,7 @@ namespace ActualChat.Users
                     // We invalidate only when there is a cached value, and it is
                     // either false or an error, because the only change that may happen
                     // due to sign-in is that this value becomes true.
-                    UserStates.IsOnline(userId, default).Ignore();
+                    _ = UserStates.IsOnline(userId, default);
                 }
                 return;
             }

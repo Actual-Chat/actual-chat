@@ -75,7 +75,7 @@ namespace ActualChat.Chat
             var context = CommandContext.GetCurrent();
             if (Computed.IsInvalidating()) {
                 var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                GetLastEntryId(chatId, default).Ignore();
+                _ = GetLastEntryId(chatId, default);
                 InvalidateChatPages(chatId, invChatEntry.Id, false);
                 return null!;
             }
@@ -250,11 +250,11 @@ namespace ActualChat.Chat
         protected void InvalidateChatPages(string chatId, long chatEntryId, bool isUpdate = false)
         {
             if (!isUpdate)
-                GetEntryCount(chatId, null, default).Ignore();
+                _ = GetEntryCount(chatId, null, default);
             foreach (var idRange in ChatConstants.IdLogCover.GetCoveringTiles(chatEntryId)) {
-                GetPage(chatId, idRange, default).Ignore();
+                _ = GetPage(chatId, idRange, default);
                 if (!isUpdate)
-                    GetEntryCount(chatId, idRange, default).Ignore();
+                    _ = GetEntryCount(chatId, idRange, default);
             }
         }
     }

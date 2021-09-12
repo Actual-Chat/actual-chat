@@ -159,7 +159,7 @@
     [JSInvokable]
     public Task RecordingStopped()
     {
-        // _cmd.Run(new CompleteAudioRecording(RecordingId)).Ignore();
+        // _ = _cmd.Run(new CompleteAudioRecording(RecordingId));
 
         Writer?.Complete();
         Writer = null;
