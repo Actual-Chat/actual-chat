@@ -26,18 +26,19 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         {
             var seed = (int) Math.Floor((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalSeconds);
             _log.LogInformation("GetItems({Query}), seed = {Seed}", query, seed);
-            var veryLastKey = 50 + seed / 2;
-            if (query.InclusiveKeyRange == default) {
+            var veryLastKey = 50 + seed * 2;
+            var veryFistKey = 0 - seed / 2;
+            if (query.IncludedRange == default) {
                 var key = _resetToBottom ? veryLastKey : _resetToTop ? 0 : veryLastKey / 2;
-                query = query with { InclusiveKeyRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
+                query = query with { IncludedRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
             }
 
-            var startKey = int.Parse(query.InclusiveKeyRange.Start);
+            var startKey = int.Parse(query.IncludedRange.Start);
             if (query.ExpandStartBy > 0)
                 startKey -= (int) query.ExpandStartBy;
-            startKey = Math.Max(0, startKey);
+            startKey = Math.Max(veryFistKey, startKey);
 
-            var endKey = int.Parse(query.InclusiveKeyRange.End);
+            var endKey = int.Parse(query.IncludedRange.End);
             if (query.ExpandEndBy > 0)
                 endKey += (int) query.ExpandEndBy;
             endKey = Math.Min(veryLastKey, endKey);
@@ -47,7 +48,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing
                     .Range(startKey, endKey - startKey + 1)
                     .Select(key => CreateItem(key, seed)),
                 item => item.Key.ToString(),
-                startKey == 0,
+                startKey == veryFistKey,
                 endKey == veryLastKey);
             await Task.Delay(100, cancellationToken);
             return result;

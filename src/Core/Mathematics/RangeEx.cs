@@ -28,6 +28,9 @@ namespace ActualChat.Mathematics
         public static bool Contains(this Range<double> range, Range<double> containedRange)
             => range.Start <= containedRange.Start && containedRange.End <= range.End;
 
+        public static bool Overlaps(this Range<double> range, Range<double> otherRange)
+            => range.IntersectWith(otherRange).Size() > 0;
+
         public static Range<double> IntersectWith(this Range<double> range, Range<double> other)
         {
             var result = new Range<double>(Math.Max(range.Start, other.Start), Math.Min(range.End, other.End));
