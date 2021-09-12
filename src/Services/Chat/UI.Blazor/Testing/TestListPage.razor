@@ -5,17 +5,16 @@
 
 <h1>VirtualList Test Page</h1>
 
-<VirtualList style="height: 600px;" Provider="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
+<VirtualList style="height: 600px;"
+             SpacerSize="6000"
+             LoadZoneSize="2000" BufferZoneSize="4000"
+             Provider="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
-        <div style="font-size: @(context.FontSize)em">
-            <div style="font-weight: bold">@context.Title</div>
-            <div>@context.Description</div>
-        </div>
+        <TestListItemBadge Key="@context.Key" />
     </Item>
 </VirtualList>
 
 @code {
-    private Task<VirtualListResponse<TestListItem>> GetVirtualListItems(
-        VirtualListQuery query, CancellationToken cancellationToken)
-        => _listService.GetItems(query, cancellationToken);
+    private Task<VirtualListResponse<string>> GetVirtualListItems(VirtualListQuery query, CancellationToken cancellationToken)
+        => _listService.GetItemKeys(query, cancellationToken);
 }

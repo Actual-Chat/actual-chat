@@ -1,6 +1,13 @@
 ﻿.virtual-list {
-    overflow-y: auto;
+    overflow-y: scroll;
     background: url("https://fakeimg.pl/100x100/?text=Loading...") repeat;
+}
+.virtual-list::-webkit-scrollbar {
+    display: none;
+}
+.virtual-list {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 
 .virtual-list .content {

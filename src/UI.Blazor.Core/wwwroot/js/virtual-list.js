@@ -12,6 +12,7 @@ export class VirtualList {
         this.displayedItemsRef = this.elementRef.querySelector(".items-displayed");
         this._updateClientSideStateTask = null;
         this._onScrollStoppedTimeout = null;
+        this._resizeObserver = new ResizeObserver(_ => this.onItemResize());
 
         let _onScroll = _ => this.updateClientSideStateAsync();
         let listenerOptions = { signal: this.abortController.signal };
@@ -21,6 +22,7 @@ export class VirtualList {
 
     dispose() {
         this.abortController.abort();
+        this._resizeObserver.disconnect();
     }
 
     afterRender(mustScroll, viewOffset, mustNotifyWhenScrollStops) {
@@ -29,6 +31,7 @@ export class VirtualList {
             this.elementRef.scrollTo(0, viewOffset + spacerSize);
         let _ = this.updateClientSideStateAsync()
         this.setupOnScroll(mustNotifyWhenScrollStops);
+        this.setupOnItemResize();
     }
 
     // Scroll stopped notification
@@ -52,6 +55,23 @@ export class VirtualList {
 
     onScrollStopped() {
         let _ = this.updateClientSideStateAsync(true)
+    }
+
+    // Resize notifications
+
+    setupOnItemResize() {
+        this._resizeObserver.disconnect();
+        if (this._onItemResizeTimeout != null)
+            clearTimeout(this._onItemResizeTimeout);
+        let items = this.elementRef.querySelectorAll(".items-displayed .item").values();
+        for (let item of items)
+            this._resizeObserver.observe(item);
+    }
+
+    onItemResize() {
+        if (this._onItemResizeTimeout != null)
+            clearTimeout(this._onItemResizeTimeout);
+        this._onItemResizeTimeout = setTimeout(() => this.updateClientSideStateAsync(), 50);
     }
 
     // UpdateClientSideState caller

@@ -21,7 +21,7 @@
         <div class="items items-unmeasured">
             @foreach (var e in ri.UnmeasuredItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
-                    @Item(e.Item)
+                    @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
@@ -29,7 +29,7 @@
         <div class="items items-displayed">
             @foreach (var e in ri.DisplayedItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key" data-size="@e.Size">
-                    @Item(e.Item)
+                    @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
@@ -99,12 +99,12 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
-    [Parameter] public RenderFragment<TItem> Item { get; set; } = null!;
-    [Parameter] public double SpacerSize { get; set; } = 4320;
+    [Parameter] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
+    [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
-    [Parameter] public VirtualListScrollPreference ScrollPreference { get; set; } = VirtualListScrollPreference.Bottom;
-    [Parameter] public double MaxExpandBy { get; set; } = 1_000_000;
+    [Parameter] public double MaxExpandOnQuery { get; set; } = 1_000_000;
+    [Parameter] public VirtualListStickyEdge PreferredStickyEdge { get; set; } = VirtualListStickyEdge.Bottom;
     [Parameter] public Func<VirtualListQuery, CancellationToken, Task<VirtualListResponse<TItem>>> Provider { get; set; } =
         (_, _) => Task.FromResult(new VirtualListResponse<TItem>());
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
@@ -243,19 +243,19 @@
         var itemSize = Statistics.ItemSizeEstimate;
         var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
         var query = new VirtualListQuery(keyRange) {
-            ExpandStartBy = Math.Min(MaxExpandBy, Math.Round(startGap / itemSize / responseFulfillmentRatio, 1)),
-            ExpandEndBy = Math.Min(MaxExpandBy, Math.Round(endGap / itemSize / responseFulfillmentRatio, 1)),
+            ExpandStartBy = Math.Min(MaxExpandOnQuery, Math.Round(startGap / itemSize / responseFulfillmentRatio, 1)),
+            ExpandEndBy = Math.Min(MaxExpandOnQuery, Math.Round(endGap / itemSize / responseFulfillmentRatio, 1)),
             ExpectedStartExpansion =  Math.Ceiling(startGap / itemSize),
             ExpectedEndExpansion =  Math.Ceiling(endGap / itemSize),
         };
         if (ri.IsViewingTop)
             query = query with {
-                ExpandStartBy = MaxExpandBy,
+                ExpandStartBy = MaxExpandOnQuery,
                 ExpectedStartExpansion = 0,
             };
         if (ri.IsViewingBottom)
             query = query with {
-                ExpandEndBy = MaxExpandBy,
+                ExpandEndBy = MaxExpandOnQuery,
                 ExpectedEndExpansion = 0,
             };
         return query;
@@ -321,7 +321,7 @@
                 var displayedRange = ri.DisplayedRange;
                 var topViewRange = new Range<double>(0, viewSize);
                 var bottomViewRange = new Range<double>(displayedRange.End - viewSize, displayedRange.End);
-                ri.ViewRange = ScrollPreference == VirtualListScrollPreference.Bottom
+                ri.ViewRange = PreferredStickyEdge == VirtualListStickyEdge.Bottom
                     ? lri.IsViewingBottom ? bottomViewRange : topViewRange
                     : lri.IsViewingTop ? topViewRange : bottomViewRange;
             }

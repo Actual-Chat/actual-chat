@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
 using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.UI.Blazor;
@@ -16,53 +17,76 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         private static readonly string[] Words = {"best", "virtual", "scroll", "ever", "100%", "absolutely"};
         private readonly ILogger<TestListService> _log;
         private bool _resetToTop = false;
-        private bool _resetToBottom = false;
+        private bool _resetToBottom = true;
 
         public TestListService(ILogger<TestListService> log) => _log = log;
 
-        [ComputeMethod(AutoInvalidateTime = 1)]
-        public virtual async Task<VirtualListResponse<TestListItem>> GetItems(
+        [ComputeMethod(AutoInvalidateTime = 2)]
+        public virtual Task<Range<int>> GetListRange(CancellationToken cancellationToken = default)
+        {
+            var count = (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalSeconds) / 2;
+            return Task.FromResult(new Range<int>(-count / 2, 100 + count));
+        }
+
+        [ComputeMethod]
+        public virtual async Task<VirtualListResponse<string>> GetItemKeys(
             VirtualListQuery query, CancellationToken cancellationToken = default)
         {
-            var seed = (int) Math.Floor((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalSeconds);
-            _log.LogInformation("GetItems({Query}), seed = {Seed}", query, seed);
-            var veryStart = -seed / 2;
-            var veryEnd = 100 + seed * 2;
+            var range = await GetListRange(cancellationToken);
             if (query.IncludedRange == default) {
-                var key = _resetToBottom ? veryEnd : _resetToTop ? 0 : veryStart + (veryEnd - veryStart) / 2;
+                var key = _resetToBottom ? range.End : _resetToTop ? 0 : range.Start + (range.End - range.Start) / 2;
                 query = query with { IncludedRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
             }
 
             var start = int.Parse(query.IncludedRange.Start);
             if (query.ExpandStartBy > 0)
                 start -= (int) query.ExpandStartBy;
-            start = Math.Max(veryStart, start);
+            start = Math.Max(range.Start, start);
 
             var end = int.Parse(query.IncludedRange.End);
             if (query.ExpandEndBy > 0)
                 end += (int) query.ExpandEndBy;
-            end = Math.Min(veryEnd, end);
+            end = Math.Min(range.End, end);
 
             var result = VirtualListResponse.New(
-                Enumerable
-                    .Range(start, end - start + 1)
-                    .Select(key => CreateItem(key, seed)),
-                item => item.Key.ToString(),
-                start == veryStart,
-                end == veryEnd);
+                Enumerable.Range(start, end - start + 1).Select(i => i.ToString()),
+                item => item,
+                start == range.Start,
+                end == range.End);
             await Task.Delay(100, cancellationToken);
             return result;
-
         }
 
-        private TestListItem CreateItem(int key, int seed)
+        [ComputeMethod]
+        public virtual async Task<TestListItem> GetItem(string key, CancellationToken cancellationToken = default)
         {
-            var rnd = new Random(key + (key + seed) / 10);
+            var intKey = int.Parse(key);
+            var seed = await GetSeed(cancellationToken);
+            var range = await GetListRange(cancellationToken);
+            var rnd = new Random(intKey + (intKey + seed) / 10);
+            var fontSize = 1 + rnd.NextDouble();
+            if (fontSize > 1.95)
+                fontSize = 3;
+            var wordCount = rnd.Next(20);
+            if (intKey == range.End)
+                wordCount = await GetWordCount(cancellationToken);
             return new TestListItem(
-                key,
+                intKey,
                 $"#{key}",
-                Enumerable.Range(0, rnd.Next(20)).Select(_ => Words[rnd.Next(Words.Length)]).ToDelimitedString(" "),
-                1 + rnd.NextDouble());
+                Enumerable.Range(0, wordCount).Select(_ => Words[rnd.Next(Words.Length)]).ToDelimitedString(" "),
+                fontSize);
         }
+
+        // Protected methods
+
+        [ComputeMethod(AutoInvalidateTime = 2.5)]
+        protected virtual Task<int> GetSeed(CancellationToken cancellationToken = default)
+            => Task.FromResult(
+                (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalMilliseconds * 67) % 101); // 0..100
+
+        [ComputeMethod(AutoInvalidateTime = 0.05)]
+        protected virtual Task<int> GetWordCount(CancellationToken cancellationToken = default)
+            => Task.FromResult(
+                (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalMilliseconds) / 100 % 100); // 0..99
     }
 }
