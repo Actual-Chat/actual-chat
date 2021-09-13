@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Immutable;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
-using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -30,7 +27,7 @@ namespace ActualChat.Chat
             Session session, string chatId, Range<long> idRange,
             CancellationToken cancellationToken = default);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<long> GetLastEntryId(
+        Task<Range<long>> GetIdRange(
             Session session, string chatId,
             CancellationToken cancellationToken = default);
 

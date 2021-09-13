@@ -27,8 +27,8 @@ namespace ActualChat.Chat.Client
         Task<ChatPage> GetPage(
             Session session, string chatId, Range<long> idRange,
             CancellationToken cancellationToken = default);
-        [Get(nameof(GetLastEntryId))]
-        Task<long> GetLastEntryId(
+        [Get(nameof(GetIdRange))]
+        Task<Range<long>> GetIdRange(
             Session session, string chatId,
             CancellationToken cancellationToken = default);
 

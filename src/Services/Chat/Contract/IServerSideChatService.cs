@@ -20,7 +20,7 @@ namespace ActualChat.Chat
             string chatId, Range<long> idRange,
             CancellationToken cancellationToken = default);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<long> GetLastEntryId(string chatId, CancellationToken cancellationToken = default);
+        Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken = default);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPermissions> GetPermissions(

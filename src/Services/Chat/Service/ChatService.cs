@@ -75,7 +75,7 @@ namespace ActualChat.Chat
             var context = CommandContext.GetCurrent();
             if (Computed.IsInvalidating()) {
                 var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetLastEntryId(chatId, default);
+                _ = GetIdRange(chatId, default);
                 InvalidateChatPages(chatId, invChatEntry.Id, false);
                 return null!;
             }
@@ -182,15 +182,15 @@ namespace ActualChat.Chat
             return new ChatPage() { Entries = entries };
         }
 
-        public virtual async Task<long> GetLastEntryId(
+        public virtual async Task<Range<long>> GetIdRange(
             Session session, string chatId, CancellationToken cancellationToken = default)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
-            return await GetLastEntryId(chatId, cancellationToken);
+            return await GetIdRange(chatId, cancellationToken);
         }
 
-        public virtual async Task<long> GetLastEntryId(string chatId, CancellationToken cancellationToken = default)
+        public virtual async Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken = default)
         {
             await using var dbContext = CreateDbContext();
             var lastId = await dbContext.ChatEntries.AsQueryable()
@@ -198,7 +198,7 @@ namespace ActualChat.Chat
                 .OrderByDescending(e => e.Id)
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken);
-            return lastId;
+            return (0, lastId);
         }
 
         // Permissions
