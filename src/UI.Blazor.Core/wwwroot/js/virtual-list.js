@@ -8,16 +8,14 @@ export class VirtualList {
         this.backendRef = backendRef;
         this.abortController = new AbortController();
         this.spacerRef = this.elementRef.querySelector(".spacer");
-        this.unmeasuredItemsRef = this.elementRef.querySelector(".items-unmeasured");
         this.displayedItemsRef = this.elementRef.querySelector(".items-displayed");
         this._updateClientSideStateTask = null;
         this._onScrollStoppedTimeout = null;
-        this._resizeObserver = new ResizeObserver(_ => this.onItemResize());
+        this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
+        this._resizedOnce = { };
 
-        let _onScroll = _ => this.updateClientSideStateAsync();
         let listenerOptions = { signal: this.abortController.signal };
-        elementRef.addEventListener("scroll", _onScroll, listenerOptions);
-        window.addEventListener("resize", _onScroll, listenerOptions);
+        elementRef.addEventListener("scroll", _ => this.updateClientSideStateAsync(), listenerOptions);
     };
 
     dispose() {
@@ -30,13 +28,13 @@ export class VirtualList {
         if (mustScroll)
             this.elementRef.scrollTo(0, viewOffset + spacerSize);
         let _ = this.updateClientSideStateAsync()
-        this.setupOnScroll(mustNotifyWhenScrollStops);
-        this.setupOnItemResize();
+        this.setupResizeTracking();
+        this.setupScrollTracking(mustNotifyWhenScrollStops);
     }
 
     // Scroll stopped notification
 
-    setupOnScroll(mustNotifyWhenScrollStops) {
+    setupScrollTracking(mustNotifyWhenScrollStops) {
         if (mustNotifyWhenScrollStops) {
             if (this._onScrollStoppedTimeout == null)
                 this.onScroll();
@@ -50,28 +48,38 @@ export class VirtualList {
     onScroll() {
         if (this._onScrollStoppedTimeout != null)
             clearTimeout(this._onScrollStoppedTimeout);
-        this._onScrollStoppedTimeout = setTimeout(() => this.onScrollStopped(), 1000);
-    }
-
-    onScrollStopped() {
-        let _ = this.updateClientSideStateAsync(true)
+        this._onScrollStoppedTimeout = setTimeout(
+            () => this.updateClientSideStateAsync(true),
+            2000);
     }
 
     // Resize notifications
 
-    setupOnItemResize() {
+    setupResizeTracking() {
         this._resizeObserver.disconnect();
-        if (this._onItemResizeTimeout != null)
-            clearTimeout(this._onItemResizeTimeout);
+        this._resizedOnce = { };
+        if (this._onResizeTimeout != null)
+            clearTimeout(this._onResizeTimeout);
         let items = this.elementRef.querySelectorAll(".items-displayed .item").values();
+        this._resizeObserver.observe(this.elementRef);
         for (let item of items)
             this._resizeObserver.observe(item);
     }
 
-    onItemResize() {
-        if (this._onItemResizeTimeout != null)
-            clearTimeout(this._onItemResizeTimeout);
-        this._onItemResizeTimeout = setTimeout(() => this.updateClientSideStateAsync(), 50);
+    onResize(entries) {
+        let mustIgnore = false;
+        for (let entry of entries) {
+            mustIgnore |= this._resizedOnce[entry.target] != null;
+            this._resizedOnce[entry.target] = true;
+        }
+        if (mustIgnore)
+            return;
+
+        if (this._onResizeTimeout != null)
+            clearTimeout(this._onResizeTimeout);
+        this._onResizeTimeout = setTimeout(
+            () => this.updateClientSideStateAsync(),
+            50);
     }
 
     // UpdateClientSideState caller

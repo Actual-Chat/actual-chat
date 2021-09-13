@@ -1,5 +1,6 @@
 ﻿.virtual-list {
     overflow-y: scroll;
+    height: 100%;
 }
 .virtual-list::-webkit-scrollbar {
     display: none;
@@ -25,7 +26,7 @@
     background-size: contain;
     filter: blur(16px);
     -webkit-filter: blur(16px);
-    opacity: 0.25;
+    opacity: 0.33;
 }
 
 .virtual-list .items {

@@ -10,6 +10,8 @@ namespace ActualChat.Chat.UI.Blazor.Module
 {
     public class ChatBlazorUIModule: HostModule, IBlazorUIModule
     {
+        public string[] CssPaths => new [] {"css/chat-page.css"};
+
         public ChatBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
         public ChatBlazorUIModule(IPluginHost plugins) : base(plugins) { }

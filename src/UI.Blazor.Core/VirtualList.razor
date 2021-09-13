@@ -13,7 +13,7 @@
 
 @{
     var ri = GetNextRenderInfo();
-    _log.LogInformation("Render");
+    // _log.LogInformation("Render");
 }
 
 <div @ref="Ref" class="@Class virtual-list" style="@Style" data-render-index="@ri.RenderIndex">
@@ -317,13 +317,16 @@
 
             // Checking whether we should scroll to the top or to the bottom
             if (ri.DisplayedItems.Count > 0 && (lri.IsViewingTop || lri.IsViewingBottom)) {
-                ri.MustScrollWhenNonEmpty = true;
                 var displayedRange = ri.DisplayedRange;
                 var topViewRange = new Range<double>(0, viewSize);
                 var bottomViewRange = new Range<double>(displayedRange.End - viewSize, displayedRange.End);
-                ri.ViewRange = PreferredStickyEdge == VirtualListStickyEdge.Bottom
+                var newViewRange = PreferredStickyEdge == VirtualListStickyEdge.Bottom
                     ? lri.IsViewingBottom ? bottomViewRange : topViewRange
                     : lri.IsViewingTop ? topViewRange : bottomViewRange;
+                if (Math.Abs(ri.ViewRange.Start - newViewRange.Start) >= 0.5) {
+                    ri.ViewRange = newViewRange;
+                    ri.MustScrollWhenNonEmpty = true;
+                }
             }
         }
 

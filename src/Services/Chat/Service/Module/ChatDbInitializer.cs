@@ -34,7 +34,7 @@ namespace ActualChat.Chat.Module
                 await using var dbContext = dbContextFactory.CreateDbContext().ReadWrite();
                 var defaultChatId = ChatConstants.DefaultChatId;
                 var adminUserId = UserConstants.AdminUserId;
-                dbContext.Chats.Add(new DbChat() {
+                var dbChat = new DbChat() {
                     Id = defaultChatId,
                     Version = VersionGenerator.NextVersion(),
                     Title = "The Actual One",
@@ -47,7 +47,23 @@ namespace ActualChat.Chat.Module
                             UserId = adminUserId,
                         },
                     },
-                });
+                };
+                dbContext.Chats.Add(dbChat);
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                for (var id = 0; id < 100; id++) {
+                    var dbChatEntry = new DbChatEntry() {
+                        ChatId = dbChat.Id,
+                        Id = id,
+                        CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
+                        BeginsAt = Clocks.SystemClock.Now,
+                        EndsAt = Clocks.SystemClock.Now,
+                        Content = $"Message {id}",
+                        ContentType = ChatContentType.Text,
+                        CreatorId = adminUserId,
+                    };
+                    dbContext.Add(dbChatEntry);
+                }
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
         }

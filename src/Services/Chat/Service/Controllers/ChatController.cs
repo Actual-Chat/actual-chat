@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -54,10 +55,10 @@ namespace ActualChat.Chat.Controllers
             => _chats.GetPage(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
-        public Task<long> GetLastEntryId(
+        public Task<Range<long>> GetIdRange(
             Session session, string chatId,
             CancellationToken cancellationToken = default)
-            => _chats.GetLastEntryId(session, chatId, cancellationToken);
+            => _chats.GetIdRange(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPermissions> GetPermissions(
