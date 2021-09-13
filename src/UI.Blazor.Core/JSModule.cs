@@ -25,7 +25,7 @@ namespace ActualChat.UI.Blazor
 
         public ValueTask<IJSObjectReference> Import(Assembly assembly, string relativeModulePath)
         {
-            var modulePath = assembly.GetContentPath(relativeModulePath);
+            var modulePath = assembly.GetContentUrl(relativeModulePath);
             return Import(modulePath);
         }
     }
