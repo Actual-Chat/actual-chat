@@ -15,7 +15,7 @@ namespace ActualChat.Audio.Orchestration
     {
         public async IAsyncEnumerable<AudioStreamEntry> SplitBySilencePeriods(
             AudioRecording audioRecording,
-            ChannelReader<AudioMessage> audioReader,
+            ChannelReader<BlobMessage> audioReader,
             [EnumeratorCancellation]CancellationToken cancellationToken)
         {
             var entryChannel = Channel.CreateUnbounded<AudioStreamEntry>(
@@ -40,7 +40,7 @@ namespace ActualChat.Audio.Orchestration
 
         private async Task BuildStreamEntries(
             AudioRecording audioRecording,
-            ChannelReader<AudioMessage> audioReader,
+            ChannelReader<BlobMessage> audioReader,
             ChannelWriter<AudioStreamEntry> entryWriter,
             CancellationToken cancellationToken)
         {
@@ -49,7 +49,7 @@ namespace ActualChat.Audio.Orchestration
             var entryIndex = 0;
             var metaData = new List<AudioMetaDataEntry>();
             var documentBuilder = new WebMDocumentBuilder();
-            var audioChannel = Channel.CreateUnbounded<AudioMessage>(
+            var audioChannel = Channel.CreateUnbounded<BlobMessage>(
                 new UnboundedChannelOptions {
                     SingleReader = false,
                     SingleWriter = true,
@@ -64,13 +64,13 @@ namespace ActualChat.Audio.Orchestration
                 audioChannel.Reader);
             await entryWriter.WriteAsync(audioStreamEntry, cancellationToken);
             
-            var lastOffset = audioRecording.Configuration.ClientStartOffset;
             WebMReader.State lastState = new WebMReader.State();
             using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
 
-            await foreach (var (index, clientEndOffset, chunk) in audioReader.ReadAllAsync(cancellationToken)) {
-                var duration = clientEndOffset - lastOffset;
-                metaData.Add(new AudioMetaDataEntry(index, lastOffset, duration));
+            await foreach (var audioMessage in audioReader.ReadAllAsync(cancellationToken)) {
+                var (index, chunk) = audioMessage;
+                
+                metaData.Add(new AudioMetaDataEntry(index, 0, 0));
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
                 
@@ -79,6 +79,7 @@ namespace ActualChat.Audio.Orchestration
 
                 var dataLength = lastState.Remaining + chunk.Length;
                 
+                // TODO(AK): get actual duration\offset from Clusters\SimpleBlocks and fill metaData
                 var state = BuildWebMDocument(
                     lastState.IsEmpty 
                         ? new WebMReader(bufferLease.Memory.Span[..dataLength]) 
@@ -87,13 +88,9 @@ namespace ActualChat.Audio.Orchestration
                 lastState = state;
                 
                 // we don't use WebMWriter yet because we can't read blocks directly yet. So we don't split actually
-                var audioMessage = new AudioMessage(index, clientEndOffset, chunk);
                 await audioChannel.Writer.WriteAsync(audioMessage, cancellationToken);
                 
                 // TODO(AK): Implement VAD and perform actual audio split
-                
-                lastOffset = clientEndOffset;
-                
             }
 
             entryWriter.Complete();

@@ -23,14 +23,13 @@ namespace ActualChat.Streaming.Module
             services.AddSingleton<IConnectionMultiplexer>(multiplexer);
             services.AddTransient<IHubRegistrar,HubRegistrar>();
             services.AddTransient<StreamingServiceHub>();
-            services.AddSingleton<IAudioStreamingService, AudioStreamingService>();
-            services.AddSingleton<IStreamingService<AudioMessage>, AudioStreamingService>();
-            services.AddSingleton<IStreamingService<VideoMessage>, StreamingService<VideoMessage>>();
+            services.AddSingleton<IStreamingService<BlobMessage>, StreamingService<BlobMessage>>();
             services.AddSingleton<IStreamingService<TranscriptMessage>, StreamingService<TranscriptMessage>>();
-            services.AddSingleton<IServerSideAudioStreamingService, ServerSideAudioStreamingService>();
-            services.AddSingleton<IServerSideStreamingService<AudioMessage>, ServerSideAudioStreamingService>();
-            services.AddSingleton<IServerSideStreamingService<VideoMessage>, ServerSideStreamingService<VideoMessage>>();
+            services.AddSingleton<IRecordingService<AudioRecordingConfiguration>, AudioRecordingService>();
+            services.AddSingleton<IAudioRecordingService, AudioRecordingService>();
+            services.AddSingleton<IServerSideStreamingService<BlobMessage>, ServerSideStreamingService<BlobMessage>>();
             services.AddSingleton<IServerSideStreamingService<TranscriptMessage>, ServerSideStreamingService<TranscriptMessage>>();
+            services.AddSingleton<IServerSideRecordingService<AudioRecording>, ServerSideRecordingService<AudioRecording>>();
             
             services.AddSignalR()
                 .AddMessagePackProtocol(); // TODO: no AOT compilation support yet 

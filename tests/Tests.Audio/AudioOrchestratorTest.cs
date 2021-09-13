@@ -45,11 +45,11 @@ namespace ActualChat.Tests.Audio
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var streamingService = services.GetRequiredService<IAudioStreamingService>(); 
+            var streamingService = services.GetRequiredService<IRecordingService<AudioRecordingConfiguration>>(); 
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
             
-            var channel = Channel.CreateBounded<AudioMessage>(
+            var channel = Channel.CreateBounded<BlobMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -74,11 +74,12 @@ namespace ActualChat.Tests.Audio
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var streamingService = services.GetRequiredService<IAudioStreamingService>(); 
+            var recordingService = services.GetRequiredService<IAudioRecordingService>(); 
+            var streamingService = services.GetRequiredService<IStreamingService<BlobMessage>>(); 
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
 
-            var pushAudioTask = PushAudioData(streamingService);
+            var pushAudioTask = PushAudioData(recordingService);
             
             var recording = await recordingTask;
             var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
@@ -98,12 +99,13 @@ namespace ActualChat.Tests.Audio
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var streamingService = services.GetRequiredService<IAudioStreamingService>(); 
+            var streamingService = services.GetRequiredService<IStreamingService<BlobMessage>>(); 
+            var recordingService = services.GetRequiredService<IAudioRecordingService>(); 
             var transcriptStreaming = services.GetRequiredService<IStreamingService<TranscriptMessage>>();
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
 
-            var pushAudioTask = PushAudioData(streamingService);
+            var pushAudioTask = PushAudioData(recordingService);
             
             var recording = await recordingTask;
             var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
@@ -135,7 +137,7 @@ namespace ActualChat.Tests.Audio
             return size;
         }
         
-        private static async Task<int> ReadDistributedData(RecordingId recordingId, IStreamingService<AudioMessage> sr)
+        private static async Task<int> ReadDistributedData(RecordingId recordingId, IStreamingService<BlobMessage> sr)
         {
             var streamId = new StreamId(recordingId, 0);
             var audioReader = await sr.GetStream(streamId, CancellationToken.None);
@@ -143,13 +145,13 @@ namespace ActualChat.Tests.Audio
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
         }
         
-        private static async Task<int> PushAudioData(IAudioStreamingService streamingService)
+        private static async Task<int> PushAudioData(IRecordingService<AudioRecordingConfiguration> streamingService)
         {
             var audioConfig = new AudioRecordingConfiguration(
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var channel = Channel.CreateBounded<AudioMessage>(
+            var channel = Channel.CreateBounded<BlobMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -167,9 +169,8 @@ namespace ActualChat.Tests.Audio
             var bytesRead = await inputStream.ReadAsync(readBuffer);
             size += bytesRead;
             while (bytesRead > 0) {
-                var command = new AudioMessage(
+                var command = new BlobMessage(
                     index++,
-                    CpuClock.Now.EpochOffset.TotalSeconds, 
                     readBuffer[..bytesRead].ToArray());
                 await channel.Writer.WriteAsync(command, CancellationToken.None);
 

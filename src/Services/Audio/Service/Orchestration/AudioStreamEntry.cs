@@ -14,10 +14,10 @@ namespace ActualChat.Audio.Orchestration
         private readonly WebMDocumentBuilder _documentBuilder;
         private readonly IReadOnlyList<AudioMetaDataEntry> _metaData;
         private readonly double _offset;
-        private readonly ChannelReader<AudioMessage> _audioStream;
-        private readonly List<AudioMessage> _buffer;
-        private readonly Channel<ChannelWriter<AudioMessage>> _readChannels;
-        private readonly List<ChannelWriter<AudioMessage>> _activeReadChannels;
+        private readonly ChannelReader<BlobMessage> _audioStream;
+        private readonly List<BlobMessage> _buffer;
+        private readonly Channel<ChannelWriter<BlobMessage>> _readChannels;
+        private readonly List<ChannelWriter<BlobMessage>> _activeReadChannels;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TaskCompletionSource _completionSource;
 
@@ -31,7 +31,7 @@ namespace ActualChat.Audio.Orchestration
             WebMDocumentBuilder documentBuilder,
             IReadOnlyList<AudioMetaDataEntry> metaData,
             double offset,
-            ChannelReader<AudioMessage> audioStream)
+            ChannelReader<BlobMessage> audioStream)
         {
             var streamId = new StreamId(audioRecording.Id, index);
             _documentBuilder = documentBuilder;
@@ -41,10 +41,10 @@ namespace ActualChat.Audio.Orchestration
             StreamId = streamId;
             Index = index;
             _audioStream = audioStream;
-            _buffer = new List<AudioMessage>();
-            _readChannels = Channel.CreateUnbounded<ChannelWriter<AudioMessage>>(
+            _buffer = new List<BlobMessage>();
+            _readChannels = Channel.CreateUnbounded<ChannelWriter<BlobMessage>>(
                 new UnboundedChannelOptions { SingleReader = true });
-            _activeReadChannels = new List<ChannelWriter<AudioMessage>>();
+            _activeReadChannels = new List<ChannelWriter<BlobMessage>>();
             _cancellationTokenSource = new CancellationTokenSource();
             _completionSource = new TaskCompletionSource();
         }
@@ -53,12 +53,12 @@ namespace ActualChat.Audio.Orchestration
         public int Index { get; }
         public AudioRecording AudioRecording { get; }
 
-        public ChannelReader<AudioMessage> GetStream()
+        public ChannelReader<BlobMessage> GetStream()
         {
             if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0) 
                 _bufferingTask = StartBuffering(_cancellationTokenSource.Token);
             
-            var readChannel = Channel.CreateUnbounded<AudioMessage>(
+            var readChannel = Channel.CreateUnbounded<BlobMessage>(
                 new UnboundedChannelOptions { SingleWriter = true });
             var buffering = Volatile.Read(ref _buffering);
             if (buffering != 1)
@@ -68,7 +68,7 @@ namespace ActualChat.Audio.Orchestration
 
             return readChannel.Reader;
 
-            async Task FillWithBuffered(ChannelWriter<AudioMessage> writer, int state)
+            async Task FillWithBuffered(ChannelWriter<BlobMessage> writer, int state)
             {
                 if (state == 2) {
                     await Task.Yield();

@@ -10,15 +10,5 @@ namespace ActualChat.Streaming
         public const string AudioRecordingQueue = "audio-rec-queue";
         public const double EmptyStreamDelay = 0.250d;
         public const double NoRecordingsDelay = 25d;
-
-        public static string BuildChannelName(RecordingId recordingId)
-        {
-            return $"{AudioRecordingPrefix}-{recordingId.Value}";
-        }
-        
-        public static string BuildChannelName(StreamId recordingId)
-        {
-            return $"{AudioRecordingPrefix}-{recordingId.Value}";
-        }
     }
 }

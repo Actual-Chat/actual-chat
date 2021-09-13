@@ -4,12 +4,8 @@ using System.Threading.Tasks;
 
 namespace ActualChat.Streaming
 {
-    public interface IServerSideStreamingService<TMessage>
+    public interface IServerSideStreamingService<TMessage> where TMessage : class, IMessage
     {
         Task PublishStream(StreamId streamId, ChannelReader<TMessage> source, CancellationToken cancellationToken);
-        
-        Task Publish(StreamId streamId, TMessage message, CancellationToken cancellationToken);
-        
-        Task Complete(StreamId streamId, CancellationToken cancellationToken);
     }
 }
