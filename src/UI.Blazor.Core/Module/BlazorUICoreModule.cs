@@ -14,7 +14,7 @@ namespace ActualChat.UI.Blazor.Module
 {
     public class BlazorUICoreModule : HostModule, IBlazorUIModule
     {
-        public string[] StyleSheetPaths => new [] {"css/virtual-list.css"};
+        public string[] CssPaths => new [] {"css/virtual-list.css"};
 
         public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]

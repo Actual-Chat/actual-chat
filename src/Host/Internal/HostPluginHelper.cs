@@ -7,19 +7,19 @@ namespace ActualChat.Host.Internal
 {
     public class HostPluginHelper
     {
-        public string[] StyleSheetPaths { get; }
-        public string[] ScriptPaths { get; }
+        public string[] CssUrls { get; }
+        public string[] ScriptUrls { get; }
 
         public HostPluginHelper(IServiceProvider services)
         {
             var uiModules = services.Plugins().GetPlugins<IBlazorUIModule>().ToArray();
-            StyleSheetPaths = uiModules.SelectMany(
-                    module => module.StyleSheetPaths.Select(
-                        path => module.GetType().Assembly.GetContentPath(path)))
+            CssUrls = uiModules.SelectMany(
+                    module => module.CssPaths.Select(
+                        path => module.GetType().Assembly.GetContentUrl(path)))
                 .ToArray();
-            ScriptPaths ??= uiModules.SelectMany(
+            ScriptUrls ??= uiModules.SelectMany(
                     module => module.ScriptPaths.Select(
-                        path => module.GetType().Assembly.GetContentPath(path)))
+                        path => module.GetType().Assembly.GetContentUrl(path)))
                 .ToArray();
         }
     }
