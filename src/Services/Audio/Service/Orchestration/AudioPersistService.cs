@@ -71,7 +71,7 @@ namespace ActualChat.Audio.Orchestration
 
             var (ebml, segment, clusters) = document;
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
-            await using var stream = MemoryStreamManager.GetStream(nameof(AudioRecorder));
+            await using var stream = MemoryStreamManager.GetStream(nameof(AudioPersistService));
             using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
 
             var ebmlWritten = WriteEntry(new WebMWriter(bufferLease.Memory.Span), ebml);
