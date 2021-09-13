@@ -15,7 +15,7 @@ using Stl.Time;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Tests.Streaming
 {
     public class RecordingTest : TestBase
     {
