@@ -11,7 +11,6 @@ using ActualChat.Testing;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Testing;
-using Stl.Text;
 using Stl.Time;
 using Xunit;
 using Xunit.Abstractions;
