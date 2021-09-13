@@ -27,7 +27,7 @@ namespace ActualChat.Tests.Audio
         public async Task SplitStreamReadBeforeCompletionTest()
         {
             var splitter = new AudioStreamSplitter();
-            var channel = Channel.CreateBounded<AudioMessage>(
+            var channel = Channel.CreateBounded<BlobMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -62,7 +62,7 @@ namespace ActualChat.Tests.Audio
         public async Task SplitStreamReadAfterCompletionTest()
         {
             var splitter = new AudioStreamSplitter();
-            var channel = Channel.CreateBounded<AudioMessage>(
+            var channel = Channel.CreateBounded<BlobMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -97,7 +97,7 @@ namespace ActualChat.Tests.Audio
         public async Task SplitStreamDontReadTest()
         {
             var splitter = new AudioStreamSplitter();
-            var channel = Channel.CreateBounded<AudioMessage>(
+            var channel = Channel.CreateBounded<BlobMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -123,7 +123,7 @@ namespace ActualChat.Tests.Audio
             }
         } 
         
-        private static async Task<int> ReadFromFile(ChannelWriter<AudioMessage> writer)
+        private static async Task<int> ReadFromFile(ChannelWriter<BlobMessage> writer)
         {
             var size = 0;
             await using var inputStream = new FileStream(
@@ -136,9 +136,8 @@ namespace ActualChat.Tests.Audio
             var bytesRead = await inputStream.ReadAsync(readBuffer);
             size += bytesRead;
             while (bytesRead > 0) {
-                var command = new AudioMessage(
+                var command = new BlobMessage(
                     index++,
-                    CpuClock.Now.EpochOffset.TotalSeconds,
                     readBuffer[..bytesRead].ToArray());
                 await writer.WriteAsync(command, CancellationToken.None);
 

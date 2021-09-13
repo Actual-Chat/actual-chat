@@ -10,7 +10,7 @@ using Stl.Async;
 
 namespace ActualChat.Streaming
 {
-    public class ServerSideStreamingService<TMessage> : IServerSideStreamingService<TMessage>
+    public class ServerSideStreamingService<TMessage> : IServerSideStreamingService<TMessage> where TMessage : class, IMessage
     {
         protected readonly IConnectionMultiplexer Redis;
 
@@ -64,7 +64,7 @@ namespace ActualChat.Streaming
         private async Task NotifyNewMessage(StreamId streamId)
         {
             var subscriber = Redis.GetSubscriber();
-            await subscriber.PublishAsync(StreamingConstants.BuildChannelName(streamId), string.Empty);
+            await subscriber.PublishAsync(IdExtensions.GetChannelName(streamId), string.Empty);
         }
 
         public async Task Publish(StreamId streamId, TMessage message, CancellationToken cancellationToken)

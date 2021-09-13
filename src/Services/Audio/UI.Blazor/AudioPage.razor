@@ -12,7 +12,8 @@
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject ILogger<AudioPage> _log
-@inject IAudioStreamingService _audioStreaming
+@inject IRecordingService<AudioRecordingConfiguration> _audioRecording
+@inject IStreamingService<BlobMessage> _streaming
 @inject IStreamingService<TranscriptMessage> _transcriptStreaming
 
 <h1>Voice Transcription</h1>
@@ -45,7 +46,7 @@
 @code {
     private IJSObjectReference? ModuleRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
-    private ChannelWriter<AudioMessage>? Writer { get; set; }
+    private ChannelWriter<BlobMessage>? Writer { get; set; }
     private int Index { get; set; }
 
     private bool IsRecording { get; set; } = false;
@@ -106,7 +107,7 @@
     {
         if (Writer == null)
         {
-            var channel = Channel.CreateBounded<AudioMessage>(
+            var channel = Channel.CreateBounded<BlobMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -119,7 +120,7 @@
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = _audioStreaming.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
+            _ = _audioRecording.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
 
             // _ = ReadAudio(recordingId);
             // _ = ReadTranscription(recordingId);
@@ -131,7 +132,7 @@
     private async Task ReadAudio(RecordingId recordingId)
     {
         var streamId = new StreamId(recordingId, 0);
-        var reader = await _audioStreaming.GetStream(streamId, CancellationToken.None);
+        var reader = await _streaming.GetStream(streamId, CancellationToken.None);
         await foreach (var audioMessage in reader.ReadAllAsync()) {
             Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
         }
@@ -152,7 +153,7 @@
         if (Writer != null) {
             var base64 = Base64Encoded.Decode(dataAsBase64);
 
-            await Writer.WriteAsync(new AudioMessage(Index++, CpuClock.Now.EpochOffset.TotalSeconds, base64.Data));
+            await Writer.WriteAsync(new BlobMessage(Index++, base64.Data));
         }
     }
 

@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\..\Db\Db.csproj" />
     <ProjectReference Include="..\..\Streaming\Contract\Contract.csproj" />
     <ProjectReference Include="..\..\Transcription\Contract\Contract.csproj" />
+    <ProjectReference Include="..\..\Chat\Contract\Contract.csproj" />
     <ProjectReference Include="..\Contract\Contract.csproj" />
   </ItemGroup>
 

@@ -3,6 +3,15 @@ using MessagePack;
 
 namespace ActualChat.Streaming
 {
+    public interface IRecording
+    { }
+    
+    public interface IRecordingConfiguration
+    { }
+    
+    public interface IMessage
+    { }
+
     [MessagePackObject]
     public readonly struct RecordingId
     {
@@ -34,27 +43,32 @@ namespace ActualChat.Streaming
     public record AudioRecordingConfiguration(
         [property: Key(0)] AudioFormat Format,
         [property: Key(1)] string Language,
-        [property: Key(2)] double ClientStartOffset);
+        [property: Key(2)] double ClientStartOffset): IRecordingConfiguration;
 
     [MessagePackObject]
     public record AudioRecording(
         [property: Key(0)] RecordingId Id,
-        [property: Key(1)] AudioRecordingConfiguration Configuration);
+        [property: Key(1)] AudioRecordingConfiguration Configuration) : IRecording;
     
     [MessagePackObject]
-    public record AudioMessage(
-        [property: Key(0)] int Index,
-        [property: Key(1)] double ClientEndOffset,
-        [property: Key(2)] byte[] Chunk);
-    
-    [MessagePackObject]
-    public record VideoMessage([property: MessagePack.Key(0)] byte[] Chunk);
+    public record VideoRecordingConfiguration(
+        [property: Key(0)] double ClientStartOffset): IRecordingConfiguration;
 
+    [MessagePackObject]
+    public record VideoRecording(
+        [property: Key(0)] RecordingId Id,
+        [property: Key(1)] VideoRecordingConfiguration Configuration): IRecording;
+    
+    [MessagePackObject]
+    public record BlobMessage(
+        [property: Key(0)] int Index,
+        [property: Key(2)] byte[] Chunk) : IMessage;
+    
     [MessagePackObject]
     public record TranscriptMessage(
         [property: Key(0)] string Text, 
         [property: Key(1)] int TextIndex,
         [property: Key(2)] double StartOffset, 
-        [property: Key(3)] double Duration);
+        [property: Key(3)] double Duration) : IMessage;
 
 }

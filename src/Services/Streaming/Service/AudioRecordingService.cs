@@ -7,23 +7,24 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.HighPerformance.Buffers;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
-using Stl.Async;
 using Stl.Generators;
 
 namespace ActualChat.Streaming
 {
-    public class AudioStreamingService : StreamingService<AudioMessage>, IAudioStreamingService
+    public class AudioRecordingService : IAudioRecordingService
     {
-        private readonly ILogger<AudioStreamingService> _log;
+        private readonly ILogger<AudioRecordingService> _log;
         private readonly RandomStringGenerator _idGenerator;
+        private readonly IConnectionMultiplexer _redis;
 
-        public AudioStreamingService(IConnectionMultiplexer redis, ILogger<AudioStreamingService> log) : base(redis)
+        public AudioRecordingService(IConnectionMultiplexer redis, ILogger<AudioRecordingService> log) 
         {
+            _redis = redis;
             _log = log;
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
         }
 
-        public async Task UploadRecording(AudioRecordingConfiguration config, ChannelReader<AudioMessage> source, CancellationToken cancellationToken)
+        public async Task UploadRecording(AudioRecordingConfiguration config, ChannelReader<BlobMessage> source, CancellationToken cancellationToken)
         {
             var recordingId = _idGenerator.Next();
             _log.LogInformation($"{nameof(UploadRecording)}, RecordingId = {{RecordingId}}", recordingId);
@@ -79,18 +80,18 @@ namespace ActualChat.Streaming
             var serialized = bufferWriter.WrittenMemory;
             db.ListLeftPush(StreamingConstants.AudioRecordingQueue, serialized);
 
-            var subscriber = Redis.GetSubscriber();
+            var subscriber = _redis.GetSubscriber();
             await subscriber.PublishAsync(StreamingConstants.AudioRecordingQueue, string.Empty);
         }
 
         private async Task NotifyNewAudioMessage(string recordingId)
         {
-            var subscriber = Redis.GetSubscriber();
-            await subscriber.PublishAsync(StreamingConstants.BuildChannelName(new RecordingId(recordingId)),string.Empty);
+            var subscriber = _redis.GetSubscriber();
+            await subscriber.PublishAsync(IdExtensions.GetChannelName(new RecordingId(recordingId)),string.Empty);
         }
 
 
-        protected override IDatabase GetDatabase()
-            => Redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);
+        protected IDatabase GetDatabase()
+            => _redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);
     }
 }
