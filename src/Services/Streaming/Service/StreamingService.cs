@@ -82,9 +82,12 @@ namespace ActualChat.Streaming
         
         private async Task WaitForNewMessage(StreamId streamId, CancellationToken cancellationToken)
         {
-            var subscriber = Redis.GetSubscriber();
-            var queue = await subscriber.SubscribeAsync(StreamingConstants.BuildChannelName(streamId));
-            await queue.ReadAsync(cancellationToken);
+            try {
+                var subscriber = Redis.GetSubscriber();
+                var queue = await subscriber.SubscribeAsync(StreamingConstants.BuildChannelName(streamId));
+                await queue.ReadAsync(cancellationToken);
+            }
+            catch (ChannelClosedException) { }
         }
     }
 }

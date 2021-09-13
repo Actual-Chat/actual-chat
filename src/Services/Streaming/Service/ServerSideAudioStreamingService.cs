@@ -17,35 +17,40 @@ namespace ActualChat.Streaming
 
         public async Task<AudioRecording?> WaitForNewRecording(CancellationToken cancellationToken)
         {
-            var db = GetDatabase();
-            var subscriber = Redis.GetSubscriber();
-            var queue = await subscriber.SubscribeAsync(StreamingConstants.AudioRecordingQueue);
-            while (true) {
-                if (cancellationToken.IsCancellationRequested)
-                    return null;
-                
-                using var cts = new CancellationTokenSource();
-                var ctsToken = cts.Token;
-                await using var _ = cancellationToken
-                    .Register(state => ((CancellationTokenSource) state!).Cancel(), cts)
-                    .ToAsyncDisposableAdapter();
+            try {
+                var db = GetDatabase();
+                var subscriber = Redis.GetSubscriber();
+                var queue = await subscriber.SubscribeAsync(StreamingConstants.AudioRecordingQueue);
+                while (true) {
+                    if (cancellationToken.IsCancellationRequested)
+                        return null;
 
-                var message = await queue.ReadAsync(ctsToken)
-                    .AsTask()
-                    .WithTimeout(TimeSpan.FromSeconds(StreamingConstants.NoRecordingsDelay), cancellationToken);
-                if (message.IsNone())
-                    cts.Cancel();
+                    using var cts = new CancellationTokenSource();
+                    var ctsToken = cts.Token;
+                    await using var _ = cancellationToken
+                        .Register(state => ((CancellationTokenSource)state!).Cancel(), cts)
+                        .ToAsyncDisposableAdapter();
 
-                var value = await db.ListRightPopAsync(StreamingConstants.AudioRecordingQueue);
-                if (value.IsNullOrEmpty) // yet another consumer has already popped a value 
-                    continue;
+                    var message = await queue.ReadAsync(ctsToken)
+                        .AsTask()
+                        .WithTimeout(TimeSpan.FromSeconds(StreamingConstants.NoRecordingsDelay), cancellationToken);
+                    if (message.IsNone())
+                        cts.Cancel();
 
-                var serialized = (ReadOnlyMemory<byte>)value;
-                var audioRecording = MessagePackSerializer.Deserialize<AudioRecording>(
-                    serialized,
-                    MessagePackSerializerOptions.Standard, 
-                    cancellationToken);
-                return audioRecording;
+                    var value = await db.ListRightPopAsync(StreamingConstants.AudioRecordingQueue);
+                    if (value.IsNullOrEmpty) // yet another consumer has already popped a value 
+                        continue;
+
+                    var serialized = (ReadOnlyMemory<byte>)value;
+                    var audioRecording = MessagePackSerializer.Deserialize<AudioRecording>(
+                        serialized,
+                        MessagePackSerializerOptions.Standard,
+                        cancellationToken);
+                    return audioRecording;
+                }
+            }
+            catch (ChannelClosedException) {
+                return null;
             }
         }
 
@@ -123,9 +128,12 @@ namespace ActualChat.Streaming
 
         private async Task WaitForNewMessage(RecordingId recordingId, CancellationToken cancellationToken)
         {
-            var subscriber = Redis.GetSubscriber();
-            var queue = await subscriber.SubscribeAsync(StreamingConstants.BuildChannelName(recordingId));
-            await queue.ReadAsync(cancellationToken);
+            try {
+                var subscriber = Redis.GetSubscriber();
+                var queue = await subscriber.SubscribeAsync(StreamingConstants.BuildChannelName(recordingId));
+                await queue.ReadAsync(cancellationToken);
+            }
+            catch (ChannelClosedException) { }
         }
     }
 }
