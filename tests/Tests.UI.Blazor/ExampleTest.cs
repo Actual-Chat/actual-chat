@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using ActualChat.Chat.UI.Blazor;
 using ActualChat.Testing;
 using Blazorise;
@@ -9,13 +6,12 @@ using Bunit;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
-using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace ActualChat.Tests.UI.Blazor
 {
-    public class ExampleTest : TestBase
+    public class ExampleTest : AppHostTestBase
     {
         public ExampleTest(ITestOutputHelper @out) : base(@out) { }
 
