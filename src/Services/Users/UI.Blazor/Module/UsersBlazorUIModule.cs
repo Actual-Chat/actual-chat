@@ -17,7 +17,6 @@ namespace ActualChat.Users.UI.Blazor.Module
 
         public override void InjectServices(IServiceCollection services)
         {
-            services.RemoveAll(typeof(PresenceService.Options));
             services.AddSingleton(_ => new PresenceService.Options() {
                 UpdatePeriod = TimeSpan.FromSeconds(50),
             });
