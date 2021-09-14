@@ -2,9 +2,7 @@
 using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Orchestration;
-using ActualChat.Blobs;
 using ActualChat.Hosting;
-using ActualChat.Transcription;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.CommandR;
@@ -59,7 +57,7 @@ namespace ActualChat.Audio.Module
                     return true;
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
-                if (commandAssembly == typeof(IAudioRecorder).Assembly)
+                if (commandAssembly == typeof(IAudio).Assembly)
                     return true;
                 return false;
             });
@@ -67,7 +65,7 @@ namespace ActualChat.Audio.Module
             // Module's own services
             services.AddSingleton<AudioPersistService>();
             services.AddSingleton<AudioOrchestrator>();
-            services.AddHostedService<AudioOrchestrator>(sp => sp.GetRequiredService<AudioOrchestrator>());
+            services.AddHostedService(sp => sp.GetRequiredService<AudioOrchestrator>());
         }
     }
 }
