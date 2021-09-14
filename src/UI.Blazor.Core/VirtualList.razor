@@ -114,7 +114,12 @@
     public override async ValueTask DisposeAsync()
     {
         if (JSComponentRef != null) {
-            await JSComponentRef.InvokeVoidAsync("dispose");
+            try {
+                await JSComponentRef.InvokeVoidAsync("dispose");
+            }
+            catch {
+                // Intended
+            }
             await JSComponentRef.DisposeAsync();
         }
         ComponentRef?.Dispose();
