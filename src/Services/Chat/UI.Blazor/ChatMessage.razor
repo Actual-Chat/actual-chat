@@ -1,0 +1,15 @@
+<div class="message">
+    <UserNameBadge UserId="@Entry.CreatorId"/>
+    @if (Entry.IsStreaming) {
+        <ChatMessageTranscript Text="@Entry.Content" StreamId="@Entry.StreamId"></ChatMessageTranscript>
+    }
+    else{
+        <ChatMessageText Text="@Entry.Content"></ChatMessageText>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public ChatEntry Entry { get; set; } = null!;
+
+}

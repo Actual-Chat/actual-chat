@@ -32,10 +32,7 @@
             Provider="GetMessages"
             KeyComparer="LongAsStringKeyComparer.Default">
             <Item>
-                <div class="message">
-                    <UserNameBadge UserId="@context.Value.CreatorId"/>
-                    <span class="content">@context.Value.Content</span>
-                </div>
+                <ChatMessage Entry="@context.Value"></ChatMessage>
             </Item>
         </VirtualList>
     </div>

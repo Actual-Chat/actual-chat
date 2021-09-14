@@ -1,0 +1,73 @@
+@using ActualChat.Streaming
+@using System.Threading.Channels
+@inherits ComputedStateComponent<string>
+
+@inject IStreamingService<TranscriptMessage> _streamingService
+
+<span class="content">@State.LatestNonErrorValue</span>
+
+@code {
+    private CancellationTokenSource? _cancellationTokenSource;
+    private ConcurrentQueue<TranscriptMessage>? _receivedMessages; 
+
+    [Parameter]
+    public string Text { get; set; } = null!;
+    
+    [Parameter]
+    public string StreamId { get; set; } = null!;
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_cancellationTokenSource != null) {
+            // we should never call those statements
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
+        }
+        _receivedMessages ??= new ConcurrentQueue<TranscriptMessage>();
+        
+        _cancellationTokenSource = new CancellationTokenSource();
+        var transcriptReader = await _streamingService.GetStream(StreamId, _cancellationTokenSource.Token);
+        _ = ReadTranscript(transcriptReader, _cancellationTokenSource.Token);
+        
+        await base.OnParametersSetAsync();
+
+    }
+
+    protected override Task<string> ComputeState(CancellationToken cancellationToken)
+    {
+        var state = State.LatestNonErrorValue;
+        if (state.IsNullOrEmpty())
+            state = Text;
+        
+        while (_receivedMessages != null && _receivedMessages.TryDequeue(out var message)) {
+            var (text, index, _, _) = message;
+            state = $"{state[..index]}{text}";
+        }
+
+        return Task.FromResult(state);
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        
+        // _cancellationTokenSource?.Cancel();
+        // _cancellationTokenSource?.Dispose();
+    }
+
+    private async Task ReadTranscript(ChannelReader<TranscriptMessage> transcriptReader, CancellationToken token)
+    {
+        try {
+            while (await transcriptReader.WaitToReadAsync(token))
+            while (transcriptReader.TryRead(out var message)) {
+                token.ThrowIfCancellationRequested();
+
+                _receivedMessages?.Enqueue(message);
+                StateHasChanged();
+            }
+        }
+        catch (ChannelClosedException) { }
+    }
+
+}
