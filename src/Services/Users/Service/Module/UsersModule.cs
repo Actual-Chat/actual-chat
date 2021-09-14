@@ -80,6 +80,9 @@ namespace ActualChat.Users.Module
                 dbContext.AddNpgsqlOperationLogChangeTracking();
 
                 // Overriding / adding extra DbAuthentication services
+                services.AddSingleton(_ => new DbAuthService<UsersDbContext>.Options() {
+                    MinUpdatePresencePeriod = TimeSpan.FromSeconds(45),
+                });
                 services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
                 services.TryAddSingleton<DbUserByNameResolver>();
                 dbContext.AddEntityResolver<string, DbUserIdentity<string>>();

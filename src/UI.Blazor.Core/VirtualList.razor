@@ -196,12 +196,16 @@
         ri.ViewRange = clientSideState.ViewRange;
         ri.IsScrollStopped = clientSideState.IsScrollStopped;
 
+        void DelayedStateHasChanged() {
+            _ = Task.Delay(10).ContinueWith(_ => InvokeAsync(StateHasChanged));
+        }
+
         if (isItemSizeChanged) {
             ri.UpdateRanges();
-            StateHasChanged();
+            DelayedStateHasChanged();
         }
         else if (ri.IsScrollStopped)
-            StateHasChanged();
+            DelayedStateHasChanged();
         else if (isViewRangeChanged || !prevIsViewLoaded || !ri.IsViewLoaded)
             TryRecomputeState();
     }

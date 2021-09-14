@@ -1,7 +1,10 @@
-﻿using ActualChat.Hosting;
+﻿using System;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
+using Stl.Fusion.Authentication;
 using Stl.Plugins;
 
 namespace ActualChat.Users.UI.Blazor.Module
@@ -12,6 +15,12 @@ namespace ActualChat.Users.UI.Blazor.Module
         [ServiceConstructor]
         public UsersBlazorUIModule(IPluginHost plugins) : base(plugins) { }
 
-        public override void InjectServices(IServiceCollection services) { }
+        public override void InjectServices(IServiceCollection services)
+        {
+            services.RemoveAll(typeof(PresenceService.Options));
+            services.AddSingleton(_ => new PresenceService.Options() {
+                UpdatePeriod = TimeSpan.FromSeconds(50),
+            });
+        }
     }
 }

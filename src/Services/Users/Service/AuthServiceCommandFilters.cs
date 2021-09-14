@@ -123,12 +123,14 @@ namespace ActualChat.Users
         {
             if (Computed.IsInvalidating()) {
                 var c = Computed.TryGetExisting(() => UserStates.IsOnline(userId, default));
-                if (c?.IsConsistent() == true && (!c.IsValue(out var v) || !v)) {
-                    // We invalidate only when there is a cached value, and it is
-                    // either false or an error, because the only change that may happen
-                    // due to sign-in is that this value becomes true.
-                    _ = UserStates.IsOnline(userId, default);
-                }
+                if (c == null || !c.IsConsistent())
+                    return;
+                if (c.IsValue(out var v) && v)
+                    return;
+                // We invalidate only when there is a cached value, and it is
+                // either false or an error, because the only change that may happen
+                // due to sign-in is that this value becomes true.
+                _ = UserStates.IsOnline(userId, default);
                 return;
             }
 

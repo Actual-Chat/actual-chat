@@ -87,15 +87,15 @@
 
         var startId = long.Parse(query.IncludedRange.Start);
         if (query.ExpandStartBy > 0)
-            startId -= (int) query.ExpandStartBy;
+            startId -= (long) query.ExpandStartBy;
         startId = MathEx.Max(range.Start, startId);
 
         var endId = long.Parse(query.IncludedRange.End);
         if (query.ExpandEndBy > 0)
-            endId += (int) query.ExpandEndBy;
+            endId += (long) query.ExpandEndBy;
         endId = MathEx.Min(range.End, endId);
 
-        var ranges = idLogCover.GetTileCover((startId, endId));
+        var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var pages = await Task.WhenAll(ranges.Select(r => _chats.GetPage(_session, chatId, r, cancellationToken)));
         var result = VirtualListResponse.New(
             pages.SelectMany(p => p.Entries),
