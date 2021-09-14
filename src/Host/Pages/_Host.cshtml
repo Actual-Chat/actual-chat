@@ -2,16 +2,16 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.Host.Pages
 @using ActualChat.Host.Internal
-@using ActualChat.UI.Blazor
 @using ActualChat.UI.Blazor.Host
 @using Microsoft.AspNetCore.Html
+@using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
 @inject IServiceProvider _services
 @inject ServerAuthHelper _serverAuthHelper
 @inject HostPluginHelper _hostPluginHelper
 @inject HostSettings _hostSettings
-@inject RenderingContext _renderingContext
+@inject BlazorCircuitContext _blazorCircuitContext
 @{
     await _serverAuthHelper.UpdateAuthState(HttpContext);
     var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);
@@ -53,12 +53,11 @@
     <app id="app">
         @{
             IHtmlContent? prerenderedApp;
-            _renderingContext.IsPrerendering = true;
+            using var prerendering = _blazorCircuitContext.Prerendering();
             var errorCount = 0;
             while (true) {
                 // Workaround for https://github.com/dotnet/aspnetcore/issues/26966
                 try {
-                    _renderingContext.IsPrerendering = true;
                     prerenderedApp = await Html.RenderComponentAsync<App>(
                         isServerSideBlazor ? RenderMode.ServerPrerendered : RenderMode.WebAssemblyPrerendered,
                         new { SessionId = sessionId });
@@ -67,9 +66,6 @@
                 catch (InvalidOperationException) {
                     if (++errorCount > 3)
                         throw;
-                }
-                finally {
-                    _renderingContext.IsPrerendering = false;
                 }
             }
         }
