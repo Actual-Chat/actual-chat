@@ -51,7 +51,7 @@ namespace ActualChat.Chat.Module
                 dbContext.Chats.Add(dbChat);
                 await dbContext.SaveChangesAsync(cancellationToken);
 
-                for (var id = 0; id < 100; id++) {
+                for (var id = 0; id < 96; id++) {
                     var dbChatEntry = new DbChatEntry() {
                         ChatId = dbChat.Id,
                         Id = id,
