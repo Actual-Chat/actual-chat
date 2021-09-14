@@ -1,3 +1,4 @@
+using Stl.CommandR;
 using Stl.Fusion.Authentication;
 
 namespace ActualChat.Chat
@@ -23,6 +24,10 @@ namespace ActualChat.Chat
         public record Post(Session Session, string ChatId, string Text)
             : Cmd<ChatEntry>(Session, ChatId) {
             public Post() : this(Session.Null, "", "") { }
+        }
+        
+        public record ServerPost(string UserId, string ChatId, string Text, string StreamId) : ICommand<ChatEntry> {
+            public ServerPost() : this("", "", "", "") { }
         }
     }
 }

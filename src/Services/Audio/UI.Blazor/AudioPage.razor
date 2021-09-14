@@ -120,7 +120,7 @@
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = _audioRecording.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
+            _ = _audioRecording.UploadRecording(_session, "1", audioConfig, channel.Reader, CancellationToken.None);
 
             // _ = ReadAudio(recordingId);
             // _ = ReadTranscription(recordingId);

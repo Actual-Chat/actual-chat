@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Streaming.Client.Module;
+using Stl.Fusion.Authentication;
 
 namespace ActualChat.Streaming.Client
 {
@@ -14,10 +15,10 @@ namespace ActualChat.Streaming.Client
             _hubConnectionSentinel = hubConnectionSentinel;
         }
         
-        public async Task UploadRecording(AudioRecordingConfiguration config, ChannelReader<BlobMessage> source, CancellationToken cancellationToken)
+        public async Task UploadRecording(Session session, string chatId, AudioRecordingConfiguration config, ChannelReader<BlobMessage> source, CancellationToken cancellationToken)
         {
             var hubConnection = await _hubConnectionSentinel.GetInitialized(cancellationToken);
-            await hubConnection.SendCoreAsync("UploadAudioStream", new object[]{config, source}, cancellationToken);
+            await hubConnection.SendCoreAsync("UploadAudioStream", new object[]{session, chatId, config, source}, cancellationToken);
         }
     }
 }

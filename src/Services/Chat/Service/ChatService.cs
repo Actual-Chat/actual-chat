@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reactive;
 using System.Security;
@@ -37,7 +38,32 @@ namespace ActualChat.Chat
         }
 
         // Commands
+        public virtual async Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken = default)
+        {
+            var (userId, chatId, text, streamId) = command;
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating()) {
+                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+                _ = GetIdRange(chatId, default);
+                InvalidateChatPages(chatId, invChatEntry.Id, false);
+                return null!;
+            }
 
+            await AssertHasPermissions(chatId, userId, ChatPermissions.Write, cancellationToken);
+
+            var dbChatEntry = await PersistChatEntry(
+                chatId,
+                userId,
+                streamId,
+                text,
+                cancellationToken);
+
+            var chatEntry = dbChatEntry.ToModel();
+            context.Operation().Items.Set(chatEntry);
+            return chatEntry;
+        }
+
+        // Queries
         public virtual async Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default)
         {
             var (session, title) = command;
@@ -84,26 +110,12 @@ namespace ActualChat.Chat
             user.MustBeAuthenticated();
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken);
 
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var now = Clocks.SystemClock.Now;
-            var id = 1 + await dbContext.ChatEntries.AsQueryable()
-                .Where(e => e.ChatId == chatId)
-                .OrderByDescending(e => e.Id)
-                .Select(e => e.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            var dbChatEntry = new DbChatEntry() {
-                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
-                ChatId = chatId,
-                Id = id,
-                Version = VersionGenerator.NextVersion(),
-                CreatorId = user.Id,
-                BeginsAt = now,
-                EndsAt = now,
-                ContentType = ChatContentType.Text,
-                Content = text,
-            };
-            dbContext.Add(dbChatEntry);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            var dbChatEntry = await PersistChatEntry(
+                chatId,
+                user.Id,
+                string.Empty,
+                text,
+                cancellationToken);
 
             var chatEntry = dbChatEntry.ToModel();
             context.Operation().Items.Set(chatEntry);
@@ -226,7 +238,6 @@ namespace ActualChat.Chat
         }
 
         // Protected methods
-
         [ComputeMethod]
         protected virtual async Task<Unit> AssertHasPermissions(
             Session session, string chatId, ChatPermissions permissions,
@@ -247,6 +258,7 @@ namespace ActualChat.Chat
             return default;
         }
 
+        [SuppressMessage("ReSharper", "RedundantArgumentDefaultValue")]
         protected void InvalidateChatPages(string chatId, long chatEntryId, bool isUpdate = false)
         {
             if (!isUpdate)
@@ -256,6 +268,38 @@ namespace ActualChat.Chat
                 if (!isUpdate)
                     _ = GetEntryCount(chatId, idRange, default);
             }
+        }
+
+        private async Task<DbChatEntry> PersistChatEntry(
+            string chatId,
+            string userId,
+            string streamId,
+            string text,
+            CancellationToken cancellationToken)
+        {
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
+            var now = Clocks.SystemClock.Now;
+            // TODO(AK): Suspicious - probably can lead to performance issues
+            var id = 1 + await dbContext.ChatEntries.AsQueryable()
+                .Where(e => e.ChatId == chatId)
+                .OrderByDescending(e => e.Id)
+                .Select(e => e.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            var dbChatEntry = new DbChatEntry {
+                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
+                ChatId = chatId,
+                Id = id,
+                Version = VersionGenerator.NextVersion(),
+                CreatorId = userId,
+                BeginsAt = now,
+                EndsAt = now,
+                ContentType = ChatContentType.Text,
+                Content = text,
+                StreamId = streamId
+            };
+            dbContext.Add(dbChatEntry);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return dbChatEntry;
         }
     }
 }

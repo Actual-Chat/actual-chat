@@ -126,8 +126,8 @@ namespace ActualChat.Audio
 
         private async IAsyncEnumerable<TranscriptMessage> Transcribe(AudioStreamEntry audioStreamEntry, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var (recordingId, configuration) = audioStreamEntry.AudioRecording;
-            // TODO: AK - read actual config
+            var (recordingId, _, _, configuration) = audioStreamEntry.AudioRecording;
+            // TODO(AK): read actual config
             var command = new BeginTranscriptionCommand {
                 RecordingId = recordingId.Value,
                 AudioFormat = new AudioFormat {
@@ -184,11 +184,17 @@ namespace ActualChat.Audio
             }
         }
 
-        private Task PublishChatEntry(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
+        private async Task PublishChatEntry(
+            AudioStreamEntry audioStreamEntry,
+            CancellationToken cancellationToken)
         {
-            // _chatService.Post(new ChatCommands.Post());
-            // TODO(AK): Implement creating of a chat entry
-            return Task.CompletedTask;
+            var (streamId, _, (_, userId, chatId, _)) = audioStreamEntry;
+            var command = new ChatCommands.ServerPost(
+                userId,
+                chatId,
+                "...",
+                streamId);
+            await _chatService.ServerPost(command, cancellationToken);
         }
 
         private Task DistributeAudioStream(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken) 

@@ -40,7 +40,7 @@ namespace ActualChat.Tests.Audio
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var audioRecording = new AudioRecording("test-id", audioConfig);
+            var audioRecording = new AudioRecording("test-id", "1", "1", audioConfig);
 
             var size = 0;
             var streamEntries = splitter.SplitBySilencePeriods(audioRecording, channel.Reader, CancellationToken.None);
@@ -76,7 +76,7 @@ namespace ActualChat.Tests.Audio
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var audioRecording = new AudioRecording("test-id", audioConfig);
+            var audioRecording = new AudioRecording("test-id", "1", "1", audioConfig);
 
             var streamEntries = splitter.SplitBySilencePeriods(audioRecording, channel.Reader, CancellationToken.None);
             await foreach (var audioStreamEntry in streamEntries) {
@@ -110,7 +110,7 @@ namespace ActualChat.Tests.Audio
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var audioRecording = new AudioRecording("test-id", audioConfig);
+            var audioRecording = new AudioRecording("test-id", "1", "1", audioConfig);
 
             var streamEntries = splitter.SplitBySilencePeriods(audioRecording, channel.Reader, CancellationToken.None);
             await foreach (var audioStreamEntry in streamEntries) {

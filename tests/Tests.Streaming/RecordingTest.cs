@@ -10,6 +10,7 @@ using ActualChat.Streaming;
 using ActualChat.Testing;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.Fusion.Authentication;
 using Stl.Testing;
 using Stl.Time;
 using Xunit;
@@ -28,6 +29,9 @@ namespace ActualChat.Tests.Streaming
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
+            var sessionFactory = services.GetRequiredService<ISessionFactory>();
+            var session = sessionFactory.CreateSession();
+            _ = await appHost.SignIn(session, new User("", "Bob"));
             var recordingService = services.GetRequiredService<IAudioRecordingService>();
             var serverSideRecordingService = services.GetRequiredService<IServerSideRecordingService<AudioRecording>>();
             var channel = Channel.CreateBounded<BlobMessage>(
@@ -44,7 +48,7 @@ namespace ActualChat.Tests.Streaming
             
             var recordingTask = serverSideRecordingService.WaitForNewRecording(CancellationToken.None);
             
-            _ = recordingService.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
+            _ = recordingService.UploadRecording(session, "1", audioConfig, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
             var recording = await recordingTask; 
@@ -58,12 +62,15 @@ namespace ActualChat.Tests.Streaming
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
+            var sessionFactory = services.GetRequiredService<ISessionFactory>();
+            var session = sessionFactory.CreateSession();
+            _ = await appHost.SignIn(session, new User("", "Bob"));
             var recordingService = services.GetRequiredService<IAudioRecordingService>();
             var serverSideRecordingService = services.GetRequiredService<IServerSideRecordingService<AudioRecording>>();
             
             var recordingTask = serverSideRecordingService.WaitForNewRecording(CancellationToken.None);
 
-            var writtenSize =  await PushRecording(recordingService);
+            var writtenSize =  await PushRecording(session, "1", recordingService);
             
             var recording = await recordingTask;
             var recordingStream = await serverSideRecordingService.GetRecording(recording!.Id, CancellationToken.None);
@@ -111,7 +118,7 @@ namespace ActualChat.Tests.Streaming
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
         }
         
-        private static async Task<int> PushRecording(IRecordingService<AudioRecordingConfiguration> recordingService)
+        private static async Task<int> PushRecording(Session session, string chatId, IRecordingService<AudioRecordingConfiguration> recordingService)
         {
             var audioConfig = new AudioRecordingConfiguration(
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
@@ -127,7 +134,7 @@ namespace ActualChat.Tests.Streaming
 
             var readTask = ReadFromFile(channel.Writer);
 
-            _ = recordingService.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
+            _ = recordingService.UploadRecording(session, chatId, audioConfig, channel.Reader, CancellationToken.None);
 
             return await readTask;
         }
