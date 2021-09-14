@@ -9,7 +9,7 @@
 @using Stl.Mathematics
 @inject IJSRuntime _js
 @inject JSModule _jsModule
-@inject RenderingContext _renderingContext
+@inject AppBlazorCircuitContext _appBlazorCircuitContext
 @inject ILogger<VirtualList<TItem>> _log
 
 @{
@@ -134,7 +134,7 @@
             ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
         }
-        if (_renderingContext.IsPrerendering)
+        if (_appBlazorCircuitContext.IsPrerendering)
             return;
         var ri = LastRenderInfo;
         if (ri == null)

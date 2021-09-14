@@ -1,6 +1,8 @@
 @using Stl.Text
 @using Stl.Plugins
+@implements IDisposable
 @inject IPluginHost _plugins
+@inject BlazorCircuitContext _blazorCircuitContext
 
 @{
     var moduleAssemblies = _plugins.GetPlugins<IBlazorUIModule>()
@@ -28,4 +30,7 @@
 
     [Parameter]
     public string SessionId { get; set; } = Symbol.Empty;
+
+    public void Dispose()
+        => _blazorCircuitContext.Dispose();
 }

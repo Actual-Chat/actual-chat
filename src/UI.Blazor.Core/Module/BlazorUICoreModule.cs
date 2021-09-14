@@ -26,15 +26,16 @@ namespace ActualChat.UI.Blazor.Module
                 return; // Blazor UI only module
 
             var fusion = services.AddFusion();
-            var fusionAuth = fusion.AddAuthentication();
-            fusionAuth.AddBlazor();
+            var fusionAuth = fusion.AddAuthentication().AddBlazor();
+            // Replace BlazorCircuitContext w/ AppBlazorCircuitContext
+            services.AddScoped<BlazorCircuitContext, AppBlazorCircuitContext>();
 
             // Blazorise
             services.AddBlazorise().AddBootstrapProviders().AddFontAwesomeIcons();
 
             // Other UI-related services
             services.AddScoped<JSModule>();
-            services.AddScoped<RenderingContext>();
+            services.AddScoped<AppBlazorCircuitContext>();
             // Default update delay is 0.5s
             services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
         }
