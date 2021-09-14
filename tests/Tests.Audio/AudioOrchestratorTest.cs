@@ -6,10 +6,12 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio;
+using ActualChat.Chat;
 using ActualChat.Streaming;
 using ActualChat.Testing;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.Fusion.Authentication;
 using Stl.Testing;
 using Stl.Time;
 using Xunit;
@@ -44,6 +46,9 @@ namespace ActualChat.Tests.Audio
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
+            var sessionFactory = services.GetRequiredService<ISessionFactory>();
+            var session = sessionFactory.CreateSession();
+            _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var streamingService = services.GetRequiredService<IRecordingService<AudioRecordingConfiguration>>(); 
             var cts = new CancellationTokenSource();
@@ -60,7 +65,7 @@ namespace ActualChat.Tests.Audio
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = streamingService.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
+            _ = streamingService.UploadRecording(session, "1", audioConfig, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
             
             var recording = await recordingTask;
@@ -73,13 +78,19 @@ namespace ActualChat.Tests.Audio
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
+            var sessionFactory = services.GetRequiredService<ISessionFactory>();
+            var session = sessionFactory.CreateSession();
+            _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var recordingService = services.GetRequiredService<IAudioRecordingService>(); 
             var streamingService = services.GetRequiredService<IStreamingService<BlobMessage>>(); 
+            var chatService = services.GetRequiredService<IChatService>();
+
+            var chat = await chatService.Create(new ChatCommands.Create(session, "Test"));
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
 
-            var pushAudioTask = PushAudioData(recordingService);
+            var pushAudioTask = PushAudioData(session, chat.Id, recordingService);
             
             var recording = await recordingTask;
             var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
@@ -98,14 +109,20 @@ namespace ActualChat.Tests.Audio
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
+            var sessionFactory = services.GetRequiredService<ISessionFactory>();
+            var session = sessionFactory.CreateSession();
+            _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var streamingService = services.GetRequiredService<IStreamingService<BlobMessage>>(); 
             var recordingService = services.GetRequiredService<IAudioRecordingService>(); 
             var transcriptStreaming = services.GetRequiredService<IStreamingService<TranscriptMessage>>();
+            var chatService = services.GetRequiredService<IChatService>();
+
+            var chat = await chatService.Create(new ChatCommands.Create(session, "Test"));
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
 
-            var pushAudioTask = PushAudioData(recordingService);
+            var pushAudioTask = PushAudioData(session, chat.Id, recordingService);
             
             var recording = await recordingTask;
             var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
@@ -145,7 +162,7 @@ namespace ActualChat.Tests.Audio
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
         }
         
-        private static async Task<int> PushAudioData(IRecordingService<AudioRecordingConfiguration> streamingService)
+        private static async Task<int> PushAudioData(Session session, string chatId, IRecordingService<AudioRecordingConfiguration> streamingService)
         {
             var audioConfig = new AudioRecordingConfiguration(
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
@@ -159,7 +176,7 @@ namespace ActualChat.Tests.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            _ = streamingService.UploadRecording(audioConfig, channel.Reader, CancellationToken.None);
+            _ = streamingService.UploadRecording(session, chatId, audioConfig, channel.Reader, CancellationToken.None);
             
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);

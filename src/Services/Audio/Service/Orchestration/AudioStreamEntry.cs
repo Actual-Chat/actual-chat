@@ -176,5 +176,12 @@ namespace ActualChat.Audio.Orchestration
                 _offset,
                 _metaData.Sum(md => md.Duration));
         }
+
+        public void Deconstruct(out StreamId streamId, out int index, out AudioRecording audioRecording)
+        {
+            streamId = StreamId;
+            index = Index;
+            audioRecording = AudioRecording;
+        }
     }
 }

@@ -48,7 +48,9 @@ namespace ActualChat.Streaming
     [MessagePackObject]
     public record AudioRecording(
         [property: Key(0)] RecordingId Id,
-        [property: Key(1)] AudioRecordingConfiguration Configuration) : IRecording;
+        [property: Key(1)] string UserId,
+        [property: Key(2)] string ChatId,
+        [property: Key(3)] AudioRecordingConfiguration Configuration) : IRecording;
     
     [MessagePackObject]
     public record VideoRecordingConfiguration(

@@ -35,7 +35,7 @@ namespace ActualChat.Audio.Orchestration
             CancellationToken cancellationToken)
         {
             if (audioEntry == null) throw new ArgumentNullException(nameof(audioEntry));
-            var (index, streamId, (recordingId, _), document, metaData, offset, duration) = audioEntry;
+            var (index, streamId, (recordingId, _, _, _), document, metaData, offset, duration) = audioEntry;
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId.Value}{BlobId.ScopeDelimiter}{streamId}";
             var persistBlob = PersistBlob(recordingId, blobId, document, cancellationToken);
             var persistSegment = PersistSegment(cancellationToken);

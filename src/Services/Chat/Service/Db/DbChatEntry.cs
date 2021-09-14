@@ -43,7 +43,7 @@ namespace ActualChat.Chat.Db
 
         public ChatContentType ContentType { get; set; }
         public string Content { get; set; } = "";
-        public string? RecordingId { get; set; }
+        public string? StreamId { get; set; }
 
         public ChatEntry ToModel()
             => new(ChatId, Id) {
@@ -52,7 +52,7 @@ namespace ActualChat.Chat.Db
                 EndsAt = EndsAt,
                 ContentType = ContentType,
                 Content = Content,
-                StreamId = RecordingId ?? "",
+                StreamId = StreamId ?? "",
             };
     }
 }
