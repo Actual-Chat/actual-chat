@@ -2,13 +2,12 @@ using System.Threading.Tasks;
 using ActualChat.Testing;
 using FluentAssertions;
 using Stl.Fusion.Authentication;
-using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace ActualChat.Tests.UI.Blazor
 {
-    public class PlaywrightTest : TestBase
+    public class PlaywrightTest : AppHostTestBase
     {
         public PlaywrightTest(ITestOutputHelper @out) : base(@out) { }
 
