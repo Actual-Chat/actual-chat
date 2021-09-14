@@ -46,8 +46,6 @@
 </div>
 
 @code {
-    [CascadingParameter]
-    public Task<AuthState> AuthStateTask { get; set; } = null!;
     [Parameter]
     public string ChatId { get; set; } = "";
 
@@ -61,7 +59,7 @@
     protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
     {
         var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
-        var user = (await AuthStateTask).User;
+        var user = await _auth.GetUser(_session, cancellationToken);
         var chat = await _chats.TryGet(_session, chatId, cancellationToken);
         if (chat == null)
             return new ChatPageModel() { IsUnavailable = true };
