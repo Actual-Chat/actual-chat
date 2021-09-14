@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
+    <ProjectReference Include="..\..\Audio\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\..\Users\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Contract\Contract.csproj" />
   </ItemGroup>

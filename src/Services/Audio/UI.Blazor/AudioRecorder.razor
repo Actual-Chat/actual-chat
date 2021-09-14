@@ -1,0 +1,116 @@
+@using System.Threading.Channels
+@using ActualChat.Streaming
+@using Stl.Time
+@inherits ComputedStateComponent<int>
+@implements IAudioRecorderBackend
+@inject Session _session
+@inject IJSRuntime _js
+@inject JSModule _jsModule;
+@inject IAudioRecordingService _audioRecording
+
+
+<Button Type="@ButtonType.Button" Clicked="ToggleRecording" Color="@ToggleColor">
+    <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
+</Button>
+
+@code {
+    private IJSObjectReference? ModuleRef { get; set; }
+    private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
+    private ChannelWriter<BlobMessage>? Writer { get; set; }
+    private int Index { get; set; }
+
+    private bool IsRecording { get; set; }
+    private Color ToggleColor { get; set; } = Color.Secondary;
+    
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    public override ValueTask DisposeAsync()
+    {
+        ComponentRef?.Dispose();
+        return base.DisposeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ModuleRef != null || !firstRender)
+            return;
+        ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
+        ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+        await ModuleRef.InvokeVoidAsync("initialize", ComponentRef);
+    }
+
+    protected override Task<int> ComputeState(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(1);
+    }
+
+    private async Task StartRecording()
+    {
+        await ModuleRef!.InvokeVoidAsync("startRecording");
+    }
+
+    private async Task StopRecording()
+    {
+        await ModuleRef!.InvokeVoidAsync("stopRecording");
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (IsRecording)
+        {
+            await StopRecording();
+            ToggleColor = Color.Secondary;
+        }
+        else
+        {
+            await StartRecording();
+            ToggleColor = Color.Primary;
+        }
+        IsRecording = !IsRecording;
+
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public Task RecordingStarted()
+    {
+        if (Writer != null) return Task.CompletedTask;
+        
+        var channel = Channel.CreateBounded<BlobMessage>(
+            new BoundedChannelOptions(100) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true,
+                AllowSynchronousContinuations = true
+            });
+        Writer = channel.Writer;
+
+        var audioConfig = new AudioRecordingConfiguration(
+            new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            "RU-ru",
+            CpuClock.Now.EpochOffset.TotalSeconds);
+        _ = _audioRecording.UploadRecording(_session, ChatId, audioConfig, channel.Reader, CancellationToken.None);
+
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task AudioDataAvailable(string dataAsBase64)
+    {
+        if (Writer != null) {
+            var base64 = Base64Encoded.Decode(dataAsBase64);
+
+            await Writer.WriteAsync(new BlobMessage(Index++, base64.Data));
+        }
+    }
+
+    [JSInvokable]
+    public Task RecordingStopped()
+    {
+        Writer?.Complete();
+        Writer = null;
+        return Task.CompletedTask;
+    }
+
+}

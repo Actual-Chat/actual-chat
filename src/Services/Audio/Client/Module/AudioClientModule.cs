@@ -19,7 +19,6 @@ namespace ActualChat.Audio.Client.Module
                 return; // Client-side only module
 
             var fusionClient = services.AddFusion().AddRestEaseClient();
-            fusionClient.AddReplicaService<IAudioRecorder, IAudioRecorderClientDef>();
         }
     }
 }

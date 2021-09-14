@@ -1,3 +1,4 @@
+@using ActualChat.Audio.UI.Blazor 
 @inject IChatService _chats
 @inject Session _session
 @inject UICommandRunner _cmd
@@ -11,7 +12,12 @@
                 </Addon>
                 <TextEdit @bind-Text="@Message" type="search" />
                 <Addon AddonType="AddonType.End">
-                    <Button Type="@ButtonType.Submit" Color="Color.Success">Send</Button>
+                    <Addons>
+                        <Button Type="@ButtonType.Submit" Color="Color.Success">Send</Button>
+                        <Addon AddonType="AddonType.End">
+                            <AudioRecorder ChatId="@ChatId"></AudioRecorder>
+                        </Addon>
+                    </Addons>
                 </Addon>
             </Addons>
         </form>
