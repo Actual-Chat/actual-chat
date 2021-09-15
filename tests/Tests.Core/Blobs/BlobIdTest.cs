@@ -10,8 +10,8 @@ namespace ActualChat.Tests.Blobs
         [Fact]
         public void GetScopeTest()
         {
-            BlobId.GetScope("a").Should().Be("");
-            BlobId.GetScope("a/b").Should().Be("a");
+            BlobPath.GetScope("a").Should().Be("");
+            BlobPath.GetScope("a/b").Should().Be("a");
         }
     }
 }

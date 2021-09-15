@@ -12,40 +12,39 @@ using Stl.Generators;
 
 namespace ActualChat.Streaming
 {
-    public class AudioRecordingService : IAudioRecordingService
+    public class AudioUploader : IAudioUploader
     {
-        private readonly ILogger<AudioRecordingService> _log;
+        private readonly ILogger<AudioUploader> _log;
         private readonly RandomStringGenerator _idGenerator;
         private readonly IConnectionMultiplexer _redis;
-        private readonly IAuthService _authService;
+        private readonly IAuthService _auth;
 
-        public AudioRecordingService(IConnectionMultiplexer redis, IAuthService authService, ILogger<AudioRecordingService> log) 
+        public AudioUploader(IConnectionMultiplexer redis, IAuthService auth, ILogger<AudioUploader> log)
         {
             _redis = redis;
-            _authService = authService;
+            _auth = auth;
             _log = log;
             _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
         }
 
-        public async Task UploadRecording(Session session, string chatId, AudioRecordingConfiguration config, ChannelReader<BlobMessage> source, CancellationToken cancellationToken)
+        public async Task Upload(Session session, AudioRecord upload, ChannelReader<BlobPart> content, CancellationToken cancellationToken)
         {
-            var user = await _authService.GetUser(session, cancellationToken);
+            var user = await _auth.GetUser(session, cancellationToken);
             user.MustBeAuthenticated();
-            
-            var recordingId = new RecordingId(_idGenerator.Next());
-            _log.LogInformation($"{nameof(UploadRecording)}, RecordingId = {{RecordingId}}", recordingId.Value);
+
+            var recordingId = new AudioRecordId(_idGenerator.Next());
+            _log.LogInformation("Uploading: RecordingId = {RecordingId}", recordingId.Value);
 
             var firstCycle = true;
             var db = GetDatabase();
             var key = new RedisKey(recordingId);
-            var recording = new AudioRecording(
-                recordingId,
-                user.Id,
-                chatId,
-                config);
+            upload = upload with {
+                Id = recordingId,
+                UserId = user.Id,
+            };
 
-            while (await source.WaitToReadAsync(cancellationToken)) {
-                while (source.TryRead(out var message)) {
+            while (await content.WaitToReadAsync(cancellationToken)) {
+                while (content.TryRead(out var message)) {
                     using var bufferWriter = new ArrayPoolBufferWriter<byte>();
                     MessagePackSerializer.Serialize(
                         bufferWriter,
@@ -64,11 +63,11 @@ namespace ActualChat.Streaming
 
                 if (firstCycle) {
                     firstCycle = false;
-                    _ = NotifyNewAudioRecording(db, recording, config, cancellationToken);
+                    _ = NotifyNewAudioRecording(db, upload, cancellationToken);
                 }
                 _ = NotifyNewAudioMessage(recordingId);
             }
-            if (firstCycle) _ = NotifyNewAudioRecording(db, recording, config, cancellationToken);
+            if (firstCycle) _ = NotifyNewAudioRecording(db, upload, cancellationToken);
 
             // TODO(AY): Should we complete w/ exceptions to mimic Channel<T> / IEnumerable<T> behavior here as well?
             await db.StreamAddAsync(
@@ -83,10 +82,10 @@ namespace ActualChat.Streaming
                 .ContinueWith(_ => db.KeyDelete(key), CancellationToken.None);
         }
 
-        private async Task NotifyNewAudioRecording(IDatabase db, AudioRecording recording, AudioRecordingConfiguration config, CancellationToken cancellationToken)
+        private async Task NotifyNewAudioRecording(IDatabase db, AudioRecord audioRecord, CancellationToken cancellationToken)
         {
             using var bufferWriter = new ArrayPoolBufferWriter<byte>();
-            MessagePackSerializer.Serialize(bufferWriter, recording, MessagePackSerializerOptions.Standard, cancellationToken);
+            MessagePackSerializer.Serialize(bufferWriter, audioRecord, MessagePackSerializerOptions.Standard, cancellationToken);
             var serialized = bufferWriter.WrittenMemory;
             db.ListLeftPush(StreamingConstants.AudioRecordingQueue, serialized);
 
@@ -94,12 +93,11 @@ namespace ActualChat.Streaming
             await subscriber.PublishAsync(StreamingConstants.AudioRecordingQueue, string.Empty);
         }
 
-        private async Task NotifyNewAudioMessage(RecordingId recordingId)
+        private async Task NotifyNewAudioMessage(AudioRecordId audioRecordId)
         {
             var subscriber = _redis.GetSubscriber();
-            await subscriber.PublishAsync(recordingId.GetChannelName(),string.Empty);
+            await subscriber.PublishAsync(audioRecordId.GetChannelName(),string.Empty);
         }
-
 
         protected IDatabase GetDatabase()
             => _redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);

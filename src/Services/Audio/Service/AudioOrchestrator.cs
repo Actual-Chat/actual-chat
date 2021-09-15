@@ -17,40 +17,43 @@ namespace ActualChat.Audio
     public class AudioOrchestrator : BackgroundService
     {
         private readonly ITranscriber _transcriber;
-        private readonly AudioPersistService _audioPersistService;
-        private readonly IServerSideRecordingService<AudioRecording> _recordingService;
-        private readonly IServerSideStreamingService<BlobMessage> _streamingService;
-        private readonly IServerSideStreamingService<TranscriptMessage> _transcriptStreamingService;
-        private readonly IServerSideChatService _chatService;
+        private readonly AudioSaver _audioSaver;
+        private readonly IServerSideRecorder<AudioRecord> _audioRecorder;
+        private readonly AudioActivityExtractor _audioActivityExtractor;
+        private readonly IServerSideStreamer<BlobPart> _blobStreamer;
+        private readonly IServerSideStreamer<TranscriptPart> _transcriptStreamer;
+        private readonly IServerSideChatService _chat;
         private readonly ILogger<AudioOrchestrator> _log;
 
         public static bool SkipAutoStart { get; set; } = true;
 
         public AudioOrchestrator(
             ITranscriber transcriber,
-            AudioPersistService audioPersistService,
-            IServerSideRecordingService<AudioRecording> recordingService,
-            IServerSideStreamingService<BlobMessage> streamingService,
-            IServerSideStreamingService<TranscriptMessage> transcriptStreamingService,
-            IServerSideChatService chatService,
+            AudioSaver audioSaver,
+            IServerSideRecorder<AudioRecord> audioRecorder,
+            AudioActivityExtractor audioActivityExtractor,
+            IServerSideStreamer<BlobPart> blobStreamer,
+            IServerSideStreamer<TranscriptPart> transcriptStreamer,
+            IServerSideChatService chat,
             ILogger<AudioOrchestrator> log)
         {
             _transcriber = transcriber;
-            _audioPersistService = audioPersistService;
-            _recordingService = recordingService;
-            _streamingService = streamingService;
-            _transcriptStreamingService = transcriptStreamingService;
-            _chatService = chatService;
+            _audioSaver = audioSaver;
+            _audioRecorder = audioRecorder;
+            _audioActivityExtractor = audioActivityExtractor;
+            _blobStreamer = blobStreamer;
+            _transcriptStreamer = transcriptStreamer;
+            _chat = chat;
             _log = log;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if(SkipAutoStart)
+            if (SkipAutoStart)
                 return;
-            
+
             while (true) {
-                // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out 
+                // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
                 var recording = await WaitForNewRecording(stoppingToken);
                 if (stoppingToken.IsCancellationRequested)
                     return;
@@ -59,50 +62,47 @@ namespace ActualChat.Audio
             }
         }
 
-        internal async Task<AudioRecording?> WaitForNewRecording(CancellationToken cancellationToken)
+        internal async Task<AudioRecord?> WaitForNewRecording(CancellationToken cancellationToken)
         {
-            var recording = await _recordingService.WaitForNewRecording(cancellationToken);
-            while (recording == null && !cancellationToken.IsCancellationRequested) 
-                recording = await _recordingService.WaitForNewRecording(cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-            return recording;
+            while (true) {
+                var recording = await _audioRecorder.WaitForNewRecording(cancellationToken);
+                if (recording != null)
+                    return recording;
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
 
-        internal async Task StartAudioPipeline(AudioRecording recording, CancellationToken cancellationToken)
+        internal async Task StartAudioPipeline(AudioRecord audioRecord, CancellationToken cancellationToken)
         {
-            var audioReader = await _recordingService.GetRecording(recording.Id, cancellationToken);
-            await foreach (var audioStreamEntry in SplitStreamBySilencePeriods(recording, audioReader, cancellationToken)) {
-                var distributeStreamTask = DistributeAudioStream(audioStreamEntry, cancellationToken);
-                var chatEntryTask = PublishChatEntry(audioStreamEntry, cancellationToken);
-
-                _ = TranscribeStreamEntry(audioStreamEntry, cancellationToken);
-
-                _ = PersistStreamEntry(audioStreamEntry, cancellationToken);
-
+            var audioReader = await _audioRecorder.GetRecording(audioRecord.Id, cancellationToken);
+            var segments = _audioActivityExtractor.GetSegmentsWithAudioActivity(audioRecord, audioReader);
+            await foreach (var segment in segments.WithCancellation(cancellationToken)) {
+                var distributeStreamTask = DistributeAudioStream(segment, cancellationToken);
+                var chatEntryTask = PublishChatEntry(segment, cancellationToken);
+                _ = TranscribeStreamEntry(segment, cancellationToken);
+                _ = PersistStreamEntry(segment, cancellationToken);
                 await Task.WhenAll(distributeStreamTask, chatEntryTask);
             }
-
         }
 
-        private async Task PersistStreamEntry(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
+        private async Task PersistStreamEntry(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
         {
-            var audioEntry = await audioStreamEntry.GetEntryOnCompletion(cancellationToken);
-            await _audioPersistService.Persist(audioEntry, cancellationToken);
+            var audioEntry = await audioRecordSegmentAccessor.GetPartOnCompletion(cancellationToken);
+            await _audioSaver.Save(audioEntry, cancellationToken);
         }
 
-        private async Task TranscribeStreamEntry(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken)
+        private async Task TranscribeStreamEntry(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
         {
-            var transcriptionResults = Transcribe(audioStreamEntry, cancellationToken);
-            await DistributeTranscriptionResults(audioStreamEntry.StreamId, transcriptionResults, cancellationToken);
+            var transcriptionResults = Transcribe(audioRecordSegmentAccessor, cancellationToken);
+            await DistributeTranscriptionResults(audioRecordSegmentAccessor.StreamId, transcriptionResults, cancellationToken);
         }
 
         private async Task DistributeTranscriptionResults(
             StreamId streamId,
-            IAsyncEnumerable<TranscriptMessage> transcriptionResults,
+            IAsyncEnumerable<TranscriptPart> transcriptionResults,
             CancellationToken cancellationToken)
         {
-            var channel = Channel.CreateBounded<TranscriptMessage>(
+            var channel = Channel.CreateBounded<TranscriptPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -110,27 +110,27 @@ namespace ActualChat.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            var publishTask = _transcriptStreamingService.PublishStream(streamId, channel.Reader, cancellationToken);
+            var publishTask = _transcriptStreamer.PublishStream(streamId, channel.Reader, cancellationToken);
 
             _ = PushTranscriptionResults(channel.Writer, cancellationToken);
 
             await publishTask;
-            
-            async Task PushTranscriptionResults(ChannelWriter<TranscriptMessage> writer, CancellationToken ct)
+
+            async Task PushTranscriptionResults(ChannelWriter<TranscriptPart> writer, CancellationToken ct)
             {
                 await foreach (var message in transcriptionResults.WithCancellation(ct))
                     await writer.WriteAsync(message, ct);
-                
+
                 writer.Complete();
             }
         }
 
-        private async IAsyncEnumerable<TranscriptMessage> Transcribe(AudioStreamEntry audioStreamEntry, [EnumeratorCancellation] CancellationToken cancellationToken)
+        private async IAsyncEnumerable<TranscriptPart> Transcribe(AudioRecordSegmentAccessor audioRecordSegmentAccessor, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var (recordingId, _, _, configuration) = audioStreamEntry.AudioRecording;
+            var r = audioRecordSegmentAccessor.AudioRecord;
             // TODO(AK): read actual config
             var command = new BeginTranscriptionCommand {
-                RecordingId = recordingId.Value,
+                RecordingId = r.Id.Value,
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,
@@ -145,7 +145,7 @@ namespace ActualChat.Audio
             };
             var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
 
-            var reader = audioStreamEntry.GetStream();
+            var reader = audioRecordSegmentAccessor.GetStream();
             _ = PushAudioStreamForTranscription(transcriptId, reader, cancellationToken);
 
             var index = 0;
@@ -153,7 +153,7 @@ namespace ActualChat.Audio
             while (result.ContinuePolling && !cancellationToken.IsCancellationRequested) {
                 foreach (var fragmentVariant in result.Fragments) {
                     if (fragmentVariant.Speech is { } speechFragment) {
-                        var message = new TranscriptMessage(
+                        var message = new TranscriptPart(
                             speechFragment.Text,
                             speechFragment.TextIndex,
                             speechFragment.StartOffset,
@@ -174,7 +174,7 @@ namespace ActualChat.Audio
 
             await _transcriber.AckTranscription(new AckTranscriptionCommand(transcriptId, index), cancellationToken);
 
-            async Task PushAudioStreamForTranscription(Symbol tId, ChannelReader<BlobMessage> r, CancellationToken ct)
+            async Task PushAudioStreamForTranscription(Symbol tId, ChannelReader<BlobPart> r, CancellationToken ct)
             {
                 await foreach (var (_, chunk) in r.ReadAllAsync(ct)) {
                     var appendCommand = new AppendTranscriptionCommand(tId, chunk);
@@ -186,28 +186,19 @@ namespace ActualChat.Audio
         }
 
         private async Task PublishChatEntry(
-            AudioStreamEntry audioStreamEntry,
+            AudioRecordSegmentAccessor audioRecordSegmentAccessor,
             CancellationToken cancellationToken)
         {
-            var (streamId, _, (_, userId, chatId, _)) = audioStreamEntry;
+            var e = audioRecordSegmentAccessor;
             var command = new ChatCommands.ServerPost(
-                userId,
-                chatId,
+                e.AudioRecord.UserId,
+                e.AudioRecord.ChatId,
                 "...",
-                streamId).MarkServerSide();
-            await _chatService.ServerPost(command, cancellationToken);
+                e.StreamId).MarkServerSide();
+            await _chat.ServerPost(command, cancellationToken);
         }
 
-        private Task DistributeAudioStream(AudioStreamEntry audioStreamEntry, CancellationToken cancellationToken) 
-            => _streamingService.PublishStream(audioStreamEntry.StreamId, audioStreamEntry.GetStream(), cancellationToken);
-
-        private IAsyncEnumerable<AudioStreamEntry> SplitStreamBySilencePeriods(
-            AudioRecording audioRecording,
-            ChannelReader<BlobMessage> audioReader,
-            CancellationToken cancellationToken)
-        {
-            var splitter = new AudioStreamSplitter();
-            return splitter.SplitBySilencePeriods(audioRecording, audioReader, cancellationToken);
-        }
+        private Task DistributeAudioStream(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
+            => _blobStreamer.PublishStream(audioRecordSegmentAccessor.StreamId, audioRecordSegmentAccessor.GetStream(), cancellationToken);
     }
 }

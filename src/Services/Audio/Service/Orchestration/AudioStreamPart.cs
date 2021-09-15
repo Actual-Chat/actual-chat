@@ -1,16 +1,15 @@
 using System.Collections.Generic;
 using ActualChat.Audio.WebM;
 using ActualChat.Streaming;
-using Stl.Text;
 
 namespace ActualChat.Audio.Orchestration
 {
-    public record AudioEntry(
+    public record AudioStreamPart(
         int Index,
         StreamId StreamId,
-        AudioRecording Recording,
+        AudioRecord AudioRecord,
         WebMDocument Document,
-        IReadOnlyList<AudioMetaDataEntry> MetaData,
+        IReadOnlyList<AudioMetadataEntry> Metadata, // TODO(AY): Discuss the purpose / type of this
         double Offset,
         double Duration);
 }

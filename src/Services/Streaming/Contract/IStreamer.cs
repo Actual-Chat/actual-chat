@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace ActualChat.Streaming
 {
-    public interface IStreamingService<TMessage>
+    public interface IStreamer<TMessage>
     {
         Task<ChannelReader<TMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken);
     }

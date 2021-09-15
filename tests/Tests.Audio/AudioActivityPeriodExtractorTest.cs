@@ -16,18 +16,15 @@ using Xunit.Abstractions;
 
 namespace ActualChat.Tests.Audio
 {
-    public class AudioStreamSplitterTest : TestBase
+    public class AudioActivityPeriodExtractorTest : TestBase
     {
-        public AudioStreamSplitterTest(ITestOutputHelper @out) : base(@out)
-        {
-            
-        }
+        public AudioActivityPeriodExtractorTest(ITestOutputHelper @out) : base(@out) { }
 
         [Fact]
         public async Task SplitStreamReadBeforeCompletionTest()
         {
-            var splitter = new AudioStreamSplitter();
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var audioActivityExtractor = new AudioActivityExtractor();
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -36,33 +33,33 @@ namespace ActualChat.Tests.Audio
                 });
 
             var readTask = ReadFromFile(channel.Writer);
-            var audioConfig = new AudioRecordingConfiguration(
+            var recording = new AudioRecord(
+                "test-id", "1", "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var audioRecording = new AudioRecording("test-id", "1", "1", audioConfig);
 
             var size = 0;
-            var streamEntries = splitter.SplitBySilencePeriods(audioRecording, channel.Reader, CancellationToken.None);
-            await foreach (var audioStreamEntry in streamEntries) {
-                audioStreamEntry.Index.Should().Be(0);
-                audioStreamEntry.AudioRecording.Should().Be(audioRecording);
-                size += await audioStreamEntry.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Chunk.Length);
-                var entry = await audioStreamEntry.GetEntryOnCompletion(CancellationToken.None);
+            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(recording, channel.Reader);
+            await foreach (var segment in segments) {
+                segment.Index.Should().Be(0);
+                segment.AudioRecord.Should().Be(recording);
+                size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Chunk.Length);
+                var part = await segment.GetPartOnCompletion(CancellationToken.None);
 
-                entry.Document.Should().NotBeNull();
-                entry.MetaData.Count.Should().BeGreaterThan(0);
+                part.Document.Should().NotBeNull();
+                part.Metadata.Count.Should().BeGreaterThan(0);
             }
 
             var bytesRead = await readTask;
             size.Should().Be(bytesRead);
-        } 
-        
+        }
+
         [Fact]
         public async Task SplitStreamReadAfterCompletionTest()
         {
-            var splitter = new AudioStreamSplitter();
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var audioActivityExtractor = new AudioActivityExtractor();
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -72,32 +69,32 @@ namespace ActualChat.Tests.Audio
 
             var size = 0;
             var readTask = ReadFromFile(channel.Writer);
-            var audioConfig = new AudioRecordingConfiguration(
+            var recording = new AudioRecord(
+                "test-id", "1", "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var audioRecording = new AudioRecording("test-id", "1", "1", audioConfig);
 
-            var streamEntries = splitter.SplitBySilencePeriods(audioRecording, channel.Reader, CancellationToken.None);
-            await foreach (var audioStreamEntry in streamEntries) {
-                audioStreamEntry.Index.Should().Be(0);
-                audioStreamEntry.AudioRecording.Should().Be(audioRecording);
-                var entry = await audioStreamEntry.GetEntryOnCompletion(CancellationToken.None);
-                size += await audioStreamEntry.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Chunk.Length);
+            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(recording, channel.Reader);
+            await foreach (var segment in segments) {
+                segment.Index.Should().Be(0);
+                segment.AudioRecord.Should().Be(recording);
+                var part = await segment.GetPartOnCompletion(CancellationToken.None);
+                size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Chunk.Length);
 
-                entry.Document.Should().NotBeNull();
-                entry.MetaData.Count.Should().BeGreaterThan(0);
+                part.Document.Should().NotBeNull();
+                part.Metadata.Count.Should().BeGreaterThan(0);
             }
-            
+
             var bytesRead = await readTask;
             size.Should().Be(bytesRead);
-        } 
-        
+        }
+
         [Fact]
         public async Task SplitStreamDontReadTest()
         {
-            var splitter = new AudioStreamSplitter();
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var audioActivityExtractor = new AudioActivityExtractor();
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -106,24 +103,23 @@ namespace ActualChat.Tests.Audio
                 });
 
             var readTask = ReadFromFile(channel.Writer);
-            var audioConfig = new AudioRecordingConfiguration(
+            var recording = new AudioRecord(
+                "test-id", "1", "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var audioRecording = new AudioRecording("test-id", "1", "1", audioConfig);
 
-            var streamEntries = splitter.SplitBySilencePeriods(audioRecording, channel.Reader, CancellationToken.None);
-            await foreach (var audioStreamEntry in streamEntries) {
-                audioStreamEntry.Index.Should().Be(0);
-                audioStreamEntry.AudioRecording.Should().Be(audioRecording);
-                var entry = await audioStreamEntry.GetEntryOnCompletion(CancellationToken.None);
-
-                entry.Document.Should().NotBeNull();
-                entry.MetaData.Count.Should().BeGreaterThan(0);
+            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(recording, channel.Reader);
+            await foreach (var segment in segments) {
+                segment.Index.Should().Be(0);
+                segment.AudioRecord.Should().Be(recording);
+                var part = await segment.GetPartOnCompletion(CancellationToken.None);
+                part.Document.Should().NotBeNull();
+                part.Metadata.Count.Should().BeGreaterThan(0);
             }
-        } 
-        
-        private static async Task<int> ReadFromFile(ChannelWriter<BlobMessage> writer)
+        }
+
+        private static async Task<int> ReadFromFile(ChannelWriter<BlobPart> writer)
         {
             var size = 0;
             await using var inputStream = new FileStream(
@@ -136,7 +132,7 @@ namespace ActualChat.Tests.Audio
             var bytesRead = await inputStream.ReadAsync(readBuffer);
             size += bytesRead;
             while (bytesRead > 0) {
-                var command = new BlobMessage(
+                var command = new BlobPart(
                     index++,
                     readBuffer[..bytesRead].ToArray());
                 await writer.WriteAsync(command, CancellationToken.None);

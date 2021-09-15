@@ -6,25 +6,24 @@ using MessagePack;
 using Microsoft.Toolkit.HighPerformance.Buffers;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
-using Stl.Async;
 
 namespace ActualChat.Streaming
 {
-    public class ServerSideStreamingService<TMessage> : IServerSideStreamingService<TMessage> where TMessage : class, IMessage
+    public class ServerSideStreamer<TMessage> : IServerSideStreamer<TMessage>
     {
-        protected readonly IConnectionMultiplexer Redis;
+        protected IConnectionMultiplexer Redis { get; }
 
-        public ServerSideStreamingService(IConnectionMultiplexer redis)
+        public ServerSideStreamer(IConnectionMultiplexer redis)
             => Redis = redis;
 
-        public async Task PublishStream(StreamId streamId, ChannelReader<TMessage> source, CancellationToken cancellationToken)
+        public async Task PublishStream(StreamId streamId, ChannelReader<TMessage> content, CancellationToken cancellationToken)
         {
             var db = GetDatabase();
             var key = new RedisKey(streamId);
 
             var firstCycle = true;
-            while (await source.WaitToReadAsync(cancellationToken)) {
-                while (source.TryRead(out var message)) {
+            while (await content.WaitToReadAsync(cancellationToken)) {
+                while (content.TryRead(out var message)) {
                     using var bufferWriter = new ArrayPoolBufferWriter<byte>();
                     MessagePackSerializer.Serialize(
                         bufferWriter,

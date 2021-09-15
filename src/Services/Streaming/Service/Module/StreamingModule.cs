@@ -23,16 +23,15 @@ namespace ActualChat.Streaming.Module
             services.AddSingleton<IConnectionMultiplexer>(multiplexer);
             services.AddTransient<IHubRegistrar,HubRegistrar>();
             services.AddTransient<StreamingServiceHub>();
-            services.AddSingleton<IStreamingService<BlobMessage>, StreamingService<BlobMessage>>();
-            services.AddSingleton<IStreamingService<TranscriptMessage>, StreamingService<TranscriptMessage>>();
-            services.AddSingleton<IRecordingService<AudioRecordingConfiguration>, AudioRecordingService>();
-            services.AddSingleton<IAudioRecordingService, AudioRecordingService>();
-            services.AddSingleton<IServerSideStreamingService<BlobMessage>, ServerSideStreamingService<BlobMessage>>();
-            services.AddSingleton<IServerSideStreamingService<TranscriptMessage>, ServerSideStreamingService<TranscriptMessage>>();
-            services.AddSingleton<IServerSideRecordingService<AudioRecording>, ServerSideRecordingService<AudioRecording>>();
-            
+            services.AddSingleton<IStreamer<BlobPart>, Streamer<BlobPart>>();
+            services.AddSingleton<IStreamer<TranscriptPart>, Streamer<TranscriptPart>>();
+            services.AddSingleton<IAudioUploader, AudioUploader>();
+            services.AddSingleton<IServerSideStreamer<BlobPart>, ServerSideStreamer<BlobPart>>();
+            services.AddSingleton<IServerSideStreamer<TranscriptPart>, ServerSideStreamer<TranscriptPart>>();
+            services.AddSingleton<IServerSideRecorder<AudioRecord>, ServerSideRecorder<AudioRecord>>();
+
             services.AddSignalR()
-                .AddMessagePackProtocol(); // TODO: no AOT compilation support yet 
+                .AddMessagePackProtocol(); // TODO: no AOT compilation support yet
         }
     }
 }

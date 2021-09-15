@@ -20,9 +20,7 @@ namespace ActualChat.Tests.Streaming
 {
     public class RecordingTest : TestBase
     {
-        public RecordingTest(ITestOutputHelper @out) : base(@out)
-        {
-        }
+        public RecordingTest(ITestOutputHelper @out) : base(@out) { }
 
         [Fact]
         public async void EmptyRecordingTest()
@@ -32,31 +30,36 @@ namespace ActualChat.Tests.Streaming
             var sessionFactory = services.GetRequiredService<ISessionFactory>();
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
-            var recordingService = services.GetRequiredService<IAudioRecordingService>();
-            var serverSideRecordingService = services.GetRequiredService<IServerSideRecordingService<AudioRecording>>();
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var recordingService = services.GetRequiredService<IAudioUploader>();
+            var serverSideRecordingService = services.GetRequiredService<IServerSideRecorder<AudioRecord>>();
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-            var audioConfig = new AudioRecordingConfiguration(
+            var recordingSpec = new AudioRecord(
+                "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            
+
             var recordingTask = serverSideRecordingService.WaitForNewRecording(CancellationToken.None);
-            
-            _ = recordingService.UploadRecording(session, "1", audioConfig, channel.Reader, CancellationToken.None);
+
+            _ = recordingService.Upload(session, recordingSpec, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
-            var recording = await recordingTask; 
-            recording!.Configuration.Should().Be(audioConfig);
+            var recording = await recordingTask;
+            recording.Should().Be(recordingSpec with {
+                Id = recording!.Id,
+                UserId = recording.UserId
+            });
+
             var channelReader = await serverSideRecordingService.GetRecording(recording.Id, CancellationToken.None);
             await foreach (var _ in channelReader.ReadAllAsync()) {}
         }
-        
+
         [Fact]
         public async Task StreamRecordingTest()
         {
@@ -65,31 +68,31 @@ namespace ActualChat.Tests.Streaming
             var sessionFactory = services.GetRequiredService<ISessionFactory>();
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
-            var recordingService = services.GetRequiredService<IAudioRecordingService>();
-            var serverSideRecordingService = services.GetRequiredService<IServerSideRecordingService<AudioRecording>>();
-            
+            var audioUploader = services.GetRequiredService<IAudioUploader>();
+            var serverSideRecordingService = services.GetRequiredService<IServerSideRecorder<AudioRecord>>();
+
             var recordingTask = serverSideRecordingService.WaitForNewRecording(CancellationToken.None);
 
-            var writtenSize =  await PushRecording(session, "1", recordingService);
-            
+            var writtenSize =  await UploadRecording(session, "1", audioUploader);
+
             var recording = await recordingTask;
             var recordingStream = await serverSideRecordingService.GetRecording(recording!.Id, CancellationToken.None);
             var readSize = await recordingStream.ReadAllAsync().SumAsync(message => message.Chunk.Length);
-            
+
             readSize.Should().Be(writtenSize);
         }
-        
-                
+
+
         [Fact]
         public async Task StreamTest()
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
-            var streamingService = services.GetRequiredService<IStreamingService<BlobMessage>>();
-            var serverSideStreamingService = services.GetRequiredService<IServerSideStreamingService<BlobMessage>>();
+            var streamingService = services.GetRequiredService<IStreamer<BlobPart>>();
+            var serverSideStreamingService = services.GetRequiredService<IServerSideStreamer<BlobPart>>();
 
             var streamId = (StreamId)"test-stream-id";
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -110,21 +113,21 @@ namespace ActualChat.Tests.Streaming
 
             readSize.Should().Be(writtenSize);
         }
-        
-        private static async Task<int> ReadDistributedData(StreamId streamId, IStreamingService<BlobMessage> sr)
+
+        private static async Task<int> ReadDistributedData(StreamId streamId, IStreamer<BlobPart> sr)
         {
             var audioReader = await sr.GetStream(streamId, CancellationToken.None);
-        
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
         }
-        
-        private static async Task<int> PushRecording(Session session, string chatId, IRecordingService<AudioRecordingConfiguration> recordingService)
+
+        private static async Task<int> UploadRecording(Session session, string chatId, IAudioUploader audioUploader)
         {
-            var audioConfig = new AudioRecordingConfiguration(
+            var recording = new AudioRecord(
+                chatId,
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -133,13 +136,12 @@ namespace ActualChat.Tests.Streaming
                 });
 
             var readTask = ReadFromFile(channel.Writer);
-
-            _ = recordingService.UploadRecording(session, chatId, audioConfig, channel.Reader, CancellationToken.None);
-
+            var uploadTask = audioUploader.Upload(session, recording, channel.Reader, CancellationToken.None);
+            await Task.WhenAll(readTask, uploadTask);
             return await readTask;
         }
 
-        private static async Task<int> ReadFromFile(ChannelWriter<BlobMessage> writer)
+        private static async Task<int> ReadFromFile(ChannelWriter<BlobPart> writer)
         {
             var size = 0;
             await using var inputStream = new FileStream(
@@ -152,7 +154,7 @@ namespace ActualChat.Tests.Streaming
             var bytesRead = await inputStream.ReadAsync(readBuffer);
             size += bytesRead;
             while (bytesRead > 0) {
-                var command = new BlobMessage(
+                var command = new BlobPart(
                     index++,
                     readBuffer[..bytesRead].ToArray());
                 await writer.WriteAsync(command, CancellationToken.None);

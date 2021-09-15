@@ -9,56 +9,55 @@ using Stl.Async;
 
 namespace ActualChat.Audio.Orchestration
 {
-    public sealed class AudioStreamEntry
+    public sealed class AudioRecordSegmentAccessor
     {
         private readonly WebMDocumentBuilder _documentBuilder;
-        private readonly IReadOnlyList<AudioMetaDataEntry> _metaData;
+        private readonly IReadOnlyList<AudioMetadataEntry> _metadata;
         private readonly double _offset;
-        private readonly ChannelReader<BlobMessage> _audioStream;
-        private readonly List<BlobMessage> _buffer;
-        private readonly Channel<ChannelWriter<BlobMessage>> _readChannels;
-        private readonly List<ChannelWriter<BlobMessage>> _activeReadChannels;
+        private readonly ChannelReader<BlobPart> _audioStream;
+        private readonly List<BlobPart> _buffer;
+        private readonly Channel<ChannelWriter<BlobPart>> _readChannels;
+        private readonly List<ChannelWriter<BlobPart>> _activeReadChannels;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TaskCompletionSource _completionSource;
 
         private int _buffering = 0;
         private Task? _bufferingTask;
 
-
-        public AudioStreamEntry(
+        public AudioRecordSegmentAccessor(
             int index,
-            AudioRecording audioRecording,
+            AudioRecord audioRecord,
             WebMDocumentBuilder documentBuilder,
-            IReadOnlyList<AudioMetaDataEntry> metaData,
+            IReadOnlyList<AudioMetadataEntry> metadata,
             double offset,
-            ChannelReader<BlobMessage> audioStream)
+            ChannelReader<BlobPart> audioStream)
         {
-            var streamId = new StreamId(audioRecording.Id, index);
+            var streamId = new StreamId(audioRecord.Id, index);
             _documentBuilder = documentBuilder;
-            _metaData = metaData;
+            _metadata = metadata;
             _offset = offset;
-            AudioRecording = audioRecording;
+            AudioRecord = audioRecord;
             StreamId = streamId;
             Index = index;
             _audioStream = audioStream;
-            _buffer = new List<BlobMessage>();
-            _readChannels = Channel.CreateUnbounded<ChannelWriter<BlobMessage>>(
+            _buffer = new List<BlobPart>();
+            _readChannels = Channel.CreateUnbounded<ChannelWriter<BlobPart>>(
                 new UnboundedChannelOptions { SingleReader = true });
-            _activeReadChannels = new List<ChannelWriter<BlobMessage>>();
+            _activeReadChannels = new List<ChannelWriter<BlobPart>>();
             _cancellationTokenSource = new CancellationTokenSource();
             _completionSource = new TaskCompletionSource();
         }
 
         public StreamId StreamId { get; }
         public int Index { get; }
-        public AudioRecording AudioRecording { get; }
+        public AudioRecord AudioRecord { get; }
 
-        public ChannelReader<BlobMessage> GetStream()
+        public ChannelReader<BlobPart> GetStream()
         {
-            if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0) 
+            if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0)
                 _bufferingTask = StartBuffering(_cancellationTokenSource.Token);
-            
-            var readChannel = Channel.CreateUnbounded<BlobMessage>(
+
+            var readChannel = Channel.CreateUnbounded<BlobPart>(
                 new UnboundedChannelOptions { SingleWriter = true });
             var buffering = Volatile.Read(ref _buffering);
             if (buffering != 1)
@@ -68,19 +67,19 @@ namespace ActualChat.Audio.Orchestration
 
             return readChannel.Reader;
 
-            async Task FillWithBuffered(ChannelWriter<BlobMessage> writer, int state)
+            async Task FillWithBuffered(ChannelWriter<BlobPart> writer, int state)
             {
                 if (state == 2) {
                     await Task.Yield();
-                        
+
                     Task? bufferingTask = null;
                     while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
                     await bufferingTask;
                 }
-                
-                foreach (var message in _buffer) 
+
+                foreach (var message in _buffer)
                     await writer.WriteAsync(message);
-                
+
                 writer.Complete();
             }
         }
@@ -90,7 +89,7 @@ namespace ActualChat.Audio.Orchestration
             var originalState = Interlocked.Exchange(ref _buffering, 2);
             _readChannels.Writer.Complete();
             _completionSource.SetResult();
-            
+
             if (originalState == 1) {
                 Task? bufferingTask = null;
                 while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
@@ -120,17 +119,17 @@ namespace ActualChat.Audio.Orchestration
                         reader.Complete();
                     break;
                 }
-                var watForReader = readerAvailable 
+                var watForReader = readerAvailable
                     ? readers.WaitToReadAsync(cancellationToken).AsTask()
                     : Task.FromResult(false);
-                var waitForMessage = messageAvailable 
+                var waitForMessage = messageAvailable
                     ? messages.WaitToReadAsync(cancellationToken).AsTask()
                     : Task.FromResult(false);
                 if (readerAvailable)
                     await Task.WhenAny(watForReader, waitForMessage);
                 else
                     await waitForMessage;
-                
+
                 if (readerAvailable && watForReader.IsCompleted) {
                     readerAvailable = await watForReader;
                     if (readerAvailable)
@@ -143,13 +142,13 @@ namespace ActualChat.Audio.Orchestration
                                 reader.Complete();
                         }
                 }
-                
+
                 if (messageAvailable && waitForMessage.IsCompleted) {
                     messageAvailable = await waitForMessage;
                     if (messageAvailable)
                         while (messages.TryRead(out var message)) {
                             _buffer.Add(message);
-                            foreach (var reader in _activeReadChannels) 
+                            foreach (var reader in _activeReadChannels)
                                 await reader.WriteAsync(message, cancellationToken);
                         }
                     else {
@@ -159,29 +158,29 @@ namespace ActualChat.Audio.Orchestration
                     }
                 }
             }
-            
+
             _activeReadChannels.Clear();
         }
 
         // TODO(AK): Actually we can build precise Cue index with bit-perfect offset to blocks\clusters
-        public async Task<AudioEntry> GetEntryOnCompletion(CancellationToken cancellationToken)
+        public async Task<AudioStreamPart> GetPartOnCompletion(CancellationToken cancellationToken)
         {
             await _completionSource.Task.WithFakeCancellation(cancellationToken);
-            return new AudioEntry(
-                Index, 
+            return new AudioStreamPart(
+                Index,
                 StreamId,
-                AudioRecording,
+                AudioRecord,
                 _documentBuilder.ToDocument(),
-                _metaData,
+                _metadata,
                 _offset,
-                _metaData.Sum(md => md.Duration));
+                _metadata.Sum(md => md.Duration));
         }
 
-        public void Deconstruct(out StreamId streamId, out int index, out AudioRecording audioRecording)
+        public void Deconstruct(out StreamId streamId, out int index, out AudioRecord audioRecord)
         {
             streamId = StreamId;
             index = Index;
-            audioRecording = AudioRecording;
+            audioRecord = AudioRecord;
         }
     }
 }

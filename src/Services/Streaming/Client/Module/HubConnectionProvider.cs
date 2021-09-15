@@ -6,27 +6,28 @@ using Microsoft.Extensions.Logging;
 
 namespace ActualChat.Streaming.Client.Module
 {
-    public class HubConnectionSentinel : IHubConnectionSentinel
+    public class HubConnectionProvider : IHubConnectionProvider
     {
         private readonly HubConnection _hubConnection;
-        private readonly ILogger<HubConnectionSentinel> _logger;
+        private readonly ILogger<HubConnectionProvider> _logger;
 
-        public HubConnectionSentinel(HubConnection hubConnection, ILogger<HubConnectionSentinel> logger)
+        public HubConnectionProvider(HubConnection hubConnection, ILogger<HubConnectionProvider> logger)
         {
             _hubConnection = hubConnection;
             _logger = logger;
         }
 
-        public async Task<HubConnection> GetInitialized(CancellationToken token)
+        public async Task<HubConnection> GetConnection(CancellationToken cancellationToken)
         {
-            if  (_hubConnection.State == HubConnectionState.Disconnected)
-                await ConnectWithRetryAsync(token);
-            
+            await EnsureConnected(cancellationToken);
             return _hubConnection;
         }
-        
-        private async Task ConnectWithRetryAsync(CancellationToken token)
+
+        private async ValueTask EnsureConnected(CancellationToken cancellationToken)
         {
+            if  (_hubConnection.State != HubConnectionState.Disconnected)
+                return;
+
             var random = new Random();
             var delayInterval = 500;
             var attempt = 0;
@@ -34,18 +35,17 @@ namespace ActualChat.Streaming.Client.Module
                 try {
                     attempt++;
                     if (_hubConnection.State == HubConnectionState.Disconnected)
-                        await _hubConnection.StartAsync(token);
+                        await _hubConnection.StartAsync(cancellationToken);
                     else
                         return;
                 }
-                catch when (token.IsCancellationRequested) {
-                    return;
+                catch (OperationCanceledException oce) {
+                    throw;
                 }
-                catch(Exception e)
-                {
-                    _logger.LogError(e, "Error trying to reconnect the SignalR Hub");
-                    
-                    await Task.Delay(delayInterval, token);
+                catch(Exception e) {
+                    _logger.LogError(e, "Failed to reconnect SignalR Hub");
+
+                    await Task.Delay(delayInterval, cancellationToken);
                     if (delayInterval < 5000)
                         delayInterval += random.Next(1000);
                 }
