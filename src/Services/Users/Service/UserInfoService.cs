@@ -26,7 +26,7 @@ namespace ActualChat.Users
             UserNames = services.GetRequiredService<IUserNameService>();
         }
 
-        public virtual async Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken = default)
+        public virtual async Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken)
         {
             var dbUser = await DbUserResolver.TryGet(userId, cancellationToken);
             if (dbUser == null)
@@ -34,7 +34,7 @@ namespace ActualChat.Users
             return new UserInfo(dbUser.Id, dbUser.Name);
         }
 
-        public virtual async Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken = default)
+        public virtual async Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken)
         {
             var dbUser = await DbUserByNameResolver.TryGet(name, cancellationToken);
             if (dbUser == null)

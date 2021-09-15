@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -23,14 +24,14 @@ namespace ActualChat.Chat.Controllers
         // Commands
 
         [HttpPost]
-        public Task<Chat> Create([FromBody] ChatCommands.Create command, CancellationToken cancellationToken = default)
+        public Task<Chat> Create([FromBody] ChatCommands.Create command, CancellationToken cancellationToken)
         {
             command.UseDefaultSession(_sessionResolver);
             return _chats.Create(command, cancellationToken);
         }
 
         [HttpPost]
-        public Task<ChatEntry> Post([FromBody] ChatCommands.Post command, CancellationToken cancellationToken = default)
+        public Task<ChatEntry> Post([FromBody] ChatCommands.Post command, CancellationToken cancellationToken)
         {
             command.UseDefaultSession(_sessionResolver);
             return _chats.Post(command, cancellationToken);
@@ -45,25 +46,25 @@ namespace ActualChat.Chat.Controllers
         [HttpGet, Publish]
         public Task<long> GetEntryCount(
             Session session, string chatId, Range<long>? idRange,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
             => _chats.GetEntryCount(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
-        public Task<ChatPage> GetPage(
+        public Task<ImmutableArray<ChatEntry>> GetEntries(
             Session session, string chatId, Range<long> idRange,
-            CancellationToken cancellationToken = default)
-            => _chats.GetPage(session, chatId, idRange, cancellationToken);
+            CancellationToken cancellationToken)
+            => _chats.GetEntries(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
         public Task<Range<long>> GetIdRange(
             Session session, string chatId,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
             => _chats.GetIdRange(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPermissions> GetPermissions(
             Session session, string chatId,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
             => _chats.GetPermissions(session, chatId, cancellationToken);
     }
 }

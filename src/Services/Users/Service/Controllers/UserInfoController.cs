@@ -20,11 +20,11 @@ namespace ActualChat.Users.Controllers
         }
 
         [HttpGet, Publish]
-        public Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken = default)
+        public Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken)
             => _userInfos.TryGet(userId, cancellationToken);
 
         [HttpGet, Publish]
-        public Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken = default)
+        public Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken)
             => _userInfos.TryGetByName(name, cancellationToken);
     }
 }

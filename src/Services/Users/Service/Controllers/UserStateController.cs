@@ -20,7 +20,7 @@ namespace ActualChat.Users.Controllers
         }
 
         [HttpGet, Publish]
-        public Task<bool> IsOnline(string userId, CancellationToken cancellationToken = default)
+        public Task<bool> IsOnline(string userId, CancellationToken cancellationToken)
             => _userStates.IsOnline(userId, cancellationToken);
     }
 }

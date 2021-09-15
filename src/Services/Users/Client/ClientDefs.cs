@@ -8,15 +8,15 @@ namespace ActualChat.Users.Client
     public interface IUserInfoClientDef
     {
         [Get(nameof(TryGet))]
-        Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken = default);
+        Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken);
         [Get(nameof(TryGetByName))]
-        Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken = default);
+        Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken);
     }
 
     [BasePath("userState")]
     public interface IUserStateClientDef
     {
         [Get(nameof(IsOnline))]
-        Task<bool> IsOnline(string userId, CancellationToken cancellationToken = default);
+        Task<bool> IsOnline(string userId, CancellationToken cancellationToken);
     }
 }

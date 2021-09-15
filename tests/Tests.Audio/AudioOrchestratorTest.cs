@@ -87,7 +87,7 @@ namespace ActualChat.Tests.Audio
             var streamingService = services.GetRequiredService<IStreamer<BlobPart>>();
             var chatService = services.GetRequiredService<IChatService>();
 
-            var chat = await chatService.Create(new ChatCommands.Create(session, "Test"));
+            var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
 
@@ -119,7 +119,7 @@ namespace ActualChat.Tests.Audio
             var transcriptStreaming = services.GetRequiredService<IStreamer<TranscriptPart>>();
             var chatService = services.GetRequiredService<IChatService>();
 
-            var chat = await chatService.Create(new ChatCommands.Create(session, "Test"));
+            var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
             var cts = new CancellationTokenSource();
             var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
 

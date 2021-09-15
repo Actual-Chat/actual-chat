@@ -10,11 +10,11 @@
     scrollbar-width: none;  /* Firefox */
 }
 
-.virtual-list .content {
+.virtual-list > .content {
     position: relative;
 }
 
-.virtual-list .content::before {
+.virtual-list > .content::before {
     content: "";
     position: absolute;
     z-index: -1;

@@ -35,7 +35,7 @@ namespace ActualChat.Audio.Orchestration
 
         public async Task<string> Save(
             AudioStreamPart audioStreamPart,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             var p = audioStreamPart ?? throw new ArgumentNullException(nameof(audioStreamPart));
             var streamIndex = p.StreamId.Value.Replace($"{p.AudioRecord.Id}-", "");

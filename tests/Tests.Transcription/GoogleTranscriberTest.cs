@@ -42,7 +42,7 @@ namespace ActualChat.Tests.Transcription
                     MaxSpeakerCount = 1
                 }
             };
-            var transcriptId = await transcriber.BeginTranscription(command);
+            var transcriptId = await transcriber.BeginTranscription(command, default);
 
             transcriptId.Should().NotBeNull();
             transcriptId.Value.Should().NotBeNullOrEmpty();
@@ -68,19 +68,19 @@ namespace ActualChat.Tests.Transcription
                     MaxSpeakerCount = 1
                 }
             };
-            var transcriptId = await transcriber.BeginTranscription(command);
+            var transcriptId = await transcriber.BeginTranscription(command, default);
             var feedTask = FeedTranscriber(transcriptId, transcriber, "file.webm");
             var cts = new CancellationTokenSource();
             var pollTask = PollResults(transcriptId, transcriber, cts.Token);
 
             await feedTask;
 
-            await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
+            await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId), default);
 
             await pollTask;
 
         }
-        
+
         [Fact]
         public async Task PausesTranscriptionTest()
         {
@@ -101,50 +101,50 @@ namespace ActualChat.Tests.Transcription
                     MaxSpeakerCount = 1
                 }
             };
-            var transcriptId = await transcriber.BeginTranscription(command);
+            var transcriptId = await transcriber.BeginTranscription(command, default);
             var feedTask = FeedTranscriber(transcriptId, transcriber, "pauses.webm");
             var cts = new CancellationTokenSource();
             var pollTask = PollResults(transcriptId, transcriber, cts.Token);
 
             await feedTask;
 
-            await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
+            await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId), default);
 
             await pollTask;
         }
-        
+
         private async Task FeedTranscriber(Symbol transcriptId, ITranscriber t, string file)
         {
             await foreach (var chunk in ReadAudioFileSimulatingSpeech(file))
                 await t.AppendTranscription(new AppendTranscriptionCommand {
                     TranscriptId = transcriptId,
                     Data = chunk
-                });
-            await Task.Delay(300); // additional delay, google doesn't return final results otherwise. 
+                }, default);
+            await Task.Delay(300); // additional delay, google doesn't return final results otherwise.
         }
 
-        
+
         private async Task PollResults(Symbol transcriptId, ITranscriber t, CancellationToken token)
         {
             var index = 0;
             while (true) {
                 if (token.IsCancellationRequested)
                     break;
-            
+
                 var result = await t.PollTranscription(new PollTranscriptionCommand(transcriptId, index), token);
                 if (!result.ContinuePolling)
                     break;
-            
+
                 Out.WriteLine("Result:");
                 foreach (var fragmentVariant in result.Fragments) {
                     if (index < fragmentVariant.Value!.Index)
                         index = fragmentVariant.Value!.Index;
-                        
+
                     Out.WriteLine(fragmentVariant.ToString());
-                    if (fragmentVariant.Speech is { IsFinal: true }) 
+                    if (fragmentVariant.Speech is { IsFinal: true })
                         break;
                 }
-        
+
                 index++;
             }
         }
@@ -157,7 +157,7 @@ namespace ActualChat.Tests.Transcription
             var bytesRead = await inputStream.ReadAsync(buffer);
             while (bytesRead > 0) {
                 await Task.Delay(320);
-                
+
                 yield return new Base64Encoded(buffer[..bytesRead].ToArray());
                 bytesRead = await inputStream.ReadAsync(buffer);
             }
