@@ -31,11 +31,10 @@ namespace ActualChat.Streaming.Client.Module
                     .Build();
                 return hubConnection;
             });
-            services.AddSingleton<IHubConnectionSentinel, HubConnectionSentinel>();
-            services.AddTransient<IRecordingService<AudioRecordingConfiguration>, AudioRecordingServiceClient>();
-            services.AddTransient<IAudioRecordingService, AudioRecordingServiceClient>();
-            services.AddTransient<IStreamingService<BlobMessage>, BlobStreamingServiceClient>();
-            services.AddTransient<IStreamingService<TranscriptMessage>, TranscriptStreamingServiceClient>();
+            services.AddSingleton<IHubConnectionProvider, HubConnectionProvider>();
+            services.AddSingleton<IAudioUploader, AudioUploaderClient>();
+            services.AddSingleton<IStreamer<BlobPart>, BlobStreamerClient>();
+            services.AddSingleton<IStreamer<TranscriptPart>, TranscriptStreamerClient>();
         }
     }
 }

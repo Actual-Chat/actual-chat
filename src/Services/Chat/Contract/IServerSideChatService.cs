@@ -12,7 +12,7 @@ namespace ActualChat.Chat
         // Commands
         [CommandHandler]
         Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken = default);
-        
+
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
         Task<Chat?> TryGet(string chatId, CancellationToken cancellationToken = default);

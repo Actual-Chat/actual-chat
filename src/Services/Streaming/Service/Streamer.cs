@@ -9,17 +9,16 @@ using Stl.Async;
 
 namespace ActualChat.Streaming
 {
-    public class StreamingService<TMessage> : IStreamingService<TMessage>
+    public class Streamer<TMessage> : IStreamer<TMessage>
     {
         protected readonly IConnectionMultiplexer Redis;
 
-        public StreamingService(IConnectionMultiplexer redis)
+        public Streamer(IConnectionMultiplexer redis)
             => Redis = redis;
 
         public Task<ChannelReader<TMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken)
         {
             var db = GetDatabase();
-
             var channel = Channel.CreateBounded<TMessage>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -27,24 +26,24 @@ namespace ActualChat.Streaming
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
+            var writer = channel.Writer;
 
-            _ = ReadRedisStream(
-                channel.Writer, db, streamId,
-                cancellationToken);
+            _ = ReadRedisStream();
 
             return Task.FromResult(channel.Reader);
 
-            async Task ReadRedisStream(ChannelWriter<TMessage> writer, IDatabase d, StreamId id, CancellationToken ct)
+            async Task ReadRedisStream()
             {
-                var key = new RedisKey(id);
+                var key = new RedisKey(streamId);
 
                 Exception? localException = null;
                 var position = (RedisValue)"0-0";
                 try {
                     while (true) {
-                        if (ct.IsCancellationRequested) return;
+                        if (cancellationToken.IsCancellationRequested)
+                            return; // TODO(AY): Shouldn't you push the cancellation exception to the channel too?
 
-                        var entries = await d.StreamReadAsync(key, position, 10);
+                        var entries = await db.StreamReadAsync(key, position, 10);
                         if (entries?.Length > 0)
                             foreach (var entry in entries) {
                                 var status = entry[StreamingConstants.StatusKey];
@@ -54,8 +53,9 @@ namespace ActualChat.Streaming
                                 var serialized = (ReadOnlyMemory<byte>)entry[StreamingConstants.MessageKey];
                                 var message = MessagePackSerializer.Deserialize<TMessage>(
                                     serialized,
-                                    MessagePackSerializerOptions.Standard, ct);
-                                await writer.WriteAsync(message, ct);
+                                    MessagePackSerializerOptions.Standard,
+                                    cancellationToken);
+                                await writer.WriteAsync(message, cancellationToken);
 
                                 position = entry.Id;
                             }
@@ -82,7 +82,7 @@ namespace ActualChat.Streaming
 
         protected virtual IDatabase GetDatabase()
             => Redis.GetDatabase().WithKeyPrefix(typeof(TMessage).Name);
-        
+
         private async Task<bool> WaitForNewMessage(StreamId streamId, CancellationToken cancellationToken)
         {
             try {

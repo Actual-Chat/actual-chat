@@ -8,10 +8,10 @@
 @inject JSModule _jsModule;
 @inject Session _session
 @inject UICommandRunner _cmd
+@inject IAudioUploader _audioUploader
+@inject IStreamer<BlobPart> _blobStreamer
+@inject IStreamer<TranscriptPart> _transcriptStreamer
 @inject ILogger<AudioPage> _log
-@inject IRecordingService<AudioRecordingConfiguration> _audioRecording
-@inject IStreamingService<BlobMessage> _streaming
-@inject IStreamingService<TranscriptMessage> _transcriptStreaming
 
 <h1>Voice Transcription</h1>
 
@@ -43,7 +43,7 @@
 @code {
     private IJSObjectReference? ModuleRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
-    private ChannelWriter<BlobMessage>? Writer { get; set; }
+    private ChannelWriter<BlobPart>? Writer { get; set; }
     private int Index { get; set; }
 
     private bool IsRecording { get; set; } = false;
@@ -104,7 +104,7 @@
     {
         if (Writer == null)
         {
-            var channel = Channel.CreateBounded<BlobMessage>(
+            var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -113,11 +113,12 @@
                 });
             Writer = channel.Writer;
 
-            var audioConfig = new AudioRecordingConfiguration(
+            var recording = new AudioRecord(
+                "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = _audioRecording.UploadRecording(_session, "1", audioConfig, channel.Reader, CancellationToken.None);
+            _ = _audioUploader.Upload(_session, recording, channel.Reader, CancellationToken.None);
 
             // _ = ReadAudio(recordingId);
             // _ = ReadTranscription(recordingId);
@@ -126,19 +127,19 @@
         return Task.CompletedTask;
     }
 
-    private async Task ReadAudio(RecordingId recordingId)
+    private async Task ReadAudio(AudioRecordId audioRecordId)
     {
-        var streamId = new StreamId(recordingId, 0);
-        var reader = await _streaming.GetStream(streamId, CancellationToken.None);
+        var streamId = new StreamId(audioRecordId, 0);
+        var reader = await _blobStreamer.GetStream(streamId, CancellationToken.None);
         await foreach (var audioMessage in reader.ReadAllAsync()) {
             Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
         }
     }
 
-    private async Task ReadTranscription(RecordingId recordingId)
+    private async Task ReadTranscription(AudioRecordId audioRecordId)
     {
-        var streamId = new StreamId(recordingId, 0);
-        var reader = await _transcriptStreaming.GetStream(streamId, CancellationToken.None);
+        var streamId = new StreamId(audioRecordId, 0);
+        var reader = await _transcriptStreamer.GetStream(streamId, CancellationToken.None);
         await foreach (var transcriptMessage in reader.ReadAllAsync()) {
             Console.WriteLine($"Got from server: {transcriptMessage.Text}");
         }
@@ -150,7 +151,7 @@
         if (Writer != null) {
             var base64 = Base64Encoded.Decode(dataAsBase64);
 
-            await Writer.WriteAsync(new BlobMessage(Index++, base64.Data));
+            await Writer.WriteAsync(new BlobPart(Index++, base64.Data));
         }
     }
 

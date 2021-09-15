@@ -63,7 +63,8 @@ namespace ActualChat.Audio.Module
             });
 
             // Module's own services
-            services.AddSingleton<AudioPersistService>();
+            services.AddSingleton<AudioSaver>();
+            services.AddSingleton<AudioActivityExtractor>();
             services.AddSingleton<AudioOrchestrator>();
             services.AddHostedService(sp => sp.GetRequiredService<AudioOrchestrator>());
         }

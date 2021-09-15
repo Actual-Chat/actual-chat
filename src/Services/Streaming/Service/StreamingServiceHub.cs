@@ -10,27 +10,31 @@ namespace ActualChat.Streaming
     [Authorize]
     public class StreamingServiceHub : Hub
     {
-        private readonly IStreamingService<BlobMessage> _blobStreamingService;
-        private readonly IStreamingService<TranscriptMessage> _transcriptStreamingService;
-        private readonly IRecordingService<AudioRecordingConfiguration> _audioRecordingService;
+        private readonly IStreamer<BlobPart> _blobStreamer;
+        private readonly IStreamer<TranscriptPart> _transcriptStreamer;
+        private readonly IAudioUploader _audioUploader;
 
         public StreamingServiceHub(
-            IStreamingService<BlobMessage> blobStreamingService,
-            IStreamingService<TranscriptMessage> transcriptStreamingService,
-            IRecordingService<AudioRecordingConfiguration> audioRecordingService)
+            IStreamer<BlobPart> blobStreamer,
+            IStreamer<TranscriptPart> transcriptStreamer,
+            IAudioUploader audioUploader)
         {
-            _blobStreamingService = blobStreamingService;
-            _transcriptStreamingService = transcriptStreamingService;
-            _audioRecordingService = audioRecordingService;
+            _blobStreamer = blobStreamer;
+            _transcriptStreamer = transcriptStreamer;
+            _audioUploader = audioUploader;
         }
 
-        public Task<ChannelReader<BlobMessage>> GetBlobStream(string streamId, CancellationToken cancellationToken)
-            => _blobStreamingService.GetStream(streamId, cancellationToken);
+        public Task<ChannelReader<BlobPart>> GetBlobStream(string streamId, CancellationToken cancellationToken)
+            => _blobStreamer.GetStream(streamId, cancellationToken);
 
-        public Task<ChannelReader<TranscriptMessage>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
-            => _transcriptStreamingService.GetStream(streamId, cancellationToken);
+        public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
+            => _transcriptStreamer.GetStream(streamId, cancellationToken);
 
-        public Task UploadAudioStream(Session session, string chatId, AudioRecordingConfiguration config, ChannelReader<BlobMessage> source, CancellationToken cancellationToke)
-            => _audioRecordingService.UploadRecording(session, chatId, config, source, cancellationToke);
+        public Task UploadAudioStream(
+            Session session,
+            AudioRecord upload,
+            ChannelReader<BlobPart> content,
+            CancellationToken cancellationToke)
+            => _audioUploader.Upload(session, upload, content, cancellationToke);
     }
 }

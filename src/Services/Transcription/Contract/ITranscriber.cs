@@ -17,7 +17,7 @@ namespace ActualChat.Transcription
         Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default);
 
         Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default);
-        
+
         // probably we should combine Poll and Ack into one method to reduce chattiness
         Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default);
     }

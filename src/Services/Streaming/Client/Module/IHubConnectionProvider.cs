@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace ActualChat.Streaming.Client.Module
 {
-    public interface IHubConnectionSentinel
+    public interface IHubConnectionProvider
     {
-        Task<HubConnection> GetInitialized(CancellationToken token);
+        Task<HubConnection> GetConnection(CancellationToken cancellationToken);
     }
 }

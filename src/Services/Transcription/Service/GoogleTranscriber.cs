@@ -85,7 +85,7 @@ namespace ActualChat.Transcription
         public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default)
         {
             _log.LogInformation($"{nameof(EndTranscription)}, TranscriptId = {{TranscriptId}}", command.TranscriptId);
-            
+
             if (_transcriptionStreams.TryGetValue(command.TranscriptId, out var tuple)) {
                 var (writer, _, transcriptProcessorTask, _) = tuple;
                 await writer.WriteCompleteAsync();
@@ -142,7 +142,7 @@ namespace ActualChat.Transcription
         private class TranscriptionBuffer
         {
             private const int PollWaitDelay = 10_000;
-            
+
             private readonly IAsyncEnumerable<StreamingRecognizeResponse> _stream;
             private readonly ILogger<GoogleTranscriber> _logger;
 
@@ -164,7 +164,7 @@ namespace ActualChat.Transcription
 
             public async Task Start(CancellationToken cancellationToken = default)
             {
-                if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0) 
+                if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0)
                     return;
 
                 var cutter = new StablePrefixCutter();
@@ -201,7 +201,7 @@ namespace ActualChat.Transcription
                 await Task.WhenAny(readWait, delayWait);
                 if (readWait.Status != TaskStatus.RanToCompletion)
                     return ImmutableArray<TranscriptFragmentVariant>.Empty;
-                
+
                 var freshResults = new List<TranscriptFragmentVariant>();
                 lock (_lock)
                     while (_channel.Reader.TryRead(out var item)) {
@@ -222,7 +222,7 @@ namespace ActualChat.Transcription
                     if (_bufferedResults.First!.Value.Value!.Index > beforeIndex)
                         return;
 
-                    while (_bufferedResults.First!.Value.Value!.Index <= beforeIndex) 
+                    while (_bufferedResults.First!.Value.Value!.Index <= beforeIndex)
                         _bufferedResults.RemoveFirst();
                 }
             }
@@ -253,7 +253,7 @@ namespace ActualChat.Transcription
                     _offset = endOffset;
                     if (!result.IsFinal || !(alternative.Words?.Count > 0))
                         return new[] { new TranscriptFragmentVariant(fragment) };
-                    
+
                     var list = new List<TranscriptFragmentVariant>();
                     foreach (var wordInfo in alternative.Words) {
                         var startOffset = wordInfo.StartTime.ToTimeSpan().TotalSeconds;
