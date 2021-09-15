@@ -22,6 +22,8 @@ namespace ActualChat.Streaming
 
         public static implicit operator RecordingId(string value) => new(value);
         public static implicit operator string(RecordingId id) => id.Value;
+
+        public override string ToString() => Value;
     }
     
     [MessagePackObject]
@@ -37,6 +39,8 @@ namespace ActualChat.Streaming
 
         public static implicit operator StreamId(string value) => new(value);
         public static implicit operator string(StreamId id) => id.Value;
+        
+        public override string ToString() => Value;
     }
     
     [MessagePackObject]

@@ -56,7 +56,6 @@ namespace ActualChat.Streaming
 
         public Task<ChannelReader<BlobMessage>> GetRecording(RecordingId recordingId, CancellationToken cancellationToken)
         {
-            
             var db = GetDatabase();
 
             var channel = Channel.CreateBounded<BlobMessage>(
@@ -103,11 +102,14 @@ namespace ActualChat.Streaming
 
                             position = entry.Id;
                         }
-                    else
-                        await WaitForNewMessage(recordingId, cancellationToken)
+                    else {
+                        var (hasValue, @continue) = await WaitForNewMessage(recordingId, cancellationToken)
                             .WithTimeout(
                                 TimeSpan.FromSeconds(StreamingConstants.EmptyStreamDelay),
                                 cancellationToken);
+                        if (hasValue && !@continue)
+                            return;
+                    }
                 }
             }
             catch (Exception ex) {
@@ -116,7 +118,7 @@ namespace ActualChat.Streaming
             finally {
                 try {
                     var subscriber = _redis.GetSubscriber();
-                    await subscriber.UnsubscribeAsync(IdExtensions.GetChannelName(recordingId));
+                    await subscriber.UnsubscribeAsync(recordingId.GetChannelName());
                 }
                 catch {
                     // ignored
@@ -126,14 +128,17 @@ namespace ActualChat.Streaming
             }
         }
 
-        private async Task WaitForNewMessage(RecordingId recordingId, CancellationToken cancellationToken)
+        private async Task<bool> WaitForNewMessage(RecordingId recordingId, CancellationToken cancellationToken)
         {
             try {
                 var subscriber = _redis.GetSubscriber();
-                var queue = await subscriber.SubscribeAsync(IdExtensions.GetChannelName(recordingId));
+                var queue = await subscriber.SubscribeAsync(recordingId.GetChannelName());
                 await queue.ReadAsync(cancellationToken);
+                return true;
             }
             catch (ChannelClosedException) { }
+
+            return false;
         }
     }
 }

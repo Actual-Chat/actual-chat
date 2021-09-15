@@ -36,8 +36,9 @@ namespace ActualChat.Audio.Orchestration
         {
             if (audioEntry == null) throw new ArgumentNullException(nameof(audioEntry));
             var (index, streamId, (recordingId, _, _, _), document, metaData, offset, duration) = audioEntry;
-            var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId.Value}{BlobId.ScopeDelimiter}{streamId}";
-            var persistBlob = PersistBlob(recordingId, blobId, document, cancellationToken);
+            var streamIndex = streamId.Value.Replace($"{recordingId}-", "");
+            var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{streamIndex}.webm";
+            var persistBlob = PersistBlob(streamId, blobId, document, cancellationToken);
             var persistSegment = PersistSegment(cancellationToken);
             
             await Task.WhenAll(persistBlob, persistSegment);
@@ -47,9 +48,9 @@ namespace ActualChat.Audio.Orchestration
             {
                 await using var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
                 
-                _log.LogInformation($"{nameof(AudioPersistService)}, RecordingId = {{RecordingId}}", recordingId.Value);
+                _log.LogInformation($"{nameof(AudioPersistService)}, RecordingId = {{RecordingId}}", recordingId);
                 dbContext.AudioSegments.Add(new DbAudioSegment {
-                    RecordingId = recordingId.Value,
+                    RecordingId = recordingId,
                     Index = index,
                     Offset = offset,
                     Duration = duration,
@@ -61,13 +62,13 @@ namespace ActualChat.Audio.Orchestration
         }
 
         private async Task PersistBlob(
-            RecordingId id,
+            StreamId id,
             string blobId,
             WebMDocument document,
             CancellationToken cancellationToken)
         {
             const int minBufferSize = 32*1024;
-            if (!document.IsValid) _log.LogWarning("Skip flushing audio segments for {RecordingId}. WebM document is invalid", id.Value);
+            if (!document.IsValid) _log.LogWarning("Skip flushing audio segments for {StreamId}. WebM document is invalid", id.Value);
 
             var (ebml, segment, clusters) = document;
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);

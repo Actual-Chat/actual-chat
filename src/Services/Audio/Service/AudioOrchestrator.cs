@@ -9,6 +9,7 @@ using ActualChat.Streaming;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Stl.CommandR;
 using Stl.Text;
 
 namespace ActualChat.Audio
@@ -193,7 +194,7 @@ namespace ActualChat.Audio
                 userId,
                 chatId,
                 "...",
-                streamId);
+                streamId).MarkServerSide();
             await _chatService.ServerPost(command, cancellationToken);
         }
 

@@ -93,6 +93,9 @@ namespace ActualChat.Audio.Orchestration
                 // TODO(AK): Implement VAD and perform actual audio split
             }
 
+            if (lastState.Container is Cluster cluster)
+                documentBuilder.AddCluster(cluster);
+
             entryWriter.Complete();
             audioChannel.Writer.Complete();
             await audioStreamEntry.CompleteBuffering();
