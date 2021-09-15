@@ -29,13 +29,13 @@ namespace ActualChat.Audio.Orchestration
             _blobStorageProvider = blobStorageProvider;
             _log = log;
         }
-
+        
         public async Task<string> Persist(
             AudioEntry audioEntry,
             CancellationToken cancellationToken)
         {
             if (audioEntry == null) throw new ArgumentNullException(nameof(audioEntry));
-            var (index, streamId, (recordingId, _, _, _), document, metaData, offset, duration) = audioEntry;
+            var (index, streamId, (recordingId, userId, chatId, config), document, metaData, offset, duration) = audioEntry;
             var streamIndex = streamId.Value.Replace($"{recordingId}-", "");
             var blobId = $"{BlobScope.AudioRecording}{BlobId.ScopeDelimiter}{recordingId}{BlobId.ScopeDelimiter}{streamIndex}.webm";
             var persistBlob = PersistBlob(streamId, blobId, document, cancellationToken);
@@ -47,8 +47,24 @@ namespace ActualChat.Audio.Orchestration
             async Task PersistSegment(CancellationToken ct)
             {
                 await using var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
+                var existingRecording = await dbContext.AudioRecordings.FindAsync(new object[] { recordingId.Value }, cancellationToken: ct);
+                if (existingRecording == null) {
+                    _log.LogInformation("Entity = Recording, RecordingId = {RecordingId}", recordingId);
+                    dbContext.AudioRecordings.Add(new DbAudioRecording {
+                        Id = recordingId,
+                        UserId = userId,
+                        ChatId = chatId,
+                        // TODO(AK): fill recording DB entity attributes
+                        RecordingStartedUtc = default,
+                        RecordingDuration = 0,
+                        AudioCodec = config.Format.Codec,
+                        ChannelCount = config.Format.ChannelCount,
+                        SampleRate = config.Format.SampleRate,
+                        Language = config.Language
+                    });
+                }
                 
-                _log.LogInformation($"{nameof(AudioPersistService)}, RecordingId = {{RecordingId}}", recordingId);
+                _log.LogInformation("Entity = AudioSegment, RecordingId = {RecordingId}, Index = {Index}", recordingId, index);
                 dbContext.AudioSegments.Add(new DbAudioSegment {
                     RecordingId = recordingId,
                     Index = index,

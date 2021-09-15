@@ -93,8 +93,10 @@ namespace ActualChat.Audio.Orchestration
                 // TODO(AK): Implement VAD and perform actual audio split
             }
 
-            if (lastState.Container is Cluster cluster)
+            if (lastState.Container is Cluster cluster) {
+                cluster.Complete();
                 documentBuilder.AddCluster(cluster);
+            }
 
             entryWriter.Complete();
             audioChannel.Writer.Complete();
@@ -113,9 +115,11 @@ namespace ActualChat.Audio.Orchestration
                         builder.SetHeader((EBML)webMReader.Entry);
                         break;
                     case EbmlEntryType.Segment:
+                        webMReader.Entry.Complete();
                         builder.SetSegment((Segment)webMReader.Entry);
                         break;
                     case EbmlEntryType.Cluster:
+                        webMReader.Entry.Complete();
                         builder.AddCluster((Cluster)webMReader.Entry);
                         break;
                     default:

@@ -168,7 +168,6 @@ namespace ActualChat.Transcription
                     return;
 
                 var cutter = new StablePrefixCutter();
-                var previousText = string.Empty;
                 await foreach (var response in _stream.WithCancellation(cancellationToken)) {
                     var fragmentVariants = MapResponse(response);
                     foreach (var fragmentVariant in fragmentVariants) {
@@ -176,23 +175,8 @@ namespace ActualChat.Transcription
                         if ((speechFragment?.StartOffset ?? 0) != 0)
                             await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
                         else if (speechFragment != null) {
-                            if (previousText == speechFragment.Text)
-                                break;
-
-                            previousText = speechFragment.Text;
-                            var (text, textIndex, offset, duration) =
-                                cutter.CutMemoized(new(speechFragment.Text, speechFragment.Duration));
-                            var newSpeechFragment = new TranscriptSpeechFragment {
-                                Index = speechFragment.Index,
-                                Confidence = speechFragment.Confidence,
-                                Text = text,
-                                TextIndex = textIndex,
-                                StartOffset = offset,
-                                Duration = duration,
-                                IsFinal = false,
-                                SpeakerId = speechFragment.SpeakerId
-                            };
-                            await _channel.Writer.WriteAsync(new TranscriptFragmentVariant(newSpeechFragment), cancellationToken);
+                            var processedFragment = cutter.CutMemoized(speechFragment);
+                            await _channel.Writer.WriteAsync(new TranscriptFragmentVariant(processedFragment), cancellationToken);
                         }
                         else
                             await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
@@ -264,15 +248,14 @@ namespace ActualChat.Transcription
                         Text = alternative.Transcript,
                         StartOffset = 0,
                         Duration = endOffset,
-                        IsFinal = result.IsFinal
+                        IsFinal = false
                     };
                     _offset = endOffset;
                     if (!result.IsFinal || !(alternative.Words?.Count > 0))
                         return new[] { new TranscriptFragmentVariant(fragment) };
                     
                     var list = new List<TranscriptFragmentVariant>();
-                    for (var i = 0; i < alternative.Words.Count; i++) {
-                        var wordInfo = alternative.Words[i];
+                    foreach (var wordInfo in alternative.Words) {
                         var startOffset = wordInfo.StartTime.ToTimeSpan().TotalSeconds;
                         var wordFragment = new TranscriptSpeechFragment {
                             Index = _index++,
@@ -280,7 +263,7 @@ namespace ActualChat.Transcription
                             Text = wordInfo.Word,
                             StartOffset = startOffset,
                             Duration = Math.Round(wordInfo.EndTime.ToTimeSpan().TotalSeconds - startOffset, 3, MidpointRounding.AwayFromZero),
-                            IsFinal = i == alternative.Words.Count - 1,
+                            IsFinal = true,
                             SpeakerId = wordInfo.SpeakerTag.ToString()
                         };
                         list.Add(new TranscriptFragmentVariant(wordFragment));

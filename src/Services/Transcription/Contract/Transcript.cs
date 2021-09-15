@@ -40,6 +40,22 @@ namespace ActualChat.Transcription
         public string SpeakerId { get; init; } = "";
         public double Confidence { get; init; } = 1;
         public bool IsFinal { get; init; }
+
+        public void Deconstruct(
+            out int index,
+            out double startOffset,
+            out double duration,
+            out string text,
+            out int textIndex,
+            out bool isFinal)
+        {
+            index = Index;
+            startOffset = StartOffset;
+            duration = Duration;
+            text = Text;
+            textIndex = TextIndex;
+            isFinal = IsFinal;
+        }
     }
 
     public record TranscriptErrorFragment(int Code, string Message) : TranscriptFragment;

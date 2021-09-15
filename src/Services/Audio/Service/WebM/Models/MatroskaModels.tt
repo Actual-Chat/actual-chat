@@ -147,7 +147,7 @@ namespace ActualChat.Audio.WebM.Models
         public override EbmlElementDescriptor Descriptor => MatroskaSpecification.<#=master.Name#>Descriptor;
 
 <#
-        var subs = master.SubElements.Where(sub => !sub.IsRoot);
+        var subs = master.SubElements.Where(sub => !sub.IsRoot).ToList();
         foreach (var sub in subs)
         {
             string field = sub.Name;
@@ -181,16 +181,24 @@ namespace ActualChat.Audio.WebM.Models
         public override ulong GetSize() {
             var size = 0UL;
 <#
-        // TODO: HardCode unknown size for Segment and Cluster. Acccording to the spec Clusters should be child element of the segment, but it's not convinient for streaming.
-        if (master.Name == "Segment" || master.Name == "Cluster")
+        // TODO: HardCode unknown size for Segment and Cluster. According to the spec Clusters should be child element of the segment, but it's not convenient for streaming.
+        if (master.Name == "Segment")
         {
 #>
             size = 0xFF_FFFF_FFFF_FFFF;
+
 <# 
         }
-        else
+        if (master.Name == "Cluster")
         {
+#>
+            if (!IsCompleted)
+                return 0xFF_FFFF_FFFF_FFFF;
 
+<# 
+        }
+        
+        if (master.Name != "Segment")
             foreach (var sub in subs)
             {
                 string field = sub.Name;
@@ -239,7 +247,7 @@ namespace ActualChat.Audio.WebM.Models
 <#
                 }
             }
-        }
+
 #>
             return size;
         }
