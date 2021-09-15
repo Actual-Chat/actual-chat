@@ -10,6 +10,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stl.Serialization;
 using Stl.Testing;
+using Stl.Text;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -68,9 +69,9 @@ namespace ActualChat.Tests.Transcription
                 }
             };
             var transcriptId = await transcriber.BeginTranscription(command);
-            var feedTask = FeedTranscriber(transcriber);
+            var feedTask = FeedTranscriber(transcriptId, transcriber, "file.webm");
             var cts = new CancellationTokenSource();
-            var pollTask = PollResults(transcriber, cts.Token);
+            var pollTask = PollResults(transcriptId, transcriber, cts.Token);
 
             await feedTask;
 
@@ -78,49 +79,79 @@ namespace ActualChat.Tests.Transcription
 
             await pollTask;
 
-            async Task FeedTranscriber(ITranscriber t)
-            {
-                await foreach (var chunk in ReadAudioFileSimulatingSpeech())
-                    await t.AppendTranscription(new AppendTranscriptionCommand {
-                        TranscriptId = transcriptId,
-                        Data = chunk
-                    });
-                await Task.Delay(300); // additional delay, google doesn't return final results otherwise. 
-            }
+        }
         
-
-            async Task PollResults(ITranscriber t, CancellationToken token)
-            {
-                var index = 0;
-                while (true) {
-                    if (token.IsCancellationRequested)
-                        break;
-            
-                    var result = await t.PollTranscription(new PollTranscriptionCommand(transcriptId, index), token);
-                    if (!result.ContinuePolling)
-                        break;
-            
-                    Out.WriteLine("Result:");
-                    foreach (var fragmentVariant in result.Fragments) {
-                        if (index < fragmentVariant.Value!.Index)
-                            index = fragmentVariant.Value!.Index;
-                        
-                        Out.WriteLine(fragmentVariant.ToString());
-                        if (fragmentVariant.Speech is { IsFinal: true }) 
-                            break;
-                    }
-        
-
-                    index++;
+        [Fact]
+        public async Task PausesTranscriptionTest()
+        {
+            // TODO: Introduce DI Containers
+            // TODO: Implement XUnitLogger
+            var transcriber = new GoogleTranscriber(NullLogger<GoogleTranscriber>.Instance);
+            var command = new BeginTranscriptionCommand {
+                RecordingId = Ulid.NewUlid().ToString(),
+                AudioFormat = new AudioFormat {
+                    Codec = AudioCodec.Opus,
+                    ChannelCount = 1,
+                    SampleRate = 48000
+                },
+                Options = new TranscriptionOptions {
+                    Language = "ru-RU",
+                    IsDiarizationEnabled = false,
+                    IsPunctuationEnabled = true,
+                    MaxSpeakerCount = 1
                 }
+            };
+            var transcriptId = await transcriber.BeginTranscription(command);
+            var feedTask = FeedTranscriber(transcriptId, transcriber, "pauses.webm");
+            var cts = new CancellationTokenSource();
+            var pollTask = PollResults(transcriptId, transcriber, cts.Token);
+
+            await feedTask;
+
+            await transcriber.EndTranscription(new EndTranscriptionCommand(transcriptId));
+
+            await pollTask;
+        }
+        
+        private async Task FeedTranscriber(Symbol transcriptId, ITranscriber t, string file)
+        {
+            await foreach (var chunk in ReadAudioFileSimulatingSpeech(file))
+                await t.AppendTranscription(new AppendTranscriptionCommand {
+                    TranscriptId = transcriptId,
+                    Data = chunk
+                });
+            await Task.Delay(300); // additional delay, google doesn't return final results otherwise. 
+        }
+
+        
+        private async Task PollResults(Symbol transcriptId, ITranscriber t, CancellationToken token)
+        {
+            var index = 0;
+            while (true) {
+                if (token.IsCancellationRequested)
+                    break;
             
+                var result = await t.PollTranscription(new PollTranscriptionCommand(transcriptId, index), token);
+                if (!result.ContinuePolling)
+                    break;
             
+                Out.WriteLine("Result:");
+                foreach (var fragmentVariant in result.Fragments) {
+                    if (index < fragmentVariant.Value!.Index)
+                        index = fragmentVariant.Value!.Index;
+                        
+                    Out.WriteLine(fragmentVariant.ToString());
+                    if (fragmentVariant.Speech is { IsFinal: true }) 
+                        break;
+                }
+        
+                index++;
             }
         }
 
-        private async IAsyncEnumerable<Base64Encoded> ReadAudioFileSimulatingSpeech()
+        private async IAsyncEnumerable<Base64Encoded> ReadAudioFileSimulatingSpeech(string file)
         {
-            await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
+            await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", file), FileMode.Open, FileAccess.Read);
             using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
             var buffer = bufferLease.Memory;
             var bytesRead = await inputStream.ReadAsync(buffer);

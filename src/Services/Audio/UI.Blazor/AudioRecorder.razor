@@ -16,7 +16,7 @@
 @code {
     private IJSObjectReference? ModuleRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend>? ComponentRef { get; set; }
-    private ChannelWriter<BlobMessage>? Writer { get; set; }
+    private Channel<BlobMessage>? AudioChannel { get; set; }
     private int Index { get; set; }
 
     private bool IsRecording { get; set; }
@@ -47,6 +47,17 @@
 
     private async Task StartRecording()
     {
+        if (AudioChannel != null) return;
+        
+        var channel = Channel.CreateBounded<BlobMessage>(
+            new BoundedChannelOptions(100) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true,
+                AllowSynchronousContinuations = true
+            });
+        AudioChannel = channel;
+        
         await ModuleRef!.InvokeVoidAsync("startRecording");
     }
 
@@ -75,22 +86,14 @@
     [JSInvokable]
     public Task RecordingStarted()
     {
-        if (Writer != null) return Task.CompletedTask;
+        if (AudioChannel == null)
+            return Task.CompletedTask;
         
-        var channel = Channel.CreateBounded<BlobMessage>(
-            new BoundedChannelOptions(100) {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
-                SingleWriter = true,
-                AllowSynchronousContinuations = true
-            });
-        Writer = channel.Writer;
-
         var audioConfig = new AudioRecordingConfiguration(
             new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = _audioRecording.UploadRecording(_session, ChatId, audioConfig, channel.Reader, CancellationToken.None);
+        _ = _audioRecording.UploadRecording(_session, ChatId, audioConfig, AudioChannel.Reader, CancellationToken.None);
 
         return Task.CompletedTask;
     }
@@ -98,18 +101,18 @@
     [JSInvokable]
     public async Task AudioDataAvailable(string dataAsBase64)
     {
-        if (Writer != null) {
+        if (AudioChannel != null) {
             var base64 = Base64Encoded.Decode(dataAsBase64);
 
-            await Writer.WriteAsync(new BlobMessage(Index++, base64.Data));
+            await AudioChannel.Writer.WriteAsync(new BlobMessage(Index++, base64.Data));
         }
     }
 
     [JSInvokable]
     public Task RecordingStopped()
     {
-        Writer?.Complete();
-        Writer = null;
+        AudioChannel?.Writer.Complete();
+        AudioChannel = null;
         return Task.CompletedTask;
     }
 

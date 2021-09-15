@@ -69,6 +69,42 @@ namespace ActualChat.Tests.Transcription
             await writeTask;
         }
         
+        // [Fact(Skip = "Manual")]
+        [Fact]
+        public async Task GoogleStreamedRecognizeRepeatTest()
+        {
+            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "pauses.webm"));
+            var client = await SpeechClient.CreateAsync();
+            var config = new RecognitionConfig
+            {
+                Encoding = RecognitionConfig.Types.AudioEncoding.WebmOpus,
+                SampleRateHertz = 48000,
+                LanguageCode = LanguageCodes.Russian.Russia,
+                EnableAutomaticPunctuation = true,
+                EnableWordConfidence = true,
+                EnableWordTimeOffsets = true
+            };
+            var streamingRecognize = client.StreamingRecognize();
+            await streamingRecognize.WriteAsync(new StreamingRecognizeRequest {
+                StreamingConfig = new StreamingRecognitionConfig {
+                    Config = config,
+                    InterimResults = true,
+                    SingleUtterance = false
+                }
+            });
+            
+            var writeTask = WriteToStream(streamingRecognize, audioBytes);
+            
+            await foreach (var response in streamingRecognize.GetResponseStream()) {
+                if (response.Error != null)
+                    Out.WriteLine(response.Error.Message);
+                else
+                    Out.WriteLine(response.ToString());
+            }
+
+            await writeTask;
+        }
+        
         [Fact(Skip = "Manual")]
         public async Task GoogleMultiFileStreamedRecognizeTest()
         {

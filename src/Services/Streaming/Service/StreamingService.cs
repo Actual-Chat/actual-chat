@@ -59,11 +59,14 @@ namespace ActualChat.Streaming
 
                                 position = entry.Id;
                             }
-                        else
-                            await WaitForNewMessage(streamId, cancellationToken)
+                        else {
+                            var (hasValue, @continue) = await WaitForNewMessage(streamId, cancellationToken)
                                 .WithTimeout(
                                     TimeSpan.FromSeconds(StreamingConstants.EmptyStreamDelay),
                                     cancellationToken);
+                            if (hasValue && !@continue)
+                                return;
+                        }
                     }
                 }
                 catch (Exception ex) {
@@ -80,14 +83,17 @@ namespace ActualChat.Streaming
         protected virtual IDatabase GetDatabase()
             => Redis.GetDatabase().WithKeyPrefix(typeof(TMessage).Name);
         
-        private async Task WaitForNewMessage(StreamId streamId, CancellationToken cancellationToken)
+        private async Task<bool> WaitForNewMessage(StreamId streamId, CancellationToken cancellationToken)
         {
             try {
                 var subscriber = Redis.GetSubscriber();
                 var queue = await subscriber.SubscribeAsync(IdExtensions.GetChannelName(streamId));
                 await queue.ReadAsync(cancellationToken);
+                return true;
             }
             catch (ChannelClosedException) { }
+
+            return false;
         }
     }
 }
