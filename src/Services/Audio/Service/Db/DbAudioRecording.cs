@@ -14,7 +14,7 @@ namespace ActualChat.Audio.Db
         
         public string UserId { get; set; } = string.Empty;
         
-        // We need chat reference there
+        public string ChatId { get; set; } = string.Empty;
         
         public DateTime RecordingStartedUtc { get; set; }
         

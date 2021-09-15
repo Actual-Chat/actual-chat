@@ -7,27 +7,37 @@ namespace ActualChat.Transcription
     public sealed class StablePrefixCutter
     {
         private string _previous = string.Empty;
-        private double _previousEnd = 0;
-        private bool _finalResults;
+        private int _length;
+        private double _previousEnd;
 
-        public (string Text, int TextIndex, double StartOffset, double Duration) CutMemoized((string Text, double EndOffset) candidate)
+        public TranscriptSpeechFragment CutMemoized((string Text, double EndOffset) candidate)
+            => CutMemoized(
+                new TranscriptSpeechFragment {
+                    Index = 0,
+                    Text = candidate.Text,
+                    Duration = candidate.EndOffset
+                });
+                
+        public TranscriptSpeechFragment CutMemoized(TranscriptSpeechFragment speechFragment)
         {
-            var (text, endOffset) = candidate;
-            // special case for final transcription results (words)
-            if (_previousEnd - endOffset > 0.3d) {
-                _previous = text;
-                _previousEnd = endOffset;
-                _finalResults = true;
-                return (text, 0, 0, endOffset);
-            }
+            var (index, startOffset, duration, text, _, isFinal) = speechFragment;
 
-            if (_finalResults) {
-                var duration = Math.Round(endOffset - _previousEnd, 3, MidpointRounding.AwayFromZero);
-                var startOffset = _previousEnd;
-                var textIndex = _previous.Length;
-                _previous = $"{_previous} {text}";
-                _previousEnd = endOffset;
-                return ($" {text}", textIndex, startOffset, duration);
+            // special case for final transcription results (words)
+            if (isFinal) {
+                var textIndex = _length;
+                _previous = string.Empty;
+                _length += text.Length + 1;
+                _previousEnd = startOffset + duration;
+                return new TranscriptSpeechFragment {
+                    Index = index,
+                    StartOffset = startOffset,
+                    Duration = duration,
+                    Text = $" {text}",
+                    TextIndex = textIndex,
+                    SpeakerId = speechFragment.SpeakerId,
+                    Confidence = speechFragment.Confidence,
+                    IsFinal = true
+                };
             }
 
             // special case for duplicates
@@ -35,37 +45,65 @@ namespace ActualChat.Transcription
                 var textIndex = _previous.LastIndexOf(text, StringComparison.InvariantCultureIgnoreCase);
                 if (textIndex >= 0) {
                     _previous = $"{_previous[..textIndex]}{text}";
-                    _previousEnd = endOffset;
+                    _previousEnd = duration;
                     var map = new LinearMap(new[] { 0.0, _previous.Length }, new[] { 0.0, _previousEnd });
                     var mappedOffset = map.Map(textIndex);
-                    var startOffset = mappedOffset.HasValue 
+                    var diffStartOffset = mappedOffset.HasValue 
                         ? Math.Round(mappedOffset.Value, 3, MidpointRounding.AwayFromZero)
                         : 0;
-                    var duration = Math.Round(endOffset - startOffset, 3, MidpointRounding.AwayFromZero);
-                    return (text, textIndex, startOffset, duration);
+                    var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
+                    return new TranscriptSpeechFragment {
+                        Index = index,
+                        StartOffset = diffStartOffset,
+                        Duration = diffDuration,
+                        Text = text,
+                        TextIndex = textIndex,
+                        SpeakerId = speechFragment.SpeakerId,
+                        Confidence = speechFragment.Confidence,
+                        IsFinal = false
+                    };
                 }
             }
             
-            var (_, index) = _previous
+            var (_, diffIndex) = _previous
                 .Zip(text)
                 .Select((x, i) => (Match:x.First == x.Second, Index:i))
                 .Append((Match:false, Index:_previous.Length))
                 .SkipWhile(x => x.Match)
                 .FirstOrDefault();
-            var result = (text, 0, 0.0, endOffset);
-            if (index > 0 && index < text.Length) {
+            var result = new TranscriptSpeechFragment {
+                Index = index,
+                StartOffset = 0,
+                Duration = duration,
+                Text = text,
+                TextIndex = 0,
+                SpeakerId = speechFragment.SpeakerId,
+                Confidence = speechFragment.Confidence,
+                IsFinal = false
+            };
+            
+            if (diffIndex > 0 && diffIndex < text.Length) {
                 var map = new LinearMap(new[] { 0.0, _previous.Length }, new[] { 0.0, _previousEnd });
-                var mappedOffset = map.Map(index);
-                var startOffset = mappedOffset.HasValue 
+                var mappedOffset = map.Map(diffIndex);
+                var diffStartOffset = mappedOffset.HasValue 
                     ? Math.Round(mappedOffset.Value, 3, MidpointRounding.AwayFromZero)
                     : 0;
-                var duration = Math.Round(endOffset - startOffset, 3, MidpointRounding.AwayFromZero);
-                var newText = text[index..];
-                result = (newText, index, startOffset, duration);
+                var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
+                var newText = text[diffIndex..];
+                result = new TranscriptSpeechFragment {
+                    Index = index,
+                    StartOffset = diffStartOffset,
+                    Duration = diffDuration,
+                    Text = newText,
+                    TextIndex = diffIndex,
+                    SpeakerId = speechFragment.SpeakerId,
+                    Confidence = speechFragment.Confidence,
+                    IsFinal = false
+                };
             }
             
             _previous = text;
-            _previousEnd = endOffset;
+            _previousEnd = duration;
             return result;
         }
     }
