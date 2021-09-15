@@ -22,7 +22,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         public TestListService(ILogger<TestListService> log) => _log = log;
 
         [ComputeMethod(AutoInvalidateTime = 2)]
-        public virtual Task<Range<int>> GetListRange(CancellationToken cancellationToken = default)
+        public virtual Task<Range<int>> GetListRange(CancellationToken cancellationToken)
         {
             var count = (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalSeconds) / 2;
             return Task.FromResult(new Range<int>(-count / 2, 100 + count));
@@ -30,7 +30,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing
 
         [ComputeMethod]
         public virtual async Task<VirtualListResponse<string>> GetItemKeys(
-            VirtualListQuery query, CancellationToken cancellationToken = default)
+            VirtualListQuery query, CancellationToken cancellationToken)
         {
             var range = await GetListRange(cancellationToken);
             if (query.IncludedRange == default) {
@@ -58,7 +58,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         }
 
         [ComputeMethod]
-        public virtual async Task<TestListItem> GetItem(string key, CancellationToken cancellationToken = default)
+        public virtual async Task<TestListItem> GetItem(string key, CancellationToken cancellationToken)
         {
             var intKey = int.Parse(key);
             var seed = await GetSeed(cancellationToken);
@@ -80,12 +80,12 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         // Protected methods
 
         [ComputeMethod(AutoInvalidateTime = 2.5)]
-        protected virtual Task<int> GetSeed(CancellationToken cancellationToken = default)
+        protected virtual Task<int> GetSeed(CancellationToken cancellationToken)
             => Task.FromResult(
                 (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalMilliseconds * 67) % 101); // 0..100
 
         [ComputeMethod(AutoInvalidateTime = 0.05)]
-        protected virtual Task<int> GetWordCount(CancellationToken cancellationToken = default)
+        protected virtual Task<int> GetWordCount(CancellationToken cancellationToken)
             => Task.FromResult(
                 (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalMilliseconds) / 100 % 100); // 0..99
     }

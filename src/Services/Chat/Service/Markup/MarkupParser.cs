@@ -8,7 +8,7 @@ namespace ActualChat.Chat.Markup
 {
     public interface IMarkupParser
     {
-        public Task<Markup> Parse(string text, CancellationToken cancellationToken = default);
+        public Task<Markup> Parse(string text, CancellationToken cancellationToken);
     }
 
     public class MarkupParser : IMarkupParser
@@ -22,7 +22,7 @@ namespace ActualChat.Chat.Markup
             UserInfos = userInfos;
         }
 
-        public virtual async Task<Markup> Parse(string text, CancellationToken cancellationToken = default)
+        public virtual async Task<Markup> Parse(string text, CancellationToken cancellationToken)
         {
             List<MarkupParts.Part> fragments = new();
             var start = 0;

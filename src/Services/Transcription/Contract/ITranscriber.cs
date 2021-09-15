@@ -12,13 +12,13 @@ namespace ActualChat.Transcription
 {
     public interface ITranscriber
     {
-        Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken = default);
-        Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken = default);
-        Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default);
+        Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken);
+        Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken);
+        Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken);
 
-        Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default);
+        Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken);
 
         // probably we should combine Poll and Ack into one method to reduce chattiness
-        Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default);
+        Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken);
     }
 }

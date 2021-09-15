@@ -38,7 +38,7 @@ namespace ActualChat.Chat
         }
 
         // Commands
-        public virtual async Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken = default)
+        public virtual async Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken)
         {
             var (userId, chatId, text, streamId) = command;
             var context = CommandContext.GetCurrent();
@@ -64,7 +64,7 @@ namespace ActualChat.Chat
         }
 
         // Queries
-        public virtual async Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default)
+        public virtual async Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken)
         {
             var (session, title) = command;
             var context = CommandContext.GetCurrent();
@@ -95,7 +95,7 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<ChatEntry> Post(
-            ChatCommands.Post command, CancellationToken cancellationToken = default)
+            ChatCommands.Post command, CancellationToken cancellationToken)
         {
             var (session, chatId, text) = command;
             var context = CommandContext.GetCurrent();
@@ -125,7 +125,7 @@ namespace ActualChat.Chat
         // Queries
 
         public virtual async Task<Chat?> TryGet(
-            Session session, string chatId, CancellationToken cancellationToken = default)
+            Session session, string chatId, CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             var chat = await TryGet(chatId, cancellationToken);
@@ -136,7 +136,7 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<Chat?> TryGet(
-            string chatId, CancellationToken cancellationToken = default)
+            string chatId, CancellationToken cancellationToken)
         {
             var dbChat = await DbChatResolver.TryGet(chatId, cancellationToken);
             if (dbChat == null)
@@ -146,7 +146,7 @@ namespace ActualChat.Chat
 
         public virtual async Task<long> GetEntryCount(
             Session session, string chatId, Range<long>? idRange,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
@@ -155,7 +155,7 @@ namespace ActualChat.Chat
 
         public virtual async Task<long> GetEntryCount(
             string chatId, Range<long>? idRange,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             await using var dbContext = CreateDbContext();
             var dbMessages = dbContext.ChatEntries.AsQueryable()
@@ -171,16 +171,16 @@ namespace ActualChat.Chat
             return await dbMessages.LongCountAsync(cancellationToken);
         }
 
-        public virtual async Task<ChatPage> GetPage(
-            Session session, string chatId, Range<long> idRange, CancellationToken cancellationToken = default)
+        public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(
+            Session session, string chatId, Range<long> idRange, CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
             return await GetPage(chatId, idRange, cancellationToken);
         }
 
-        public virtual async Task<ChatPage> GetPage(
-            string chatId, Range<long> idRange, CancellationToken cancellationToken = default)
+        public virtual async Task<ImmutableArray<ChatEntry>> GetPage(
+            string chatId, Range<long> idRange, CancellationToken cancellationToken)
         {
             ChatConstants.IdLogCover.AssertIsTile(idRange);
 
@@ -191,18 +191,18 @@ namespace ActualChat.Chat
                 .OrderBy(m => m.Id)
                 .ToListAsync(cancellationToken);
             var entries = dbEntries.Select(m => m.ToModel()).ToImmutableArray();
-            return new ChatPage() { Entries = entries };
+            return entries;
         }
 
         public virtual async Task<Range<long>> GetIdRange(
-            Session session, string chatId, CancellationToken cancellationToken = default)
+            Session session, string chatId, CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
             return await GetIdRange(chatId, cancellationToken);
         }
 
-        public virtual async Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken = default)
+        public virtual async Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken)
         {
             await using var dbContext = CreateDbContext();
             var lastId = await dbContext.ChatEntries.AsQueryable()
@@ -216,14 +216,14 @@ namespace ActualChat.Chat
         // Permissions
 
         public virtual async Task<ChatPermissions> GetPermissions(
-            Session session, string chatId, CancellationToken cancellationToken = default)
+            Session session, string chatId, CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             return await GetPermissions(chatId, user.Id, cancellationToken);
         }
 
         public virtual async Task<ChatPermissions> GetPermissions(
-            string chatId, string userId, CancellationToken cancellationToken = default)
+            string chatId, string userId, CancellationToken cancellationToken)
         {
             var chat = await TryGet(chatId, cancellationToken);
             if (chat == null)

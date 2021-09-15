@@ -11,25 +11,25 @@ namespace ActualChat.Chat
     {
         // Commands
         [CommandHandler]
-        Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken = default);
+        Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(string chatId, CancellationToken cancellationToken = default);
+        Task<Chat?> TryGet(string chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetEntryCount(
             string chatId, Range<long>? idRange,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPage> GetPage(
+        Task<ImmutableArray<ChatEntry>> GetPage(
             string chatId, Range<long> idRange,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken = default);
+        Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPermissions> GetPermissions(
-            string chatId, string userId, CancellationToken cancellationToken = default);
+            string chatId, string userId, CancellationToken cancellationToken);
     }
 }

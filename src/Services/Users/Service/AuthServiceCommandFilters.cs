@@ -104,7 +104,7 @@ namespace ActualChat.Users
         // Updates online presence state
         [CommandHandler(IsFilter = true, Priority = 1)]
         public virtual async Task SetupSession(
-            SetupSessionCommand command, CancellationToken cancellationToken = default)
+            SetupSessionCommand command, CancellationToken cancellationToken)
         {
             var context = CommandContext.GetCurrent();
             await context.InvokeRemainingHandlers(cancellationToken);
@@ -119,7 +119,7 @@ namespace ActualChat.Users
 
         // Private methods
 
-        private async Task MarkOnline(string userId, CancellationToken cancellationToken = default)
+        private async Task MarkOnline(string userId, CancellationToken cancellationToken)
         {
             if (Computed.IsInvalidating()) {
                 var c = Computed.TryGetExisting(() => UserStates.IsOnline(userId, default));
@@ -149,7 +149,7 @@ namespace ActualChat.Users
             UsersDbContext dbContext,
             string name,
             string userId,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken)
         {
             // Normalizing name
             using var sb = ZString.CreateStringBuilder();

@@ -25,7 +25,7 @@ namespace ActualChat.Transcription
             _log = log;
         }
 
-        public async Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken = default)
+        public async Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (recordingId, options, format) = command;
             _log.LogInformation($"{nameof(BeginTranscription)}, RecordingId = {{RecordingId}}", recordingId);
@@ -62,7 +62,7 @@ namespace ActualChat.Transcription
             return transcriptId;
         }
 
-        public async Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken = default)
+        public async Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (transcriptId, data) = command;
             _log.LogInformation($"{nameof(AppendTranscription)}, TranscriptId = {{TranscriptId}}", transcriptId);
@@ -82,7 +82,7 @@ namespace ActualChat.Transcription
             });
         }
 
-        public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken = default)
+        public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken)
         {
             _log.LogInformation($"{nameof(EndTranscription)}, TranscriptId = {{TranscriptId}}", command.TranscriptId);
 
@@ -95,7 +95,7 @@ namespace ActualChat.Transcription
             }
         }
 
-        public async Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken = default)
+        public async Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (transcriptId, index) = command;
             _log.LogInformation($"{nameof(PollTranscription)}, TranscriptId = {{TranscriptId}}, Index = {{Index}}", transcriptId, index);
@@ -107,7 +107,7 @@ namespace ActualChat.Transcription
             return new PollResult(!cancellationToken.IsCancellationRequested, fragments);
         }
 
-        public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken = default)
+        public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (transcriptId, index) = command;
             _log.LogInformation($"{nameof(AckTranscription)}, TranscriptId = {{TranscriptId}}, Index = {{Index}}", transcriptId, index);
@@ -162,7 +162,7 @@ namespace ActualChat.Transcription
             }
 
 
-            public async Task Start(CancellationToken cancellationToken = default)
+            public async Task Start(CancellationToken cancellationToken)
             {
                 if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0)
                     return;

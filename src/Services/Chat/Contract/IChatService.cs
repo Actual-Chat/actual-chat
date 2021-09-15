@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Collections.Immutable;
+using System.Threading;
 using System.Threading.Tasks;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
@@ -10,30 +11,30 @@ namespace ActualChat.Chat
     {
         // Commands
         [CommandHandler]
-        Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken = default);
+        Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken);
         [CommandHandler]
-        Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken = default);
+        Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken = default);
+        Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetEntryCount(
             Session session, string chatId, Range<long>? idRange,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPage> GetPage(
+        Task<ImmutableArray<ChatEntry>> GetEntries(
             Session session, string chatId, Range<long> idRange,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
         Task<Range<long>> GetIdRange(
             Session session, string chatId,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPermissions> GetPermissions(
             Session session, string chatId,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken);
     }
 }

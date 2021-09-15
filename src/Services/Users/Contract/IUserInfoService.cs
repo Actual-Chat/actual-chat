@@ -7,9 +7,9 @@ namespace ActualChat.Users
     public interface IUserInfoService
     {
         [ComputeMethod(KeepAliveTime = 10)]
-        Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken = default);
+        Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 10)]
-        Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken = default);
+        Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken);
 
     }
 }
