@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ActualChat.Testing;
 using FluentAssertions;
@@ -42,6 +43,26 @@ namespace ActualChat.Tests.UI.Blazor
             var messages = await page.QuerySelectorAllAsync(".chat-page .message .content");
             messages.Count.Should().BeGreaterThan(0);
             (await messages.Last().TextContentAsync()).Should().Be("Test-123");
+        }
+        
+        [Fact]
+        public async Task ChatPageTest()
+        {
+            using var appHost = await TestHostFactory.NewAppHost();
+            using var tester = appHost.NewPlaywrightTester();
+            var user = await tester.SignIn(new User("", "ChatPageTester"));
+            var page = await tester.NewPage("chat/the-actual-ont");
+            await Task.Delay(200);
+            user.Id.Value.Should().NotBeNullOrEmpty();
+            user.Name.Should().Be("ChatPageTester");
+            var content = await page.ContentAsync();
+            var badgeCount = 0;
+            if (content.Contains("badge")) {
+                var badges = Regex.Matches(content, "badge");
+                badgeCount = badges.Count;
+            }
+            badgeCount.Should().Be(2);
+            await Task.Delay(200);
         }
     }
 }
