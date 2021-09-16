@@ -10,7 +10,7 @@
             @Item(FontAwesomeIcons.Comments, "Chat", $"chat/{ChatConstants.DefaultChatId}")
             @Item(FontAwesomeIcons.Microphone, "Voice", "voice")
             @Item(FontAwesomeIcons.User, "Authentication", "authentication")
-            <BarItem Style="min-height: 20px"></BarItem>
+            <BarItem Style="min-height: 20px"/>
             @Item(FontAwesomeIcons.Code, "Source @ GitHub", "https://github.com/servicetitan/Stl.Fusion.Samples")
         </BarStart>
     </BarMenu>
@@ -23,7 +23,7 @@
         return
             @<BarItem>
                 <BarLink Title="@title" To="@href" Target="@target" Match="@match">
-                    <BarIcon IconName="@icon"></BarIcon> @title
+                    <BarIcon IconName="@icon"/> @title
                 </BarLink>
             </BarItem>;
     }
