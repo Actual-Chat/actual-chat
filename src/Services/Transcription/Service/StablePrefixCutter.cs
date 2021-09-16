@@ -7,8 +7,9 @@ namespace ActualChat.Transcription
     public sealed class StablePrefixCutter
     {
         private string _previous = string.Empty;
-        private int _length;
         private double _previousEnd;
+        private double _previousFinalEnd;
+        private int _previousFinalLength;
 
         public TranscriptSpeechFragment CutMemoized((string Text, double EndOffset) candidate)
             => CutMemoized(
@@ -20,19 +21,20 @@ namespace ActualChat.Transcription
                 
         public TranscriptSpeechFragment CutMemoized(TranscriptSpeechFragment speechFragment)
         {
-            var (index, startOffset, duration, text, _, isFinal) = speechFragment;
+            var (index, _, duration, text, _, isFinal) = speechFragment;
 
-            // special case for final transcription results (words)
             if (isFinal) {
-                var textIndex = _length;
+                var textIndex = _previousFinalLength;
+                var startOffset = _previousFinalEnd;
                 _previous = string.Empty;
-                _length += text.Length + 1;
-                _previousEnd = startOffset + duration;
+                _previousEnd = 0;
+                _previousFinalLength += text.Length;
+                _previousFinalEnd += duration;
                 return new TranscriptSpeechFragment {
                     Index = index,
                     StartOffset = startOffset,
                     Duration = duration,
-                    Text = $" {text}",
+                    Text = text,
                     TextIndex = textIndex,
                     SpeakerId = speechFragment.SpeakerId,
                     Confidence = speechFragment.Confidence,
@@ -54,10 +56,10 @@ namespace ActualChat.Transcription
                     var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
                     return new TranscriptSpeechFragment {
                         Index = index,
-                        StartOffset = diffStartOffset,
+                        StartOffset = _previousFinalEnd + diffStartOffset,
                         Duration = diffDuration,
                         Text = text,
-                        TextIndex = textIndex,
+                        TextIndex = _previousFinalLength + textIndex,
                         SpeakerId = speechFragment.SpeakerId,
                         Confidence = speechFragment.Confidence,
                         IsFinal = false
@@ -73,10 +75,10 @@ namespace ActualChat.Transcription
                 .FirstOrDefault();
             var result = new TranscriptSpeechFragment {
                 Index = index,
-                StartOffset = 0,
+                StartOffset = _previousFinalEnd,
                 Duration = duration,
                 Text = text,
-                TextIndex = 0,
+                TextIndex = _previousFinalLength,
                 SpeakerId = speechFragment.SpeakerId,
                 Confidence = speechFragment.Confidence,
                 IsFinal = false
@@ -92,10 +94,10 @@ namespace ActualChat.Transcription
                 var newText = text[diffIndex..];
                 result = new TranscriptSpeechFragment {
                     Index = index,
-                    StartOffset = diffStartOffset,
+                    StartOffset = _previousFinalEnd + diffStartOffset,
                     Duration = diffDuration,
                     Text = newText,
-                    TextIndex = diffIndex,
+                    TextIndex = _previousFinalLength + diffIndex,
                     SpeakerId = speechFragment.SpeakerId,
                     Confidence = speechFragment.Confidence,
                     IsFinal = false
