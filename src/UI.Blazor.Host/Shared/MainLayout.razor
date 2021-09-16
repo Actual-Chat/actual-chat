@@ -20,7 +20,7 @@
 
         <LayoutContent Padding="Padding.Is4">
             @foreach (var failure in failures) {
-                <WhenCommandError Exception="failure.Result?.Error"
+                <WhenCommandError Error="failure.Result?.Error"
                                   Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))"/>
             }
 

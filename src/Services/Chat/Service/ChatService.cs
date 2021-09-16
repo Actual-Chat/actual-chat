@@ -108,7 +108,7 @@ namespace ActualChat.Chat
             var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
             var chatEntry = new ChatEntry(chatId, 0) {
-                AuthorId = user.Id,
+                AuthorId = (string) user.Id,
                 BeginsAt = now,
                 EndsAt = now,
                 Content = text,
@@ -276,8 +276,9 @@ namespace ActualChat.Chat
             var isNew = chatEntry.Id == 0;
             DbChatEntry dbChatEntry;
             if (isNew) {
+                var dbChatId = (string) chatEntry.ChatId;
                 var id = 1 + await dbContext.ChatEntries.AsQueryable()
-                    .Where(e => e.ChatId == chatEntry.ChatId)
+                    .Where(e => e.ChatId == dbChatId)
                     .OrderByDescending(e => e.Id)
                     .Select(e => e.Id)
                     .FirstOrDefaultAsync(cancellationToken);
