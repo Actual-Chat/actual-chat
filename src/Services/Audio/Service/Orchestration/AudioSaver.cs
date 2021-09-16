@@ -41,7 +41,7 @@ namespace ActualChat.Audio.Orchestration
             var streamIndex = p.StreamId.Value.Replace($"{p.AudioRecord.Id}-", "");
             var blobId = BlobPath.Format(BlobScope.AudioRecording, p.AudioRecord.Id, streamIndex + ".webm");
 
-            var saveBlobTask = SaveBlob(p.StreamId, blobId, p.Document, cancellationToken);
+            var saveBlobTask = SaveBlob(blobId, audioStreamPart, cancellationToken);
             var saveSegmentTask = SaveSegment();
             await Task.WhenAll(saveBlobTask, saveSegmentTask);
             return blobId;
@@ -78,15 +78,28 @@ namespace ActualChat.Audio.Orchestration
             }
         }
 
+        public async Task<string> Save(
+            AudioRecordSegmentAccessor audioRecordSegmentAccessor,
+            CancellationToken cancellationToken)
+        {
+            var p = audioRecordSegmentAccessor ?? throw new ArgumentNullException(nameof(audioRecordSegmentAccessor));
+            var streamIndex = p.StreamId.Value.Replace($"{p.AudioRecord.Id}-", "");
+            var blobId = BlobPath.Format(BlobScope.AudioRecording, p.AudioRecord.Id, streamIndex + ".webm");
+
+            await SaveBlob(blobId, audioRecordSegmentAccessor, cancellationToken);
+            return blobId;
+        }
+
+
         private async Task SaveBlob(
-            StreamId id,
             string blobId,
-            WebMDocument document,
+            AudioStreamPart audioStreamPart,
             CancellationToken cancellationToken)
         {
             const int minBufferSize = 32*1024;
+            var document = audioStreamPart.Document;
             if (!document.IsValid)
-                _log.LogWarning("Skip flushing audio segments for {StreamId}. WebM document is invalid", id.Value);
+                _log.LogWarning("Skip flushing audio segments for {StreamId}. WebM document is invalid", audioStreamPart.StreamId.Value);
 
             var (ebml, segment, clusters) = document;
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
@@ -128,6 +141,23 @@ namespace ActualChat.Audio.Orchestration
                 stream?.Write(writer.Written);
                 return true;
             }
+        }
+        
+        private async Task SaveBlob(
+            string blobId,
+            AudioRecordSegmentAccessor audioSegmentAccessor,
+            CancellationToken cancellationToken)
+        {
+            const int minBufferSize = 32*1024;
+            var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
+            await using var stream = MemoryStreamManager.GetStream(nameof(AudioSaver));
+            using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
+
+            await foreach (var (_, bytes) in audioSegmentAccessor.GetStream().ReadAllAsync(cancellationToken)) 
+                stream.Write(bytes);
+
+            stream.Position = 0;
+            await blobStorage.WriteAsync(blobId, stream, false, cancellationToken);
         }
     }
 }
