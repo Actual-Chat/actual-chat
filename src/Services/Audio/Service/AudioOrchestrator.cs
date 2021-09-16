@@ -130,7 +130,7 @@ namespace ActualChat.Audio
             var r = audioRecordSegmentAccessor.AudioRecord;
             // TODO(AK): read actual config
             var command = new BeginTranscriptionCommand {
-                RecordingId = r.Id.Value,
+                RecordingId = (string)r.Id, 
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,

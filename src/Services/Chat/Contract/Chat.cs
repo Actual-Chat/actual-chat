@@ -3,13 +3,13 @@ using System.Collections.Immutable;
 
 namespace ActualChat.Chat
 {
-    public record Chat(string Id)
+    public record Chat(ChatId Id)
     {
         public string Title { get; init; } = "";
         public DateTime CreatedAt { get; init; }
-        public string CreatorId { get; init; } = "";
+        public UserId CreatorId { get; init; } = "";
         public bool IsPublic { get; init; }
-        public ImmutableArray<string> OwnerIds { get; init; } = ImmutableArray<string>.Empty;
+        public ImmutableArray<UserId> OwnerIds { get; init; } = ImmutableArray<UserId>.Empty;
 
         public Chat() : this("") { }
     }

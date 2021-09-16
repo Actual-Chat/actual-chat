@@ -54,7 +54,7 @@ namespace ActualChat.Streaming
 
         private async Task NotifyNewStream(IDatabase db, StreamId streamId)
         {
-            db.ListLeftPush(StreamingConstants.StreamQueue, streamId.Value);
+            db.ListLeftPush(StreamingConstants.StreamQueue, (string)streamId);
 
             var subscriber = Redis.GetSubscriber();
             await subscriber.PublishAsync(StreamingConstants.StreamQueue, string.Empty);

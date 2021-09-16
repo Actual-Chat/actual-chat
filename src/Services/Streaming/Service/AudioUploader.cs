@@ -33,7 +33,7 @@ namespace ActualChat.Streaming
             user.MustBeAuthenticated();
 
             var recordingId = new AudioRecordId(_idGenerator.Next());
-            _log.LogInformation("Uploading: RecordingId = {RecordingId}", recordingId.Value);
+            _log.LogInformation("Uploading: RecordingId = {RecordingId}", recordingId);
 
             var firstCycle = true;
             var db = GetDatabase();
