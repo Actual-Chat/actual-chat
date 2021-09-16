@@ -18,7 +18,7 @@ namespace ActualChat.Chat.Db
         [Key] public string Id { get; set; } = "";
         [ConcurrencyCheck] public long Version { get; set; }
         public string Title { get; set; } = "";
-        public string CreatorId { get; set; } = "";
+        public string AuthorId { get; set; } = "";
         public bool IsPublic { get; set; }
 
         public DateTime CreatedAt {
@@ -32,7 +32,7 @@ namespace ActualChat.Chat.Db
             => new(Id) {
                 Title = Title,
                 CreatedAt = CreatedAt,
-                CreatorId = CreatorId,
+                AuthorId = AuthorId,
                 IsPublic = IsPublic,
                 OwnerIds = Owners.Select(o => (UserId)o.UserId).ToImmutableArray(),
             };

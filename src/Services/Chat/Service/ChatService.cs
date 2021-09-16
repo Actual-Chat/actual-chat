@@ -38,27 +38,22 @@ namespace ActualChat.Chat
         }
 
         // Commands
-        public virtual async Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken)
+        public virtual async Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken)
         {
-            var (userId, chatId, text, streamId) = command;
+            var chatEntry = command.Entry;
             var context = CommandContext.GetCurrent();
             if (Computed.IsInvalidating()) {
                 var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetIdRange(chatId, default);
-                InvalidateChatPages(chatId, invChatEntry.Id, false);
+                _ = GetIdRange(chatEntry.ChatId, default);
+                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
                 return null!;
             }
 
-            await AssertHasPermissions(chatId, userId, ChatPermissions.Write, cancellationToken);
+            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
 
-            var dbChatEntry = await PersistChatEntry(
-                chatId,
-                userId,
-                streamId,
-                text,
-                cancellationToken);
-
-            var chatEntry = dbChatEntry.ToModel();
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
+            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+            chatEntry = dbChatEntry.ToModel();
             context.Operation().Items.Set(chatEntry);
             return chatEntry;
         }
@@ -81,7 +76,7 @@ namespace ActualChat.Chat
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 Title = title,
-                CreatorId = user.Id,
+                AuthorId = user.Id,
                 CreatedAt = now,
                 IsPublic = false,
                 Owners = new List<DbChatOwner>() { new () { ChatId = id, UserId = user.Id } },
@@ -110,14 +105,17 @@ namespace ActualChat.Chat
             user.MustBeAuthenticated();
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken);
 
-            var dbChatEntry = await PersistChatEntry(
-                chatId,
-                user.Id,
-                string.Empty,
-                text,
-                cancellationToken);
-
-            var chatEntry = dbChatEntry.ToModel();
+            var dbContext = await CreateCommandDbContext(cancellationToken);
+            var now = Clocks.SystemClock.Now;
+            var chatEntry = new ChatEntry(chatId, 0) {
+                AuthorId = user.Id,
+                BeginsAt = now,
+                EndsAt = now,
+                Content = text,
+                ContentType = ChatContentType.Text,
+            };
+            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+            chatEntry = dbChatEntry.ToModel();
             context.Operation().Items.Set(chatEntry);
             return chatEntry;
         }
@@ -270,34 +268,36 @@ namespace ActualChat.Chat
             }
         }
 
-        private async Task<DbChatEntry> PersistChatEntry(
-            string chatId,
-            string userId,
-            string streamId,
-            string text,
-            CancellationToken cancellationToken)
+        private async Task<DbChatEntry> DbAddOrUpdate(ChatDbContext dbContext, ChatEntry chatEntry, CancellationToken cancellationToken)
         {
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var now = Clocks.SystemClock.Now;
-            // TODO(AK): Suspicious - probably can lead to performance issues
-            var id = 1 + await dbContext.ChatEntries.AsQueryable()
-                .Where(e => e.ChatId == chatId)
-                .OrderByDescending(e => e.Id)
-                .Select(e => e.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            var dbChatEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(chatId, id),
-                ChatId = chatId,
-                Id = id,
-                Version = VersionGenerator.NextVersion(),
-                CreatorId = userId,
-                BeginsAt = now,
-                EndsAt = now,
-                ContentType = ChatContentType.Text,
-                Content = text,
-                StreamId = streamId
-            };
-            dbContext.Add(dbChatEntry);
+            // AK: Suspicious - probably can lead to performance issues
+            // AY: Yes, but the goal is to have a dense sequence here;
+            //     later we'll change this to something that's more performant.
+            var isNew = chatEntry.Id == 0;
+            DbChatEntry dbChatEntry;
+            if (isNew) {
+                var id = 1 + await dbContext.ChatEntries.AsQueryable()
+                    .Where(e => e.ChatId == chatEntry.ChatId)
+                    .OrderByDescending(e => e.Id)
+                    .Select(e => e.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+                chatEntry = chatEntry with {
+                    Id = id,
+                    Version = VersionGenerator.NextVersion(),
+                };
+                dbChatEntry = new DbChatEntry(chatEntry);
+                dbContext.Add(dbChatEntry);
+            }
+            else {
+                dbChatEntry = await dbContext.FindAsync<DbChatEntry>(
+                    ComposeKey(DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id)),
+                    cancellationToken);
+                chatEntry = chatEntry with {
+                    Version = VersionGenerator.NextVersion(),
+                };
+                dbChatEntry.UpdateFrom(chatEntry);
+                dbContext.Update(dbChatEntry);
+            }
             await dbContext.SaveChangesAsync(cancellationToken);
             return dbChatEntry;
         }

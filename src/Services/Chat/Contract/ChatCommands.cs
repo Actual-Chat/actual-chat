@@ -16,7 +16,7 @@ namespace ActualChat.Chat
             : Cmd(Session, ChatId), ISessionCommand<TResult>
         { }
 
-        // Actual commands
+        // User commands
 
         public record Create(Session Session, string Title) : Cmd<Chat>(Session, "") {
             public Create() : this(Session.Null, "") { }
@@ -26,11 +26,12 @@ namespace ActualChat.Chat
             : Cmd<ChatEntry>(Session, ChatId) {
             public Post() : this(Session.Null, "", "") { }
         }
-        
-        public record ServerPost(UserId UserId, ChatId ChatId, string Text, StreamId StreamId) 
-            : ServerSideCommandBase<ChatEntry> {
-            
-            public ServerPost() : this("", "", "", "") { }
+
+        // Server-side commands
+
+        public record CreateEntry(ChatEntry Entry) : ServerSideCommandBase<ChatEntry> {
+
+            public CreateEntry() : this((ChatEntry) null!) { }
         }
     }
 }

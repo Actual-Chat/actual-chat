@@ -86,7 +86,7 @@ export async function startRecording() {
                 let base64 = base64Typed.substr(typePrefix.length);
                 console.log("audio blob is ready, Blob length: %d", base64.length);
 
-                await backend.invokeMethodAsync('AudioDataAvailable', base64);
+                await backend.invokeMethodAsync('OnAudioData', base64);
             }
         });
 
@@ -104,7 +104,7 @@ export async function startRecording() {
     }
     
     recording.recorder.startRecording();
-    await recording.backend.invokeMethodAsync('RecordingStarted');
+    await recording.backend.invokeMethodAsync('OnStartRecording');
 }
 
 export async function stopRecording() {
@@ -116,5 +116,5 @@ export async function stopRecording() {
     r.stream.getAudioTracks().forEach(t => t.stop());
     r.stream.getVideoTracks().forEach(t => t.stop());
     await r.recorder.stopRecordingAsync();
-    await r.backend.invokeMethodAsync('RecordingStopped');
+    await r.backend.invokeMethodAsync('OnStopRecording');
 }

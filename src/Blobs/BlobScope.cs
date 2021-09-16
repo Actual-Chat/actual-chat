@@ -4,6 +4,6 @@ namespace ActualChat.Blobs
 {
     public class BlobScope
     {
-        public static Symbol AudioRecording = "audio-recording";
+        public static Symbol AudioRecord = "audio-record";
     }
 }

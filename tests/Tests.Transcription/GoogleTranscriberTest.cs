@@ -29,7 +29,7 @@ namespace ActualChat.Tests.Transcription
             // TODO: Implement XUnitLogger
             var transcriber = new GoogleTranscriber(NullLogger<GoogleTranscriber>.Instance);
             var command = new BeginTranscriptionCommand {
-                RecordingId = Ulid.NewUlid().ToString(),
+                RecordId = Ulid.NewUlid().ToString(),
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,
@@ -55,7 +55,7 @@ namespace ActualChat.Tests.Transcription
             // TODO: Implement XUnitLogger
             var transcriber = new GoogleTranscriber(NullLogger<GoogleTranscriber>.Instance);
             var command = new BeginTranscriptionCommand {
-                RecordingId = Ulid.NewUlid().ToString(),
+                RecordId = Ulid.NewUlid().ToString(),
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,
@@ -88,7 +88,7 @@ namespace ActualChat.Tests.Transcription
             // TODO: Implement XUnitLogger
             var transcriber = new GoogleTranscriber(NullLogger<GoogleTranscriber>.Instance);
             var command = new BeginTranscriptionCommand {
-                RecordingId = Ulid.NewUlid().ToString(),
+                RecordId = Ulid.NewUlid().ToString(),
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,

@@ -32,14 +32,14 @@ namespace ActualChat.Streaming
             var user = await _auth.GetUser(session, cancellationToken);
             user.MustBeAuthenticated();
 
-            var recordingId = new AudioRecordId(_idGenerator.Next());
-            _log.LogInformation("Uploading: RecordingId = {RecordingId}", recordingId);
+            var recordId = new AudioRecordId(_idGenerator.Next());
+            _log.LogInformation("Uploading: RecordId = {RecordId}", (string) recordId);
 
             var firstCycle = true;
             var db = GetDatabase();
-            var key = new RedisKey(recordingId);
+            var key = new RedisKey(recordId);
             upload = upload with {
-                Id = recordingId,
+                Id = recordId,
                 UserId = user.Id,
             };
 
@@ -65,7 +65,7 @@ namespace ActualChat.Streaming
                     firstCycle = false;
                     _ = NotifyNewAudioRecording(db, upload, cancellationToken);
                 }
-                _ = NotifyNewAudioMessage(recordingId);
+                _ = NotifyNewAudioMessage(recordId);
             }
             if (firstCycle) _ = NotifyNewAudioRecording(db, upload, cancellationToken);
 
@@ -96,7 +96,7 @@ namespace ActualChat.Streaming
         private async Task NotifyNewAudioMessage(AudioRecordId audioRecordId)
         {
             var subscriber = _redis.GetSubscriber();
-            await subscriber.PublishAsync(audioRecordId.GetChannelName(),string.Empty);
+            await subscriber.PublishAsync(audioRecordId.GetRedisChannelName(),string.Empty);
         }
 
         protected IDatabase GetDatabase()

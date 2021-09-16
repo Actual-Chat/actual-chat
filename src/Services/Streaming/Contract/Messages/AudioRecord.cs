@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using MessagePack;
+using Stl;
 
 namespace ActualChat.Streaming
 {
@@ -11,7 +12,9 @@ namespace ActualChat.Streaming
         [property: Key(3)] AudioFormat Format,
         [property: Key(4)] string Language,
         [property: Key(5)] double ClientStartOffset)
+        : IHasId<AudioRecordId>
     {
+        public AudioRecord() : this("", "", "", null!, "", 0) { }
         public AudioRecord(string chatId, AudioFormat format, string language, double clientStartOffset)
             : this("", "", chatId, format, language, clientStartOffset) { }
     }

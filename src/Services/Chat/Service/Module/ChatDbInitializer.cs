@@ -39,7 +39,7 @@ namespace ActualChat.Chat.Module
                     Version = VersionGenerator.NextVersion(),
                     Title = "The Actual One",
                     CreatedAt = Clocks.SystemClock.Now,
-                    CreatorId = adminUserId,
+                    AuthorId = adminUserId,
                     IsPublic = true,
                     Owners = {
                         new DbChatOwner() {
@@ -60,7 +60,7 @@ namespace ActualChat.Chat.Module
                         EndsAt = Clocks.SystemClock.Now,
                         Content = $"Message {id}",
                         ContentType = ChatContentType.Text,
-                        CreatorId = adminUserId,
+                        AuthorId = adminUserId,
                     };
                     dbContext.Add(dbChatEntry);
                 }

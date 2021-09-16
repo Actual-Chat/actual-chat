@@ -5,18 +5,20 @@ using System.Threading.Tasks;
 using MessagePack;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
+using Stl;
 using Stl.Async;
 
 namespace ActualChat.Streaming
 {
-    public class ServerSideRecorder<TRecording> : IServerSideRecorder<TRecording>
-        where TRecording : class
+    public abstract class ServerSideRecorder<TRecordId, TRecord> : IServerSideRecorder<TRecordId, TRecord>
+        where TRecordId : notnull
+        where TRecord : class, IHasId<TRecordId>
     {
         private readonly IConnectionMultiplexer _redis;
 
         public ServerSideRecorder(IConnectionMultiplexer redis) => _redis = redis;
 
-        public async Task<TRecording?> WaitForNewRecording(CancellationToken cancellationToken)
+        public async Task<TRecord?> DequeueNewRecord(CancellationToken cancellationToken)
         {
             try {
                 var db = GetDatabase();
@@ -43,7 +45,7 @@ namespace ActualChat.Streaming
                         continue;
 
                     var serialized = (ReadOnlyMemory<byte>)value;
-                    var audioRecording = MessagePackSerializer.Deserialize<TRecording>(
+                    var audioRecording = MessagePackSerializer.Deserialize<TRecord>(
                         serialized,
                         MessagePackSerializerOptions.Standard,
                         cancellationToken);
@@ -55,7 +57,7 @@ namespace ActualChat.Streaming
             }
         }
 
-        public Task<ChannelReader<BlobPart>> GetRecording(AudioRecordId audioRecordId, CancellationToken cancellationToken)
+        public Task<ChannelReader<BlobPart>> GetContent(TRecordId recordId, CancellationToken cancellationToken)
         {
             var db = GetDatabase();
 
@@ -68,22 +70,27 @@ namespace ActualChat.Streaming
                 });
 
             _ = ReadRedisStream(
-                channel.Writer, audioRecordId, db,
+                channel.Writer, recordId, db,
                 cancellationToken);
 
             return Task.FromResult(channel.Reader);
         }
 
-        protected IDatabase GetDatabase()
+        protected virtual IDatabase GetDatabase()
             => _redis.GetDatabase().WithKeyPrefix(StreamingConstants.AudioRecordingPrefix);
+
+        protected abstract string GetRedisKeyName(TRecordId recordId);
+        protected abstract string GetRedisChannelName(TRecordId recordId);
+
+        // Private methods
 
         private async Task ReadRedisStream(
             ChannelWriter<BlobPart> writer,
-            AudioRecordId audioRecordId,
+            TRecordId recordId,
             IDatabase database,
             CancellationToken cancellationToken)
         {
-            var key = new RedisKey(audioRecordId);
+            var recordKey = new RedisKey(GetRedisKeyName(recordId));
 
             Exception? localException = null;
             var position = (RedisValue)"0-0";
@@ -91,7 +98,7 @@ namespace ActualChat.Streaming
                 while (true) {
                     if (cancellationToken.IsCancellationRequested) return;
 
-                    var parts = await database.StreamReadAsync(key, position, 10);
+                    var parts = await database.StreamReadAsync(recordKey, position, 10);
                     if (parts?.Length > 0)
                         foreach (var part in parts) {
                             var status = part[StreamingConstants.StatusKey];
@@ -108,7 +115,7 @@ namespace ActualChat.Streaming
                             position = part.Id;
                         }
                     else {
-                        var (hasValue, @continue) = await WaitForNewMessage(audioRecordId, cancellationToken)
+                        var (hasValue, @continue) = await WaitForNewMessage(recordId, cancellationToken)
                             .WithTimeout(
                                 TimeSpan.FromSeconds(StreamingConstants.EmptyStreamDelay),
                                 cancellationToken);
@@ -123,7 +130,7 @@ namespace ActualChat.Streaming
             finally {
                 try {
                     var subscriber = _redis.GetSubscriber();
-                    await subscriber.UnsubscribeAsync(audioRecordId.GetChannelName());
+                    await subscriber.UnsubscribeAsync(GetRedisChannelName(recordId));
                 }
                 catch {
                     // ignored
@@ -133,11 +140,11 @@ namespace ActualChat.Streaming
             }
         }
 
-        private async Task<bool> WaitForNewMessage(AudioRecordId audioRecordId, CancellationToken cancellationToken)
+        private async Task<bool> WaitForNewMessage(TRecordId recordId, CancellationToken cancellationToken)
         {
             try {
                 var subscriber = _redis.GetSubscriber();
-                var queue = await subscriber.SubscribeAsync(audioRecordId.GetChannelName());
+                var queue = await subscriber.SubscribeAsync(GetRedisChannelName(recordId));
                 await queue.ReadAsync(cancellationToken);
                 return true;
             }

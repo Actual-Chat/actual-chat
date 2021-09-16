@@ -87,7 +87,7 @@ namespace ActualChat.Streaming
         {
             try {
                 var subscriber = Redis.GetSubscriber();
-                var queue = await subscriber.SubscribeAsync(IdExtensions.GetChannelName(streamId));
+                var queue = await subscriber.SubscribeAsync(streamId.GetRedisChannelName());
                 await queue.ReadAsync(cancellationToken);
                 return true;
             }

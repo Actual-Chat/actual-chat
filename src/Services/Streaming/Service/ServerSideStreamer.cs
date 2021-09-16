@@ -63,7 +63,7 @@ namespace ActualChat.Streaming
         private async Task NotifyNewMessage(StreamId streamId)
         {
             var subscriber = Redis.GetSubscriber();
-            await subscriber.PublishAsync(IdExtensions.GetChannelName(streamId), string.Empty);
+            await subscriber.PublishAsync(streamId.GetRedisChannelName(), string.Empty);
         }
 
         public async Task Publish(StreamId streamId, TMessage message, CancellationToken cancellationToken)
