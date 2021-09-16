@@ -3,7 +3,7 @@ using Stl.Time;
 
 namespace ActualChat.Mathematics
 {
-    public static class RangeEx
+    public static class RangeExt
     {
         public static long Size(this Range<long> range)
             => range.End - range.Start;

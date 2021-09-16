@@ -10,7 +10,7 @@ using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Testing
 {
-    public static class TestAuthEx
+    public static class TestAuthExt
     {
         public static Task<User> SignIn(this IWebTester tester,
             User user,

@@ -2,7 +2,7 @@ using System;
 
 namespace ActualChat.Mathematics
 {
-    public static class DoubleArrayEx
+    public static class DoubleArrayExt
     {
         public static int IndexOfLowerOrEqual(this double[] values, double value)
         {
