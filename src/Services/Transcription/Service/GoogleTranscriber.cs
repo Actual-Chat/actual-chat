@@ -169,18 +169,16 @@ namespace ActualChat.Transcription
 
                 var cutter = new StablePrefixCutter();
                 await foreach (var response in _stream.WithCancellation(cancellationToken)) {
-                    var fragmentVariants = MapResponse(response);
-                    foreach (var fragmentVariant in fragmentVariants) {
-                        var speechFragment = fragmentVariant.Speech;
-                        if ((speechFragment?.StartOffset ?? 0) != 0)
-                            await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
-                        else if (speechFragment != null) {
-                            var processedFragment = cutter.CutMemoized(speechFragment);
-                            await _channel.Writer.WriteAsync(new TranscriptFragmentVariant(processedFragment), cancellationToken);
-                        }
-                        else
-                            await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
+                    var fragmentVariant = MapResponse(response);
+                    var speechFragment = fragmentVariant.Speech;
+                    if ((speechFragment?.StartOffset ?? 0) != 0)
+                        await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
+                    else if (speechFragment != null) {
+                        var processedFragment = cutter.CutMemoized(speechFragment);
+                        await _channel.Writer.WriteAsync(new TranscriptFragmentVariant(processedFragment), cancellationToken);
                     }
+                    else
+                        await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
                 }
 
                 _channel.Writer.Complete();
@@ -227,52 +225,32 @@ namespace ActualChat.Transcription
                 }
             }
 
-            private IReadOnlyList<TranscriptFragmentVariant> MapResponse(StreamingRecognizeResponse response)
+            private TranscriptFragmentVariant MapResponse(StreamingRecognizeResponse response)
             {
                 if (response.Error != null) {
                     _logger.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
-                    return new [] { new TranscriptFragmentVariant(
+                    return new TranscriptFragmentVariant(
                         new TranscriptErrorFragment(response.Error.Code, response.Error.Message) {
                             Index = _index++,
                             StartOffset = _offset,
                             Duration = 0d
-                        })};
-                }
-                foreach (var result in response.Results) {
-                    var alternative = result.Alternatives.First();
-                    var endTime = result.ResultEndTime;
-                    var endOffset = endTime.ToTimeSpan().TotalSeconds;
-                    var fragment = new TranscriptSpeechFragment {
-                        Index = _index++,
-                        Confidence = alternative.Confidence,
-                        Text = alternative.Transcript,
-                        StartOffset = 0,
-                        Duration = endOffset,
-                        IsFinal = false
-                    };
-                    _offset = endOffset;
-                    if (!result.IsFinal || !(alternative.Words?.Count > 0))
-                        return new[] { new TranscriptFragmentVariant(fragment) };
-
-                    var list = new List<TranscriptFragmentVariant>();
-                    foreach (var wordInfo in alternative.Words) {
-                        var startOffset = wordInfo.StartTime.ToTimeSpan().TotalSeconds;
-                        var wordFragment = new TranscriptSpeechFragment {
-                            Index = _index++,
-                            Confidence = wordInfo.Confidence,
-                            Text = wordInfo.Word,
-                            StartOffset = startOffset,
-                            Duration = Math.Round(wordInfo.EndTime.ToTimeSpan().TotalSeconds - startOffset, 3, MidpointRounding.AwayFromZero),
-                            IsFinal = true,
-                            SpeakerId = wordInfo.SpeakerTag.ToString()
-                        };
-                        list.Add(new TranscriptFragmentVariant(wordFragment));
-                    }
-
-                    return list;
+                        });
                 }
 
-                return ImmutableArray<TranscriptFragmentVariant>.Empty;
+                var result = response.Results.First();
+                var alternative = result.Alternatives.First();
+                var endTime = result.ResultEndTime;
+                var endOffset = endTime.ToTimeSpan().TotalSeconds;
+                var fragment = new TranscriptSpeechFragment {
+                    Index = _index++,
+                    Confidence = alternative.Confidence,
+                    Text = alternative.Transcript,
+                    StartOffset = 0,
+                    Duration = endOffset,
+                    IsFinal = result.IsFinal
+                };
+                _offset = endOffset;
+                return new TranscriptFragmentVariant(fragment);
             }
         }
     }
