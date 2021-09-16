@@ -8,11 +8,11 @@ namespace ActualChat
     [DataContract]
     public readonly partial struct ChatId : IEquatable<ChatId>, IIdentifier<string>
     {
-        [Obsolete("Please use implicit cast to/from string")]
+        [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
-        public string Value { get; } 
+        public string Value { get; }
 
-        private ChatId(string value)
+        public ChatId(string value)
             => Value = value;
 
         public override string ToString() => Value;
@@ -31,11 +31,11 @@ namespace ActualChat
     [DataContract]
     public readonly partial struct AudioRecordId : IEquatable<AudioRecordId>, IIdentifier<string>
     {
-        [Obsolete("Please use implicit cast to/from string")]
+        [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
-        public string Value { get; } 
+        public string Value { get; }
 
-        private AudioRecordId(string value)
+        public AudioRecordId(string value)
             => Value = value;
 
         public override string ToString() => Value;
@@ -54,11 +54,11 @@ namespace ActualChat
     [DataContract]
     public readonly partial struct VideoRecordId : IEquatable<VideoRecordId>, IIdentifier<string>
     {
-        [Obsolete("Please use implicit cast to/from string")]
+        [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
-        public string Value { get; } 
+        public string Value { get; }
 
-        private VideoRecordId(string value)
+        public VideoRecordId(string value)
             => Value = value;
 
         public override string ToString() => Value;
@@ -77,11 +77,11 @@ namespace ActualChat
     [DataContract]
     public readonly partial struct StreamId : IEquatable<StreamId>, IIdentifier<string>
     {
-        [Obsolete("Please use implicit cast to/from string")]
+        [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
-        public string Value { get; } 
+        public string Value { get; }
 
-        private StreamId(string value)
+        public StreamId(string value)
             => Value = value;
 
         public override string ToString() => Value;
@@ -100,11 +100,11 @@ namespace ActualChat
     [DataContract]
     public readonly partial struct UserId : IEquatable<UserId>, IIdentifier<string>
     {
-        [Obsolete("Please use implicit cast to/from string")]
+        [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
-        public string Value { get; } 
+        public string Value { get; }
 
-        private UserId(string value)
+        public UserId(string value)
             => Value = value;
 
         public override string ToString() => Value;
