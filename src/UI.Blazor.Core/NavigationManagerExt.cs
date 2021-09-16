@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.UI.Blazor
 {
-    public static class NavigationManagerEx
+    public static class NavigationManagerExt
     {
         public static void Login(this NavigationManager navigator, string reason = "")
         {

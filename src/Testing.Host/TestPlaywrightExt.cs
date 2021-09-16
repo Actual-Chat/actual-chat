@@ -2,7 +2,7 @@ using ActualChat.Host;
 
 namespace ActualChat.Testing
 {
-    public static class TestPlaywrightEx
+    public static class TestPlaywrightExt
     {
         public static PlaywrightTester NewPlaywrightTester(this AppHost appHost)
             => new(appHost);

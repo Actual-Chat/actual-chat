@@ -6,7 +6,7 @@ using Stl.Fusion.Blazor;
 
 namespace ActualChat.Testing
 {
-    public static class TestBlazorEx
+    public static class TestBlazorExt
     {
         public static BlazorTester NewBlazorTester(this AppHost appHost)
             => new(appHost);

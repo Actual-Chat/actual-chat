@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Testing
 {
-    public static class TestHttpClientEx
+    public static class TestHttpClientExt
     {
         public static HttpClient NewClient(this AppHost appHost)
         {
