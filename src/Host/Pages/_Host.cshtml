@@ -24,15 +24,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <title>Actual Chat</title>
-    <base href="~/" />
-    <link href="css/app.css" rel="stylesheet" />
+    <base href="~/"/>
+    <link href="css/app.css" rel="stylesheet"/>
     @foreach (var styleSheetPath in _hostPluginHelper.CssUrls) {
-        <link href="@styleSheetPath" rel="stylesheet" />
+        <link href="@styleSheetPath" rel="stylesheet"/>
     }
-    <partial name="Blazorise.Head" />
+    <partial name="Blazorise.Head"/>
     <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
     <script>
         window.FusionAuth.schemas = "@authSchemas";
@@ -83,7 +83,7 @@
         <a class="dismiss">🗙</a>
     </div>
 
-    <partial name="Blazorise.Body" />
+    <partial name="Blazorise.Body"/>
     @foreach (var scriptPath in _hostPluginHelper.ScriptUrls) {
         <script type="module" src="@scriptPath"></script>
     }

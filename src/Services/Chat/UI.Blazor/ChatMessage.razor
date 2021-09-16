@@ -1,10 +1,10 @@
 <div class="message">
     <UserNameBadge UserId="@Entry.CreatorId"/>
     @if (Entry.IsStreaming) {
-        <ChatMessageTranscript StreamId="@Entry.StreamId"></ChatMessageTranscript>
+        <ChatMessageTranscript StreamId="@Entry.StreamId"/>
     }
     else{
-        <ChatMessageText Text="@Entry.Content"></ChatMessageText>
+        <ChatMessageText Text="@Entry.Content"/>
     }
 </div>
 
