@@ -5,8 +5,8 @@ namespace ActualChat
     public interface IIdentifier
     { }
 
-    public interface IIdentifier<out TKey> : IIdentifier where TKey : IEquatable<TKey>
+    public interface IIdentifier<out TValue> : IIdentifier where TValue : IEquatable<TValue>
     {
-        public TKey Value { get; }
+        public TValue Value { get; }
     }
 }

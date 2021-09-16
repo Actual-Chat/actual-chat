@@ -1,14 +1,14 @@
 <#@ template language="C#" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#
-    List<string> identifierEntities = new () {
+    List<string> entityTypeNames = new () {
         "Chat",
         "AudioRecord",
         "VideoRecord",
         "Stream",
         "User"
     };
-    
+
 #>
 using System;
 using System.Runtime.Serialization;
@@ -18,30 +18,31 @@ using System.Runtime.Serialization;
 namespace ActualChat
 {
 <#
-    foreach(var entity in identifierEntities)
+    foreach(var entityTypeName in entityTypeNames)
     {
+        var typeName = entityTypeName + "Id";
 #>
     [DataContract]
-    public readonly partial struct <#=entity#>Id : IEquatable<<#=entity#>Id>, IIdentifier<string>
+    public readonly partial struct <#=typeName#> : IEquatable<<#=typeName#>>, IIdentifier<string>
     {
-        [Obsolete("Please use implicit cast to/from string")]
+        [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
-        public string Value { get; } 
+        public string Value { get; }
 
-        private <#=entity#>Id(string value)
+        public <#=typeName#>(string value)
             => Value = value;
 
         public override string ToString() => Value;
 
-        public static implicit operator <#=entity#>Id(string value) => new(value);
-        public static implicit operator string(<#=entity#>Id id) => id.Value;
+        public static implicit operator <#=typeName#>(string value) => new(value);
+        public static implicit operator string(<#=typeName#> id) => id.Value;
 
         // Equality
-        public bool Equals(<#=entity#>Id other) => Value == other.Value;
-        public override bool Equals(object? obj) => obj is <#=entity#>Id other && Equals(other);
+        public bool Equals(<#=typeName#> other) => Value == other.Value;
+        public override bool Equals(object? obj) => obj is <#=typeName#> other && Equals(other);
         public override int GetHashCode() => Value.GetHashCode();
-        public static bool operator ==(<#=entity#>Id left, <#=entity#>Id right) => left.Equals(right);
-        public static bool operator !=(<#=entity#>Id left, <#=entity#>Id right) => !left.Equals(right);
+        public static bool operator ==(<#=typeName#> left, <#=typeName#> right) => left.Equals(right);
+        public static bool operator !=(<#=typeName#> left, <#=typeName#> right) => !left.Equals(right);
     }
 
 <#
