@@ -31,12 +31,12 @@ namespace ActualChat.Tests.Audio
             var services = appHost.Services;
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var cts = new CancellationTokenSource();
-            var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
+            var dequeueTask = orchestrator.DequeueNewAudioRecord(cts.Token);
             await Task.Delay(50);
-            recordingTask.IsCompleted.Should().Be(false);
+            dequeueTask.IsCompleted.Should().Be(false);
             cts.Cancel();
             await Task.Delay(50);
-            recordingTask.Status.Should().Be(TaskStatus.Canceled);
+            dequeueTask.Status.Should().Be(TaskStatus.Canceled);
         }
 
         [Fact]
@@ -50,7 +50,7 @@ namespace ActualChat.Tests.Audio
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var audioUploader = services.GetRequiredService<IAudioUploader>();
             var cts = new CancellationTokenSource();
-            var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
+            var dequeueTask = orchestrator.DequeueNewAudioRecord(cts.Token);
 
             var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
@@ -67,10 +67,10 @@ namespace ActualChat.Tests.Audio
             _ = audioUploader.Upload(session,recordingSpec, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
-            var recording = await recordingTask;
-            recording.Should().Be(recordingSpec with {
-                Id = recording!.Id,
-                UserId = recording.UserId
+            var record = await dequeueTask;
+            record.Should().Be(recordingSpec with {
+                Id = record!.Id,
+                UserId = record.UserId
             });
         }
 
@@ -83,20 +83,20 @@ namespace ActualChat.Tests.Audio
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var recordingService = services.GetRequiredService<IAudioUploader>();
-            var streamingService = services.GetRequiredService<IStreamer<BlobPart>>();
+            var audioUploader = services.GetRequiredService<IAudioUploader>();
+            var blobStreamer = services.GetRequiredService<IStreamer<BlobPart>>();
             var chatService = services.GetRequiredService<IChatService>();
 
             var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
             var cts = new CancellationTokenSource();
-            var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
+            var recordingTask = orchestrator.DequeueNewAudioRecord(cts.Token);
 
-            var pushAudioTask = PushAudioData(session, chat.Id, recordingService);
+            var pushAudioTask = PushAudioData(session, chat.Id, audioUploader);
 
             var recording = await recordingTask;
             var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
 
-            var readTask = ReadDistributedData(recording!.Id, streamingService);
+            var readTask = ReadDistributedData(recording!.Id, blobStreamer);
             var writtenSize = await pushAudioTask;
             var readSize = await readTask;
 
@@ -115,21 +115,21 @@ namespace ActualChat.Tests.Audio
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var streamingService = services.GetRequiredService<IStreamer<BlobPart>>();
-            var recordingService = services.GetRequiredService<IAudioUploader>();
-            var transcriptStreaming = services.GetRequiredService<IStreamer<TranscriptPart>>();
+            var audioUploader = services.GetRequiredService<IAudioUploader>();
+            var transcriptStreamer = services.GetRequiredService<IStreamer<TranscriptPart>>();
             var chatService = services.GetRequiredService<IChatService>();
 
             var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
             var cts = new CancellationTokenSource();
-            var recordingTask = orchestrator.WaitForNewRecording(cts.Token);
+            var recordingTask = orchestrator.DequeueNewAudioRecord(cts.Token);
 
-            var pushAudioTask = PushAudioData(session, chat.Id, recordingService);
+            var pushAudioTask = PushAudioData(session, chat.Id, audioUploader);
 
             var recording = await recordingTask;
             var pipelineTask = orchestrator.StartAudioPipeline(recording!, cts.Token);
 
             var readTask = ReadDistributedData(recording!.Id, streamingService);
-            var readTranscriptTask = ReadTranscribedData(recording!.Id, transcriptStreaming);
+            var readTranscriptTask = ReadTranscribedData(recording!.Id, transcriptStreamer);
             var writtenSize = await pushAudioTask;
             var readSize = await readTask;
             var transcribed = await readTranscriptTask;
@@ -165,7 +165,7 @@ namespace ActualChat.Tests.Audio
 
         private static async Task<int> PushAudioData(Session session, string chatId, IAudioUploader audioUploader)
         {
-            var recording = new AudioRecord(
+            var record = new AudioRecord(
                 chatId,
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
@@ -178,7 +178,7 @@ namespace ActualChat.Tests.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            _ = audioUploader.Upload(session, recording, channel.Reader, CancellationToken.None);
+            _ = audioUploader.Upload(session, record, channel.Reader, CancellationToken.None);
 
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);

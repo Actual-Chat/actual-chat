@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Stl.CommandR.Configuration;
 using Stl.Fusion;
-using Stl.Time;
 
 namespace ActualChat.Chat
 {
@@ -11,7 +10,7 @@ namespace ActualChat.Chat
     {
         // Commands
         [CommandHandler]
-        Task<ChatEntry> ServerPost(ChatCommands.ServerPost command, CancellationToken cancellationToken);
+        Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]

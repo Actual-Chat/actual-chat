@@ -25,10 +25,16 @@ namespace ActualChat.Streaming.Module
             services.AddTransient<StreamingServiceHub>();
             services.AddSingleton<IStreamer<BlobPart>, Streamer<BlobPart>>();
             services.AddSingleton<IStreamer<TranscriptPart>, Streamer<TranscriptPart>>();
-            services.AddSingleton<IAudioUploader, AudioUploader>();
             services.AddSingleton<IServerSideStreamer<BlobPart>, ServerSideStreamer<BlobPart>>();
             services.AddSingleton<IServerSideStreamer<TranscriptPart>, ServerSideStreamer<TranscriptPart>>();
-            services.AddSingleton<IServerSideRecorder<AudioRecord>, ServerSideRecorder<AudioRecord>>();
+
+            // AudioUploader
+            services.AddSingleton<AudioUploader>();
+            services.AddTransient<IAudioUploader>(c => c.GetRequiredService<AudioUploader>());
+
+            // AudioRecorder
+            services.AddSingleton<AudioRecorder>();
+            services.AddTransient<IAudioRecorder>(c => c.GetRequiredService<AudioRecorder>());
 
             services.AddSignalR()
                 .AddMessagePackProtocol(); // TODO: no AOT compilation support yet

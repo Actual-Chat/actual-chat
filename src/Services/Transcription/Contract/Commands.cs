@@ -9,13 +9,13 @@ namespace ActualChat.Transcription
 {
     public record BeginTranscriptionCommand : ICommand<Symbol>
     {
-        public Symbol RecordingId { get; init; } = Symbol.Empty;
+        public Symbol RecordId { get; init; } = Symbol.Empty;
         public TranscriptionOptions Options { get; init; } = new();
         public AudioFormat AudioFormat { get; init; } = new();
 
-        public void Deconstruct(out Symbol recordingId, out TranscriptionOptions options, out AudioFormat format)
+        public void Deconstruct(out Symbol recordId, out TranscriptionOptions options, out AudioFormat format)
         {
-            recordingId = RecordingId;
+            recordId = RecordId;
             options = Options;
             format = AudioFormat;
         }
@@ -30,7 +30,7 @@ namespace ActualChat.Transcription
     {
         public EndTranscriptionCommand() : this(Symbol.Empty) { }
     }
-    
+
     public record AckTranscriptionCommand(Symbol TranscriptId, int Index) : ICommand<Unit>
     {
         public AckTranscriptionCommand() : this(Symbol.Empty, default) { }

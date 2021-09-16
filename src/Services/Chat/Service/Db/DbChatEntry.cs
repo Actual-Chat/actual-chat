@@ -27,7 +27,7 @@ namespace ActualChat.Chat.Db
         public string ChatId { get; set; } = "";
         public long Id { get; set; }
         [ConcurrencyCheck] public long Version { get; set; }
-        public string CreatorId { get; set; } = "";
+        public string AuthorId { get; set; } = "";
 
         public DateTime BeginsAt {
             get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -45,9 +45,28 @@ namespace ActualChat.Chat.Db
         public string Content { get; set; } = "";
         public string? StreamId { get; set; }
 
+        public DbChatEntry() { }
+        public DbChatEntry(ChatEntry model) => UpdateFrom(model);
+
+        public void UpdateFrom(ChatEntry model)
+        {
+            if (model.Id == 0)
+                throw new ArgumentOutOfRangeException($"{nameof(model)}.{nameof(model.Id)}");
+            Id = model.Id;
+            ChatId = model.ChatId;
+            CompositeId = GetCompositeId(model.ChatId, model.Id);
+            Version = model.Version;
+            AuthorId = model.AuthorId;
+            BeginsAt = model.BeginsAt;
+            EndsAt = model.EndsAt;
+            ContentType = model.ContentType;
+            Content = model.Content;
+            StreamId = model.StreamId;
+        }
+
         public ChatEntry ToModel()
             => new(ChatId, Id) {
-                CreatorId = CreatorId,
+                AuthorId = AuthorId,
                 BeginsAt = BeginsAt,
                 EndsAt = EndsAt,
                 ContentType = ContentType,

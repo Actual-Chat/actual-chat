@@ -18,7 +18,7 @@ namespace ActualChat.Audio
     {
         private readonly ITranscriber _transcriber;
         private readonly AudioSaver _audioSaver;
-        private readonly IServerSideRecorder<AudioRecord> _audioRecorder;
+        private readonly IAudioRecorder _audioRecorder;
         private readonly AudioActivityExtractor _audioActivityExtractor;
         private readonly IServerSideStreamer<BlobPart> _blobStreamer;
         private readonly IServerSideStreamer<TranscriptPart> _transcriptStreamer;
@@ -30,7 +30,7 @@ namespace ActualChat.Audio
         public AudioOrchestrator(
             ITranscriber transcriber,
             AudioSaver audioSaver,
-            IServerSideRecorder<AudioRecord> audioRecorder,
+            IAudioRecorder audioRecorder,
             AudioActivityExtractor audioActivityExtractor,
             IServerSideStreamer<BlobPart> blobStreamer,
             IServerSideStreamer<TranscriptPart> transcriptStreamer,
@@ -54,27 +54,27 @@ namespace ActualChat.Audio
 
             while (true) {
                 // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
-                var recording = await WaitForNewRecording(stoppingToken);
+                var record = await DequeueNewAudioRecord(stoppingToken);
                 if (stoppingToken.IsCancellationRequested)
                     return;
 
-                _ = StartAudioPipeline(recording!, stoppingToken);
+                _ = StartAudioPipeline(record!, stoppingToken);
             }
         }
 
-        internal async Task<AudioRecord?> WaitForNewRecording(CancellationToken cancellationToken)
+        internal async Task<AudioRecord?> DequeueNewAudioRecord(CancellationToken cancellationToken)
         {
             while (true) {
-                var recording = await _audioRecorder.WaitForNewRecording(cancellationToken);
-                if (recording != null)
-                    return recording;
+                var record = await _audioRecorder.DequeueNewRecord(cancellationToken);
+                if (record != null)
+                    return record;
                 cancellationToken.ThrowIfCancellationRequested();
             }
         }
 
         internal async Task StartAudioPipeline(AudioRecord audioRecord, CancellationToken cancellationToken)
         {
-            var audioReader = await _audioRecorder.GetRecording(audioRecord.Id, cancellationToken);
+            var audioReader = await _audioRecorder.GetContent(audioRecord.Id, cancellationToken);
             var segments = _audioActivityExtractor.GetSegmentsWithAudioActivity(audioRecord, audioReader);
             await foreach (var segment in segments.WithCancellation(cancellationToken)) {
                 var distributeStreamTask = DistributeAudioStream(segment, cancellationToken);
@@ -130,7 +130,7 @@ namespace ActualChat.Audio
             var r = audioRecordSegmentAccessor.AudioRecord;
             // TODO(AK): read actual config
             var command = new BeginTranscriptionCommand {
-                RecordingId = (string)r.Id, 
+                RecordId = (string) r.Id,
                 AudioFormat = new AudioFormat {
                     Codec = AudioCodec.Opus,
                     ChannelCount = 1,
@@ -190,12 +190,13 @@ namespace ActualChat.Audio
             CancellationToken cancellationToken)
         {
             var e = audioRecordSegmentAccessor;
-            var command = new ChatCommands.ServerPost(
-                e.AudioRecord.UserId,
-                e.AudioRecord.ChatId,
-                "...",
-                e.StreamId).MarkServerSide();
-            await _chat.ServerPost(command, cancellationToken);
+            var chatEntry = new ChatEntry(e.AudioRecord.ChatId, 0) {
+                AuthorId = e.AudioRecord.UserId,
+                Content = "...",
+                ContentType = ChatContentType.Text,
+                StreamId = e.StreamId
+            };
+            await _chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken);
         }
 
         private Task DistributeAudioStream(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)

@@ -27,8 +27,8 @@ namespace ActualChat.Transcription
 
         public async Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken)
         {
-            var (recordingId, options, format) = command;
-            _log.LogInformation($"{nameof(BeginTranscription)}, RecordingId = {{RecordingId}}", recordingId);
+            var (recordId, options, format) = command;
+            _log.LogInformation(nameof(BeginTranscription) + " RecordId = {RecordId}", (string) recordId);
 
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken);
@@ -51,7 +51,7 @@ namespace ActualChat.Transcription
                     SingleUtterance = false
                 }
             });
-            var transcriptId = $"{recordingId}-{Ulid.NewUlid().ToString()}";
+            var transcriptId = $"{recordId}-{Ulid.NewUlid().ToString()}";
             var responseStream =  streamingRecognizeStream.GetResponseStream();
             var reader = new TranscriptionBuffer(responseStream, _log);
             var cts = new CancellationTokenSource();
@@ -65,7 +65,7 @@ namespace ActualChat.Transcription
         public async Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (transcriptId, data) = command;
-            _log.LogInformation($"{nameof(AppendTranscription)}, TranscriptId = {{TranscriptId}}", transcriptId);
+            _log.LogInformation(nameof(AppendTranscription) + " TranscriptId = {TranscriptId}", (string) transcriptId);
 
             // Waiting for BeginTranscription
             var waitAttempts = 0;
@@ -84,7 +84,7 @@ namespace ActualChat.Transcription
 
         public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken)
         {
-            _log.LogInformation($"{nameof(EndTranscription)}, TranscriptId = {{TranscriptId}}", command.TranscriptId);
+            _log.LogInformation(nameof(EndTranscription) + " TranscriptId = {TranscriptId}", (string) command.TranscriptId);
 
             if (_transcriptionStreams.TryGetValue(command.TranscriptId, out var tuple)) {
                 var (writer, _, transcriptProcessorTask, _) = tuple;
@@ -98,7 +98,7 @@ namespace ActualChat.Transcription
         public async Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (transcriptId, index) = command;
-            _log.LogInformation($"{nameof(PollTranscription)}, TranscriptId = {{TranscriptId}}, Index = {{Index}}", transcriptId, index);
+            _log.LogInformation(nameof(PollTranscription) + " TranscriptId = {TranscriptId}, Index = {Index}", (string) transcriptId, index);
 
             if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream))
                 return new PollResult(false, ImmutableArray<TranscriptFragmentVariant>.Empty);
@@ -110,7 +110,7 @@ namespace ActualChat.Transcription
         public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken)
         {
             var (transcriptId, index) = command;
-            _log.LogInformation($"{nameof(AckTranscription)}, TranscriptId = {{TranscriptId}}, Index = {{Index}}", transcriptId, index);
+            _log.LogInformation(nameof(AckTranscription) + " TranscriptId = {TranscriptId}, Index = {Index}", (string) transcriptId, index);
 
             if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream))
                 return Task.CompletedTask;

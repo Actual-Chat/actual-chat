@@ -30,8 +30,8 @@ namespace ActualChat.Tests.Streaming
             var sessionFactory = services.GetRequiredService<ISessionFactory>();
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
-            var recordingService = services.GetRequiredService<IAudioUploader>();
-            var serverSideRecordingService = services.GetRequiredService<IServerSideRecorder<AudioRecord>>();
+            var audioUploader = services.GetRequiredService<IAudioUploader>();
+            var audioRecorder = services.GetRequiredService<IAudioRecorder>();
             var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -45,9 +45,9 @@ namespace ActualChat.Tests.Streaming
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var recordingTask = serverSideRecordingService.WaitForNewRecording(CancellationToken.None);
+            var recordingTask = audioRecorder.DequeueNewRecord(CancellationToken.None);
 
-            _ = recordingService.Upload(session, recordingSpec, channel.Reader, CancellationToken.None);
+            _ = audioUploader.Upload(session, recordingSpec, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
             var recording = await recordingTask;
@@ -56,7 +56,7 @@ namespace ActualChat.Tests.Streaming
                 UserId = recording.UserId
             });
 
-            var channelReader = await serverSideRecordingService.GetRecording(recording.Id, CancellationToken.None);
+            var channelReader = await audioRecorder.GetContent(recording.Id, CancellationToken.None);
             await foreach (var _ in channelReader.ReadAllAsync()) {}
         }
 
@@ -69,15 +69,14 @@ namespace ActualChat.Tests.Streaming
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var audioUploader = services.GetRequiredService<IAudioUploader>();
-            var serverSideRecordingService = services.GetRequiredService<IServerSideRecorder<AudioRecord>>();
+            var audioRecorder = services.GetRequiredService<IAudioRecorder>();
 
-            var recordingTask = serverSideRecordingService.WaitForNewRecording(CancellationToken.None);
-
+            var dequeueTask = audioRecorder.DequeueNewRecord(CancellationToken.None);
             var writtenSize =  await UploadRecording(session, "1", audioUploader);
 
-            var recording = await recordingTask;
-            var recordingStream = await serverSideRecordingService.GetRecording(recording!.Id, CancellationToken.None);
-            var readSize = await recordingStream.ReadAllAsync().SumAsync(message => message.Chunk.Length);
+            var record = await dequeueTask;
+            var recordStream = await audioRecorder.GetContent(record!.Id, CancellationToken.None);
+            var readSize = await recordStream.ReadAllAsync().SumAsync(message => message.Chunk.Length);
 
             readSize.Should().Be(writtenSize);
         }

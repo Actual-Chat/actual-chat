@@ -1,6 +1,5 @@
 ﻿@page "/voice"
 @inherits ComputedStateComponent<int>
-@using Stl.Time
 @using System.Threading.Channels
 @using ActualChat.Streaming
 @implements IAudioRecorderBackend
@@ -100,10 +99,9 @@
     }
 
     [JSInvokable]
-    public Task RecordingStarted()
+    public Task OnStartRecording()
     {
-        if (Writer == null)
-        {
+        if (Writer == null) {
             var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -113,15 +111,12 @@
                 });
             Writer = channel.Writer;
 
-            var recording = new AudioRecord(
+            var record = new AudioRecord(
                 "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = _audioUploader.Upload(_session, recording, channel.Reader, CancellationToken.None);
-
-            // _ = ReadAudio(recordingId);
-            // _ = ReadTranscription(recordingId);
+            _ = _audioUploader.Upload(_session, record, channel.Reader, CancellationToken.None);
         }
 
         return Task.CompletedTask;
@@ -146,17 +141,16 @@
     }
 
     [JSInvokable]
-    public async Task AudioDataAvailable(string dataAsBase64)
+    public async Task OnAudioData(string dataAsBase64)
     {
         if (Writer != null) {
-            var base64 = Base64Encoded.Decode(dataAsBase64);
-
-            await Writer.WriteAsync(new BlobPart(Index++, base64.Data));
+            var data = Base64Encoded.Decode(dataAsBase64).Data;
+            await Writer.WriteAsync(new BlobPart(Index++, data));
         }
     }
 
     [JSInvokable]
-    public Task RecordingStopped()
+    public Task OnStopRecording()
     {
         // _ = _cmd.Run(new CompleteAudioRecording(RecordingId));
 
