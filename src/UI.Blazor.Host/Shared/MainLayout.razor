@@ -10,18 +10,18 @@
 <Layout Sider="true">
     <LayoutSider>
         <LayoutSiderContent>
-            <LeftBar />
+            <LeftBar/>
         </LayoutSiderContent>
     </LayoutSider>
     <Layout>
         <LayoutHeader Fixed="true">
-            <TopBar />
+            <TopBar/>
         </LayoutHeader>
 
         <LayoutContent Padding="Padding.Is4">
             @foreach (var failure in failures) {
                 <WhenCommandError Exception="failure.Result?.Error"
-                                  Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))" />
+                                  Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))"/>
             }
 
             @Body
