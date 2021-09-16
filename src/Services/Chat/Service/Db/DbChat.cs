@@ -34,7 +34,7 @@ namespace ActualChat.Chat.Db
                 CreatedAt = CreatedAt,
                 CreatorId = CreatorId,
                 IsPublic = IsPublic,
-                OwnerIds = Owners.Select(o => o.UserId).ToImmutableArray(),
+                OwnerIds = Owners.Select(o => (UserId)o.UserId).ToImmutableArray(),
             };
     }
 }

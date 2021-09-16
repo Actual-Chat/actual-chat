@@ -5,14 +5,14 @@ using Stl.Time;
 
 namespace ActualChat.Chat
 {
-    public record ChatEntry(string ChatId, long Id)
+    public record ChatEntry(ChatId ChatId, long Id)
     {
-        public Symbol CreatorId { get; init; }
+        public UserId CreatorId { get; init; }
         public Moment BeginsAt { get; init; }
         public Moment EndsAt { get; init; }
         public ChatContentType ContentType { get; init; }
         public string Content { get; init; } = "";
-        public string StreamId { get; init; } = "";
+        public StreamId StreamId { get; init; } = "";
 
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
         public double Duration => (EndsAt - BeginsAt).TotalSeconds;

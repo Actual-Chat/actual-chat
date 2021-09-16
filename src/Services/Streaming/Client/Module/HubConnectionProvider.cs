@@ -39,7 +39,7 @@ namespace ActualChat.Streaming.Client.Module
                     else
                         return;
                 }
-                catch (OperationCanceledException oce) {
+                catch (OperationCanceledException) {
                     throw;
                 }
                 catch(Exception e) {

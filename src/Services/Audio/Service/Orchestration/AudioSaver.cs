@@ -7,8 +7,6 @@ using ActualChat.Audio.Db;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
-using ActualChat.Streaming;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IO;
@@ -38,7 +36,7 @@ namespace ActualChat.Audio.Orchestration
             CancellationToken cancellationToken)
         {
             var p = audioStreamPart ?? throw new ArgumentNullException(nameof(audioStreamPart));
-            var streamIndex = p.StreamId.Value.Replace($"{p.AudioRecord.Id}-", "");
+            var streamIndex = ((string)p.StreamId).Replace($"{p.AudioRecord.Id}-", "");
             var blobId = BlobPath.Format(BlobScope.AudioRecording, p.AudioRecord.Id, streamIndex + ".webm");
 
             var saveBlobTask = SaveBlob(blobId, audioStreamPart, cancellationToken);
@@ -48,9 +46,9 @@ namespace ActualChat.Audio.Orchestration
 
             async Task SaveSegment() {
                 await using var dbContext = CreateDbContext(true);
-                var existingRecording = await dbContext.AudioRecordings.FindAsync(new object[] { p.AudioRecord.Id.Value }, cancellationToken);
+                var existingRecording = await dbContext.AudioRecordings.FindAsync(new object[] { p.AudioRecord.Id }, cancellationToken);
                 if (existingRecording == null) {
-                    _log.LogInformation("Entity = Recording, RecordingId = {RecordingId}", p.AudioRecord.Id.Value);
+                    _log.LogInformation("Entity = Recording, RecordingId = {RecordingId}", p.AudioRecord.Id);
                     dbContext.AudioRecordings.Add(new DbAudioRecording {
                         Id = p.AudioRecord.Id,
                         UserId = p.AudioRecord.UserId,
@@ -65,7 +63,7 @@ namespace ActualChat.Audio.Orchestration
                     });
                 }
 
-                _log.LogInformation("Entity = AudioSegment, RecordingId = {RecordingId}, Index = {Index}", p.AudioRecord.Id.Value, p.Index);
+                _log.LogInformation("Entity = AudioSegment, RecordingId = {RecordingId}, Index = {Index}", p.AudioRecord.Id, p.Index);
                 dbContext.AudioSegments.Add(new DbAudioSegment {
                     RecordingId = p.AudioRecord.Id,
                     Index = p.Index,
@@ -83,7 +81,7 @@ namespace ActualChat.Audio.Orchestration
             CancellationToken cancellationToken)
         {
             var p = audioRecordSegmentAccessor ?? throw new ArgumentNullException(nameof(audioRecordSegmentAccessor));
-            var streamIndex = p.StreamId.Value.Replace($"{p.AudioRecord.Id}-", "");
+            var streamIndex = ((string)p.StreamId).Replace($"{p.AudioRecord.Id}-", "");
             var blobId = BlobPath.Format(BlobScope.AudioRecording, p.AudioRecord.Id, streamIndex + ".webm");
 
             await SaveBlob(blobId, audioRecordSegmentAccessor, cancellationToken);
@@ -99,7 +97,7 @@ namespace ActualChat.Audio.Orchestration
             const int minBufferSize = 32*1024;
             var document = audioStreamPart.Document;
             if (!document.IsValid)
-                _log.LogWarning("Skip flushing audio segments for {StreamId}. WebM document is invalid", audioStreamPart.StreamId.Value);
+                _log.LogWarning("Skip flushing audio segments for {StreamId}. WebM document is invalid", audioStreamPart.StreamId);
 
             var (ebml, segment, clusters) = document;
             var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecording);
