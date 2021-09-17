@@ -10,7 +10,7 @@ namespace ActualChat.Testing
     {
         public static HttpClient NewClient(this AppHost appHost)
         {
-            var uriMapper = appHost.Services.GetRequiredService<UriMapper>();
+            var uriMapper = appHost.Services.UriMapper();
             return new() { BaseAddress = uriMapper.BaseUri };
         }
 

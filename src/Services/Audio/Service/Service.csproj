@@ -6,7 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Blobs\Blobs.csproj" />
     <ProjectReference Include="..\..\..\Db\Db.csproj" />
-    <ProjectReference Include="..\..\Streaming\Contract\Contract.csproj" />
+    <ProjectReference Include="..\..\..\Streaming.Server\Streaming.Server.csproj" />
+    <ProjectReference Include="..\..\..\Web\Web.csproj" />
     <ProjectReference Include="..\..\Transcription\Contract\Contract.csproj" />
     <ProjectReference Include="..\..\Chat\Contract\Contract.csproj" />
     <ProjectReference Include="..\Contract\Contract.csproj" />

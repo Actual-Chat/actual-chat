@@ -1,10 +1,9 @@
 using System.Collections.Immutable;
 using System.Linq;
-using ActualChat.Streaming.Module;
-using ActualChat.Host.Internal;
 using ActualChat.Host.Module;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Host;
+using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -67,14 +66,14 @@ namespace ActualChat.Host
             Plugins = new PluginHostBuilder(pluginServices).Build();
             HostModules = Plugins
                 .GetPlugins<HostModule>()
-                .OrderBy(m => m is not WebHostModule) // MainHostModule should be the first one
+                .OrderBy(m => m is not AppHostModule) // MainHostModule should be the first one
                 .ToImmutableArray();
 
             // Using host modules to inject the remaining services
             HostModules.Apply(m => m.InjectServices(services));
         }
 
-        public void Configure(IApplicationBuilder app, IHubRegistrar hubRegistrar)
-            => HostModules.OfType<IWebHostModule>().Apply(m => m.ConfigureApp(app, hubRegistrar));
+        public void Configure(IApplicationBuilder app)
+            => HostModules.OfType<IWebModule>().Apply(m => m.ConfigureApp(app));
     }
 }

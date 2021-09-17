@@ -17,7 +17,7 @@ namespace ActualChat.Testing
 
         public AppHost AppHost { get; }
         public IServiceProvider AppServices => AppHost.Services;
-        public UriMapper UriMapper => AppServices.GetRequiredService<UriMapper>();
+        public UriMapper UriMapper => AppServices.UriMapper();
         public IServerSideAuthService Auth => AppServices.GetRequiredService<IServerSideAuthService>();
         public Session Session { get; }
 
