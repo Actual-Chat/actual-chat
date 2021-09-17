@@ -88,8 +88,8 @@ namespace ActualChat.Tests.Streaming
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
-            var streamingService = services.GetRequiredService<IStreamReader<BlobPart>>();
-            var serverSideStreamingService = services.GetRequiredService<IStreamPublisher<BlobPart>>();
+            var streamingService = services.GetRequiredService<IAudioStreamReader>();
+            var serverSideStreamingService = services.GetRequiredService<AudioStreamPublisher>();
 
             var streamId = (StreamId)"test-stream-id";
             var channel = Channel.CreateBounded<BlobPart>(

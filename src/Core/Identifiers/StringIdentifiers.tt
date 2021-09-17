@@ -1,5 +1,7 @@
 <#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
 <#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
 <#
     List<string> entityTypeNames = new () {
         "Chat",
@@ -7,6 +9,10 @@
         "VideoRecord",
         "Stream",
         "User"
+    };
+    
+    List<(string,string)> slaveEntityTypeNames = new () {
+        ("Stream", "AudioRecord")
     };
 
 #>
@@ -16,7 +22,6 @@ using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Stl.Text;
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
 
@@ -26,11 +31,14 @@ namespace ActualChat
     foreach(var entityTypeName in entityTypeNames)
     {
         var typeName = entityTypeName + "Id";
+        var slavePair = slaveEntityTypeNames.FirstOrDefault(pair => pair.Item1 == entityTypeName);
+        var isSlave = slavePair != default;
+        var master = slavePair.Item2 ?? "";
 #>
     [DataContract]
     [JsonConverter(typeof(<#=typeName#>JsonConverter))]
     [TypeConverter(typeof(<#=typeName#>TypeConverter))]
-    public readonly partial struct <#=typeName#> : IEquatable<<#=typeName#>>, IIdentifier<string>
+    public readonly partial struct <#=typeName#> : IEquatable<<#=typeName#>>, IIdentifier<string><#=isSlave ? $", ISlaveIdentifier<{master}Id>" : ", IMasterIdentifier" #>
     {
         [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]

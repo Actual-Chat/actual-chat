@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Stl.Text;
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
 
@@ -13,7 +12,7 @@ namespace ActualChat
     [DataContract]
     [JsonConverter(typeof(ChatIdJsonConverter))]
     [TypeConverter(typeof(ChatIdTypeConverter))]
-    public readonly partial struct ChatId : IEquatable<ChatId>, IIdentifier<string>
+    public readonly partial struct ChatId : IEquatable<ChatId>, IIdentifier<string>, IMasterIdentifier
     {
         [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
@@ -69,7 +68,7 @@ namespace ActualChat
     [DataContract]
     [JsonConverter(typeof(AudioRecordIdJsonConverter))]
     [TypeConverter(typeof(AudioRecordIdTypeConverter))]
-    public readonly partial struct AudioRecordId : IEquatable<AudioRecordId>, IIdentifier<string>
+    public readonly partial struct AudioRecordId : IEquatable<AudioRecordId>, IIdentifier<string>, IMasterIdentifier
     {
         [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
@@ -125,7 +124,7 @@ namespace ActualChat
     [DataContract]
     [JsonConverter(typeof(VideoRecordIdJsonConverter))]
     [TypeConverter(typeof(VideoRecordIdTypeConverter))]
-    public readonly partial struct VideoRecordId : IEquatable<VideoRecordId>, IIdentifier<string>
+    public readonly partial struct VideoRecordId : IEquatable<VideoRecordId>, IIdentifier<string>, IMasterIdentifier
     {
         [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
@@ -181,7 +180,7 @@ namespace ActualChat
     [DataContract]
     [JsonConverter(typeof(StreamIdJsonConverter))]
     [TypeConverter(typeof(StreamIdTypeConverter))]
-    public readonly partial struct StreamId : IEquatable<StreamId>, IIdentifier<string>
+    public readonly partial struct StreamId : IEquatable<StreamId>, IIdentifier<string>, ISlaveIdentifier<AudioRecordId>
     {
         [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]
@@ -237,7 +236,7 @@ namespace ActualChat
     [DataContract]
     [JsonConverter(typeof(UserIdJsonConverter))]
     [TypeConverter(typeof(UserIdTypeConverter))]
-    public readonly partial struct UserId : IEquatable<UserId>, IIdentifier<string>
+    public readonly partial struct UserId : IEquatable<UserId>, IIdentifier<string>, IMasterIdentifier
     {
         [Obsolete("Use implicit cast to/from string instead")]
         [DataMember(Order = 0)]

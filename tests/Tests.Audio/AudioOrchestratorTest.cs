@@ -85,7 +85,7 @@ namespace ActualChat.Tests.Audio
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
             var audioUploader = services.GetRequiredService<IAudioRecorder>();
-            var blobStreamer = services.GetRequiredService<IStreamReader<BlobPart>>();
+            var blobStreamer = services.GetRequiredService<IAudioStreamReader>();
             var chatService = services.GetRequiredService<IChatService>();
 
             var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
@@ -115,9 +115,9 @@ namespace ActualChat.Tests.Audio
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var streamingService = services.GetRequiredService<IStreamReader<BlobPart>>();
+            var streamingService = services.GetRequiredService<IAudioStreamReader>();
             var audioUploader = services.GetRequiredService<IAudioRecorder>();
-            var transcriptStreamer = services.GetRequiredService<IStreamReader<TranscriptPart>>();
+            var transcriptStreamer = services.GetRequiredService<ITranscriptStreamReader>();
             var chatService = services.GetRequiredService<IChatService>();
 
             var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);

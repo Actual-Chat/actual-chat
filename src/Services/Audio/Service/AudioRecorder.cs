@@ -17,24 +17,32 @@ namespace ActualChat.Audio
     public class AudioRecorder : IAudioRecorder
     {
         private readonly ILogger<AudioRecorder> _log;
-        private readonly RandomStringGenerator _idGenerator;
         private readonly IConnectionMultiplexer _redis;
         private readonly IAuthService _auth;
+        private readonly IIdentifierGenerator<AudioRecordId> _idGenerator;
 
-        public AudioRecorder(IConnectionMultiplexer redis, IAuthService auth, ILogger<AudioRecorder> log)
+        public AudioRecorder(
+            IConnectionMultiplexer redis,
+            IAuthService auth,
+            IIdentifierGenerator<AudioRecordId> idGenerator,
+            ILogger<AudioRecorder> log)
         {
             _redis = redis;
             _auth = auth;
+            _idGenerator = idGenerator;
             _log = log;
-            _idGenerator = new RandomStringGenerator(16, RandomStringGenerator.Base32Alphabet);
         }
 
-        public async Task Record(Session session, AudioRecord upload, ChannelReader<BlobPart> content, CancellationToken cancellationToken)
+        public async Task Record(
+            Session session,
+            AudioRecord upload,
+            ChannelReader<BlobPart> content,
+            CancellationToken cancellationToken)
         {
             var user = await _auth.GetUser(session, cancellationToken);
             user.MustBeAuthenticated();
 
-            var recordId = new AudioRecordId(_idGenerator.Next());
+            var recordId = _idGenerator.Next();
             _log.LogInformation("Uploading: RecordId = {RecordId}", (string) recordId);
 
             var firstCycle = true;
