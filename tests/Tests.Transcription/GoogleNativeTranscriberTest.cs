@@ -73,7 +73,7 @@ namespace ActualChat.Tests.Transcription
         [Fact]
         public async Task GoogleStreamedRecognizeRepeatTest()
         {
-            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "dots.webm"));
+            var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "pauses.webm"));
             var client = await SpeechClient.CreateAsync();
             var config = new RecognitionConfig
             {
