@@ -15,8 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Services\Streaming\Contract\Contract.csproj" />
-    <ProjectReference Include="..\Services\Streaming\Service\Service.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\Services\Audio\Service\Service.csproj" />
     <ProjectReference Include="..\Services\Chat\Service\Service.csproj" />
