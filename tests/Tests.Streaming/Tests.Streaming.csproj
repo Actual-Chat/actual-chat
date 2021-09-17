@@ -9,7 +9,6 @@
     <ProjectReference Include="..\..\src\Testing\Testing.csproj" />
   </ItemGroup>
 
-
   <ItemGroup>
     <None Update="data\file.webm" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
