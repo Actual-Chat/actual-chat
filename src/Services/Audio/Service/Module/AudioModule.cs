@@ -97,7 +97,6 @@ namespace ActualChat.Audio.Module
 
             // AudioRecorder
             services.AddSingleton<AudioRecordReader>();
-            services.AddTransient(c => c.GetRequiredService<AudioRecordReader>());
         }
 
         public void ConfigureApp(IApplicationBuilder app)

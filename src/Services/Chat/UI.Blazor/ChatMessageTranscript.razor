@@ -1,7 +1,7 @@
 @using ActualChat.Streaming
 @using System.Threading.Channels
 
-@inject IStreamReader<TranscriptPart> _streamReader
+@inject ITranscriptStreamReader _streamReader
 @inject BlazorCircuitContext _circuitContext
 
 <span class="content">@Text</span>
