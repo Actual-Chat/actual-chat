@@ -40,30 +40,36 @@ namespace ActualChat.Chat.Controllers
         // Queries
 
         [HttpGet, Publish]
-        public Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken)
+        public Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken)
             => _chats.TryGet(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<long> GetEntryCount(
-            Session session, string chatId, Range<long>? idRange,
+            Session session, 
+            ChatId chatId, 
+            Range<long>? idRange,
             CancellationToken cancellationToken)
             => _chats.GetEntryCount(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ImmutableArray<ChatEntry>> GetEntries(
-            Session session, string chatId, Range<long> idRange,
+            Session session, 
+            ChatId chatId, 
+            Range<long> idRange,
             CancellationToken cancellationToken)
             => _chats.GetEntries(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
         public Task<Range<long>> GetIdRange(
-            Session session, string chatId,
+            Session session, 
+            ChatId chatId,
             CancellationToken cancellationToken)
             => _chats.GetIdRange(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPermissions> GetPermissions(
-            Session session, string chatId,
+            Session session, 
+            ChatId chatId,
             CancellationToken cancellationToken)
             => _chats.GetPermissions(session, chatId, cancellationToken);
     }

@@ -11,7 +11,6 @@ using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Async;
 using Stl.Fusion;
 using Stl.CommandR;
 using Stl.Fusion.Authentication;
@@ -89,8 +88,7 @@ namespace ActualChat.Chat
             return chat;
         }
 
-        public virtual async Task<ChatEntry> Post(
-            ChatCommands.Post command, CancellationToken cancellationToken)
+        public virtual async Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken)
         {
             var (session, chatId, text) = command;
             var context = CommandContext.GetCurrent();
@@ -123,7 +121,9 @@ namespace ActualChat.Chat
         // Queries
 
         public virtual async Task<Chat?> TryGet(
-            Session session, string chatId, CancellationToken cancellationToken)
+            Session session,
+            ChatId chatId,
+            CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             var chat = await TryGet(chatId, cancellationToken);
@@ -133,8 +133,7 @@ namespace ActualChat.Chat
             return chat;
         }
 
-        public virtual async Task<Chat?> TryGet(
-            string chatId, CancellationToken cancellationToken)
+        public virtual async Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken)
         {
             var dbChat = await DbChatResolver.TryGet(chatId, cancellationToken);
             if (dbChat == null)
@@ -143,7 +142,9 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<long> GetEntryCount(
-            Session session, string chatId, Range<long>? idRange,
+            Session session,
+            ChatId chatId,
+            Range<long>? idRange,
             CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
@@ -152,7 +153,8 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<long> GetEntryCount(
-            string chatId, Range<long>? idRange,
+            ChatId chatId,
+            Range<long>? idRange,
             CancellationToken cancellationToken)
         {
             await using var dbContext = CreateDbContext();
@@ -170,7 +172,10 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(
-            Session session, string chatId, Range<long> idRange, CancellationToken cancellationToken)
+            Session session,
+            ChatId chatId,
+            Range<long> idRange,
+            CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
@@ -178,7 +183,9 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<ImmutableArray<ChatEntry>> GetPage(
-            string chatId, Range<long> idRange, CancellationToken cancellationToken)
+            ChatId chatId,
+            Range<long> idRange,
+            CancellationToken cancellationToken)
         {
             ChatConstants.IdLogCover.AssertIsTile(idRange);
 
@@ -193,14 +200,16 @@ namespace ActualChat.Chat
         }
 
         public virtual async Task<Range<long>> GetIdRange(
-            Session session, string chatId, CancellationToken cancellationToken)
+            Session session,
+            ChatId chatId,
+            CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
             return await GetIdRange(chatId, cancellationToken);
         }
 
-        public virtual async Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken)
+        public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
         {
             await using var dbContext = CreateDbContext();
             var lastId = await dbContext.ChatEntries.AsQueryable()
@@ -214,14 +223,18 @@ namespace ActualChat.Chat
         // Permissions
 
         public virtual async Task<ChatPermissions> GetPermissions(
-            Session session, string chatId, CancellationToken cancellationToken)
+            Session session,
+            ChatId chatId,
+            CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
-            return await GetPermissions(chatId, user.Id, cancellationToken);
+            return await GetPermissions(chatId, (string)user.Id, cancellationToken);
         }
 
         public virtual async Task<ChatPermissions> GetPermissions(
-            string chatId, string userId, CancellationToken cancellationToken)
+            ChatId chatId,
+            UserId userId,
+            CancellationToken cancellationToken)
         {
             var chat = await TryGet(chatId, cancellationToken);
             if (chat == null)
@@ -238,7 +251,9 @@ namespace ActualChat.Chat
         // Protected methods
         [ComputeMethod]
         protected virtual async Task<Unit> AssertHasPermissions(
-            Session session, string chatId, ChatPermissions permissions,
+            Session session,
+            ChatId chatId,
+            ChatPermissions permissions,
             CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
@@ -268,7 +283,10 @@ namespace ActualChat.Chat
             }
         }
 
-        private async Task<DbChatEntry> DbAddOrUpdate(ChatDbContext dbContext, ChatEntry chatEntry, CancellationToken cancellationToken)
+        private async Task<DbChatEntry> DbAddOrUpdate(
+            ChatDbContext dbContext,
+            ChatEntry chatEntry,
+            CancellationToken cancellationToken)
         {
             // AK: Suspicious - probably can lead to performance issues
             // AY: Yes, but the goal is to have a dense sequence here;

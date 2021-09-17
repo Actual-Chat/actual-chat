@@ -17,24 +17,24 @@ namespace ActualChat.Chat
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken);
+        Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetEntryCount(
-            Session session, string chatId, Range<long>? idRange,
+            Session session, ChatId chatId, Range<long>? idRange,
             CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ImmutableArray<ChatEntry>> GetEntries(
-            Session session, string chatId, Range<long> idRange,
+            Session session, ChatId chatId, Range<long> idRange,
             CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
         Task<Range<long>> GetIdRange(
-            Session session, string chatId,
+            Session session, ChatId chatId,
             CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPermissions> GetPermissions(
-            Session session, string chatId,
+            Session session, ChatId chatId,
             CancellationToken cancellationToken);
     }
 }

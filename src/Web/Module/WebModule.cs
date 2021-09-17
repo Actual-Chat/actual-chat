@@ -20,6 +20,7 @@ namespace ActualChat.Web.Module
 
             services.AddMvcCore(options => {
                 options.ModelBinderProviders.Insert(0, new RangeModelBinderProvider());
+                options.ModelBinderProviders.Insert(1, new IdentifierModelBinderProvider());
             });
         }
 

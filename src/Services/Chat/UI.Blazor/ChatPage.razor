@@ -73,7 +73,7 @@
             return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
 
         var idLogCover = ChatConstants.IdLogCover;
-        var range = await _chats.GetIdRange(_session, chatId, cancellationToken);
+        var range = await _chats.GetIdRange(_session, chatId.Value, cancellationToken);
         if (query.IncludedRange == default) {
             query = query with {
                 IncludedRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())
@@ -92,7 +92,7 @@
 
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var entryLists = await Task.WhenAll(
-            ranges.Select(r => _chats.GetEntries(_session, chatId, r, cancellationToken)));
+            ranges.Select(r => _chats.GetEntries(_session, chatId.Value, r, cancellationToken)));
         var result = VirtualListResponse.New(
             entryLists.SelectMany(entries => entries),
             entry => entry.Id.ToString(),
