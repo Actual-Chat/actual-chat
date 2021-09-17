@@ -78,7 +78,7 @@ namespace ActualChat.Chat
                 AuthorId = user.Id,
                 CreatedAt = now,
                 IsPublic = false,
-                Owners = new List<DbChatOwner>() { new () { ChatId = id, UserId = user.Id } },
+                Owners = new List<DbChatOwner> { new () { ChatId = id, UserId = user.Id } },
             };
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -159,7 +159,7 @@ namespace ActualChat.Chat
         {
             await using var dbContext = CreateDbContext();
             var dbMessages = dbContext.ChatEntries.AsQueryable()
-                .Where(m => m.ChatId == chatId);
+                .Where(m => m.ChatId == (string)chatId);
 
             if (idRange.HasValue) {
                 var idRangeValue = idRange.GetValueOrDefault();
@@ -191,7 +191,7 @@ namespace ActualChat.Chat
 
             await using var dbContext = CreateDbContext();
             var dbEntries = await dbContext.ChatEntries.AsQueryable()
-                .Where(m => m.ChatId == chatId)
+                .Where(m => m.ChatId == (string)chatId)
                 .Where(m => m.Id >= idRange.Start && m.Id < idRange.End)
                 .OrderBy(m => m.Id)
                 .ToListAsync(cancellationToken);
@@ -213,7 +213,7 @@ namespace ActualChat.Chat
         {
             await using var dbContext = CreateDbContext();
             var lastId = await dbContext.ChatEntries.AsQueryable()
-                .Where(e => e.ChatId == chatId)
+                .Where(e => e.ChatId == (string)chatId)
                 .OrderByDescending(e => e.Id)
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -228,7 +228,7 @@ namespace ActualChat.Chat
             CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
-            return await GetPermissions(chatId, (string)user.Id, cancellationToken);
+            return await GetPermissions(chatId, user.Id, cancellationToken);
         }
 
         public virtual async Task<ChatPermissions> GetPermissions(
@@ -257,12 +257,14 @@ namespace ActualChat.Chat
             CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
-            return await AssertHasPermissions(chatId, user.Id, permissions, cancellationToken);
+            return await AssertHasPermissions(chatId, (string)user.Id, permissions, cancellationToken);
         }
 
         [ComputeMethod]
         protected virtual async Task<Unit> AssertHasPermissions(
-            string chatId, string userId, ChatPermissions permissions,
+            ChatId chatId,
+            UserId userId,
+            ChatPermissions permissions,
             CancellationToken cancellationToken)
         {
             var chatPermissions = await GetPermissions(chatId, userId, cancellationToken);
@@ -272,7 +274,7 @@ namespace ActualChat.Chat
         }
 
         [SuppressMessage("ReSharper", "RedundantArgumentDefaultValue")]
-        protected void InvalidateChatPages(string chatId, long chatEntryId, bool isUpdate = false)
+        protected void InvalidateChatPages(ChatId chatId, long chatEntryId, bool isUpdate = false)
         {
             if (!isUpdate)
                 _ = GetEntryCount(chatId, null, default);

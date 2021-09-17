@@ -1,4 +1,5 @@
-﻿using ActualChat.Hosting;
+﻿using System.ComponentModel;
+using ActualChat.Hosting;
 using ActualChat.Web.Internal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ namespace ActualChat.Web.Module
                 options.ModelBinderProviders.Insert(0, new RangeModelBinderProvider());
                 options.ModelBinderProviders.Insert(1, new IdentifierModelBinderProvider());
             });
+            
         }
 
         public void ConfigureApp(IApplicationBuilder app)

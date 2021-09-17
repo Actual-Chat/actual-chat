@@ -8,8 +8,8 @@
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject IAudioRecorder _audioRecorder
-@inject IStreamReader<BlobPart> _blobStreamReader
-@inject IStreamReader<TranscriptPart> _transcriptStreamReader
+@inject IAudioStreamReader _audioStreamReader
+@inject ITranscriptStreamReader _transcriptStreamReader
 @inject ILogger<AudioPage> _log
 
 <h1>Voice Transcription</h1>
@@ -125,7 +125,7 @@
     private async Task ReadAudio(AudioRecordId audioRecordId)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var reader = await _blobStreamReader.GetStream(streamId, CancellationToken.None);
+        var reader = await _audioStreamReader.GetStream(streamId, CancellationToken.None);
         await foreach (var audioMessage in reader.ReadAllAsync()) {
             Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
         }
