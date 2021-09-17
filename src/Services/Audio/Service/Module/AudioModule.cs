@@ -80,24 +80,24 @@ namespace ActualChat.Audio.Module
             // SignalR hub & related services
             services.AddSignalR().AddMessagePackProtocol();
             services.AddTransient<AudioHub>();
-            services.AddSingleton<IStreamer<BlobPart>, Streamer<BlobPart>>();
-            services.AddSingleton<IStreamer<TranscriptPart>, Streamer<TranscriptPart>>();
-            services.AddSingleton<IServerSideStreamer<BlobPart>>(
-                c => new ServerSideStreamer<BlobPart>(
+            services.AddSingleton<IAudioStreamReader, AudioStreamReader>();
+            services.AddSingleton<ITranscriptStreamReader, TranscriptStreamReader>();
+            services.AddSingleton(
+                c => new AudioStreamPublisher(
                     c.GetRequiredService<IConnectionMultiplexer>(),
                     "audio"));
-            services.AddSingleton<IServerSideStreamer<TranscriptPart>>(
-                c => new ServerSideStreamer<TranscriptPart>(
+            services.AddSingleton(
+                c => new TranscriptStreamPublisher(
                     c.GetRequiredService<IConnectionMultiplexer>(),
                     "transcripts"));
 
             // AudioUploader
-            services.AddSingleton<AudioUploader>();
-            services.AddTransient<IAudioUploader>(c => c.GetRequiredService<AudioUploader>());
-
-            // AudioRecorder
             services.AddSingleton<AudioRecorder>();
             services.AddTransient<IAudioRecorder>(c => c.GetRequiredService<AudioRecorder>());
+
+            // AudioRecorder
+            services.AddSingleton<AudioRecordReader>();
+            services.AddTransient(c => c.GetRequiredService<AudioRecordReader>());
         }
 
         public void ConfigureApp(IApplicationBuilder app)

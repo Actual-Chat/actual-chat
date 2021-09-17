@@ -2,6 +2,6 @@ using ActualChat.Streaming;
 
 namespace ActualChat.Audio
 {
-    public interface IAudioUploader : IUploader<AudioRecord>
+    public interface IAudioRecorder : IRecorder<AudioRecord>
     { }
 }

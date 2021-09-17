@@ -49,7 +49,7 @@ namespace ActualChat.Tests.Audio
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var audioUploader = services.GetRequiredService<IAudioUploader>();
+            var audioUploader = services.GetRequiredService<IAudioRecorder>();
             var cts = new CancellationTokenSource();
             var dequeueTask = orchestrator.DequeueNewAudioRecord(cts.Token);
 
@@ -65,7 +65,7 @@ namespace ActualChat.Tests.Audio
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = audioUploader.Upload(session,recordingSpec, channel.Reader, CancellationToken.None);
+            _ = audioUploader.Record(session,recordingSpec, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
             var record = await dequeueTask;
@@ -84,8 +84,8 @@ namespace ActualChat.Tests.Audio
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var audioUploader = services.GetRequiredService<IAudioUploader>();
-            var blobStreamer = services.GetRequiredService<IStreamer<BlobPart>>();
+            var audioUploader = services.GetRequiredService<IAudioRecorder>();
+            var blobStreamer = services.GetRequiredService<IStreamReader<BlobPart>>();
             var chatService = services.GetRequiredService<IChatService>();
 
             var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
@@ -115,9 +115,9 @@ namespace ActualChat.Tests.Audio
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var orchestrator = services.GetRequiredService<AudioOrchestrator>();
-            var streamingService = services.GetRequiredService<IStreamer<BlobPart>>();
-            var audioUploader = services.GetRequiredService<IAudioUploader>();
-            var transcriptStreamer = services.GetRequiredService<IStreamer<TranscriptPart>>();
+            var streamingService = services.GetRequiredService<IStreamReader<BlobPart>>();
+            var audioUploader = services.GetRequiredService<IAudioRecorder>();
+            var transcriptStreamer = services.GetRequiredService<IStreamReader<TranscriptPart>>();
             var chatService = services.GetRequiredService<IChatService>();
 
             var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
@@ -142,7 +142,7 @@ namespace ActualChat.Tests.Audio
             readSize.Should().Be(writtenSize);
         }
 
-        private async Task<int> ReadTranscribedData(AudioRecordId audioRecordId, IStreamer<TranscriptPart> sr)
+        private async Task<int> ReadTranscribedData(AudioRecordId audioRecordId, IStreamReader<TranscriptPart> sr)
         {
             var size = 0;
             //TODO: AK - we need to figure out how to notify consumers about new streamID - with new ChatEntry?
@@ -156,15 +156,15 @@ namespace ActualChat.Tests.Audio
             return size;
         }
 
-        private static async Task<int> ReadDistributedData(AudioRecordId audioRecordId, IStreamer<BlobPart> blobStreamer)
+        private static async Task<int> ReadDistributedData(AudioRecordId audioRecordId, IStreamReader<BlobPart> blobStreamReader)
         {
             var streamId = new StreamId(audioRecordId, 0);
-            var audioReader = await blobStreamer.GetStream(streamId, CancellationToken.None);
+            var audioReader = await blobStreamReader.GetStream(streamId, CancellationToken.None);
 
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
         }
 
-        private static async Task<int> PushAudioData(Session session, string chatId, IAudioUploader audioUploader)
+        private static async Task<int> PushAudioData(Session session, string chatId, IAudioRecorder audioRecorder)
         {
             var record = new AudioRecord(
                 chatId,
@@ -179,7 +179,7 @@ namespace ActualChat.Tests.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            _ = audioUploader.Upload(session, record, channel.Reader, CancellationToken.None);
+            _ = audioRecorder.Record(session, record, channel.Reader, CancellationToken.None);
 
             var size = 0;
             await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);

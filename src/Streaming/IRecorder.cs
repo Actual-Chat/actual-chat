@@ -6,11 +6,11 @@ using Stl.Fusion.Authentication;
 
 namespace ActualChat.Streaming
 {
-    public interface IUploader<in TUpload>
+    public interface IRecorder<in TRecord>
     {
-        Task Upload(
+        Task Record(
             Session session,
-            TUpload upload,
+            TRecord record,
             ChannelReader<BlobPart> content,
             CancellationToken cancellationToken);
     }

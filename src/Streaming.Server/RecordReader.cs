@@ -11,7 +11,7 @@ using Stl.Async;
 
 namespace ActualChat.Streaming.Server
 {
-    public abstract class ServerSideRecorder<TRecordId, TRecord> : IServerSideRecorder<TRecordId, TRecord>
+    public abstract class RecordReader<TRecordId, TRecord> : IRecordReader<TRecordId, TRecord>
         where TRecordId : notnull
         where TRecord : class, IHasId<TRecordId>
     {
@@ -19,7 +19,7 @@ namespace ActualChat.Streaming.Server
         protected string KeyPrefix { get; init; }
         protected string QueueChannelKey { get; init; } = "queue";
 
-        public ServerSideRecorder(IConnectionMultiplexer redis, string keyPrefix)
+        public RecordReader(IConnectionMultiplexer redis, string keyPrefix)
         {
             Redis = redis;
             KeyPrefix = keyPrefix;
@@ -82,6 +82,9 @@ namespace ActualChat.Streaming.Server
 
             return Task.FromResult(channel.Reader);
         }
+
+        public Task Ack((StreamId StreamId, int StartedWith, int CurrentIndex) processed, CancellationToken cancellationToken) 
+            => throw new NotImplementedException();
 
         protected virtual IDatabase GetDatabase()
             => Redis.GetDatabase().WithKeyPrefix(KeyPrefix);

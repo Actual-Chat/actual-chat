@@ -12,31 +12,31 @@ namespace ActualChat.Audio
     [Authorize]
     public class AudioHub : Hub
     {
-        private readonly IStreamer<BlobPart> _blobStreamer;
-        private readonly IStreamer<TranscriptPart> _transcriptStreamer;
-        private readonly IAudioUploader _audioUploader;
+        private readonly IStreamReader<BlobPart> _blobStreamReader;
+        private readonly IStreamReader<TranscriptPart> _transcriptStreamReader;
+        private readonly IAudioRecorder _audioRecorder;
 
         public AudioHub(
-            IStreamer<BlobPart> blobStreamer,
-            IStreamer<TranscriptPart> transcriptStreamer,
-            IAudioUploader audioUploader)
+            IStreamReader<BlobPart> blobStreamReader,
+            IStreamReader<TranscriptPart> transcriptStreamReader,
+            IAudioRecorder audioRecorder)
         {
-            _blobStreamer = blobStreamer;
-            _transcriptStreamer = transcriptStreamer;
-            _audioUploader = audioUploader;
+            _blobStreamReader = blobStreamReader;
+            _transcriptStreamReader = transcriptStreamReader;
+            _audioRecorder = audioRecorder;
         }
 
         public Task<ChannelReader<BlobPart>> GetBlobStream(string streamId, CancellationToken cancellationToken)
-            => _blobStreamer.GetStream(streamId, cancellationToken);
+            => _blobStreamReader.GetStream(streamId, cancellationToken);
 
         public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
-            => _transcriptStreamer.GetStream(streamId, cancellationToken);
+            => _transcriptStreamReader.GetStream(streamId, cancellationToken);
 
         public Task UploadAudioStream(
             Session session,
             AudioRecord upload,
             ChannelReader<BlobPart> content,
             CancellationToken cancellationToke)
-            => _audioUploader.Upload(session, upload, content, cancellationToke);
+            => _audioRecorder.Record(session, upload, content, cancellationToke);
     }
 }

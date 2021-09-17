@@ -19,10 +19,10 @@ namespace ActualChat.Audio
     {
         private readonly ITranscriber _transcriber;
         private readonly AudioSaver _audioSaver;
-        private readonly IAudioRecorder _audioRecorder;
+        private readonly AudioRecordReader _audioRecorder;
         private readonly AudioActivityExtractor _audioActivityExtractor;
-        private readonly IServerSideStreamer<BlobPart> _blobStreamer;
-        private readonly IServerSideStreamer<TranscriptPart> _transcriptStreamer;
+        private readonly IStreamPublisher<BlobPart> _audioPublisher;
+        private readonly IStreamPublisher<TranscriptPart> _transcriptPublisher;
         private readonly IServerSideChatService _chat;
         private readonly ILogger<AudioOrchestrator> _log;
 
@@ -31,10 +31,10 @@ namespace ActualChat.Audio
         public AudioOrchestrator(
             ITranscriber transcriber,
             AudioSaver audioSaver,
-            IAudioRecorder audioRecorder,
+            AudioRecordReader audioRecorder,
             AudioActivityExtractor audioActivityExtractor,
-            IServerSideStreamer<BlobPart> blobStreamer,
-            IServerSideStreamer<TranscriptPart> transcriptStreamer,
+            AudioStreamPublisher audioPublisher,
+            TranscriptStreamPublisher transcriptPublisher,
             IServerSideChatService chat,
             ILogger<AudioOrchestrator> log)
         {
@@ -42,8 +42,8 @@ namespace ActualChat.Audio
             _audioSaver = audioSaver;
             _audioRecorder = audioRecorder;
             _audioActivityExtractor = audioActivityExtractor;
-            _blobStreamer = blobStreamer;
-            _transcriptStreamer = transcriptStreamer;
+            _audioPublisher = audioPublisher;
+            _transcriptPublisher = transcriptPublisher;
             _chat = chat;
             _log = log;
         }
@@ -111,7 +111,7 @@ namespace ActualChat.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            var publishTask = _transcriptStreamer.PublishStream(streamId, channel.Reader, cancellationToken);
+            var publishTask = _transcriptPublisher.PublishStream(streamId, channel.Reader, cancellationToken);
 
             _ = PushTranscriptionResults(channel.Writer, cancellationToken);
 
@@ -201,6 +201,6 @@ namespace ActualChat.Audio
         }
 
         private Task DistributeAudioStream(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
-            => _blobStreamer.PublishStream(audioRecordSegmentAccessor.StreamId, audioRecordSegmentAccessor.GetStream(), cancellationToken);
+            => _audioPublisher.PublishStream(audioRecordSegmentAccessor.StreamId, audioRecordSegmentAccessor.GetStream(), cancellationToken);
     }
 }
