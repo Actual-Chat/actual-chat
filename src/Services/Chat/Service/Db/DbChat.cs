@@ -11,7 +11,7 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db
 {
     [Table("Chats")]
-    public class DbChat : IHasId<string>, IHasMutableVersion<long>
+    public class DbChat : IHasId<string>, IHasVersion<long>
     {
         private DateTime _createdAt;
 

@@ -294,7 +294,7 @@ namespace ActualChat.Chat
                     ComposeKey(DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id)),
                     cancellationToken);
                 chatEntry = chatEntry with {
-                    Version = VersionGenerator.NextVersion(),
+                    Version = VersionGenerator.NextVersion(dbChatEntry.Version),
                 };
                 dbChatEntry.UpdateFrom(chatEntry);
                 dbContext.Update(dbChatEntry);
