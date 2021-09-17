@@ -1,12 +1,13 @@
 ﻿using ActualChat.Hosting;
 using ActualChat.Web.Internal;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.Web.Module
 {
-    public class WebModule : HostModule
+    public class WebModule : HostModule, IWebModule
     {
         public WebModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
@@ -21,5 +22,8 @@ namespace ActualChat.Web.Module
                 options.ModelBinderProviders.Insert(0, new RangeModelBinderProvider());
             });
         }
+
+        public void ConfigureApp(IApplicationBuilder app)
+        { }
     }
 }

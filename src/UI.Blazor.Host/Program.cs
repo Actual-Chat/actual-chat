@@ -6,14 +6,9 @@ using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Hosting;
-using ActualChat.Streaming.Client.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
-using Blazorise;
-using Blazorise.Bootstrap;
-using Blazorise.Icons.FontAwesome;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -23,9 +18,6 @@ using Stl.Fusion;
 using Stl.Fusion.Client;
 using Stl.OS;
 using Stl.DependencyInjection;
-using Stl.Fusion.Blazor;
-using Stl.Fusion.Extensions;
-using Stl.Fusion.UI;
 using Stl.Plugins;
 using Stl.Text;
 
@@ -68,7 +60,6 @@ namespace ActualChat.UI.Blazor.Host
             pluginHostBuilder.UsePlugins(
                 typeof(BlazorUICoreModule),
                 typeof(AudioClientModule),
-                typeof(StreamingClientModule),
                 typeof(AudioBlazorUIModule),
                 typeof(ChatClientModule),
                 typeof(ChatBlazorUIModule),
@@ -96,7 +87,7 @@ namespace ActualChat.UI.Blazor.Host
 
             // Injecting plugin services
             plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
-            
+
             // UriMapper
             services.AddSingleton(c => new UriMapper(baseUri));
         }

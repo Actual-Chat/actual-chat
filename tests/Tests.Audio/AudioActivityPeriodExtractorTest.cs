@@ -7,6 +7,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Audio;
 using ActualChat.Audio.Orchestration;
+using ActualChat.Blobs;
 using ActualChat.Streaming;
 using FluentAssertions;
 using Stl.Testing;

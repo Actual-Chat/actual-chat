@@ -9,7 +9,7 @@
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
     private string Text { get; set; } = "...";
-    
+
     [Parameter]
     public string StreamId { get; set; } = null!;
 
@@ -39,10 +39,10 @@
                 token.ThrowIfCancellationRequested();
 
                 var (text, index, _, _) = message;
-                Text = Text.Length >= index 
-                    ? $"{Text[..index]}{text}" 
+                Text = Text.Length >= index
+                    ? $"{Text[..index]}{text}"
                     : $"{Text}{text.PadLeft(index - Text.Length + text.Length)}";
-                
+
                 StateHasChanged();
             }
         }

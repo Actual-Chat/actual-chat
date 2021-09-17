@@ -16,7 +16,7 @@ namespace ActualChat.Testing
         public IServiceProvider AppServices => AppHost.Services;
         public IServiceProvider ScopedAppServices => _serviceScope!.ServiceProvider;
         public Session Session { get; }
-        public UriMapper UriMapper => AppServices.GetRequiredService<UriMapper>();
+        public UriMapper UriMapper => AppServices.UriMapper();
         public IServerSideAuthService Auth => AppServices.GetRequiredService<IServerSideAuthService>();
 
         public BlazorTester(AppHost appHost)
