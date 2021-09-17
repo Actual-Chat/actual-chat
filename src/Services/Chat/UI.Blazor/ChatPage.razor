@@ -83,12 +83,12 @@
         var startId = long.Parse(query.IncludedRange.Start);
         if (query.ExpandStartBy > 0)
             startId -= (long) query.ExpandStartBy;
-        startId = MathEx.Max(range.Start, startId);
+        startId = MathExt.Max(range.Start, startId);
 
         var endId = long.Parse(query.IncludedRange.End);
         if (query.ExpandEndBy > 0)
             endId += (long) query.ExpandEndBy;
-        endId = MathEx.Min(range.End, endId);
+        endId = MathExt.Min(range.End, endId);
 
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var entryLists = await Task.WhenAll(

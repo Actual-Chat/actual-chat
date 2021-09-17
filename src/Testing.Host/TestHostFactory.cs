@@ -19,10 +19,10 @@ namespace ActualChat.Testing
     {
         public static async Task<AppHost> NewAppHost(Action<AppHost>? configure = null)
         {
-            var port = GetUnusedTcpPort();
+            var port = WebTestExt.GetUnusedTcpPort();
             var manifestPath = GetManifestPath();
             var appHost = new AppHost() {
-                ServerUrls = WebTestEx.GetLocalUri(port).ToString(),
+                ServerUrls = WebTestExt.GetLocalUri(port).ToString(),
                 HostConfigurationBuilder = cfg => {
                     cfg.Sources.Insert(0, new MemoryConfigurationSource() {
                         InitialData = new Dictionary<string, string>() {
@@ -41,18 +41,6 @@ namespace ActualChat.Testing
             await appHost.Initialize(true);
             await appHost.Start();
             return appHost;
-        }
-
-        private static int GetUnusedTcpPort()
-        {
-            var listener = new TcpListener(IPAddress.Any, 0);
-            listener.Start();
-            try {
-                return ((IPEndPoint) listener.LocalEndpoint).Port;
-            }
-            finally {
-                listener.Stop();
-            }
         }
 
         public static PathString GetManifestPath()

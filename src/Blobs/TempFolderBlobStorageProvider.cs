@@ -10,7 +10,7 @@ namespace ActualChat.Blobs
     {
         public IBlobStorage GetBlobStorage(Symbol blobScope)
         {
-            var blobFolderPath = PathEx.GetApplicationTempDirectory() & "blobs";
+            var blobFolderPath = PathExt.GetApplicationTempDirectory() & "blobs";
             return StorageFactory.Blobs.DirectoryFiles(blobFolderPath);
         }
     }
