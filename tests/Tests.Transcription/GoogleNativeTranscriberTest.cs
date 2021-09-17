@@ -69,8 +69,7 @@ namespace ActualChat.Tests.Transcription
             await writeTask;
         }
         
-        // [Fact(Skip = "Manual")]
-        [Fact]
+        [Fact(Skip = "Manual")]
         public async Task GoogleStreamedRecognizeRepeatTest()
         {
             var audioBytes = await File.ReadAllBytesAsync(Path.Combine(Environment.CurrentDirectory, "data", "pauses.webm"));

@@ -70,7 +70,7 @@ namespace ActualChat.Chat
 
             await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var now = Clocks.SystemClock.Now;
-            var id = RandomStringGenerator.Default.Next(8, RandomStringGenerator.Base32Alphabet);
+            var id = Services.IdGenerator().Next<ChatId>();
             var dbChat = new DbChat() {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
