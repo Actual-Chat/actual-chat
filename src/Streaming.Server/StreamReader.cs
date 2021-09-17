@@ -9,11 +9,11 @@ using Stl.Async;
 
 namespace ActualChat.Streaming.Server
 {
-    public class Streamer<TMessage> : IStreamer<TMessage>
+    public class StreamReader<TMessage> : IStreamReader<TMessage>
     {
         protected readonly IConnectionMultiplexer Redis;
 
-        public Streamer(IConnectionMultiplexer redis)
+        public StreamReader(IConnectionMultiplexer redis)
             => Redis = redis;
 
         public Task<ChannelReader<TMessage>> GetStream(StreamId streamId, CancellationToken cancellationToken)

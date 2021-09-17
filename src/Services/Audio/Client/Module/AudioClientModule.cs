@@ -20,12 +20,12 @@ namespace ActualChat.Audio.Client.Module
             if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Client))
                 return; // Client-side only module
 
-            var fusionClient = services.AddFusion().AddRestEaseClient();
+            services.AddFusion().AddRestEaseClient();
 
             services.AddSingleton<AudioClient>();
-            services.AddTransient<IAudioUploader>(c => c.GetRequiredService<AudioClient>());
-            services.AddTransient<IStreamer<BlobPart>>(c => c.GetRequiredService<AudioClient>());
-            services.AddTransient<IStreamer<TranscriptPart>>(c => c.GetRequiredService<AudioClient>());
+            services.AddTransient<IAudioRecorder>(c => c.GetRequiredService<AudioClient>());
+            services.AddTransient<IAudioStreamReader>(c => c.GetRequiredService<AudioClient>());
+            services.AddTransient<ITranscriptStreamReader>(c => c.GetRequiredService<AudioClient>());
         }
     }
 }

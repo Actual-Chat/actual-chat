@@ -10,17 +10,17 @@ using Stl.Fusion.Authentication;
 
 namespace ActualChat.Audio.Client
 {
-    public class AudioClient : HubClientBase, IAudioUploader, IStreamer<BlobPart>, IStreamer<TranscriptPart>
+    public class AudioClient : HubClientBase, IAudioRecorder, IAudioStreamReader, ITranscriptStreamReader
     {
         public AudioClient(IServiceProvider services) : base(services, "api/hub/audio") { }
 
-        public async Task Upload(Session session, AudioRecord upload, ChannelReader<BlobPart> content, CancellationToken cancellationToken)
+        public async Task Record(Session session, AudioRecord record, ChannelReader<BlobPart> content, CancellationToken cancellationToken)
         {
             await EnsureConnected(cancellationToken);
-            await HubConnection.SendCoreAsync("UploadAudioStream", new object[] {session, upload, content}, cancellationToken);
+            await HubConnection.SendCoreAsync("UploadAudioStream", new object[] {session, record, content}, cancellationToken);
         }
 
-        Task<ChannelReader<BlobPart>> IStreamer<BlobPart>.GetStream(StreamId streamId, CancellationToken cancellationToken)
+        Task<ChannelReader<BlobPart>> IStreamReader<BlobPart>.GetStream(StreamId streamId, CancellationToken cancellationToken)
             => GetAudioStream(streamId, cancellationToken);
         public async Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
         {
@@ -28,7 +28,7 @@ namespace ActualChat.Audio.Client
             return await HubConnection.StreamAsChannelCoreAsync<BlobPart>("GetAudioStream", new object[] { streamId }, cancellationToken);
         }
 
-        Task<ChannelReader<TranscriptPart>> IStreamer<TranscriptPart>.GetStream(StreamId streamId, CancellationToken cancellationToken)
+        Task<ChannelReader<TranscriptPart>> IStreamReader<TranscriptPart>.GetStream(StreamId streamId, CancellationToken cancellationToken)
             => GetTranscriptStream(streamId, cancellationToken);
         public async Task<ChannelReader<TranscriptPart>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
         {

@@ -1,7 +1,7 @@
 @using ActualChat.Streaming
 @using System.Threading.Channels
 
-@inject IStreamer<TranscriptPart> _streamer
+@inject IStreamReader<TranscriptPart> _streamReader
 @inject BlazorCircuitContext _circuitContext
 
 <span class="content">@Text</span>
@@ -23,7 +23,7 @@
         }
         if (!_circuitContext.IsPrerendering) {
             _cancellationTokenSource = new CancellationTokenSource();
-            var transcriptReader = await _streamer.GetStream(StreamId, _cancellationTokenSource.Token);
+            var transcriptReader = await _streamReader.GetStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadTranscript(transcriptReader, _cancellationTokenSource.Token);
         }
 

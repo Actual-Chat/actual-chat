@@ -9,13 +9,13 @@ using StackExchange.Redis.KeyspaceIsolation;
 
 namespace ActualChat.Streaming.Server
 {
-    public class ServerSideStreamer<TMessage> : IServerSideStreamer<TMessage>
+    public class StreamPublisher<TMessage> : IStreamPublisher<TMessage>
     {
         protected IConnectionMultiplexer Redis { get; init; }
         protected string KeyPrefix { get; init; }
         protected string QueueChannelKey { get; init; } = "queue";
 
-        public ServerSideStreamer(IConnectionMultiplexer redis, string keyPrefix)
+        public StreamPublisher(IConnectionMultiplexer redis, string keyPrefix)
         {
             Redis = redis;
             KeyPrefix = keyPrefix;
@@ -69,18 +69,6 @@ namespace ActualChat.Streaming.Server
         {
             var subscriber = Redis.GetSubscriber();
             await subscriber.PublishAsync(streamId.GetRedisChannelName(), string.Empty);
-        }
-
-        public async Task Publish(StreamId streamId, TMessage message, CancellationToken cancellationToken)
-        {
-            var db = GetDatabase();
-            var key = new RedisKey(streamId);
-
-            using var bufferWriter = new ArrayPoolBufferWriter<byte>();
-            MessagePackSerializer.Serialize(bufferWriter, message, MessagePackSerializerOptions.Standard, cancellationToken);
-            var serialized = bufferWriter.WrittenMemory;
-
-            await db.StreamAddAsync(key, StreamingConstants.MessageKey, serialized, maxLength: 1000, useApproximateMaxLength: true);
         }
 
         public async Task Complete(StreamId streamId, CancellationToken cancellationToken)

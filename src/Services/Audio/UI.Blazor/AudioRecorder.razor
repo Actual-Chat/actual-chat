@@ -5,7 +5,7 @@
 @inject Session _session
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
-@inject IAudioUploader _audioUploader
+@inject IAudioRecorder _audioRecorder
 
 <Button Type="@ButtonType.Button" Clicked="ToggleRecording" Color="@ToggleColor">
     <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
@@ -81,7 +81,7 @@
             new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = _audioUploader.Upload(_session, record, AudioChannel.Reader, default);
+        _ = _audioRecorder.Record(_session, record, AudioChannel.Reader, default);
         return Task.CompletedTask;
     }
 
