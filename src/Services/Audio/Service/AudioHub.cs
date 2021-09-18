@@ -12,22 +12,22 @@ namespace ActualChat.Audio
     [Authorize]
     public class AudioHub : Hub
     {
-        private readonly IStreamReader<BlobPart> _blobStreamReader;
-        private readonly IStreamReader<TranscriptPart> _transcriptStreamReader;
+        private readonly IAudioStreamReader _audioStreamReader;
+        private readonly ITranscriptStreamReader _transcriptStreamReader;
         private readonly IAudioRecorder _audioRecorder;
 
         public AudioHub(
-            IStreamReader<BlobPart> blobStreamReader,
-            IStreamReader<TranscriptPart> transcriptStreamReader,
+            IAudioStreamReader audioStreamReader,
+            ITranscriptStreamReader transcriptStreamReader,
             IAudioRecorder audioRecorder)
         {
-            _blobStreamReader = blobStreamReader;
+            _audioStreamReader = audioStreamReader;
             _transcriptStreamReader = transcriptStreamReader;
             _audioRecorder = audioRecorder;
         }
 
-        public Task<ChannelReader<BlobPart>> GetBlobStream(string streamId, CancellationToken cancellationToken)
-            => _blobStreamReader.GetStream(streamId, cancellationToken);
+        public Task<ChannelReader<BlobPart>> GetAudioStream(string streamId, CancellationToken cancellationToken)
+            => _audioStreamReader.GetStream(streamId, cancellationToken);
 
         public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(string streamId, CancellationToken cancellationToken)
             => _transcriptStreamReader.GetStream(streamId, cancellationToken);

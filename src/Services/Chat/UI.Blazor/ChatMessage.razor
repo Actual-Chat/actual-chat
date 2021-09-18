@@ -1,9 +1,11 @@
 <div class="message">
-    <UserNameBadge UserId="@Entry.AuthorId"/>
+    <span style="margin-right: 2px">
+        <UserNameBadge UserId="@Entry.AuthorId"/>
+    </span>
     @if (Entry.IsStreaming) {
         <ChatMessageTranscript StreamId="@Entry.StreamId"/>
     }
-    else{
+    else {
         <ChatMessageText Text="@Entry.Content"/>
     }
 </div>
