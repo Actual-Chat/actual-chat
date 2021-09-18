@@ -7,6 +7,7 @@ using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.Collections;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -51,6 +52,8 @@ namespace ActualChat.Chat.Module
                 dbContext.Chats.Add(dbChat);
                 await dbContext.SaveChangesAsync(cancellationToken);
 
+                var rnd = new Random(101);
+                var words = new [] {"most", "chat", "actual", "ever", "amazing", "absolutely"};
                 for (var id = 0; id < 96; id++) {
                     var dbChatEntry = new DbChatEntry() {
                         ChatId = dbChat.Id,
@@ -58,13 +61,19 @@ namespace ActualChat.Chat.Module
                         CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
                         BeginsAt = Clocks.SystemClock.Now,
                         EndsAt = Clocks.SystemClock.Now,
-                        Content = $"Message {id}",
+                        Content = GetRandomSentence(rnd, 30),
                         ContentType = ChatContentType.Text,
                         AuthorId = adminUserId,
                     };
                     dbContext.Add(dbChatEntry);
                 }
                 await dbContext.SaveChangesAsync(cancellationToken);
+
+                string GetRandomSentence(Random random, int maxLength)
+                    => Enumerable
+                        .Range(0, random.Next(maxLength))
+                        .Select(_ => words![random.Next(words.Length)])
+                        .ToDelimitedString(" ");
             }
         }
     }
