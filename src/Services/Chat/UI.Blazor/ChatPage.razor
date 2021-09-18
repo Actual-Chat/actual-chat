@@ -68,8 +68,8 @@
     private async Task<VirtualListResponse<ChatEntry>> GetMessages(VirtualListQuery query, CancellationToken cancellationToken)
     {
         var model = await State.Use(cancellationToken);
-        var chatId = model.Chat?.Id;
-        if (chatId.IsNullOrEmpty())
+        var chatId = model.Chat?.Id ?? default;
+        if (chatId.IsNone)
             return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
 
         var idLogCover = ChatConstants.IdLogCover;

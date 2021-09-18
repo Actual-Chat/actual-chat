@@ -1,5 +1,4 @@
-﻿using ActualChat.Generators;
-using ActualChat.Hosting;
+﻿using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
@@ -18,12 +17,6 @@ namespace ActualChat.Module
         {
             var fusion = services.AddFusion();
             fusion.AddFusionTime();
-
-            services.AddSingleton<IdentifierGenerator>();
-            services.AddTransient<IIdentifierGenerator, IdentifierGenerator>(
-                sp => sp.GetRequiredService<IdentifierGenerator>());
-            services.AddSingleton<IIdentifierGenerator<ChatId>, ChatIdGenerator>();
-            services.AddSingleton<IIdentifierGenerator<AudioRecordId>, AudioRecordIdGenerator>();
         }
     }
 }

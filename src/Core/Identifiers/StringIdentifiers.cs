@@ -7,19 +7,25 @@ using System.Text.Json.Serialization;
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
 
+
 namespace ActualChat
 {
     [DataContract]
-    [JsonConverter(typeof(ChatIdJsonConverter))]
-    [TypeConverter(typeof(ChatIdTypeConverter))]
-    public readonly partial struct ChatId : IEquatable<ChatId>, IIdentifier<string>, IMasterIdentifier
+    [JsonConverter(typeof(Internal.ChatIdJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.ChatIdNewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.ChatIdTypeConverter))]
+    public readonly partial struct ChatId : IEquatable<ChatId>, IIdentifier<string>
     {
-        [Obsolete("Use implicit cast to/from string instead")]
-        [DataMember(Order = 0)]
-        public string Value { get; }
+        public static readonly ChatId None = default;
 
-        public ChatId(string value)
-            => Value = value;
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public ChatId(string value) => _value = value ?? "";
 
         public override string ToString() => Value;
 
@@ -33,7 +39,10 @@ namespace ActualChat
         public static bool operator ==(ChatId left, ChatId right) => left.Equals(right);
         public static bool operator !=(ChatId left, ChatId right) => !left.Equals(right);
     }
+}
 
+namespace ActualChat.Internal
+{
     public class ChatIdJsonConverter : JsonConverter<ChatId>
     {
         public override ChatId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -63,19 +72,43 @@ namespace ActualChat
             return base.ConvertFrom(context, culture, value)!;
         }
     }
+}
 
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
 
-    [DataContract]
-    [JsonConverter(typeof(AudioRecordIdJsonConverter))]
-    [TypeConverter(typeof(AudioRecordIdTypeConverter))]
-    public readonly partial struct AudioRecordId : IEquatable<AudioRecordId>, IIdentifier<string>, IMasterIdentifier
+    public class ChatIdNewtonsoftJsonConverter : JsonConverter<ChatId>
     {
-        [Obsolete("Use implicit cast to/from string instead")]
-        [DataMember(Order = 0)]
-        public string Value { get; }
+        public override void WriteJson(JsonWriter writer, ChatId value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
 
-        public AudioRecordId(string value)
-            => Value = value;
+        public override ChatId ReadJson(
+            JsonReader reader, Type objectType,
+            ChatId existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
+}
+
+namespace ActualChat
+{
+    [DataContract]
+    [JsonConverter(typeof(Internal.AudioRecordIdJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.AudioRecordIdNewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.AudioRecordIdTypeConverter))]
+    public readonly partial struct AudioRecordId : IEquatable<AudioRecordId>, IIdentifier<string>
+    {
+        public static readonly AudioRecordId None = default;
+
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public AudioRecordId(string value) => _value = value ?? "";
 
         public override string ToString() => Value;
 
@@ -89,7 +122,10 @@ namespace ActualChat
         public static bool operator ==(AudioRecordId left, AudioRecordId right) => left.Equals(right);
         public static bool operator !=(AudioRecordId left, AudioRecordId right) => !left.Equals(right);
     }
+}
 
+namespace ActualChat.Internal
+{
     public class AudioRecordIdJsonConverter : JsonConverter<AudioRecordId>
     {
         public override AudioRecordId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -119,19 +155,43 @@ namespace ActualChat
             return base.ConvertFrom(context, culture, value)!;
         }
     }
+}
 
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
 
-    [DataContract]
-    [JsonConverter(typeof(VideoRecordIdJsonConverter))]
-    [TypeConverter(typeof(VideoRecordIdTypeConverter))]
-    public readonly partial struct VideoRecordId : IEquatable<VideoRecordId>, IIdentifier<string>, IMasterIdentifier
+    public class AudioRecordIdNewtonsoftJsonConverter : JsonConverter<AudioRecordId>
     {
-        [Obsolete("Use implicit cast to/from string instead")]
-        [DataMember(Order = 0)]
-        public string Value { get; }
+        public override void WriteJson(JsonWriter writer, AudioRecordId value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
 
-        public VideoRecordId(string value)
-            => Value = value;
+        public override AudioRecordId ReadJson(
+            JsonReader reader, Type objectType,
+            AudioRecordId existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
+}
+
+namespace ActualChat
+{
+    [DataContract]
+    [JsonConverter(typeof(Internal.VideoRecordIdJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.VideoRecordIdNewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.VideoRecordIdTypeConverter))]
+    public readonly partial struct VideoRecordId : IEquatable<VideoRecordId>, IIdentifier<string>
+    {
+        public static readonly VideoRecordId None = default;
+
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public VideoRecordId(string value) => _value = value ?? "";
 
         public override string ToString() => Value;
 
@@ -145,7 +205,10 @@ namespace ActualChat
         public static bool operator ==(VideoRecordId left, VideoRecordId right) => left.Equals(right);
         public static bool operator !=(VideoRecordId left, VideoRecordId right) => !left.Equals(right);
     }
+}
 
+namespace ActualChat.Internal
+{
     public class VideoRecordIdJsonConverter : JsonConverter<VideoRecordId>
     {
         public override VideoRecordId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -175,19 +238,43 @@ namespace ActualChat
             return base.ConvertFrom(context, culture, value)!;
         }
     }
+}
 
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
 
-    [DataContract]
-    [JsonConverter(typeof(StreamIdJsonConverter))]
-    [TypeConverter(typeof(StreamIdTypeConverter))]
-    public readonly partial struct StreamId : IEquatable<StreamId>, IIdentifier<string>, ISlaveIdentifier<AudioRecordId>
+    public class VideoRecordIdNewtonsoftJsonConverter : JsonConverter<VideoRecordId>
     {
-        [Obsolete("Use implicit cast to/from string instead")]
-        [DataMember(Order = 0)]
-        public string Value { get; }
+        public override void WriteJson(JsonWriter writer, VideoRecordId value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
 
-        public StreamId(string value)
-            => Value = value;
+        public override VideoRecordId ReadJson(
+            JsonReader reader, Type objectType,
+            VideoRecordId existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
+}
+
+namespace ActualChat
+{
+    [DataContract]
+    [JsonConverter(typeof(Internal.StreamIdJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.StreamIdNewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.StreamIdTypeConverter))]
+    public readonly partial struct StreamId : IEquatable<StreamId>, IIdentifier<string>
+    {
+        public static readonly StreamId None = default;
+
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public StreamId(string value) => _value = value ?? "";
 
         public override string ToString() => Value;
 
@@ -201,7 +288,10 @@ namespace ActualChat
         public static bool operator ==(StreamId left, StreamId right) => left.Equals(right);
         public static bool operator !=(StreamId left, StreamId right) => !left.Equals(right);
     }
+}
 
+namespace ActualChat.Internal
+{
     public class StreamIdJsonConverter : JsonConverter<StreamId>
     {
         public override StreamId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -231,19 +321,43 @@ namespace ActualChat
             return base.ConvertFrom(context, culture, value)!;
         }
     }
+}
 
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
 
-    [DataContract]
-    [JsonConverter(typeof(UserIdJsonConverter))]
-    [TypeConverter(typeof(UserIdTypeConverter))]
-    public readonly partial struct UserId : IEquatable<UserId>, IIdentifier<string>, IMasterIdentifier
+    public class StreamIdNewtonsoftJsonConverter : JsonConverter<StreamId>
     {
-        [Obsolete("Use implicit cast to/from string instead")]
-        [DataMember(Order = 0)]
-        public string Value { get; }
+        public override void WriteJson(JsonWriter writer, StreamId value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
 
-        public UserId(string value)
-            => Value = value;
+        public override StreamId ReadJson(
+            JsonReader reader, Type objectType,
+            StreamId existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
+}
+
+namespace ActualChat
+{
+    [DataContract]
+    [JsonConverter(typeof(Internal.UserIdJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.UserIdNewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.UserIdTypeConverter))]
+    public readonly partial struct UserId : IEquatable<UserId>, IIdentifier<string>
+    {
+        public static readonly UserId None = default;
+
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public UserId(string value) => _value = value ?? "";
 
         public override string ToString() => Value;
 
@@ -257,7 +371,10 @@ namespace ActualChat
         public static bool operator ==(UserId left, UserId right) => left.Equals(right);
         public static bool operator !=(UserId left, UserId right) => !left.Equals(right);
     }
+}
 
+namespace ActualChat.Internal
+{
     public class UserIdJsonConverter : JsonConverter<UserId>
     {
         public override UserId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -287,6 +404,21 @@ namespace ActualChat
             return base.ConvertFrom(context, culture, value)!;
         }
     }
+}
 
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
 
+    public class UserIdNewtonsoftJsonConverter : JsonConverter<UserId>
+    {
+        public override void WriteJson(JsonWriter writer, UserId value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
+
+        public override UserId ReadJson(
+            JsonReader reader, Type objectType,
+            UserId existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
 }
