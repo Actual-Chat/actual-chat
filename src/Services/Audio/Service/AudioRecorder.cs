@@ -19,17 +19,14 @@ namespace ActualChat.Audio
         private readonly ILogger<AudioRecorder> _log;
         private readonly IConnectionMultiplexer _redis;
         private readonly IAuthService _auth;
-        private readonly IIdentifierGenerator<AudioRecordId> _idGenerator;
 
         public AudioRecorder(
             IConnectionMultiplexer redis,
             IAuthService auth,
-            IIdentifierGenerator<AudioRecordId> idGenerator,
             ILogger<AudioRecorder> log)
         {
             _redis = redis;
             _auth = auth;
-            _idGenerator = idGenerator;
             _log = log;
         }
 
@@ -42,7 +39,7 @@ namespace ActualChat.Audio
             var user = await _auth.GetUser(session, cancellationToken);
             user.MustBeAuthenticated();
 
-            var recordId = _idGenerator.Next();
+            var recordId = Ulid.NewUlid().ToString();
             _log.LogInformation("Uploading: RecordId = {RecordId}", (string) recordId);
 
             var firstCycle = true;

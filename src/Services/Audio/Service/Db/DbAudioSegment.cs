@@ -8,7 +8,6 @@ namespace ActualChat.Audio.Db
     [Table("AudioSegments")]
     public class DbAudioSegment
     {
-        // TODO(AY): No key?
         public string RecordId { get; set; } = string.Empty;
         public int Index { get; set; }
         public double Offset { get; set; }

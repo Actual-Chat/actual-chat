@@ -7,8 +7,5 @@ namespace ActualChat
     {
         public static UriMapper UriMapper(this IServiceProvider services)
             => services.GetRequiredService<UriMapper>();
-        
-        public static IdentifierGenerator IdGenerator(this IServiceProvider services)
-            => services.GetRequiredService<IdentifierGenerator>();
     }
 }

@@ -10,7 +10,7 @@
         "Stream",
         "User"
     };
-    
+
     List<(string,string)> slaveEntityTypeNames = new () {
         ("Stream", "AudioRecord")
     };
@@ -25,27 +25,30 @@ using System.Text.Json.Serialization;
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
 
-namespace ActualChat
-{
 <#
     foreach(var entityTypeName in entityTypeNames)
     {
         var typeName = entityTypeName + "Id";
-        var slavePair = slaveEntityTypeNames.FirstOrDefault(pair => pair.Item1 == entityTypeName);
-        var isSlave = slavePair != default;
-        var master = slavePair.Item2 ?? "";
 #>
-    [DataContract]
-    [JsonConverter(typeof(<#=typeName#>JsonConverter))]
-    [TypeConverter(typeof(<#=typeName#>TypeConverter))]
-    public readonly partial struct <#=typeName#> : IEquatable<<#=typeName#>>, IIdentifier<string><#=isSlave ? $", ISlaveIdentifier<{master}Id>" : ", IMasterIdentifier" #>
-    {
-        [Obsolete("Use implicit cast to/from string instead")]
-        [DataMember(Order = 0)]
-        public string Value { get; }
 
-        public <#=typeName#>(string value)
-            => Value = value;
+namespace ActualChat
+{
+    [DataContract]
+    [JsonConverter(typeof(Internal.<#=typeName#>JsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.<#=typeName#>NewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.<#=typeName#>TypeConverter))]
+    public readonly partial struct <#=typeName#> : IEquatable<<#=typeName#>>, IIdentifier<string>
+    {
+        public static readonly <#=typeName#> None = default;
+
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public <#=typeName#>(string value) => _value = value ?? "";
 
         public override string ToString() => Value;
 
@@ -59,7 +62,10 @@ namespace ActualChat
         public static bool operator ==(<#=typeName#> left, <#=typeName#> right) => left.Equals(right);
         public static bool operator !=(<#=typeName#> left, <#=typeName#> right) => !left.Equals(right);
     }
+}
 
+namespace ActualChat.Internal
+{
     public class <#=typeName#>JsonConverter : JsonConverter<<#=typeName#>>
     {
         public override <#=typeName#> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -89,9 +95,24 @@ namespace ActualChat
             return base.ConvertFrom(context, culture, value)!;
         }
     }
+}
 
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
 
+    public class <#=typeName#>NewtonsoftJsonConverter : JsonConverter<<#=typeName#>>
+    {
+        public override void WriteJson(JsonWriter writer, <#=typeName#> value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
+
+        public override <#=typeName#> ReadJson(
+            JsonReader reader, Type objectType,
+            <#=typeName#> existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
+}
 <#
     }
 #>
-}

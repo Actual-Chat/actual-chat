@@ -1,6 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using Stl;
-using Stl.Text;
 using Stl.Time;
 
 namespace ActualChat.Chat
@@ -18,7 +16,7 @@ namespace ActualChat.Chat
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
         public double Duration => (EndsAt - BeginsAt).TotalSeconds;
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-        public bool IsStreaming => !StreamId.IsNullOrEmpty();
+        public bool IsStreaming => !StreamId.IsNone;
 
 
         public ChatEntry() : this("", 0) { }
