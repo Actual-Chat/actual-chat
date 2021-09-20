@@ -170,7 +170,12 @@ Choose your poison:
   **I want real-time transcripts!**
 - No transcripts by default = no history
 
-And finally, **"Call" per se** - a 145-years old concept required to keep the wires connected. Let's bury it.
+And finally, **"Call" itself** - a 145-years old concept 
+invented to keep the parties wire-connected.
+
+<div style="text-align: center">
+<img style="width: 90%" src="./img/on-the-line.gif"/>
+</div>
 
 ---
 ![bg left](./img/call-log-1.jpg)
