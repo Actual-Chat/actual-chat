@@ -45,7 +45,9 @@ div.col2 .break {
 }
 </style>
 
-<h1>Here is how we communicate now:</h1>
+<!-- _class: highlight center -->
+
+<h1>Here is how we communicate now...</h1>
 
 ---
 <!-- _class: highlight center  -->
@@ -99,11 +101,15 @@ Yes, it's choosing between two stupid answers, solving a f@cking captcha, and "p
 **According to Google, this is the #1 solution to a real problem most of us face every day.<br/><br/>And 3.8 stars is an ok rating!**
 
 ---
+<!-- _class: highlight center -->
+
+<h1>What about audio messages 📧?<h1>
+
+---
 <!-- _class: highlight -->
 
-![bg left:34%](./img/telegram-voice-messages.jpg)
+![bg left:31%](./img/telegram-voice-messages.jpg)
 
-See any problems?
 - Transcripts are overrated. Learn to read the barcodes!
 - 📧 Stop recording to "send" it. You can't use audio messages to talk in real-time.
 - 🎧 No listen mode: the player stops once it reaches the end, it won't auto-play any new voice messages. BUT it doesn't stop when you start recording!
@@ -175,7 +181,7 @@ And finally, **"Call" per se** - a 145-years old concept required to keep the wi
 
 <!-- _class: highlight center -->
 
-<h1>But what about Zoom and Google Meet?<h1>
+<h1>Ok, maybe Zoom and Google Meet to the rescue?<h1>
 
 <footer style="font-size: 24px">
 Hang tight, loading my meme gun.
@@ -202,7 +208,7 @@ Hang tight, loading my meme gun.
 
 <h3>So it's mostly the same issues:</h2>
 
-- Negotiate the time you start it
+- Negotiate the time you start the discussion
 - You either join or miss it completely
 - No recording by default, no transcript retained
 - No way to easily review what's happened if you join late
