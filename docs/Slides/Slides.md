@@ -150,11 +150,10 @@ Hang tight, loading my meme gun.
 
 ![bg left:34%](./img/call-screen.jpg)
 
-<h3>Long story short...</h2>
+<h3>Long story short:</h2>
 
-Choose your poison:
-  - ☎: voice + demand to answer
-  - 📧: no demand, no voice.
+☎ = talk + demand other party to answer
+📧 = no demand, but you have to type it
 
 **But do you really have to choose?**
 
@@ -211,9 +210,10 @@ Hang tight, loading my meme gun.
 
 ![bg fit left:40%](./img/zoom-many-ppl.jpg)
 
-<h3>So it's mostly the same issues:</h2>
+<h3>Largely the same issues:</h2>
 
-- Negotiate the time you start the discussion
+- You can't call, but you have to negotiate 
+  the time you start it
 - You either join or miss it completely
 - No recording by default, no transcript retained
 - No way to easily review what's happened if you join late
