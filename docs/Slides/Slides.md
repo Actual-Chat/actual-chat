@@ -119,8 +119,8 @@ Yes, it's choosing between two stupid answers, solving a f@cking captcha, and "p
 ---
 <!-- _class: highlight center -->
 
-<h1>But there are good-old calls ☎<br/>
-What's wrong with them?</h1>
+<h1>But there are good-old phone calls &ndash;<br/>
+what's wrong with them?</h1>
 
 <footer style="font-size: 24px">
 Hang tight, loading my meme gun.
@@ -131,11 +131,6 @@ Hang tight, loading my meme gun.
 
 ![bg fit left](./img/call-meme-1.jpg)
 ![](./img/call-meme-2.jpg)
-
----
-
-![bg](#111)
-![bg height:90%](./img/call-meme-5.jpg)
 
 ---
 <!-- _class: highlight center -->
@@ -150,10 +145,11 @@ Hang tight, loading my meme gun.
 
 ![bg left:34%](./img/call-screen.jpg)
 
-<h3>Long story short:</h2>
-
+So:
 ☎ = talk + demand other party to answer
 📧 = no demand, but you have to type it
+
+That's why calling or receiving calls is a stressful activity for a fair share of population.
 
 **But do you really have to choose?**
 
@@ -162,18 +158,19 @@ Hang tight, loading my meme gun.
 
 ![bg left:34%](./img/call-screen.jpg)
 
-<h3>Other issues with phone calls</h2>
+<h3>And there are plenty of other issues:</h2>
 
 - Phone numbers & address book are so 🦠
 - Voice Mail = 🤮, Google Voice = a plumbing.
   **I want real-time transcripts!**
 - No transcripts by default = no history
+- Group calls 💩 so badly that only experts know how to start them.
 
-And finally, **"Call" itself** - a 145-years old concept 
-invented to keep the parties wire-connected.
+Finally, **"call" itself is a 145-years old concept 
+invented to keep the parties wire-connected!**
 
 <div style="text-align: center">
-<img style="width: 90%" src="./img/on-the-line.gif"/>
+<img style="width: 70%" src="./img/on-the-line.gif"/>
 </div>
 
 ---
@@ -197,9 +194,6 @@ Hang tight, loading my meme gun.
 ![bg fit](./img/zoom-meet-meme-3.jpg)
 ![bg fit](./img/zoom-meet-meme-1.jpg)
 
----
-<!-- _class: highlight center -->
-![bg fit](./img/zoom-meet-meme-4.jpg)
 
 ---
 <!-- _class: highlight center -->
@@ -208,15 +202,58 @@ Hang tight, loading my meme gun.
 ---
 <!-- _class: highlight -->
 
-![bg fit left:40%](./img/zoom-many-ppl.jpg)
+![bg fit left:33%](./img/zoom-many-ppl.jpg)
 
 <h3>Largely the same issues:</h2>
 
-- You can't call, but you have to negotiate 
-  the time you start it
+- No calls, but creating the meeting & sharing the link = even more friction for ad-hoc meetings
 - You either join or miss it completely
 - No recording by default, no transcript retained
 - No way to easily review what's happened if you join late
 - No built-in way to follow-up once it ends
-- Do you really bother to see all these faces,
-  or just the one(s) talking?
+- Lots of people would rather prefer just audio
+- Do you really bother to see all these faces, or just the one(s) talking?
+
+---
+<!-- _class: highlight center -->
+
+<h1>Is there a solution?<br/>
+Yes, we're building one!<h1>
+
+---
+<!-- _class: highlight -->
+
+<h2>Actual.chat</h2>
+
+We're sick of seeing how all these issues with calls & texts are duct-taped by every product on the market. That's why we re-imagine online communication completely.
+
+- **Use voice, text, or both,** and seamlessly switch between these modes. Any piece of content is text + audio/video, the "counterpart" is generated in real-time.
+- **No "call" concept** - any conversation is always asynchronous, but it becomes synchronous when you respond in real-time
+- **You, not the other party, decide** whether you want to read or listen, to talk or type, to respond right now, later, or never.
+- **Chat history matters,** and existing products somehow ignore this aspect completely. We know how to deliver an amazing experience here.
+- **Privacy matters,** though we'd rather focus on killing spam by providing built-in anonymity in B2C/group communication vs things like E2E encryption in SSL era.
+
+---
+<!-- _class: highlight -->
+
+Think you saw something similar? Name a product, where:
+- You see a transcript for whatever you tell
+- And you can replay a recording behind the transcript
+- What about playing from a certain word (that's seemingly wrongly transcribed)?
+- Or seeing N play points moving in-sync through the text because N people were talking simultaneously?
+- What about deleting a transcribed message & seeing the matching part of the audio was cut?
+- Or editing a message & seeing the audio is edited too? And the new content is read using your own voice?
+<br/>
+
+The truth is: **no one dared to implement this.**
+We do.
+
+---
+<!-- _class: highlight -->
+<h3>Long-term vision:</h3>
+
+<br/>
+<br/>
+<div style="text-align: center">
+<img style="width: 80%" src="./diagrams/product.dio.svg"/>
+</div>
