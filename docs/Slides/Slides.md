@@ -239,9 +239,9 @@ We're sick of seeing how all these issues with calls & texts are duct-taped by e
 Think you saw something similar? Name a product, where:
 - You see a transcript for whatever you tell
 - And you can replay a recording behind the transcript
-- What about playing from a certain word (that's seemingly wrongly transcribed)?
+- What about playing from a certain WORLD (a wrongly transcribed one)?
 - Or seeing N play points moving in-sync through the text because N people were talking simultaneously?
-- What about deleting a transcribed message & seeing the matching part of the audio was cut?
+- What about deleting a part of the transcribed message (e.g. a credit card number) & seeing the matching part of the audio is gone too?
 - Or editing a message & seeing the audio is edited too? And the new content is read using your own voice?
 <br/>
 
@@ -250,7 +250,20 @@ We do.
 
 ---
 <!-- _class: highlight -->
-<h3>Long-term vision:</h3>
+<h3>Why no one implemented this so far?</h3>
+
+- Every message in every chat you know = a dot on the timeline
+- The experience described above requires it to be a span + a fair amount of extra
+- The upload, download & playback logic should be redesigned to work in "streaming + blob" rather than "blob only" mode
+- 1 message per user per minute vs 20 messages per user per second (1200x more) = very different scalability assumptions. So your whole processing pipeline needs to be updated.
+
+In fact, such app is closer to Google Meet or Zoom vs to a regular chat app. But Google Meet / Zoom miss critical components too &ndash; they're designed for streaming only. There is no "replay like if it's happening now" concept, no history, etc.
+
+**The gist: if you're WhatsApp, Discord, or Slack, you need a major redesign to deliver this experience. And if you know how big companies operate, you know they're 10x more likely to buy you vs take the "major redesign" path.**
+
+---
+<!-- _class: highlight -->
+<h3>Long-term vision</h3>
 
 <br/>
 <br/>

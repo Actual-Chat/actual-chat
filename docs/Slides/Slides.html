@@ -123,16 +123,26 @@ Yes, we're building one!<h1>
 <ul>
 <li>You see a transcript for whatever you tell</li>
 <li>And you can replay a recording behind the transcript</li>
-<li>What about playing from a certain word (that's seemingly wrongly transcribed)?</li>
+<li>What about playing from a certain WORLD (a wrongly transcribed one)?</li>
 <li>Or seeing N play points moving in-sync through the text because N people were talking simultaneously?</li>
-<li>What about deleting a transcribed message &amp; seeing the matching part of the audio was cut?</li>
+<li>What about deleting a part of the transcribed message (e.g. a credit card number) &amp; seeing the matching part of the audio is gone too?</li>
 <li>Or editing a message &amp; seeing the audio is edited too? And the new content is read using your own voice?<br />
 <br /></li>
 </ul>
 <p>The truth is: <strong>no one dared to implement this.</strong><br />
 We do.</p>
 </section>
-</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="24" data-class="highlight" data-theme="default" class="highlight" style="--class:highlight;--theme:default;"><h3>Long-term vision:</h3>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="24" data-class="highlight" data-theme="default" class="highlight" style="--class:highlight;--theme:default;"><h3>Why no one implemented this so far?</h3>
+<ul>
+<li>Every message in every chat you know = a dot on the timeline</li>
+<li>The experience described above requires it to be a span + a fair amount of extra</li>
+<li>The upload, download &amp; playback logic should be redesigned to work in &quot;streaming + blob&quot; rather than &quot;blob only&quot; mode</li>
+<li>1 message per user per minute vs 20 messages per user per second (1200x more) = very different scalability assumptions. So your whole processing pipeline needs to be updated.</li>
+</ul>
+<p>In fact, such app is closer to Google Meet or Zoom vs to a regular chat app. But Google Meet / Zoom miss critical components too – they're designed for streaming only. There is no &quot;replay like if it's happening now&quot; concept, no history, etc.</p>
+<p><strong>The gist: if you're WhatsApp, Discord, or Slack, you need a major redesign to deliver this experience. And if you know how big companies operate, you know they're 10x more likely to buy you vs take the &quot;major redesign&quot; path.</strong></p>
+</section>
+</foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="25" data-class="highlight" data-theme="default" class="highlight" style="--class:highlight;--theme:default;"><h3>Long-term vision</h3>
 <br />
 <br />
 <div style="text-align: center">
