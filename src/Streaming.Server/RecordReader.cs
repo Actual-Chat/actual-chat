@@ -83,9 +83,6 @@ namespace ActualChat.Streaming.Server
             return Task.FromResult(channel.Reader);
         }
 
-        public Task Ack((StreamId StreamId, int StartedWith, int CurrentIndex) processed, CancellationToken cancellationToken) 
-            => throw new NotImplementedException();
-
         protected virtual IDatabase GetDatabase()
             => Redis.GetDatabase().WithKeyPrefix(KeyPrefix);
 
