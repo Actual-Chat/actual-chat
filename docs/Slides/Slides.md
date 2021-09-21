@@ -90,13 +90,11 @@ of online communication ends?</h2>
 ![bg fit](./img/text-and-drive-google.jpg)
 
 ---
-<!-- _class: highlight invert -->
+<!-- _class: highlight  -->
 
 ![bg right:56%](./img/text-and-drive-app.jpg)
 
 Pay close attention to what you see here. 
-
-Yes, it's choosing between two stupid answers, solving a f@cking captcha, and "play mini-games and relax"!
 
 **According to Google, this is the #1 solution to a real problem most of us face every day.<br/><br/>And 3.8 stars is an ok rating!**
 
@@ -161,10 +159,10 @@ That's why calling or receiving calls is a stressful activity for a fair share o
 <h3>And there are plenty of other issues:</h2>
 
 - Phone numbers & address book are so 🦠
-- Voice Mail = 🤮, Google Voice = a plumbing.
-  **I want real-time transcripts!**
+- Voice Mail = 🤮, Google Voice = a duct tape.
+  **Where is my real-time transcript?**
 - No transcripts by default = no history
-- Group calls 💩 so badly that only experts know how to start them.
+- Group calls are so 💩 that only experts know how to start them.
 
 Finally, **"call" itself is a 145-years old concept 
 invented to keep the parties wire-connected!**
@@ -250,23 +248,45 @@ We do.
 
 ---
 <!-- _class: highlight -->
-<h3>Why no one implemented this so far?</h3>
+<h3>Why messaging kings won't do this?</h3>
 
-- Every message in every chat you know = a dot on the timeline
+- Every message in every chat app you know = a dot on the timeline
 - The experience described above requires it to be a span + a fair amount of extra
 - The upload, download & playback logic should be redesigned to work in "streaming + blob" rather than "blob only" mode
 - 1 message per user per minute vs 20 messages per user per second (1200x more) = very different scalability assumptions. So your whole processing pipeline needs to be updated.
 
-In fact, such app is closer to Google Meet or Zoom vs to a regular chat app. But Google Meet / Zoom miss critical components too &ndash; they're designed for streaming only. There is no "replay like if it's happening now" concept, no history, etc.
+In fact, this is closer to Google Meet or Zoom than to a regular chat app. But they also miss a number of critical components &ndash; they're designed for streaming only, there is no "replay like if it's happening now" concept, no history, etc.
 
 **The gist: if you're WhatsApp, Discord, or Slack, you need a major redesign to deliver this experience. And if you know how big companies operate, you know they're 10x more likely to buy you vs take the "major redesign" path.**
 
 ---
 <!-- _class: highlight -->
-<h3>Long-term vision</h3>
+<h3>Our long-term vision is... Crazy:</h3>
 
 <br/>
 <br/>
 <div style="text-align: center">
 <img style="width: 80%" src="./diagrams/product.dio.svg"/>
 </div>
+
+---
+<!-- _class: highlight -->
+<h3>We want to:</h3>
+
+- Create a platform + app providing the best communication experience:
+- Start marketing it to SBM & regular people relying mainly on network effects:
+  - Message anyone from your address book in the app - if they don't have Actual.chat account yet, they'll get a link to a dedicated communication channel (a web page) allowing them to talk, register, and download our mobile app.
+  - Eventually - get a phone number routed to Actual.chat - whoever calls it gets a similar response + whatever they tell is available in real-time your Actual.chat app; you can even respond right there.
+  - Discord-style places is a big part of this too.
+
+---
+<!-- _class: highlight -->
+<h3>We want to:</h3>
+
+Implement Twilio integration + an open API allowing any B2C company to switch to Actual.chat as their primary customer communication channel.
+
+For the note, existing software simply doesn't deliver here:
+- We'll retain every bit of communication w/ every customer
+- You'll be able to respond by phone...
+
+... To be continued
