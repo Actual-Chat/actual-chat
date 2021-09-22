@@ -141,6 +141,7 @@ namespace ActualChat.Audio
                         }
                         else if (fragmentVariant.Error != null) {
                             // TODO(AK) - think about additional scenarios of transcription error handling
+                            _log.LogError("Transcription error: {TranscriptError}", fragmentVariant.Error.Message);
                         }
                         index = fragmentVariant.Value!.Index + 1;
                     }
