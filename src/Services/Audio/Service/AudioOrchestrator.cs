@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -71,7 +72,7 @@ namespace ActualChat.Audio
             while (segments.TryRead(out var segment)) {
                 var distributeStreamTask = DistributeAudioStream(segment, cancellationToken);
                 var chatEntryTask = PublishChatEntry(segment, cancellationToken);
-                _ = TranscribeSegment(segment, cancellationToken);
+                _ = PublishSegmentTranscript(segment, cancellationToken);
                 _ = PersistSegment(segment, cancellationToken);
                 await Task.WhenAll(distributeStreamTask, chatEntryTask);
             }
@@ -84,18 +85,9 @@ namespace ActualChat.Audio
             await _audioSaver.Save(audioStreamPart, cancellationToken);
         }
 
-        private async Task TranscribeSegment(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
+        private async Task PublishSegmentTranscript(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
         {
-            var transcriptionResults = Transcribe(audioRecordSegment, cancellationToken);
-            await PublishTranscriptionResults(audioRecordSegment.StreamId, transcriptionResults, cancellationToken);
-        }
-
-        private async Task PublishTranscriptionResults(
-            StreamId streamId,
-            IAsyncEnumerable<TranscriptPart> transcriptionResults,
-            CancellationToken cancellationToken)
-        {
-            var channel = Channel.CreateBounded<TranscriptPart>(
+            var transcript = Channel.CreateBounded<TranscriptPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
                     SingleReader = true,
@@ -103,69 +95,70 @@ namespace ActualChat.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            var publishTask = _transcriptPublisher.PublishStream(streamId, channel.Reader, cancellationToken);
-            _ = PushTranscriptionResults(channel.Writer, cancellationToken);
-            await publishTask;
-
-            async Task PushTranscriptionResults(ChannelWriter<TranscriptPart> writer, CancellationToken ct)
-            {
-                await foreach (var message in transcriptionResults.WithCancellation(ct))
-                    await writer.WriteAsync(message, ct);
-
-                writer.Complete();
-            }
+            _ = TranscribeSegment(audioRecordSegment, transcript.Writer, cancellationToken);
+            await _transcriptPublisher.PublishStream(audioRecordSegment.StreamId, transcript.Reader, cancellationToken);
         }
 
-        private async IAsyncEnumerable<TranscriptPart> Transcribe(
+        private async Task TranscribeSegment(
             AudioRecordSegment audioRecordSegment,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            ChannelWriter<TranscriptPart> transcriptWriter,
+            CancellationToken cancellationToken)
         {
-            var r = audioRecordSegment.AudioRecord;
-            // TODO(AK): read actual config
-            var command = new BeginTranscriptionCommand {
-                RecordId = (string) r.Id,
-                AudioFormat = new AudioFormat {
-                    Codec = AudioCodec.Opus,
-                    ChannelCount = 1,
-                    SampleRate = 48_000
-                },
-                Options = new TranscriptionOptions {
-                    Language = "ru-RU",
-                    IsDiarizationEnabled = false,
-                    IsPunctuationEnabled = true,
-                    MaxSpeakerCount = 1
-                }
-            };
-            var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
-
-            var reader = audioRecordSegment.GetStream();
-            _ = PushAudioStreamForTranscription(transcriptId, reader, cancellationToken);
-
-            var index = 0;
-            var result = await _transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, index), cancellationToken);
-            while (result.ContinuePolling && !cancellationToken.IsCancellationRequested) {
-                foreach (var fragmentVariant in result.Fragments) {
-                    if (fragmentVariant.Speech is { } speechFragment) {
-                        var message = new TranscriptPart(
-                            speechFragment.Text,
-                            speechFragment.TextIndex,
-                            speechFragment.StartOffset,
-                            speechFragment.Duration);
-                        yield return message;
+            Exception? error = null;
+            try {
+                var audioRecord = audioRecordSegment.AudioRecord;
+                // TODO(AK): read actual config
+                var command = new BeginTranscriptionCommand {
+                    RecordId = (string) audioRecord.Id,
+                    AudioFormat = new AudioFormat {
+                        Codec = AudioCodec.Opus,
+                        ChannelCount = 1,
+                        SampleRate = 48_000
+                    },
+                    Options = new TranscriptionOptions {
+                        Language = "ru-RU",
+                        IsDiarizationEnabled = false,
+                        IsPunctuationEnabled = true,
+                        MaxSpeakerCount = 1
                     }
-                    else if (fragmentVariant.Error != null) {
-                        // TODO(AK) - think about additional scenarios of transcription error handling
+                };
+                var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
+
+                var segmentReader = audioRecordSegment.GetStream();
+                _ = PushAudioStreamForTranscription(transcriptId, segmentReader, cancellationToken);
+
+                var index = 0;
+                var result = await _transcriber.PollTranscription(new PollTranscriptionCommand(transcriptId, index), cancellationToken);
+                while (result.ContinuePolling && !cancellationToken.IsCancellationRequested) {
+                    foreach (var fragmentVariant in result.Fragments) {
+                        if (fragmentVariant.Speech is { } speechFragment) {
+                            var message = new TranscriptPart(
+                                speechFragment.Text,
+                                speechFragment.TextIndex,
+                                speechFragment.StartOffset,
+                                speechFragment.Duration);
+                            await transcriptWriter.WriteAsync(message, cancellationToken);
+                        }
+                        else if (fragmentVariant.Error != null) {
+                            // TODO(AK) - think about additional scenarios of transcription error handling
+                        }
+                        index = fragmentVariant.Value!.Index + 1;
                     }
 
-                    index = fragmentVariant.Value!.Index + 1;
+                    result = await _transcriber.PollTranscription(
+                        new PollTranscriptionCommand(transcriptId, index),
+                        cancellationToken);
                 }
 
-                result = await _transcriber.PollTranscription(
-                    new PollTranscriptionCommand(transcriptId, index),
-                    cancellationToken);
+                await _transcriber.AckTranscription(new AckTranscriptionCommand(transcriptId, index), cancellationToken);
+
             }
-
-            await _transcriber.AckTranscription(new AckTranscriptionCommand(transcriptId, index), cancellationToken);
+            catch (Exception e) {
+                error = e;
+            }
+            finally {
+                transcriptWriter.Complete(error);
+            }
 
             async Task PushAudioStreamForTranscription(Symbol tId, ChannelReader<BlobPart> r, CancellationToken ct)
             {
