@@ -49,9 +49,16 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# Images
 *.webm filter=lfs diff=lfs merge=lfs -text
 *.jpg  filter=lfs diff=lfs merge=lfs -text
 *.png  filter=lfs diff=lfs merge=lfs -text
 *.gif  filter=lfs diff=lfs merge=lfs -text
 *.webp filter=lfs diff=lfs merge=lfs -text
-*.gif filter=lfs diff=lfs merge=lfs -text
+*.gif  filter=lfs diff=lfs merge=lfs -text
+*.pdn  filter=lfs diff=lfs merge=lfs -text
+
+# Documents
+*.pdf  filter=lfs diff=lfs merge=lfs -text
+*.pptx filter=lfs diff=lfs merge=lfs -text
