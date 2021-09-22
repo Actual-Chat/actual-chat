@@ -54,11 +54,8 @@ namespace ActualChat.Audio
             while (await content.WaitToReadAsync(cancellationToken)) {
                 while (content.TryRead(out var message)) {
                     using var bufferWriter = new ArrayPoolBufferWriter<byte>();
-                    MessagePackSerializer.Serialize(
-                        bufferWriter,
-                        message,
-                        MessagePackSerializerOptions.Standard,
-                        cancellationToken);
+                    // ReSharper disable once MethodSupportsCancellation
+                    MessagePackSerializer.Serialize(bufferWriter, message);
                     var serialized = bufferWriter.WrittenMemory;
 
                     await db.StreamAddAsync(streamKey, _producerSetup.PartKey, serialized,
@@ -89,12 +86,12 @@ namespace ActualChat.Audio
         private async Task NotifyNewAudioRecord(IDatabase db, AudioRecord audioRecord, CancellationToken cancellationToken)
         {
             using var bufferWriter = new ArrayPoolBufferWriter<byte>();
-            MessagePackSerializer.Serialize(bufferWriter, audioRecord, MessagePackSerializerOptions.Standard, cancellationToken);
+            // ReSharper disable once MethodSupportsCancellation
+            MessagePackSerializer.Serialize(bufferWriter, audioRecord);
             var serialized = bufferWriter.WrittenMemory;
-            db.ListLeftPush(_producerSetup.NewContentNewsChannelName, serialized);
-
+            db.ListLeftPush(_producerSetup.NewContentNewsChannelKey, serialized);
             var subscriber = _redis.GetSubscriber();
-            await subscriber.PublishAsync(_producerSetup.NewContentNewsChannelName, string.Empty);
+            await subscriber.PublishAsync(_producerSetup.NewContentNewsChannelKey, string.Empty);
         }
 
         private async Task NotifyNewAudioPart(AudioRecordId recordId)

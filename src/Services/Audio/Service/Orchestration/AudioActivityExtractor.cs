@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
+using Stl.Async;
 
 namespace ActualChat.Audio.Orchestration
 {
@@ -15,94 +16,79 @@ namespace ActualChat.Audio.Orchestration
     // (i.e. boundaries only) & let another service to be streaming ANY audio record segments?
     public class AudioActivityExtractor
     {
-        public IAsyncEnumerable<AudioRecordSegmentAccessor> GetSegmentsWithAudioActivity(
-            AudioRecord audioRecord,
-            ChannelReader<BlobPart> audioReader)
-            => GetSegmentsWithAudioActivity(audioRecord, audioReader, default);
-
-        private async IAsyncEnumerable<AudioRecordSegmentAccessor> GetSegmentsWithAudioActivity(
+        public ChannelReader<AudioRecordSegment> GetSegmentsWithAudioActivity(
             AudioRecord audioRecord,
             ChannelReader<BlobPart> audioReader,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
-            var segmentChannel = Channel.CreateUnbounded<AudioRecordSegmentAccessor>(
+            var segments = Channel.CreateUnbounded<AudioRecordSegment>(
                 new UnboundedChannelOptions {
                     SingleReader = true,
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-
-            // TODO(AK): add exception handling
-            var extractionTask = Task.Run(
-                () => ExtractSegments(audioRecord, audioReader, segmentChannel, cancellationToken), default);
-
-            await foreach (var segment in segmentChannel.Reader.ReadAllAsync(cancellationToken))
-                yield return segment;
-
-            await extractionTask;
+            _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, segments, cancellationToken), default);
+            return segments;
         }
 
         private async Task ExtractSegments(
             AudioRecord audioRecord,
             ChannelReader<BlobPart> audioReader,
-            ChannelWriter<AudioRecordSegmentAccessor> segmentWriter,
+            ChannelWriter<AudioRecordSegment> segmentWriter,
             CancellationToken cancellationToken)
         {
             var segmentIndex = 0;
-            var metaData = new List<AudioMetadataEntry>();
-            var documentBuilder = new WebMDocumentBuilder();
-            var audioChannel = Channel.CreateUnbounded<BlobPart>(
+            var webmBuilder = new WebMDocumentBuilder();
+            var metadata = new List<AudioMetadataEntry>();
+            var audioSource = Channel.CreateUnbounded<BlobPart>(
                 new UnboundedChannelOptions {
                     SingleReader = false,
                     SingleWriter = true,
                     AllowSynchronousContinuations = false
                 });
-            var segment = new AudioRecordSegmentAccessor(
-                segmentIndex,
-                audioRecord,
-                documentBuilder,
-                metaData,
-                0d,
-                audioChannel.Reader);
+            await using var segment = new AudioRecordSegment(
+                segmentIndex, audioRecord,
+                webmBuilder, metadata, 0, audioSource);
+            _ = segment.Run();
             await segmentWriter.WriteAsync(segment, cancellationToken);
+            try {
+                var lastState = new WebMReader.State();
+                using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
+                await foreach (var part in audioReader.ReadAllAsync(cancellationToken)) {
+                    var (index, data) = part;
 
-            WebMReader.State lastState = new WebMReader.State();
-            using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
+                    metadata.Add(new AudioMetadataEntry(index, 0, 0));
+                    var remainingLength = lastState.Remaining;
+                    var buffer = bufferLease.Memory;
 
-            await foreach (var audioMessage in audioReader.ReadAllAsync(cancellationToken)) {
-                var (index, chunk) = audioMessage;
+                    buffer.Slice(lastState.Position,remainingLength)
+                        .CopyTo(buffer[..remainingLength]);
+                    data.CopyTo(buffer[lastState.Remaining..]);
+                    var dataLength = lastState.Remaining + data.Length;
 
-                metaData.Add(new AudioMetadataEntry(index, 0, 0));
-                var remainingLength = lastState.Remaining;
-                var buffer = bufferLease.Memory;
+                    // TODO(AK): get actual duration\offset from Clusters\SimpleBlocks and fill metaData
+                    var state = BuildWebMDocument(
+                        lastState.IsEmpty
+                            ? new WebMReader(bufferLease.Memory.Span[..dataLength])
+                            : WebMReader.FromState(lastState).WithNewSource(bufferLease.Memory.Span[..dataLength]),
+                        webmBuilder);
+                    lastState = state;
 
-                buffer.Slice(lastState.Position,remainingLength).CopyTo(buffer[..remainingLength]);
-                chunk.CopyTo(buffer[lastState.Remaining..]);
+                    // We don't use WebMWriter yet because we can't read blocks directly yet. So we don't split actually
+                    await audioSource.Writer.WriteAsync(part, cancellationToken);
 
-                var dataLength = lastState.Remaining + chunk.Length;
+                    // TODO(AK): Implement VAD and perform actual audio split
+                }
 
-                // TODO(AK): get actual duration\offset from Clusters\SimpleBlocks and fill metaData
-                var state = BuildWebMDocument(
-                    lastState.IsEmpty
-                        ? new WebMReader(bufferLease.Memory.Span[..dataLength])
-                        : WebMReader.FromState(lastState).WithNewSource(bufferLease.Memory.Span[..dataLength]),
-                    documentBuilder);
-                lastState = state;
-
-                // We don't use WebMWriter yet because we can't read blocks directly yet. So we don't split actually
-                await audioChannel.Writer.WriteAsync(audioMessage, cancellationToken);
-
-                // TODO(AK): Implement VAD and perform actual audio split
+                if (lastState.Container is Cluster cluster) {
+                    cluster.Complete();
+                    webmBuilder.AddCluster(cluster);
+                }
             }
-
-            if (lastState.Container is Cluster cluster) {
-                cluster.Complete();
-                documentBuilder.AddCluster(cluster);
+            finally {
+                audioSource.Writer.Complete();
+                segmentWriter.Complete();
             }
-
-            segmentWriter.Complete();
-            audioChannel.Writer.Complete();
-            await segment.CompleteBuffering();
         }
 
         // TODO(AK): we should read blocks there

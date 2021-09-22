@@ -8,7 +8,6 @@ using ActualChat.Streaming.Server.Internal;
 using MessagePack;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using StackExchange.Redis.KeyspaceIsolation;
 using Stl;
 using Stl.Async;
 
@@ -22,7 +21,7 @@ namespace ActualChat.Streaming.Server
     {
         public record Options : RedisStreamingOptionsBase<TContentId, BlobPart>
         {
-            public string NewContentNewsChannelName { get; init; } = "new-content";
+            public string NewContentNewsChannelKey { get; init; } = "new-content";
             public TimeSpan WaitForNewContentTimeout { get; init; } = TimeSpan.FromSeconds(25);
 
             public Options() => KeyPrefix = typeof(TContent).Name;
@@ -42,37 +41,30 @@ namespace ActualChat.Streaming.Server
             Redis = redis;
         }
 
-        public async ValueTask<Option<TContent>> TryProduce(CancellationToken cancellationToken)
+        public async ValueTask<TContent> Produce(CancellationToken cancellationToken)
         {
+            var db = Setup.GetDatabase(Redis);
+            var subscriber = Redis.GetSubscriber();
             try {
-                var db = Setup.GetDatabase(Redis);
-                var subscriber = Redis.GetSubscriber();
-                var newContentNews = await subscriber.SubscribeAsync(Setup.NewContentNewsChannelName);
+                var newContentNews = await subscriber.SubscribeAsync(Setup.NewContentNewsChannelKey);
                 while (true) {
-                    if (cancellationToken.IsCancellationRequested)
-                        return Option<TContent>.None;
-
-                    using var cts = new CancellationTokenSource();
-                    var ctsToken = cts.Token;
-                    await using var _ = cancellationToken
-                        .Register(state => ((CancellationTokenSource)state!).Cancel(), cts)
-                        .ToAsyncDisposableAdapter();
-
-                    var newContentNotificationOpt = await newContentNews.ReadAsync(ctsToken).AsTask()
+                    await newContentNews.ReadAsync(cancellationToken).AsTask()
                         .WithTimeout(Setup.WaitForNewContentTimeout, cancellationToken);
-                    if (newContentNotificationOpt.IsNone())
-                        cts.Cancel();
-
-                    var serializedContent = await db.ListRightPopAsync(Setup.NewContentNewsChannelName);
+                    var serializedContent = await db.ListRightPopAsync(Setup.NewContentNewsChannelKey);
                     if (serializedContent.IsNullOrEmpty) // Another consumer already popped the value
                         continue;
-                    var content = MessagePackSerializer.Deserialize<TContent>(
-                        serializedContent, MessagePackSerializerOptions.Standard, cancellationToken);
-                    return content;
+                    return MessagePackSerializer.Deserialize<TContent>(serializedContent);
                 }
+
             }
-            catch (ChannelClosedException) {
-                return Option<TContent>.None;
+            finally {
+                try {
+                    if (subscriber != null)
+                        await subscriber.UnsubscribeAsync(Setup.NewContentNewsChannelKey);
+                }
+                catch {
+                    // Intended
+                }
             }
         }
 

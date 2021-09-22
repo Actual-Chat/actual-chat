@@ -53,52 +53,44 @@ namespace ActualChat.Audio
             if (SkipAutoStart)
                 return;
 
+            // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
             while (true) {
-                // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
-                var record = await DequeueNewAudioRecord(stoppingToken);
-                if (stoppingToken.IsCancellationRequested)
-                    return;
-
+                var record = await FetchNewAudioRecord(stoppingToken);
                 _ = StartAudioPipeline(record!, stoppingToken);
             }
         }
 
-        internal async Task<AudioRecord?> DequeueNewAudioRecord(CancellationToken cancellationToken)
-        {
-            while (true) {
-                var recordOpt = await _audioRecorder.TryProduce(cancellationToken);
-                if (recordOpt.IsSome(out var record))
-                    return record;
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-        }
+        internal ValueTask<AudioRecord> FetchNewAudioRecord(CancellationToken cancellationToken)
+            => _audioRecorder.Produce(cancellationToken);
 
         internal async Task StartAudioPipeline(AudioRecord audioRecord, CancellationToken cancellationToken)
         {
             var audioReader = await _audioRecorder.GetStream(audioRecord.Id, cancellationToken);
-            var segments = _audioActivityExtractor.GetSegmentsWithAudioActivity(audioRecord, audioReader);
-            await foreach (var segment in segments.WithCancellation(cancellationToken)) {
+            var segments = _audioActivityExtractor.GetSegmentsWithAudioActivity(audioRecord, audioReader, cancellationToken);
+            while (await segments.WaitToReadAsync(cancellationToken))
+            while (segments.TryRead(out var segment)) {
                 var distributeStreamTask = DistributeAudioStream(segment, cancellationToken);
                 var chatEntryTask = PublishChatEntry(segment, cancellationToken);
-                _ = TranscribeStreamEntry(segment, cancellationToken);
-                _ = PersistStreamEntry(segment, cancellationToken);
+                _ = TranscribeSegment(segment, cancellationToken);
+                _ = PersistSegment(segment, cancellationToken);
                 await Task.WhenAll(distributeStreamTask, chatEntryTask);
             }
         }
 
-        private async Task PersistStreamEntry(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
+        private async Task PersistSegment(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
         {
-            var audioEntry = await audioRecordSegmentAccessor.GetPartOnCompletion(cancellationToken);
-            await _audioSaver.Save(audioEntry, cancellationToken);
+            await audioRecordSegment.Run();
+            var audioStreamPart = audioRecordSegment.AudioStreamPart;
+            await _audioSaver.Save(audioStreamPart, cancellationToken);
         }
 
-        private async Task TranscribeStreamEntry(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
+        private async Task TranscribeSegment(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
         {
-            var transcriptionResults = Transcribe(audioRecordSegmentAccessor, cancellationToken);
-            await DistributeTranscriptionResults(audioRecordSegmentAccessor.StreamId, transcriptionResults, cancellationToken);
+            var transcriptionResults = Transcribe(audioRecordSegment, cancellationToken);
+            await PublishTranscriptionResults(audioRecordSegment.StreamId, transcriptionResults, cancellationToken);
         }
 
-        private async Task DistributeTranscriptionResults(
+        private async Task PublishTranscriptionResults(
             StreamId streamId,
             IAsyncEnumerable<TranscriptPart> transcriptionResults,
             CancellationToken cancellationToken)
@@ -112,9 +104,7 @@ namespace ActualChat.Audio
                 });
 
             var publishTask = _transcriptPublisher.PublishStream(streamId, channel.Reader, cancellationToken);
-
             _ = PushTranscriptionResults(channel.Writer, cancellationToken);
-
             await publishTask;
 
             async Task PushTranscriptionResults(ChannelWriter<TranscriptPart> writer, CancellationToken ct)
@@ -126,9 +116,11 @@ namespace ActualChat.Audio
             }
         }
 
-        private async IAsyncEnumerable<TranscriptPart> Transcribe(AudioRecordSegmentAccessor audioRecordSegmentAccessor, [EnumeratorCancellation] CancellationToken cancellationToken)
+        private async IAsyncEnumerable<TranscriptPart> Transcribe(
+            AudioRecordSegment audioRecordSegment,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var r = audioRecordSegmentAccessor.AudioRecord;
+            var r = audioRecordSegment.AudioRecord;
             // TODO(AK): read actual config
             var command = new BeginTranscriptionCommand {
                 RecordId = (string) r.Id,
@@ -146,7 +138,7 @@ namespace ActualChat.Audio
             };
             var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
 
-            var reader = audioRecordSegmentAccessor.GetStream();
+            var reader = audioRecordSegment.GetStream();
             _ = PushAudioStreamForTranscription(transcriptId, reader, cancellationToken);
 
             var index = 0;
@@ -177,8 +169,8 @@ namespace ActualChat.Audio
 
             async Task PushAudioStreamForTranscription(Symbol tId, ChannelReader<BlobPart> r, CancellationToken ct)
             {
-                await foreach (var (_, chunk) in r.ReadAllAsync(ct)) {
-                    var appendCommand = new AppendTranscriptionCommand(tId, chunk);
+                await foreach (var (_, data) in r.ReadAllAsync(ct)) {
+                    var appendCommand = new AppendTranscriptionCommand(tId, data);
                     await _transcriber.AppendTranscription(appendCommand, ct);
                 }
 
@@ -187,10 +179,10 @@ namespace ActualChat.Audio
         }
 
         private async Task PublishChatEntry(
-            AudioRecordSegmentAccessor audioRecordSegmentAccessor,
+            AudioRecordSegment audioRecordSegment,
             CancellationToken cancellationToken)
         {
-            var e = audioRecordSegmentAccessor;
+            var e = audioRecordSegment;
             var chatEntry = new ChatEntry(e.AudioRecord.ChatId, 0) {
                 AuthorId = e.AudioRecord.UserId,
                 Content = "...",
@@ -200,7 +192,7 @@ namespace ActualChat.Audio
             await _chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken);
         }
 
-        private Task DistributeAudioStream(AudioRecordSegmentAccessor audioRecordSegmentAccessor, CancellationToken cancellationToken)
-            => _audioPublisher.PublishStream(audioRecordSegmentAccessor.StreamId, audioRecordSegmentAccessor.GetStream(), cancellationToken);
+        private Task DistributeAudioStream(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
+            => _audioPublisher.PublishStream(audioRecordSegment.StreamId, audioRecordSegment.GetStream(), cancellationToken);
     }
 }

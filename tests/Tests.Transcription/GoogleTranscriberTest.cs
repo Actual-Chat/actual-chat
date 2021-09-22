@@ -115,10 +115,10 @@ namespace ActualChat.Tests.Transcription
 
         private async Task FeedTranscriber(Symbol transcriptId, ITranscriber t, string file)
         {
-            await foreach (var chunk in ReadAudioFileSimulatingSpeech(file))
+            await foreach (var data in ReadAudioFileSimulatingSpeech(file))
                 await t.AppendTranscription(new AppendTranscriptionCommand {
                     TranscriptId = transcriptId,
-                    Data = chunk
+                    Data = data
                 }, default);
             await Task.Delay(300); // additional delay, google doesn't return final results otherwise.
         }

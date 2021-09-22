@@ -46,12 +46,11 @@ namespace ActualChat.Tests.Streaming
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var recordOptTask = audioRecordReader.TryProduce(CancellationToken.None);
+            var recordTask = audioRecordReader.Produce(CancellationToken.None);
             _ = audioRecorder.Record(session, recordSpec, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
-            var recordOpt = await recordOptTask;
-            var record = recordOpt.Value;
+            var record = await recordTask;
             record.Should().Be(recordSpec with {
                 Id = record!.Id,
                 UserId = record.UserId
@@ -72,13 +71,12 @@ namespace ActualChat.Tests.Streaming
             var audioRecorder = services.GetRequiredService<IAudioRecorder>();
             var audioRecordReader = services.GetRequiredService<AudioRecordProducer>();
 
-            var recordOptTask = audioRecordReader.TryProduce(CancellationToken.None);
+            var recordTask = audioRecordReader.Produce(CancellationToken.None);
             var writtenSize =  await UploadRecording(session, "1", audioRecorder);
 
-            var recordOpt = await recordOptTask;
-            var record = recordOpt.Value;
+            var record = await recordTask;
             var recordStream = await audioRecordReader.GetStream(record!.Id, CancellationToken.None);
-            var readSize = await recordStream.ReadAllAsync().SumAsync(message => message.Chunk.Length);
+            var readSize = await recordStream.ReadAllAsync().SumAsync(message => message.Data.Length);
 
             readSize.Should().Be(writtenSize);
         }
@@ -118,7 +116,7 @@ namespace ActualChat.Tests.Streaming
         private static async Task<int> ReadDistributedData(StreamId streamId, IStreamProvider<StreamId, BlobPart> sr)
         {
             var audioReader = await sr.GetStream(streamId, CancellationToken.None);
-            return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);
+            return await audioReader.ReadAllAsync().SumAsync(message => message.Data.Length);
         }
 
         private static async Task<int> UploadRecording(Session session, string chatId, IAudioRecorder audioRecorder)

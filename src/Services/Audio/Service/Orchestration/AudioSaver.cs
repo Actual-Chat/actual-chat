@@ -77,14 +77,14 @@ namespace ActualChat.Audio.Orchestration
         }
 
         public async Task<string> Save(
-            AudioRecordSegmentAccessor audioRecordSegmentAccessor,
+            AudioRecordSegment audioRecordSegment,
             CancellationToken cancellationToken)
         {
-            var p = audioRecordSegmentAccessor ?? throw new ArgumentNullException(nameof(audioRecordSegmentAccessor));
+            var p = audioRecordSegment ?? throw new ArgumentNullException(nameof(audioRecordSegment));
             var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "");
             var blobId = BlobPath.Format(BlobScope.AudioRecord, p.AudioRecord.Id, streamIndex + ".webm");
 
-            await SaveBlob(blobId, audioRecordSegmentAccessor, cancellationToken);
+            await SaveBlob(blobId, audioRecordSegment, cancellationToken);
             return blobId;
         }
 
@@ -143,7 +143,7 @@ namespace ActualChat.Audio.Orchestration
 
         private async Task SaveBlob(
             string blobId,
-            AudioRecordSegmentAccessor audioSegmentAccessor,
+            AudioRecordSegment audioSegment,
             CancellationToken cancellationToken)
         {
             const int minBufferSize = 32*1024;
@@ -151,7 +151,7 @@ namespace ActualChat.Audio.Orchestration
             await using var stream = MemoryStreamManager.GetStream(nameof(AudioSaver));
             using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
 
-            await foreach (var (_, bytes) in audioSegmentAccessor.GetStream().ReadAllAsync(cancellationToken))
+            await foreach (var (_, bytes) in audioSegment.GetStream().ReadAllAsync(cancellationToken))
                 stream.Write(bytes);
 
             stream.Position = 0;

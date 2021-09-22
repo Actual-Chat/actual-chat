@@ -32,7 +32,10 @@ namespace ActualChat.Streaming.Server.Internal
             ChannelWriter<TPart> writer,
             CancellationToken cancellationToken)
         {
-            var recordKey = Setup.StreamKeyProvider(streamId);
+            var streamKey = Setup.StreamKeyProvider(streamId);
+            var newPartNewsChannelKey = Setup.NewPartNewsChannelKeyProvider(streamId);
+            Log.LogInformation("Keys: stream = {StreamKey}, newPartNewsChannel = {NewPartNewsChannelKey}",
+                streamKey, newPartNewsChannelKey);
 
             Exception? error = null;
             var position = (RedisValue) "0-0";
@@ -40,7 +43,7 @@ namespace ActualChat.Streaming.Server.Internal
                 while (true) {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var entries = await Database.StreamReadAsync(recordKey, position, 10);
+                    var entries = await Database.StreamReadAsync(streamKey, position, 10);
                     if (entries?.Length > 0)
                         foreach (var entry in entries) {
                             var status = entry[Setup.StatusKey];
@@ -49,16 +52,15 @@ namespace ActualChat.Streaming.Server.Internal
                                 return;
 
                             var serializedPart = (ReadOnlyMemory<byte>) entry[Setup.PartKey];
-                            var part = MessagePackSerializer.Deserialize<TPart>(
-                                serializedPart, MessagePackSerializerOptions.Standard, cancellationToken);
+                            var part = MessagePackSerializer.Deserialize<TPart>(serializedPart);
                             await writer.WriteAsync(part, cancellationToken);
                             position = entry.Id;
                         }
                     else {
-                        var hasNewMessageOpt = await WaitForNewMessage(streamId, cancellationToken)
+                        var hasNewMessageOpt = await WaitForNewMessage(newPartNewsChannelKey, cancellationToken)
                             .WithTimeout(Setup.WaitForNewMessageTimeout, cancellationToken);
                         if (!hasNewMessageOpt.IsSome(out var hasNewMessage))
-                            throw new TimeoutException("Timout while trying to fetch a new message.");
+                            throw new TimeoutException("Timeout while trying to fetch a new message.");
                         if (!hasNewMessage)
                             return;
                     }
@@ -73,15 +75,15 @@ namespace ActualChat.Streaming.Server.Internal
             }
         }
 
-        public async Task<bool> WaitForNewMessage(
-            TStreamId streamId,
+        private async Task<bool> WaitForNewMessage(
+            string newPartNewsChannelKey,
             CancellationToken cancellationToken)
         {
             ISubscriber? subscriber = null;
             try {
                 subscriber = Redis.GetSubscriber();
-                var queue = await subscriber.SubscribeAsync(Setup.NewPartNewsChannelKeyProvider(streamId));
-                await queue.ReadAsync(cancellationToken);
+                var newPartNews = await subscriber.SubscribeAsync(newPartNewsChannelKey);
+                await newPartNews.ReadAsync(cancellationToken);
                 return true;
             }
             catch (ChannelClosedException) {
@@ -90,7 +92,7 @@ namespace ActualChat.Streaming.Server.Internal
             finally {
                 try {
                     if (subscriber != null)
-                        await subscriber.UnsubscribeAsync(Setup.NewPartNewsChannelKeyProvider(streamId));
+                        await subscriber.UnsubscribeAsync(newPartNewsChannelKey);
                 }
                 catch {
                     // Intended
