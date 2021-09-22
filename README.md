@@ -1,7 +1,7 @@
 # Actual Chat
 
-Discord: https://discord.gg/W7JP3Gve
-Telegram: https://t.me/joinchat/ndwLjwvDnj5iY2Y7
+
+
 
 ## Conventions
 
