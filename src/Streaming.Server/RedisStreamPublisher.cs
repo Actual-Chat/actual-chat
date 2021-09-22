@@ -44,8 +44,12 @@ namespace ActualChat.Streaming.Server
                     MessagePackSerializer.Serialize(bufferWriter, message);
                     var serialized = bufferWriter.WrittenMemory;
 
-                    await db.StreamAddAsync(streamKey, Setup.PartKey, serialized,
-                        maxLength: 1000, useApproximateMaxLength: true);
+                    await db.StreamAddAsync(
+                        streamKey,
+                        Setup.PartKey,
+                        serialized,
+                        maxLength: 1000,
+                        useApproximateMaxLength: true);
                 }
 
                 if (firstCycle) {
@@ -68,8 +72,12 @@ namespace ActualChat.Streaming.Server
             var db = Setup.GetDatabase(Redis);
             var streamKey = Setup.StreamKeyProvider(streamId);
 
-            await db.StreamAddAsync(streamKey, Setup.StatusKey,  Setup.CompletedStatus,
-                maxLength: 1000, useApproximateMaxLength: true);
+            await db.StreamAddAsync(
+                streamKey,
+                Setup.StatusKey,
+                Setup.CompletedStatus,
+                maxLength: 1000,
+                useApproximateMaxLength: true);
 
             // TODO(AY): Store the key of completed stream to some persistent store & add a dedicated serv. to GC them?
             _ = Task.Delay(TimeSpan.FromMinutes(1), default)

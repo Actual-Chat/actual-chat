@@ -13,8 +13,8 @@ namespace ActualChat.Streaming.Server
         public string CompletedStatus { get; init; } = "completed";
         public TimeSpan WaitForNewMessageTimeout { get; init; } = TimeSpan.FromSeconds(0.25);
 
-        public Func<TStreamId, string> StreamKeyProvider { get; init; } = streamId => streamId.ToString() ?? "";
-        public Func<TStreamId, string> NewPartNewsChannelKeyProvider { get; init; } = streamId => $"{streamId}-new-part";
+        public Func<TStreamId, string> StreamKeyProvider { get; init; } = streamId => $"stream:{streamId.ToString() ?? string.Empty}";
+        public Func<TStreamId, string> NewPartNewsChannelKeyProvider { get; init; } = streamId => $"{typeof(TPart).Name}:{streamId}-new-part";
 
         public virtual IDatabase GetDatabase(IConnectionMultiplexer redis)
             => redis.GetDatabase().WithKeyPrefix(KeyPrefix);
