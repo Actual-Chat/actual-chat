@@ -31,12 +31,12 @@
 
     }
 
-    private async Task ReadTranscript(ChannelReader<TranscriptPart> transcriptReader, CancellationToken token)
+    private async Task ReadTranscript(ChannelReader<TranscriptPart> transcriptReader, CancellationToken cancellationToken)
     {
         try {
-            while (await transcriptReader.WaitToReadAsync(token))
+            while (await transcriptReader.WaitToReadAsync(cancellationToken))
             while (transcriptReader.TryRead(out var message)) {
-                token.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var (text, index, _, _) = message;
                 Text = Text.Length >= index

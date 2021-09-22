@@ -124,14 +124,12 @@ namespace ActualChat.Tests.Transcription
         }
 
 
-        private async Task PollResults(Symbol transcriptId, ITranscriber t, CancellationToken token)
+        private async Task PollResults(Symbol transcriptId, ITranscriber t, CancellationToken cancellationToken)
         {
             var index = 0;
             while (true) {
-                if (token.IsCancellationRequested)
-                    break;
-
-                var result = await t.PollTranscription(new PollTranscriptionCommand(transcriptId, index), token);
+                var command = new PollTranscriptionCommand(transcriptId, index);
+                var result = await t.PollTranscription(command, cancellationToken);
                 if (!result.ContinuePolling)
                     break;
 
