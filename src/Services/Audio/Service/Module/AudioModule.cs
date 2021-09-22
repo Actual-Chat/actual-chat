@@ -2,10 +2,7 @@
 using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Orchestration;
-using ActualChat.Blobs;
 using ActualChat.Hosting;
-using ActualChat.Streaming;
-using ActualChat.Streaming.Server;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -80,23 +77,20 @@ namespace ActualChat.Audio.Module
             // SignalR hub & related services
             services.AddSignalR().AddMessagePackProtocol();
             services.AddTransient<AudioHub>();
-            services.AddSingleton<IAudioStreamReader, AudioStreamReader>();
-            services.AddSingleton<ITranscriptStreamReader, TranscriptStreamReader>();
-            services.AddSingleton(
-                c => new AudioStreamPublisher(
-                    c.GetRequiredService<IConnectionMultiplexer>(),
-                    "audio"));
-            services.AddSingleton(
-                c => new TranscriptStreamPublisher(
-                    c.GetRequiredService<IConnectionMultiplexer>(),
-                    "transcripts"));
+            services.AddSingleton(new AudioStreamProvider.Options());
+            services.AddSingleton<IAudioStreamProvider, AudioStreamProvider>();
+            services.AddSingleton(new TranscriptStreamProvider.Options());
+            services.AddSingleton<ITranscriptStreamProvider, TranscriptStreamProvider>();
+            services.AddSingleton(new AudioStreamPublisher.Options());
+            services.AddSingleton<AudioStreamPublisher>();
+            services.AddSingleton(new TranscriptStreamPublisher.Options());
+            services.AddSingleton<TranscriptStreamPublisher>();
 
-            // AudioUploader
+            services.AddSingleton(new AudioRecordProducer.Options());
+            services.AddSingleton<AudioRecordProducer>();
             services.AddSingleton<AudioRecorder>();
             services.AddTransient<IAudioRecorder>(c => c.GetRequiredService<AudioRecorder>());
 
-            // AudioRecorder
-            services.AddSingleton<AudioRecordReader>();
         }
 
         public void ConfigureApp(IApplicationBuilder app)

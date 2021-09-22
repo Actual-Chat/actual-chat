@@ -3,6 +3,6 @@ using ActualChat.Streaming;
 
 namespace ActualChat.Audio
 {
-    public interface IAudioStreamReader : IStreamReader<BlobPart>
+    public interface IAudioStreamProvider : IStreamProvider<StreamId, BlobPart>
     { }
 }

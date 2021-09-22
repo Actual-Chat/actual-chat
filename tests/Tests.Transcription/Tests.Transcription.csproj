@@ -4,7 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Blobs\Blobs.csproj" />
     <ProjectReference Include="..\..\src\Services\Transcription\Contract\Contract.csproj" />
     <ProjectReference Include="..\..\src\Services\Transcription\Service\Service.csproj" />
     <ProjectReference Include="..\..\src\Testing\Testing.csproj" />

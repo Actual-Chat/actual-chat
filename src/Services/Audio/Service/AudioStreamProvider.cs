@@ -5,15 +5,15 @@ using StackExchange.Redis;
 
 namespace ActualChat.Audio
 {
-    public class AudioStreamPublisher : RedisStreamPublisher<StreamId, BlobPart>
+    public class AudioStreamProvider : RedisStreamProvider<StreamId, BlobPart>, IAudioStreamProvider
     {
-        public new record Options : RedisStreamPublisher<StreamId, BlobPart>.Options
+        public new record Options : RedisStreamProvider<StreamId, BlobPart>.Options
         { }
 
-        public AudioStreamPublisher(
+        public AudioStreamProvider(
             Options setup,
             IConnectionMultiplexer redis,
-            ILogger<AudioStreamPublisher> log)
+            ILogger<AudioStreamProvider> log)
             : base(setup, redis, log)
         { }
     }

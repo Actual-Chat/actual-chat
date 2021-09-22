@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
-    <ProjectReference Include="..\..\src\Blobs\Blobs.csproj" />
     <ProjectReference Include="..\..\src\Testing\Testing.csproj" />
   </ItemGroup>
 
