@@ -32,7 +32,7 @@ namespace ActualChat.Tests.Streaming
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var audioRecorder = services.GetRequiredService<IAudioRecorder>();
-            var audioRecordReader = services.GetRequiredService<AudioRecordReader>();
+            var audioRecordReader = services.GetRequiredService<AudioRecordProducer>();
             var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -40,24 +40,24 @@ namespace ActualChat.Tests.Streaming
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-            var recordingSpec = new AudioRecord(
+            var recordSpec = new AudioRecord(
                 "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var recordingTask = audioRecordReader.DequeueNewRecord(CancellationToken.None);
-
-            _ = audioRecorder.Record(session, recordingSpec, channel.Reader, CancellationToken.None);
+            var recordOptTask = audioRecordReader.TryProduce(CancellationToken.None);
+            _ = audioRecorder.Record(session, recordSpec, channel.Reader, CancellationToken.None);
             channel.Writer.Complete();
 
-            var recording = await recordingTask;
-            recording.Should().Be(recordingSpec with {
-                Id = recording!.Id,
-                UserId = recording.UserId
+            var recordOpt = await recordOptTask;
+            var record = recordOpt.Value;
+            record.Should().Be(recordSpec with {
+                Id = record!.Id,
+                UserId = record.UserId
             });
 
-            var channelReader = await audioRecordReader.GetContent(recording.Id, CancellationToken.None);
+            var channelReader = await audioRecordReader.GetStream(record.Id, CancellationToken.None);
             await foreach (var _ in channelReader.ReadAllAsync()) {}
         }
 
@@ -70,13 +70,14 @@ namespace ActualChat.Tests.Streaming
             var session = sessionFactory.CreateSession();
             _ = await appHost.SignIn(session, new User("", "Bob"));
             var audioRecorder = services.GetRequiredService<IAudioRecorder>();
-            var audioRecordReader = services.GetRequiredService<AudioRecordReader>();
+            var audioRecordReader = services.GetRequiredService<AudioRecordProducer>();
 
-            var dequeueTask = audioRecordReader.DequeueNewRecord(CancellationToken.None);
+            var recordOptTask = audioRecordReader.TryProduce(CancellationToken.None);
             var writtenSize =  await UploadRecording(session, "1", audioRecorder);
 
-            var record = await dequeueTask;
-            var recordStream = await audioRecordReader.GetContent(record!.Id, CancellationToken.None);
+            var recordOpt = await recordOptTask;
+            var record = recordOpt.Value;
+            var recordStream = await audioRecordReader.GetStream(record!.Id, CancellationToken.None);
             var readSize = await recordStream.ReadAllAsync().SumAsync(message => message.Chunk.Length);
 
             readSize.Should().Be(writtenSize);
@@ -88,8 +89,8 @@ namespace ActualChat.Tests.Streaming
         {
             using var appHost = await TestHostFactory.NewAppHost();
             var services = appHost.Services;
-            var streamingService = services.GetRequiredService<IAudioStreamReader>();
-            var serverSideStreamingService = services.GetRequiredService<AudioStreamPublisher>();
+            var audioStreamProvider = services.GetRequiredService<IAudioStreamProvider>();
+            var audioStreamPublisher = services.GetRequiredService<AudioStreamPublisher>();
 
             var streamId = (StreamId)"test-stream-id";
             var channel = Channel.CreateBounded<BlobPart>(
@@ -102,8 +103,8 @@ namespace ActualChat.Tests.Streaming
 
             var writeTask = ReadFromFile(channel.Writer);
 
-            var publishTask =  serverSideStreamingService.PublishStream(streamId, channel.Reader, CancellationToken.None);
-            var readTask = ReadDistributedData(streamId, streamingService);
+            var publishTask =  audioStreamPublisher.PublishStream(streamId, channel.Reader, CancellationToken.None);
+            var readTask = ReadDistributedData(streamId, audioStreamProvider);
 
             await Task.WhenAll(writeTask, readTask);
             await publishTask;
@@ -114,7 +115,7 @@ namespace ActualChat.Tests.Streaming
             readSize.Should().Be(writtenSize);
         }
 
-        private static async Task<int> ReadDistributedData(StreamId streamId, IStreamReader<BlobPart> sr)
+        private static async Task<int> ReadDistributedData(StreamId streamId, IStreamProvider<StreamId, BlobPart> sr)
         {
             var audioReader = await sr.GetStream(streamId, CancellationToken.None);
             return await audioReader.ReadAllAsync().SumAsync(message => message.Chunk.Length);

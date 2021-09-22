@@ -19,10 +19,10 @@ namespace ActualChat.Audio
     {
         private readonly ITranscriber _transcriber;
         private readonly AudioSaver _audioSaver;
-        private readonly AudioRecordReader _audioRecorder;
+        private readonly AudioRecordProducer _audioRecorder;
         private readonly AudioActivityExtractor _audioActivityExtractor;
-        private readonly IStreamPublisher<BlobPart> _audioPublisher;
-        private readonly IStreamPublisher<TranscriptPart> _transcriptPublisher;
+        private readonly AudioStreamPublisher _audioPublisher;
+        private readonly TranscriptStreamPublisher _transcriptPublisher;
         private readonly IServerSideChatService _chat;
         private readonly ILogger<AudioOrchestrator> _log;
 
@@ -31,7 +31,7 @@ namespace ActualChat.Audio
         public AudioOrchestrator(
             ITranscriber transcriber,
             AudioSaver audioSaver,
-            AudioRecordReader audioRecorder,
+            AudioRecordProducer audioRecorder,
             AudioActivityExtractor audioActivityExtractor,
             AudioStreamPublisher audioPublisher,
             TranscriptStreamPublisher transcriptPublisher,
@@ -66,8 +66,8 @@ namespace ActualChat.Audio
         internal async Task<AudioRecord?> DequeueNewAudioRecord(CancellationToken cancellationToken)
         {
             while (true) {
-                var record = await _audioRecorder.DequeueNewRecord(cancellationToken);
-                if (record != null)
+                var recordOpt = await _audioRecorder.TryProduce(cancellationToken);
+                if (recordOpt.IsSome(out var record))
                     return record;
                 cancellationToken.ThrowIfCancellationRequested();
             }
@@ -75,7 +75,7 @@ namespace ActualChat.Audio
 
         internal async Task StartAudioPipeline(AudioRecord audioRecord, CancellationToken cancellationToken)
         {
-            var audioReader = await _audioRecorder.GetContent(audioRecord.Id, cancellationToken);
+            var audioReader = await _audioRecorder.GetStream(audioRecord.Id, cancellationToken);
             var segments = _audioActivityExtractor.GetSegmentsWithAudioActivity(audioRecord, audioReader);
             await foreach (var segment in segments.WithCancellation(cancellationToken)) {
                 var distributeStreamTask = DistributeAudioStream(segment, cancellationToken);

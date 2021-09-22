@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="Stl.Fusion.Client" />
     <PackageReference Include="Stl.Plugins" />
+    <PackageReference Include="Storage.Net" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
 
@@ -25,10 +26,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>StringIdentifiers.tt</DependentUpon>
     </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Identifiers\Generators" />
   </ItemGroup>
 
 </Project>

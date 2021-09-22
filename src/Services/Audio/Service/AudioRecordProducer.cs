@@ -1,19 +1,18 @@
-using ActualChat.Blobs;
 using ActualChat.Streaming.Server;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
 namespace ActualChat.Audio
 {
-    public class AudioStreamPublisher : RedisStreamPublisher<StreamId, BlobPart>
+    public class AudioRecordProducer : RedisContentProducer<AudioRecordId, AudioRecord>
     {
-        public new record Options : RedisStreamPublisher<StreamId, BlobPart>.Options
+        public new record Options : RedisContentProducer<AudioRecordId, AudioRecord>.Options
         { }
 
-        public AudioStreamPublisher(
+        public AudioRecordProducer(
             Options setup,
             IConnectionMultiplexer redis,
-            ILogger<AudioStreamPublisher> log)
+            ILogger<AudioRecordProducer> log)
             : base(setup, redis, log)
         { }
     }

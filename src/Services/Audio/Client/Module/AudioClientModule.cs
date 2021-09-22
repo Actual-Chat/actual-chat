@@ -24,8 +24,8 @@ namespace ActualChat.Audio.Client.Module
 
             services.AddSingleton<AudioClient>();
             services.AddTransient<IAudioRecorder>(c => c.GetRequiredService<AudioClient>());
-            services.AddTransient<IAudioStreamReader>(c => c.GetRequiredService<AudioClient>());
-            services.AddTransient<ITranscriptStreamReader>(c => c.GetRequiredService<AudioClient>());
+            services.AddTransient<IAudioStreamProvider>(c => c.GetRequiredService<AudioClient>());
+            services.AddTransient<ITranscriptStreamProvider>(c => c.GetRequiredService<AudioClient>());
         }
     }
 }

@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Streaming\Streaming.csproj" />
+    <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
   
   <ItemGroup>
