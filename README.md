@@ -1,5 +1,7 @@
 # Actual Chat
 
+Discord: https://discord.gg/W7JP3Gve
+
 ## Conventions
 
 We use:
