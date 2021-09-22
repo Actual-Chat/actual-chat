@@ -26,6 +26,7 @@ namespace ActualChat.Testing
                 HostConfigurationBuilder = cfg => {
                     cfg.Sources.Insert(0, new MemoryConfigurationSource() {
                         InitialData = new Dictionary<string, string>() {
+                            {WebHostDefaults.EnvironmentKey, "Development"},
                             {WebHostDefaults.StaticWebAssetsKey, manifestPath},
                         }
                     });

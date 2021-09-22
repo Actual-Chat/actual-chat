@@ -127,7 +127,7 @@
         var streamId = new StreamId(audioRecordId, 0);
         var reader = await _audioStreamProvider.GetStream(streamId, CancellationToken.None);
         await foreach (var audioMessage in reader.ReadAllAsync()) {
-            Console.WriteLine($"Got from server: {audioMessage.Chunk.Length} bytes");
+            Console.WriteLine($"Got from server: {audioMessage.Data.Length} bytes");
         }
     }
 

@@ -33,7 +33,7 @@ namespace ActualChat.Tests.Transcription
             var response = await client.RecognizeAsync(config, audio);
             Out.WriteLine(response.ToString());
         }
-        
+
         [Fact(Skip = "Manual")]
         public async Task GoogleStreamedRecognizeTest()
         {
@@ -56,9 +56,9 @@ namespace ActualChat.Tests.Transcription
                     SingleUtterance = false
                 }
             });
-            
+
             var writeTask = WriteToStream(streamingRecognize, audioBytes);
-            
+
             await foreach (var response in streamingRecognize.GetResponseStream()) {
                 if (response.Error != null)
                     Out.WriteLine(response.Error.Message);
@@ -68,7 +68,7 @@ namespace ActualChat.Tests.Transcription
 
             await writeTask;
         }
-        
+
         [Fact(Skip = "Manual")]
         public async Task GoogleStreamedRecognizeRepeatTest()
         {
@@ -91,9 +91,9 @@ namespace ActualChat.Tests.Transcription
                     SingleUtterance = false
                 }
             });
-            
+
             var writeTask = WriteToStream(streamingRecognize, audioBytes);
-            
+
             await foreach (var response in streamingRecognize.GetResponseStream()) {
                 if (response.Error != null)
                     Out.WriteLine(response.Error.Message);
@@ -103,7 +103,7 @@ namespace ActualChat.Tests.Transcription
 
             await writeTask;
         }
-        
+
         [Fact(Skip = "Manual")]
         public async Task GoogleMultiFileStreamedRecognizeTest()
         {
@@ -132,9 +132,9 @@ namespace ActualChat.Tests.Transcription
                     SingleUtterance = false
                 }
             });
-            
+
             var writeTask = WriteToStream(streamingRecognize, audio1,audio2,audio3,audio4,audio56,audio789,audioboy);
-            
+
             await foreach (var response in streamingRecognize.GetResponseStream()) {
                 if (response.Error != null)
                     Out.WriteLine(response.Error.Message);

@@ -41,13 +41,14 @@ namespace ActualChat.Tests.Audio
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
             var size = 0;
-            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel.Reader);
-            await foreach (var segment in segments) {
+            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel, default);
+            await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Chunk.Length);
-                var part = await segment.GetPartOnCompletion(CancellationToken.None);
+                size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Data.Length);
 
+                await segment.Run();
+                var part = segment.AudioStreamPart;
                 part.Document.Should().NotBeNull();
                 part.Metadata.Count.Should().BeGreaterThan(0);
             }
@@ -76,13 +77,16 @@ namespace ActualChat.Tests.Audio
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel.Reader);
-            await foreach (var segment in segments) {
+            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel, default);
+            await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                var part = await segment.GetPartOnCompletion(CancellationToken.None);
-                size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Chunk.Length);
+                size += await segment.GetStream()
+                    .ReadAllAsync()
+                    .SumAsync(p => p.Data.Length);
 
+                await segment.Run();
+                var part = segment.AudioStreamPart;
                 part.Document.Should().NotBeNull();
                 part.Metadata.Count.Should().BeGreaterThan(0);
             }
@@ -103,18 +107,20 @@ namespace ActualChat.Tests.Audio
                     AllowSynchronousContinuations = true
                 });
 
-            var readTask = ReadFromFile(channel.Writer);
+            _ = ReadFromFile(channel);
             var record = new AudioRecord(
                 "test-id", "1", "1",
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel.Reader);
-            await foreach (var segment in segments) {
+            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel, default);
+            await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                var part = await segment.GetPartOnCompletion(CancellationToken.None);
+
+                await segment.Run();
+                var part = segment.AudioStreamPart;
                 part.Document.Should().NotBeNull();
                 part.Metadata.Count.Should().BeGreaterThan(0);
             }
