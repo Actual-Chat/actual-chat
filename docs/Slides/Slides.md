@@ -301,7 +301,7 @@ Phone support:
 
 <h2>The only reason you can sell this UX?</h2>
 
-The Q. isn't specifically about Riptude &ndash; it's about every customer communication product on the market, standalone or embedded.
+The Q. isn't specifically about Riptide &ndash; it's about every customer communication product on the market, standalone or embedded.
 
 ---
 ![bg left:47%](./img/call-log-1.jpg)
