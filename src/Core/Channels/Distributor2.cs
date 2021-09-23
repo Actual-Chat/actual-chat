@@ -12,11 +12,7 @@ namespace ActualChat.Channels
         private readonly List<T> _buffer;
         private readonly Channel<ChannelWriter<T>> _newTargets;
         private readonly List<ChannelWriter<T>> _targets;
-        private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly TaskCompletionSource _completionSource;
-
-        private int _buffering = 0;
-        private Task? _bufferingTask;
+        private readonly Task _bufferingTask;
 
         public Distributor2(ChannelReader<T> source)
         {
@@ -25,83 +21,36 @@ namespace ActualChat.Channels
             _newTargets = Channel.CreateUnbounded<ChannelWriter<T>>(
                 new UnboundedChannelOptions { SingleReader = true });
             _targets = new List<ChannelWriter<T>>();
-            _cancellationTokenSource = new CancellationTokenSource();
-            _completionSource = new TaskCompletionSource();
+            _bufferingTask = Task.Run(() => StartBuffering(CancellationToken.None));
         }
         
-        public Task? RunningTask => _bufferingTask;
+        public Task RunningTask => _bufferingTask;
 
         public async Task AddTarget(ChannelWriter<T> channel, CancellationToken cancellationToken = default)
         {
-            if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0)
-                _bufferingTask = StartBuffering(_cancellationTokenSource.Token);
-
-            var buffering = Volatile.Read(ref _buffering);
-            if (buffering != 1)
-                _ = FillWithBuffered(channel, buffering);
+            if (_bufferingTask.IsCompleted)
+                _ = FillWithBuffered(channel);
             else
                 _newTargets.Writer.TryWrite(channel);
 
-            async Task FillWithBuffered(ChannelWriter<T> writer, int state)
+            async Task FillWithBuffered(ChannelWriter<T> target)
             {
-                if (state == 2) {
-                    await Task.Yield();
-
-                    Task? bufferingTask = null;
-                    while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
-                    await bufferingTask;
-                }
-
                 foreach (var item in _buffer)
-                    await writer.WriteAsync(item);
+                    await target.WriteAsync(item);
 
-                writer.Complete();
-            }
-        }
-
-        public ChannelReader<T> GetStream()
-        {
-            if (Interlocked.CompareExchange(ref _buffering, 1, 0) == 0)
-                _bufferingTask = StartBuffering(_cancellationTokenSource.Token);
-
-            var readChannel = Channel.CreateUnbounded<T>(
-                new UnboundedChannelOptions { SingleWriter = true });
-            var buffering = Volatile.Read(ref _buffering);
-            if (buffering != 1)
-                _ = FillWithBuffered(readChannel.Writer, buffering);
-            else
-                _newTargets.Writer.TryWrite(readChannel.Writer);
-
-            return readChannel.Reader;
-
-            async Task FillWithBuffered(ChannelWriter<T> writer, int state)
-            {
-                if (state == 2) {
-                    await Task.Yield();
-
-                    Task? bufferingTask = null;
-                    while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
-                    await bufferingTask;
-                }
-
-                foreach (var item in _buffer)
-                    await writer.WriteAsync(item);
-
-                writer.Complete();
+                target.Complete();
             }
         }
 
         private async Task StartBuffering(CancellationToken cancellationToken)
         {
-            await Task.Yield();
             try {
                 var targets = _newTargets.Reader;
-                var items = _source;
                 var itemAvailable = true;
                 Task<bool>? newItemTask = null;
                 Task<bool>? newTargetTask = null;
                 while (itemAvailable) {
-                    newItemTask ??= items.WaitToReadAsync(cancellationToken).AsTask();
+                    newItemTask ??= _source.WaitToReadAsync(cancellationToken).AsTask();
                     newTargetTask ??= targets.WaitToReadAsync(cancellationToken).AsTask();
                     await Task.WhenAny(newTargetTask, newItemTask).ConfigureAwait(false);
 
@@ -123,7 +72,7 @@ namespace ActualChat.Channels
                         itemAvailable = await newItemTask;
                         newItemTask = null;
                         if (itemAvailable)
-                            while (items.TryRead(out var item)) {
+                            while (_source.TryRead(out var item)) {
                                 _buffer.Add(item);
                                 foreach (var target in _targets)
                                     await target.WriteAsync(item, cancellationToken);
