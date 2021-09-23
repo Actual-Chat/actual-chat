@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -90,82 +91,67 @@ namespace ActualChat.Channels
             }
         }
 
-        public async Task CompleteBuffering()
-        {
-            var originalState = Interlocked.Exchange(ref _buffering, 2);
-            _newTargets.Writer.Complete();
-            _completionSource.SetResult();
-
-            if (originalState == 1) {
-                Task? bufferingTask = null;
-                while (bufferingTask == null) bufferingTask = Volatile.Read(ref _bufferingTask);
-                await bufferingTask;
-            }
-            else {
-                var startBufferingTask = StartBuffering(_cancellationTokenSource.Token);
-                Volatile.Write(ref _bufferingTask, startBufferingTask);
-                await startBufferingTask;
-            }
-
-            Volatile.Write(ref _buffering, 3);
-
-            _cancellationTokenSource.Cancel();
-        }
-
         private async Task StartBuffering(CancellationToken cancellationToken)
         {
             await Task.Yield();
-            var readers = _newTargets.Reader;
-            var messages = _source;
-            var readerAvailable = true;
-            var messageAvailable = true;
-            while (readerAvailable || messageAvailable) {
-                if (cancellationToken.IsCancellationRequested) {
-                    foreach (var reader in _targets)
-                        reader.Complete();
-                    break;
-                }
-                var watForReader = readerAvailable
-                    ? readers.WaitToReadAsync(cancellationToken).AsTask()
-                    : Task.FromResult(false);
-                var waitForMessage = messageAvailable
-                    ? messages.WaitToReadAsync(cancellationToken).AsTask()
-                    : Task.FromResult(false);
-                if (readerAvailable)
-                    await Task.WhenAny(watForReader, waitForMessage);
-                else
-                    await waitForMessage;
+            try {
+                var targets = _newTargets.Reader;
+                var items = _source;
+                var itemAvailable = true;
+                Task<bool>? newItemTask = null;
+                Task<bool>? newTargetTask = null;
+                while (itemAvailable) {
+                    newItemTask ??= items.WaitToReadAsync(cancellationToken).AsTask();
+                    newTargetTask ??= targets.WaitToReadAsync(cancellationToken).AsTask();
+                    await Task.WhenAny(newTargetTask, newItemTask).ConfigureAwait(false);
 
-                if (readerAvailable && watForReader.IsCompleted) {
-                    readerAvailable = await watForReader;
-                    if (readerAvailable)
-                        while (readers.TryRead(out var reader)) {
-                            foreach (var bufferedMessage in _buffer)
-                                await reader.WriteAsync(bufferedMessage, cancellationToken);
-                            if (messageAvailable)
-                                _targets.Add(reader);
-                            else
-                                reader.Complete();
-                        }
-                }
+                    if (newTargetTask.IsCompleted) {
+                        var targetAvailable = await newTargetTask;
+                        newTargetTask = null;
+                        if (targetAvailable)
+                            while (targets.TryRead(out var target)) {
+                                foreach (var item in _buffer)
+                                    await target.WriteAsync(item, cancellationToken);
+                                if (itemAvailable)
+                                    _targets.Add(target);
+                                else
+                                    target.Complete();
+                            }
+                    }
 
-                if (messageAvailable && waitForMessage.IsCompleted) {
-                    messageAvailable = await waitForMessage;
-                    if (messageAvailable)
-                        while (messages.TryRead(out var message)) {
-                            _buffer.Add(message);
-                            foreach (var reader in _targets)
-                                await reader.WriteAsync(message, cancellationToken);
-                        }
-                    else {
-                        foreach (var reader in _targets)
-                            reader.Complete();
-                        _targets.Clear();
+                    if (itemAvailable && newItemTask.IsCompleted) {
+                        itemAvailable = await newItemTask;
+                        newItemTask = null;
+                        if (itemAvailable)
+                            while (items.TryRead(out var item)) {
+                                _buffer.Add(item);
+                                foreach (var target in _targets)
+                                    await target.WriteAsync(item, cancellationToken);
+                            }
                     }
                 }
             }
+            catch (ChannelClosedException) {
+                foreach (var target in _targets)
+                    target.TryComplete();
+                _targets.Clear();
+            }
+            catch (Exception ex) {
+                foreach (var target in _targets)
+                    target.Complete(ex);
+                _targets.Clear();
+            }
+            
+            _newTargets.Writer.Complete();
+            while (await _newTargets.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            while (_newTargets.Reader.TryRead(out var newTarget)) {
+                foreach (var item in _buffer)
+                    await newTarget.WriteAsync(item, cancellationToken);
+                _targets.Add(newTarget);
+            }
 
-            _targets.Clear();
+            foreach (var target in _targets) 
+                target.TryComplete();
         }
     }
 }
