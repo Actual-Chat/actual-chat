@@ -8,14 +8,14 @@ using Stl.Async;
 
 namespace ActualChat.Channels
 {
-    public sealed class ChannelCopier<T> : AsyncProcessBase
+    public sealed class Distributor<T> : AsyncProcessBase
     {
         public ChannelReader<T> Source { get; }
         private readonly List<ChannelWriter<T>> _targets = new();
         private readonly Channel<(ChannelWriter<T> Target, int CopiedItemCount)> _newTargets;
         private volatile ImmutableList<Result<T>> _buffer = ImmutableList<Result<T>>.Empty;
 
-        public ChannelCopier(ChannelReader<T> source)
+        public Distributor(ChannelReader<T> source)
         {
             Source = source;
             _newTargets = Channel.CreateBounded<(ChannelWriter<T>, int)>(
@@ -55,28 +55,37 @@ namespace ActualChat.Channels
                     newTargetTask ??= _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
                     await Task.WhenAny(newTargetTask, newItemTask).ConfigureAwait(false);
 
-                    if (newTargetTask.IsCompleted) {
-                        if ((await newTargetTask).IsSome(out var newTargetDef)) {
-                            var (newTarget, copiedItemCount) = newTargetDef;
-                            await CopyBuffer(newTarget, copiedItemCount, cancellationToken).ConfigureAwait(false);
-                            _targets.Add(newTarget);
-                        }
-                        else
-                            // The copier is disposed
-                            mustContinue = false;
-                        newTargetTask = null;
-                    }
-
                     if (newItemTask.IsCompleted) {
                         var newItem = await newItemTask;
                         _buffer = _buffer.Add(newItem);
                         foreach (var target in _targets)
                             await target.WriteResultAsync(newItem, cancellationToken);
+                        newItemTask = null;
                         if (newItem.Error is ChannelClosedException)
                             mustContinue = false;
-                        newItemTask = null;
+                    }
+
+                    if (newTargetTask.IsCompleted) {
+                        if ((await newTargetTask).IsSome(out var newTarget)) {
+                            await CopyBuffer(newTarget.Target, newTarget.CopiedItemCount, cancellationToken).ConfigureAwait(false);
+                            _targets.Add(newTarget.Target);
+                        }
+                        else
+                            // The distributor is disposed - we don't care about any items in this case
+                            mustContinue = false;
+                        newTargetTask = null;
                     }
                 } while (mustContinue);
+
+                _newTargets.Writer.TryComplete();
+                if (Source.Completion.IsCompleted) {
+                    // No more items, but we have to process the remaining new targets
+                    while (await _newTargets.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+                    while (_newTargets.Reader.TryRead(out var newTarget)) {
+                        await CopyBuffer(newTarget.Target, newTarget.CopiedItemCount, cancellationToken).ConfigureAwait(false);
+                        _targets.Add(newTarget.Target);
+                    }
+                }
             }
             finally {
                 _ = DisposeAsync();

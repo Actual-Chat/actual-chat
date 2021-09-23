@@ -11,9 +11,9 @@ namespace ActualChat.Channels
     {
         internal static readonly ChannelClosedException ChannelClosedError = new();
 
-        public static ChannelCopier<T> CreateCopier<T>(this Channel<T> source)
+        public static Distributor<T> Distribute<T>(this Channel<T> source)
             => new(source);
-        public static ChannelCopier<T> CreateCopier<T>(this ChannelReader<T> source)
+        public static Distributor<T> Distribute<T>(this ChannelReader<T> source)
             => new(source);
 
         public static async ValueTask<Option<T>> TryReadAsync<T>(
@@ -24,6 +24,28 @@ namespace ActualChat.Channels
             while (channel.TryRead(out var value))
                 return value;
             return Option<T>.None;
+        }
+
+        public static bool TryReadResult<T>(
+            this ChannelReader<T> channel,
+            out Result<T> result)
+        {
+            try {
+                if (channel.TryRead(out var value)) {
+                    result = value;
+                    return true;
+                } else {
+                    result = default;
+                    return false;
+                }
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception e) {
+                result = Result.New<T>(default!, e);
+                return true;
+            }
         }
 
         public static async ValueTask<Result<T>> ReadResultAsync<T>(
