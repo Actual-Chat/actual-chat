@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Channels;
@@ -5,12 +6,40 @@ using System.Threading.Tasks;
 using ActualChat.Channels;
 using FluentAssertions;
 using Stl.Channels;
+using Stl.Testing;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace ActualChat.Tests.Channels
 {
-    public class DistributorTest
+    public class DistributorTest : TestBase
     {
+        public DistributorTest(ITestOutputHelper @out) : base(@out)
+        { }
+
+        [Fact]
+        public async Task DistributeCompletedEmptyChannelTest()
+        {
+            var cSource = Channel.CreateUnbounded<int>();
+            cSource.Writer.Complete();
+            var distributor = cSource.Distribute();
+            var cTarget = Channel.CreateUnbounded<int>();
+            await distributor.AddTarget(cTarget);
+            await cTarget.Reader.Completion;
+        }
+
+        [Fact]
+        public async Task DistributeEmptyChannelTest()
+        {
+            var cSource = Channel.CreateUnbounded<int>();
+            var distributor = cSource.Distribute();
+            var cTarget = Channel.CreateUnbounded<int>();
+            await distributor.AddTarget(cTarget);
+            cSource.Writer.Complete();
+            await cTarget.Reader.Completion;
+        }
+
+
         [Fact]
         public async Task BasicTest()
         {
@@ -29,10 +58,11 @@ namespace ActualChat.Tests.Channels
                 .ToArray();
             foreach (var channel in channels)
                 await distributor.AddTarget(channel);
-
             await copyTask;
             foreach (var channel in channels) {
+                // await channel.Reader.Completion;
                 var items = channel.ToAsyncEnumerable().ToEnumerable();
+                // var items = channel.Reader.ReadAllAsync().ToEnumerable();
                 items.Should().BeEquivalentTo(source);
             }
         }

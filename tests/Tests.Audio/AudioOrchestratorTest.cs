@@ -161,7 +161,11 @@ namespace ActualChat.Tests.Audio
             var streamId = new StreamId(audioRecordId, 0);
             var audioReader = await blobStreamReader.GetStream(streamId, CancellationToken.None);
 
-            return await audioReader.ReadAllAsync().SumAsync(message => message.Data.Length);
+            int sum = 0;
+            await foreach (BlobPart message in audioReader.ReadAllAsync()) 
+                sum += message.Data.Length;
+
+            return sum;
         }
 
         private static async Task<int> PushAudioData(Session session, string chatId, IAudioRecorder audioRecorder)
