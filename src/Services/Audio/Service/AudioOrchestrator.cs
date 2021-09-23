@@ -80,8 +80,7 @@ namespace ActualChat.Audio
 
         private async Task PersistSegment(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
         {
-            await audioRecordSegment.Run();
-            var audioStreamPart = audioRecordSegment.AudioStreamPart;
+            var audioStreamPart = await audioRecordSegment.GetAudioStreamPart();
             await _audioSaver.Save(audioStreamPart, cancellationToken);
         }
 
