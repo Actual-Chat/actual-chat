@@ -45,7 +45,8 @@ namespace ActualChat.Tests.Audio
             await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Data.Length);
+                var audio = await segment.GetStream();
+                size += await audio.ReadAllAsync().SumAsync(audioMessage => audioMessage.Data.Length);
 
                 var part = await segment.GetAudioStreamPart();
                 part.Document.Should().NotBeNull();
@@ -80,7 +81,8 @@ namespace ActualChat.Tests.Audio
             await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                size += await segment.GetStream()
+                var audio = await segment.GetStream();
+                size += await audio
                     .ReadAllAsync()
                     .SumAsync(p => p.Data.Length);
 

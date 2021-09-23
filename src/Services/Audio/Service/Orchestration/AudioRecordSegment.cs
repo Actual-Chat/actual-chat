@@ -39,13 +39,13 @@ namespace ActualChat.Audio.Orchestration
             _distributor = source.Distribute();
         }
 
-        public ChannelReader<BlobPart> GetStream()
+        public async Task<ChannelReader<BlobPart>> GetStream()
         {
             var channel = Channel.CreateUnbounded<BlobPart>(
                 new UnboundedChannelOptions {
                     SingleWriter = true
                 });
-            _distributor.AddTarget(channel);
+            await _distributor.AddTarget(channel.Writer);
             return channel.Reader;
         }
 

@@ -123,7 +123,7 @@ namespace ActualChat.Audio
                 };
                 var transcriptId = await _transcriber.BeginTranscription(command, cancellationToken);
 
-                var segmentReader = audioRecordSegment.GetStream();
+                var segmentReader = await audioRecordSegment.GetStream();
                 _ = PushAudioStreamForTranscription(transcriptId, segmentReader, cancellationToken);
 
                 var index = 0;
@@ -185,7 +185,7 @@ namespace ActualChat.Audio
             await _chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken);
         }
 
-        private Task DistributeAudioStream(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
-            => _audioPublisher.PublishStream(audioRecordSegment.StreamId, audioRecordSegment.GetStream(), cancellationToken);
+        private async Task DistributeAudioStream(AudioRecordSegment audioRecordSegment, CancellationToken cancellationToken)
+            => await _audioPublisher.PublishStream(audioRecordSegment.StreamId, await audioRecordSegment.GetStream(), cancellationToken);
     }
 }
