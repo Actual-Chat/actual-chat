@@ -11,9 +11,9 @@ namespace ActualChat.Channels
     {
         internal static readonly ChannelClosedException ChannelClosedError = new();
 
-        public static Distributor<T> Distribute<T>(this Channel<T> source)
+        public static Distributor2<T> Distribute<T>(this Channel<T> source)
             => new(source);
-        public static Distributor<T> Distribute<T>(this ChannelReader<T> source)
+        public static Distributor2<T> Distribute<T>(this ChannelReader<T> source)
             => new(source);
 
         public static async ValueTask<Option<T>> TryReadAsync<T>(
