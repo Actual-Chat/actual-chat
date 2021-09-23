@@ -10,14 +10,14 @@ namespace ActualChat.Channels
 {
     public sealed class Distributor<T> : AsyncProcessBase
     {
-        public ChannelReader<T> Source { get; }
+        private readonly ChannelReader<T> _source;
         private readonly List<ChannelWriter<T>> _targets = new();
         private readonly Channel<(ChannelWriter<T> Target, int CopiedItemCount)> _newTargets;
         private volatile ImmutableList<Result<T>> _buffer = ImmutableList<Result<T>>.Empty;
 
         public Distributor(ChannelReader<T> source)
         {
-            Source = source;
+            _source = source;
             _newTargets = Channel.CreateBounded<(ChannelWriter<T>, int)>(
                 new BoundedChannelOptions(16) {
                     SingleReader = true,
@@ -51,7 +51,7 @@ namespace ActualChat.Channels
                 Task<Result<T>>? newItemTask = null;
                 Task<Option<(ChannelWriter<T> Target, int CopiedItemCount)>>? newTargetTask = null;
                 do {
-                    newItemTask ??= Source.ReadResultAsync(cancellationToken).AsTask();
+                    newItemTask ??= _source.ReadResultAsync(cancellationToken).AsTask();
                     newTargetTask ??= _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
                     await Task.WhenAny(newTargetTask, newItemTask).ConfigureAwait(false);
 
@@ -78,7 +78,7 @@ namespace ActualChat.Channels
                 } while (mustContinue);
 
                 _newTargets.Writer.TryComplete();
-                if (Source.Completion.IsCompleted) {
+                if (_source.Completion.IsCompleted) {
                     // No more items, but we have to process the remaining new targets
                     while (await _newTargets.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
                     while (_newTargets.Reader.TryRead(out var newTarget)) {
