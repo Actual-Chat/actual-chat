@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Stl;
-using Stl.Async;
 
 namespace ActualChat.Channels
 {
@@ -11,10 +10,14 @@ namespace ActualChat.Channels
     {
         internal static readonly ChannelClosedException ChannelClosedError = new();
 
-        public static Distributor2<T> Distribute<T>(this Channel<T> source)
-            => new(source);
-        public static Distributor2<T> Distribute<T>(this ChannelReader<T> source)
-            => new(source);
+        public static ChannelDistributor<T> Distribute<T>(
+            this Channel<T> source,
+            CancellationToken cancellationToken = default)
+            => new(source, cancellationToken);
+        public static ChannelDistributor<T> Distribute<T>(
+            this ChannelReader<T> source,
+            CancellationToken cancellationToken = default)
+            => new(source, cancellationToken);
 
         public static async ValueTask<Option<T>> TryReadAsync<T>(
             this ChannelReader<T> channel,
