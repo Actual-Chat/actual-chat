@@ -47,8 +47,7 @@ namespace ActualChat.Tests.Audio
                 segment.AudioRecord.Should().Be(record);
                 size += await segment.GetStream().ReadAllAsync().SumAsync(audioMessage => audioMessage.Data.Length);
 
-                await segment.Run();
-                var part = segment.AudioStreamPart;
+                var part = await segment.GetAudioStreamPart();
                 part.Document.Should().NotBeNull();
                 part.Metadata.Count.Should().BeGreaterThan(0);
             }
@@ -85,8 +84,7 @@ namespace ActualChat.Tests.Audio
                     .ReadAllAsync()
                     .SumAsync(p => p.Data.Length);
 
-                await segment.Run();
-                var part = segment.AudioStreamPart;
+                var part = await segment.GetAudioStreamPart();
                 part.Document.Should().NotBeNull();
                 part.Metadata.Count.Should().BeGreaterThan(0);
             }
@@ -119,8 +117,7 @@ namespace ActualChat.Tests.Audio
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
 
-                await segment.Run();
-                var part = segment.AudioStreamPart;
+                var part = await segment.GetAudioStreamPart();
                 part.Document.Should().NotBeNull();
                 part.Metadata.Count.Should().BeGreaterThan(0);
             }

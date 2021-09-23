@@ -46,10 +46,9 @@ namespace ActualChat.Audio.Orchestration
                     SingleWriter = true,
                     AllowSynchronousContinuations = false
                 });
-            await using var segment = new AudioRecordSegment(
+            var segment = new AudioRecordSegment(
                 segmentIndex, audioRecord,
                 webmBuilder, metadata, 0, audioSource);
-            _ = segment.Run();
             await segmentWriter.WriteAsync(segment, cancellationToken);
             try {
                 var lastState = new WebMReader.State();
