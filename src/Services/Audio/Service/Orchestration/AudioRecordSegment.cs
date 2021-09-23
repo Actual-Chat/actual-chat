@@ -13,7 +13,7 @@ namespace ActualChat.Audio.Orchestration
         private readonly WebMDocumentBuilder _webMBuilder;
         private readonly IReadOnlyList<AudioMetadataEntry> _metadata;
         private readonly double _offset;
-        private readonly Distributor2<BlobPart> _distributor;
+        private readonly ChannelDistributor<BlobPart> _distributor;
         private AudioStreamPart? _audioStreamPart;
 
         public StreamId StreamId { get; }
@@ -49,7 +49,7 @@ namespace ActualChat.Audio.Orchestration
 
         public async Task<AudioStreamPart> GetAudioStreamPart()
         {
-            await (_distributor.RunningTask ?? Task.CompletedTask);
+            await _distributor.DistributeTask;
             return _audioStreamPart ??= new AudioStreamPart(
                 Index,
                 StreamId,

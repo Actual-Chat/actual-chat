@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Channels;
@@ -20,34 +19,44 @@ namespace ActualChat.Tests.Channels
         [Fact]
         public async Task DistributeCompletedEmptyChannelTest()
         {
-            var cSource = Channel.CreateUnbounded<int>();
-            cSource.Writer.Complete();
-            var distributor = cSource.Distribute();
-            var cTarget = Channel.CreateUnbounded<int>();
-            await distributor.AddTarget(cTarget);
-            await cTarget.Reader.Completion;
+            var tasks = Enumerable.Range(0, 10).Select(async _ => {
+                var cSource = Channel.CreateUnbounded<int>();
+                cSource.Writer.Complete();
+                var distributor = cSource.Distribute();
+                var cTarget = Channel.CreateUnbounded<int>();
+                await distributor.AddTarget(cTarget);
+                await cTarget.Reader.Completion;
+            }).ToArray();
+            foreach (var task in tasks)
+                await task;
         }
 
         [Fact]
         public async Task DistributeEmptyChannelTest()
         {
-            var cSource = Channel.CreateUnbounded<int>();
-            var distributor = cSource.Distribute();
-            var cTarget = Channel.CreateUnbounded<int>();
-            await distributor.AddTarget(cTarget);
-            cSource.Writer.Complete();
-            await cTarget.Reader.Completion;
+            var tasks = Enumerable.Range(0, 10).Select(async _ => {
+                var cSource = Channel.CreateUnbounded<int>();
+                var distributor = cSource.Distribute();
+                var cTarget = Channel.CreateUnbounded<int>();
+                await distributor.AddTarget(cTarget);
+                cSource.Writer.Complete();
+                await cTarget.Reader.Completion;
+            }).ToArray();
+            foreach (var task in tasks)
+                await task;
         }
-
 
         [Fact]
         public async Task BasicTest()
         {
-            await RunTest1(Enumerable.Range(0, 0));
-            await RunTest1(Enumerable.Range(0, 3));
+            var tasks = Enumerable.Range(0, 50)
+                .Select(i => RunRangeTest(Enumerable.Range(0, i)))
+                .ToArray();
+            foreach (var task in tasks)
+                await task;
         }
 
-        private async Task RunTest1<T>(IEnumerable<T> source)
+        private async Task RunRangeTest<T>(IEnumerable<T> source)
         {
             var cSource = Channel.CreateUnbounded<T>();
             var distributor = cSource.Distribute();
