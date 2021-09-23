@@ -61,7 +61,7 @@ namespace ActualChat.Channels
                         foreach (var target in _targets)
                             await target.WriteResultAsync(newItem, cancellationToken);
                         newItemTask = null;
-                        if (newItem.Error is ChannelClosedException)
+                        if (newItem.HasError)
                             mustContinue = false;
                     }
 
