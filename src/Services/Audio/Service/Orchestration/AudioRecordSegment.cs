@@ -15,7 +15,7 @@ namespace ActualChat.Audio.Orchestration
         private readonly WebMDocumentBuilder _webMBuilder;
         private readonly IReadOnlyList<AudioMetadataEntry> _metadata;
         private readonly double _offset;
-        private readonly Distributor<BlobPart> _distributor;
+        private readonly Distributor2<BlobPart> _distributor;
         private AudioStreamPart? _audioStreamPart;
 
         public StreamId StreamId { get; }
