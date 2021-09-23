@@ -4,7 +4,6 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Blobs;
 using ActualChat.Processing;
-using ActualChat.Streaming.Server.Internal;
 using MessagePack;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -55,7 +54,6 @@ namespace ActualChat.Streaming.Server
                         continue;
                     return MessagePackSerializer.Deserialize<TContent>(serializedContent);
                 }
-
             }
             finally {
                 try {
@@ -78,9 +76,8 @@ namespace ActualChat.Streaming.Server
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-
-            var streamConverter = Setup.CreateStreamConverter(db, Log);
-            _ = streamConverter.Convert(streamId, channel.Writer, cancellationToken);
+            var streamKey = Setup.StreamKeyProvider.Invoke(streamId);
+            _ = db.ReadStream(streamKey, channel, Setup, cancellationToken);
             return Task.FromResult(channel.Reader);
         }
     }
