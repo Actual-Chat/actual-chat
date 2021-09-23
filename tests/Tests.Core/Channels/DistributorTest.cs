@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -10,7 +9,7 @@ using Xunit;
 
 namespace ActualChat.Tests.Channels
 {
-    public class ChannelCopierTest
+    public class DistributorTest
     {
         [Fact]
         public async Task BasicTest()
@@ -22,7 +21,7 @@ namespace ActualChat.Tests.Channels
         private async Task RunTest1<T>(IEnumerable<T> source)
         {
             var cSource = Channel.CreateUnbounded<T>();
-            var copier = cSource.CreateCopier();
+            var copier = cSource.Distribute();
             var copyTask = source.CopyTo(cSource, ChannelCompletionMode.CompleteAndPropagateError);
 
             var channels = Enumerable.Range(0, 2)

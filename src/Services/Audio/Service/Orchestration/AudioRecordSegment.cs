@@ -15,7 +15,7 @@ namespace ActualChat.Audio.Orchestration
         private readonly WebMDocumentBuilder _webMBuilder;
         private readonly IReadOnlyList<AudioMetadataEntry> _metadata;
         private readonly double _offset;
-        private readonly ChannelCopier<BlobPart> _channelCopier;
+        private readonly Distributor<BlobPart> _distributor;
         private AudioStreamPart? _audioStreamPart;
 
         public StreamId StreamId { get; }
@@ -36,7 +36,7 @@ namespace ActualChat.Audio.Orchestration
             _webMBuilder = webMBuilder;
             _metadata = metadata;
             _offset = offset;
-            _channelCopier = source.CreateCopier();
+            _distributor = source.Distribute();
         }
 
         public ChannelReader<BlobPart> GetStream()
@@ -45,13 +45,13 @@ namespace ActualChat.Audio.Orchestration
                 new UnboundedChannelOptions {
                     SingleWriter = true
                 });
-            _channelCopier.AddTarget(channel);
+            _distributor.AddTarget(channel);
             return channel.Reader;
         }
 
         public async Task<AudioStreamPart> GetAudioStreamPart()
         {
-            await (_channelCopier.RunningTask ?? Task.CompletedTask);
+            await (_distributor.RunningTask ?? Task.CompletedTask);
             return _audioStreamPart ??= new AudioStreamPart(
                 Index,
                 StreamId,
