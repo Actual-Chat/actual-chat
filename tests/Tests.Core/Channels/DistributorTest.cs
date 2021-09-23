@@ -15,20 +15,20 @@ namespace ActualChat.Tests.Channels
         public async Task BasicTest()
         {
             await RunTest1(Enumerable.Range(0, 0));
-            // await RunTest1(Enumerable.Range(0, 3));
+            await RunTest1(Enumerable.Range(0, 3));
         }
 
         private async Task RunTest1<T>(IEnumerable<T> source)
         {
             var cSource = Channel.CreateUnbounded<T>();
-            var copier = cSource.Distribute();
+            var distributor = cSource.Distribute();
             var copyTask = source.CopyTo(cSource, ChannelCompletionMode.CompleteAndPropagateError);
 
             var channels = Enumerable.Range(0, 2)
                 .Select(_ => Channel.CreateUnbounded<T>())
                 .ToArray();
             foreach (var channel in channels)
-                await copier.AddTarget(channel);
+                await distributor.AddTarget(channel);
 
             await copyTask;
             foreach (var channel in channels) {
