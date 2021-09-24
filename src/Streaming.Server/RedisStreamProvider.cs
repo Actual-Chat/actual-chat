@@ -36,8 +36,8 @@ namespace ActualChat.Streaming.Server
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-            var streamKey = Setup.StreamKeyProvider.Invoke(streamId);
-            _ = db.ReadStream(streamKey, channel, Setup, cancellationToken);
+            var streamer = Setup.GetPartStreamer(db, streamId);
+            _ = streamer.Read(channel, cancellationToken);
             return Task.FromResult(channel.Reader);
         }
     }
