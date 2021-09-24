@@ -10,7 +10,6 @@ namespace ActualChat.Streaming
         where TRecordId : struct
         where TRecord : class, IHasId<TRecordId>
     {
-        public RecordWorkItem() : this(default!, default)
-        { }
+        public RecordWorkItem() : this(default!, default) { }
     }
 }

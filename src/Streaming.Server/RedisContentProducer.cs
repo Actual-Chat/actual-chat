@@ -8,26 +8,33 @@ using MessagePack;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using Stl;
-using Stl.Async;
 
 namespace ActualChat.Streaming.Server
 {
     public abstract class RedisContentProducer<TContentId, TContent> :
             IAsyncProducer<TContent>,
-            IStreamProvider<TContentId, BlobPart>
+            IStreamProvider<TContentId, BlobPart>,
+            IAsyncDisposable
         where TContentId : notnull
         where TContent : class, IHasId<TContentId>
     {
         public record Options : RedisStreamingOptionsBase<TContentId, BlobPart>
         {
-            public string NewContentNewsChannelKey { get; init; } = "new-content";
-            public TimeSpan WaitForNewContentTimeout { get; init; } = TimeSpan.FromSeconds(25);
+            public string ContentQueueKey { get; init; } = "content";
+            public RedisQueue<TContent>.Options ContentQueueOptions { get; init; } = new();
 
-            public Options() => KeyPrefix = typeof(TContent).Name;
+            public Options()
+                => KeyPrefix = typeof(TContent).Name;
+
+            public virtual RedisQueue<TContent> GetContentQueue(IDatabase database)
+                => new(ContentQueueOptions, database, ContentQueueKey);
+
         }
 
-        protected Options Setup { get; init; }
-        protected IConnectionMultiplexer Redis { get; init; }
+        protected Options Setup { get; }
+        protected IConnectionMultiplexer Redis { get; }
+        protected IDatabase Database { get; }
+        protected RedisQueue<TContent> ContentQueue { get; }
         protected ILogger Log { get; }
 
         public RedisContentProducer(
@@ -38,37 +45,18 @@ namespace ActualChat.Streaming.Server
             Log = log;
             Setup = setup;
             Redis = redis;
+            Database = Setup.GetDatabase(Redis);
+            ContentQueue = Setup.GetContentQueue(Database);
         }
 
+        public ValueTask DisposeAsync()
+            => ContentQueue.DisposeAsync();
+
         public async ValueTask<TContent> Produce(CancellationToken cancellationToken)
-        {
-            var db = Setup.GetDatabase(Redis);
-            var subscriber = Redis.GetSubscriber();
-            try {
-                var newContentNews = await subscriber.SubscribeAsync(Setup.NewContentNewsChannelKey);
-                while (true) {
-                    await newContentNews.ReadAsync(cancellationToken).AsTask()
-                        .WithTimeout(Setup.WaitForNewContentTimeout, cancellationToken);
-                    var serializedContent = await db.ListRightPopAsync(Setup.NewContentNewsChannelKey);
-                    if (serializedContent.IsNullOrEmpty) // Another consumer already popped the value
-                        continue;
-                    return MessagePackSerializer.Deserialize<TContent>(serializedContent);
-                }
-            }
-            finally {
-                try {
-                    if (subscriber != null)
-                        await subscriber.UnsubscribeAsync(Setup.NewContentNewsChannelKey);
-                }
-                catch {
-                    // Intended
-                }
-            }
-        }
+            => await ContentQueue.Dequeue(cancellationToken);
 
         public Task<ChannelReader<BlobPart>> GetStream(TContentId streamId, CancellationToken cancellationToken)
         {
-            var db = Setup.GetDatabase(Redis);
             var channel = Channel.CreateBounded<BlobPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -76,8 +64,8 @@ namespace ActualChat.Streaming.Server
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-            var streamKey = Setup.StreamKeyProvider.Invoke(streamId);
-            _ = db.ReadStream(streamKey, channel, Setup, cancellationToken);
+            var partStreamer = Setup.GetPartStreamer(Database, streamId);
+            _ = partStreamer.Read(channel, cancellationToken);
             return Task.FromResult(channel.Reader);
         }
     }
