@@ -16,7 +16,7 @@ namespace ActualChat.Streaming.Server
             public string ItemKey { get; init; } = "v";
             public string StatusKey { get; init; } = "s";
             public string CompletedStatus { get; init; } = "c";
-            public TimeSpan ReadItemTimeout { get; init; } = TimeSpan.FromSeconds(0.25);
+            public TimeSpan ReadItemTimeout { get; init; } = TimeSpan.FromSeconds(0.250);
             public ByteSerializer<T> Serializer { get; init; } = ByteSerializer<T>.Default;
         }
 
@@ -30,7 +30,7 @@ namespace ActualChat.Streaming.Server
             Setup = setup;
             Database = database;
             Key = key;
-            AppendPubSub = new RedisPubSub(database, Key + Setup.AppendPubSubKeySuffix);
+            AppendPubSub = new RedisPubSub(database, $"{typeof(T).Name}-{Key}{Setup.AppendPubSubKeySuffix}");
         }
 
         public async Task Read(ChannelWriter<T> target, CancellationToken cancellationToken = default)
@@ -58,8 +58,9 @@ namespace ActualChat.Streaming.Server
                         var appendOpt = await AppendPubSub.Fetch(cancellationToken)
                             .WithTimeout(Setup.ReadItemTimeout, cancellationToken)
                             .ConfigureAwait(false);
-                        if (appendOpt.IsNone())
-                            throw new TimeoutException("Timeout while trying to read the next stream item.");
+                        var (hasValue, fetch) = appendOpt;
+                        if (hasValue && fetch.IsNull)
+                            return;
                     }
                 }
             }
@@ -93,13 +94,16 @@ namespace ActualChat.Streaming.Server
                 }
                 finally {
                     if (mustNotify)
-                        await AppendPubSub.Publish(RedisValue.Null).ConfigureAwait(false);
+                        await AppendPubSub.Publish(RedisValue.EmptyString).ConfigureAwait(false);
                 }
                 if (!isStreaming) {
                     isStreaming = true;
                     await newStreamNotifier.Invoke(this).ConfigureAwait(false);
                 }
             }
+            if (!isStreaming) 
+                await newStreamNotifier.Invoke(this).ConfigureAwait(false);
+            
             await Database.StreamAddAsync(
                 Key, Setup.StatusKey, Setup.CompletedStatus,
                 maxLength: 1000, useApproximateMaxLength: true).ConfigureAwait(false);
@@ -112,7 +116,7 @@ namespace ActualChat.Streaming.Server
                 maxLength: 1000, useApproximateMaxLength: true)
                 .ConfigureAwait(false);
             if (notify)
-                await AppendPubSub.Publish(RedisValue.Null).ConfigureAwait(false);
+                await AppendPubSub.Publish(RedisValue.EmptyString).ConfigureAwait(false);
         }
 
         public Task Remove()
