@@ -12,13 +12,13 @@ namespace ActualChat.Streaming.Server
         public record Options
         {
             public string EnqueuePubSubKeySuffix { get; init; } = "-updates";
-            public TimeSpan DequeueTimeout { get; init; } = TimeSpan.FromSeconds(0.25);
+            public TimeSpan DequeueTimeout { get; init; } = TimeSpan.FromSeconds(0.250);
             public ByteSerializer<T> Serializer { get; init; } = ByteSerializer<T>.Default;
         }
 
         public Options Setup { get; }
         public IDatabase Database { get; }
-        public string Key { get; }
+        public string Key { get; } 
         public RedisPubSub EnqueuePubSub { get; }
 
         public RedisQueue(Options setup, IDatabase database, string key)
@@ -26,7 +26,7 @@ namespace ActualChat.Streaming.Server
             Setup = setup;
             Database = database;
             Key = key;
-            EnqueuePubSub = new RedisPubSub(database, Key + Setup.EnqueuePubSubKeySuffix);
+            EnqueuePubSub = new RedisPubSub(database, $"{typeof(T).Name}-{Key}{Setup.EnqueuePubSubKeySuffix}");
         }
 
         public ValueTask DisposeAsync()
@@ -36,7 +36,7 @@ namespace ActualChat.Streaming.Server
         {
             using var writer = Setup.Serializer.Serialize(item);
             await Database.ListLeftPushAsync(Key, writer.WrittenMemory);
-            await EnqueuePubSub.Publish(RedisValue.Null);
+            await EnqueuePubSub.Publish(RedisValue.EmptyString);
         }
 
         public async Task<T> Dequeue(CancellationToken cancellationToken = default)
@@ -45,11 +45,9 @@ namespace ActualChat.Streaming.Server
                 var value = await Database.ListRightPopAsync(Key);
                 if (!value.IsNullOrEmpty)
                     return Setup.Serializer.Deserialize(value);
-                var dequeueOpt = await EnqueuePubSub.Fetch(cancellationToken)
+                await EnqueuePubSub.Fetch(cancellationToken)
                     .WithTimeout(Setup.DequeueTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                if (dequeueOpt.IsNone())
-                    throw new TimeoutException("Timeout while trying to dequeue an item.");
             }
         }
 

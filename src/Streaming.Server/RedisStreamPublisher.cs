@@ -30,15 +30,8 @@ namespace ActualChat.Streaming.Server
         public Task PublishStream(TStreamId streamId, ChannelReader<TPart> content, CancellationToken cancellationToken)
         {
             var db = Setup.GetDatabase(Redis);
-            var channel = Channel.CreateBounded<TPart>(
-                new BoundedChannelOptions(100) {
-                    FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true,
-                    SingleWriter = true,
-                    AllowSynchronousContinuations = true
-                });
             var streamer = Setup.GetPartStreamer(db, streamId);
-            return streamer.Write(channel, cancellationToken);
+            return streamer.Write(content, cancellationToken);
         }
     }
 }

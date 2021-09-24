@@ -1,9 +1,10 @@
 using System;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Serialization;
 using StackExchange.Redis;
-using StackExchange.Redis.KeyspaceIsolation;
+using Stl;
 using Stl.Async;
 
 namespace ActualChat.Streaming.Server
@@ -15,14 +16,12 @@ namespace ActualChat.Streaming.Server
 
         public IDatabase Database { get; }
         public string Key { get; }
-        public string PrefixedKey { get; }
         public ISubscriber Subscriber => _subscriber ??= Database.Multiplexer.GetSubscriber();
 
         public RedisPubSub(IDatabase database, string key)
         {
             Database = database;
             Key = key;
-            PrefixedKey = ""; // TODO(AY): make it work
         }
 
         protected override async ValueTask DisposeInternal(bool disposing)
@@ -36,13 +35,23 @@ namespace ActualChat.Streaming.Server
             => _queue ??= await Subscriber.SubscribeAsync(Key).ConfigureAwait(false);
 
         public Task<long> Publish(RedisValue item)
-            => Subscriber.PublishAsync(Key, item);
+        {
+            if (item == RedisValue.Null)
+                throw new ArgumentOutOfRangeException(
+                    $"RedisValue.Null is not supported argument `{nameof(item)}` value");
+            
+            return Subscriber.PublishAsync(Key, item);
+        }
 
         public async Task<RedisValue> Fetch(CancellationToken cancellationToken = default)
         {
-            var queue = await GetQueue().ConfigureAwait(false);
-            var message = await queue.ReadAsync(cancellationToken).ConfigureAwait(false);
-            return message.Message;
+            try {
+                var queue = await GetQueue().ConfigureAwait(false);
+                var message = await queue.ReadAsync(cancellationToken).ConfigureAwait(false);
+                return message.Message;
+            }
+            catch (ChannelClosedException) { }
+            return RedisValue.Null;
         }
     }
 
@@ -64,10 +73,10 @@ namespace ActualChat.Streaming.Server
             return await base.Publish(writer.WrittenMemory).ConfigureAwait(false);
         }
 
-        public new async Task<T> Fetch(CancellationToken cancellationToken = default)
+        public new async Task<T?> Fetch(CancellationToken cancellationToken = default)
         {
             var value = await base.Fetch(cancellationToken).ConfigureAwait(false);
-            return Serializer.Deserialize((ReadOnlyMemory<byte>) value);
+            return value.IsNull ? default : Serializer.Deserialize(value);
         }
     }
 }
