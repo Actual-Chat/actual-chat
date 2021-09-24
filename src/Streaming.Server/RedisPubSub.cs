@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Serialization;
 using StackExchange.Redis;
+using StackExchange.Redis.KeyspaceIsolation;
 using Stl.Async;
 
 namespace ActualChat.Streaming.Server
@@ -14,12 +15,14 @@ namespace ActualChat.Streaming.Server
 
         public IDatabase Database { get; }
         public string Key { get; }
+        public string PrefixedKey { get; }
         public ISubscriber Subscriber => _subscriber ??= Database.Multiplexer.GetSubscriber();
 
         public RedisPubSub(IDatabase database, string key)
         {
             Database = database;
             Key = key;
+            PrefixedKey = ""; // TODO(AY): make it work
         }
 
         protected override async ValueTask DisposeInternal(bool disposing)
