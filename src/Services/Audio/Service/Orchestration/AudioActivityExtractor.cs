@@ -33,8 +33,8 @@ namespace ActualChat.Audio.Orchestration
 
         private async Task ExtractSegments(
             AudioRecord audioRecord,
-            ChannelReader<BlobPart> audioReader,
-            ChannelWriter<AudioRecordSegment> segmentWriter,
+            ChannelReader<BlobPart> content,
+            ChannelWriter<AudioRecordSegment> target,
             CancellationToken cancellationToken)
         {
             var segmentIndex = 0;
@@ -49,11 +49,11 @@ namespace ActualChat.Audio.Orchestration
             var segment = new AudioRecordSegment(
                 segmentIndex, audioRecord,
                 webmBuilder, metadata, 0, audioSource);
-            await segmentWriter.WriteAsync(segment, cancellationToken);
+            await target.WriteAsync(segment, cancellationToken);
             try {
                 var lastState = new WebMReader.State();
                 using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
-                await foreach (var part in audioReader.ReadAllAsync(cancellationToken)) {
+                await foreach (var part in content.ReadAllAsync(cancellationToken)) {
                     var (index, data) = part;
 
                     metadata.Add(new AudioMetadataEntry(index, 0, 0));
@@ -86,7 +86,7 @@ namespace ActualChat.Audio.Orchestration
             }
             finally {
                 audioSource.Writer.Complete();
-                segmentWriter.Complete();
+                target.Complete();
             }
         }
 

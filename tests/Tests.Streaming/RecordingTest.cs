@@ -56,8 +56,8 @@ namespace ActualChat.Tests.Streaming
                 UserId = record.UserId
             });
 
-            var channelReader = await audioRecordReader.GetStream(record.Id, CancellationToken.None);
-            await foreach (var _ in channelReader.ReadAllAsync()) {}
+            var stream = await audioRecordReader.GetStream(record.Id, CancellationToken.None);
+            await foreach (var _ in stream.ReadAllAsync()) {}
         }
 
         [Fact]
