@@ -11,6 +11,7 @@ namespace ActualChat.Streaming
         [property: DataMember(Order = 3)] int StreamStartedWithBlobPartNumber,
         [property: DataMember(Order = 4)] int CurrentBlobPartNumber) : IHasId<TRecordId> where TRecordId : struct
     {
-        public RecordReadProgress() : this(default, 0, StreamId.None, 0, 0) { }
+        public RecordReadProgress() : this(default, 0, StreamId.None, 0, 0) 
+        { }
     }
 }
