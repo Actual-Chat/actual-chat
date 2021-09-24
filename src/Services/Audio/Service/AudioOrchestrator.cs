@@ -100,7 +100,7 @@ namespace ActualChat.Audio
 
         private async Task TranscribeSegment(
             AudioRecordSegment audioRecordSegment,
-            ChannelWriter<TranscriptPart> transcriptWriter,
+            ChannelWriter<TranscriptPart> target,
             CancellationToken cancellationToken)
         {
             Exception? error = null;
@@ -136,7 +136,7 @@ namespace ActualChat.Audio
                                 speechFragment.TextIndex,
                                 speechFragment.StartOffset,
                                 speechFragment.Duration);
-                            await transcriptWriter.WriteAsync(message, cancellationToken);
+                            await target.WriteAsync(message, cancellationToken);
                         }
                         else if (fragmentVariant.Error != null) {
                             // TODO(AK) - think about additional scenarios of transcription error handling
@@ -157,7 +157,7 @@ namespace ActualChat.Audio
                 error = e;
             }
             finally {
-                transcriptWriter.Complete(error);
+                target.Complete(error);
             }
 
             async Task PushAudioStreamForTranscription(Symbol tId, ChannelReader<BlobPart> r, CancellationToken ct)

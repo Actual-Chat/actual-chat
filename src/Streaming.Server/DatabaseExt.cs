@@ -12,7 +12,7 @@ namespace ActualChat.Streaming.Server
         public static async Task ReadStream<T>(
             this IDatabase database,
             string streamKey,
-            ChannelWriter<T> channelWriter,
+            ChannelWriter<T> channel,
             RedisChannelOptions<T> options,
             CancellationToken cancellationToken = default)
         {
@@ -33,7 +33,7 @@ namespace ActualChat.Streaming.Server
 
                             var serializedItem = (ReadOnlyMemory<byte>) entry[options.PartKey];
                             var item = options.Deserializer.Invoke(serializedItem);
-                            await channelWriter.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+                            await channel.WriteAsync(item, cancellationToken).ConfigureAwait(false);
                             position = entry.Id;
                         }
                     else {
@@ -50,7 +50,7 @@ namespace ActualChat.Streaming.Server
                 error = e;
             }
             finally {
-                channelWriter.Complete(error);
+                channel.Complete(error);
             }
 
             async Task<bool> WaitForNewMessage()
