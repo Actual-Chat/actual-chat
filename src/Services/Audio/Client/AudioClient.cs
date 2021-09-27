@@ -13,7 +13,7 @@ namespace ActualChat.Audio.Client
     public class AudioClient : HubClientBase, IAudioRecorder, IAudioStreamProvider, ITranscriptStreamProvider
     {
         public AudioClient(IServiceProvider services) : base(services, "api/hub/audio") { }
-
+        
         public async Task Record(Session session, AudioRecord record, ChannelReader<BlobPart> content, CancellationToken cancellationToken)
         {
             await EnsureConnected(cancellationToken);

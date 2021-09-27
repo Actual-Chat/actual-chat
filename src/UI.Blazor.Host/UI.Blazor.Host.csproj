@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" />
   </ItemGroup>
 
   <ItemGroup>

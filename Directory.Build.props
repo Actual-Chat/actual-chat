@@ -3,16 +3,16 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
+    <ImplicitUsings>enable</ImplicitUsings>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <Authors>ActualChat, Inc.</Authors>
     <Company>ActualChat, Inc.</Company>
     <Copyright>Copyright ActualChat, Inc.</Copyright>
     <BaseName>ActualChat</BaseName>
-    <ProjectName>$([System.IO.Path]::GetFileNameWithoutExtension('$(MSBuildProjectFile)'))</ProjectName>
-    <ProjectGroupName>$([System.IO.Path]::GetFileName($([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)../..'))))</ProjectGroupName>
-    <NoPackageAnalysis>true</NoPackageAnalysis>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
+    <AssemblyName Condition="'$(ProjectGroupName)' != ''">$(BaseName).$(ProjectGroupName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
+    <RootNamespace Condition="'$(ProjectGroupName)' != ''">$(BaseName).$(ProjectGroupName)</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
@@ -22,10 +22,11 @@
     <DefaultLanguage>en-US</DefaultLanguage>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <NoLogo>true</NoLogo>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\</OutputPath>
+    <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
     <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

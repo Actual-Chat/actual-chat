@@ -20,7 +20,7 @@
     <XunitStartupAssembly>$(RepoName).Testing</XunitStartupAssembly>
     <XunitStartupFullName>$(RepoName).Testing.StartupBase</XunitStartupFullName>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <PackageReference Include="Moq" />
     <PackageReference Include="Moq.Analyzers" />
