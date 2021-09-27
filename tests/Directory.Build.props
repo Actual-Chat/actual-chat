@@ -33,9 +33,9 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="coverlet.collector" />
 
-    <Import Include="Xunit" />
-    <Import Include="Moq" />
-    <Import Include="FluentAssertions" />
+    <Using Include="Xunit" />
+    <Using Include="Moq" />
+    <Using Include="FluentAssertions" />
 
     <None Update="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
   </ItemGroup>

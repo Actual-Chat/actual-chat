@@ -16,8 +16,7 @@ public class StartupBase
                 cfg.Sources.Clear();
                 cfg.SetBasePath(dir);
                 cfg.AddJsonFile("testsettings.json", optional: false, reloadOnChange: false);
-                if (IsRunningInContainer())
-                {
+                if (IsRunningInContainer()) {
                     cfg.AddJsonFile("testsettings.docker.json", optional: false, reloadOnChange: false);
                 }
                 cfg.AddJsonFile("testsettings.local.json", optional: true, reloadOnChange: false);
@@ -40,8 +39,7 @@ public class StartupBase
 
     private void InitializeSettingsCore(TestSettings settings)
     {
-        if (string.IsNullOrEmpty(settings.TempDirectory))
-        {
+        if (string.IsNullOrEmpty(settings.TempDirectory)) {
             settings.TempDirectory = Path.Combine(GetBaseDirectory(), "tmp");
         }
 
