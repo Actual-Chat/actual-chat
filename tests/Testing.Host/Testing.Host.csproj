@@ -1,10 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
-    <RootNamespace>$(BaseName).Testing</RootNamespace>
+    <IsTestProject>false</IsTestProject>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Host\Host.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />

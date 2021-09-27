@@ -1,10 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
-    <RootNamespace>$(AssemblyName)</RootNamespace>
-  </PropertyGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>

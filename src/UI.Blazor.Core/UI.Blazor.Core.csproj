@@ -1,10 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
-
-  <PropertyGroup>
-    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
-    <RootNamespace>$(BaseName).UI.Blazor</RootNamespace>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Blazorise" />
     <PackageReference Include="Blazorise.Bootstrap" />

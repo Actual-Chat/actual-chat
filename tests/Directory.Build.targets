@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
+  <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences" Condition="$(CopyLocalLockFileAssemblies) == true">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)%(Filename).pdb')"
+          Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+    </ItemGroup>
+  </Target>
+  <PropertyGroup Condition="'$(UseDefaultStartup)' == 'false'">
+    <XunitStartupAssembly>$(AssemblyName)</XunitStartupAssembly>
+    <XunitStartupFullName>$(RootNamespace).Startup</XunitStartupFullName>
+  </PropertyGroup>
+</Project>

@@ -2,23 +2,42 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
   <PropertyGroup>
+    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
+    <OutputPath>$(RepoRoot)artifacts\tests</OutputPath>
+    <!-- CA1034 - Do not nest type -->
+    <!-- CA1822	- Member can be marked as static -->
+    <!-- RCS1090: Call 'ConfigureAwait(false)' -->
+    <!-- CS8604:  Possible null reference argument -->
+    <NoWarn>1701;1702;CA1034;CA1822;RCS1090;CS8604;</NoWarn>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
     <!-- Copy all references to output folder (important for coverage tools) -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-
-    <AssemblyName>$(BaseName).$(ProjectName)</AssemblyName>
-    <RootNamespace>$(AssemblyName)</RootNamespace>
+    <!-- Also we will copy all pdb from nupkg, it will help with debugging -->
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <AllowedReferenceRelatedFileExtensions>$(AllowedReferenceRelatedFileExtensions);.pdb</AllowedReferenceRelatedFileExtensions>
+    <UseDefaultStartup>true</UseDefaultStartup>
+    <XunitStartupAssembly>$(RepoName).Testing</XunitStartupAssembly>
+    <XunitStartupFullName>$(RepoName).Testing.StartupBase</XunitStartupFullName>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Moq.Analyzers" />
+    <PackageReference Include="Moq.Autocomplete" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Stl.Testing" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.analyzers" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="Xunit.DependencyInjection.Logging" />
+    <PackageReference Include="coverlet.collector" />
+
+    <Import Include="Xunit" />
+    <Import Include="Moq" />
+    <Import Include="FluentAssertions" />
+
+    <None Update="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
   </ItemGroup>
+
 </Project>
