@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Immutable;
 
+#pragma warning disable MA0049 // allows ActualChat.Chat.Chat 
+
 namespace ActualChat.Chat
 {
     public record Chat(ChatId Id)

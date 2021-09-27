@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\Core.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Core\Core.csproj" />
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="data\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

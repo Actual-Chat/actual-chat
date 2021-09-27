@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ActualChat.Users;
 
-namespace ActualChat.Chat.Markup
+namespace ActualChat.Chat
 {
     public interface IMarkupParser
     {
