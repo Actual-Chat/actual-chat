@@ -12,7 +12,7 @@
     <ProjectGroupName>$([System.IO.Path]::GetFileName($([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)../..'))))</ProjectGroupName>
     <NoPackageAnalysis>true</NoPackageAnalysis>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
-    <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
+    <RootNamespace>$(AssemblyName)</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>

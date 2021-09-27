@@ -6,12 +6,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Services\Audio\Contract\Contract.csproj" />
     <ProjectReference Include="..\..\src\Services\Audio\Service\Service.csproj" />
-    <ProjectReference Include="..\..\src\Testing.Host\Testing.Host.csproj" />
-    <ProjectReference Include="..\..\src\Testing\Testing.csproj" />
+    <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
+    <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="data\file.webm" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="data\large-file.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

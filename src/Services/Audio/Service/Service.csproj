@@ -13,22 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Ebml\MatroskaSpecification.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>MatroskaSpecification.cs</LastGenOutput>
-    </None>
-    <None Update="Ebml\Models\MatroskaModels.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
-    </None>
-    <None Update="WebM\Models\MatroskaModels.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
-    </None>
-    <None Update="WebM\MatroskaSpecification.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>MatroskaSpecification.cs</LastGenOutput>
-    </None>
+    <!-- ToDo: fix t4 generation without vs/rider or move to sourcegenerators, move generation results to a separate folder (?)  -->
+    <None Update="Ebml\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="Ebml\%(Filename).cs" />
+    <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs" />
+    <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs" />
   </ItemGroup>
 
   <ItemGroup>

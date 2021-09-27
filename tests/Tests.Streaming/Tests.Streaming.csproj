@@ -1,16 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
-    <ProjectReference Include="..\..\src\Testing.Host\Testing.Host.csproj" />
-    <ProjectReference Include="..\..\src\Testing\Testing.csproj" />
+    <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
+    <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="data\file.webm" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

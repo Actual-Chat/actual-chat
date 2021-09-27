@@ -1,0 +1,3 @@
+{
+  "WARNING": "Do not change values here. For local development you should override via testsettings.local.json",
+}
