@@ -15,9 +15,9 @@
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests" />
-    <Import Include="System.Runtime.CompilerServices"/>
-    <Import Include="System.Runtime.InteropServices"/>
-    <Import Include="System.Collections"/>
+    <Using Include="System.Runtime.CompilerServices"/>
+    <Using Include="System.Runtime.InteropServices"/>
+    <Using Include="System.Collections"/>
     <PackageReference Include="Nerdbank.GitVersioning" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" />
     <PackageReference Include="Roslynator.Analyzers" />
