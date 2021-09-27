@@ -102,6 +102,7 @@
             .SelectMany(e => e)
             .LastOrDefault(e => e.IsStreaming)?
             .StreamId;
+        StateHasChanged();
             
         var result = VirtualListResponse.New(
             entryLists.SelectMany(entries => entries),
