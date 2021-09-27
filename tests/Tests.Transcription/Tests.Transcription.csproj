@@ -4,13 +4,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Services\Transcription\Contract\Contract.csproj" />
-    <ProjectReference Include="..\..\src\Services\Transcription\Service\Service.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Transcription\Transcription.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Transcription\Transcription.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="data\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

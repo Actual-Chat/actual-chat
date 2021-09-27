@@ -10,9 +10,8 @@
     <Copyright>Copyright ActualChat, Inc.</Copyright>
     <BaseName>ActualChat</BaseName>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
-    <AssemblyName Condition="'$(ProjectGroupName)' != ''">$(BaseName).$(ProjectGroupName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <RootNamespace Condition="'$(ProjectGroupName)' != ''">$(BaseName).$(ProjectGroupName)</RootNamespace>
+    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>

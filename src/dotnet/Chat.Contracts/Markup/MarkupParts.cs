@@ -2,7 +2,7 @@ using System;
 using ActualChat.Users;
 using Stl.Text;
 
-namespace ActualChat.Chat.Markup
+namespace ActualChat.Chat
 {
     public static partial class MarkupParts
     {

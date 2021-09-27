@@ -4,7 +4,7 @@ using Stl;
 using Stl.Collections;
 using Stl.Serialization;
 
-namespace ActualChat.Chat.Markup
+namespace ActualChat.Chat
 {
     public class Markup
     {
