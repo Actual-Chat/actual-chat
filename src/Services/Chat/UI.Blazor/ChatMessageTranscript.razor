@@ -5,6 +5,7 @@
 @inject BlazorCircuitContext _circuitContext
 
 <span class="content">@Text</span>
+<Button Type="@ButtonType.Button" Clicked="@OnListenClick" Color="Color.Link">Listen</Button>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
@@ -12,6 +13,9 @@
 
     [Parameter]
     public string StreamId { get; set; } = null!;
+    
+    [Parameter]
+    public EventCallback<string> OnListen { get; set; }
 
 
     protected override async Task OnParametersSetAsync()
@@ -29,6 +33,12 @@
 
         await base.OnParametersSetAsync();
 
+    }
+
+    private void OnListenClick()
+    {
+        if(OnListen.HasDelegate)
+            OnListen.InvokeAsync(StreamId);
     }
 
     private async Task ReadTranscript(ChannelReader<TranscriptPart> transcriptReader, CancellationToken cancellationToken)

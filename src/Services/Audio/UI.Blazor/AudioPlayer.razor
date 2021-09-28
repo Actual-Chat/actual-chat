@@ -1,42 +1,52 @@
 @using System.Threading.Channels
 @using Stl
+@implements IAudioPlayerBackend
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
 @inject IAudioStreamProvider _streamProvider
 @inject BlazorCircuitContext _circuitContext
 
-<audio id="player"></audio>
+<audio autoplay @ref="Ref"></audio>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
-    private IJSObjectReference ModuleRef { get; set; } = null!;
+    protected IJSObjectReference? ModuleRef { get; set; } 
+    protected IJSObjectReference? JSComponentRef { get; set; }
+    protected DotNetObjectReference<IAudioPlayerBackend>? ComponentRef { get; set; }
+    
+    public ElementReference Ref { get; set; }
     
     [Parameter]
     public string StreamId { get; set; } = null!;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (ModuleRef != null! || !firstRender)
-            return;
-        ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-player.js");
-        await ModuleRef.InvokeVoidAsync("initialize");
+        if (firstRender) {
+            ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-player.js");
+            ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
+        }
     }
-
 
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
-        
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource = null;
+
         if (!_circuitContext.IsPrerendering && !StreamId.IsNullOrEmpty()) {
             _cancellationTokenSource = new CancellationTokenSource();
             var audioReader = await _streamProvider.GetStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadAudio(audioReader, _cancellationTokenSource.Token);
         }
     }
-
+    
     private Task AppendAudio(byte[] chunk)
     {
-        return ModuleRef.InvokeVoidAsync("appendAudio", chunk).AsTask();
+        if (JSComponentRef == null)
+            return Task.CompletedTask;
+        
+        return JSComponentRef.InvokeVoidAsync("appendAudio", chunk).AsTask();
     }
     
     private async Task ReadAudio(ChannelReader<BlobPart> audioReader, CancellationToken cancellationToken)
@@ -49,7 +59,12 @@
                 await AppendAudio(blob.Data);
             }
         }
-        catch (ChannelClosedException) { }
+        catch (ChannelClosedException) {
+        }
+        finally {
+            if (JSComponentRef != null)
+                await JSComponentRef.InvokeVoidAsync("stop");
+        }
     }
     
 }
