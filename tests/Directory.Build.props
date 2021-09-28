@@ -17,8 +17,8 @@
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <AllowedReferenceRelatedFileExtensions>$(AllowedReferenceRelatedFileExtensions);.pdb</AllowedReferenceRelatedFileExtensions>
     <UseDefaultStartup>true</UseDefaultStartup>
-    <XunitStartupAssembly>$(RepoName).Testing</XunitStartupAssembly>
-    <XunitStartupFullName>$(RepoName).Testing.StartupBase</XunitStartupFullName>
+    <XunitStartupAssembly>$(BaseName).Testing</XunitStartupAssembly>
+    <XunitStartupFullName>$(BaseName).Testing.StartupBase</XunitStartupFullName>
   </PropertyGroup>
   
   <ItemGroup>

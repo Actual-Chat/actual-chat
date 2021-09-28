@@ -4,7 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Transcription\Transcription.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Transcription\Transcription.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>

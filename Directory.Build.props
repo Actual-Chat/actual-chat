@@ -3,14 +3,15 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
-    <ImplicitUsings>enable</ImplicitUsings>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
+    <ImplicitUsings>enable</ImplicitUsings>
     <Authors>ActualChat, Inc.</Authors>
     <Company>ActualChat, Inc.</Company>
     <Copyright>Copyright ActualChat, Inc.</Copyright>
     <BaseName>ActualChat</BaseName>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
+    <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
