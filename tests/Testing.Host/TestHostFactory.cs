@@ -47,7 +47,9 @@ namespace ActualChat.Testing
         public static FilePath GetManifestPath()
         {
             FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
-                => assemblyPath.ChangeExtension("StaticWebAssets.xml");
+                // TODO check new ChangeExtension below (Andrey)
+                // => assemblyPath.ChangeExtension("StaticWebAssets.xml");
+                => assemblyPath.ChangeExtension("staticwebassets.runtime.json");
 
             var hostAssemblyPath = (FilePath) typeof(AppHost).Assembly.Location;
             var hostAssemblyFileName = hostAssemblyPath.FileName;
@@ -57,7 +59,7 @@ namespace ActualChat.Testing
 
             var baseDir = hostAssemblyPath.DirectoryPath;
             var binCfgPart = Regex.Match(baseDir.Value, @"[\\/]bin[\\/]\w+[\\/]").Value;
-            var relativePath = $"../../src/Host/{binCfgPart}/net5.0/" & hostAssemblyFileName;
+            var relativePath = $"../../src/Host/{binCfgPart}net5.0/" & hostAssemblyFileName;
             for (var i = 0; i < 4; i++) {
                 manifestPath = AssemblyPathToManifestPath(baseDir & relativePath);
                 if (File.Exists(manifestPath))
