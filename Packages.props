@@ -4,12 +4,12 @@
     <AspNetCoreVersion>6.0.0-rc.1*</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>$(AspNetCoreVersion)</MicrosoftExtensionsVersion>
     <EntityFrameworkCoreVersion>$(AspNetCoreVersion)</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>6.0.0-rc.1</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreNpgsqlVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreNpgsqlVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>1.11.8</StlFusionVersion>
+    <StlFusionVersion>2.0.7-rc1</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
