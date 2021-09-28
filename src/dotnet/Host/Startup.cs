@@ -79,6 +79,7 @@ namespace ActualChat.Host
             var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
             // FileSystemPluginFinder fails on .NET 6:
             // "System.IO.FileLoadException: Could not load file or assembly 'System.Private.CoreLib, Version=6.0.0.0, ..."
+            /*
             pluginHostBuilder.UsePlugins(
                 // Core modules
                 typeof(CoreModule),
@@ -96,8 +97,9 @@ namespace ActualChat.Host
                 // "The rest of Startup.cs" module
                 typeof(AppHostModule)
             );
-            Plugins = pluginHostBuilder.Build();
-            // Plugins = new PluginHostBuilder(pluginServices).Build();
+            */
+            // Plugins = pluginHostBuilder.Build();
+            Plugins = new PluginHostBuilder(pluginServices).Build();
             HostModules = Plugins
                 .GetPlugins<HostModule>()
                 .OrderBy(m => m is not AppHostModule) // MainHostModule should be the first one
