@@ -9,7 +9,7 @@
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>1.10.6</StlFusionVersion>
+    <StlFusionVersion>1.11.8</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -49,7 +49,7 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)" />
-    <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.0.*" />
+    <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.1.*" />
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)" />
     <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageReference Update="Newtonsoft.Json" Version="13.0.*" />
