@@ -6,7 +6,7 @@ namespace ActualChat.Users.Db
 {
     public class DbUser : DbUser<string>
     {
-        private DateTime _createdAt;
+        private DateTime _createdAt = CoarseSystemClock.Now;
 
         public DateTime CreatedAt {
             get => _createdAt.DefaultKind(DateTimeKind.Utc);
