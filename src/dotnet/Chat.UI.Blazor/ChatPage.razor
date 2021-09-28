@@ -2,9 +2,10 @@
 @page "/chat/{ChatId}"
 @using ActualChat.Comparison
 @using Stl.Mathematics
+@using ActualChat.Chat.UI.Blazor.Services
 @inherits ComputedStateComponent<ChatPageModel>
+@inject ChatPageService _service
 @inject IChatService _chats
-@inject IAuthService _auth
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject NavigationManager _nav
@@ -53,21 +54,12 @@
         return base.OnParametersSetAsync();
     }
 
-    protected override async Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
-    {
-        var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
-        var user = await _auth.GetUser(_session, cancellationToken);
-        var chat = await _chats.TryGet(_session, chatId, cancellationToken);
-        if (chat == null)
-            return new ChatPageModel() { IsUnavailable = true };
-        if (!user.IsAuthenticated && !chat.IsPublic)
-            return new ChatPageModel() { MustLogin = true };
-        return new ChatPageModel() { Chat = chat };
-    }
+    protected override Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
+        => _service.GetChatPageModel(_session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
 
     private async Task<VirtualListResponse<ChatEntry>> GetMessages(VirtualListQuery query, CancellationToken cancellationToken)
     {
-        var model = await State.Use(cancellationToken);
+        var model = await _service.GetChatPageModel(_session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
         var chatId = model.Chat?.Id ?? default;
         if (chatId.IsNone)
             return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);

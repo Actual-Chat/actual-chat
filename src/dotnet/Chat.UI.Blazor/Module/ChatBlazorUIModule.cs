@@ -1,4 +1,5 @@
-﻿using ActualChat.Chat.UI.Blazor.Testing;
+﻿using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ namespace ActualChat.Chat.UI.Blazor.Module
 
             var fusion = services.AddFusion();
             fusion.AddComputeService<TestListService>();
+            fusion.AddComputeService<ChatPageService>();
         }
     }
 }
