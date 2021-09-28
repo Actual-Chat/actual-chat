@@ -1,8 +1,21 @@
 using System.Collections.Immutable;
 using System.Linq;
+using ActualChat.Audio.Client.Module;
+using ActualChat.Audio.Module;
+using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Chat.Client.Module;
+using ActualChat.Chat.Module;
+using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Db.Module;
 using ActualChat.Host.Module;
 using ActualChat.Hosting;
+using ActualChat.Module;
+using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.Host;
+using ActualChat.UI.Blazor.Module;
+using ActualChat.Users.Client.Module;
+using ActualChat.Users.Module;
+using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -63,7 +76,28 @@ namespace ActualChat.Host
                 .Add(services)
                 .AddSingleton(Cfg)
                 .AddSingleton(Env);
-            Plugins = new PluginHostBuilder(pluginServices).Build();
+            var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
+            // FileSystemPluginFinder fails on .NET 6:
+            // "System.IO.FileLoadException: Could not load file or assembly 'System.Private.CoreLib, Version=6.0.0.0, ..."
+            pluginHostBuilder.UsePlugins(
+                // Core modules
+                typeof(CoreModule),
+                typeof(DbModule),
+                typeof(WebModule),
+                typeof(BlazorUICoreModule),
+                // Services
+                typeof(AudioModule),
+                typeof(AudioBlazorUIModule),
+                typeof(TranscriptionModule),
+                typeof(ChatModule),
+                typeof(ChatBlazorUIModule),
+                typeof(UsersModule),
+                typeof(UsersBlazorUIModule),
+                // "The rest of Startup.cs" module
+                typeof(AppHostModule)
+            );
+            Plugins = pluginHostBuilder.Build();
+            // Plugins = new PluginHostBuilder(pluginServices).Build();
             HostModules = Plugins
                 .GetPlugins<HostModule>()
                 .OrderBy(m => m is not AppHostModule) // MainHostModule should be the first one

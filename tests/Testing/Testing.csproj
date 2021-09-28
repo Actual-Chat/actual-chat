@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Xunit.DependencyInjection" />
     <PackageReference Include="Xunit.DependencyInjection.Logging" />
@@ -16,4 +18,5 @@
   <ItemGroup>
     <None Update="testsettings*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
 </Project>

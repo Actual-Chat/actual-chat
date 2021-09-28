@@ -88,7 +88,7 @@ namespace ActualChat.Host.Module
             // and since we don't copy it to local wwwroot,
             // we need to find Client's wwwroot in bin/(Debug/Release) folder
             // and set it as this server's content root.
-            var baseDir = (Stl.IO.PathString)(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "");
+            var baseDir = FilePath.New(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "");
             var binCfgPart = Regex.Match(baseDir.Value, @"[\\/]bin[\\/]\w+[\\/]").Value;
             var wwwRootPath = baseDir & "wwwroot";
             if (!Directory.Exists(Path.Combine(wwwRootPath, "_framework"))) {

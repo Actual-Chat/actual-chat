@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
+
   <ItemGroup>
     <PackageReference Include="Blazorise" />
     <PackageReference Include="Blazorise.Bootstrap" />

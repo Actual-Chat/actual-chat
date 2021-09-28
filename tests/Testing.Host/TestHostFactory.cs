@@ -44,12 +44,12 @@ namespace ActualChat.Testing
             return appHost;
         }
 
-        public static PathString GetManifestPath()
+        public static FilePath GetManifestPath()
         {
-            PathString AssemblyPathToManifestPath(PathString assemblyPath)
+            FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
                 => assemblyPath.ChangeExtension("StaticWebAssets.xml");
 
-            var hostAssemblyPath = (PathString) typeof(AppHost).Assembly.Location;
+            var hostAssemblyPath = (FilePath) typeof(AppHost).Assembly.Location;
             var hostAssemblyFileName = hostAssemblyPath.FileName;
             var manifestPath = AssemblyPathToManifestPath(hostAssemblyPath);
             if (File.Exists(manifestPath))
