@@ -129,7 +129,7 @@ namespace ActualChat.Tests.Audio
         {
             var size = 0;
             await using var inputStream = new FileStream(
-                Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
+                Path.Combine(Environment.CurrentDirectory, @"data", "file.webm"),
                 FileMode.Open,
                 FileAccess.Read);
             using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
