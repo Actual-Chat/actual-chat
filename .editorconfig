@@ -41,7 +41,7 @@ trim_trailing_whitespace = false
 
 # Web Files
 [*.{cshtml,razor,htm,html,js,ts,tsx,css,sass,scss,less,svg,vue}]
-indent_size = 2
+indent_size = 4
 insert_final_newline = true
 
 # Microsoft .NET properties
