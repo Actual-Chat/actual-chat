@@ -18,39 +18,27 @@ export class AudioPlayer {
             this.sourceBuffer.addEventListener('updateend', sbe => {
                if (this.bufferQueue.length) {
                    this.sourceBuffer.appendBuffer(this.bufferQueue.shift());
-               } 
+               }
             });
         });
-        
+
         this.elementRef.src = URL.createObjectURL(this.mediaSource);
     }
-    
+
     dispose() {
         this.mediaSource.endOfStream();
     }
-    
-    async appendAudio(base64) {
-        let blob = await base64ToBlob(base64);
+
+    async appendAudio(byteArray) {
         if (this.sourceBuffer.updating) {
-            this.bufferQueue.push(blob);
+            this.bufferQueue.push(byteArray);
         }
         else {
-            this.sourceBuffer.appendBuffer(blob);
+            this.sourceBuffer.appendBuffer(byteArray);
         }
     }
-    
+
     stop(error) {
         this.mediaSource.endOfStream(error);
     }
-}
-
-// let mediaSource = null;
-// let sourceBuffer = null;
-// let audio = null;
-
-async function base64ToBlob(base64) {
-    let dataUrl = "data:application/octet-binary;base64," + base64;
-    let res = await fetch(dataUrl);
-    let buffer = await res.arrayBuffer();
-    return new Uint8Array(buffer);
 }

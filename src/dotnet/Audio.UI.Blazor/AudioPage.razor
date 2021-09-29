@@ -141,11 +141,10 @@
     }
 
     [JSInvokable]
-    public async Task OnAudioData(string dataAsBase64)
+    public async Task OnAudioData(byte[] chunk)
     {
         if (Writer != null) {
-            var data = Base64Encoded.Decode(dataAsBase64).Data;
-            await Writer.WriteAsync(new BlobPart(Index++, data));
+            await Writer.WriteAsync(new BlobPart(Index++, chunk));
         }
     }
 
