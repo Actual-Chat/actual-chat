@@ -66,9 +66,11 @@
 
         AudioChannel.Writer.Complete();
         AudioChannel = null;
-        StateHasChanged();
         if (JSComponentRef != null)
-          await JSComponentRef.InvokeVoidAsync("startRecording");
+          await JSComponentRef.InvokeVoidAsync("stopRecording");
+
+        StateHasChanged();
+
     }
 
     // JS backend callback handlers
