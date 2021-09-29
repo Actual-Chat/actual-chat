@@ -6,31 +6,40 @@
     - Updates on state change without re-rendering the parent component.
 *@
 
-<Div Margin="Margin.Is1.OnY">
+<div>
     <span>Component state: </span>
-    @if (IsLoading) {
+    @if (IsLoading)
+    {
         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
         <b>Loading...</b>
-    } else if (IsUpdating) {
+    }
+    else if (IsUpdating)
+    {
         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
         <b>Updating...</b>
-    } else if (IsUpdatePending) {
+    }
+    else if (IsUpdatePending)
+    {
         <div class="spinner-grow spinner-grow-sm text-secondary" role="status"></div>
         <b class="text-secondary">Update pending...</b>
-    } else {
+    }
+    else
+    {
         <span class="oi oi-check" aria-hidden="true"></span>
         <b>In sync.</b>
     }
-</Div>
+</div>
 
 @code {
     private readonly Action<IState, StateEventKind> _stateChangedHandler;
     private IState _state = null!;
 
     [Parameter]
-    public IState State {
+    public IState State
+    {
         get => _state;
-        set {
+        set
+        {
             if (_state == value)
                 return;
             _state?.RemoveEventHandler(StateEventKind.All, _stateChangedHandler);
@@ -44,7 +53,8 @@
     public bool IsUpdatePending => State == null! || State.Snapshot.Computed.IsInvalidated();
 
     public StateOfStateBadge()
-        => _stateChangedHandler = (_, _) => {
+        => _stateChangedHandler = (_, _) =>
+        {
             _ = this.StateHasChangedAsync();
         };
 

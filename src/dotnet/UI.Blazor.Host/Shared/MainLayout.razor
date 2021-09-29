@@ -7,27 +7,14 @@
     var failures = _commandFailureList.Items;
 }
 
-<Layout Sider="true">
-    <LayoutSider>
-        <LayoutSiderContent>
-            <LeftBar/>
-        </LayoutSiderContent>
-    </LayoutSider>
-    <Layout>
-        <LayoutHeader Fixed="true">
-            <TopBar/>
-        </LayoutHeader>
+<TopBar />
+@foreach (var failure in failures)
+{
+    <WhenCommandError Error="failure.Result?.Error"
+                  Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))" />
+}
 
-        <LayoutContent Padding="Padding.Is4">
-            @foreach (var failure in failures) {
-                <WhenCommandError Error="failure.Result?.Error"
-                                  Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))"/>
-            }
-
-            @Body
-        </LayoutContent>
-    </Layout>
-</Layout>
+@Body
 
 @code {
 

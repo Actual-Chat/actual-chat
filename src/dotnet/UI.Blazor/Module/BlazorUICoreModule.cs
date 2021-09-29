@@ -1,12 +1,9 @@
 ﻿using ActualChat.Hosting;
-using Blazorise;
-using Blazorise.Bootstrap;
-using Blazorise.Icons.FontAwesome;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion;
-using Stl.Fusion.Blazor;
 using Stl.Fusion.Extensions;
+using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
 using Stl.Plugins;
 
@@ -14,7 +11,7 @@ namespace ActualChat.UI.Blazor.Module
 {
     public class BlazorUICoreModule : HostModule, IBlazorUIModule
     {
-        public string[] CssPaths => new [] {"css/virtual-list.css"};
+        public string[] CssPaths => new[] { "css/virtual-list.css" };
 
         public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }
         [ServiceConstructor]
@@ -29,10 +26,7 @@ namespace ActualChat.UI.Blazor.Module
             var fusionAuth = fusion.AddAuthentication().AddBlazor();
             // Replace BlazorCircuitContext w/ AppBlazorCircuitContext
             services.AddScoped<BlazorCircuitContext, AppBlazorCircuitContext>();
-
-            // Blazorise
-            services.AddBlazorise().AddBootstrapProviders().AddFontAwesomeIcons();
-
+            
             // Other UI-related services
             services.AddScoped<JSModule>();
             services.AddScoped<AppBlazorCircuitContext>();

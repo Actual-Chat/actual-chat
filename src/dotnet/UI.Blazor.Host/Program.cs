@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Client.Module;
@@ -10,9 +8,7 @@ using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using Stl.Collections;
 using Stl.Fusion;
 using Stl.Fusion.Client;
@@ -77,7 +73,7 @@ public static class Program
             o.IsMessageLoggingEnabled = false;
         });
         fusionClient.ConfigureHttpClientFactory((c, name, o) => {
-            var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.InvariantCulture);
+            var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.Ordinal);
             var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
             o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
         });
