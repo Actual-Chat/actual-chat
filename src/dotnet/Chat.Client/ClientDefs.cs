@@ -1,6 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 using RestEase;
 using Stl.Fusion.Authentication;
 
@@ -17,24 +15,24 @@ namespace ActualChat.Chat.Client
 
         // Queries
         [Get(nameof(TryGet))]
-        Task<Chat?> TryGet(Session session, string chatId, CancellationToken cancellationToken);
+        Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);
 
         [Get(nameof(GetEntryCount))]
         Task<long> GetEntryCount(
-            Session session, string chatId, Range<long>? idRange,
+            Session session, ChatId chatId, Range<long>? idRange,
             CancellationToken cancellationToken);
         [Get(nameof(GetEntries))]
         Task<ImmutableArray<ChatEntry>> GetEntries(
-            Session session, string chatId, Range<long> idRange,
+            Session session, ChatId chatId, Range<long> idRange,
             CancellationToken cancellationToken);
         [Get(nameof(GetIdRange))]
         Task<Range<long>> GetIdRange(
-            Session session, string chatId,
+            Session session, ChatId chatId,
             CancellationToken cancellationToken);
 
         [Get(nameof(GetPermissions))]
         Task<ChatPermissions> GetPermissions(
-            Session session, string chatId,
+            Session session, ChatId chatId,
             CancellationToken cancellationToken);
     }
 }

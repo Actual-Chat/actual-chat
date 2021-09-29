@@ -1,32 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
+
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
     <!-- Include the PDB and xmldoc in the built .nupkg -->
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb;.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <IncludeSymbols>false</IncludeSymbols>
-    <GenerateDocumentationFile Condition="'$(Configuration)' == 'Release'">true</GenerateDocumentationFile>
     <IsPackable>False</IsPackable>
     <IsPublishable>False</IsPublishable>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <GenerateDocumentationFile >true</GenerateDocumentationFile>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests" />
-    <Using Include="System.Runtime.CompilerServices"/>
-    <Using Include="System.Runtime.InteropServices"/>
-    <Using Include="System.Collections"/>
     <PackageReference Include="Nerdbank.GitVersioning" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" />
     <PackageReference Include="Roslynator.Analyzers" />
     <PackageReference Include="Meziantou.Analyzer" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
+    <Using Include="System.Collections" />
+    <Using Include="System.Runtime.CompilerServices" />
+    <Using Include="System.Runtime.InteropServices" />
+    <Using Include="System.Threading.Channels" />
+    <Using Include="Stl" />
+    <Using Include="Stl.Async" />
+    <Using Include="Stl.Channels" />
+    <Using Include="Stl.Collections" />
+    <Using Include="Stl.Serialization" />
+    <Using Include="Stl.Text" />
+    <Using Include="Stl.Time" />
+    <Using Include="Stl.Fusion" />
+    <Using Include="Stl.CommandR" />
   </ItemGroup>
+
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->
   <ItemGroup Condition="'$(EnableSourceLink)' =='true'">
     <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration)\**\*.cs" />
   </ItemGroup>
+
 </Project>
 

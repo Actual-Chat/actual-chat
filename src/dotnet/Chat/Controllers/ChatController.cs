@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Server;
@@ -45,30 +43,30 @@ namespace ActualChat.Chat.Controllers
 
         [HttpGet, Publish]
         public Task<long> GetEntryCount(
-            Session session, 
-            ChatId chatId, 
+            Session session,
+            ChatId chatId,
             Range<long>? idRange,
             CancellationToken cancellationToken)
             => _chats.GetEntryCount(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ImmutableArray<ChatEntry>> GetEntries(
-            Session session, 
-            ChatId chatId, 
+            Session session,
+            ChatId chatId,
             Range<long> idRange,
             CancellationToken cancellationToken)
             => _chats.GetEntries(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
         public Task<Range<long>> GetIdRange(
-            Session session, 
+            Session session,
             ChatId chatId,
             CancellationToken cancellationToken)
             => _chats.GetIdRange(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPermissions> GetPermissions(
-            Session session, 
+            Session session,
             ChatId chatId,
             CancellationToken cancellationToken)
             => _chats.GetPermissions(session, chatId, cancellationToken);

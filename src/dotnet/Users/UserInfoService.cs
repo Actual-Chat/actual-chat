@@ -26,7 +26,7 @@ namespace ActualChat.Users
             UserNames = services.GetRequiredService<IUserNameService>();
         }
 
-        public virtual async Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken)
+        public virtual async Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken)
         {
             var dbUser = await DbUserResolver.TryGet(userId, cancellationToken);
             if (dbUser == null)

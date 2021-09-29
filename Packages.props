@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
   <PropertyGroup>
     <AspNetCoreVersion>6.0.0-rc.1*</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>$(AspNetCoreVersion)</MicrosoftExtensionsVersion>
@@ -9,7 +10,7 @@
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.*-*</StlFusionVersion>
+    <StlFusionVersion>2.0.9-rc1</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -73,7 +74,6 @@
     <PackageReference Update="Ulid" Version="1.2.*" />
     <PackageReference Update="ZString" Version="2.4.*" />
 
-
     <!-- TODO: Remove or migrate from these -->
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*" />
     <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*" />
@@ -81,8 +81,7 @@
     <PackageReference Update="Microsoft.AspNetCore.SignalR" Version="1.1.*"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Core" Version="1.1.*" />
 
-
-    <!-- for the build project -->
+    <!-- For the build project -->
     <PackageReference Update="CliWrap" Version="3.3.3" />
     <PackageReference Update="Bullseye" Version="3.8.0" />
     <PackageReference Update="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1" />
@@ -106,12 +105,12 @@
     <PackageReference Update="bunit" Version="1.2.49" />
     <PackageReference Update="coverlet.collector" Version="3.1.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
 
-    <!-- analyzers -->
+    <!-- Analyzers -->
     <PackageReference Update="Moq.Analyzers" Version="0.0.8" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.0.63" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Roslynator.Analyzers" Version="3.2.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Meziantou.Analyzer" Version="1.0.670" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-
   </ItemGroup>
+
 </Project>

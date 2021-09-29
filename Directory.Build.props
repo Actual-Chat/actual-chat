@@ -1,5 +1,6 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props" />
+
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
@@ -14,34 +15,48 @@
     <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
+
+    <!-- C# / language settings -->
+    <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <Features>strict</Features>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Analyzers -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <AnalysisLevel>preview</AnalysisLevel>
-    <LangVersion>preview</LangVersion>
-    <Nullable>enable</Nullable>
+
+    <!-- Resources -->
     <DefaultLanguage>en-US</DefaultLanguage>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <NoLogo>true</NoLogo>
     <NoPackageAnalysis>true</NoPackageAnalysis>
-    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+
+    <!-- Output -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
     <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
-    <Features>strict</Features>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Debug info -->
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
+
+    <!-- Web toolchain settings -->
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <TypeScriptCompilerBlocked>true</TypeScriptCompilerBlocked>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+
+    <!-- Suppressed warnings -->
     <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
     <!-- NU5048: The 'PackageIconUrl' 'iconUrl' element is deprecated -->
     <!-- MA0048: File name must match type name -->
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
-    <NoWarn>$(NoWarn);RCS1047;CS1591;MA0048;NU5105;NU5048;</NoWarn>
+    <!-- TODO: Remove MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed -->
+    <NoWarn>$(NoWarn);RCS1047;CS1591;MA0048;NU5105;NU5048;MA0004</NoWarn>
+
     <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
     <EnableSourceLink>false</EnableSourceLink>
     <EnableSourceLink Condition="'$(GitCommitId)' != '' and '$(Configuration)' != 'Debug' and '$(DesignTimeBuild)' != 'true' and '$(BuildingForLiveUnitTesting)' != 'true'">true</EnableSourceLink>
@@ -58,7 +73,12 @@
     <SourceLinkHasSingleProvider>true</SourceLinkHasSingleProvider>
     <EnableSourceControlManagerQueries>$(EnableSourceLink)</EnableSourceControlManagerQueries>
     <GitVersionBaseDirectory>$(RepoRoot)</GitVersionBaseDirectory>
+
+    <!-- Misc. -->
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+    <NoLogo>true</NoLogo>
   </PropertyGroup>
+
   <PropertyGroup Condition="'$(EnableSourceLink)' == 'true'">
     <Deterministic>true</Deterministic>
     <Features>strict;pdb-path-determinism</Features>
@@ -66,6 +86,7 @@
     <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
     <PathMap>'$(RepoRoot)'=/_/</PathMap>
   </PropertyGroup>
+
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">
     <SourceRoot Include="$(RepoRoot)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)" />
   </ItemGroup>
