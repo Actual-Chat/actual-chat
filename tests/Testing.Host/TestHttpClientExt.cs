@@ -1,10 +1,8 @@
-using System;
-using System.Net.Http;
 using ActualChat.Host;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public static class TestHttpClientExt
     {

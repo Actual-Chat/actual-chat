@@ -1,24 +1,17 @@
-using System;
 using System.Buffers;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
-using ActualChat.Audio;
 using ActualChat.Blobs;
 using ActualChat.Chat;
 using ActualChat.Streaming;
 using ActualChat.Testing;
-using FluentAssertions;
+using ActualChat.Testing.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
 using Stl.Testing;
 using Stl.Time;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Audio
+namespace ActualChat.Audio.IntegrationTests
 {
     public class AudioOrchestratorTest : TestBase
     {
@@ -162,7 +155,7 @@ namespace ActualChat.Tests.Audio
             var audioReader = await blobStreamReader.GetStream(streamId, CancellationToken.None);
 
             int sum = 0;
-            await foreach (BlobPart message in audioReader.ReadAllAsync()) 
+            await foreach (BlobPart message in audioReader.ReadAllAsync())
                 sum += message.Data.Length;
 
             return sum;

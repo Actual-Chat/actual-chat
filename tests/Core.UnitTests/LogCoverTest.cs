@@ -1,13 +1,9 @@
-using System;
-using System.Linq;
 using ActualChat.Mathematics;
-using FluentAssertions;
 using Stl.Testing;
 using Stl.Time;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Core.UnitTests
 {
     public class LogCoverTest : TestBase
     {

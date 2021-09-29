@@ -1,14 +1,9 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Transcription
+namespace ActualChat.Transcription.IntegrationTests
 {
     public class GoogleNativeTranscriberTest : TestBase
     {

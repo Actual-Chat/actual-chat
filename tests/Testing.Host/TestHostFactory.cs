@@ -6,7 +6,7 @@ using Stl.Fusion.Server.Authentication;
 using Stl.IO;
 using Stl.Testing;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public static class TestHostFactory
     {

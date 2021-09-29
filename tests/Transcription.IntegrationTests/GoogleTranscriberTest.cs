@@ -1,20 +1,12 @@
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using ActualChat.Audio;
-using ActualChat.Transcription;
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stl.Serialization;
 using Stl.Testing;
 using Stl.Text;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Transcription
+namespace ActualChat.Transcription.IntegrationTests
 {
     public class GoogleTranscriberTest : TestBase
     {

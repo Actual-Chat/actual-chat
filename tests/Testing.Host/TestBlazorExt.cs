@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Blazor;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public static class TestBlazorExt
     {

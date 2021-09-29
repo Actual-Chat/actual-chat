@@ -1,8 +1,7 @@
-using System;
 using ActualChat.Host;
 using Stl.Fusion.Authentication;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public interface IWebTester : IDisposable
     {

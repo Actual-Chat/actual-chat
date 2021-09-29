@@ -1,11 +1,8 @@
-using System;
 using ActualChat.Mathematics;
-using FluentAssertions;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Core.UnitTests
 {
     public class LinearMapTest : TestBase
     {

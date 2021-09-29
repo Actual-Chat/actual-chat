@@ -1,10 +1,8 @@
 using ActualChat.Mathematics;
-using FluentAssertions;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Core.UnitTests
 {
     public class WordPrefixTreeTest : TestBase
     {
@@ -16,7 +14,7 @@ namespace ActualChat.Tests
         public void BuildTrieTest()
         {
             var trie = new WordPrefixTree<double>();
-            
+
             trie.Add("A".Split(), 12);
             trie.Add("A".Split(), 13);
             trie.Add("A B".Split(), 20);

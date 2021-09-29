@@ -1,10 +1,8 @@
-using FluentAssertions;
 using Stl.Serialization;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests
+namespace ActualChat.Core.UnitTests
 {
     public class IdentifierTest : TestBase
     {

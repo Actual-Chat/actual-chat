@@ -1,13 +1,9 @@
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using ActualChat.Testing;
-using FluentAssertions;
+using ActualChat.Testing.Host;
 using Stl.Fusion.Authentication;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.UI.Blazor
+namespace ActualChat.UI.Blazor.IntegrationTests
 {
     public class PlaywrightTest : AppHostTestBase
     {
@@ -44,7 +40,7 @@ namespace ActualChat.Tests.UI.Blazor
             messages.Count.Should().BeGreaterThan(0);
             (await messages.Last().TextContentAsync()).Should().Be("Test-123");
         }
-        
+
         [Fact]
         public async Task ChatPageTest()
         {

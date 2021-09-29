@@ -1,17 +1,10 @@
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
-using FluentAssertions;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Audio
+namespace ActualChat.Audio.UnitTests
 {
     public class WebMReaderTest : TestBase
     {

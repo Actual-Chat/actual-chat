@@ -1,12 +1,9 @@
-﻿using System.Threading.Tasks;
-using ActualChat.Testing;
-using FluentAssertions;
+﻿using ActualChat.Testing.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.UI.Blazor
+namespace ActualChat.UI.Blazor.IntegrationTests
 {
     public class ExampleTest : AppHostTestBase
     {

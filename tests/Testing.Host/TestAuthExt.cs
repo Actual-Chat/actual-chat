@@ -1,14 +1,10 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using ActualChat.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.Authentication.Commands;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public static class TestAuthExt
     {
