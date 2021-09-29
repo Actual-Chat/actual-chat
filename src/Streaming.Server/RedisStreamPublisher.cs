@@ -1,9 +1,9 @@
+using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using Stl.Async;
 
 namespace ActualChat.Streaming.Server
 {
@@ -27,11 +27,14 @@ namespace ActualChat.Streaming.Server
             Redis = redis;
         }
 
-        public Task PublishStream(TStreamId streamId, ChannelReader<TPart> content, CancellationToken cancellationToken)
+        public async Task PublishStream(TStreamId streamId, ChannelReader<TPart> content, CancellationToken cancellationToken)
         {
             var db = Setup.GetDatabase(Redis);
             var streamer = Setup.GetPartStreamer(db, streamId);
-            return streamer.Write(content, cancellationToken);
+            await streamer.Write(content, cancellationToken);
+            
+            _ = Task.Delay(TimeSpan.FromMinutes(1), default)
+                .ContinueWith(_ => streamer.Remove(), CancellationToken.None);
         }
     }
 }

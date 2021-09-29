@@ -39,8 +39,8 @@ export class AudioPlayer {
         }
     }
     
-    stop() {
-        this.mediaSource.endOfStream();
+    stop(error) {
+        this.mediaSource.endOfStream(error);
     }
 }
 
