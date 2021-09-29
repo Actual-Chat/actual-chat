@@ -10,7 +10,7 @@
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.9-rc1</StlFusionVersion>
+    <StlFusionVersion>2.0.14-rc1</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">

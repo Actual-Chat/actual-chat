@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Audio.Db
 {
-    public class AudioDbContext : DbContext
+    public class AudioDbContext : DbContextBase
     {
         public DbSet<DbAudioRecord> AudioRecords { get; protected set; } = null!;
         public DbSet<DbAudioSegment> AudioSegments { get; protected set; } = null!;

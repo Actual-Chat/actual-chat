@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Db
 {
-    public class ChatDbContext : DbContext
+    public class ChatDbContext : DbContextBase
     {
         public DbSet<DbChat> Chats { get; protected set; } = null!;
         public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
