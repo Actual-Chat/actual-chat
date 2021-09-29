@@ -10,10 +10,8 @@ namespace ActualChat.Streaming.Server
         public string KeyPrefix { get; init; } = typeof(TPart).Name;
         public RedisStreamer<TPart>.Options PartStreamerOptions { get; init; } = new();
 
-        public virtual IDatabase GetDatabase(IConnectionMultiplexer redis)
-            => redis.GetDatabase().WithKeyPrefix(KeyPrefix);
-        public virtual RedisStreamer<TPart> GetPartStreamer(IDatabase database, TStreamId streamId)
-            => new(PartStreamerOptions, database, streamId.ToString() ?? "");
+        public virtual RedisStreamer<TPart> GetPartStreamer(RedisDb redisDb, TStreamId streamId)
+            => new(PartStreamerOptions, redisDb, streamId.ToString() ?? "");
 
     }
 }

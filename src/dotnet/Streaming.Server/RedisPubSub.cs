@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using Stl.Locking;
 
 namespace ActualChat.Streaming.Server;
 
@@ -7,14 +8,17 @@ public class RedisPubSub : AsyncDisposableBase
     private ISubscriber? _subscriber;
     private ChannelMessageQueue? _queue;
 
-    public IDatabase Database { get; }
+    public RedisDb RedisDb { get; }
     public string Key { get; }
-    public ISubscriber Subscriber => _subscriber ??= Database.Multiplexer.GetSubscriber();
+    public string FullKey { get; }
+    public ISubscriber Subscriber => _subscriber ??= RedisDb.Redis.GetSubscriber();
+    private IAsyncLock _asyncLock = new AsyncLock(ReentryMode.UncheckedDeadlock);
 
-    public RedisPubSub(IDatabase database, string key)
+    public RedisPubSub(RedisDb redisDb, string key)
     {
-        Database = database;
+        RedisDb = redisDb;
         Key = key;
+        FullKey = RedisDb.FullKey(Key);
     }
 
     protected override async ValueTask DisposeInternal(bool disposing)
@@ -25,15 +29,18 @@ public class RedisPubSub : AsyncDisposableBase
     }
 
     public async ValueTask<ChannelMessageQueue> GetQueue()
-        => _queue ??= await Subscriber.SubscribeAsync(Key).ConfigureAwait(false);
+    {
+        if (_queue != null)
+            return _queue;
+        using var _ = await _asyncLock.Lock();
+        return _queue ??= await Subscriber.SubscribeAsync(FullKey).ConfigureAwait(false);
+    }
 
     public Task<long> Publish(RedisValue item)
     {
         if (item == RedisValue.Null)
-            throw new ArgumentOutOfRangeException(
-                $"RedisValue.Null is not supported argument `{nameof(item)}` value");
-
-        return Subscriber.PublishAsync(Key, item);
+            throw new ArgumentOutOfRangeException(nameof(item), "RedisValue.Null is not supported item value.");
+        return Subscriber.PublishAsync(FullKey, item);
     }
 
     public async Task<RedisValue> Fetch(CancellationToken cancellationToken = default)
@@ -43,8 +50,9 @@ public class RedisPubSub : AsyncDisposableBase
             var message = await queue.ReadAsync(cancellationToken).ConfigureAwait(false);
             return message.Message;
         }
-        catch (ChannelClosedException) { }
-        return RedisValue.Null;
+        catch (ChannelClosedException) {
+            return RedisValue.Null;
+        }
     }
 }
 
@@ -52,7 +60,7 @@ public class RedisPubSub<T> : RedisPubSub
 {
     public IByteSerializer<T> Serializer { get; }
 
-    public RedisPubSub(IDatabase database, string key, ByteSerializer<T>? serializer = null) : base(database, key)
+    public RedisPubSub(RedisDb redisDb, string key, ByteSerializer<T>? serializer = null) : base(redisDb, key)
         => Serializer = serializer ?? ByteSerializer<T>.Default;
 
     public Task<long> PublishRaw(RedisValue item)
@@ -66,9 +74,9 @@ public class RedisPubSub<T> : RedisPubSub
         return await base.Publish(bufferWriter.WrittenMemory).ConfigureAwait(false);
     }
 
-    public new async Task<T?> Fetch(CancellationToken cancellationToken = default)
+    public new async Task<Option<T>> Fetch(CancellationToken cancellationToken = default)
     {
         var value = await base.Fetch(cancellationToken).ConfigureAwait(false);
-        return value.IsNull ? default : Serializer.Reader.Read(value);
+        return value.IsNull ? Option<T>.None : Serializer.Reader.Read(value);
     }
 }

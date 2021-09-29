@@ -26,27 +26,26 @@ namespace ActualChat.Streaming.Server
             public Options()
                 => KeyPrefix = typeof(TContent).Name;
 
-            public virtual RedisQueue<TContent> GetContentQueue(IDatabase database)
-                => new(ContentQueueOptions, database, ContentQueueKey);
-
+            public virtual RedisQueue<TContent> GetContentQueue(RedisDb redisDb)
+                => new(ContentQueueOptions, redisDb, ContentQueueKey);
         }
 
         protected Options Setup { get; }
-        protected IConnectionMultiplexer Redis { get; }
-        protected IDatabase Database { get; }
+        protected RedisDb RootRedisDb { get; }
+        protected RedisDb RedisDb { get; }
         protected RedisQueue<TContent> ContentQueue { get; }
         protected ILogger Log { get; }
 
         protected RedisContentProducer(
             Options setup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             ILogger<RedisContentProducer<TContentId, TContent>> log)
         {
             Log = log;
             Setup = setup;
-            Redis = redis;
-            Database = Setup.GetDatabase(Redis);
-            ContentQueue = Setup.GetContentQueue(Database);
+            RootRedisDb = rootRedisDb;
+            RedisDb = RootRedisDb.WithKeyPrefix(Setup.KeyPrefix);
+            ContentQueue = Setup.GetContentQueue(RedisDb);
         }
 
         public ValueTask DisposeAsync()
@@ -64,7 +63,7 @@ namespace ActualChat.Streaming.Server
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-            var partStreamer = Setup.GetPartStreamer(Database, streamId);
+            var partStreamer = Setup.GetPartStreamer(RedisDb, streamId);
             _ = partStreamer.Read(channel, cancellationToken);
             return Task.FromResult(channel.Reader);
         }

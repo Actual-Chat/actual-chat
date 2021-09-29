@@ -15,9 +15,9 @@ namespace ActualChat.Audio
 
         public AudioRecordProducer(
             Options setup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             ILogger<AudioRecordProducer> log)
-            : base(setup, redis, log)
+            : base(setup, rootRedisDb, log)
         { }
 
         public Task<RecordWorkItem<AudioRecordId, AudioRecord>> DequeueRecordForProcessing(

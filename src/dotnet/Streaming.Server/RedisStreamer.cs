@@ -15,16 +15,16 @@ public class RedisStreamer<T>
     }
 
     public Options Setup { get; }
-    public IDatabase Database { get; }
+    public RedisDb RedisDb { get; }
     public string Key { get; }
     public RedisPubSub AppendPubSub { get; }
 
-    public RedisStreamer(Options setup, IDatabase database, string key)
+    public RedisStreamer(Options setup, RedisDb redisDb, string key)
     {
         Setup = setup;
-        Database = database;
+        RedisDb = redisDb;
         Key = key;
-        AppendPubSub = new RedisPubSub(database, $"{typeof(T).Name}-{Key}{Setup.AppendPubSubKeySuffix}");
+        AppendPubSub = new RedisPubSub(redisDb, Key + Setup.AppendPubSubKeySuffix);
     }
 
     public async Task Read(ChannelWriter<T> target, CancellationToken cancellationToken = default)
@@ -35,16 +35,14 @@ public class RedisStreamer<T>
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var entries = await Database.StreamReadAsync(Key, position, 10).ConfigureAwait(false);
+                var entries = await RedisDb.Database.StreamReadAsync(Key, position, 10).ConfigureAwait(false);
                 if (entries?.Length > 0)
                     foreach (var entry in entries) {
-                        var status = entry[Setup.StatusKey];
-                        var isCompleted = status != RedisValue.Null && status == Setup.CompletedStatus;
-                        if (isCompleted)
+                        if (entry[Setup.StatusKey] == Setup.CompletedStatus)
                             return;
 
-                        var serialized = (ReadOnlyMemory<byte>) entry[Setup.ItemKey];
-                        var item = Setup.Serializer.Reader.Read(serialized);
+                        var data = (ReadOnlyMemory<byte>) entry[Setup.ItemKey];
+                        var item = Setup.Serializer.Reader.Read(data);
                         await target.WriteAsync(item, cancellationToken).ConfigureAwait(false);
                         position = entry.Id;
                     }
@@ -98,15 +96,16 @@ public class RedisStreamer<T>
         if (!isStreaming)
             await newStreamNotifier.Invoke(this).ConfigureAwait(false);
 
-        await Database.StreamAddAsync(
+        await RedisDb.Database.StreamAddAsync(
             Key, Setup.StatusKey, Setup.CompletedStatus,
             maxLength: 1000, useApproximateMaxLength: true).ConfigureAwait(false);
     }
 
     public async Task AppendItem(T item, bool notify = true)
     {
-        using var writer = Setup.Serializer.Writer.Write(item);
-        await Database.StreamAddAsync(Key, Setup.ItemKey, writer.WrittenMemory,
+        using var bufferWriter = Setup.Serializer.Writer.Write(item);
+        await RedisDb.Database.StreamAddAsync(
+                Key, Setup.ItemKey, bufferWriter.WrittenMemory,
                 maxLength: 1000, useApproximateMaxLength: true)
             .ConfigureAwait(false);
         if (notify)
@@ -114,5 +113,5 @@ public class RedisStreamer<T>
     }
 
     public Task Remove()
-        => Database.KeyDeleteAsync(Key, CommandFlags.FireAndForget);
+        => RedisDb.Database.KeyDeleteAsync(Key, CommandFlags.FireAndForget);
 }
