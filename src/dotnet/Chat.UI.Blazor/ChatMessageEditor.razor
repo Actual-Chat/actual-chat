@@ -6,22 +6,12 @@
 <AuthorizeView>
     <Authorized>
         <form @onsubmit="Post">
-            <Addons>
-                <Addon AddonType="AddonType.Start">
-                    <AddonLabel>Message</AddonLabel>
-                </Addon>
-                <TextEdit @bind-Text="@Message" type="search"/>
-                <Addon AddonType="AddonType.End">
-                    <Addons>
-                        <Button Type="@ButtonType.Submit" Color="Color.Success">Send</Button>
-                        <AudioRecorder ChatId="@ChatId"/>
-                    </Addons>
-                </Addon>
-            </Addons>
+            <button>Send</button>
+            <AudioRecorder ChatId="@ChatId" />
         </form>
     </Authorized>
     <NotAuthorized>
-        <SignInDropdown Why="to chat"/>
+        <SignInDropdown Why="to chat" />
     </NotAuthorized>
 </AuthorizeView>
 

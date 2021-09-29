@@ -5,37 +5,30 @@
     var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var signInOrAddFormat = User.IsAuthenticated ? "Add {0} account" : "Sign in with {0}";
-    var signInIconName = User.IsAuthenticated ? FontAwesomeIcons.Plus : FontAwesomeIcons.SignInAlt;
+    var signInIconName = User.IsAuthenticated ? "🙃" : "😡";
 }
-
+@*
 <BarDropdown Class="@CssClass">
     <BarDropdownToggle>
-        @if (User.IsAuthenticated) {
-            <Blazorise.Icon Name="FontAwesomeIcons.UserCircle" IconStyle="@IconStyle.Solid"/>
-        }
-        else {
-            <Blazorise.Icon Name="FontAwesomeIcons.UserCircle"/>
-        }
         <span class="pl-1">@User.Name</span>
     </BarDropdownToggle>
     <BarDropdownMenu>
         @foreach (var (name, displayName) in unusedAuthSchemas) {
             <BarDropdownItem Color="Color.Primary" Clicked="@(_ => _clientAuthHelper.SignIn(name))">
-                <Blazorise.Icon Name="@signInIconName"/>
+                @signInIconName
                 @(string.Format(signInOrAddFormat, displayName))
             </BarDropdownItem>
         }
         <AuthorizeView>
             <Authorized>
                 <BarDropdownItem Clicked="@(_ => _clientAuthHelper.SignOut())">
-                    <Blazorise.Icon Name="FontAwesomeIcons.SignOutAlt"/>
                     Sign out
                 </BarDropdownItem>
             </Authorized>
         </AuthorizeView>
     </BarDropdownMenu>
 </BarDropdown>
-
+*@
 @code {
     [Parameter]
     public string CssClass { get; set; } = "";

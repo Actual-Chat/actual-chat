@@ -1,5 +1,5 @@
 tests/Testing/testsettings.local.json
-wwwroot/dist/
+src/dotnet/UI.Blazor.Host/wwwroot/dist/
 # IDE folders & files
 .vs/
 .vscode/

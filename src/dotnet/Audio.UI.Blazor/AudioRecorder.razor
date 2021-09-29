@@ -6,9 +6,9 @@
 @inject JSModule _jsModule;
 @inject ISourceAudioRecorder _sourceAudioRecorder
 
-<Button Type="@ButtonType.Button" Clicked="ToggleRecording" Color="@ToggleColor">
-    <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
-</Button>
+<button @onclick ="ToggleRecording" >
+    🎤
+</button>
 
 @code {
     private IJSObjectReference ModuleRef { get; set; } = null!;
@@ -18,7 +18,7 @@
     private int Index { get; set; }
 
     private bool IsRecording => AudioChannel != null;
-    private Color ToggleColor => IsRecording ? Color.Secondary : Color.Primary;
+    //private Color ToggleColor => IsRecording ? Color.Secondary : Color.Primary;
 
     [Parameter]
     public string ChatId { get; set; } = "";

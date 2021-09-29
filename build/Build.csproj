@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>False</IsPackable>
+    <IsPublishable>False</IsPublishable>
+    <RollForward>Major</RollForward>
+    <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+    <DependencyVersion>Highest</DependencyVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Bullseye" />
+    <PackageReference Include="CliWrap" />
+    <PackageReference Include="System.CommandLine.DragonFruit" />
+    <PackageReference Include="Crayon" />
+  </ItemGroup>
+  <ItemGroup>
+    <UpToDateCheckInput Condition="Exists('..\version.json')" Include="..\version.json" />
+    <None Remove="Directory.Build.props" />
+  </ItemGroup>
+</Project>

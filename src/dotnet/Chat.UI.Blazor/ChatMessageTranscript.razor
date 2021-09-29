@@ -2,8 +2,10 @@
 @inject BlazorCircuitContext _circuitContext
 @inject ILogger<ChatMessageTranscript> _log
 
-<span class="content">@Text</span>
-<Button Size="Size.ExtraSmall" Color="Color.Success" Clicked="@OnPlay">Play</Button>
+<div>
+    <span class="content">@Text</span>
+    <button @onclick="OnPlay">Play</button>
+</div>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
@@ -21,7 +23,8 @@
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
         }
-        if (!_circuitContext.IsPrerendering) {
+        if (!_circuitContext.IsPrerendering)
+        {
             _cancellationTokenSource = new CancellationTokenSource();
             var transcriptReader = await _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadTranscript(transcriptReader, _cancellationTokenSource.Token);
@@ -32,13 +35,14 @@
 
     private void OnPlay()
     {
-        if(OnListen.HasDelegate)
+        if (OnListen.HasDelegate)
             OnListen.InvokeAsync(StreamId);
     }
 
     private async Task ReadTranscript(ChannelReader<TranscriptPart> transcriptReader, CancellationToken cancellationToken)
     {
-        try {
+        try
+        {
             while (await transcriptReader.WaitToReadAsync(cancellationToken))
             while (transcriptReader.TryRead(out var message)) {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -48,6 +52,7 @@
                     : $"{Text}{text.PadLeft(index - Text.Length + text.Length)}";
                 StateHasChanged();
             }
+
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             _log.LogError(e, "Error while reading the transcript.");

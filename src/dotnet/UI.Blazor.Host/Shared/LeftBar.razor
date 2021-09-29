@@ -1,5 +1,8 @@
-﻿@using ActualChat.Chat
+@using ActualChat.Chat
+<span>
 
+</span>
+@*
 <Bar Mode="BarMode.VerticalInline" CollapseMode="BarCollapseMode.Small">
     <BarToggler/>
     <BarBrand>
@@ -14,16 +17,11 @@
         </BarStart>
     </BarMenu>
 </Bar>
-
+*@
 @code {
-    private RenderFragment Item(object icon, string title, string href, Match match = Match.All)
+    private RenderFragment Item(object icon, string title, string href)
     {
-        var target = href.StartsWith("http://") || href.StartsWith("https://") ? Target.Blank : Target.None;
-        return
-            @<BarItem>
-                <BarLink Title="@title" To="@href" Target="@target" Match="@match">
-                    <BarIcon IconName="@icon"/> @title
-                </BarLink>
-            </BarItem>;
+        var target = href.StartsWith("http://") || href.StartsWith("https://") ? "_blank" : "_self";
+        return @<div><a href=@href target=@target title=@title>@icon - @title</a></div>;
     }
 }

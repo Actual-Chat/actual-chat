@@ -1,5 +1,4 @@
 using System.Text.Encodings.Web;
-using Blazorise.Extensions;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Components;
 
@@ -26,7 +25,7 @@ namespace ActualChat.UI.Blazor
 
         private static string MaybePathComponent(string? input)
         {
-            if (input.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(input))
                 return "";
             return ZString.Concat('/' + UrlEncode(input));
         }

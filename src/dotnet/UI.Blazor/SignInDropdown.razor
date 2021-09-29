@@ -7,20 +7,25 @@
 }
 
 <AuthorizeView>
-    <NotAuthorized>
-        <Dropdown Class="@CssClass">
+  <NotAuthorized>
+      <a href="#">Sign in</a>
+
+        @*        <Dropdown Class="@CssClass">
             <DropdownToggle Color="Color.Success">
-                <Blazorise.Icon Name="FontAwesomeIcons.SignInAlt"/> Sign in @Why
+            😡 Sign in @Why
             </DropdownToggle>
             <DropdownMenu>
-                @foreach (var (name, displayName) in unusedAuthSchemas) {
-                    <DropdownItem Color="Color.Primary" Clicked="@(_ => _clientAuthHelper.SignIn(name))">
-                        With @displayName
-                    </DropdownItem>
-                }
+            @foreach (var (name, displayName) in unusedAuthSchemas) {
+            //<DropdownItem Color="Color.Primary" Clicked="@(_ => _clientAuthHelper.SignIn(name))">
+            <span>
+            With @displayName;
+            </span>
+            // </DropdownItem>
+            }
             </DropdownMenu>
-        </Dropdown>
-    </NotAuthorized>
+            </Dropdown>
+        *@
+  </NotAuthorized>
 </AuthorizeView>
 
 @code {
@@ -41,7 +46,8 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) {
+        if (firstRender)
+        {
             // GetSchemas requires JS interop, so it can be called only at this point
             AuthSchemas = await _clientAuthHelper.GetSchemas();
             StateHasChanged();
