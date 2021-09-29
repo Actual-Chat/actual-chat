@@ -2,8 +2,6 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.Host.Pages
 @using ActualChat.Host.Internal
-@using ActualChat.UI.Blazor.Host
-@using Microsoft.AspNetCore.Html
 @using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
@@ -51,25 +49,7 @@
     </div>
 } else {
     <app id="app">
-        @{
-            IHtmlContent? prerenderedApp;
-            using var prerendering = _blazorCircuitContext.Prerendering();
-            var errorCount = 0;
-            while (true) {
-                // Workaround for https://github.com/dotnet/aspnetcore/issues/26966
-                try {
-                    prerenderedApp = await Html.RenderComponentAsync<App>(
-                        isServerSideBlazor ? RenderMode.ServerPrerendered : RenderMode.WebAssemblyPrerendered,
-                        new { SessionId = sessionId });
-                    break;
-                }
-                catch (InvalidOperationException) {
-                    if (++errorCount > 3)
-                        throw;
-                }
-            }
-        }
-        @(prerenderedApp)
+        @(await Html.RenderApp(_services, HttpContext))
     </app>
 
     <div id="blazor-error-ui">

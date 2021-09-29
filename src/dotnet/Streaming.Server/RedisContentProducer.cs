@@ -37,7 +37,7 @@ namespace ActualChat.Streaming.Server
         protected RedisQueue<TContent> ContentQueue { get; }
         protected ILogger Log { get; }
 
-        public RedisContentProducer(
+        protected RedisContentProducer(
             Options setup,
             IConnectionMultiplexer redis,
             ILogger<RedisContentProducer<TContentId, TContent>> log)

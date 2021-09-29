@@ -69,6 +69,20 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.IntegrationTests"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio.UnitTests", "tests\Audio.UnitTests\Audio.UnitTests.csproj", "{4D7E49BB-0419-4009-8E72-42F956533610}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{7A843A4D-143D-4AAF-8179-EA95ED460328}"
+	ProjectSection(SolutionItems) = preProject
+		src\dotnet\Directory.Build.props = src\dotnet\Directory.Build.props
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+		Directory.Build.targets = Directory.Build.targets
+		Dockerfile = Dockerfile
+		Packages.props = Packages.props
+		nuget.config = nuget.config
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -231,5 +245,6 @@ Global
 		{5A88AA44-0AA7-402E-9185-8A7991FAF66C} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{D511789B-6EB9-4CC9-9069-8B05FA10D6B9} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{4D7E49BB-0419-4009-8E72-42F956533610} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{7A843A4D-143D-4AAF-8179-EA95ED460328} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 	EndGlobalSection
 EndGlobal

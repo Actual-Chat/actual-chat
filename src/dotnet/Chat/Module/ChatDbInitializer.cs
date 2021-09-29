@@ -1,17 +1,9 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Collections;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Authentication;
-using Stl.Time;
 
 namespace ActualChat.Chat.Module
 {
@@ -65,6 +57,8 @@ namespace ActualChat.Chat.Module
                         ContentType = ChatContentType.Text,
                         AuthorId = adminUserId,
                     };
+                    if (id == 0)
+                        dbChatEntry.Content = "First";
                     dbContext.Add(dbChatEntry);
                 }
                 await dbContext.SaveChangesAsync(cancellationToken);

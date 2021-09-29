@@ -20,7 +20,7 @@ namespace ActualChat.Users.Controllers
         }
 
         [HttpGet, Publish]
-        public Task<UserInfo?> TryGet(string userId, CancellationToken cancellationToken)
+        public Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken)
             => _userInfos.TryGet(userId, cancellationToken);
 
         [HttpGet, Publish]
