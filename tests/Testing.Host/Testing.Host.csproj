@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsTestProject>false</IsTestProject>
@@ -11,7 +11,44 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" />
-    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="Microsoft.Playwright" ExcludeAssets="buildTransitive" GeneratePathProperty="true" />
   </ItemGroup>
+
+  <!-- <workaround of multiple copies from Microsoft.Playwright> -->
+  <Target Name="CopyPlaywrightFilesToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(PkgMicrosoft_Playwright)' != ''">
+    <ItemGroup>
+      <_CopyItems Include="$(PkgMicrosoft_Playwright)\.playwright\**" />
+    </ItemGroup>
+    <Message Text="[Playwright] Copying drivers from $(PkgMicrosoft_Playwright) to $(OutputPath)..." Importance="High" />
+    <Copy SourceFiles="@(_CopyItems)" DestinationFiles="@(_CopyItems->'$(OutDir).playwright\%(RecursiveDir)%(Filename)%(Extension)')"/>
+  </Target>
+  <Target Name="CopyRuntimeConfigToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(PkgMicrosoft_Playwright)' != ''">
+    <ItemGroup Condition="Exists('$(PkgMicrosoft_Playwright)\lib\$(TargetFramework)\Microsoft.Playwright.runtimeconfig.json')">
+      <_CopyRuntimeConfigItems Include="$(PkgMicrosoft_Playwright)\lib\$(TargetFramework)\Microsoft.Playwright.runtimeconfig.json" />
+    </ItemGroup>
+    <Message Text="[Playwright] Copying config from $(PkgMicrosoft_Playwright)\lib\$(TargetFramework) to $(OutDir)..." Importance="High" />
+    <Copy SourceFiles="@(_CopyRuntimeConfigItems)" DestinationFiles="@(_CopyRuntimeConfigItems->'$(OutDir)\%(RecursiveDir)%(Filename)%(Extension)')"/>
+  </Target>
+  <Target Name="CopyPlaywrightShellToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(PkgMicrosoft_Playwright)' != ''">
+    <ItemGroup>
+      <_CopyItemsShell Include="$(PkgMicrosoft_Playwright)\buildTransitive\playwright.ps1" />
+    </ItemGroup>
+    <Message Text="[Playwright] Copying shell script from $(PkgMicrosoft_Playwright) to $(OutputPath)..." Importance="High" />
+    <Copy SourceFiles="@(_CopyItemsShell)" DestinationFiles="@(_CopyItemsShell->'$(OutDir)\%(RecursiveDir)%(Filename)%(Extension)')"/>
+  </Target>
+  <Target Name="PlaywrightCopyAfterPublish" AfterTargets="Publish"  Condition="'$(PkgMicrosoft_Playwright)' != ''">
+    <ItemGroup>
+      <_PublishCopyItems Include="$(PkgMicrosoft_Playwright)\.playwright\**" />
+    </ItemGroup>
+    <Message Text="[Playwright] Copying files to publish folder..." Importance="High" />
+    <Copy SourceFiles="@(_PublishCopyItems)" DestinationFiles="@(_PublishCopyItems->'$(PublishDir)\.playwright\%(RecursiveDir)%(Filename)%(Extension)')"/>
+  </Target>
+  <Target Name="PlaywrightBuildCleanup" AfterTargets="Clean" Condition="'$(PkgMicrosoft_Playwright)' != ''">
+    <Message Text="[Playwright] Cleaning up .playwright folder and artifacts..." Importance="High" />
+    <RemoveDir Directories="$(OutDir)\.playwright" Condition="Exists('$(OutDir)\.playwright')"/>
+    <Delete Files="$(OutDir)\playwright.ps1" Condition="Exists('$(OutDir)\playwright.ps1')" />
+  </Target>
+
+  <!-- </workaround of multiple copies from Microsoft.Playwright> -->
 
 </Project>
