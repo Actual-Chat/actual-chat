@@ -9,6 +9,7 @@
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <!-- CS8604:  Possible null reference argument -->
     <NoWarn>1701;1702;CA1034;CA1822;RCS1090;CS8604;</NoWarn>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
     <!-- Copy all references to output folder (important for coverage tools) -->
@@ -20,7 +21,6 @@
     <XunitStartupAssembly>$(BaseName).Testing</XunitStartupAssembly>
     <XunitStartupFullName>$(BaseName).Testing.StartupBase</XunitStartupFullName>
   </PropertyGroup>
-  
   <ItemGroup>
     <PackageReference Include="Moq" />
     <PackageReference Include="Moq.Analyzers" />
