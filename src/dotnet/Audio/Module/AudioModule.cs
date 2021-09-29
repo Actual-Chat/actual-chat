@@ -3,6 +3,7 @@ using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Orchestration;
 using ActualChat.Hosting;
+using ActualChat.Streaming.Server;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -66,7 +67,10 @@ namespace ActualChat.Audio.Module
             });
 
             // Redis
-            services.AddSingleton<IConnectionMultiplexer>(c => ConnectionMultiplexer.Connect(Settings.Redis));
+            services.AddSingleton(_ => {
+                var redis = ConnectionMultiplexer.Connect(Settings.Redis);
+                return new RedisDb(redis);
+            });
 
             // Module's own services
             services.AddSingleton<AudioSaver>();

@@ -13,22 +13,24 @@ namespace ActualChat.Streaming.Server
         { }
 
         protected Options Setup { get; init; }
-        protected IConnectionMultiplexer Redis { get; init; }
+        protected RedisDb RootRedisDb { get; init; }
+        protected RedisDb RedisDb { get; init; }
         protected ILogger Log { get; }
 
         public RedisStreamProvider(
             Options setup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             ILogger<RedisStreamProvider<TStreamId, TPart>> log)
         {
             Log = log;
             Setup = setup;
-            Redis = redis;
+            RootRedisDb = rootRedisDb;
+            RedisDb = RootRedisDb.WithKeyPrefix(Setup.KeyPrefix);
         }
 
         public Task<ChannelReader<TPart>> GetStream(TStreamId streamId, CancellationToken cancellationToken)
         {
-            var db = Setup.GetDatabase(Redis);
+            var streamer = Setup.GetPartStreamer(RedisDb, streamId);
             var channel = Channel.CreateBounded<TPart>(
                 new BoundedChannelOptions(100) {
                     FullMode = BoundedChannelFullMode.Wait,
@@ -36,7 +38,6 @@ namespace ActualChat.Streaming.Server
                     SingleWriter = true,
                     AllowSynchronousContinuations = true
                 });
-            var streamer = Setup.GetPartStreamer(db, streamId);
             _ = streamer.Read(channel, cancellationToken);
             return Task.FromResult(channel.Reader);
         }

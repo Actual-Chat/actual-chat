@@ -14,23 +14,24 @@ namespace ActualChat.Streaming.Server
         { }
 
         protected Options Setup { get; }
-        protected IConnectionMultiplexer Redis { get; }
+        protected RedisDb RootRedisDb { get; }
+        protected RedisDb RedisDb { get; }
         protected ILogger Log { get; }
 
         public RedisStreamPublisher(
             Options setup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             ILogger<RedisStreamPublisher<TStreamId, TPart>> log)
         {
             Log = log;
             Setup = setup;
-            Redis = redis;
+            RootRedisDb = rootRedisDb;
+            RedisDb = RootRedisDb.WithKeyPrefix(Setup.KeyPrefix);
         }
 
         public Task PublishStream(TStreamId streamId, ChannelReader<TPart> content, CancellationToken cancellationToken)
         {
-            var db = Setup.GetDatabase(Redis);
-            var streamer = Setup.GetPartStreamer(db, streamId);
+            var streamer = Setup.GetPartStreamer(RedisDb, streamId);
             return streamer.Write(content, cancellationToken);
         }
     }

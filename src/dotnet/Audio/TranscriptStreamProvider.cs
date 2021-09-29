@@ -11,9 +11,9 @@ namespace ActualChat.Audio
 
         public TranscriptStreamProvider(
             Options setup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             ILogger<TranscriptStreamProvider> log)
-            : base(setup, redis, log)
+            : base(setup, rootRedisDb, log)
         { }
     }
 }

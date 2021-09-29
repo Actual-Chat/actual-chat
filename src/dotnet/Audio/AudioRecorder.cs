@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ActualChat.Blobs;
+using ActualChat.Streaming.Server;
 using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
 using Stl.Fusion.Authentication;
 
 namespace ActualChat.Audio
@@ -13,18 +13,18 @@ namespace ActualChat.Audio
     {
         private readonly AudioRecordProducer.Options _producerSetup;
         private readonly ILogger<AudioRecorder> _log;
-        private readonly IConnectionMultiplexer _redis;
+        private readonly RedisDb _rootRedisDb;
         private readonly IAuthService _auth;
 
         public AudioRecorder(
             AudioRecordProducer.Options producerSetup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             IAuthService auth,
             ILogger<AudioRecorder> log)
         {
             _log = log;
             _producerSetup = producerSetup;
-            _redis = redis;
+            _rootRedisDb = rootRedisDb;
             _auth = auth;
         }
 
@@ -43,9 +43,9 @@ namespace ActualChat.Audio
             };
             _log.LogInformation("Uploading: Record = {Record}", record);
 
-            var db = _producerSetup.GetDatabase(_redis);
-            var contentQueue = _producerSetup.GetContentQueue(db);
-            var partStreamer = _producerSetup.GetPartStreamer(db, record.Id);
+            var redisDb = _rootRedisDb.WithKeyPrefix(_producerSetup.KeyPrefix);
+            var contentQueue = _producerSetup.GetContentQueue(redisDb);
+            var partStreamer = _producerSetup.GetPartStreamer(redisDb, record.Id);
             await partStreamer.Write(content,
                 async _ => await contentQueue.Enqueue(record),
                 cancellationToken);

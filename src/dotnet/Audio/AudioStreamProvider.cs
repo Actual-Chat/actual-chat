@@ -12,9 +12,9 @@ namespace ActualChat.Audio
 
         public AudioStreamProvider(
             Options setup,
-            IConnectionMultiplexer redis,
+            RedisDb rootRedisDb,
             ILogger<AudioStreamProvider> log)
-            : base(setup, redis, log)
+            : base(setup, rootRedisDb, log)
         { }
     }
 }

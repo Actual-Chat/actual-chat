@@ -12,16 +12,16 @@ public class RedisQueue<T> : IAsyncDisposable
     }
 
     public Options Setup { get; }
-    public IDatabase Database { get; }
+    public RedisDb RedisDb { get; }
     public string Key { get; }
     public RedisPubSub EnqueuePubSub { get; }
 
-    public RedisQueue(Options setup, IDatabase database, string key)
+    public RedisQueue(Options setup, RedisDb redisDb, string key)
     {
         Setup = setup;
-        Database = database;
+        RedisDb = redisDb;
         Key = key;
-        EnqueuePubSub = new RedisPubSub(database, $"{typeof(T).Name}-{Key}{Setup.EnqueuePubSubKeySuffix}");
+        EnqueuePubSub = new RedisPubSub(redisDb, $"{typeof(T).Name}-{Key}{Setup.EnqueuePubSubKeySuffix}");
     }
 
     public ValueTask DisposeAsync()
@@ -30,14 +30,14 @@ public class RedisQueue<T> : IAsyncDisposable
     public async Task Enqueue(T item)
     {
         using var bufferWriter = Setup.Serializer.Writer.Write(item);
-        await Database.ListLeftPushAsync(Key, bufferWriter.WrittenMemory);
+        await RedisDb.Database.ListLeftPushAsync(Key, bufferWriter.WrittenMemory);
         await EnqueuePubSub.Publish(RedisValue.EmptyString);
     }
 
     public async Task<T> Dequeue(CancellationToken cancellationToken = default)
     {
         while (true) {
-            var value = await Database.ListRightPopAsync(Key);
+            var value = await RedisDb.Database.ListRightPopAsync(Key);
             if (!value.IsNullOrEmpty)
                 return Setup.Serializer.Reader.Read(value);
             await EnqueuePubSub.Fetch(cancellationToken)
@@ -47,5 +47,5 @@ public class RedisQueue<T> : IAsyncDisposable
     }
 
     public Task Remove()
-        => Database.KeyDeleteAsync(Key, CommandFlags.FireAndForget);
+        => RedisDb.Database.KeyDeleteAsync(Key, CommandFlags.FireAndForget);
 }
