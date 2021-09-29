@@ -1,4 +1,5 @@
 tests/Testing/testsettings.local.json
+wwwroot/dist/
 # IDE folders & files
 .vs/
 .vscode/
