@@ -33,5 +33,10 @@ namespace ActualChat.Chat
 
             public CreateEntry() : this((ChatEntry) null!) { }
         }
+
+        public record UpdateEntry(ChatEntry Entry) : ServerSideCommandBase<ChatEntry> {
+
+            public UpdateEntry() : this((ChatEntry) null!) { }
+        }
     }
 }

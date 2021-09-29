@@ -1,22 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Reactive;
 using System.Security;
-using System.Threading;
-using System.Threading.Tasks;
 using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion;
-using Stl.CommandR;
 using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.Operations;
-using Stl.Generators;
 
 namespace ActualChat.Chat
 {
@@ -45,6 +37,26 @@ namespace ActualChat.Chat
                 var invChatEntry = context.Operation().Items.Get<ChatEntry>();
                 _ = GetIdRange(chatEntry.ChatId, default);
                 InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
+                return null!;
+            }
+
+            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
+
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
+            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+            chatEntry = dbChatEntry.ToModel();
+            context.Operation().Items.Set(chatEntry);
+            return chatEntry;
+        }
+
+        public virtual async Task<ChatEntry> UpdateEntry(ChatCommands.UpdateEntry command, CancellationToken cancellationToken)
+        {
+            var chatEntry = command.Entry;
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating()) {
+                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+                _ = GetIdRange(chatEntry.ChatId, default);
+                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, true);
                 return null!;
             }
 
