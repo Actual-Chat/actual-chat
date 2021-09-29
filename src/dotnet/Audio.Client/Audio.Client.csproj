@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
+    <ProjectReference Include="..\Streaming.Client\Streaming.Client.csproj" />
+  </ItemGroup>
+
+</Project>

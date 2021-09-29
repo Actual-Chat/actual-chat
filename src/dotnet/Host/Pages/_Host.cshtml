@@ -1,0 +1,74 @@
+﻿@page "/"
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@namespace ActualChat.Host.Pages
+@using ActualChat.Host.Internal
+@using Stl.Fusion.Blazor
+@using Stl.Fusion.Server.Authentication
+@using Stl.Fusion.Server.Controllers
+@inject IServiceProvider _services
+@inject ServerAuthHelper _serverAuthHelper
+@inject HostPluginHelper _hostPluginHelper
+@inject HostSettings _hostSettings
+@inject BlazorCircuitContext _blazorCircuitContext
+@{
+    await _serverAuthHelper.UpdateAuthState(HttpContext);
+    var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);
+    var sessionId = _serverAuthHelper.Session.Id.Value;
+    var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
+    var isCloseWindowRequest = _serverAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>Actual Chat</title>
+    <base href="~/"/>
+    <link href="css/app.css" rel="stylesheet"/>
+    @foreach (var styleSheetPath in _hostPluginHelper.CssUrls) {
+        <link href="@styleSheetPath" rel="stylesheet"/>
+    }
+    <partial name="Blazorise.Head"/>
+    <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
+    <script>
+        window.FusionAuth.schemas = "@authSchemas";
+        window.FusionAuth.sessionId = "@sessionId";
+    </script>
+</head>
+<body>
+@if (isCloseWindowRequest) {
+    <script>
+        setTimeout(function () {
+            window.close();
+        }, 500)
+    </script>
+    <div class="alert alert-primary">
+        @(closeWindowFlowName) completed, you can close this window.
+    </div>
+} else {
+    <app id="app">
+        @(await Html.RenderApp(_services, HttpContext))
+    </app>
+
+    <div id="blazor-error-ui">
+        <environment include="Staging,Production">
+            An error has occurred. This application may no longer respond until reloaded.
+        </environment>
+        <environment include="Development">
+            An unhandled exception has occurred. See browser dev tools for details.
+        </environment>
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <partial name="Blazorise.Body"/>
+    @foreach (var scriptPath in _hostPluginHelper.ScriptUrls) {
+        <script type="module" src="@scriptPath"></script>
+    }
+    <script type="module" src="./js/app.js"></script>
+    <script src="_framework/blazor.@(isServerSideBlazor ? "server" : "webassembly").js"></script>
+}
+</body>
+</html>
