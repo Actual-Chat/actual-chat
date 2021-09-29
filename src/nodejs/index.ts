@@ -9,6 +9,11 @@ import './style/navbar.css';
 import './style/scrollbars.css';
 import './style/tailwind.css';
 
-import './../dotnet/Audio.UI.Blazor/wwwroot/js/audio-recorder.js';
-import './../dotnet/Chat.UI.Blazor/wwwroot/css/chat-page.css';
-import './../dotnet/Web/';
+// TODO: try to dynamically import components 
+
+import '../dotnet/Audio.UI.Blazor/Components/AudioPlayer/audio-player.js';
+import '../dotnet/Audio.UI.Blazor/Components/AudioRecorder/audio-recorder.js';
+
+// import './../dotnet/*/Components/**/*.js';
+// import './../dotnet/*/Components/**/*.ts';
+// import './../dotnet/*/Components/**/*.css';
