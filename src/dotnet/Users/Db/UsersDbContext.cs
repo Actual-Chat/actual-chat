@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Users.Db
 {
-    public class UsersDbContext : DbContext
+    public class UsersDbContext : DbContextBase
     {
         public DbSet<DbUserState> UserStates { get; protected set; } = null!;
 
