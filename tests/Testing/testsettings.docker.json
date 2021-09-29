@@ -1,0 +1,3 @@
+{
+  "WARNING": "Do not change values here, these values are used in docker env tests. For local development you should override via testsettings.local.json"
+}

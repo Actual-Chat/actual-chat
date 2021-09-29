@@ -3,9 +3,46 @@ root = true
 
 [*]
 charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
 
 # Standard properties
 max_line_length = 120
+
+[*.{appxmanifest,asax,ascx,aspx,axaml,build,cg,cginc,compute,cs,cshtml,dtd,fs,fsi,fsscript,fsx,hlsl,hlsli,hlslinc,master,ml,mli,nuspec,paml,razor,resw,resx,shader,skin,usf,ush,vb,xaml,xamlx,xoml,xsd}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+[*.cs]
+indent_size = 4
+end_of_line = lf
+
+# XML & Project Files
+[*.{xml,config,props,targets,nuspec,resx,ruleset,vsixmanifest,vsct,csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
+indent_size = 2
+charset = utf-8
+end_of_line = lf
+
+# JSON Files
+[*.{json,json5}]
+indent_size = 2
+
+# YAML Files
+[*.{yml,yaml}]
+indent_size = 2
+
+# Markdown Files
+[*.md]
+trim_trailing_whitespace = false
+
+# Web Files
+[*.{cshtml,razor,htm,html,js,ts,tsx,css,sass,scss,less,svg,vue}]
+indent_size = 2
+insert_final_newline = true
 
 # Microsoft .NET properties
 csharp_new_line_before_members_in_object_initializers = false
@@ -479,21 +516,6 @@ resharper_web_config_module_not_resolved_highlighting = warning
 resharper_web_config_type_not_resolved_highlighting = warning
 resharper_web_config_wrong_module_highlighting = warning
 
-# YAML Files
-[*.{yml,yaml}]
-indent_size = 2
-
-# Markdown Files
-[*.md]
-trim_trailing_whitespace = false
-
-[*.cs, *.js, *.tsx]
-indent_size = 4
-indent_style = space
-trim_trailing_whitespace = true
-insert_final_newline = true
-end_of_line = lf
-
 [*.cs]
 # Indentation options
 # https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference#
@@ -694,12 +716,17 @@ dotnet_naming_rule.typeparam_start_with_t.style = T_prefix_style
 dotnet_naming_symbols.any_typeparam.applicable_accessibilities = *
 dotnet_naming_symbols.any_typeparam.applicable_kinds = type_parameter
 
-[*.{appxmanifest,asax,ascx,aspx,axaml,build,cg,cginc,compute,cs,cshtml,dtd,fs,fsi,fsscript,fsx,hlsl,hlsli,hlslinc,master,ml,mli,nuspec,paml,razor,resw,resx,shader,skin,usf,ush,vb,xaml,xamlx,xoml,xsd}]
-indent_style = space
-indent_size = 4
-tab_width = 4
 
-[*.{csproj,props}]
-indent_style = space
-indent_size = 2
-tab_width = 2
+dotnet_code_quality_unused_parameters = non_public # IDE0060: Remove unused parameter
+dotnet_diagnostic.VSTHRD200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
+dotnet_diagnostic.IDE1006.severity = none
+dotnet_diagnostic.RCS1037.severity = silent # RCS1037: Remove trailing white-space
+dotnet_diagnostic.RCS1139.severity = none # RCS1139: Add summary element to documentation comment.
+dotnet_diagnostic.RCS1021.severity = none # RCS1021: Simplify lambda expression.
+dotnet_diagnostic.CA1014.severity = none # CA1014: Mark assemblies with CLSCompliant
+dotnet_diagnostic.CA1716.severity = none # CA1716: Rename namespace Shared so that it no longer conflicts with the reserved language keyword 'Shared'
+dotnet_diagnostic.CA5394.severity = none # CA5394: Random is an insecure random number generator. Use cryptographically secure random number generators when randomness is required for security.
+dotnet_diagnostic.CA1303.severity = none # CA1303: Method passes a literal string as parameter 'value' of a call
+dotnet_diagnostic.CA1416.severity = none # CA1416: is only supported on: 'windows' 5.1.2600 and later.
+dotnet_diagnostic.CA2201.severity = none # CA2201: Exception type System.Exception is not sufficiently specific
+dotnet_diagnostic.MA0051.severity = none # MA0051: Method is too long

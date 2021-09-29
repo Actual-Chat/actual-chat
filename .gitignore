@@ -1,3 +1,4 @@
+tests/Testing/testsettings.local.json
 # IDE folders & files
 .vs/
 .vscode/

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using NetBox.Extensions;
 using Stl.Testing;
 using Xunit;
 using Xunit.Abstractions;
