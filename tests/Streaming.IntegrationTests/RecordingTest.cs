@@ -1,23 +1,16 @@
-using System;
 using System.Buffers;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using ActualChat.Audio;
 using ActualChat.Blobs;
-using ActualChat.Streaming;
 using ActualChat.Testing;
-using FluentAssertions;
+using ActualChat.Testing.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
 using Stl.Testing;
 using Stl.Time;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Streaming
+namespace ActualChat.Streaming.IntegrationTests
 {
     public class RecordingTest : TestBase
     {

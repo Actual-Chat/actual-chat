@@ -1,6 +1,6 @@
 using ActualChat.Host;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public static class TestPlaywrightExt
     {

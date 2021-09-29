@@ -1,14 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using ActualChat.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
 using Stl.Fusion.Authentication;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public class PlaywrightTester : IWebTester
     {

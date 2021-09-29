@@ -1,10 +1,8 @@
 using ActualChat.Audio.WebM;
-using FluentAssertions;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Audio
+namespace ActualChat.Audio.UnitTests
 {
     public class VIntTests : TestBase
     {

@@ -1,21 +1,12 @@
-using System;
 using System.Buffers;
-using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
-using ActualChat.Audio;
 using ActualChat.Audio.Orchestration;
 using ActualChat.Blobs;
-using ActualChat.Streaming;
-using FluentAssertions;
 using Stl.Testing;
 using Stl.Time;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Audio
+namespace ActualChat.Audio.UnitTests
 {
     public class AudioActivityPeriodExtractorTest : TestBase
     {

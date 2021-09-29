@@ -1,12 +1,10 @@
-using System;
 using ActualChat.Host;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Playwright;
 using Stl.Fusion;
 using Stl.Fusion.Authentication;
 
-namespace ActualChat.Testing
+namespace ActualChat.Testing.Host
 {
     public class BlazorTester : TestContext, IWebTester
     {

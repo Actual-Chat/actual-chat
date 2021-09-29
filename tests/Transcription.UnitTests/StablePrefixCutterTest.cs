@@ -1,10 +1,7 @@
-using ActualChat.Transcription;
-using FluentAssertions;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Transcription
+namespace ActualChat.Transcription.UnitTests
 {
     public class StablePrefixCutterTest : TestBase
     {
