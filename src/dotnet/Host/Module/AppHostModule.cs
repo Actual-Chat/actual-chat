@@ -1,20 +1,11 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using ActualChat.Host.Internal;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using Stl.DependencyInjection;
 using Stl.Fusion;
@@ -22,7 +13,6 @@ using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
 using Stl.Fusion.Server;
-using Stl.IO;
 using Stl.Plugins;
 
 namespace ActualChat.Host.Module
@@ -76,7 +66,7 @@ namespace ActualChat.Host.Module
             // UriMapper
             services.AddSingleton(c => {
                 var server = c.GetRequiredService<IServer>();
-                var serverAddressesFeature = server.Features.Get<IServerAddressesFeature>();
+                var serverAddressesFeature = server.Features.Get<IServerAddressesFeature>() ?? throw new Exception("Can't get server address");
                 var baseUri = new Uri(serverAddressesFeature.Addresses.First());
                 return new UriMapper(baseUri);
             });
@@ -88,28 +78,10 @@ namespace ActualChat.Host.Module
             // and since we don't copy it to local wwwroot,
             // we need to find Client's wwwroot in bin/(Debug/Release) folder
             // and set it as this server's content root.
-            var baseDir = FilePath.New(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "");
-            // TODO check two string below (Andrey)
-            if (baseDir.Value.Contains("tests"))
-                baseDir = Path.Combine(baseDir.Value.Substring(0, baseDir.Length - 5), "bin");
-            var binCfgPart = Regex.Match(baseDir.Value, @"[\\/]bin[\\/]\w+[\\/]").Value;
-            var wwwRootPath = baseDir & "wwwroot";
-            if (!Directory.Exists(Path.Combine(wwwRootPath, "_framework"))) {
-                // This is a regular build, not a build produced w/ "publish",
-                // so we remap wwwroot to the client's wwwroot folder
-                var relativeWwwRootPath = $"../../src/UI.Blazor.Host/{binCfgPart}/net5.0/wwwroot";
-                for (var i = 0; i < 4; i++) {
-                    wwwRootPath = baseDir & relativeWwwRootPath;
-                    if (Directory.Exists(wwwRootPath))
-                        break;
-                    relativeWwwRootPath = "../" + relativeWwwRootPath;
-
-                }
-                if (!Directory.Exists(wwwRootPath))
-                    throw new ApplicationException("Can't find 'wwwroot' folder.");
-            }
-            Env.WebRootPath = wwwRootPath;
+            Env.WebRootPath = AppPathResolver.GetWebRootPath();
+            Env.ContentRootPath = AppPathResolver.GetContentRootPath();
             Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
+            Env.ContentRootFileProvider = new PhysicalFileProvider(Env.ContentRootPath);
             StaticWebAssetsLoader.UseStaticWebAssets(Env, Cfg);
 
             if (Env.IsDevelopment()) {

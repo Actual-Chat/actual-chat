@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using ActualChat.Host;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration.Memory;
@@ -47,26 +40,13 @@ namespace ActualChat.Testing
         public static FilePath GetManifestPath()
         {
             FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
-                // TODO check new ChangeExtension below (Andrey)
-                // => assemblyPath.ChangeExtension("StaticWebAssets.xml");
                 => assemblyPath.ChangeExtension("staticwebassets.runtime.json");
 
-            var hostAssemblyPath = (FilePath) typeof(AppHost).Assembly.Location;
-            var hostAssemblyFileName = hostAssemblyPath.FileName;
+            var hostAssemblyPath = (FilePath)typeof(AppHost).Assembly.Location;
             var manifestPath = AssemblyPathToManifestPath(hostAssemblyPath);
             if (File.Exists(manifestPath))
                 return manifestPath;
-
-            var baseDir = hostAssemblyPath.DirectoryPath;
-            var binCfgPart = Regex.Match(baseDir.Value, @"[\\/]bin[\\/]\w+[\\/]").Value;
-            var relativePath = $"../../src/Host/{binCfgPart}net5.0/" & hostAssemblyFileName;
-            for (var i = 0; i < 4; i++) {
-                manifestPath = AssemblyPathToManifestPath(baseDir & relativePath);
-                if (File.Exists(manifestPath))
-                    return manifestPath;
-                relativePath = "../" + relativePath;
-            }
-            throw new ApplicationException("Can't find manifest.");
+            throw new Exception("Can't find manifest.");
         }
     }
 }
