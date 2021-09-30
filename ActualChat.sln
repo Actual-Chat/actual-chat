@@ -45,9 +45,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.Contracts", "src\dotn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.UI.Blazor", "src\dotnet\Users.UI.Blazor\Users.UI.Blazor.csproj", "{1409E3BF-67D7-46A5-866C-A9F25DA925ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streaming.Client", "src\dotnet\Streaming.Client\Streaming.Client.csproj", "{8721EEF6-719E-4A07-B5F0-F21C2C6FE0D7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalR.Client", "src\dotnet\SignalR.Client\SignalR.Client.csproj", "{8721EEF6-719E-4A07-B5F0-F21C2C6FE0D7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Streaming.Server", "src\dotnet\Streaming.Server\Streaming.Server.csproj", "{BC0AE38C-2C67-453E-A618-5C6D84D98525}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis", "src\dotnet\Redis\Redis.csproj", "{BC0AE38C-2C67-453E-A618-5C6D84D98525}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.Contracts", "src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj", "{8804C7E0-6EE9-42CA-A1CD-B9B93A2C2A9A}"
 EndProject

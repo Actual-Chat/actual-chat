@@ -2,7 +2,7 @@ using Cysharp.Text;
 using StackExchange.Redis;
 using StackExchange.Redis.KeyspaceIsolation;
 
-namespace ActualChat.Streaming.Server;
+namespace ActualChat.Redis;
 
 public class RedisDb
 {

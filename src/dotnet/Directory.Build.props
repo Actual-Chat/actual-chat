@@ -39,6 +39,7 @@
     <Using Include="Stl.Time" />
     <Using Include="Stl.Fusion" />
     <Using Include="Stl.CommandR" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->
