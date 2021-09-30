@@ -13,6 +13,7 @@
 
 @code {
     private IJSObjectReference ModuleRef { get; set; } = null!;
+    protected IJSObjectReference? JSComponentRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
     private int Index { get; set; }
@@ -31,20 +32,20 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (ModuleRef != null! || !firstRender)
-            return;
+      if (firstRender) {
         ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
         ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-        await ModuleRef.InvokeVoidAsync("initialize", ComponentRef);
+        JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
+      }
     }
 
     private Task ToggleRecording()
         => IsRecording ? StopRecording() : StartRecording();
 
-    private Task StartRecording()
+    private async Task StartRecording()
     {
         if (AudioChannel != null)
-            return Task.CompletedTask;
+            return;
 
         AudioChannel = Channel.CreateBounded<BlobPart>(
             new BoundedChannelOptions(100) {
@@ -54,18 +55,22 @@
                 AllowSynchronousContinuations = true
             });
         StateHasChanged();
-        return ModuleRef.InvokeVoidAsync("startRecording").AsTask();
+        if (JSComponentRef != null)
+            await JSComponentRef.InvokeVoidAsync("startRecording");
     }
 
-    private Task StopRecording()
+    private async Task StopRecording()
     {
         if (AudioChannel == null)
-            return Task.CompletedTask;
+            return;
 
         AudioChannel.Writer.Complete();
         AudioChannel = null;
+        if (JSComponentRef != null)
+          await JSComponentRef.InvokeVoidAsync("stopRecording");
+
         StateHasChanged();
-        return ModuleRef.InvokeVoidAsync("stopRecording").AsTask();
+
     }
 
     // JS backend callback handlers
@@ -86,13 +91,11 @@
     }
 
     [JSInvokable]
-    public async Task OnAudioData(string dataAsBase64)
+    public async Task OnAudioData(byte[] chunk)
     {
         if (AudioChannel == null)
             return;
-
-        var data = Base64Encoded.Decode(dataAsBase64).Data;
-        await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, data));
+        await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
 
     [JSInvokable]
