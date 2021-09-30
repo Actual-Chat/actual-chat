@@ -7,9 +7,7 @@ namespace ActualChat.Transcription.IntegrationTests
 {
     public class GoogleNativeTranscriberTest : TestBase
     {
-        public GoogleNativeTranscriberTest(ITestOutputHelper @out) : base(@out)
-        {
-        }
+        public GoogleNativeTranscriberTest(ITestOutputHelper @out) : base(@out) { }
 
         [Fact(Skip = "Manual")]
         public async Task GoogleRecognizeTest()

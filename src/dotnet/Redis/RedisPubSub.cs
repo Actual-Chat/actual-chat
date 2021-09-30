@@ -1,10 +1,11 @@
 using StackExchange.Redis;
 using Stl.Locking;
 
-namespace ActualChat.Streaming.Server;
+namespace ActualChat.Redis;
 
 public class RedisPubSub : AsyncDisposableBase
 {
+    private readonly IAsyncLock _asyncLock = new AsyncLock(ReentryMode.UncheckedDeadlock);
     private ISubscriber? _subscriber;
     private ChannelMessageQueue? _queue;
 
@@ -12,7 +13,6 @@ public class RedisPubSub : AsyncDisposableBase
     public string Key { get; }
     public string FullKey { get; }
     public ISubscriber Subscriber => _subscriber ??= RedisDb.Redis.GetSubscriber();
-    private IAsyncLock _asyncLock = new AsyncLock(ReentryMode.UncheckedDeadlock);
 
     public RedisPubSub(RedisDb redisDb, string key)
     {
@@ -60,7 +60,8 @@ public class RedisPubSub<T> : RedisPubSub
 {
     public IByteSerializer<T> Serializer { get; }
 
-    public RedisPubSub(RedisDb redisDb, string key, ByteSerializer<T>? serializer = null) : base(redisDb, key)
+    public RedisPubSub(RedisDb redisDb, string key, ByteSerializer<T>? serializer = null)
+        : base(redisDb, key)
         => Serializer = serializer ?? ByteSerializer<T>.Default;
 
     public Task<long> PublishRaw(RedisValue item)

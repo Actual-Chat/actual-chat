@@ -22,7 +22,7 @@ namespace ActualChat.UI.Blazor
                     ad.DisposeAsync();
                 else
                     serviceScope.Dispose();
-            });
+            }, TaskScheduler.Current);
         }
     }
 }

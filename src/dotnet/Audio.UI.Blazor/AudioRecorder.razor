@@ -1,11 +1,10 @@
 @using System.Threading.Channels
-@using ActualChat.Streaming
 @implements IAudioRecorderBackend
 @implements IAsyncDisposable
 @inject Session _session
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
-@inject IAudioRecorder _audioRecorder
+@inject ISourceAudioRecorder _sourceAudioRecorder
 
 <Button Type="@ButtonType.Button" Clicked="ToggleRecording" Color="@ToggleColor">
     <Blazorise.Icon Name="@FontAwesomeIcons.Microphone"/>
@@ -32,11 +31,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-      if (firstRender) {
-        ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
-        ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-        JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
-      }
+        if (firstRender) {
+            ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
+            ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
+        }
     }
 
     private Task ToggleRecording()
@@ -86,7 +85,7 @@
             new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = _audioRecorder.Record(_session, record, AudioChannel.Reader, default);
+        _ = _sourceAudioRecorder.RecordSourceAudio(_session, record, AudioChannel.Reader, default);
         return Task.CompletedTask;
     }
 
@@ -111,5 +110,4 @@
         StateHasChanged();
         return Task.CompletedTask;
     }
-
 }

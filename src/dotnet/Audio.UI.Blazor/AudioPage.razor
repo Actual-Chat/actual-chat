@@ -1,15 +1,14 @@
 ﻿@page "/voice"
 @inherits ComputedStateComponent<int>
 @using System.Threading.Channels
-@using ActualChat.Streaming
 @implements IAudioRecorderBackend
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
 @inject Session _session
 @inject UICommandRunner _cmd
-@inject IAudioRecorder _audioRecorder
-@inject IAudioStreamProvider _audioStreamProvider
-@inject ITranscriptStreamProvider _transcriptStreamProvider
+@inject ISourceAudioRecorder _sourceAudioRecorder
+@inject IAudioStreamer _audioStreamer
+@inject ITranscriptStreamer _transcriptStreamer
 @inject ILogger<AudioPage> _log
 
 <h1>Voice Transcription</h1>
@@ -116,7 +115,7 @@
                 new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
-            _ = _audioRecorder.Record(_session, record, channel.Reader, CancellationToken.None);
+            _ = _sourceAudioRecorder.RecordSourceAudio(_session, record, channel.Reader, CancellationToken.None);
         }
 
         return Task.CompletedTask;
@@ -125,7 +124,7 @@
     private async Task ReadAudio(AudioRecordId audioRecordId)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var reader = await _audioStreamProvider.GetStream(streamId, CancellationToken.None);
+        var reader = await _audioStreamer.GetAudioStream(streamId, CancellationToken.None);
         await foreach (var audioMessage in reader.ReadAllAsync()) {
             Console.WriteLine($"Got from server: {audioMessage.Data.Length} bytes");
         }
@@ -134,7 +133,7 @@
     private async Task ReadTranscription(AudioRecordId audioRecordId)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var reader = await _transcriptStreamProvider.GetStream(streamId, CancellationToken.None);
+        var reader = await _transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
         await foreach (var transcriptMessage in reader.ReadAllAsync()) {
             Console.WriteLine($"Got from server: {transcriptMessage.Text}");
         }

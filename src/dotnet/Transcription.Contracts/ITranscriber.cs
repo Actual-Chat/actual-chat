@@ -1,24 +1,14 @@
-﻿using System;
-using System.Collections.Immutable;
-using System.Reactive;
-using System.Threading;
-using System.Threading.Tasks;
-using Stl.CommandR;
-using Stl.Fusion;
-using Stl.Fusion.Extensions;
-using Stl.Text;
+﻿namespace ActualChat.Transcription;
 
-namespace ActualChat.Transcription
+public interface ITranscriber
 {
-    public interface ITranscriber
-    {
-        Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken);
-        Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken);
-        Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken);
+    Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken);
+    Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken);
+    Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken);
 
-        Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken);
+    // TODO(AY): Make this [ComputeMethod] GetTranscription?
+    Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken);
 
-        // probably we should combine Poll and Ack into one method to reduce chattiness
-        Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken);
-    }
+    // TODO(AK): Combine Poll and Ack into one method to reduce chattiness?
+    Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken);
 }

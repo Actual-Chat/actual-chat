@@ -45,9 +45,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Contracts", "src\dotn
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.UI.Blazor", "src\dotnet\Users.UI.Blazor\Users.UI.Blazor.csproj", "{1409E3BF-67D7-46A5-866C-A9F25DA925ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streaming.Client", "src\dotnet\Streaming.Client\Streaming.Client.csproj", "{8721EEF6-719E-4A07-B5F0-F21C2C6FE0D7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalR.Client", "src\dotnet\SignalR.Client\SignalR.Client.csproj", "{8721EEF6-719E-4A07-B5F0-F21C2C6FE0D7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streaming.Server", "src\dotnet\Streaming.Server\Streaming.Server.csproj", "{BC0AE38C-2C67-453E-A618-5C6D84D98525}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis", "src\dotnet\Redis\Redis.csproj", "{BC0AE38C-2C67-453E-A618-5C6D84D98525}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.Contracts", "src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj", "{8804C7E0-6EE9-42CA-A1CD-B9B93A2C2A9A}"
 EndProject
@@ -65,9 +65,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.IntegrationTests", "t
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.UnitTests", "tests\Core.UnitTests\Core.UnitTests.csproj", "{02A9CB5F-A696-4EFF-97CC-E590484C91AF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Streaming.IntegrationTests", "tests\Streaming.IntegrationTests\Streaming.IntegrationTests.csproj", "{3A3B0D25-DBB8-4B44-933B-129634E1CBA6}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.IntegrationTests", "tests\Transcription.IntegrationTests\Transcription.IntegrationTests.csproj", "{5A88AA44-0AA7-402E-9185-8A7991FAF66C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.IntegrationTests", "tests\Transcription.IntegrationTests\Transcription.IntegrationTests.csproj", "{5A88AA44-0AA7-402E-9185-8A7991FAF66C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.IntegrationTests", "tests\UI.Blazor.IntegrationTests\UI.Blazor.IntegrationTests.csproj", "{D511789B-6EB9-4CC9-9069-8B05FA10D6B9}"
 EndProject
@@ -199,10 +197,6 @@ Global
 		{02A9CB5F-A696-4EFF-97CC-E590484C91AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{02A9CB5F-A696-4EFF-97CC-E590484C91AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{02A9CB5F-A696-4EFF-97CC-E590484C91AF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3A3B0D25-DBB8-4B44-933B-129634E1CBA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3A3B0D25-DBB8-4B44-933B-129634E1CBA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3A3B0D25-DBB8-4B44-933B-129634E1CBA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3A3B0D25-DBB8-4B44-933B-129634E1CBA6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5A88AA44-0AA7-402E-9185-8A7991FAF66C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5A88AA44-0AA7-402E-9185-8A7991FAF66C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A88AA44-0AA7-402E-9185-8A7991FAF66C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -251,7 +245,6 @@ Global
 		{5812F7E0-FBC2-42B6-9B4C-DFFF86B91DF5} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{D546F574-6B34-4340-9084-4345C8AD630B} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{02A9CB5F-A696-4EFF-97CC-E590484C91AF} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
-		{3A3B0D25-DBB8-4B44-933B-129634E1CBA6} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{5A88AA44-0AA7-402E-9185-8A7991FAF66C} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{D511789B-6EB9-4CC9-9069-8B05FA10D6B9} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{4D7E49BB-0419-4009-8E72-42F956533610} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
