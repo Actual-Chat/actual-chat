@@ -22,7 +22,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-player.js");
+            ModuleRef = await _jsModule.Import(typeof(AudioPlayer).Assembly, "js/audio-player.js");
             ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
         }

@@ -12,7 +12,7 @@
 
 @code {
     private IJSObjectReference ModuleRef { get; set; } = null!;
-    protected IJSObjectReference? JSComponentRef { get; set; }
+    private IJSObjectReference? JSComponentRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
     private int Index { get; set; }
@@ -27,12 +27,14 @@
     {
         await StopRecording();
         ComponentRef?.Dispose();
+        if (JSComponentRef != null)
+            await JSComponentRef.DisposeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
+            ModuleRef = await _jsModule.Import(typeof(AudioRecorder).Assembly, "js/audio-recorder.js");
             ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
         }
@@ -75,10 +77,10 @@
     // JS backend callback handlers
 
     [JSInvokable]
-    public Task OnStartRecording()
+    public void OnStartRecording()
     {
         if (AudioChannel == null)
-            return Task.CompletedTask;
+            return;
 
         var record = new AudioRecord(
             ChatId,
@@ -86,28 +88,26 @@
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         _ = _sourceAudioRecorder.RecordSourceAudio(_session, record, AudioChannel.Reader, default);
-        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public async Task OnAudioData(byte[] chunk)
+    public void OnAudioData(byte[] chunk)
     {
         if (AudioChannel == null)
             return;
-        await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
+        _ = AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
 
     [JSInvokable]
-    public Task OnStopRecording()
+    public void OnStopRecording()
     {
         // Does the same as StopRecording; we assume here that recording
         // might be recognized as stopped by JS backend as well
         if (AudioChannel == null)
-            return Task.CompletedTask;
+            return;
 
         AudioChannel.Writer.Complete();
         AudioChannel = null;
         StateHasChanged();
-        return Task.CompletedTask;
     }
 }
