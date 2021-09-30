@@ -1,256 +1,150 @@
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+using System.Globalization;
 using ActualChat.Audio;
+using ActualChat.Blobs;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using Microsoft.Extensions.Logging;
-using Stl.Async;
-using Stl.Text;
 
-namespace ActualChat.Transcription
+namespace ActualChat.Transcription;
+
+public class GoogleTranscriber : ITranscriber
 {
-    public class GoogleTranscriber : ITranscriber
+    private readonly ILogger<GoogleTranscriber> _log;
+
+    public GoogleTranscriber(ILogger<GoogleTranscriber> log)
     {
-        private readonly ILogger<GoogleTranscriber> _log;
-        private readonly ConcurrentDictionary<string,TranscriptionStream> _transcriptionStreams = new();
+        _log = log;
+    }
 
-        public GoogleTranscriber(ILogger<GoogleTranscriber> log)
-        {
-            _log = log;
+    public async Task<ChannelReader<TranscriptFragment>> Transcribe(
+        TranscriptionRequest request,
+        ChannelReader<BlobPart> audioData,
+        CancellationToken cancellationToken)
+    {
+        var (streamId, format, options) = request;
+        _log.LogInformation("Start transcription of StreamId = {StreamId}", (string) streamId);
+
+        var builder = new SpeechClientBuilder();
+        var speechClient = await builder.BuildAsync(cancellationToken);
+        var config = new RecognitionConfig {
+            Encoding = MapEncoding(format.Codec),
+            AudioChannelCount = format.ChannelCount,
+            SampleRateHertz = format.SampleRate,
+            LanguageCode = options.Language,
+            EnableAutomaticPunctuation = options.IsPunctuationEnabled,
+            DiarizationConfig = new SpeakerDiarizationConfig {
+                EnableSpeakerDiarization = true,
+                MaxSpeakerCount = options.MaxSpeakerCount ?? 5
+            }
+        };
+
+        var streamingRecognizeStream = speechClient.StreamingRecognize();
+        await streamingRecognizeStream.WriteAsync(new StreamingRecognizeRequest {
+            StreamingConfig = new StreamingRecognitionConfig {
+                Config = config,
+                InterimResults = true,
+                SingleUtterance = false
+            },
+        }).ConfigureAwait(false);
+        var responseStream =  (IAsyncEnumerable<StreamingRecognizeResponse>)streamingRecognizeStream.GetResponseStream();
+        var transcriptChannel = Channel.CreateUnbounded<TranscriptFragment>(
+            new UnboundedChannelOptions{ SingleWriter = true });
+
+        _ = Task.Run(()
+                => PushAudioForTranscription(streamingRecognizeStream,
+                    audioData,
+                    transcriptChannel.Writer,
+                    cancellationToken),
+            cancellationToken);
+        _ = Task.Run(()
+                => ReadTranscript(responseStream, transcriptChannel.Writer, cancellationToken),
+            cancellationToken);
+
+        return transcriptChannel.Reader;
+    }
+
+    private async Task PushAudioForTranscription(
+        SpeechClient.StreamingRecognizeStream recognizeStream,
+        ChannelReader<BlobPart> audioData,
+        ChannelWriter<TranscriptFragment> writer,
+        CancellationToken cancellationToken)
+    {
+        try {
+            while (await audioData.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            while (audioData.TryRead(out var blobPart))
+                await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
+                    AudioContent = ByteString.CopyFrom(blobPart.Data)
+                }).ConfigureAwait(false);
+        }
+        catch (ChannelClosedException) { }
+        catch (Exception e) {
+            writer.TryComplete(e);
+        }
+        finally {
+            await recognizeStream.WriteCompleteAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task ReadTranscript(
+        IAsyncEnumerable<StreamingRecognizeResponse> transcriptResponseStream,
+        ChannelWriter<TranscriptFragment> writer,
+        CancellationToken cancellationToken)
+    {
+        var cutter = new StablePrefixCutter();
+        var index = 0;
+        Exception? error = null;
+        try {
+            await foreach (var response in transcriptResponseStream.WithCancellation(cancellationToken)) {
+                var speechFragment = MapResponse(response);
+                if (speechFragment.StartOffset != 0)
+                    await writer.WriteAsync(speechFragment, cancellationToken).ConfigureAwait(false);
+                else {
+                    var processedFragment = cutter.CutMemoized(speechFragment);
+                    await writer.WriteAsync(processedFragment, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+        }
+        catch (Exception e) {
+            error = e;
+        }
+        finally {
+            writer.Complete(error);
         }
 
-        public async Task<Symbol> BeginTranscription(BeginTranscriptionCommand command, CancellationToken cancellationToken)
+        TranscriptFragment MapResponse(StreamingRecognizeResponse response)
         {
-            var (recordId, options, format) = command;
-            _log.LogInformation(nameof(BeginTranscription) + " RecordId = {RecordId}", (string) recordId);
+            if (response.Error != null) {
+                _log.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
+                throw new TranscriptException(response.Error.Code.ToString(CultureInfo.InvariantCulture), response.Error.Message);
+            }
 
-            var builder = new SpeechClientBuilder();
-            var speechClient = await builder.BuildAsync(cancellationToken);
-            var config = new RecognitionConfig {
-                Encoding = MapEncoding(format.Codec),
-                AudioChannelCount = format.ChannelCount,
-                SampleRateHertz = format.SampleRate,
-                LanguageCode = options.Language,
-                EnableAutomaticPunctuation = options.IsPunctuationEnabled,
-                DiarizationConfig = new SpeakerDiarizationConfig {
-                    EnableSpeakerDiarization = true,//options.IsDiarizationEnabled,
-                    MaxSpeakerCount = options.MaxSpeakerCount ?? 5
-                }
+            var result = response.Results.First();
+            var alternative = result.Alternatives.First();
+            var endTime = result.ResultEndTime;
+            var endOffset = endTime.ToTimeSpan().TotalSeconds;
+            var fragment = new TranscriptFragment {
+                Index = index++,
+                Confidence = alternative.Confidence,
+                Text = alternative.Transcript,
+                StartOffset = 0, // TODO(AK) : suspicious 0 offset
+                Duration = endOffset,
+                IsFinal = result.IsFinal
             };
-            var streamingRecognizeStream = speechClient.StreamingRecognize();
-            await streamingRecognizeStream.WriteAsync(new StreamingRecognizeRequest {
-                StreamingConfig = new StreamingRecognitionConfig {
-                    Config = config,
-                    InterimResults = true,
-                    SingleUtterance = false
-                }
-            });
-            var transcriptId = $"{recordId}-{Ulid.NewUlid().ToString()}";
-            var responseStream =  streamingRecognizeStream.GetResponseStream();
-            var reader = new TranscriptionBuffer(responseStream, _log);
-            var cts = new CancellationTokenSource();
-            var transcriptProcessor = reader.Start(cts.Token);
-            _transcriptionStreams.TryAdd(transcriptId,
-                new TranscriptionStream(streamingRecognizeStream, reader, transcriptProcessor, cts));
-
-            return transcriptId;
+            return fragment;
         }
+    }
 
-        public async Task AppendTranscription(AppendTranscriptionCommand command, CancellationToken cancellationToken)
-        {
-            var (transcriptId, data) = command;
-            _log.LogInformation(nameof(AppendTranscription) + " TranscriptId = {TranscriptId}", (string) transcriptId);
-
-            // Waiting for BeginTranscription
-            var waitAttempts = 0;
-            while (!_transcriptionStreams.ContainsKey(transcriptId) && waitAttempts < 5) {
-                await Task.Delay(10, cancellationToken);
-                waitAttempts++;
-            }
-
-            // Initialize hasn't been completed or Recording has already been completed
-            if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream)) return;
-
-            await transcriptionStream.Writer.WriteAsync(new StreamingRecognizeRequest {
-                AudioContent = ByteString.CopyFrom(data.Data)
-            });
-        }
-
-        public async Task EndTranscription(EndTranscriptionCommand command, CancellationToken cancellationToken)
-        {
-            _log.LogInformation(nameof(EndTranscription) + " TranscriptId = {TranscriptId}", (string) command.TranscriptId);
-
-            if (_transcriptionStreams.TryGetValue(command.TranscriptId, out var tuple)) {
-                var (writer, _, transcriptProcessorTask, _) = tuple;
-                await writer.WriteCompleteAsync();
-                await transcriptProcessorTask;
-
-                _transcriptionStreams.TryRemove(command.TranscriptId, out _);
-            }
-        }
-
-        public async Task<PollResult> PollTranscription(PollTranscriptionCommand command, CancellationToken cancellationToken)
-        {
-            var (transcriptId, index) = command;
-            _log.LogInformation(nameof(PollTranscription) + " TranscriptId = {TranscriptId}, Index = {Index}", (string) transcriptId, index);
-
-            if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream))
-                return new PollResult(false, ImmutableArray<TranscriptFragmentVariant>.Empty);
-
-            var fragments = await transcriptionStream.Reader.GetResults(index, cancellationToken);
-            return new PollResult(!cancellationToken.IsCancellationRequested, fragments);
-        }
-
-        public Task AckTranscription(AckTranscriptionCommand command, CancellationToken cancellationToken)
-        {
-            var (transcriptId, index) = command;
-            _log.LogInformation(nameof(AckTranscription) + " TranscriptId = {TranscriptId}, Index = {Index}", (string) transcriptId, index);
-
-            if (!_transcriptionStreams.TryGetValue(transcriptId, out var transcriptionStream))
-                return Task.CompletedTask;
-
-            transcriptionStream.Reader.FreeBuffer(index);
-            return Task.CompletedTask;
-        }
-
-        private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodec codec)
-        {
-            switch (codec) {
-                case AudioCodec.Wav:
-                    return RecognitionConfig.Types.AudioEncoding.Linear16;
-                case AudioCodec.Flac:
-                    return RecognitionConfig.Types.AudioEncoding.Flac;
-                case AudioCodec.Opus:
-                    return RecognitionConfig.Types.AudioEncoding.WebmOpus;
-                default:
-                    return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
-            }
-        }
-
-        private record TranscriptionStream(
-            SpeechClient.StreamingRecognizeStream Writer,
-            TranscriptionBuffer Reader,
-            Task TranscriptProcessor,
-            CancellationTokenSource CancellationTokenSource);
-
-        private class TranscriptionBuffer
-        {
-            private const int PollWaitDelay = 10_000;
-
-            private readonly IAsyncEnumerable<StreamingRecognizeResponse> _stream;
-            private readonly ILogger<GoogleTranscriber> _logger;
-
-            private readonly Channel<TranscriptFragmentVariant> _channel =
-                Channel.CreateUnbounded<TranscriptFragmentVariant>(new UnboundedChannelOptions{ SingleWriter = true });
-            private readonly LinkedList<TranscriptFragmentVariant> _bufferedResults = new();
-            private readonly object _lock = new();
-
-            private int _index;
-            private double _offset;
-            private int _startCalled;
-
-            public TranscriptionBuffer(IAsyncEnumerable<StreamingRecognizeResponse> stream, ILogger<GoogleTranscriber> logger)
-            {
-                _stream = stream;
-                _logger = logger;
-            }
-
-            public async Task Start(CancellationToken cancellationToken)
-            {
-                if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0)
-                    return;
-
-                var cutter = new StablePrefixCutter();
-                await foreach (var response in _stream.WithCancellation(cancellationToken)) {
-                    var fragmentVariant = MapResponse(response);
-                    var speechFragment = fragmentVariant.Speech;
-                    if ((speechFragment?.StartOffset ?? 0) != 0)
-                        await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
-                    else if (speechFragment != null) {
-                        var processedFragment = cutter.CutMemoized(speechFragment);
-                        await _channel.Writer.WriteAsync(new TranscriptFragmentVariant(processedFragment), cancellationToken);
-                    }
-                    else
-                        await _channel.Writer.WriteAsync(fragmentVariant, cancellationToken);
-                }
-
-                _channel.Writer.Complete();
-            }
-
-            public async Task<ImmutableArray<TranscriptFragmentVariant>> GetResults(int startingIndex, CancellationToken cancellationToken)
-            {
-                lock (_lock) {
-                    var result = _bufferedResults
-                        .SkipWhile(r => r.Value!.Index < startingIndex)
-                        .ToImmutableArray();
-                    if (result.Length > 0)
-                        return result;
-                }
-
-                var readWait = _channel.Reader.WaitToReadAsync(cancellationToken).AsTask();
-                var delayWait = Task.Delay(PollWaitDelay, cancellationToken);
-                await Task.WhenAny(readWait, delayWait);
-                if (readWait.Status != TaskStatus.RanToCompletion)
-                    return ImmutableArray<TranscriptFragmentVariant>.Empty;
-
-                var freshResults = new List<TranscriptFragmentVariant>();
-                lock (_lock)
-                    while (_channel.Reader.TryRead(out var item)) {
-                        freshResults.Add(item);
-                        _bufferedResults.AddLast(item);
-                    }
-
-                return freshResults.ToImmutableArray();
-
-            }
-
-            public void FreeBuffer(int beforeIndex)
-            {
-                lock (_lock) {
-                    if (_bufferedResults.Count == 0)
-                        return;
-
-                    if (_bufferedResults.First!.Value.Value!.Index > beforeIndex)
-                        return;
-
-                    while (_bufferedResults.First!.Value.Value!.Index <= beforeIndex)
-                        _bufferedResults.RemoveFirst();
-                }
-            }
-
-            private TranscriptFragmentVariant MapResponse(StreamingRecognizeResponse response)
-            {
-                if (response.Error != null) {
-                    _logger.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
-                    return new TranscriptFragmentVariant(
-                        new TranscriptErrorFragment(response.Error.Code, response.Error.Message) {
-                            Index = _index++,
-                            StartOffset = _offset,
-                            Duration = 0d
-                        });
-                }
-
-                var result = response.Results.First();
-                var alternative = result.Alternatives.First();
-                var endTime = result.ResultEndTime;
-                var endOffset = endTime.ToTimeSpan().TotalSeconds;
-                var fragment = new TranscriptSpeechFragment {
-                    Index = _index++,
-                    Confidence = alternative.Confidence,
-                    Text = alternative.Transcript,
-                    StartOffset = 0,
-                    Duration = endOffset,
-                    IsFinal = result.IsFinal
-                };
-                _offset = endOffset;
-                return new TranscriptFragmentVariant(fragment);
-            }
+    private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodec codec)
+    {
+        switch (codec) {
+            case AudioCodec.Wav:
+                return RecognitionConfig.Types.AudioEncoding.Linear16;
+            case AudioCodec.Flac:
+                return RecognitionConfig.Types.AudioEncoding.Flac;
+            case AudioCodec.Opus:
+                return RecognitionConfig.Types.AudioEncoding.WebmOpus;
+            default:
+                return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
         }
     }
 }

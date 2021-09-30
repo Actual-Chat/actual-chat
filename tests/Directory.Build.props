@@ -31,7 +31,7 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.analyzers" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="coverlet.collector" />
+<!--    <PackageReference Include="coverlet.collector" />-->
 
     <Using Include="Xunit" />
     <Using Include="Moq" />
