@@ -1,5 +1,3 @@
-namespace ActualChat.Audio.UI.Blazor.Internal
-{
-    public interface IAudioPlayerBackend
-    { }
-}
+namespace ActualChat.Audio.UI.Blazor.Internal;
+
+public interface IAudioPlayerBackend { }

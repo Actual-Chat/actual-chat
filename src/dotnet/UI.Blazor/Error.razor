@@ -1,9 +1,10 @@
-@if (!_isClosed) {
-    <Alert Class="@CssClass" Margin="Margin.Is3.OnY" Visible="true">
-        <AlertMessage>@Title</AlertMessage>
-        <AlertDescription>@ChildContent</AlertDescription>
-        <CloseButton Clicked="Close"/>
-    </Alert>
+@if (!_isClosed)
+{
+    <div class="@CssClass">
+        <div>@Title</div>
+        <div>@ChildContent</div>
+        <button @onclick="Close">✖</button>
+    </div>
 }
 
 @code {
@@ -11,9 +12,9 @@
 
     [Parameter]
     public string CssClass { get; set; } = "";
-    /* 
+    /*
     [Parameter]
-    public Color Color { get; set; } = Color.Danger; 
+    public Color Color { get; set; } = Color.Danger;
     */
     [Parameter]
     public string Title { get; set; } = "Error:";

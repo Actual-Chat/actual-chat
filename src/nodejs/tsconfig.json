@@ -1,7 +1,7 @@
 {
   "include": [
     "./**/*.ts",
-    "./../dotnet/*.UI.Blazor/exports.ts", "../dotnet/Audio.UI.Blazor/index.ts", "../dotnet/Audio.UI.Blazor/index.ts",
+    "./../dotnet/*.UI.Blazor/exports.ts",
   ],
   "compilerOptions": {
     /* Basic Options */

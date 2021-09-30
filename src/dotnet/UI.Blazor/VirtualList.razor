@@ -8,7 +8,6 @@
 @using Stl.Collections
 @using Stl.Mathematics
 @inject IJSRuntime _js
-@inject JSModule _jsModule
 @inject AppBlazorCircuitContext _appBlazorCircuitContext
 @inject ILogger<VirtualList<TItem>> _log
 
@@ -90,7 +89,6 @@
         }
     }
 
-    protected IJSObjectReference? ModuleRef { get; set; } // Shouldn't be disposed
     protected IJSObjectReference? JSComponentRef { get; set; }
     protected DotNetObjectReference<IVirtualListBackend>? ComponentRef { get; set; }
     protected RenderInfo? LastRenderInfo { get; set; }

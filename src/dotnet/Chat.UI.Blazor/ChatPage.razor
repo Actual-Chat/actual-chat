@@ -88,14 +88,14 @@
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var entryLists = await Task.WhenAll(
             ranges.Select(r => _chats.GetEntries(_session, chatId.Value, r, cancellationToken)));
-        
+
         // temp dirty hack
         // LastStreamId = entryLists
         //     .SelectMany(e => e)
         //     .LastOrDefault(e => e.IsStreaming)?
         //     .StreamId;
         // StateHasChanged();
-            
+
         var result = VirtualListResponse.New(
             entryLists.SelectMany(entries => entries),
             entry => entry.Id.ToString(),
@@ -107,9 +107,9 @@
     private void OnListen(string streamId)
     {
         LastStreamId = null;
-        
+
         LastStreamId = streamId;
-        
+
         StateHasChanged();
     }
 
