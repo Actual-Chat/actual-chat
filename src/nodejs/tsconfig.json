@@ -1,9 +1,7 @@
 {
   "include": [
     "./**/*.ts",
-    "./../dotnet/App.Client/Components/**/*.ts",
-    "./../dotnet/*.UI.Blazor/wwwroot/**/*.ts",
-    "./../dotnet/*.UI.Blazor/wwwroot/**/*.js"
+    "./../dotnet/*.UI.Blazor/exports.ts", "../dotnet/Audio.UI.Blazor/index.ts", "../dotnet/Audio.UI.Blazor/index.ts",
   ],
   "compilerOptions": {
     /* Basic Options */
