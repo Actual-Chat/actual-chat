@@ -1,10 +1,10 @@
-using System;
+namespace ActualChat.UI.Blazor;
 
-namespace ActualChat.UI.Blazor
+public interface IBlazorUIModule
 {
-    public interface IBlazorUIModule
-    {
-        public string[] CssPaths => Array.Empty<string>();
-        public string[] ScriptPaths => Array.Empty<string>();
-    }
+    /// <summary>
+    /// The lowercase name of the module in a webpack bundle <br/>
+    /// Must be in sync with <c>src/nodejs/index.ts</c> import ); <br/>
+    /// </summary>
+    static abstract string ImportName { get; }
 }

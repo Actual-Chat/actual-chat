@@ -1,6 +1,4 @@
-export function create(elementRef, backendRef) {
-    return new VirtualList(elementRef, backendRef)
-}
+import './virtual-list.css'
 
 export class VirtualList {
     constructor(elementRef, backendRef) {
@@ -21,6 +19,10 @@ export class VirtualList {
     dispose() {
         this.abortController.abort();
         this._resizeObserver.disconnect();
+    }
+
+    static create(elementRef, backendRef) {
+        return new VirtualList(elementRef, backendRef)
     }
 
     afterRender(mustScroll, viewOffset, mustNotifyWhenScrollStops) {
