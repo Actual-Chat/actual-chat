@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
-    <ProjectReference Include="..\Streaming.Client\Streaming.Client.csproj" />
+    <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
   </ItemGroup>
 
 </Project>

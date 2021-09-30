@@ -161,7 +161,6 @@ namespace ActualChat.Transcription
                 _logger = logger;
             }
 
-
             public async Task Start(CancellationToken cancellationToken)
             {
                 if (Interlocked.CompareExchange(ref _startCalled, 1, 0) != 0)

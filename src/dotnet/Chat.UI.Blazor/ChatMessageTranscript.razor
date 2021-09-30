@@ -1,7 +1,4 @@
-@using ActualChat.Streaming
-@using System.Threading.Channels
-
-@inject ITranscriptStreamProvider _streamProvider
+@inject ITranscriptStreamer _transcriptStreamer
 @inject BlazorCircuitContext _circuitContext
 
 <span class="content">@Text</span>
@@ -13,7 +10,7 @@
 
     [Parameter]
     public string StreamId { get; set; } = null!;
-    
+
     [Parameter]
     public EventCallback<string> OnListen { get; set; }
 
@@ -27,12 +24,11 @@
         }
         if (!_circuitContext.IsPrerendering) {
             _cancellationTokenSource = new CancellationTokenSource();
-            var transcriptReader = await _streamProvider.GetStream(StreamId, _cancellationTokenSource.Token);
+            var transcriptReader = await _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadTranscript(transcriptReader, _cancellationTokenSource.Token);
         }
 
         await base.OnParametersSetAsync();
-
     }
 
     private void OnListenClick()
@@ -58,5 +54,4 @@
         }
         catch (ChannelClosedException) { }
     }
-
 }

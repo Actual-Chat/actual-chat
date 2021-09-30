@@ -3,22 +3,22 @@
 @implements IAudioPlayerBackend
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
-@inject IAudioStreamProvider _streamProvider
+@inject IAudioStreamer _audioStreamer
 @inject BlazorCircuitContext _circuitContext
 
 <audio autoplay @ref="Ref"></audio>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
-    protected IJSObjectReference? ModuleRef { get; set; } 
+    protected IJSObjectReference? ModuleRef { get; set; }
     protected IJSObjectReference? JSComponentRef { get; set; }
     protected DotNetObjectReference<IAudioPlayerBackend>? ComponentRef { get; set; }
-    
+
     public ElementReference Ref { get; set; }
-    
+
     [Parameter]
     public string StreamId { get; set; } = null!;
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
@@ -36,19 +36,19 @@
 
         if (!_circuitContext.IsPrerendering && !StreamId.IsNullOrEmpty()) {
             _cancellationTokenSource = new CancellationTokenSource();
-            var audioReader = await _streamProvider.GetStream(StreamId, _cancellationTokenSource.Token);
+            var audioReader = await _audioStreamer.GetAudioStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadAudio(audioReader, _cancellationTokenSource.Token);
         }
     }
-    
+
     private Task AppendAudio(byte[] chunk)
     {
         if (JSComponentRef == null)
             return Task.CompletedTask;
-        
+
         return JSComponentRef.InvokeVoidAsync("appendAudio", chunk).AsTask();
     }
-    
+
     private async Task ReadAudio(ChannelReader<BlobPart> audioReader, CancellationToken cancellationToken)
     {
         try {
@@ -66,5 +66,5 @@
             //     await JSComponentRef.InvokeVoidAsync("stop");
         }
     }
-    
+
 }

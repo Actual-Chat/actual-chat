@@ -29,6 +29,7 @@
     <Using Include="System.Collections" />
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
+    <Using Include="System.Runtime.Serialization" />
     <Using Include="System.Threading.Channels" />
     <Using Include="Stl" />
     <Using Include="Stl.Async" />
@@ -39,6 +40,7 @@
     <Using Include="Stl.Time" />
     <Using Include="Stl.Fusion" />
     <Using Include="Stl.CommandR" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->

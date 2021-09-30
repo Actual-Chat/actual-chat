@@ -10,9 +10,7 @@ namespace ActualChat.Transcription.IntegrationTests
 {
     public class GoogleTranscriberTest : TestBase
     {
-        public GoogleTranscriberTest(ITestOutputHelper @out) : base(@out)
-        {
-        }
+        public GoogleTranscriberTest(ITestOutputHelper @out) : base(@out) { }
 
         [Fact]
         public async Task BeginTranscriptionTest()

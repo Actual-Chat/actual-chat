@@ -1,124 +1,120 @@
 const sampleRate = 16000;
 
 export function create(elementRef, backendRef) {
-  return new AudioRecorder(elementRef, backendRef);
+    return new AudioRecorder(elementRef, backendRef);
 }
 
 export class AudioRecorder {
-  constructor(backendRef) {
-    this.backendRef = backendRef;
-    this.recording = null;
-    this.isMicrophoneAvailable = false;
+    constructor(backendRef) {
+        this.backendRef = backendRef;
+        this.recording = null;
+        this.isMicrophoneAvailable = false;
 
-    if (backendRef === undefined || backendRef === null) {
-      console.error("Audio Recorder backend is undefined");
-    }
-
-    // Temporarily
-    if(typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
-      alert('Please allow to use microphone.');
-
-      if(!!navigator.getUserMedia) {
-        alert('This browser seems supporting deprecated getUserMedia API.');
-      }
-    }
-    else {
-      this.isMicrophoneAvailable = true;
-    }
-  }
-
-  dispose() {
-    this.recording = null;
-  }
-
-  isRecording() {
-    return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
-  }
-
-  async startRecording() {
-    if (this.isRecording())
-      return null;
-    if (this.backendRef === null) {
-      console.error("Audio Recorder backend is undefined. Call 'initialize' first");
-      return null;
-    }
-    if (!this.isMicrophoneAvailable)
-    {
-      console.error("Microphone is unavailable");
-      return null;
-    }
-
-    if (this.recording === null) {
-      let stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: sampleRate,
-          autoGainControl: {
-            ideal: true
-          },
-          echoCancellation: {
-            ideal: true
-          },
-          noiseSuppression: {
-            ideal: true
-          }
-        },
-        video: false
-      });
-      let recorder = RecordRTC(stream, {
-        type: 'audio',
-        mimeType: 'audio/webm; codecs=opus',
-        sampleRate: sampleRate,
-        desiredSampleRate: sampleRate,
-        audioBitsPerSecond: 32 * 1024,
-        checkForInactiveTracks: true,
-        audioBitrateMode: "variable",
-        bufferSize: 4096,
-        numberOfAudioChannels: 1,
-        timeSlice: 320,
-        disableLogs: false,
-        // as soon as the stream is available
-        ondataavailable: async (blob) => {
-          console.log("audio blob is ready, Blob size: %d", blob.size);
-          try {
-            let buffer = await blob.arrayBuffer();
-            let chunk = new Uint8Array(buffer);
-
-            await this.backendRef.invokeMethodAsync('OnAudioData', chunk);
-          }
-          catch(err) {
-            console.error(err);
-          }
+        if (backendRef === undefined || backendRef === null) {
+            console.error("Audio Recorder backend is undefined");
         }
-      });
 
-      recorder.stopRecordingAsync = () => {
-        return new Promise((resolve,_) => {
-          recorder.stopRecording(resolve);
-        });
-      };
+        // Temporarily
+        if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
+            alert('Please allow to use microphone.');
 
-      this.recording = {
-        recorder: recorder,
-        stream: stream
-      };
+            if (!!navigator.getUserMedia) {
+                alert('This browser seems supporting deprecated getUserMedia API.');
+            }
+        } else {
+            this.isMicrophoneAvailable = true;
+        }
     }
 
-    this.recording.recorder.startRecording();
-    await this.backendRef.invokeMethodAsync('OnStartRecording');
-  }
+    dispose() {
+        this.recording = null;
+    }
 
-  async stopRecording() {
-    if (!this.isRecording())
-      return null;
+    isRecording() {
+        return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
+    }
 
-    let r = this.recording;
-    this.recording = null;
-    r.stream.getAudioTracks().forEach(t => t.stop());
-    r.stream.getVideoTracks().forEach(t => t.stop());
-    await r.recorder.stopRecordingAsync();
-    await this.backendRef.invokeMethodAsync('OnStopRecording');
-  }
+    async startRecording() {
+        if (this.isRecording())
+            return null;
+        if (this.backendRef === null) {
+            console.error("Audio Recorder backend is undefined. Call 'initialize' first");
+            return null;
+        }
+        if (!this.isMicrophoneAvailable) {
+            console.error("Microphone is unavailable");
+            return null;
+        }
 
+        if (this.recording === null) {
+            let stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    sampleRate: sampleRate,
+                    autoGainControl: {
+                        ideal: true
+                    },
+                    echoCancellation: {
+                        ideal: true
+                    },
+                    noiseSuppression: {
+                        ideal: true
+                    }
+                },
+                video: false
+            });
+            let recorder = RecordRTC(stream, {
+                type: 'audio',
+                mimeType: 'audio/webm; codecs=opus',
+                sampleRate: sampleRate,
+                desiredSampleRate: sampleRate,
+                audioBitsPerSecond: 32 * 1024,
+                checkForInactiveTracks: true,
+                audioBitrateMode: "variable",
+                bufferSize: 4096,
+                numberOfAudioChannels: 1,
+                timeSlice: 320,
+                disableLogs: false,
+                // as soon as the stream is available
+                ondataavailable: async (blob) => {
+                    console.log("audio blob is ready, Blob size: %d", blob.size);
+                    try {
+                        let buffer = await blob.arrayBuffer();
+                        let chunk = new Uint8Array(buffer);
+
+                        await this.backendRef.invokeMethodAsync('OnAudioData', chunk);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+            });
+
+            recorder.stopRecordingAsync = () => {
+                return new Promise((resolve, _) => {
+                    recorder.stopRecording(resolve);
+                });
+            };
+
+            this.recording = {
+                recorder: recorder,
+                stream: stream
+            };
+        }
+
+        this.recording.recorder.startRecording();
+        await this.backendRef.invokeMethodAsync('OnStartRecording');
+    }
+
+    async stopRecording() {
+        if (!this.isRecording())
+            return null;
+
+        let r = this.recording;
+        this.recording = null;
+        r.stream.getAudioTracks().forEach(t => t.stop());
+        r.stream.getVideoTracks().forEach(t => t.stop());
+        await r.recorder.stopRecordingAsync();
+        await this.backendRef.invokeMethodAsync('OnStopRecording');
+    }
 }
 
