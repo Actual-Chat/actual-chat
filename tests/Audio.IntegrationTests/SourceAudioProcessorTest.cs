@@ -39,7 +39,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
-        var audioUploader = services.GetRequiredService<ISourceAudioRecorder>();
+        var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
         var cts = new CancellationTokenSource();
         var dequeueTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
@@ -55,7 +55,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
             new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = audioUploader.RecordSourceAudio(session,recordingSpec, channel.Reader, CancellationToken.None);
+        _ = sourceAudioRecorder.RecordSourceAudio(session,recordingSpec, channel.Reader, CancellationToken.None);
         channel.Writer.Complete();
 
         var record = await dequeueTask;
@@ -74,20 +74,20 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
-        var audioRecorder = services.GetRequiredService<ISourceAudioRecorder>();
-        var audioStreamProvider = services.GetRequiredService<IAudioStreamer>();
+        var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
+        var audioStreamer = sourceAudioProcessor.AudioStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
         var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
         var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
-        var pushAudioTask = PushAudioData(session, chat.Id, audioRecorder);
+        var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
 
         var recording = await recordingTask;
         var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
 
-        var readTask = ReadAudioData(recording!.Id, audioStreamProvider);
+        var readTask = ReadAudioData(recording!.Id, audioStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
 
@@ -105,9 +105,9 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var session = sessionFactory.CreateSession();
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
-        var sourceAudioRecorder = services.GetRequiredService<ISourceAudioRecorder>();
-        var audioStreamer = services.GetRequiredService<IAudioStreamer>();
-        var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
+        var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
+        var audioStreamer = sourceAudioProcessor.AudioStreamer;
+        var transcriptStreamer = sourceAudioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
         var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);

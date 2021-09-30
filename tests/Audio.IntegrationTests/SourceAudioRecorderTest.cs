@@ -75,8 +75,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     {
         using var appHost = await TestHostFactory.NewAppHost();
         var services = appHost.Services;
-        var audioStreamProvider = services.GetRequiredService<IAudioStreamer>();
-        var audioStreamPublisher = services.GetRequiredService<AudioStreamer>();
+        var audioStreamer = services.GetRequiredService<AudioStreamer>();
 
         var streamId = (StreamId)"test-stream-id";
         var channel = Channel.CreateBounded<BlobPart>(
@@ -89,8 +88,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
 
         var writeTask = ReadFromFile(channel.Writer);
 
-        var publishTask =  audioStreamPublisher.PublishAudioStream(streamId, channel.Reader, CancellationToken.None);
-        var readTask = ReadAudioStream(streamId, audioStreamProvider);
+        var publishTask =  audioStreamer.PublishAudioStream(streamId, channel.Reader, CancellationToken.None);
+        var readTask = ReadAudioStream(streamId, audioStreamer);
 
         await Task.WhenAll(writeTask, readTask);
         await publishTask;

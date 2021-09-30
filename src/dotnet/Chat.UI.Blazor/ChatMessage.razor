@@ -3,7 +3,7 @@
         <UserNameBadge UserId="@Entry.AuthorId"/>
     </span>
     @if (Entry.IsStreaming) {
-        <ChatMessageTranscript StreamId="@Entry.StreamId"/>
+        <ChatMessageTranscript StreamId="@Entry.StreamId" OnListen="@ListenCallback"/>
     }
     else {
         <ChatMessageText Text="@Entry.Content"/>
@@ -13,5 +13,14 @@
 @code {
     [Parameter]
     public ChatEntry Entry { get; set; } = null!;
+    
+    [Parameter]
+    public EventCallback<string> OnListen { get; set; }
+
+    private void ListenCallback(string streamId)
+    {
+        if(OnListen.HasDelegate)
+            OnListen.InvokeAsync(streamId);
+    }
 
 }
