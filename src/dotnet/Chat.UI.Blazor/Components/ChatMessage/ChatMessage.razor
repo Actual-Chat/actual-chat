@@ -1,3 +1,5 @@
+@namespace ActualChat.Chat.UI.Blazor
+
 <div class="message">
     <span style="margin-right: 2px">
         <UserNameBadge UserId="@Entry.AuthorId"/>
@@ -13,7 +15,7 @@
 @code {
     [Parameter]
     public ChatEntry Entry { get; set; } = null!;
-    
+
     [Parameter]
     public EventCallback<string> OnListen { get; set; }
 
