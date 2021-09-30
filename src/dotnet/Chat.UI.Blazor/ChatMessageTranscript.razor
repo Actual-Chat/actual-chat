@@ -1,6 +1,3 @@
-@using ActualChat.Streaming
-@using System.Threading.Channels
-
 @inject ITranscriptStreamer _transcriptStreamer
 @inject BlazorCircuitContext _circuitContext
 
@@ -13,7 +10,7 @@
 
     [Parameter]
     public string StreamId { get; set; } = null!;
-    
+
     [Parameter]
     public EventCallback<string> OnListen { get; set; }
 
@@ -32,7 +29,6 @@
         }
 
         await base.OnParametersSetAsync();
-
     }
 
     private void OnListenClick()

@@ -1,5 +1,4 @@
 @using System.Threading.Channels
-@using ActualChat.Streaming
 @implements IAudioRecorderBackend
 @implements IAsyncDisposable
 @inject Session _session
@@ -32,11 +31,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-      if (firstRender) {
-        ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
-        ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-        JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
-      }
+        if (firstRender) {
+            ModuleRef = await _jsModule.Import(typeof(AudioPage).Assembly, "js/audio-recorder.js");
+            ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
+        }
     }
 
     private Task ToggleRecording()
@@ -111,5 +110,4 @@
         StateHasChanged();
         return Task.CompletedTask;
     }
-
 }

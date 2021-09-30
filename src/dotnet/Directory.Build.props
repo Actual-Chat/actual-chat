@@ -29,6 +29,7 @@
     <Using Include="System.Collections" />
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
+    <Using Include="System.Runtime.Serialization" />
     <Using Include="System.Threading.Channels" />
     <Using Include="Stl" />
     <Using Include="Stl.Async" />
