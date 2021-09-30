@@ -5,13 +5,12 @@ using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
-using Stl.Testing;
 using Stl.Time;
 using Xunit.Abstractions;
 
 namespace ActualChat.Audio.IntegrationTests;
 
-public class SourceAudioProcessorTest : TestBase
+public class SourceAudioProcessorTest : AppHostTestBase
 {
     public SourceAudioProcessorTest(ITestOutputHelper @out) : base(@out)
         => SourceAudioProcessor.SkipAutoStart = true;
