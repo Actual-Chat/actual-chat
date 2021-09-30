@@ -1,9 +1,8 @@
 @using System.Threading.Channels
 @using Stl
-@namespace Audio.UI.Blazor
+@namespace ActualChat.Audio.UI.Blazor
 @implements IAudioPlayerBackend
 @inject IJSRuntime _js
-@inject JSModule _jsModule;
 @inject IAudioStreamer _audioStreamer
 @inject BlazorCircuitContext _circuitContext
 
@@ -23,9 +22,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ModuleRef = await _jsModule.Import(typeof(AudioPlayer).Assembly, "js/audio-player.js");
             ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{WebpackBundles.Main}.audio.create", Ref, ComponentRef);
         }
     }
 

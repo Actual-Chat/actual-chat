@@ -1,11 +1,10 @@
 @using System.Threading.Channels
 @using ActualChat.Streaming
-@namespace Audio.UI.Blazor
+@namespace ActualChat.Audio.UI.Blazor
 @implements IAudioRecorderBackend
 @implements IAsyncDisposable
 @inject Session _session
 @inject IJSRuntime _js
-@inject JSModule _jsModule;
 @inject ISourceAudioRecorder _sourceAudioRecorder
 
 <button @onclick ="ToggleRecording" >
@@ -36,9 +35,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ModuleRef = await _jsModule.Import(typeof(AudioRecorder).Assembly, "js/audio-recorder.js");
             ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{WebpackBundles.Main}.audio.create", ComponentRef);
         }
     }
 
