@@ -1,11 +1,14 @@
-﻿using System.Threading.Tasks;
+﻿using Microsoft.JSInterop;
 
 namespace ActualChat.Audio.UI.Blazor.Internal
 {
     public interface IAudioRecorderBackend
     {
-        Task OnStartRecording();
-        Task OnAudioData(byte[] chunk);
-        Task OnStopRecording();
+        [JSInvokable]
+        void OnStartRecording();
+        [JSInvokable]
+        void OnAudioData(byte[] chunk);
+        [JSInvokable]
+        void OnStopRecording();
     }
 }

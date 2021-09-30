@@ -1,7 +1,7 @@
 const sampleRate = 16000;
 
-export function create(elementRef, backendRef) {
-    return new AudioRecorder(elementRef, backendRef);
+export function create(backendRef) {
+    return new AudioRecorder(backendRef);
 }
 
 export class AudioRecorder {
