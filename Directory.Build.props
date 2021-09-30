@@ -44,6 +44,7 @@
     <GenerateFullPaths Condition="'$(TERM_PROGRAM)' == 'vscode'">true</GenerateFullPaths>
 
     <!-- Web toolchain settings -->
+
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
     <TypeScriptCompilerBlocked>true</TypeScriptCompilerBlocked>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>

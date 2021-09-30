@@ -21,12 +21,6 @@
     <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
     <ProjectReference Include="..\UI.Blazor.Host\UI.Blazor.Host.csproj" />
   </ItemGroup>
-
-  <ItemGroup Label="dotnet watch">
-    <Watch Include="**\*.razor" />
-    <Watch Include="**\*.html" />
-    <Watch Include="**\*.cshtml" />
-  </ItemGroup>
   
   <ItemGroup>
     <Content Update="Pages\_Host.cshtml" CopyToOutputDirectory="PreserveNewest" />
