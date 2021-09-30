@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
+  <PropertyGroup>
+    <RootNamespace>ActualChat.UI.Blazor</RootNamespace>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Blazorise" />
     <PackageReference Include="Blazorise.Bootstrap" />
