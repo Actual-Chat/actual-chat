@@ -25,9 +25,9 @@ public class AudioHub : Hub
     public Task RecordSourceAudio(
         Session session,
         AudioRecord audioRecord,
-        ChannelReader<BlobPart> content,
-        CancellationToken cancellationToke)
-        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, content, cancellationToke);
+        ChannelReader<BlobPart> content)
+        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, content, default);
 
     public Task<ChannelReader<BlobPart>> GetAudioStream(string streamId, CancellationToken cancellationToken)
         => _audioStreamer.GetAudioStream(streamId, cancellationToken);
