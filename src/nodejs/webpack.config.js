@@ -3,6 +3,8 @@
 'use strict';
 
 const path = require('path');
+//const fs = require("fs");
+// entry: () => fs.readdirSync("./React/").filter(f => f.endsWith(".js")).map(f => `./React/${f}`),
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 /**
@@ -102,6 +104,11 @@ module.exports = (env, args) => {
     output: {
       path: outputPath,
       filename: '[name].js',
+      library: {
+        name: 'js',
+        type: 'window',
+      },
+      // chunkFormat: 'module',
       publicPath: "/dist/"
     }
   };

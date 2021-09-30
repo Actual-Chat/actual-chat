@@ -1,5 +1,6 @@
 @using System.Threading.Channels
 @using Stl
+@namespace Audio.UI.Blazor
 @implements IAudioPlayerBackend
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
@@ -66,5 +67,6 @@
             //     await JSComponentRef.InvokeVoidAsync("stop");
         }
     }
+
 
 }
