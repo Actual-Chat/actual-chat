@@ -23,8 +23,8 @@ public sealed class ChannelDistributor<T>
             });
         _bufferWriter = new ArrayBufferWriter<Result<T>>(16);
         _buffer = new Buffer(_bufferWriter.WrittenMemory);
-        DistributeTask = Distribute(cancellationToken);
-        FillBufferTask = FillBuffer(cancellationToken);
+        DistributeTask = Task.Run(() => Distribute(cancellationToken), cancellationToken);
+        FillBufferTask = Task.Run(() => FillBuffer(cancellationToken),cancellationToken);
     }
 
     public async Task AddTarget(ChannelWriter<T> channel, CancellationToken cancellationToken = default)

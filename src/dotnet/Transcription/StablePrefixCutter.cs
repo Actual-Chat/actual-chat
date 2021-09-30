@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using ActualChat.Mathematics;
 
 namespace ActualChat.Transcription
@@ -11,15 +9,15 @@ namespace ActualChat.Transcription
         private double _previousFinalEnd;
         private int _previousFinalLength;
 
-        public TranscriptSpeechFragment CutMemoized((string Text, double EndOffset) candidate)
+        public TranscriptFragment CutMemoized((string Text, double EndOffset) candidate)
             => CutMemoized(
-                new TranscriptSpeechFragment {
+                new TranscriptFragment {
                     Index = 0,
                     Text = candidate.Text,
                     Duration = candidate.EndOffset
                 });
-                
-        public TranscriptSpeechFragment CutMemoized(TranscriptSpeechFragment speechFragment)
+
+        public TranscriptFragment CutMemoized(TranscriptFragment speechFragment)
         {
             var (index, _, duration, text, _, isFinal) = speechFragment;
 
@@ -30,7 +28,7 @@ namespace ActualChat.Transcription
                 _previousEnd = 0;
                 _previousFinalLength += text.Length;
                 _previousFinalEnd += duration;
-                return new TranscriptSpeechFragment {
+                return new TranscriptFragment {
                     Index = index,
                     StartOffset = startOffset,
                     Duration = duration,
@@ -50,11 +48,11 @@ namespace ActualChat.Transcription
                     _previousEnd = duration;
                     var map = new LinearMap(new[] { 0.0, _previous.Length }, new[] { 0.0, _previousEnd });
                     var mappedOffset = map.Map(textIndex);
-                    var diffStartOffset = mappedOffset.HasValue 
+                    var diffStartOffset = mappedOffset.HasValue
                         ? Math.Round(mappedOffset.Value, 3, MidpointRounding.AwayFromZero)
                         : 0;
                     var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
-                    return new TranscriptSpeechFragment {
+                    return new TranscriptFragment {
                         Index = index,
                         StartOffset = _previousFinalEnd + diffStartOffset,
                         Duration = diffDuration,
@@ -66,14 +64,14 @@ namespace ActualChat.Transcription
                     };
                 }
             }
-            
+
             var (_, diffIndex) = _previous
                 .Zip(text)
                 .Select((x, i) => (Match:x.First == x.Second, Index:i))
                 .Append((Match:false, Index:_previous.Length))
                 .SkipWhile(x => x.Match)
                 .FirstOrDefault();
-            var result = new TranscriptSpeechFragment {
+            var result = new TranscriptFragment {
                 Index = index,
                 StartOffset = _previousFinalEnd,
                 Duration = duration,
@@ -83,16 +81,16 @@ namespace ActualChat.Transcription
                 Confidence = speechFragment.Confidence,
                 IsFinal = false
             };
-            
+
             if (diffIndex > 0 && diffIndex < text.Length) {
                 var map = new LinearMap(new[] { 0.0, _previous.Length }, new[] { 0.0, _previousEnd });
                 var mappedOffset = map.Map(diffIndex);
-                var diffStartOffset = mappedOffset.HasValue 
+                var diffStartOffset = mappedOffset.HasValue
                     ? Math.Round(mappedOffset.Value, 3, MidpointRounding.AwayFromZero)
                     : 0;
                 var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
                 var newText = text[diffIndex..];
-                result = new TranscriptSpeechFragment {
+                result = new TranscriptFragment {
                     Index = index,
                     StartOffset = _previousFinalEnd + diffStartOffset,
                     Duration = diffDuration,
@@ -103,7 +101,7 @@ namespace ActualChat.Transcription
                     IsFinal = false
                 };
             }
-            
+
             _previous = text;
             _previousEnd = duration;
             return result;

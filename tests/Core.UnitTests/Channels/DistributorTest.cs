@@ -24,11 +24,11 @@ namespace ActualChat.Tests.Channels
                 cSource.Writer.Complete();
                 var distributor = cSource.Distribute();
                 var cTarget = Channel.CreateUnbounded<int>();
-                await distributor.AddTarget(cTarget);
-                await cTarget.Reader.Completion;
+                await distributor.AddTarget(cTarget).ConfigureAwait(false);
+                await cTarget.Reader.Completion.ConfigureAwait(false);
             }).ToArray();
             foreach (var task in tasks)
-                await task;
+                await task.ConfigureAwait(false);
         }
 
         [Fact]
@@ -38,12 +38,12 @@ namespace ActualChat.Tests.Channels
                 var cSource = Channel.CreateUnbounded<int>();
                 var distributor = cSource.Distribute();
                 var cTarget = Channel.CreateUnbounded<int>();
-                await distributor.AddTarget(cTarget);
+                await distributor.AddTarget(cTarget).ConfigureAwait(false);
                 cSource.Writer.Complete();
-                await cTarget.Reader.Completion;
+                await cTarget.Reader.Completion.ConfigureAwait(false);
             }).ToArray();
             foreach (var task in tasks)
-                await task;
+                await task.ConfigureAwait(false);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace ActualChat.Tests.Channels
                 .Select(i => RunRangeTest(Enumerable.Range(0, i)))
                 .ToArray();
             foreach (var task in tasks)
-                await task;
+                await task.ConfigureAwait(false);
         }
 
         private async Task RunRangeTest<T>(IEnumerable<T> source)
