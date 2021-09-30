@@ -53,5 +53,11 @@
             }
         }
         catch (ChannelClosedException) { }
+        catch (OperationCanceledException) { }
+        catch (Exception e) {
+            // TODO(AK): remove this dirty hack during exception handling!
+            Text = e.Message + e.StackTrace;
+            StateHasChanged();
+        }
     }
 }

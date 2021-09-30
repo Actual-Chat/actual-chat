@@ -5,6 +5,7 @@ using ActualChat.Hosting;
 using ActualChat.Redis;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -76,7 +77,10 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());
 
         // SignalR hub & related services
-        var signalR = services.AddSignalR();
+        var signalR = services.AddSignalR(options => {
+            options.StreamBufferCapacity = 20;
+            options.EnableDetailedErrors = true;
+        });
         if (!Debugging.SignalR.DisableMessagePackProtocol)
             signalR.AddMessagePackProtocol();
         services.AddTransient<AudioHub>();
