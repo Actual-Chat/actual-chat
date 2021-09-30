@@ -1,10 +1,8 @@
-using Stl.Text;
 using Storage.Net.Blobs;
 
-namespace ActualChat.Blobs
+namespace ActualChat.Blobs;
+
+public interface IBlobStorageProvider
 {
-    public interface IBlobStorageProvider
-    {
-        IBlobStorage GetBlobStorage(Symbol blobScope);
-    }
+    IBlobStorage GetBlobStorage(Symbol blobScope);
 }

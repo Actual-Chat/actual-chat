@@ -1,15 +1,12 @@
-using System;
+namespace ActualChat;
 
-namespace ActualChat
+public class UriMapper
 {
-    public class UriMapper
-    {
-        public virtual Uri BaseUri { get; }
+    public virtual Uri BaseUri { get; }
 
-        public UriMapper(Uri baseUri)
-            => BaseUri = baseUri;
+    public UriMapper(Uri baseUri)
+        => BaseUri = baseUri;
 
-        public virtual Uri ToAbsolute(string relativeUri)
-            => new(BaseUri, relativeUri);
-    }
+    public virtual Uri ToAbsolute(string relativeUri)
+        => new(BaseUri, relativeUri);
 }

@@ -1,23 +1,17 @@
-using System;
-using System.Linq;
-using Stl;
+namespace ActualChat.Mathematics.Internal;
 
-namespace ActualChat.Mathematics.Internal
+public sealed class DoubleLogCover : LogCover<double, double>
 {
-    public sealed class DoubleLogCover : LogCover<double, double>
+    public DoubleLogCover()
     {
-        public DoubleLogCover()
-        {
-            MinTileSize = 1;
-            MaxTileSize = 1024 * 1024;
-            Measure = SizeMeasure.Double;
-        }
-
-        protected override double[] GetTileSizes()
-            => Enumerable.Range(0, int.MaxValue)
-                .Select(i => MinTileSize * Math.Pow(TileSizeFactor, i))
-                .TakeWhile(size => size <= MaxTileSize)
-                .ToArray();
+        MinTileSize = 1;
+        MaxTileSize = 1024 * 1024;
+        Measure = SizeMeasure.Double;
     }
-}
 
+    protected override double[] GetTileSizes()
+        => Enumerable.Range(0, int.MaxValue)
+            .Select(i => MinTileSize * Math.Pow(TileSizeFactor, i))
+            .TakeWhile(size => size <= MaxTileSize)
+            .ToArray();
+}
