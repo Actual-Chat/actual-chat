@@ -151,7 +151,7 @@ namespace ActualChat.Audio.Orchestration
             await using var stream = MemoryStreamManager.GetStream(nameof(AudioSaver));
             using var bufferLease = MemoryPool<byte>.Shared.Rent(minBufferSize);
 
-            var audio = await audioSegment.GetStream();
+            var audio = await audioSegment.GetAudioStream();
             await foreach (var (_, bytes) in audio.ReadAllAsync(cancellationToken))
                 stream.Write(bytes);
 

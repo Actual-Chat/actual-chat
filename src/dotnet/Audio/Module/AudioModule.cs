@@ -3,7 +3,7 @@ using System.Data;
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Orchestration;
 using ActualChat.Hosting;
-using ActualChat.Streaming.Server;
+using ActualChat.Redis;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -75,26 +75,18 @@ namespace ActualChat.Audio.Module
             // Module's own services
             services.AddSingleton<AudioSaver>();
             services.AddSingleton<AudioActivityExtractor>();
-            services.AddSingleton<AudioOrchestrator>();
-            services.AddHostedService(sp => sp.GetRequiredService<AudioOrchestrator>());
+            services.AddSingleton<SourceAudioProcessor>();
+            services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());
 
             // SignalR hub & related services
             services.AddSignalR().AddMessagePackProtocol();
             services.AddTransient<AudioHub>();
-            services.AddSingleton(new AudioStreamProvider.Options());
-            services.AddSingleton<IAudioStreamProvider, AudioStreamProvider>();
-            services.AddSingleton(new TranscriptStreamProvider.Options());
-            services.AddSingleton<ITranscriptStreamProvider, TranscriptStreamProvider>();
-            services.AddSingleton(new AudioStreamPublisher.Options());
-            services.AddSingleton<AudioStreamPublisher>();
-            services.AddSingleton(new TranscriptStreamPublisher.Options());
-            services.AddSingleton<TranscriptStreamPublisher>();
-
-            services.AddSingleton(new AudioRecordProducer.Options());
-            services.AddSingleton<AudioRecordProducer>();
-            services.AddSingleton<AudioRecorder>();
-            services.AddTransient<IAudioRecorder>(c => c.GetRequiredService<AudioRecorder>());
-
+            services.AddSingleton<AudioStreamer>();
+            services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
+            services.AddSingleton<TranscriptStreamer>();
+            services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
+            services.AddSingleton<SourceAudioRecorder>();
+            services.AddTransient<ISourceAudioRecorder>(c => c.GetRequiredService<SourceAudioRecorder>());
         }
 
         public void ConfigureApp(IApplicationBuilder app)

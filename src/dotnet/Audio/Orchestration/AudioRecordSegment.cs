@@ -37,7 +37,7 @@ namespace ActualChat.Audio.Orchestration
             _distributor = source.Distribute();
         }
 
-        public async Task<ChannelReader<BlobPart>> GetStream()
+        public async Task<ChannelReader<BlobPart>> GetAudioStream()
         {
             var channel = Channel.CreateUnbounded<BlobPart>(
                 new UnboundedChannelOptions {

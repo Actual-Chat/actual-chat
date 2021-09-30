@@ -110,7 +110,7 @@ namespace ActualChat.Audio.Orchestration
                         builder.AddCluster((Cluster)webMReader.Entry);
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        throw new NotSupportedException("Unsupported EbmlEntryType.");
                 }
 
             return webMReader.GetState();
