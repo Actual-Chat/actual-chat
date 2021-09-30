@@ -8,6 +8,9 @@ namespace ActualChat.Audio;
 
 public class SourceAudioProcessor : BackgroundService
 {
+    public static bool SkipAutoStart { get; set; } = true;
+
+    private readonly ILogger<SourceAudioProcessor> _log;
     public ITranscriber Transcriber { get; }
     public AudioSaver AudioSaver { get; }
     public SourceAudioRecorder SourceAudioRecorder { get; }
@@ -15,9 +18,6 @@ public class SourceAudioProcessor : BackgroundService
     public AudioStreamer AudioStreamer { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
     public IServerSideChatService Chat { get; }
-    private readonly ILogger<SourceAudioProcessor> _log;
-
-    public static bool SkipAutoStart { get; set; } = true;
 
     public SourceAudioProcessor(
         ITranscriber transcriber,
