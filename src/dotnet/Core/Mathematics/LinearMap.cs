@@ -1,68 +1,65 @@
-using System;
 using System.Text.Json.Serialization;
-using Stl.Collections;
 
-namespace ActualChat.Mathematics
+namespace ActualChat.Mathematics;
+
+[Serializable]
+public readonly struct LinearMap
 {
-    [Serializable]
-    public readonly struct LinearMap
+    public double[] SourcePoints { get; }
+    public double[] TargetPoints { get; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public int Length => SourcePoints.Length;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public (double Min, double Max) SourceRange => (SourcePoints[0], SourcePoints[^1]);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public (double Min, double Max) TargetRange => (TargetPoints[0], TargetPoints[^1]);
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public LinearMap(double[] sourcePoints, double[] targetPoints)
     {
-        public double[] SourcePoints { get; }
-        public double[] TargetPoints { get; }
+        SourcePoints = sourcePoints;
+        TargetPoints = targetPoints;
+    }
 
-        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-        public int Length => SourcePoints.Length;
-        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-        public (double Min, double Max) SourceRange => (SourcePoints[0], SourcePoints[^1]);
-        [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-        public (double Min, double Max) TargetRange => (TargetPoints[0], TargetPoints[^1]);
+    public override string ToString()
+        => $"{GetType().Name}({{{SourcePoints.ToDelimitedString()}}} -> {{{TargetPoints.ToDelimitedString()}}})";
 
-        [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-        public LinearMap(double[] sourcePoints, double[] targetPoints)
-        {
-            SourcePoints = sourcePoints;
-            TargetPoints = targetPoints;
+    public double? Map(double value)
+    {
+        var leIndex = SourcePoints.IndexOfLowerOrEqual(value);
+        if (leIndex < 0)
+            return null;
+        var leValue = SourcePoints[leIndex];
+        if (leIndex == Length - 1) {
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            return leValue == value ? TargetPoints[leIndex] : null;
         }
 
-        public override string ToString()
-            => $"{GetType().Name}({{{SourcePoints.ToDelimitedString()}}} -> {{{TargetPoints.ToDelimitedString()}}})";
+        var geIndex = leIndex + 1;
+        var geValue = SourcePoints[geIndex];
+        var factor = (value - leValue) / (geValue - leValue);
+        var tleValue = TargetPoints[leIndex];
+        var tgeValue = TargetPoints[geIndex];
+        return tleValue + (tgeValue - tleValue) * factor;
+    }
 
-        public double? Map(double value)
-        {
-            var leIndex = SourcePoints.IndexOfLowerOrEqual(value);
-            if (leIndex < 0)
-                return null;
-            var leValue = SourcePoints[leIndex];
-            if (leIndex == Length - 1) {
-                // ReSharper disable once CompareOfFloatsByEqualityOperator
-                return leValue == value ? TargetPoints[leIndex] : null;
-            }
+    public LinearMap Invert()
+        => new(TargetPoints, SourcePoints);
 
-            var geIndex = leIndex + 1;
-            var geValue = SourcePoints[geIndex];
-            var factor = (value - leValue) / (geValue - leValue);
-            var tleValue = TargetPoints[leIndex];
-            var tgeValue = TargetPoints[geIndex];
-            return tleValue + (tgeValue - tleValue) * factor;
-        }
+    public bool IsValid()
+        => TargetPoints.Length == SourcePoints.Length
+            && SourcePoints.IsStrictlyIncreasingSequence();
 
-        public LinearMap Invert()
-            => new(TargetPoints, SourcePoints);
+    public bool IsInvertible()
+        => TargetPoints.IsStrictlyIncreasingSequence();
 
-        public bool IsValid()
-            => TargetPoints.Length == SourcePoints.Length
-                && SourcePoints.IsStrictlyIncreasingSequence();
-
-        public bool IsInvertible()
-            => TargetPoints.IsStrictlyIncreasingSequence();
-
-        public LinearMap Validate(bool requireInvertible = false)
-        {
-            if (!IsValid())
-                throw new InvalidOperationException($"Invalid {GetType().Name}.");
-            if (requireInvertible && !IsInvertible())
-                throw new InvalidOperationException($"Invalid {GetType().Name}.");
-            return this;
-        }
+    public LinearMap Validate(bool requireInvertible = false)
+    {
+        if (!IsValid())
+            throw new InvalidOperationException($"Invalid {GetType().Name}.");
+        if (requireInvertible && !IsInvertible())
+            throw new InvalidOperationException($"Invalid {GetType().Name}.");
+        return this;
     }
 }

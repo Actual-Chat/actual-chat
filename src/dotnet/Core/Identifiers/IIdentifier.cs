@@ -1,13 +1,10 @@
-using System;
+namespace ActualChat;
 
-namespace ActualChat
+public interface IIdentifier
+{ }
+
+public interface IIdentifier<out TValue> : IIdentifier
+    where TValue : IEquatable<TValue>
 {
-    public interface IIdentifier
-    { }
-
-    public interface IIdentifier<out TValue> : IIdentifier
-        where TValue : IEquatable<TValue>
-    {
-        public TValue Value { get; }
-    }
+    public TValue Value { get; }
 }

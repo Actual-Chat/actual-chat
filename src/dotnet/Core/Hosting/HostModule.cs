@@ -2,41 +2,39 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Plugins;
-using Stl.Text;
 
-namespace ActualChat.Hosting
+namespace ActualChat.Hosting;
+
+public abstract class HostModule : Plugin
 {
-    public abstract class HostModule : Plugin
+    protected HostInfo HostInfo { get; } = null!;
+    protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
+
+    protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
+    protected HostModule(IPluginHost plugins) : base(plugins)
+        => HostInfo = plugins.GetRequiredService<HostInfo>();
+
+    public abstract void InjectServices(IServiceCollection services);
+}
+
+public abstract class HostModule<TSettings> : HostModule
+    where TSettings : class
+{
+    public TSettings Settings { get; } = null!;
+
+    protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
+    protected HostModule(IPluginHost plugins) : base(plugins)
     {
-        protected HostInfo HostInfo { get; } = null!;
-        protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
-
-        protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
-        protected HostModule(IPluginHost plugins) : base(plugins)
-            => HostInfo = plugins.GetRequiredService<HostInfo>();
-
-        public abstract void InjectServices(IServiceCollection services);
+        var settingsType = typeof(TSettings);
+        var sectionName = settingsType.Name.TrimSuffix("Settings", "Cfg", "Config", "Configuration");
+        var settings = (TSettings) plugins.Activate(settingsType);
+        var cfg = plugins.GetRequiredService<IConfiguration>();
+        cfg.GetSection(sectionName)?.Bind(settings);
+        Settings = settings;
     }
 
-    public abstract class HostModule<TSettings> : HostModule
-        where TSettings : class
+    public override void InjectServices(IServiceCollection services)
     {
-        public TSettings Settings { get; } = null!;
-
-        protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
-        protected HostModule(IPluginHost plugins) : base(plugins)
-        {
-            var settingsType = typeof(TSettings);
-            var sectionName = settingsType.Name.TrimSuffix("Settings", "Cfg", "Config", "Configuration");
-            var settings = (TSettings) plugins.Activate(settingsType);
-            var cfg = plugins.GetRequiredService<IConfiguration>();
-            cfg.GetSection(sectionName)?.Bind(settings);
-            Settings = settings;
-        }
-
-        public override void InjectServices(IServiceCollection services)
-        {
-            services.AddSingleton(Settings);
-        }
+        services.AddSingleton(Settings);
     }
 }

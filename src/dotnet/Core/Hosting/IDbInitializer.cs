@@ -1,14 +1,9 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+namespace ActualChat.Hosting;
 
-namespace ActualChat.Hosting
+public interface IDbInitializer
 {
-    public interface IDbInitializer
-    {
-        bool ShouldRecreateDb { get; set; }
-        Dictionary<IDbInitializer, Task> InitializeTasks { get; set; }
+    bool ShouldRecreateDb { get; set; }
+    Dictionary<IDbInitializer, Task> InitializeTasks { get; set; }
 
-        Task Initialize(CancellationToken cancellationToken);
-    }
+    Task Initialize(CancellationToken cancellationToken);
 }

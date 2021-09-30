@@ -5,7 +5,7 @@ namespace ActualChat.Blobs
 {
     public static class BlobPath
     {
-        public static char ScopeDelimiter = '/';
+        public static readonly char ScopeDelimiter = '/';
 
         public static string Format(Symbol scope, string scopedId)
             => ZString.Concat(scope.Value, ScopeDelimiter, scopedId);

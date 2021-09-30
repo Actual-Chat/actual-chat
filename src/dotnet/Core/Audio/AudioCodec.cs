@@ -1,9 +1,8 @@
-namespace ActualChat.Audio
+namespace ActualChat.Audio;
+
+public enum AudioCodec
 {
-    public enum AudioCodec
-    {
-        Wav = 0,
-        Flac,
-        Opus,
-    }
+    Wav = 0,
+    Flac,
+    Opus,
 }

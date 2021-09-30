@@ -1,11 +1,8 @@
-using Stl.Text;
+namespace ActualChat.Hosting;
 
-namespace ActualChat.Hosting
+public static class ServiceScope
 {
-    public static class ServiceScope
-    {
-        public static Symbol Server = nameof(Server);
-        public static Symbol Client = nameof(Client);
-        public static Symbol BlazorUI = nameof(BlazorUI);
-    }
+    public static readonly Symbol Server = nameof(Server);
+    public static readonly Symbol Client = nameof(Client);
+    public static readonly Symbol BlazorUI = nameof(BlazorUI);
 }

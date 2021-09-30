@@ -1,32 +1,33 @@
 ﻿using ActualChat.Blobs;
+using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using ActualChat.Playback;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion;
 using Stl.Fusion.Extensions;
 using Stl.Plugins;
 
-namespace ActualChat.Module
+namespace ActualChat.Module;
+
+public class CoreModule : HostModule
 {
-    public class CoreModule : HostModule
+    public CoreModule(IPluginInfoProvider.Query _) : base(_) { }
+    [ServiceConstructor]
+    public CoreModule(IPluginHost plugins) : base(plugins) { }
+
+    public override void InjectServices(IServiceCollection services)
     {
-        public CoreModule(IPluginInfoProvider.Query _) : base(_) { }
-        [ServiceConstructor]
-        public CoreModule(IPluginHost plugins) : base(plugins) { }
+        // Common services
+        var fusion = services.AddFusion();
+        fusion.AddFusionTime();
+        fusion.AddComputeService<IPlaybackManager, PlaybackManager>(ServiceLifetime.Scoped);
 
-        public override void InjectServices(IServiceCollection services)
-        {
-            // Common services
-            var fusion = services.AddFusion();
-            fusion.AddFusionTime();
+        if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+            InjectServerServices(services);
+    }
 
-            if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
-                InjectServerServices(services);
-        }
-
-        private void InjectServerServices(IServiceCollection services)
-        {
-            services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
-        }
+    private void InjectServerServices(IServiceCollection services)
+    {
+        services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
     }
 }
