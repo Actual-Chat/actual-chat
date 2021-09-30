@@ -1,8 +1,8 @@
+@namespace ActualChat.UI.Blazor.Host
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager _navigator
 @inject UICommandFailureList _commandFailureList
-
 @{
     var failures = _commandFailureList.Items;
 }
