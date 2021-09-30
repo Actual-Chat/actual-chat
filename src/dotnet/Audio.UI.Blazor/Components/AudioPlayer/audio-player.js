@@ -16,9 +16,9 @@ export class AudioPlayer {
             let mime = 'audio/webm; codecs=opus';
             this.sourceBuffer = this.mediaSource.addSourceBuffer(mime);
             this.sourceBuffer.addEventListener('updateend', sbe => {
-               if (this.bufferQueue.length) {
-                   this.sourceBuffer.appendBuffer(this.bufferQueue.shift());
-               }
+                if (this.bufferQueue.length) {
+                    this.sourceBuffer.appendBuffer(this.bufferQueue.shift());
+                }
             });
         });
 
@@ -27,6 +27,10 @@ export class AudioPlayer {
 
     dispose() {
         this.mediaSource.endOfStream();
+    }
+
+    static create(elementRef, backendRef) {
+        return new AudioPlayer(elementRef, backendRef);
     }
 
     async appendAudio(byteArray) {

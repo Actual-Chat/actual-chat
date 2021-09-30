@@ -1,12 +1,11 @@
+@namespace ActualChat.UI.Blazor
 @typeparam TItem
 @inherits ComputedStateComponent<VirtualListResponse<TItem>>
 @implements IVirtualListBackend
 @using ActualChat.UI.Blazor.Internal
-@using Stl.Async
 @using System.Collections.Immutable
 @using ActualChat.Mathematics
 @using Stl.Collections
-@using Stl.Mathematics
 @inject IJSRuntime _js
 @inject AppBlazorCircuitContext _appBlazorCircuitContext
 @inject ILogger<VirtualList<TItem>> _log
@@ -128,9 +127,8 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ModuleRef = await _jsModule.Import(typeof(IVirtualListBackend).Assembly, "js/virtual-list.js");
             ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSComponentRef = await ModuleRef.InvokeAsync<IJSObjectReference>("create", Ref, ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.VirtualList.create", Ref, ComponentRef);
         }
         if (_appBlazorCircuitContext.IsPrerendering)
             return;

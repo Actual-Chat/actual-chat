@@ -6,4 +6,5 @@ import './style/scrollbars.css';
 import './style/tailwind.css';
 
 
+export * as core from '../dotnet/UI.Blazor.Core/exports';
 export * as audio from '../dotnet/Audio.UI.Blazor/exports';

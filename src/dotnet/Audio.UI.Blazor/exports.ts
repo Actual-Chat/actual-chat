@@ -1,2 +1,2 @@
-export * from './Components/AudioPlayer/audio-player.js';
-export * from './Components/AudioRecorder/audio-recorder.js';
+export * from './Components/AudioPlayer/audio-player';
+export * from './Components/AudioRecorder/audio-recorder';

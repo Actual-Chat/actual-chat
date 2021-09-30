@@ -1,5 +1,4 @@
 @using System.Threading.Channels
-@using ActualChat.Streaming
 @namespace ActualChat.Audio.UI.Blazor
 @implements IAudioRecorderBackend
 @implements IAsyncDisposable
@@ -12,7 +11,6 @@
 </button>
 
 @code {
-    private IJSObjectReference ModuleRef { get; set; } = null!;
     private IJSObjectReference? JSComponentRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
@@ -36,7 +34,7 @@
     {
         if (firstRender) {
             ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{WebpackBundles.Main}.audio.create", ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef);
         }
     }
 

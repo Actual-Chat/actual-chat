@@ -10,7 +10,6 @@
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
-    protected IJSObjectReference? ModuleRef { get; set; }
     protected IJSObjectReference? JSComponentRef { get; set; }
     protected DotNetObjectReference<IAudioPlayerBackend>? ComponentRef { get; set; }
 
@@ -23,7 +22,7 @@
     {
         if (firstRender) {
             ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{WebpackBundles.Main}.audio.create", Ref, ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioPlayer.create", Ref, ComponentRef);
         }
     }
 

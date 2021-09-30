@@ -1,9 +1,5 @@
 const sampleRate = 16000;
 
-export function create(backendRef) {
-    return new AudioRecorder(backendRef);
-}
-
 export class AudioRecorder {
     constructor(backendRef) {
         this.backendRef = backendRef;
@@ -28,6 +24,10 @@ export class AudioRecorder {
 
     dispose() {
         this.recording = null;
+    }
+
+    static create(backendRef) {
+        return new AudioRecorder(backendRef);
     }
 
     isRecording() {

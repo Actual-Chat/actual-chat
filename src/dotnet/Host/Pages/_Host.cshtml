@@ -1,13 +1,11 @@
 @page "/"
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.Host.Pages
-@using ActualChat.Host.Internal
 @using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
 @inject IServiceProvider _services
 @inject ServerAuthHelper _serverAuthHelper
-@inject HostPluginHelper _hostPluginHelper
 @inject HostSettings _hostSettings
 @inject BlazorCircuitContext _blazorCircuitContext
 @{

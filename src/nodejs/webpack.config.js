@@ -105,10 +105,8 @@ module.exports = (env, args) => {
       path: outputPath,
       filename: '[name].js',
       library: {
-        name: 'js',
-        type: 'window',
+        type: 'this'
       },
-      // chunkFormat: 'module',
       publicPath: "/dist/"
     }
   };
