@@ -60,7 +60,8 @@ public class RedisPubSub<T> : RedisPubSub
 {
     public IByteSerializer<T> Serializer { get; }
 
-    public RedisPubSub(RedisDb redisDb, string key, ByteSerializer<T>? serializer = null) : base(redisDb, key)
+    public RedisPubSub(RedisDb redisDb, string key, ByteSerializer<T>? serializer = null)
+        : base(redisDb, key)
         => Serializer = serializer ?? ByteSerializer<T>.Default;
 
     public Task<long> PublishRaw(RedisValue item)
