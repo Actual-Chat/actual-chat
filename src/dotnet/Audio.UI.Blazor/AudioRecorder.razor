@@ -51,9 +51,8 @@
         AudioChannel = Channel.CreateBounded<BlobPart>(
             new BoundedChannelOptions(100) {
                 FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
                 SingleWriter = true,
-                AllowSynchronousContinuations = true
+                AllowSynchronousContinuations = true,
             });
         StateHasChanged();
         if (JSComponentRef != null)
@@ -67,11 +66,9 @@
 
         AudioChannel.Writer.Complete();
         AudioChannel = null;
+        StateHasChanged();
         if (JSComponentRef != null)
           await JSComponentRef.InvokeVoidAsync("stopRecording");
-
-        StateHasChanged();
-
     }
 
     // JS backend callback handlers
@@ -82,12 +79,14 @@
         if (AudioChannel == null)
             return;
 
-        var record = new AudioRecord(
-            ChatId,
-            new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
-            CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = _sourceAudioRecorder.RecordSourceAudio(_session, record, AudioChannel.Reader, default);
+        var audioFormat = new AudioFormat {
+            Codec = AudioCodec.Opus,
+            ChannelCount = 1,
+            SampleRate = 48_000
+        };
+        var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
+        var audioRecord = new AudioRecord(ChatId, audioFormat, "RU-ru", clientStartOffset);
+        _ = _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, AudioChannel.Reader, default);
     }
 
     [JSInvokable]

@@ -78,8 +78,6 @@
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*" />
     <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*" />
     <PackageReference Update="System.Reactive" Version="5.0.*" />
-    <PackageReference Update="Microsoft.AspNetCore.SignalR" Version="1.1.*"/>
-    <PackageReference Update="Microsoft.AspNetCore.SignalR.Core" Version="1.1.*" />
 
     <!-- For the build project -->
     <PackageReference Update="CliWrap" Version="3.3.3" />

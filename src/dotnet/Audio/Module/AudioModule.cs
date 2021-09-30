@@ -76,7 +76,9 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());
 
         // SignalR hub & related services
-        services.AddSignalR().AddMessagePackProtocol();
+        var signalR = services.AddSignalR();
+        if (!Debugging.SignalR.DisableMessagePackProtocol)
+            signalR.AddMessagePackProtocol();
         services.AddTransient<AudioHub>();
         services.AddSingleton<AudioStreamer>();
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());

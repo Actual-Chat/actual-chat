@@ -37,10 +37,6 @@ export class AudioRecorder {
     async startRecording() {
         if (this.isRecording())
             return null;
-        if (this.backendRef === null) {
-            console.error("Audio Recorder backend is undefined. Call 'initialize' first");
-            return null;
-        }
         if (!this.isMicrophoneAvailable) {
             console.error("Microphone is unavailable");
             return null;
@@ -101,7 +97,7 @@ export class AudioRecorder {
             };
         }
 
-        this.recording.recorder.startRecording();
+        let _ = this.recording.recorder.startRecording();
         await this.backendRef.invokeMethodAsync('OnStartRecording');
     }
 

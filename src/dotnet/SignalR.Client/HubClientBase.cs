@@ -21,11 +21,14 @@ public abstract class HubClientBase
     }
 
     protected virtual HubConnection CreateHubConnection()
-        => new HubConnectionBuilder()
+    {
+        var builder = new HubConnectionBuilder()
             .WithUrl(HubUrl)
-            .WithAutomaticReconnect()
-            .AddMessagePackProtocol()
-            .Build();
+            .WithAutomaticReconnect();
+        if (!Debugging.SignalR.DisableMessagePackProtocol)
+            builder = builder.AddMessagePackProtocol();
+        return builder.Build();
+    }
 
     protected async ValueTask EnsureConnected(CancellationToken cancellationToken)
     {
