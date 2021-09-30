@@ -33,7 +33,7 @@ public class RedisStreamer<T>
         Settings = settings ?? new();
         RedisDb = redisDb;
         Key = key;
-        AppendPubSub = new RedisPubSub(redisDb, Key + Settings.AppendPubSubKeySuffix);
+        AppendPubSub = RedisDb.GetPubSub(Key + Settings.AppendPubSubKeySuffix);
     }
 
     public ChannelReader<T> Read(CancellationToken cancellationToken = default)

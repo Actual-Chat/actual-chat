@@ -21,7 +21,7 @@ public class RedisQueue<T> : IAsyncDisposable
         Settings = settings ?? new();
         RedisDb = redisDb;
         Key = key;
-        EnqueuePubSub = new RedisPubSub(redisDb, $"{typeof(T).Name}-{Key}{Settings.EnqueuePubSubKeySuffix}");
+        EnqueuePubSub = RedisDb.GetPubSub($"{typeof(T).Name}-{Key}{Settings.EnqueuePubSubKeySuffix}");
     }
 
     public ValueTask DisposeAsync()
