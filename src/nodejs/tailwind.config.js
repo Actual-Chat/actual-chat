@@ -7,7 +7,8 @@ module.exports = ctx => {
       purge: {
         enabled: ctx.env === 'production' ? true : false,
         content: [
-          './wwwroot/**/*.html',
+          './../dotnet/**/*.razor',
+          './../dotnet/**/*.cshtml',
         ],
         options: {
           keyframes: true,
