@@ -1,4 +1,3 @@
-/* If something went wrong with styles in prod, remove '###' in lines below*/
 /* purgecss start ignore */
 @tailwind base;
 @tailwind components;

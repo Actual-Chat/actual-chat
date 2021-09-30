@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <!-- <workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
+    <ProjectCapability Include="AspNetCore" />
+    <!-- </workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
   </ItemGroup>
 
   <ItemGroup>
