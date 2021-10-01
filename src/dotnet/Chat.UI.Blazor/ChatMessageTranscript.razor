@@ -1,8 +1,9 @@
 @inject ITranscriptStreamer _transcriptStreamer
 @inject BlazorCircuitContext _circuitContext
+@inject ILogger<ChatMessageTranscript> _log
 
 <span class="content">@Text</span>
-<Button Type="@ButtonType.Button" Clicked="@OnListenClick" Color="Color.Link">Listen</Button>
+<Button Size="Size.ExtraSmall" Color="Color.Success" Clicked="@OnPlay">Play</Button>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
@@ -10,15 +11,13 @@
 
     [Parameter]
     public string StreamId { get; set; } = null!;
-
     [Parameter]
     public EventCallback<string> OnListen { get; set; }
-
 
     protected override async Task OnParametersSetAsync()
     {
         if (_cancellationTokenSource != null) {
-            // we should never call those statements
+            // We should never call those statements
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
         }
@@ -31,7 +30,7 @@
         await base.OnParametersSetAsync();
     }
 
-    private void OnListenClick()
+    private void OnPlay()
     {
         if(OnListen.HasDelegate)
             OnListen.InvokeAsync(StreamId);
@@ -43,21 +42,16 @@
             while (await transcriptReader.WaitToReadAsync(cancellationToken))
             while (transcriptReader.TryRead(out var message)) {
                 cancellationToken.ThrowIfCancellationRequested();
-
                 var (text, index, _, _) = message;
                 Text = Text.Length >= index
                     ? $"{Text[..index]}{text}"
                     : $"{Text}{text.PadLeft(index - Text.Length + text.Length)}";
-
                 StateHasChanged();
             }
         }
-        catch (ChannelClosedException) { }
-        catch (OperationCanceledException) { }
-        catch (Exception e) {
-            // TODO(AK): remove this dirty hack during exception handling!
-            Text = e.Message + e.StackTrace;
-            StateHasChanged();
+        catch (Exception e) when (e is not OperationCanceledException) {
+            _log.LogError(e, "Error while reading the transcript.");
+            throw;
         }
     }
 }
