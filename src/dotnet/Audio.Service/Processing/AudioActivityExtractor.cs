@@ -87,20 +87,20 @@ public class AudioActivityExtractor
     private WebMReader.State BuildWebMDocument(WebMReader webMReader, WebMDocumentBuilder builder)
     {
         while (webMReader.Read())
-            switch (webMReader.EbmlEntryType) {
-            case EbmlEntryType.None:
+            switch (webMReader.ReadResultKind) {
+            case WebMReadResultKind.None:
                 throw new InvalidOperationException();
-            case EbmlEntryType.Ebml:
+            case WebMReadResultKind.Ebml:
                 // TODO: add support of EBML Stream where multiple headers and segments can appear
-                builder.SetHeader((EBML)webMReader.Entry);
+                builder.SetHeader((EBML)webMReader.ReadResult);
                 break;
-            case EbmlEntryType.Segment:
-                webMReader.Entry.Complete();
-                builder.SetSegment((Segment)webMReader.Entry);
+            case WebMReadResultKind.Segment:
+                ((Segment)webMReader.ReadResult).Complete();
+                builder.SetSegment((Segment)webMReader.ReadResult);
                 break;
-            case EbmlEntryType.Cluster:
-                webMReader.Entry.Complete();
-                builder.AddCluster((Cluster)webMReader.Entry);
+            case WebMReadResultKind.CompleteCluster:
+                ((Cluster)webMReader.ReadResult).Complete();
+                builder.AddCluster((Cluster)webMReader.ReadResult);
                 break;
             default:
                 throw new NotSupportedException("Unsupported EbmlEntryType.");

@@ -86,12 +86,12 @@ public class AudioFrameExtractor
         var prevPosition = 0;
         while (webMReader.Read()) {
             var state = webMReader.GetState();
-            switch (webMReader.EbmlEntryType) {
-                case EbmlEntryType.None:
+            switch (webMReader.ReadResultKind) {
+                case WebMReadResultKind.None:
                     throw new InvalidOperationException();
-                case EbmlEntryType.Ebml:
+                case WebMReadResultKind.Ebml:
                     break;
-                case EbmlEntryType.Segment:
+                case WebMReadResultKind.Segment:
                     // audioFrame = new AudioFrame(
                     //     index,
                     //     AudioFrameKind.Header,
@@ -101,7 +101,7 @@ public class AudioFrameExtractor
                     //     BlobsStartAt: null
                     // );
                     return state;
-                case EbmlEntryType.Cluster:
+                case WebMReadResultKind.CompleteCluster:
                     // webMReader.Entry.Complete();
                     // builder.AddCluster((Cluster)webMReader.Entry);
                     break;
@@ -112,7 +112,7 @@ public class AudioFrameExtractor
         }
 
         if (index == 1) {
-            var cluster = (Cluster)webMReader.Entry;
+            var cluster = (Cluster)webMReader.ReadResult;
             // audioFrame = new AudioFrame(
             //     index,
             //     AudioFrameKind.ClusterAndBlobs,
@@ -123,7 +123,7 @@ public class AudioFrameExtractor
             // );
         }
         else {
-            var cluster = (Cluster)webMReader.Entry;
+            var cluster = (Cluster)webMReader.ReadResult;
             // audioFrame = new AudioFrame(
             //     index,
             //     AudioFrameKind.Blobs,
