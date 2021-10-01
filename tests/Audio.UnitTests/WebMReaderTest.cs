@@ -23,13 +23,14 @@ namespace ActualChat.Audio.UnitTests
             bytesRead.Should().BeGreaterThan(3 * 1024);
 
             var entries = Parse(buffer.Span[..bytesRead]).ToList();
-            entries.Should().HaveCount(3);
+            entries.Should().HaveCount(13);
             entries.Should().NotContainNulls();
             entries[0].Should().BeOfType<EBML>();
             entries[1].Should().BeOfType<Segment>();
             entries[2].Should().BeOfType<Cluster>();
             entries[2].As<Cluster>().SimpleBlocks.Should().HaveCount(10);
             entries[2].As<Cluster>().SimpleBlocks.Should().NotContainNulls();
+            entries[3].Should().BeOfType<SimpleBlock>();
         }
 
         [Fact]
@@ -41,10 +42,9 @@ namespace ActualChat.Audio.UnitTests
             var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
 
             var entries = Parse(buffer.Span[..0x26]).ToList();
-            entries.Should().HaveCount(2);
+            entries.Should().HaveCount(1);
             entries.Should().NotContainNulls();
             entries[0].Should().BeOfType<EBML>();
-            entries[1].Should().BeOfType<EBML>();
         }
 
 
@@ -63,7 +63,7 @@ namespace ActualChat.Audio.UnitTests
             bytesRead2.Should().BeGreaterThan(3 * 1024);
 
             var entries = Parse(buffer1.Span, buffer2.Span).ToList();
-            entries.Should().HaveCount(3);
+            entries.Should().HaveCount(24);
             entries.Should().NotContainNulls();
             entries[0].Should().BeOfType<EBML>();
             entries[1].Should().BeOfType<Segment>();
@@ -77,8 +77,7 @@ namespace ActualChat.Audio.UnitTests
             var result = new List<BaseModel>();
             var reader = new WebMReader(span);
             while (reader.Read())
-                result.Add(reader.Entry);
-            result.Add(reader.Entry);
+                result.Add(reader.ReadResult);
             return result;
         }
 
@@ -87,7 +86,7 @@ namespace ActualChat.Audio.UnitTests
             var result = new List<BaseModel>();
             var reader = new WebMReader(span1);
             while (reader.Read())
-                result.Add(reader.Entry);
+                result.Add(reader.ReadResult);
 
             // using var bufferLease1 = MemoryPool<byte>.Shared.Rent(3 * 1024);
             if (!reader.Tail.IsEmpty) {
@@ -100,8 +99,7 @@ namespace ActualChat.Audio.UnitTests
             else
                 reader = reader.WithNewSource(span2);
             while (reader.Read())
-                result.Add(reader.Entry);
-            result.Add(reader.Entry);
+                result.Add(reader.ReadResult);
             return result;
         }
     }

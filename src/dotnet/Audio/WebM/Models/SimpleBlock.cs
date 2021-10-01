@@ -10,6 +10,8 @@ namespace ActualChat.Audio.WebM.Models
         private const byte KeyFrameBit = 0b10000000;
         private const byte DiscardableBit = 0b00000001;
 
+        public override EbmlElementDescriptor Descriptor => MatroskaSpecification.SimpleBlockDescriptor;
+
         public bool IsKeyFrame { get; private set; }
 
         public bool IsDiscardable { get; private set; }
@@ -21,12 +23,12 @@ namespace ActualChat.Audio.WebM.Models
             IsKeyFrame = (Flags & KeyFrameBit) == KeyFrameBit;
             IsDiscardable = (Flags & DiscardableBit) == DiscardableBit;
         }
-        
+
         public override bool Write(ref SpanWriter writer)
         {
             if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.SimpleBlock, GetSize(), ref writer))
                 return false;
-            
+
             writer.Write(VInt.EncodeSize(TrackNumber));
             writer.Write(TimeCode);
             writer.Write(Flags);

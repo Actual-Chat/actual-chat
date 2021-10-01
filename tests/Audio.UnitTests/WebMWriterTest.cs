@@ -36,13 +36,13 @@ namespace ActualChat.Audio.UnitTests
             clusterWritten.Should().BeTrue();
 
 
-            (RootEntry, WebMReader.State) Parse(WebMReader reader)
+            (BaseModel, WebMReader.State) Parse(WebMReader reader)
             {
                 reader.Read();
-                return (reader.Entry, reader.GetState());
+                return (reader.ReadResult, reader.GetState());
             }
 
-            (bool success, int position) Write(WebMWriter writer, RootEntry entry)
+            (bool success, int position) Write(WebMWriter writer, BaseModel entry)
             {
                 var success = writer.Write(entry);
                 return (success, writer.Position);
@@ -75,15 +75,15 @@ namespace ActualChat.Audio.UnitTests
                 bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
             }
 
-            (IReadOnlyList<RootEntry>, WebMReader.State) Parse(WebMReader reader)
+            (IReadOnlyList<BaseModel>, WebMReader.State) Parse(WebMReader reader)
             {
-                var result = new List<RootEntry>();
+                var result = new List<BaseModel>();
                 while (reader.Read())
-                    result.Add(reader.Entry);
+                    result.Add(reader.ReadResult);
                 return (result, reader.GetState());
             }
 
-            int Write(WebMWriter writer, IReadOnlyList<RootEntry> elements)
+            int Write(WebMWriter writer, IReadOnlyList<BaseModel> elements)
             {
                 foreach (var element in elements) {
                     var success = writer.Write(element);
@@ -134,15 +134,15 @@ namespace ActualChat.Audio.UnitTests
 
             outputStream.Flush();
 
-            (IReadOnlyList<RootEntry>, WebMReader.State) Parse(WebMReader reader)
+            (IReadOnlyList<BaseModel>, WebMReader.State) Parse(WebMReader reader)
             {
-                var result = new List<RootEntry>();
+                var result = new List<BaseModel>();
                 while (reader.Read())
-                    result.Add(reader.Entry);
+                    result.Add(reader.ReadResult);
                 return (result, reader.GetState());
             }
 
-            int Write(WebMWriter writer, IReadOnlyList<RootEntry> elements)
+            int Write(WebMWriter writer, IReadOnlyList<BaseModel> elements)
             {
                 foreach (var element in elements) {
                     var success = writer.Write(element);
