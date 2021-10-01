@@ -9,7 +9,7 @@ namespace ActualChat.Audio.WebM
     {
         private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
         private readonly Stack<EbmlElement> _containers;
-        
+
         private SpanReader _spanReader;
 
         private EbmlElement _container;
@@ -30,7 +30,7 @@ namespace ActualChat.Audio.WebM
             _entry = BaseModel.Empty;
             _resume = false;
         }
-        
+
         private WebMReader(State state, ReadOnlySpan<byte> span)
         {
             _container = state.ContainerElement;
@@ -48,6 +48,8 @@ namespace ActualChat.Audio.WebM
             EBML => EbmlEntryType.Ebml,
             _ => throw new InvalidOperationException()
         };
+
+        public ReadOnlySpan<byte> Span => _spanReader.Span;
 
         public static WebMReader FromState(State state)
         {
@@ -70,7 +72,7 @@ namespace ActualChat.Audio.WebM
             var remaining = _spanReader.Length - _spanReader.Position;
             return new State(_resume, _spanReader.Position, remaining, _container, _entry);
         }
-        
+
         public WebMReader WithNewSource(ReadOnlySpan<byte> span)
         {
             return new WebMReader(GetState(), span);
@@ -88,7 +90,7 @@ namespace ActualChat.Audio.WebM
                     _resume = true;
                 return false;
             }
-            
+
             return _element.Type != EbmlElementType.MasterElement || ReadInternal();
         }
 
@@ -103,8 +105,8 @@ namespace ActualChat.Audio.WebM
             }
 
             var beginPosition = _spanReader.Position;
-            var endPosition = _container.Size == UnknownSize 
-                ? int.MaxValue 
+            var endPosition = _container.Size == UnknownSize
+                ? int.MaxValue
                 : beginPosition + (int)_container.Size;
             while (true) {
                 if (endPosition <= _spanReader.Position)
@@ -119,11 +121,11 @@ namespace ActualChat.Audio.WebM
                         _resume = true;
                     return false;
                 }
-                
+
                 if (_element.Identifier.EncodedValue == MatroskaSpecification.Cluster) {
                     if (_container.Identifier.EncodedValue != MatroskaSpecification.Cluster)
                         LeaveContainer();
-                    
+
                     _entry = container;
                     _element = _container;
                     _spanReader.Position = beginPosition;
@@ -185,7 +187,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         private bool ReadElement(int readUntil)
         {
             var identifier = _spanReader.ReadVInt(4);
@@ -197,7 +199,7 @@ namespace ActualChat.Audio.WebM
 
             var isValid = MatroskaSpecification.ElementDescriptors.TryGetValue(idValue, out var elementDescriptor);
             if (!isValid)  throw new EbmlDataFormatException("invalid element identifier value - not white-listed");
-            
+
             var size = _spanReader.ReadVInt(8);
             if (!size.HasValue)
                 return false;
@@ -215,28 +217,28 @@ namespace ActualChat.Audio.WebM
                     return false;
                 }
             }
-            
+
             _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
-         
+
             return true;
         }
-        
+
         private void EnterContainer()
         {
             if (_element.Type != EbmlElementType.None && _element.Type != EbmlElementType.MasterElement)
                 throw new InvalidOperationException();
             if (_element.Type == EbmlElementType.MasterElement && _element.HasInvalidIdentifier)
                 throw new InvalidOperationException();
-            
+
             _containers.Push(_container);
             _container = _element;
             _element = EbmlElement.Empty;
         }
-        
+
         private bool LeaveContainer()
         {
             if (_containers.Count == 0) throw new InvalidOperationException();
-            
+
             _element = _container;
             _container = _containers.Pop();
             return true;

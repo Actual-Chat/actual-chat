@@ -26,6 +26,8 @@ namespace ActualChat.Audio.WebM
 
         public ReadOnlySpan<byte> Tail => _span[Position..];
 
+        public ReadOnlySpan<byte> Span => _span;
+
         public ReadOnlySpan<byte> ReadSpan(int length, out bool success)
         {
             if (Position + length > _span.Length) {
@@ -50,11 +52,11 @@ namespace ActualChat.Audio.WebM
         {
             if (Position >= _span.Length)
                 return null;
-            
+
             var result = _span[Position];
-            
+
             Position += sizeof(byte);
-            
+
             return result;
         }
 
@@ -77,13 +79,13 @@ namespace ActualChat.Audio.WebM
         public long? ReadLong() => Read<long>();
 
         public ulong? ReadULong() => Read<ulong>();
-        
+
         public float? ReadFloat(int size)
         {
             var num = ReadULong(size);
             if (!num.HasValue)
                 return null;
-            
+
             switch (size)
             {
                 case 4:
@@ -95,17 +97,17 @@ namespace ActualChat.Audio.WebM
                     throw new EbmlDataFormatException("Incorrect float length");
             }
         }
-        
+
         public long? ReadLong(int size)
         {
             if (Position + size >= _span.Length)
                 return null;
-            
+
             long result = _span[Position];
             for (var i = 1; i < size; i++) result = (result << 8) | (uint)(_span[Position + i] & 0xFF);
-            
+
             Position += size;
-            
+
             return result;
         }
 
@@ -113,25 +115,25 @@ namespace ActualChat.Audio.WebM
         {
             if (Position + size >= _span.Length)
                 return null;
-            
+
             ulong result = 0;
             for (var i = 0; i < size; i++) result = (result << 8) | _span[Position + i];
-            
+
             Position += size;
-            
+
             return result;
         }
 
         public string? ReadAsciiString(int size) => ReadString(Encoding.ASCII, size);
-        
+
         public string? ReadUtf8String(int size) => ReadString(Encoding.UTF8, size);
-        
+
         public decimal? ReadDecimal()
         {
             var length = sizeof(decimal);
             if (Position + length >= _span.Length)
                 return null;
-            
+
             var buffer = _span.Slice(Position, length);
 
             _decimalBits[0] = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
@@ -154,7 +156,7 @@ namespace ActualChat.Audio.WebM
         {
             if (Position + length >= _span.Length)
                 return null;
-            
+
             var result = _span.Slice(Position, length).ToArray();
             Position += length;
             return result;
@@ -166,7 +168,7 @@ namespace ActualChat.Audio.WebM
         {
             if (Position + start + length >= _span.Length)
                 return -1;
-            
+
             _span.Slice(Position + start, length).CopyTo(span);
             Position += length;
             return length;
@@ -177,7 +179,7 @@ namespace ActualChat.Audio.WebM
             var utcNowAsLong = ReadLong();
             if (!utcNowAsLong.HasValue)
                 return null;
-            
+
             return DateTime.FromBinary(utcNowAsLong.Value);
         }
 
@@ -186,7 +188,7 @@ namespace ActualChat.Audio.WebM
             var bytes = ReadBytes(SizeOfGuid);
             if (bytes is null)
                 return null;
-            
+
             return new Guid(bytes);
         }
 
@@ -196,7 +198,7 @@ namespace ActualChat.Audio.WebM
             var sizeOf = Unsafe.SizeOf<T>();
             if (sizeOf + Position > _span.Length)
                 return null;
-            
+
             var newSpan = _span[Position..];
             var result = MemoryMarshal.Read<T>(newSpan);
             Position += sizeOf;
@@ -229,7 +231,7 @@ namespace ActualChat.Audio.WebM
                 byteReadJustNow = ReadByte();
                 if (!byteReadJustNow.HasValue)
                     return null;
-                
+
                 result |= (byteReadJustNow.Value & 0x7Fu) << shift;
 
                 if (byteReadJustNow <= 0x7Fu) return (int)result; // early exit
@@ -242,7 +244,7 @@ namespace ActualChat.Audio.WebM
             byteReadJustNow = ReadByte();
             if (!byteReadJustNow.HasValue)
                 return null;
-            
+
             if (byteReadJustNow > 0b_1111u) throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
 
             result |= (uint)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
@@ -269,7 +271,7 @@ namespace ActualChat.Audio.WebM
                 byteReadJustNow = ReadByte();
                 if (!byteReadJustNow.HasValue)
                     return null;
-                
+
                 result |= (byteReadJustNow.Value & 0x7Ful) << shift;
 
                 if (byteReadJustNow <= 0x7Fu) return (long)result; // early exit
@@ -282,13 +284,13 @@ namespace ActualChat.Audio.WebM
             byteReadJustNow = ReadByte();
             if (!byteReadJustNow.HasValue)
                 return null;
-            
+
             if (byteReadJustNow > 0b_1u) throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
 
             result |= (ulong)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
             return (long)result;
         }
-        
+
         public VInt? ReadVInt(int maxLength = 4)
         {
             uint? b1 = ReadByte();
@@ -302,7 +304,7 @@ namespace ActualChat.Audio.WebM
                 mask >>= 1;
 
                 if ((b1 & mask) == 0) continue;
-                
+
                 ulong value = raw & ~mask;
 
                 for (int j = 0; j < i; ++j)
@@ -320,7 +322,7 @@ namespace ActualChat.Audio.WebM
 
             return null;
         }
-        
+
         private string? ReadString(Encoding decoder, int size)
         {
             if (size == 0)
@@ -328,11 +330,11 @@ namespace ActualChat.Audio.WebM
 
             if (Position + size >= _span.Length)
                 return null;
-            
+
             var result = decoder.GetString(_span.Slice(Position, size));
 
             Position += size;
-            
+
             return result;
         }
     }
