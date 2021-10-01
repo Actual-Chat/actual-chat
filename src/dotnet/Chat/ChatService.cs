@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reactive;
 using System.Security;
 using ActualChat.Chat.Db;
@@ -324,7 +325,7 @@ namespace ActualChat.Chat
             else {
                 dbChatEntry = await dbContext.FindAsync<DbChatEntry>(
                     ComposeKey(DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id)),
-                    cancellationToken);
+                    cancellationToken) ?? throw new InvalidOperationException($"dbChatEntry {chatEntry.ChatId} is null");
                 chatEntry = chatEntry with {
                     Version = VersionGenerator.NextVersion(dbChatEntry.Version),
                 };

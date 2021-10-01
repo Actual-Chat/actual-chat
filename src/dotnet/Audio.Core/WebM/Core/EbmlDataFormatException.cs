@@ -18,5 +18,10 @@ namespace ActualChat.Audio.WebM
             : base(message, cause)
         {
         }
+
+        public EbmlDataFormatException(string? message, int hresult)
+            : base(message, hresult)
+        {
+        }
     }
 }

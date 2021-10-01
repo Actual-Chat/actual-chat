@@ -32,7 +32,7 @@ public sealed class AudioSaver : DbServiceBase<AudioDbContext>
         CancellationToken cancellationToken)
     {
         var p = audioStreamPart ?? throw new ArgumentNullException(nameof(audioStreamPart));
-        var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "");
+        var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "", StringComparison.Ordinal);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, p.AudioRecord.Id, streamIndex + ".webm");
 
         var saveBlobTask = SaveBlob(blobId, audioStreamPart, cancellationToken);
@@ -77,7 +77,7 @@ public sealed class AudioSaver : DbServiceBase<AudioDbContext>
         CancellationToken cancellationToken)
     {
         var p = audioRecordSegment ?? throw new ArgumentNullException(nameof(audioRecordSegment));
-        var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "");
+        var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "", StringComparison.Ordinal);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, p.AudioRecord.Id, streamIndex + ".webm");
 
         await SaveBlob(blobId, audioRecordSegment, cancellationToken);

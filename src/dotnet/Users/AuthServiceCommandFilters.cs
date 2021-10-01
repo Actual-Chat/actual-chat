@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -60,7 +61,7 @@ namespace ActualChat.Users
             if (dbUser == null)
                 return; // Should never happen, but if it somehow does, there is no extra to do in this case
             var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken);
-            if (newName != dbUser.Name) {
+            if (!string.Equals(newName, dbUser.Name, StringComparison.Ordinal)) {
                 dbUser.Name = newName;
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
@@ -173,7 +174,7 @@ namespace ActualChat.Users
             // Iterating through these tail numbers to get the unique user name
             var namePrefix = name.Substring(0, numberStartIndex);
             var nameSuffix = name.Substring(numberStartIndex);
-            var nextNumber = long.TryParse(nameSuffix, out var number) ? number + 1 : 1;
+            var nextNumber = long.TryParse(nameSuffix, NumberStyles.Number, NumberFormatInfo.InvariantInfo, out var number) ? number + 1 : 1;
             while (true) {
                 var isNameUsed = await dbContext.Users.AsQueryable()
                     .AnyAsync(u => u.Name == name && u.Id != userId, cancellationToken);

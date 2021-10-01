@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace ActualChat;
 
-[Serializable]
+[Serializable, StructLayout(LayoutKind.Auto)]
 public readonly struct Range<T> : IEquatable<Range<T>>
     where T : notnull
 {

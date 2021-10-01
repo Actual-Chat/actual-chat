@@ -12,7 +12,7 @@ public interface IVirtualListBackend
         public double ViewSize { get; set; } = 1;
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
         public Range<double> ViewRange => new(ViewOffset, ViewOffset + ViewSize);
-        public Dictionary<string, double> ItemSizes { get; set; } = new();
+        public Dictionary<string, double> ItemSizes { get; set; } = new(StringComparer.Ordinal);
     }
 
     public void UpdateClientSideState(ClientSideState clientSideState);

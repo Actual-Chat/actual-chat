@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace ActualChat.Comparison;
 
 public class LongAsStringKeyComparer : IComparer<string>
@@ -7,7 +9,8 @@ public class LongAsStringKeyComparer : IComparer<string>
     public IComparer<string> BaseComparer { get; init; } = StringComparer.InvariantCulture;
 
     public int Compare(string? x, string? y)
-        => long.TryParse(x, out var lx) && long.TryParse(y, out var ly)
+        => long.TryParse(x, NumberStyles.Number, NumberFormatInfo.InvariantInfo, out var lx)
+           && long.TryParse(y, NumberStyles.Number, NumberFormatInfo.InvariantInfo, out var ly)
             ? lx.CompareTo(ly)
             : BaseComparer.Compare(x, y);
 }

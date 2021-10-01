@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor
 {
     public class JSModule
     {
-        private readonly ConcurrentDictionary<string, IJSObjectReference> _cache = new();
+        private readonly ConcurrentDictionary<string, IJSObjectReference> _cache = new(StringComparer.Ordinal);
         private readonly IJSRuntime _jsRuntime;
 
         public JSModule(IJSRuntime jsRuntime)

@@ -13,6 +13,7 @@ using ActualChat.Module;
 using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.Host;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.Users;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;

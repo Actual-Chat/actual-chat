@@ -26,7 +26,7 @@ namespace ActualChat.Audio.WebM
             DefaultValue = defaultValue;
             ListEntry = listEntry;
         }
-        
+
         public bool ListEntry { get; }
 
         public VInt Identifier { get; }
@@ -34,14 +34,14 @@ namespace ActualChat.Audio.WebM
         public string? Name { get; }
 
         public EbmlElementType Type { get; }
-        
+
         public string? DefaultValue { get; }
 
         public override int GetHashCode()
         {
             int result = 17;
             result = 37*result + Identifier.GetHashCode();
-            result = 37*result + (Name == null ? 0 : Name.GetHashCode());
+            result = 37*result + (Name == null ? 0 : StringComparer.Ordinal.GetHashCode(Name));
             result = 37*result + (Type == EbmlElementType.None ? 0 : Type.GetHashCode());
             return result;
         }
@@ -49,7 +49,7 @@ namespace ActualChat.Audio.WebM
         public override bool Equals(object? obj)
         {
             if (this == obj) return true;
-            
+
             if (obj is EbmlElementDescriptor o2)
                 return Identifier.Equals(o2.Identifier)
                        && Equals(Name, o2.Name)

@@ -36,21 +36,21 @@ namespace ActualChat.Chat.UI.Blazor.Testing
             var range = await GetListRange(cancellationToken);
             if (query.IncludedRange == default) {
                 var key = _resetToBottom ? range.End : _resetToTop ? 0 : range.Start + (range.End - range.Start) / 2;
-                query = query with { IncludedRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
+                query = query with { IncludedRange = new Range<string>(key.ToString(CultureInfo.InvariantCulture), (key + 20).ToString(CultureInfo.InvariantCulture)) };
             }
 
-            var start = int.Parse(query.IncludedRange.Start);
+            var start = int.Parse(query.IncludedRange.Start, NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
             if (query.ExpandStartBy > 0)
                 start -= (int) query.ExpandStartBy;
             start = Math.Max(range.Start, start);
 
-            var end = int.Parse(query.IncludedRange.End);
+            var end = int.Parse(query.IncludedRange.End, NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
             if (query.ExpandEndBy > 0)
                 end += (int) query.ExpandEndBy;
             end = Math.Min(range.End, end);
 
             var result = VirtualListResponse.New(
-                Enumerable.Range(start, end - start + 1).Select(i => i.ToString()),
+                Enumerable.Range(start, end - start + 1).Select(i => i.ToString(CultureInfo.InvariantCulture)),
                 item => item,
                 start == range.Start,
                 end == range.End);
@@ -61,7 +61,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing
         [ComputeMethod]
         public virtual async Task<TestListItem> GetItem(string key, CancellationToken cancellationToken)
         {
-            var intKey = int.Parse(key);
+            var intKey = int.Parse(key, NumberStyles.Integer, NumberFormatInfo.InvariantInfo);
             var seed = await GetSeed(cancellationToken);
             var range = await GetListRange(cancellationToken);
             var rnd = new Random(intKey + (intKey + seed) / 10);
