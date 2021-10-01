@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ActualChat.Audio</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ToDo: fix t4 generation without vs/rider or move to sourcegenerators, move generation results to a separate folder (?)  -->
+    <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs" />
+    <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="WebM\Models\MatroskaModels.cs">
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="WebM\MatroskaSpecification.cs">
+      <DependentUpon>MatroskaSpecification.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+</Project>

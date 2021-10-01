@@ -7,6 +7,7 @@
     <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
+    <ProjectReference Include="..\Audio.Core\Audio.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
