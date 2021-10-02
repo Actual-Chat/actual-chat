@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <RootNamespace>ActualChat.Transcription.IntegrationTests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\dotnet\Transcription\Transcription.csproj" />
+    <ProjectReference Include="..\..\src\dotnet\Transcription.Service\Transcription.Service.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />
   </ItemGroup>
 

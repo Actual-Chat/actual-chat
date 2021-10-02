@@ -1,9 +1,8 @@
 using ActualChat.Blobs;
 
-namespace ActualChat.Audio
+namespace ActualChat.Audio;
+
+public interface IAudioStreamer
 {
-    public interface IAudioStreamer
-    {
-        public Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken);
-    }
+    public Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken);
 }

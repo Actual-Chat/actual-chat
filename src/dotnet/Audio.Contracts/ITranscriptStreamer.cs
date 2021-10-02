@@ -1,7 +1,6 @@
-namespace ActualChat.Audio
+namespace ActualChat.Audio;
+
+public interface ITranscriptStreamer
 {
-    public interface ITranscriptStreamer
-    {
-        public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken);
-    }
+    public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken);
 }

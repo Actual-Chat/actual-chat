@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>ActualChat.UI.Blazor</RootNamespace>
+    <AssemblyName>ActualChat.UI.Blazor</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
