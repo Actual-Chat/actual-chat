@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Audio\Audio.csproj" />
-    <ProjectReference Include="..\Redis\Redis.csproj" />
   </ItemGroup>
 
 </Project>

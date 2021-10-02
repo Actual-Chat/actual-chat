@@ -7,19 +7,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BEC9AC19-13D
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio", "src\dotnet\Audio\Audio.csproj", "{CD0ABEB8-7B20-46FA-AE22-DD1AD852C16D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.Service", "src\dotnet\Audio.Service\Audio.Service.csproj", "{CD0ABEB8-7B20-46FA-AE22-DD1AD852C16D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Db", "src\dotnet\Db\Db.csproj", "{A9BD0955-135A-441C-A775-560ACA80245E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Web", "src\dotnet\Web\Web.csproj", "{44DAF807-F9DA-4C33-8C54-255397E4157F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat", "src\dotnet\Chat\Chat.csproj", "{F6D12083-4E1A-49B5-92FA-6681C6E79125}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Service", "src\dotnet\Chat.Service\Chat.Service.csproj", "{F6D12083-4E1A-49B5-92FA-6681C6E79125}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core", "src\dotnet\Core\Core.csproj", "{5D6530AD-4640-488B-9FA9-B63BC5AFB872}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Host", "src\dotnet\Host\Host.csproj", "{0342DD9E-3424-4C63-9A0E-7F6CEEE58C32}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users", "src\dotnet\Users\Users.csproj", "{AA165163-F9A3-4910-9DD3-59543948BCA0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service", "src\dotnet\Users.Service\Users.Service.csproj", "{AA165163-F9A3-4910-9DD3-59543948BCA0}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Client", "src\dotnet\Chat.Client\Chat.Client.csproj", "{7BCBC3AC-261A-40F5-8000-B16B793A5712}"
 EndProject
@@ -27,13 +27,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.Client", "src\dotnet\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Client", "src\dotnet\Users.Client\Users.Client.csproj", "{E5854379-1F29-4D9C-B961-82DAFAEF0753}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription", "src\dotnet\Transcription\Transcription.csproj", "{36FB127F-BF3B-4792-9F21-0632EBB755CA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.Service", "src\dotnet\Transcription.Service\Transcription.Service.csproj", "{36FB127F-BF3B-4792-9F21-0632EBB755CA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Contracts", "src\dotnet\Chat.Contracts\Chat.Contracts.csproj", "{65CCA6A1-3B9E-481D-9807-E3BC7450AA0D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor", "src\dotnet\Chat.UI.Blazor\Chat.UI.Blazor.csproj", "{663B0AB3-BF84-42C0-8D10-60A1B6C647DA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.Core", "src\dotnet\UI.Blazor.Core\UI.Blazor.Core.csproj", "{ECBC1E77-D8BB-424B-83AB-61F039D5C512}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor", "src\dotnet\UI.Blazor\UI.Blazor.csproj", "{ECBC1E77-D8BB-424B-83AB-61F039D5C512}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.Host", "src\dotnet\UI.Blazor.Host\UI.Blazor.Host.csproj", "{F32DB753-635A-4702-98C7-5DF2ED90045A}"
 EndProject
@@ -61,11 +61,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "tests\Testing\Te
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing.Host", "tests\Testing.Host\Testing.Host.csproj", "{5812F7E0-FBC2-42B6-9B4C-DFFF86B91DF5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.IntegrationTests", "tests\Audio.IntegrationTests\Audio.IntegrationTests.csproj", "{D546F574-6B34-4340-9084-4345C8AD630B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.Service.IntegrationTests", "tests\Audio.Service.IntegrationTests\Audio.Service.IntegrationTests.csproj", "{D546F574-6B34-4340-9084-4345C8AD630B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.UnitTests", "tests\Core.UnitTests\Core.UnitTests.csproj", "{02A9CB5F-A696-4EFF-97CC-E590484C91AF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.IntegrationTests", "tests\Transcription.IntegrationTests\Transcription.IntegrationTests.csproj", "{5A88AA44-0AA7-402E-9185-8A7991FAF66C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.Service.IntegrationTests", "tests\Transcription.Service.IntegrationTests\Transcription.Service.IntegrationTests.csproj", "{5A88AA44-0AA7-402E-9185-8A7991FAF66C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.IntegrationTests", "tests\UI.Blazor.IntegrationTests\UI.Blazor.IntegrationTests.csproj", "{D511789B-6EB9-4CC9-9069-8B05FA10D6B9}"
 EndProject
@@ -87,7 +87,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio.Core", "src\dotnet\Audio.Core\Audio.Core.csproj", "{D66CB283-D965-4AB5-A796-33931246D297}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio", "src\dotnet\Audio\Audio.csproj", "{D66CB283-D965-4AB5-A796-33931246D297}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playback", "src\dotnet\Playback\Playback.csproj", "{43E54532-23A6-4BFE-AE54-777D865BC954}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -219,6 +221,10 @@ Global
 		{D66CB283-D965-4AB5-A796-33931246D297}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D66CB283-D965-4AB5-A796-33931246D297}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D66CB283-D965-4AB5-A796-33931246D297}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43E54532-23A6-4BFE-AE54-777D865BC954}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43E54532-23A6-4BFE-AE54-777D865BC954}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43E54532-23A6-4BFE-AE54-777D865BC954}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43E54532-23A6-4BFE-AE54-777D865BC954}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -257,6 +263,7 @@ Global
 		{7A843A4D-143D-4AAF-8179-EA95ED460328} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{33243438-DAC2-4B8E-9C60-32CEB24B1F7A} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{D66CB283-D965-4AB5-A796-33931246D297} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{43E54532-23A6-4BFE-AE54-777D865BC954} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

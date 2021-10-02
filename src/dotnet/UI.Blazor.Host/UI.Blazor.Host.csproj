@@ -11,7 +11,7 @@
     <ProjectReference Include="..\Chat.UI.Blazor\Chat.UI.Blazor.csproj" />
     <ProjectReference Include="..\Users.Client\Users.Client.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
-    <ProjectReference Include="..\UI.Blazor.Core\UI.Blazor.Core.csproj" />
+    <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
 </Project>
