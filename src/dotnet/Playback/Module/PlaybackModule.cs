@@ -18,6 +18,5 @@ public class PlaybackModule : HostModule
 
         // Common services
         var fusion = services.AddFusion();
-        fusion.AddComputeService<IPlaybackManager, PlaybackManager>(ServiceLifetime.Scoped);
     }
 }
