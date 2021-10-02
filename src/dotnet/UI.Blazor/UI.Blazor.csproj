@@ -1,10 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
-  <PropertyGroup>
-    <RootNamespace>ActualChat.UI.Blazor</RootNamespace>
-    <AssemblyName>ActualChat.UI.Blazor</AssemblyName>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
