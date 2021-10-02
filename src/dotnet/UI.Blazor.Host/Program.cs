@@ -30,7 +30,6 @@ public static class Program
         // Logging
         var logging = builder.Logging;
         logging.SetMinimumLevel(LogLevel.Information);
-        // logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
 
         // Other services shared with plugins
         services.AddSingleton(new HostInfo() {

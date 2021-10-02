@@ -140,29 +140,56 @@ internal static class Program
         ///<summary> the part of workaround of <see href="https://github.com/dotnet/aspnetcore/issues/37190" /> </summary>
         static async Task ReadNamedPipeAsync(Process process, string pipeName, CancellationToken cancellationToken)
         {
-            using var server = new NamedPipeServerStream(pipeName);
-            await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
-            using var reader = new StreamReader(server);
-            bool isAlwaysSent = false;
-            var prefix = Green("dotnet: ");
-            while (!cancellationToken.IsCancellationRequested && server.IsConnected) {
-                var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                if (line == null) {
-                    if (process.HasExited) {
-                        break;
+            try {
+                using var server = new NamedPipeServerStream(pipeName);
+                await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
+                using var reader = new StreamReader(server);
+                bool? isAlwaysApplied = null;
+                var prefix = Green("dotnet: ");
+                while (!cancellationToken.IsCancellationRequested && server.IsConnected) {
+                    var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                    if (line == null) {
+                        if (process.HasExited) {
+                            break;
+                        }
+                        continue;
                     }
-                    continue;
+                    Console.WriteLine(prefix + Colorize(line));
+                    /// <see href="https://github.com/dotnet/sdk/blob/3860d6e404bc7fc08ca55ca158fed212ccee12ad/src/BuiltInTools/dotnet-watch/HotReload/RudeEditPreference.cs#L34" />
+
+                    if (isAlwaysApplied == null && line.Contains("Do you want to restart your app - Yes (y) / No (n) / Always (a) / Never (v)?", StringComparison.OrdinalIgnoreCase)) {
+                        isAlwaysApplied = false;
+                        Console.WriteLine(Red("[BuildSystem] ") + "Found user prompt...");
+
+                        _ = Task.Factory.StartNew(() => {
+                            while (isAlwaysApplied == false) {
+                                Console.WriteLine(Red("[BuildSystem] ") + "Send 'a' as always...");
+                                SendAlways(process);
+                                Thread.Sleep(300);
+                            }
+                        }, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                    }
+                    else if (isAlwaysApplied == false) {
+                        Console.WriteLine(Red("[BuildSystem] ") + "Found a new line, disable sending...");
+                        isAlwaysApplied = true;
+                    }
+
                 }
-                Console.WriteLine(prefix + Colorize(line));
-                /// <see href="https://github.com/dotnet/sdk/blob/3860d6e404bc7fc08ca55ca158fed212ccee12ad/src/BuiltInTools/dotnet-watch/HotReload/RudeEditPreference.cs#L34" />
-                if (!isAlwaysSent && line.Contains("Do you want to restart your app - Yes (y) / No (n) / Always (a) / Never (v)?", StringComparison.OrdinalIgnoreCase)) {
-                    var hwnd = process.MainWindowHandle;
-                    Thread.Sleep(500);
-                    _ = PostMessage(hwnd, WM_KEYDOWN, VK_A, 0);
-                    Thread.Sleep(200);
-                    _ = PostMessage(hwnd, WM_KEYUP, VK_A, 0);
-                    isAlwaysSent = true;
-                }
+            }
+            catch (Exception ex) {
+                Console.WriteLine("[BuildSystem] Prompt workaround error: " + ex.ToString());
+            }
+
+            static void SendAlways(Process process)
+            {
+                var hwnd = process.MainWindowHandle;
+                _ = PostMessage(hwnd, WM_KEYDOWN, VK_A, 0);
+                Thread.Sleep(200);
+                _ = PostMessage(hwnd, WM_KEYUP, VK_A, 0);
+                Thread.Sleep(500);
+                _ = PostMessage(hwnd, WM_KEYDOWN, VK_RETURN, 0);
+                Thread.Sleep(200);
+                _ = PostMessage(hwnd, WM_KEYUP, VK_RETURN, 0);
             }
         }
 
@@ -374,7 +401,7 @@ internal class WithoutStackException : Exception
 internal static class WinApi
 {
     public const uint WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101, SW_HIDE = 0x0;
-    public const nuint VK_A = 65;
+    public const nuint VK_A = 0x41, VK_RETURN = 0x0D;
 
     [DllImport("User32", ExactSpelling = true, EntryPoint = "PostMessageW", SetLastError = true)]
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]

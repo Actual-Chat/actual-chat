@@ -30,14 +30,8 @@ namespace ActualChat.Host
             services.AddLogging(logging => {
                 logging.ClearProviders();
                 logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Warning);
-                if (Env.IsDevelopment()) {
-                    logging.AddFilter(typeof(Constants).Namespace, LogLevel.Information);
-                    logging.AddFilter("Microsoft.AspNetCore.Hosting", LogLevel.Information);
-                    // logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Transaction", LogLevel.Debug);
-                    logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
-                    logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
-                }
+                logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information :LogLevel.Warning);
+                // use appsettings*.json to configure logging filters
             });
 
             // HostInfo
