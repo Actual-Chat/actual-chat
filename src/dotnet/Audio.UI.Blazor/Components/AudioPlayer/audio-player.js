@@ -1,5 +1,4 @@
 export class AudioPlayer {
-
     static create(elementRef, backendRef) {
         return new AudioPlayer(elementRef, backendRef);
     }
