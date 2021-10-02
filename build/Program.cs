@@ -1,15 +1,18 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
 using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
 using Crayon;
+using static Build.CliWrapCommandExtensions;
+using static Build.WinApi;
 using static Bullseye.Targets;
 using static Crayon.Output;
-
 
 namespace Build;
 
@@ -27,6 +30,7 @@ internal static class Program
     /// <param name="listTargets">List all (or specified) targets, then exit.</param>
     /// <param name="listTree">List all (or specified) targets and dependency trees, then exit.</param>
     /// <param name="noColor">Disable colored output.</param>
+    /// <param name="noExtendedChars">Gets or sets a value indicating whether to disable extended characters.</param>
     /// <param name="parallel">Run targets in parallel.</param>
     /// <param name="skipDependencies">Do not run targets' dependencies.</param>
     /// <param name="verbose">Enable verbose output.</param>
@@ -42,6 +46,7 @@ internal static class Program
         bool listTargets,
         bool listTree,
         bool noColor,
+        bool noExtendedChars,
         bool parallel,
         bool skipDependencies,
         bool verbose,
@@ -66,26 +71,49 @@ internal static class Program
             Parallel = parallel,
             SkipDependencies = skipDependencies,
             Verbose = verbose,
+            NoExtendedChars = noExtendedChars,
         };
 
         var dotnet = TryFindDotNetExePath()
             ?? throw new FileNotFoundException("'dotnet' command isn't found. Try to set DOTNET_ROOT variable.");
 
         Target("watch", DependsOn("clean-dist"), async () => {
+
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT) {
+                throw new WithoutStackException("Use dotnet watch + webpack watch without build system, " +
+                    "because the workaround of https://github.com/dotnet/aspnetcore/issues/37190 only works on Windows");
+            }
+
             var npm = TryFindCommandPath("npm")
                 ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
 
+            const string pipeName = "buildstep-watch";
             // if one of process exits then close another on Cancel()
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Process process = new();
             try {
-                var dotnetWatch = Cli.Wrap(dotnet).WithArguments($"watch --project {Path.Combine("src", "dotnet", "Host")} run -c Debug -clp:ErrorsOnly -- --urls=\"https://0.0.0.0:7080\"")
-                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["ASPNETCORE_ENVIRONMENT"] = "Development" })
-                    // always rerun for rude edits
-                    // https://github.com/dotnet/sdk/blob/3860d6e404bc7fc08ca55ca158fed212ccee12ad/src/BuiltInTools/dotnet-watch/HotReload/RudeEditPreference.cs#L34
-                    .WithStandardInputPipe(PipeSource.FromString("A"))
-                    .ToConsole(prefix: Green("dotnet: "))
-                    .ExecuteAsync(cts.Token);
+                // any other than `dotnet watch run` command will use legacy ho-reload behavior (profile), so it's better to use the default watch running args
+                // CliWrap doesn't give us process object, which is needed for the workaround of https://github.com/dotnet/aspnetcore/issues/37190
 
+                var psi = new ProcessStartInfo("cmd.exe", $"/c \"title watch && dotnet watch -v run\" >\\\\.\\pipe\\{pipeName}") {
+                    UseShellExecute = true,
+                    // ConsoleKey event doesn't work with a nointeractive window, so we have to hide the window after process start
+                    WindowStyle = ProcessWindowStyle.Normal,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "Host")),
+                };
+
+
+                process.StartInfo = psi;
+                _ = ReadNamedPipeAsync(process, pipeName, cts.Token);
+                process.Start();
+                if (process.HasExited) {
+                    throw new WithoutStackException("Can't start dotnet watch");
+                }
+                _ = ShowWindow(process.MainWindowHandle, SW_HIDE);
+                _ = Task.Delay(500).ContinueWith(t => _ = ShowWindow(process.MainWindowHandle, SW_HIDE));
+
+                Task dotnetWatch = process.WaitForExitAsync(cts.Token);
                 var npmWatch = Cli.Wrap(npm)
                     .WithArguments("run watch")
                     .WithWorkingDirectory(Path.Combine("src", "nodejs"))
@@ -93,15 +121,50 @@ internal static class Program
                     .ToConsole(Blue("webpack: "))
                     .ExecuteAsync(cts.Token);
 
-                await Task.WhenAny(dotnetWatch.Task, npmWatch.Task).ConfigureAwait(false);
+                await Task.WhenAny(dotnetWatch, npmWatch.Task).ConfigureAwait(false);
             }
             finally {
                 if (!cts.IsCancellationRequested)
                     cts.Cancel();
+                if (!process.HasExited && process.Id != 0) {
+                    try {
+                        process.Kill(entireProcessTree: true);
+                    }
+                    catch { }
+                }
                 cts.Dispose();
             }
             Console.WriteLine(Yellow("The watching is over"));
         });
+
+        ///<summary> the part of workaround of <see href="https://github.com/dotnet/aspnetcore/issues/37190" /> </summary>
+        static async Task ReadNamedPipeAsync(Process process, string pipeName, CancellationToken cancellationToken)
+        {
+            using var server = new NamedPipeServerStream(pipeName);
+            await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
+            using var reader = new StreamReader(server);
+            bool isAlwaysSent = false;
+            var prefix = Green("dotnet: ");
+            while (!cancellationToken.IsCancellationRequested && server.IsConnected) {
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
+                if (line == null) {
+                    if (process.HasExited) {
+                        break;
+                    }
+                    continue;
+                }
+                Console.WriteLine(prefix + Colorize(line));
+                /// <see href="https://github.com/dotnet/sdk/blob/3860d6e404bc7fc08ca55ca158fed212ccee12ad/src/BuiltInTools/dotnet-watch/HotReload/RudeEditPreference.cs#L34" />
+                if (!isAlwaysSent && line.Contains("Do you want to restart your app - Yes (y) / No (n) / Always (a) / Never (v)?", StringComparison.OrdinalIgnoreCase)) {
+                    var hwnd = process.MainWindowHandle;
+                    Thread.Sleep(500);
+                    _ = PostMessage(hwnd, WM_KEYDOWN, VK_A, 0);
+                    Thread.Sleep(200);
+                    _ = PostMessage(hwnd, WM_KEYUP, VK_A, 0);
+                    isAlwaysSent = true;
+                }
+            }
+        }
 
         Target("clean-dist", () => {
             var extensionDir = Path.Combine("src", "dotnet", "UI.Blazor.Host", "wwwroot", "dist");
@@ -308,4 +371,18 @@ internal class WithoutStackException : Exception
     }
 }
 
+internal static class WinApi
+{
+    public const uint WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101, SW_HIDE = 0x0;
+    public const nuint VK_A = 65;
 
+    [DllImport("User32", ExactSpelling = true, EntryPoint = "PostMessageW", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [SupportedOSPlatform("windows5.0")]
+    public static extern int PostMessage(IntPtr hWnd, uint Msg, nuint wParam, nuint lParam);
+
+    [DllImport("User32", ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [SupportedOSPlatform("windows5.0")]
+    internal static extern int ShowWindow(IntPtr hWnd, uint nCmdShow);
+}
