@@ -11,7 +11,7 @@ public abstract class MediaPlayerBase<TMediaChannel, TMediaFormat, TMediaFrame>
     where TMediaChannel : MediaChannel<TMediaFormat, TMediaFrame>
     where TMediaFrame : MediaFrame
 {
-    public ConcurrentDictionary<(Symbol PlayId, Symbol ChannelId), TMediaFrame> _playingFrames = new();
+    public readonly ConcurrentDictionary<(Symbol PlayId, Symbol ChannelId), TMediaFrame> _playingFrames = new();
 
     public async Task Play(Symbol playId, ChannelReader<TMediaChannel> source, CancellationToken cancellationToken)
     {
@@ -47,6 +47,11 @@ public abstract class MediaPlayerBase<TMediaChannel, TMediaFormat, TMediaFrame>
     {
         var timestampLogCover = PlaybackConstants.TimestampLogCover;
         var channelId = mediaChannel.Id;
+        var playAndChannelId = (playId, channelId);
+        if (nextFrame != null)
+            _playingFrames[playAndChannelId] = nextFrame;
+        else
+            _playingFrames.TryRemove(playAndChannelId, out var _);
         using (Computed.Invalidate()) {
             _ = GetPlayingMediaFrame(playId, channelId, default);
             if (prevFrame != null) {
