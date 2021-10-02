@@ -1,8 +1,9 @@
-export function create(elementRef, backendRef) {
-    return new AudioPlayer(elementRef, backendRef);
-}
-
 export class AudioPlayer {
+
+    static create(elementRef, backendRef) {
+        return new AudioPlayer(elementRef, backendRef);
+    }
+
     constructor(elementRef, backendRef) {
         this.elementRef = elementRef;
         this.backendRef = backendRef;
@@ -27,10 +28,6 @@ export class AudioPlayer {
 
     dispose() {
         this.mediaSource.endOfStream();
-    }
-
-    static create(elementRef, backendRef) {
-        return new AudioPlayer(elementRef, backendRef);
     }
 
     async appendAudio(byteArray) {
