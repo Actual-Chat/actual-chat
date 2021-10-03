@@ -95,7 +95,7 @@ internal static class Program
                 // any other than `dotnet watch run` command will use legacy ho-reload behavior (profile), so it's better to use the default watch running args
                 // CliWrap doesn't give us process object, which is needed for the workaround of https://github.com/dotnet/aspnetcore/issues/37190
 
-                var psi = new ProcessStartInfo("cmd.exe", $"/c \"title watch && dotnet watch -v run\" >\\\\.\\pipe\\{pipeName}") {
+                var psi = new ProcessStartInfo("cmd.exe", $"/c \"title watch && set ASPNETCORE_ENVIRONMENT=Development && dotnet watch -v run\" >\\\\.\\pipe\\{pipeName}") {
                     UseShellExecute = true,
                     // ConsoleKey event doesn't work with a nointeractive window, so we have to hide the window after process start
                     WindowStyle = ProcessWindowStyle.Normal,
