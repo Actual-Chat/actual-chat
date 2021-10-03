@@ -35,34 +35,33 @@
     </script>
 </head>
 <body>
-<div class="fixed inset-0" style="z-index:100000;">
-    <div id="blazor-error-ui" class="hidden">
-        <div class="flex my-8 p-6 w-full justify-center">
-            <div class="flex flex-1 max-w-2xl bg-red-100 shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
-                <div class="bg-red-500 w-16 text-white justify-center flex items-center">
-                    <i class="fa fa-2x fa-exclamation-triangle"></i>
+<div id="blazor-error-ui" class="hidden fixed inset-x-0 mt-12" style="z-index:100000;">
+    <div class="flex w-full justify-center">
+        <div class="flex flex-1 max-w-3xl bg-red-100 shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+            <div class="bg-red-500 w-16 text-white justify-center flex items-center">
+                <i class="fa fa-2x fa-exclamation-triangle"></i>
+            </div>
+            <div class="h-full flex-1 flex border-r-8 border-red-500">
+                <div class="flex-1 px-4 py-2 break-words">
+                    <p class="text-grey-dark font-bold">Error</p>
+                    <p class="text-grey-dark">
+                        <environment include="Staging,Production">
+                            An error has occurred. This application may no longer respond until reloaded.
+                        </environment>
+                        <environment include="Development">
+                            An unhandled exception has occurred. See browser dev tools for details.
+                        </environment>
+                    </p>
                 </div>
-                <div class="h-full flex-1 flex border-r-8 border-red-500">
-                    <div class="flex-1 px-4 py-2 break-words">
-                        <p class="text-grey-dark font-bold">Error</p>
-                        <p class="text-grey-dark">
-                            <environment include="Staging,Production">
-                                An error has occurred. This application may no longer respond until reloaded.
-                            </environment>
-                            <environment include="Development">
-                                An unhandled exception has occurred. See browser dev tools for details.
-                            </environment>
-                        </p>
-                    </div>
-                    <div class="flex-col w-8 items-start mx-auto pt-2 px-1 text-right text-grey-dark ml-3 mr-1">
-                        <i class="block dismiss cursor-pointer fa fa-times fa-fw"></i>
-                        <i class="reload block cursor-pointer fa fa-repeat fa-fw"></i>
-                    </div>
+                <div class="flex-col w-8 items-start mx-auto pt-2 px-1 text-right text-grey-dark ml-3 mr-1">
+                    <i class="block dismiss cursor-pointer fa fa-times fa-fw"></i>
+                    <i class="reload block cursor-pointer fa fa-repeat fa-fw"></i>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 @if (isCloseWindowRequest)
 {
