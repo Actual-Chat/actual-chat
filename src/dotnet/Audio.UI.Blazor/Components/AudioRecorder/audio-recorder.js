@@ -1,7 +1,7 @@
 const sampleRate = 16000;
 
 export class AudioRecorder {
-    
+
     static create(backendRef) {
         return new AudioRecorder(backendRef);
     }
