@@ -16,7 +16,7 @@
 }
 
 <div @ref="Ref" class="@Class virtual-list" style="@Style" data-render-index="@ri.RenderIndex">
-    <div class="content">
+    <div class="content relative">
         <div class="items items-unmeasured">
             @foreach (var e in ri.UnmeasuredItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key">

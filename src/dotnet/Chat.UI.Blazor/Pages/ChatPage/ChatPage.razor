@@ -23,13 +23,17 @@
     var chat = model.Chat ?? new();
 }
 
-<div class="chat-page">
-    <div class="header">
-        <h1>"@(chat.Title.NullIfEmpty() ?? "Loading...")" chat</h1>
-        <AudioPlayer StreamId="@LastStreamId"></AudioPlayer>
-        <WhenError Error="@error"/>
+<div class="chat-page h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
+    <div class="header flex flex-row justify-between mt-0 font-medium bg-gray-800 text-gray-200 p-3 select-none">
+        <div class="opacity-75 hover:opacity-100">
+            @("#"+chat.Title.NullIfEmpty() ?? "Loading...")
+        </div>
+        <div class="mr-2">
+            <AudioPlayer StreamId="@LastStreamId"></AudioPlayer>
+            <WhenError Error="@error"/>
+        </div>
     </div>
-    <div class="content">
+    <div class="content flex-1 flex flex-col overflow-y-auto bg-white p-3">
         <VirtualList
             SpacerSize="6000" LoadZoneSize="2000" BufferZoneSize="4000"
             Provider="GetMessages"
@@ -39,8 +43,7 @@
             </Item>
         </VirtualList>
     </div>
-
-    <div class="footer">
+    <div class="footer flex sticky m-0">
         <ChatMessageEditor ChatId="@chat.Id"/>
     </div>
 </div>
