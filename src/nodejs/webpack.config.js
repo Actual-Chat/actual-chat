@@ -39,9 +39,12 @@ module.exports = (env, args) => {
     },
     watchOptions: {
       aggregateTimeout: 50, // ms
-      ignored: ['node_modules/**'],
+      ignored: ['node_modules/**', outputPath + '/**'],
     },
-    resolve: { extensions: [".tsx", ".ts", ".js", ".json"] },
+    resolve: {
+      extensions: ['.ts', '.js', '...'],
+      modules: [_('node_modules')]
+    },
     devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
       // @ts-ignore
@@ -104,6 +107,7 @@ module.exports = (env, args) => {
     output: {
       path: outputPath,
       filename: '[name].js',
+      sourceMapFilename: args.mode === 'development' ? '[name].js.map' : null,
       library: {
         type: 'this'
       },
