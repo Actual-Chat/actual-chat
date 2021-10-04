@@ -69,6 +69,15 @@ namespace ActualChat.Audio.WebM.Models
         "Cluster"
     };
 
+    var isBlock = new List<string>
+    {
+        "Block",
+        "BlockAdditional",
+        "BlockVirtual",
+        "EncryptedBlock",
+        "SimpleBlock"
+    };
+
     var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), XmlFile)).Elements()
         .Select(e => new Element
         {
@@ -76,6 +85,7 @@ namespace ActualChat.Audio.WebM.Models
             UseNameInsteadOfBinary = UseNameInsteadOfBinary(e.Attribute("name").Value),
             IsList = isList.Contains(e.Attribute("name").Value),
             IsRoot = isRoot.Contains(e.Attribute("name").Value),
+            IsBlock = isBlock.Contains(e.Attribute("name").Value),
             Path = e.Attribute("path").Value,
             Level = e.Attribute("path").Value.Count(c => c == '\\'),
             Id = e.Attribute("id").Value,
@@ -92,6 +102,7 @@ namespace ActualChat.Audio.WebM.Models
             UseNameInsteadOfBinary = UseNameInsteadOfBinary(e.Attribute("name").Value),
             IsList = isList.Contains(e.Attribute("name").Value),
             IsRoot = isRoot.Contains(e.Attribute("name").Value),
+            IsBlock = isBlock.Contains(e.Attribute("name").Value),
             Path = e.Attribute("path").Value,
             Level = e.Attribute("path").Value.Count(c => c == '\\'),
             Id = e.Attribute("id").Value,
@@ -108,6 +119,7 @@ namespace ActualChat.Audio.WebM.Models
             UseNameInsteadOfBinary = false,
             IsList = false,
             IsRoot = false,
+            IsBlock = false,
             Path = string.Empty,
             Level = 0,
             Id = "0x7FFF",
@@ -267,12 +279,12 @@ namespace ActualChat.Audio.WebM.Models
             switch (model.Descriptor.Identifier.EncodedValue) {
 <#
 
-    var masters = elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path).ToList();
+    var masters = elements.Where(e => e.ElementType == "master" || e.IsBlock).OrderBy(e => e.Path).ToList();
 
     foreach (var master in masters)
     {
         var hasSubs = master.SubElements.Any(sub => !sub.IsRoot);
-        if (!hasSubs)
+        if (!hasSubs && !master.IsBlock)
             continue;
 
         var className = master.Name;
@@ -296,7 +308,7 @@ namespace ActualChat.Audio.WebM.Models
         }
 
 <#
-    foreach (var master in elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path))
+    foreach (var master in elements.Where(e => e.ElementType == "master"&& !skip.Contains(e.Name)).OrderBy(e => e.Path))
     {
         var className = master.Name;
         if (className == "Tag")
@@ -318,7 +330,7 @@ namespace ActualChat.Audio.WebM.Models
             if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.<#=master.Name#>, model.GetSize(), ref writer))
                 return false;
 <#
-        var subs = master.SubElements.Where(sub => !sub.IsRoot).ToList();
+        var subs = master.SubElements.Where(sub => !sub.IsRoot && !sub.IsBlock).ToList();
         if (subs.Count > 0)
         {
             foreach (var sub in subs)
@@ -443,7 +455,7 @@ namespace ActualChat.Audio.WebM.Models
     foreach (var master in masters)
     {
         var hasComplex = master.SubElements.Any(sub => !sub.IsRoot && sub.ElementType == "master" && !sub.IsList);
-        if (!hasComplex)
+        if (!hasComplex || master.IsBlock)
             continue;
 
         var className = master.Name;
@@ -563,7 +575,7 @@ namespace ActualChat.Audio.WebM.Models
         var complexSubs =
             master.SubElements.Where(sub => !sub.IsRoot && sub.ElementType == "master" && !sub.IsList)
                 .ToList();
-        if (complexSubs.Count > 0)
+        if (complexSubs.Count > 0 && !master.IsBlock)
         {
 #>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -768,6 +780,7 @@ namespace ActualChat.Audio.WebM.Models
         public bool UseNameInsteadOfBinary;
         public bool IsList;
         public bool IsRoot;
+        public bool IsBlock;
         public string Path;
         public string Id;
         public string ElementType;
