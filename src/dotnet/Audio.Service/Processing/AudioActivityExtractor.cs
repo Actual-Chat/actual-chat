@@ -20,7 +20,7 @@ public class AudioActivityExtractor
                 SingleWriter = true,
                 AllowSynchronousContinuations = true
             });
-        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, segments, cancellationToken), default);
+        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, segments.Writer, cancellationToken), default);
         return segments;
     }
 
@@ -30,6 +30,7 @@ public class AudioActivityExtractor
         ChannelWriter<AudioRecordSegment> target,
         CancellationToken cancellationToken)
     {
+        Exception? error = null;
         var segmentIndex = 0;
         var webmBuilder = new WebMDocumentBuilder();
         var metadata = new List<AudioMetadataEntry>();
@@ -53,7 +54,7 @@ public class AudioActivityExtractor
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
 
-                buffer.Slice(lastState.Position,remainingLength)
+                buffer.Slice(lastState.Position, remainingLength)
                     .CopyTo(buffer[..remainingLength]);
                 data.CopyTo(buffer[lastState.Remaining..]);
                 var dataLength = lastState.Remaining + data.Length;
@@ -77,9 +78,12 @@ public class AudioActivityExtractor
                 webmBuilder.AddCluster(cluster);
             }
         }
+        catch (Exception e) {
+            error = e;
+        }
         finally {
-            audioSource.Writer.Complete();
-            target.Complete();
+            audioSource.Writer.Complete(error);
+            target.Complete(error);
         }
     }
 
@@ -101,6 +105,10 @@ public class AudioActivityExtractor
             case WebMReadResultKind.CompleteCluster:
                 ((Cluster)webMReader.ReadResult).Complete();
                 builder.AddCluster((Cluster)webMReader.ReadResult);
+                break;
+            case WebMReadResultKind.Block:
+                break;
+            case WebMReadResultKind.BeginCluster:
                 break;
             default:
                 throw new NotSupportedException("Unsupported EbmlEntryType.");
