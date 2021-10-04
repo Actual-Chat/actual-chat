@@ -1,0 +1,1 @@
+import './Pages/ChatPage/scrollbar.css';

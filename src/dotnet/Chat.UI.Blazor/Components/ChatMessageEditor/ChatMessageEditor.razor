@@ -5,14 +5,21 @@
 @inject Session _session
 @inject UICommandRunner _cmd
 
-<AuthorizeView>
-    <Authorized>
-        <div class="sticky bottom-0 self-end bg-white w-full">
-            <div class="flex flex-row justify-between m-3">
-                <div class="flex-1 p-2 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">
+
+<div class="sticky bottom-0 self-end bg-white w-full">
+    <div class="flex flex-row justify-between mx-3 my-2">
+        <AuthorizeView>
+            <Authorized>
+                <div class="flex-1 p-2 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
                 @* TODO: add a placeholder  *@
-                </div>
-                <div class="flex flex-row h-full px-1 justify-center justify-items-center">
+            </Authorized>
+            <NotAuthorized>
+                <div class="flex-1 p-2 mr-1 outline-none rounded-xl border-2 break-all border-gray-300 hover:border-gray-200 bg-gray-100 border-opacity-10"></div>
+            </NotAuthorized>
+        </AuthorizeView>
+        <div class="flex flex-row h-full px-1 justify-center justify-items-center">
+            <AuthorizeView>
+                <Authorized>
                     <button class="block px-3 py-2 text-green-500">
                         <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
                             <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z" />
@@ -24,19 +31,20 @@
                             <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z" />
                         </svg>
                     </button>
-                </div>
-            </div>
+                </Authorized>
+                <NotAuthorized>
+                    <SignInDropdown Why="to chat" CssClass="px-3" />
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
-        @* <form @onsubmit="Post">
-            <button>Send</button>
-            <AudioRecorder ChatId="@ChatId" />
-        </form>
-        *@
-    </Authorized>
-    <NotAuthorized>
-        <SignInDropdown Why="to chat" />
-    </NotAuthorized>
-</AuthorizeView>
+    </div>
+</div>
+
+@* <form @onsubmit="Post">
+    <button>Send</button>
+    <AudioRecorder ChatId="@ChatId" />
+</form>
+*@
 
 @code {
     // TODO(AY): Add some store that remembers typed messages

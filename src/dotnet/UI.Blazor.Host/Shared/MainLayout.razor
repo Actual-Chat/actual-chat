@@ -26,7 +26,7 @@
         </div>
     </nav>
     <div class="flex-1 overflow-y-auto flex flex-col relative">
-        <div class="bg-white flex-1 p-3">
+        <div class="bg-white flex-1 overflow-y-auto">
             @foreach (var failure in failures)
             {
                 <WhenCommandError Error="failure.Result?.Error"
@@ -34,7 +34,6 @@
             }
             @Body
         </div>
-
     </div>
 </div>
 
