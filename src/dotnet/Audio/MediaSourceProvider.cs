@@ -93,6 +93,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var framesStart = 0;
         var currentBlockOffsetMs = 0;
         EBML? ebml = null;
+        Segment? segment = null;
         while (webMReader.Read()) {
             var state = webMReader.GetState();
             switch (webMReader.ReadResultKind) {
@@ -102,14 +103,16 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                     ebml = (EBML)webMReader.ReadResult;
                     break;
                 case WebMReadResultKind.Segment:
-                    var segment = (Segment)webMReader.ReadResult;
-                    var format = CreateMediaFormat(ebml!, segment, webMReader.Span[..state.Position]);
-                    formatTaskSource.SetResult(format);
-                    framesStart = state.Position;
+                    segment = (Segment)webMReader.ReadResult;
                     break;
                 case WebMReadResultKind.CompleteCluster:
                     break;
                 case WebMReadResultKind.BeginCluster:
+                    if (!formatTaskSource.Task.IsCompleted) {
+                        var format = CreateMediaFormat(ebml!, segment!, webMReader.Span[..state.Position]);
+                        formatTaskSource.SetResult(format);
+                        framesStart = state.Position;
+                    }
                     var cluster = (Cluster)webMReader.ReadResult;
                     clusterOffsetMs = (int)cluster.Timestamp;
                     break;
