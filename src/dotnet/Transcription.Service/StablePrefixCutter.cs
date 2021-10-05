@@ -9,101 +9,96 @@ namespace ActualChat.Transcription
         private double _previousFinalEnd;
         private int _previousFinalLength;
 
-        public TranscriptFragment CutMemoized((string Text, double EndOffset) candidate)
+        public TranscriptUpdate CutMemoized((string Text, double EndOffset) candidate)
             => CutMemoized(
-                new TranscriptFragment {
-                    Index = 0,
+                new TranscriptUpdate {
                     Text = candidate.Text,
                     Duration = candidate.EndOffset
                 });
 
-        public TranscriptFragment CutMemoized(TranscriptFragment speechFragment)
+        public TranscriptUpdate CutMemoized(TranscriptUpdate update)
         {
-            var (index, _, duration, text, _, isFinal) = speechFragment;
-
-            if (isFinal) {
+            var updateText = update.Text;
+            var updateDuration = update.Duration;
+            if (update.IsFinal) {
                 var textIndex = _previousFinalLength;
                 var startOffset = _previousFinalEnd;
                 _previous = string.Empty;
                 _previousEnd = 0;
-                _previousFinalLength += text.Length;
-                _previousFinalEnd += duration;
-                return new TranscriptFragment {
-                    Index = index,
+                _previousFinalLength += updateText.Length;
+                _previousFinalEnd += updateDuration;
+                return new TranscriptUpdate {
                     StartOffset = startOffset,
-                    Duration = duration,
-                    Text = text,
+                    Duration = updateDuration,
+                    Text = updateText,
                     TextIndex = textIndex,
-                    SpeakerId = speechFragment.SpeakerId,
-                    Confidence = speechFragment.Confidence,
+                    SpeakerId = update.SpeakerId,
+                    Confidence = update.Confidence,
                     IsFinal = true
                 };
             }
 
             // special case for duplicates
-            if (text.Length < _previous.Length) {
-                var textIndex = _previous.LastIndexOf(text, StringComparison.InvariantCultureIgnoreCase);
+            if (updateText.Length < _previous.Length) {
+                var textIndex = _previous.LastIndexOf(updateText, StringComparison.InvariantCultureIgnoreCase);
                 if (textIndex >= 0) {
-                    _previous = $"{_previous[..textIndex]}{text}";
-                    _previousEnd = duration;
+                    _previous = $"{_previous[..textIndex]}{updateText}";
+                    _previousEnd = updateDuration;
                     var map = new LinearMap(new[] { 0.0, _previous.Length }, new[] { 0.0, _previousEnd });
                     var mappedOffset = map.Map(textIndex);
                     var diffStartOffset = mappedOffset.HasValue
                         ? Math.Round(mappedOffset.Value, 3, MidpointRounding.AwayFromZero)
                         : 0;
-                    var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
-                    return new TranscriptFragment {
-                        Index = index,
+                    var diffDuration = Math.Round(updateDuration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
+                    return new TranscriptUpdate {
                         StartOffset = _previousFinalEnd + diffStartOffset,
                         Duration = diffDuration,
-                        Text = text,
+                        Text = updateText,
                         TextIndex = _previousFinalLength + textIndex,
-                        SpeakerId = speechFragment.SpeakerId,
-                        Confidence = speechFragment.Confidence,
+                        SpeakerId = update.SpeakerId,
+                        Confidence = update.Confidence,
                         IsFinal = false
                     };
                 }
             }
 
             var (_, diffIndex) = _previous
-                .Zip(text)
+                .Zip(updateText)
                 .Select((x, i) => (Match:x.First == x.Second, Index:i))
                 .Append((Match:false, Index:_previous.Length))
                 .SkipWhile(x => x.Match)
                 .FirstOrDefault();
-            var result = new TranscriptFragment {
-                Index = index,
+            var result = new TranscriptUpdate {
                 StartOffset = _previousFinalEnd,
-                Duration = duration,
-                Text = text,
+                Duration = updateDuration,
+                Text = updateText,
                 TextIndex = _previousFinalLength,
-                SpeakerId = speechFragment.SpeakerId,
-                Confidence = speechFragment.Confidence,
+                SpeakerId = update.SpeakerId,
+                Confidence = update.Confidence,
                 IsFinal = false
             };
 
-            if (diffIndex > 0 && diffIndex < text.Length) {
+            if (diffIndex > 0 && diffIndex < updateText.Length) {
                 var map = new LinearMap(new[] { 0.0, _previous.Length }, new[] { 0.0, _previousEnd });
                 var mappedOffset = map.Map(diffIndex);
                 var diffStartOffset = mappedOffset.HasValue
                     ? Math.Round(mappedOffset.Value, 3, MidpointRounding.AwayFromZero)
                     : 0;
-                var diffDuration = Math.Round(duration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
-                var newText = text[diffIndex..];
-                result = new TranscriptFragment {
-                    Index = index,
+                var diffDuration = Math.Round(updateDuration - diffStartOffset, 3, MidpointRounding.AwayFromZero);
+                var newText = updateText[diffIndex..];
+                result = new TranscriptUpdate {
                     StartOffset = _previousFinalEnd + diffStartOffset,
                     Duration = diffDuration,
                     Text = newText,
                     TextIndex = _previousFinalLength + diffIndex,
-                    SpeakerId = speechFragment.SpeakerId,
-                    Confidence = speechFragment.Confidence,
+                    SpeakerId = update.SpeakerId,
+                    Confidence = update.Confidence,
                     IsFinal = false
                 };
             }
 
-            _previous = text;
-            _previousEnd = duration;
+            _previous = updateText;
+            _previousEnd = updateDuration;
             return result;
         }
     }

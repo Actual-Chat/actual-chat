@@ -62,8 +62,8 @@ namespace ActualChat.Transcription.UnitTests
             cutter.CutMemoized(("раз-два-три раз-два-три", 6.380));
             cutter.CutMemoized(("раз-два-три, раз-два-три", 6.500));
             cutter.CutMemoized(("раз-два-три, раз-два-три,", 6.500));
-            cutter.CutMemoized(new TranscriptFragment{ Text = "раз-два-три, раз-два-три, кто-то", StartOffset = 0, Duration = 6.100, IsFinal = true});
-            var r16 = cutter.CutMemoized(new TranscriptFragment{ Text = " был", StartOffset = 6.100, Duration = 0.500, IsFinal = true });
+            cutter.CutMemoized(new TranscriptUpdate{ Text = "раз-два-три, раз-два-три, кто-то", StartOffset = 0, Duration = 6.100, IsFinal = true});
+            var r16 = cutter.CutMemoized(new TranscriptUpdate{ Text = " был", StartOffset = 6.100, Duration = 0.500, IsFinal = true });
             r16.Text.Should().Be(" был");
             r16.TextIndex.Should().Be(32);
             r16.StartOffset.Should().Be(6.1d);

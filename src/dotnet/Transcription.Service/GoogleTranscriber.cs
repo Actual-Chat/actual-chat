@@ -15,7 +15,7 @@ public class GoogleTranscriber : ITranscriber
         _log = log;
     }
 
-    public async Task<ChannelReader<TranscriptFragment>> Transcribe(
+    public async Task<ChannelReader<TranscriptUpdate>> Transcribe(
         TranscriptionRequest request,
         ChannelReader<BlobPart> audioData,
         CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ public class GoogleTranscriber : ITranscriber
             },
         }).ConfigureAwait(false);
         var responseStream =  (IAsyncEnumerable<StreamingRecognizeResponse>)streamingRecognizeStream.GetResponseStream();
-        var transcriptChannel = Channel.CreateUnbounded<TranscriptFragment>(
+        var transcriptChannel = Channel.CreateUnbounded<TranscriptUpdate>(
             new UnboundedChannelOptions{ SingleWriter = true });
 
         _ = Task.Run(()
@@ -65,7 +65,7 @@ public class GoogleTranscriber : ITranscriber
     private async Task PushAudioForTranscription(
         SpeechClient.StreamingRecognizeStream recognizeStream,
         ChannelReader<BlobPart> audioData,
-        ChannelWriter<TranscriptFragment> writer,
+        ChannelWriter<TranscriptUpdate> writer,
         CancellationToken cancellationToken)
     {
         try {
@@ -86,11 +86,10 @@ public class GoogleTranscriber : ITranscriber
 
     private async Task ReadTranscript(
         IAsyncEnumerable<StreamingRecognizeResponse> transcriptResponseStream,
-        ChannelWriter<TranscriptFragment> writer,
+        ChannelWriter<TranscriptUpdate> writer,
         CancellationToken cancellationToken)
     {
         var cutter = new StablePrefixCutter();
-        var index = 0;
         Exception? error = null;
         try {
             await foreach (var response in transcriptResponseStream.WithCancellation(cancellationToken)) {
@@ -111,7 +110,7 @@ public class GoogleTranscriber : ITranscriber
             writer.Complete(error);
         }
 
-        TranscriptFragment MapResponse(StreamingRecognizeResponse response)
+        TranscriptUpdate MapResponse(StreamingRecognizeResponse response)
         {
             if (response.Error != null) {
                 _log.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
@@ -122,8 +121,7 @@ public class GoogleTranscriber : ITranscriber
             var alternative = result.Alternatives.First();
             var endTime = result.ResultEndTime;
             var endOffset = endTime.ToTimeSpan().TotalSeconds;
-            var fragment = new TranscriptFragment {
-                Index = index++,
+            var fragment = new TranscriptUpdate {
                 Confidence = alternative.Confidence,
                 Text = alternative.Transcript,
                 StartOffset = 0, // TODO(AK) : suspicious 0 offset
