@@ -1,50 +1,51 @@
 using System.Collections.Concurrent;
 using ActualChat.Mathematics;
-using ActualChat.Media;
-using ActualChat.Playback.Internal;
 
 namespace ActualChat.Playback;
 
-public abstract class MediaPlayerBase : AsyncDisposableBase, IMediaPlayer
+public class MediaPlayer : AsyncDisposableBase, IMediaPlayer
 {
-    public readonly ConcurrentDictionary<Symbol, MediaFrame> PlayingFrames = new();
+    private readonly ConcurrentDictionary<Symbol, PlayingMediaFrame> _playingFrames = new();
+
+    protected Func<MediaTrack, MediaTrackPlayer> MediaTrackPlayerFactory { get; init; }
+
+    public MediaPlayer(Func<MediaTrack, MediaTrackPlayer> mediaTrackPlayerFactory)
+        => MediaTrackPlayerFactory = mediaTrackPlayerFactory;
 
     public async Task Play(IAsyncEnumerable<MediaTrack> tracks, CancellationToken cancellationToken)
     {
         await foreach (var playbackStream in tracks.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var channelPlayer = CreateTrackPlayer(playbackStream);
-            channelPlayer.Playing +=
+            var trackPlayer = MediaTrackPlayerFactory.Invoke(playbackStream);
+            trackPlayer.Playing +=
                 (prevFrame, nextFrame) => OnPlayingFrame(playbackStream, prevFrame, nextFrame);
-            _ = channelPlayer.Play(cancellationToken);
+            _ = trackPlayer.Play(cancellationToken);
         }
     }
 
-    public virtual Task<MediaFrame?> GetPlayingMediaFrame(
+    public virtual Task<PlayingMediaFrame?> GetPlayingMediaFrame(
         Symbol trackId,
         CancellationToken cancellationToken)
-        => Task.FromResult(PlayingFrames.GetValueOrDefault(trackId));
+        => Task.FromResult(_playingFrames.GetValueOrDefault(trackId));
 
-    public virtual Task<MediaFrame?> GetPlayingMediaFrame(
+    public virtual Task<PlayingMediaFrame?> GetPlayingMediaFrame(
         Symbol trackId, Range<Moment> timestampRange,
         CancellationToken cancellationToken)
     {
         PlaybackConstants.TimestampLogCover.AssertIsTile(timestampRange);
-        var frame = PlayingFrames.GetValueOrDefault(trackId);
+        var frame = _playingFrames.GetValueOrDefault(trackId);
         var result = frame != null && timestampRange.Contains(frame.Timestamp) ? frame : null;
         return Task.FromResult(result);
     }
 
     // Protected methods
 
-    protected abstract MediaTrackPlayer CreateTrackPlayer(MediaTrack mediaTrack);
-
-    protected virtual void OnPlayingFrame(MediaTrack mediaTrack, MediaFrame? prevFrame, MediaFrame? nextFrame)
+    protected virtual void OnPlayingFrame(MediaTrack mediaTrack, PlayingMediaFrame? prevFrame, PlayingMediaFrame? nextFrame)
     {
         var timestampLogCover = PlaybackConstants.TimestampLogCover;
         if (nextFrame != null)
-            PlayingFrames[mediaTrack.Id] = nextFrame;
+            _playingFrames[mediaTrack.Id] = nextFrame;
         else
-            PlayingFrames.TryRemove(mediaTrack.Id, out var _);
+            _playingFrames.TryRemove(mediaTrack.Id, out var _);
         using (Computed.Invalidate()) {
             _ = GetPlayingMediaFrame(mediaTrack.Id, default);
             if (prevFrame != null) {

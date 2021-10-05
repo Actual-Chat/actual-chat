@@ -1,24 +1,24 @@
 using ActualChat.Media;
 
-namespace ActualChat.Playback.Internal;
+namespace ActualChat.Playback;
 
 public abstract class MediaTrackPlayer
 {
-    public IMomentClock Clock { get; init; } = CpuClock.Instance;
     public MediaTrack Track { get; init; } = null!;
-    public event Action<MediaFrame?, MediaFrame?>? Playing;
+    public event Action<PlayingMediaFrame?, PlayingMediaFrame?>? Playing;
 
     public virtual async Task Play(CancellationToken cancellationToken)
     {
-        await Clock.Delay(Track.StartAt, cancellationToken).ConfigureAwait(false);
-        MediaFrame? prevFrame = null;
+        PlayingMediaFrame? prevFrame = null;
         await OnPlayStart().ConfigureAwait(false);
         try {
+            var zeroTimestamp = Track.ZeroTimestamp;
             var frames = Track.Source.Frames;
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                Playing?.Invoke(prevFrame, frame);
-                prevFrame = frame;
-                await OnPlayFrame(frame).ConfigureAwait(false);
+                var nextFrame = new PlayingMediaFrame(frame, zeroTimestamp + frame.Offset);
+                Playing?.Invoke(prevFrame, nextFrame);
+                prevFrame = nextFrame;
+                await OnPlayNextFrame(nextFrame).ConfigureAwait(false);
             }
         }
         finally {
@@ -28,6 +28,6 @@ public abstract class MediaTrackPlayer
     }
 
     protected abstract ValueTask OnPlayStart();
-    protected abstract ValueTask OnPlayFrame(MediaFrame frame);
+    protected abstract ValueTask OnPlayNextFrame(PlayingMediaFrame nextFrame);
     protected abstract ValueTask OnPlayStop();
 }
