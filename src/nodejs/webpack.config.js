@@ -43,10 +43,12 @@ module.exports = (env, args) => {
     },
     resolve: {
       extensions: ['.ts', '.js', '...'],
-      modules: [_('node_modules')]
     },
+    devtool: false,
+    // to enable ts debug uncomment the line below
+    //devtool: args.mode === 'development' ? 'source-map' : false,
+    // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
-    devtool: args.mode === 'development' ? 'source-map' : false,
     plugins: [
       // @ts-ignore
       new MiniCssExtractPlugin({
