@@ -65,13 +65,13 @@ namespace ActualChat.Audio.WebM
 
         public short? ReadShort()
         {
-            var sizeOf = Unsafe.SizeOf<short>();
-            if (sizeOf + Position > _span.Length)
+            const int shortSize = sizeof(short);
+            if (shortSize + Position > _span.Length)
                 return null;
 
-            var numSpan = _span[Position..(Position + sizeOf)];
+            var numSpan = _span[Position..(Position + shortSize)];
             var result = BinaryPrimitives.ReadInt16BigEndian(numSpan);
-            Position += sizeOf;
+            Position += shortSize;
 
             return result;
         }
@@ -82,13 +82,13 @@ namespace ActualChat.Audio.WebM
 
         public ushort? ReadUShort()
         {
-            var sizeOf = Unsafe.SizeOf<ushort>();
-            if (sizeOf + Position > _span.Length)
+            const int ushortSize = sizeof(ushort);
+            if (ushortSize + Position > _span.Length)
                 return null;
 
-            var numSpan = _span[Position..(Position + sizeOf)];
+            var numSpan = _span[Position..(Position + ushortSize)];
             var result = BinaryPrimitives.ReadUInt16BigEndian(numSpan);
-            Position += sizeOf;
+            Position += ushortSize;
 
             return result;
         }
@@ -97,52 +97,52 @@ namespace ActualChat.Audio.WebM
 
         public uint? ReadUInt32()
         {
-            var sizeOf = Unsafe.SizeOf<uint>();
-            if (sizeOf + Position > _span.Length)
+            const int uintSize = sizeof(uint);
+            if (uintSize + Position > _span.Length)
                 return null;
 
-            var numSpan = _span[Position..(Position + sizeOf)];
+            var numSpan = _span[Position..(Position + uintSize)];
             var result = BinaryPrimitives.ReadUInt32BigEndian(numSpan);
-            Position += sizeOf;
+            Position += uintSize;
 
             return result;
         }
 
         public int? ReadInt32()
         {
-            var sizeOf = Unsafe.SizeOf<int>();
-            if (sizeOf + Position > _span.Length)
+            const int intSize = sizeof(int);
+            if (intSize + Position > _span.Length)
                 return null;
 
-            var numSpan = _span[Position..(Position + sizeOf)];
+            var numSpan = _span[Position..(Position + intSize)];
             var result = BinaryPrimitives.ReadInt32BigEndian(numSpan);
-            Position += sizeOf;
+            Position += intSize;
 
             return result;
         }
 
         public long? ReadLong()
         {
-            var sizeOf = Unsafe.SizeOf<long>();
-            if (sizeOf + Position > _span.Length)
+            const int longSize = sizeof(long);
+            if (longSize + Position > _span.Length)
                 return null;
 
-            var numSpan = _span[Position..(Position + sizeOf)];
+            var numSpan = _span[Position..(Position + longSize)];
             var result = BinaryPrimitives.ReadInt64BigEndian(numSpan);
-            Position += sizeOf;
+            Position += longSize;
 
             return result;
         }
 
         public ulong? ReadULong()
         {
-            var sizeOf = Unsafe.SizeOf<ulong>();
-            if (sizeOf + Position > _span.Length)
+            const int ulongSize = sizeof(ulong);
+            if (ulongSize + Position > _span.Length)
                 return null;
 
-            var numSpan = _span[Position..(Position + sizeOf)];
+            var numSpan = _span[Position..(Position + ulongSize)];
             var result = BinaryPrimitives.ReadUInt64BigEndian(numSpan);
-            Position += sizeOf;
+            Position += ulongSize;
 
             return result;
         }
