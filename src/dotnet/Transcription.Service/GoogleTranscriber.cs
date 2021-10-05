@@ -114,7 +114,9 @@ public class GoogleTranscriber : ITranscriber
         {
             if (response.Error != null) {
                 _log.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
-                throw new TranscriptException(response.Error.Code.ToString(CultureInfo.InvariantCulture), response.Error.Message);
+                throw new TranscriptionException(
+                    response.Error.Code.ToString(CultureInfo.InvariantCulture),
+                    response.Error.Message);
             }
 
             var result = response.Results.First();
