@@ -6,39 +6,42 @@ using ActualChat.Media;
 
 namespace ActualChat.Audio;
 
-public class MediaFrameExtractor<TMediaFrame> where TMediaFrame : MediaFrame, new()
+public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFrame>
+    where TMediaSource : MediaSource<TMediaFormat, TMediaFrame>
+    where TMediaFormat : MediaFormat
+    where TMediaFrame : MediaFrame, new()
 {
-    private readonly MomentClockSet _clockSet;
-
-    public MediaFrameExtractor(MomentClockSet clockSet)
-    {
-        _clockSet = clockSet;
-    }
-
-    public ChannelReader<TMediaFrame> ExtractMediaFrames(
+    public ValueTask<TMediaSource> ExtractMediaSource(
         ChannelReader<BlobPart> audioData,
         CancellationToken cancellationToken)
     {
-        var resultChannel = Channel.CreateUnbounded<TMediaFrame>(new UnboundedChannelOptions {
+        var frameChannel = Channel.CreateUnbounded<TMediaFrame>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
-            AllowSynchronousContinuations = true
+            AllowSynchronousContinuations = true,
         });
 
+        var formatTaskSource = new TaskCompletionSource<TMediaFormat>();
         _ = Task.Run(()
-                => TransformAudioDataToFrames(resultChannel.Writer, audioData, cancellationToken),
+                => TransformAudioDataToFrames(formatTaskSource, frameChannel.Writer, audioData, cancellationToken),
             cancellationToken);
 
-        return resultChannel.Reader;
+        return CreateMediaSource(formatTaskSource.Task, frameChannel.Reader);
     }
 
+    protected abstract ValueTask<TMediaSource> CreateMediaSource(
+        Task<TMediaFormat> formatTask,
+        ChannelReader<TMediaFrame> frameReader);
+
+    protected abstract TMediaFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader);
+
     private async Task TransformAudioDataToFrames(
+        TaskCompletionSource<TMediaFormat> formatTaskSource,
         ChannelWriter<TMediaFrame> writer,
         ChannelReader<BlobPart> audioData,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
-        var frameIndex = 0;
         var blockOffsetMs = 0;
         var clusterOffsetMs = 0;
         var lastState = new WebMReader.State();
@@ -46,7 +49,7 @@ public class MediaFrameExtractor<TMediaFrame> where TMediaFrame : MediaFrame, ne
         try {
             while (await audioData.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
             while (audioData.TryRead(out var blobPart)) {
-                var (index, data) = blobPart;
+                var (_, data) = blobPart;
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
 
@@ -59,9 +62,9 @@ public class MediaFrameExtractor<TMediaFrame> where TMediaFrame : MediaFrame, ne
                     lastState.IsEmpty
                         ? new WebMReader(bufferLease.Memory.Span[..dataLength])
                         : WebMReader.FromState(lastState).WithNewSource(bufferLease.Memory.Span[..dataLength]),
+                    formatTaskSource,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
-                    ref frameIndex,
                     writer);
                 lastState = state;
             }
@@ -71,62 +74,44 @@ public class MediaFrameExtractor<TMediaFrame> where TMediaFrame : MediaFrame, ne
         }
         finally {
             writer.TryComplete(error);
+            if (error != null)
+                formatTaskSource.SetException(error);
+            else if (!formatTaskSource.Task.IsCompleted)
+                formatTaskSource.SetCanceled(cancellationToken);
         }
     }
 
 
     private WebMReader.State BuildAudioFrames(
         WebMReader webMReader,
+        TaskCompletionSource<TMediaFormat> formatTaskSource,
         ref int clusterOffsetMs,
         ref int blockOffsetMs,
-        ref int index,
         ChannelWriter<TMediaFrame> writer)
     {
         var prevPosition = 0;
-        var beginBlocksAt = 0;
+        var framesStart = 0;
         var currentBlockOffsetMs = 0;
+        EBML? ebml = null;
         while (webMReader.Read()) {
             var state = webMReader.GetState();
             switch (webMReader.ReadResultKind) {
                 case WebMReadResultKind.None:
                     throw new InvalidOperationException();
                 case WebMReadResultKind.Ebml:
+                    ebml = (EBML)webMReader.ReadResult;
                     break;
                 case WebMReadResultKind.Segment:
-                    var mediaFrame = new TMediaFrame {
-                        Index = index++,
-                        Offset = TimeSpan.Zero,
-                        Timestamp = _clockSet.CpuClock.UtcNow,
-                        Data = webMReader.Span[..state.Position].ToArray(),
-                        FrameKind = MediaFrameKind.Header,
-                    };
-                    if (!writer.TryWrite(mediaFrame))
-                        throw new InvalidOperationException("Unable to write MediaFrame");
+                    var segment = (Segment)webMReader.ReadResult;
+                    var format = CreateMediaFormat(ebml!, segment, webMReader.Span[..state.Position]);
+                    formatTaskSource.SetResult(format);
+                    framesStart = state.Position;
                     break;
                 case WebMReadResultKind.CompleteCluster:
-                    mediaFrame = new TMediaFrame {
-                        Index = index++,
-                        Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs)),
-                        Timestamp = _clockSet.CpuClock.UtcNow,
-                        Data = webMReader.Span[beginBlocksAt..state.Position].ToArray(),
-                        FrameKind = MediaFrameKind.Blocks,
-                    };
-                    if (!writer.TryWrite(mediaFrame))
-                        throw new InvalidOperationException("Unable to write MediaFrame");
                     break;
                 case WebMReadResultKind.BeginCluster:
                     var cluster = (Cluster)webMReader.ReadResult;
-                    mediaFrame = new TMediaFrame {
-                        Index = index++,
-                        Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (long)cluster.Timestamp),
-                        Timestamp = _clockSet.CpuClock.UtcNow,
-                        Data = webMReader.Span[prevPosition..state.Position].ToArray(),
-                        FrameKind = MediaFrameKind.Cluster,
-                    };
-                    beginBlocksAt = state.Position;
                     clusterOffsetMs = (int)cluster.Timestamp;
-                    if (!writer.TryWrite(mediaFrame))
-                        throw new InvalidOperationException("Unable to write MediaFrame");
                     break;
                 case WebMReadResultKind.Block:
                     var block = (Block)webMReader.ReadResult;
@@ -139,19 +124,14 @@ public class MediaFrameExtractor<TMediaFrame> where TMediaFrame : MediaFrame, ne
             prevPosition = state.Position;
         }
 
-        if (currentBlockOffsetMs > 0) {
-            var mediaFrame = new TMediaFrame {
-                Index = index++,
-                Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs)),
-                Timestamp = _clockSet.CpuClock.UtcNow,
-                Data = webMReader.Span[beginBlocksAt..prevPosition].ToArray(),
-                FrameKind = MediaFrameKind.Blocks,
-            };
-            if (!writer.TryWrite(mediaFrame))
-                throw new InvalidOperationException("Unable to write MediaFrame");
+        var mediaFrame = new TMediaFrame {
+            Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs)),
+            Data = webMReader.Span[framesStart..prevPosition].ToArray(),
+        };
+        if (!writer.TryWrite(mediaFrame))
+            throw new InvalidOperationException("Unable to write MediaFrame");
 
-            blockOffsetMs = currentBlockOffsetMs;
-        }
+        blockOffsetMs = currentBlockOffsetMs;
 
         return webMReader.GetState();
     }
