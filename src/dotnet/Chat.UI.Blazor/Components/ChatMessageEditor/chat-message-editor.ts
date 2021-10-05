@@ -1,4 +1,3 @@
-
 export class ChatMessageEditor {
 
     _backendRef: DotNet.DotNetObject;
@@ -12,7 +11,6 @@ export class ChatMessageEditor {
             throw new Error("dotnet backend object is undefined");
         }
         this._backendRef = backendRef;
-        console.log("backendRef:", this._backendRef)
     }
 
     public addEventListener(): void {
