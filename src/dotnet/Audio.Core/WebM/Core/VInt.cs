@@ -29,7 +29,7 @@ namespace ActualChat.Audio.WebM
     ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
     /// </summary>
     [StructLayout(LayoutKind.Auto)]
-    public readonly struct VInt
+    public readonly struct VInt : IEquatable<VInt>
     {
         private const ulong MaxValue = (1L << 56) - 1;
         private const ulong UnknownSizeValue = MaxValue | (1ul << 56);
@@ -80,7 +80,7 @@ namespace ActualChat.Audio.WebM
 
         public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
 
-        public static VInt Unknown = UnknownSize(2);
+        public static readonly VInt Unknown = UnknownSize(2);
 
         public static VInt EncodeSize(ulong value, int length = 0)
         {

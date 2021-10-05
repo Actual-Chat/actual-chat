@@ -55,7 +55,7 @@
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
     <!-- TODO: Remove MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed -->
-    <NoWarn>$(NoWarn);RCS1047;CS1591;MA0048;NU5105;NU5048;MA0004</NoWarn>
+    <NoWarn>$(NoWarn);RCS1047;CS1591;MA0048;NU5105;NU5048;MA0004;VSTHRD003</NoWarn>
 
     <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
     <EnableSourceLink>false</EnableSourceLink>

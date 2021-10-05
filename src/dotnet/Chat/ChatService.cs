@@ -325,7 +325,7 @@ namespace ActualChat.Chat
             else {
                 dbChatEntry = await dbContext.FindAsync<DbChatEntry>(
                     ComposeKey(DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id)),
-                    cancellationToken) ?? throw new InvalidOperationException($"dbChatEntry {chatEntry.ChatId} is null");
+                    cancellationToken) ?? throw new InvalidOperationException($"Chat entry with key {chatEntry.ChatId}, {chatEntry.Id} is not found");
                 chatEntry = chatEntry with {
                     Version = VersionGenerator.NextVersion(dbChatEntry.Version),
                 };

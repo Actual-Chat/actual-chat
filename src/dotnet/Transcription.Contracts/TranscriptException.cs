@@ -7,6 +7,18 @@ public class TranscriptException : Exception
         Code = code;
     }
 
+    public TranscriptException() : base()
+    {
+    }
+
+    public TranscriptException(string? message) : base(message)
+    {
+    }
+
+    public TranscriptException(string? message, Exception? innerException) : base(message, innerException)
+    {
+    }
+
     public string? Code { get; init; }
 
 }

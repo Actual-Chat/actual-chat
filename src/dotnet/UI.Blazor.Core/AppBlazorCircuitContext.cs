@@ -17,9 +17,10 @@ namespace ActualChat.UI.Blazor
             if (Services is not IServiceScope serviceScope)
                 return;
             // Let's reliably dispose serviceScope
-            Task.Delay(10_000).ContinueWith(_ => {
-                if (serviceScope is IAsyncDisposable ad)
-                    ad.DisposeAsync();
+            _ = Task.Delay(10_000).ContinueWith(_ => {
+                if (serviceScope is IAsyncDisposable ad) {
+                    var __ = ad.DisposeAsync();
+                }
                 else
                     serviceScope.Dispose();
             }, TaskScheduler.Current);

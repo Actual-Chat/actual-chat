@@ -56,9 +56,9 @@ namespace ActualChat
         public static implicit operator string(<#=typeName#> id) => id.Value;
 
         // Equality
-        public bool Equals(<#=typeName#> other) => Value == other.Value;
+        public bool Equals(<#=typeName#> other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
         public override bool Equals(object? obj) => obj is <#=typeName#> other && Equals(other);
-        public override int GetHashCode() => Value.GetHashCode();
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(<#=typeName#> left, <#=typeName#> right) => left.Equals(right);
         public static bool operator !=(<#=typeName#> left, <#=typeName#> right) => !left.Equals(right);
     }

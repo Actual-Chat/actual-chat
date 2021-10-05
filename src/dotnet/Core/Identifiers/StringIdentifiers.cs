@@ -35,7 +35,7 @@ namespace ActualChat
         // Equality
         public bool Equals(ChatId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
         public override bool Equals(object? obj) => obj is ChatId other && Equals(other);
-        public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(ChatId left, ChatId right) => left.Equals(right);
         public static bool operator !=(ChatId left, ChatId right) => !left.Equals(right);
     }
@@ -118,7 +118,7 @@ namespace ActualChat
         // Equality
         public bool Equals(AudioRecordId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
         public override bool Equals(object? obj) => obj is AudioRecordId other && Equals(other);
-        public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(AudioRecordId left, AudioRecordId right) => left.Equals(right);
         public static bool operator !=(AudioRecordId left, AudioRecordId right) => !left.Equals(right);
     }
@@ -201,7 +201,7 @@ namespace ActualChat
         // Equality
         public bool Equals(VideoRecordId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
         public override bool Equals(object? obj) => obj is VideoRecordId other && Equals(other);
-        public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(VideoRecordId left, VideoRecordId right) => left.Equals(right);
         public static bool operator !=(VideoRecordId left, VideoRecordId right) => !left.Equals(right);
     }
@@ -284,7 +284,7 @@ namespace ActualChat
         // Equality
         public bool Equals(StreamId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
         public override bool Equals(object? obj) => obj is StreamId other && Equals(other);
-        public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(StreamId left, StreamId right) => left.Equals(right);
         public static bool operator !=(StreamId left, StreamId right) => !left.Equals(right);
     }
@@ -367,7 +367,7 @@ namespace ActualChat
         // Equality
         public bool Equals(UserId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
         public override bool Equals(object? obj) => obj is UserId other && Equals(other);
-        public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value);
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(UserId left, UserId right) => left.Equals(right);
         public static bool operator !=(UserId left, UserId right) => !left.Equals(right);
     }
