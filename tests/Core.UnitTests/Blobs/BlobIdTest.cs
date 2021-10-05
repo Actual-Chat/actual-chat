@@ -1,9 +1,6 @@
-using System;
 using ActualChat.Blobs;
-using FluentAssertions;
-using Xunit;
 
-namespace ActualChat.Tests.Blobs
+namespace ActualChat.Core.UnitTests.Blobs
 {
     public class BlobIdTest
     {
