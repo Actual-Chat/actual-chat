@@ -6,7 +6,6 @@ public record AudioStreamPart(
     int Index,
     StreamId StreamId,
     AudioRecord AudioRecord,
-    WebMDocument Document,
-    IReadOnlyList<AudioMetadataEntry> Metadata, // TODO(AY): Discuss the purpose / type of this
-    double Offset,
-    double Duration);
+    AudioSource AudioSource,
+    TimeSpan Offset,
+    TimeSpan Duration);
