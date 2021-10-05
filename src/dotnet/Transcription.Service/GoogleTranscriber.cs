@@ -1,6 +1,7 @@
 using System.Globalization;
 using ActualChat.Audio;
 using ActualChat.Blobs;
+using ActualChat.Mathematics;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 
@@ -89,17 +90,14 @@ public class GoogleTranscriber : ITranscriber
         ChannelWriter<TranscriptUpdate> writer,
         CancellationToken cancellationToken)
     {
-        var cutter = new StablePrefixCutter();
+        var updateExtractor = new TranscriptUpdateExtractor();
+
         Exception? error = null;
         try {
             await foreach (var response in transcriptResponseStream.WithCancellation(cancellationToken)) {
-                var speechFragment = MapResponse(response);
-                if (speechFragment.StartOffset != 0)
-                    await writer.WriteAsync(speechFragment, cancellationToken).ConfigureAwait(false);
-                else {
-                    var processedFragment = cutter.CutMemoized(speechFragment);
-                    await writer.WriteAsync(processedFragment, cancellationToken).ConfigureAwait(false);
-                }
+                ProcessResponse(response);
+                while (updateExtractor.Updates.TryDequeue(out var update))
+                    await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
             }
 
         }
@@ -107,10 +105,13 @@ public class GoogleTranscriber : ITranscriber
             error = e;
         }
         finally {
+            updateExtractor.FinalizeCurrentPart();
+            while (updateExtractor.Updates.TryDequeue(out var update))
+                await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
             writer.Complete(error);
         }
 
-        TranscriptUpdate MapResponse(StreamingRecognizeResponse response)
+        void ProcessResponse(StreamingRecognizeResponse response)
         {
             if (response.Error != null) {
                 _log.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
@@ -119,18 +120,23 @@ public class GoogleTranscriber : ITranscriber
                     response.Error.Message);
             }
 
-            var result = response.Results.First();
-            var alternative = result.Alternatives.First();
-            var endTime = result.ResultEndTime;
-            var endOffset = endTime.ToTimeSpan().TotalSeconds;
-            var fragment = new TranscriptUpdate {
-                Confidence = alternative.Confidence,
-                Text = alternative.Transcript,
-                StartOffset = 0, // TODO(AK) : suspicious 0 offset
-                Duration = endOffset,
-                IsFinal = result.IsFinal
-            };
-            return fragment;
+            foreach (var result in response.Results) {
+                var alternative = result.Alternatives.First();
+                var endTime = result.ResultEndTime;
+                var text = alternative.Transcript;
+                var finalizedPart = updateExtractor.FinalizedPart;
+                var currentPart = new Transcript() {
+                    Text = text,
+                    TextToTimeMap =  new LinearMap(
+                        new [] {(double) finalizedPart.Text.Length, finalizedPart.Text.Length + text.Length},
+                        new [] {finalizedPart.Duration, endTime.ToTimeSpan().TotalSeconds})
+                };
+                updateExtractor.UpdateCurrentPart(currentPart);
+                if (result.IsFinal)
+                    updateExtractor.FinalizeCurrentPart();
+                else
+                    break; // We process only the first one of non-final results
+            }
         }
     }
 

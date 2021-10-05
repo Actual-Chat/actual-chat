@@ -1,4 +1,5 @@
 using ActualChat.Blobs;
+using ActualChat.Transcription;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Stl.Fusion.Authentication;
@@ -32,6 +33,6 @@ public class AudioHub : Hub
     public Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
         => _audioStreamer.GetAudioStream(streamId, cancellationToken);
 
-    public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
+    public Task<ChannelReader<TranscriptUpdate>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptStream(streamId, cancellationToken);
 }

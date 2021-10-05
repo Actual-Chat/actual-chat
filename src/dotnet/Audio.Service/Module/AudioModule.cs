@@ -3,6 +3,7 @@ using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
 using ActualChat.Hosting;
 using ActualChat.Redis;
+using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Connections;

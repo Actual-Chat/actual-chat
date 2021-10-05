@@ -1,13 +1,14 @@
+@using ActualChat.Transcription
 @inject ITranscriptStreamer _transcriptStreamer
 @inject BlazorCircuitContext _circuitContext
 @inject ILogger<ChatMessageTranscript> _log
 
-<span class="content">@Text</span>
+<span class="content">@_transcript.Text</span>
 <Button Size="Size.ExtraSmall" Color="Color.Success" Clicked="@OnPlay">Play</Button>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
-    private string Text { get; set; } = "...";
+    private Transcript _transcript = new() { Text = "…" };
 
     [Parameter]
     public string StreamId { get; set; } = null!;
@@ -36,16 +37,12 @@
             OnListen.InvokeAsync(StreamId);
     }
 
-    private async Task ReadTranscript(ChannelReader<TranscriptPart> transcriptReader, CancellationToken cancellationToken)
+    private async Task ReadTranscript(ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken)
     {
         try {
-            while (await transcriptReader.WaitToReadAsync(cancellationToken))
-            while (transcriptReader.TryRead(out var message)) {
-                cancellationToken.ThrowIfCancellationRequested();
-                var (text, index, _, _) = message;
-                Text = Text.Length >= index
-                    ? $"{Text[..index]}{text}"
-                    : $"{Text}{text.PadLeft(index - Text.Length + text.Length)}";
+            while (await transcriptUpdates.WaitToReadAsync(cancellationToken))
+            while (transcriptUpdates.TryRead(out var update)) {
+                _transcript = _transcript.WithUpdate(update);
                 StateHasChanged();
             }
         }
