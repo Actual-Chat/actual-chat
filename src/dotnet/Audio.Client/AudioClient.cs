@@ -1,5 +1,6 @@
 using ActualChat.Blobs;
 using ActualChat.SignalR.Client;
+using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
 using Stl.Fusion.Authentication;
 
@@ -28,10 +29,10 @@ public class AudioClient : HubClientBase,
             cancellationToken);
     }
 
-    public async Task<ChannelReader<TranscriptPart>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
+    public async Task<ChannelReader<TranscriptUpdate>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
     {
         await EnsureConnected(cancellationToken);
-        return await HubConnection.StreamAsChannelAsync<TranscriptPart>("GetTranscriptStream",
+        return await HubConnection.StreamAsChannelAsync<TranscriptUpdate>("GetTranscriptStream",
             streamId,
             cancellationToken);
     }

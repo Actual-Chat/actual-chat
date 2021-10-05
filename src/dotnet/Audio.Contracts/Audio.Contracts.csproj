@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Audio\Audio.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
+    <ProjectReference Include="..\Transcription.Contract\Transcription.Contract.csproj" />
   </ItemGroup>
 
 </Project>
