@@ -56,8 +56,8 @@ public class AudioActivityExtractor
 
                 buffer.Slice(lastState.Position, remainingLength)
                     .CopyTo(buffer[..remainingLength]);
-                data.CopyTo(buffer[lastState.Remaining..]);
-                var dataLength = lastState.Remaining + data.Length;
+                data.CopyTo(buffer[remainingLength..]);
+                var dataLength = remainingLength + data.Length;
 
                 // TODO(AK): get actual duration\offset from Clusters\SimpleBlocks and fill metaData
                 var state = BuildWebMDocument(
