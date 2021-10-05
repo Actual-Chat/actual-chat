@@ -4,7 +4,7 @@ namespace ActualChat.Media;
 public abstract class MediaFrame
 {
     [DataMember(Order = 0)]
-    public Moment Timestamp { get; init; }
+    public TimeSpan Offset { get; init; }
     [DataMember(Order = 1)]
     public ReadOnlyMemory<byte> Data { get; init; }
 
