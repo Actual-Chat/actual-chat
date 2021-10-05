@@ -27,7 +27,7 @@ namespace ActualChat.Transcription.IntegrationTests
             var transcriber = new GoogleTranscriber(_logger);
             var request = new TranscriptionRequest(
                 "123",
-                new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 new TranscriptionOptions {
                     Language = "ru-RU",
                     IsDiarizationEnabled = false,
