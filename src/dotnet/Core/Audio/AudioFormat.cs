@@ -1,12 +1,17 @@
+using ActualChat.Media;
+
 namespace ActualChat.Audio;
 
 [DataContract]
-public record AudioFormat
+public record AudioFormat : MediaFormat
 {
-    [DataMember(Order = 0)]
-    public AudioCodec Codec { get; init; } = AudioCodec.Opus;
+    public override MediaType Type => MediaType.Audio;
+
     [DataMember(Order = 1)]
-    public int ChannelCount { get; init; } = 1;
+    public AudioCodecKind CodecKind { get; init; } = AudioCodecKind.Opus;
     [DataMember(Order = 2)]
-    public int SampleRate { get; init; } = 16_000;
+    public string CodecSettings { get; init; } = "";
+
+    [DataMember(Order = 3)]
+    public int SampleRate { get; init; } = 48_000;
 }

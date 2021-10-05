@@ -4,7 +4,7 @@ namespace ActualChat.Transcription;
 
 public interface ITranscriber
 {
-    Task<ChannelReader<TranscriptFragment>> Transcribe(
+    Task<ChannelReader<TranscriptUpdate>> Transcribe(
         TranscriptionRequest request,
         ChannelReader<BlobPart> audioData,
         CancellationToken cancellationToken);

@@ -1,14 +1,13 @@
 using MessagePack;
 
-namespace ActualChat.Audio
+namespace ActualChat.Audio;
+
+[MessagePackObject]
+public record TranscriptPart(
+    [property: Key(0)] string Text,
+    [property: Key(1)] int TextOffset,
+    [property: Key(2)] double StartOffset,
+    [property: Key(3)] double Duration)
 {
-    [MessagePackObject]
-    public record TranscriptPart(
-        [property: Key(0)] string Text,
-        [property: Key(1)] int TextOffset,
-        [property: Key(2)] double StartOffset,
-        [property: Key(3)] double Duration)
-    {
-        public TranscriptPart() : this("", 0, 0, 0) { }
-    };
-}
+    public TranscriptPart() : this("", 0, 0, 0) { }
+};

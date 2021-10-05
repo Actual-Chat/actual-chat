@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <RootNamespace>ActualChat.Transcription.IntegrationTests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

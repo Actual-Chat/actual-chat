@@ -1,7 +1,6 @@
 ﻿using ActualChat.Blobs;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using ActualChat.Playback;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion.Extensions;
@@ -20,7 +19,6 @@ public class CoreModule : HostModule
         // Common services
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
-        fusion.AddComputeService<IPlaybackManager, PlaybackManager>(ServiceLifetime.Scoped);
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);

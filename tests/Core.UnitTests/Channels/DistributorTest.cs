@@ -1,15 +1,10 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using ActualChat.Channels;
-using FluentAssertions;
 using Stl.Channels;
 using Stl.Testing;
-using Xunit;
 using Xunit.Abstractions;
 
-namespace ActualChat.Tests.Channels
+namespace ActualChat.Core.UnitTests.Channels
 {
     public class DistributorTest : TestBase
     {
