@@ -45,7 +45,8 @@ module.exports = (env, args) => {
       extensions: ['.ts', '.js', '...'],
       modules: [_('node_modules')]
     },
-    devtool: args.mode === 'development' ? 'eval' : false,
+    //devtool: args.mode === 'development' ? 'eval' : false,
+    devtool: args.mode === 'development' ? 'source-map' : false,
     plugins: [
       // @ts-ignore
       new MiniCssExtractPlugin({
@@ -107,7 +108,6 @@ module.exports = (env, args) => {
     output: {
       path: outputPath,
       filename: '[name].js',
-      sourceMapFilename: args.mode === 'development' ? '[name].js.map' : null,
       library: {
         type: 'this'
       },

@@ -26,12 +26,7 @@
                             <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z" />
                         </svg>
                     </button>
-                    @* TODO: Move this to AudioRecorder ?  *@
-                    <button class="block px-3 py-2 text-indigo-500">
-                        <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-                            <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z" />
-                        </svg>
-                    </button>
+                    <AudioRecorder ChatId="@ChatId" />
                 </Authorized>
                 <NotAuthorized>
                     <SignInDropdown Why="to chat" CssClass="px-3" />
@@ -40,12 +35,6 @@
         </div>
     </div>
 </div>
-
-@*
-    <button>Send</button>
-    <AudioRecorder ChatId="@ChatId" />
-
-*@
 
 @code {
     // TODO(AY): Add some store that remembers typed messages
@@ -66,7 +55,7 @@
             return;
         await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
     }
-
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
