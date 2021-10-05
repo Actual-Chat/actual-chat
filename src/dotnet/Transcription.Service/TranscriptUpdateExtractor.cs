@@ -15,7 +15,7 @@ public class TranscriptUpdateExtractor
 
     public void UpdateCurrentPart(Transcript newCurrentPart)
     {
-        var update = new TranscriptUpdate(CurrentPart);
+        var update = new TranscriptUpdate(newCurrentPart);
         Updates.Enqueue(update);
         UpdateCount++;
         CurrentPart = newCurrentPart;
@@ -35,7 +35,6 @@ public class TranscriptUpdateExtractor
         };
         FinalizedPart.TextToTimeMap.SourcePoints[^1] += 1;
         CurrentPart = NewCurrentPart();
-        UpdateCurrentPart(CurrentPart);
     }
 
     private Transcript NewCurrentPart()
