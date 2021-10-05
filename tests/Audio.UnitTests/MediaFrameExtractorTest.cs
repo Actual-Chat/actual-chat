@@ -13,15 +13,16 @@ public class MediaFrameExtractorTest
     [Fact]
     public async Task ExtractFramesFromFile()
     {
-        var mediaFrameExtractor = new MediaFrameExtractor<AudioFrame>(MomentClockSet.Default);
+        var audioSourceProvider = new AudioSourceProvider();
         var blobChannel = Channel.CreateUnbounded<BlobPart>();
-        var audioFrameReader = mediaFrameExtractor.ExtractMediaFrames(blobChannel.Reader, CancellationToken.None);
+        var audioSourceTask = audioSourceProvider.ExtractMediaSource(blobChannel.Reader, CancellationToken.None);
 
         _ = ReadFromFile(blobChannel.Writer);
 
+        var audioSource = await audioSourceTask;
+
         var offset = TimeSpan.Zero;
-        while (await audioFrameReader.WaitToReadAsync())
-        while (audioFrameReader.TryRead(out var audioFrame))
+        await foreach (var audioFrame in audioSource)
             offset = audioFrame.Offset > offset
                 ? audioFrame.Offset
                 : offset;
