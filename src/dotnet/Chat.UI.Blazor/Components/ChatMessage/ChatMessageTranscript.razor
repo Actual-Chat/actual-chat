@@ -5,8 +5,10 @@
 @inject ILogger<ChatMessageTranscript> _log
 
 <div>
-    <span class="content">@Text</span>
-    <button @onclick="OnPlay">Play</button>
+    <span @onclick="OnPlay" class="cursor-pointer select-none opacity-75 hover:opacity-100">
+        <i class="fa fa-play text-green-600" aria-hidden="true"></i>
+    </span>
+    <span class="ml-3">@Text</span>
 </div>
 
 @code {
