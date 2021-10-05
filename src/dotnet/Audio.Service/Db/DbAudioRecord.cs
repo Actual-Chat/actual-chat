@@ -31,7 +31,7 @@ namespace ActualChat.Audio.Db
 
         public double? Duration { get; set; }
 
-        public AudioCodec AudioCodec { get; set; }
+        public AudioCodecKind AudioCodecKind { get; set; }
         public int ChannelCount { get; set; }
         public int SampleRate { get; set; }
         [StringLength(5)]

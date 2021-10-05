@@ -5,62 +5,55 @@ using ActualChat.Playback.Internal;
 
 namespace ActualChat.Playback;
 
-public abstract class MediaPlayerBase<TMediaChannel, TMediaFormat, TMediaFrame>
-    : AsyncDisposableBase, IMediaPlayer<TMediaChannel, TMediaFormat, TMediaFrame>
-    where TMediaFormat : notnull
-    where TMediaChannel : MediaChannel<TMediaFormat, TMediaFrame>
-    where TMediaFrame : MediaFrame
+public abstract class MediaPlayerBase : AsyncDisposableBase, IMediaPlayer
 {
-    public readonly ConcurrentDictionary<(Symbol PlayId, Symbol ChannelId), TMediaFrame> _playingFrames = new();
+    public readonly ConcurrentDictionary<Symbol, MediaFrame> PlayingFrames = new();
 
-    public async Task Play(Symbol playId, ChannelReader<TMediaChannel> source, CancellationToken cancellationToken)
+    public async Task Play(IAsyncEnumerable<MediaTrack> tracks, CancellationToken cancellationToken)
     {
-        while (await source.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        while (source.TryRead(out var mediaChannel)) {
-            var channelPlayer = CreateChannelPlayer(mediaChannel);
+        await foreach (var playbackStream in tracks.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            var channelPlayer = CreateTrackPlayer(playbackStream);
             channelPlayer.Playing +=
-                (prevFrame, nextFrame) => OnPlayingFrame(playId, mediaChannel, prevFrame, nextFrame);
+                (prevFrame, nextFrame) => OnPlayingFrame(playbackStream, prevFrame, nextFrame);
             _ = channelPlayer.Play(cancellationToken);
         }
     }
 
-    public virtual Task<TMediaFrame?> GetPlayingMediaFrame(
-        Symbol playId, Symbol channelId,
+    public virtual Task<MediaFrame?> GetPlayingMediaFrame(
+        Symbol trackId,
         CancellationToken cancellationToken)
-        => Task.FromResult(_playingFrames.GetValueOrDefault((playId, channelId)));
+        => Task.FromResult(PlayingFrames.GetValueOrDefault(trackId));
 
-    public virtual Task<TMediaFrame?> GetPlayingMediaFrame(
-        Symbol playId, Symbol channelId, Range<Moment> timestampRange,
+    public virtual Task<MediaFrame?> GetPlayingMediaFrame(
+        Symbol trackId, Range<Moment> timestampRange,
         CancellationToken cancellationToken)
     {
         PlaybackConstants.TimestampLogCover.AssertIsTile(timestampRange);
-        var mediaFrame = _playingFrames.GetValueOrDefault((playId, channelId));
-        var result = mediaFrame != null && timestampRange.Contains(mediaFrame.Timestamp) ? mediaFrame : null;
+        var frame = PlayingFrames.GetValueOrDefault(trackId);
+        var result = frame != null && timestampRange.Contains(frame.Timestamp) ? frame : null;
         return Task.FromResult(result);
     }
 
     // Protected methods
 
-    protected abstract MediaChannelPlayer<TMediaChannel, TMediaFormat, TMediaFrame> CreateChannelPlayer(TMediaChannel mediaChannel);
+    protected abstract MediaTrackPlayer CreateTrackPlayer(MediaTrack mediaTrack);
 
-    protected virtual void OnPlayingFrame(Symbol playId, TMediaChannel mediaChannel, TMediaFrame? prevFrame, TMediaFrame? nextFrame)
+    protected virtual void OnPlayingFrame(MediaTrack mediaTrack, MediaFrame? prevFrame, MediaFrame? nextFrame)
     {
         var timestampLogCover = PlaybackConstants.TimestampLogCover;
-        var channelId = mediaChannel.Id;
-        var playAndChannelId = (playId, channelId);
         if (nextFrame != null)
-            _playingFrames[playAndChannelId] = nextFrame;
+            PlayingFrames[mediaTrack.Id] = nextFrame;
         else
-            _playingFrames.TryRemove(playAndChannelId, out var _);
+            PlayingFrames.TryRemove(mediaTrack.Id, out var _);
         using (Computed.Invalidate()) {
-            _ = GetPlayingMediaFrame(playId, channelId, default);
+            _ = GetPlayingMediaFrame(mediaTrack.Id, default);
             if (prevFrame != null) {
                 foreach (var tile in timestampLogCover.GetCoveringTiles(prevFrame.Timestamp))
-                    _ = GetPlayingMediaFrame(playId, channelId, tile, default);
+                    _ = GetPlayingMediaFrame(mediaTrack.Id, tile, default);
             }
             if (nextFrame != null) {
                 foreach (var tile in timestampLogCover.GetCoveringTiles(nextFrame.Timestamp))
-                    _ = GetPlayingMediaFrame(playId, channelId, tile, default);
+                    _ = GetPlayingMediaFrame(mediaTrack.Id, tile, default);
             }
         }
     }

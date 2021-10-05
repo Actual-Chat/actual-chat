@@ -26,7 +26,7 @@ public class GoogleTranscriber : ITranscriber
         var builder = new SpeechClientBuilder();
         var speechClient = await builder.BuildAsync(cancellationToken);
         var config = new RecognitionConfig {
-            Encoding = MapEncoding(format.Codec),
+            Encoding = MapEncoding(format.CodecKind),
             AudioChannelCount = format.ChannelCount,
             SampleRateHertz = format.SampleRate,
             LanguageCode = options.Language,
@@ -134,14 +134,14 @@ public class GoogleTranscriber : ITranscriber
         }
     }
 
-    private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodec codec)
+    private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodecKind codecKind)
     {
-        switch (codec) {
-            case AudioCodec.Wav:
+        switch (codecKind) {
+            case AudioCodecKind.Wav:
                 return RecognitionConfig.Types.AudioEncoding.Linear16;
-            case AudioCodec.Flac:
+            case AudioCodecKind.Flac:
                 return RecognitionConfig.Types.AudioEncoding.Flac;
-            case AudioCodec.Opus:
+            case AudioCodecKind.Opus:
                 return RecognitionConfig.Types.AudioEncoding.WebmOpus;
             default:
                 return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;

@@ -98,7 +98,7 @@ public class SourceAudioProcessor : BackgroundService
         var request = new TranscriptionRequest(
             segment.StreamId,
             new AudioFormat {
-                Codec = AudioCodec.Opus,
+                CodecKind = AudioCodecKind.Opus,
                 ChannelCount = 1,
                 SampleRate = 48_000,
             },

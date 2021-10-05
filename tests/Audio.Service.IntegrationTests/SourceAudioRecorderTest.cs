@@ -31,7 +31,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
             });
         var recordSpec = new AudioRecord(
             "1",
-            new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
 
@@ -112,7 +112,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     {
         var recording = new AudioRecord(
             chatId,
-            new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var channel = Channel.CreateBounded<BlobPart>(

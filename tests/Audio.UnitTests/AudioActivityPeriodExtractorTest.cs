@@ -27,7 +27,7 @@ namespace ActualChat.Audio.UnitTests
             var readTask = ReadFromFile(channel.Writer);
             var record = new AudioRecord(
                 "test-id", "1", "1",
-                new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
@@ -64,7 +64,7 @@ namespace ActualChat.Audio.UnitTests
             var readTask = ReadFromFile(channel.Writer);
             var record = new AudioRecord(
                 "test-id", "1", "1",
-                new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
@@ -101,7 +101,7 @@ namespace ActualChat.Audio.UnitTests
             _ = ReadFromFile(channel);
             var record = new AudioRecord(
                 "test-id", "1", "1",
-                new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 

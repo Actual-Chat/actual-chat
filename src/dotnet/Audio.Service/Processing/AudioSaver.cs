@@ -52,7 +52,7 @@ public sealed class AudioSaver : DbServiceBase<AudioDbContext>
                     // TODO(AK): fill record entity attributes
                     BeginsAt = default,
                     Duration = 0,
-                    AudioCodec = p.AudioRecord.Format.Codec,
+                    AudioCodecKind = p.AudioRecord.Format.CodecKind,
                     ChannelCount = p.AudioRecord.Format.ChannelCount,
                     SampleRate = p.AudioRecord.Format.SampleRate,
                     Language = p.AudioRecord.Language
