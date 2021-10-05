@@ -1,6 +1,5 @@
 using System.Globalization;
 using ActualChat.Audio;
-using ActualChat.Blobs;
 using ActualChat.Mathematics;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
@@ -18,7 +17,7 @@ public class GoogleTranscriber : ITranscriber
 
     public async Task<ChannelReader<TranscriptUpdate>> Transcribe(
         TranscriptionRequest request,
-        ChannelReader<BlobPart> audioData,
+        AudioSource audioSource,
         CancellationToken cancellationToken)
     {
         var (streamId, format, options) = request;
@@ -52,7 +51,7 @@ public class GoogleTranscriber : ITranscriber
 
         _ = Task.Run(()
                 => PushAudioForTranscription(streamingRecognizeStream,
-                    audioData,
+                    audioSource,
                     transcriptChannel.Writer,
                     cancellationToken),
             cancellationToken);
@@ -65,15 +64,19 @@ public class GoogleTranscriber : ITranscriber
 
     private async Task PushAudioForTranscription(
         SpeechClient.StreamingRecognizeStream recognizeStream,
-        ChannelReader<BlobPart> audioData,
+        AudioSource audioSource,
         ChannelWriter<TranscriptUpdate> writer,
         CancellationToken cancellationToken)
     {
         try {
-            while (await audioData.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-            while (audioData.TryRead(out var blobPart))
+            var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
+            await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
+                AudioContent = ByteString.CopyFrom(header),
+            }).ConfigureAwait(false);
+
+            await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
                 await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(blobPart.Data)
+                    AudioContent = ByteString.CopyFrom(audioFrame.Data.Span),
                 }).ConfigureAwait(false);
         }
         catch (ChannelClosedException) { }

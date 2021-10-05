@@ -10,8 +10,8 @@ namespace ActualChat.Audio.Db
     {
         public string RecordId { get; set; } = string.Empty;
         public int Index { get; set; }
-        public double Offset { get; set; }
-        public double Duration { get; set; }
+        public TimeSpan Offset { get; set; }
+        public TimeSpan Duration { get; set; }
         public string BlobId { get; set; } = string.Empty;
         public string Metadata { get; set; } = string.Empty;
 
