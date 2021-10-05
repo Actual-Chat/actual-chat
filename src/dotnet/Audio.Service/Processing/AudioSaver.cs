@@ -43,7 +43,8 @@ public sealed class AudioSaver : DbServiceBase<AudioDbContext>
         async Task SaveSegment() {
             await using var dbContext = CreateDbContext(true);
             var existingRecording = await dbContext.AudioRecords.FindAsync(
-                new object[] { p.AudioRecord.Id.Value }, cancellationToken);
+                ComposeKey(p.AudioRecord.Id.Value),
+                cancellationToken);
             if (existingRecording == null) {
                 _log.LogInformation("Entity = Record, RecordId = {RecordId}", p.AudioRecord.Id);
                 dbContext.AudioRecords.Add(new DbAudioRecord {
