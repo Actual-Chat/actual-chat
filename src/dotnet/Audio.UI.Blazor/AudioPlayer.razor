@@ -3,7 +3,7 @@
 @implements IAudioPlayerBackend
 @inject IJSRuntime _js
 @inject JSModule _jsModule;
-@inject IAudioStreamer _audioStreamer
+@inject IAudioSourceStreamer _audioStreamer
 @inject BlazorCircuitContext _circuitContext
 
 <audio autoplay @ref="Ref"></audio>
@@ -36,8 +36,8 @@
 
         if (!_circuitContext.IsPrerendering && !StreamId.IsNullOrEmpty()) {
             _cancellationTokenSource = new CancellationTokenSource();
-            var audioReader = await _audioStreamer.GetAudioStream(StreamId, _cancellationTokenSource.Token);
-            _ = ReadAudio(audioReader, _cancellationTokenSource.Token);
+            var audioSource = await _audioStreamer.GetAudioSource(StreamId, _cancellationTokenSource.Token);
+            _ = ReadAudio(audioSource, _cancellationTokenSource.Token);
         }
     }
 
@@ -49,15 +49,14 @@
         return JSComponentRef.InvokeVoidAsync("appendAudio", chunk).AsTask();
     }
 
-    private async Task ReadAudio(ChannelReader<BlobPart> audioReader, CancellationToken cancellationToken)
+    private async Task ReadAudio(AudioSource audioSource, CancellationToken cancellationToken)
     {
         try {
-            while (await audioReader.WaitToReadAsync(cancellationToken))
-            while (audioReader.TryRead(out var blob)) {
-                cancellationToken.ThrowIfCancellationRequested();
+            var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
+            await AppendAudio(header);
 
-                await AppendAudio(blob.Data);
-            }
+            await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
+                await AppendAudio(audioFrame.Data.ToArray());
         }
         catch (ChannelClosedException) {
         }
