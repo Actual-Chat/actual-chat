@@ -18,6 +18,8 @@ public class SourceAudioProcessor : BackgroundService
     public TranscriptStreamer TranscriptStreamer { get; }
     public IServerSideChatService Chat { get; }
 
+    public MomentClockSet ClockSet { get; }
+
     public SourceAudioProcessor(
         ITranscriber transcriber,
         AudioSaver audioSaver,
@@ -26,6 +28,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
         IServerSideChatService chat,
+        MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
         _log = log;
@@ -36,6 +39,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioSourceStreamer = audioSourceStreamer;
         TranscriptStreamer = transcriptStreamer;
         Chat = chat;
+        ClockSet = clockSet;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -139,6 +143,7 @@ public class SourceAudioProcessor : BackgroundService
             Content = "...",
             ContentType = ChatContentType.Text,
             StreamId = audio.StreamId,
+            BeginsAt = ClockSet.CpuClock.UtcNow,
         };
         return await Chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken).ConfigureAwait(false);
     }
@@ -152,6 +157,7 @@ public class SourceAudioProcessor : BackgroundService
             Content = "",
             ContentType = ChatContentType.Audio,
             StreamId = audio.StreamId,
+            BeginsAt = ClockSet.CpuClock.UtcNow,
         };
         return await Chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken).ConfigureAwait(false);
     }
@@ -166,7 +172,8 @@ public class SourceAudioProcessor : BackgroundService
 
         var updated = chatEntry with {
             Content = transcript.Text,
-            StreamId = StreamId.None
+            StreamId = StreamId.None,
+            EndsAt = ClockSet.CpuClock.UtcNow,
         };
         await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken).ConfigureAwait(false);
     }
@@ -181,7 +188,8 @@ public class SourceAudioProcessor : BackgroundService
 
         var updated = chatEntry with {
             Content = blobId,
-            StreamId = StreamId.None
+            StreamId = StreamId.None,
+            EndsAt = ClockSet.CpuClock.UtcNow,
         };
         await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken).ConfigureAwait(false);
     }

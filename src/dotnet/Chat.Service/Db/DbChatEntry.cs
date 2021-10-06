@@ -1,10 +1,7 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
-using Stl;
-using Stl.Time;
 using Stl.Versioning;
 
 namespace ActualChat.Chat.Db
@@ -20,7 +17,7 @@ namespace ActualChat.Chat.Db
             => ZString.Format("{0}:{1}", chatId, id);
 
         private DateTime _beginsAt;
-        private DateTime _endsAt;
+        private DateTime? _endsAt;
 
         [Key]
         public string CompositeId { get; set; } = "";
@@ -34,8 +31,8 @@ namespace ActualChat.Chat.Db
             set => _beginsAt = value.DefaultKind(DateTimeKind.Utc);
         }
 
-        public DateTime EndsAt {
-            get => _endsAt.DefaultKind(DateTimeKind.Utc);
+        public DateTime? EndsAt {
+            get => _endsAt?.DefaultKind(DateTimeKind.Utc);
             set => _endsAt = value.DefaultKind(DateTimeKind.Utc);
         }
 
