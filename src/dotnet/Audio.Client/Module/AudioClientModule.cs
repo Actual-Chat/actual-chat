@@ -1,4 +1,5 @@
 ﻿using ActualChat.Hosting;
+using ActualChat.Transcription;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion.Client;
@@ -22,6 +23,7 @@ public class AudioClientModule : HostModule
         services.AddSingleton<AudioClient>();
         services.AddTransient<ISourceAudioRecorder>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
+        services.AddTransient<IAudioSourceStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
     }
 }

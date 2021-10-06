@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -54,7 +55,7 @@ namespace ActualChat.Audio.WebM
         public int Write(string value, Encoding encoding, int? position = null)
         {
             var written = encoding.GetBytes(value, Span[Position..]);
-            
+
             return UpdatePosition(written, position);
         }
 
@@ -87,12 +88,92 @@ namespace ActualChat.Audio.WebM
 
         public int Write(Guid value, int? position = null) => Write(value.ToByteArray(), position);
 
-        public int Write<T>(T value, int? position = null) where T : unmanaged
+        public int Write(short num, int? position = null)
         {
-            MemoryMarshal.Write(Span.Slice(position ?? Position), ref value);
+            const int numSize = sizeof(short);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteInt16BigEndian(span, num);
 
-            var length = Unsafe.SizeOf<T>();
-            return UpdatePosition(length, position);
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(ushort num, int? position = null)
+        {
+            const int numSize = sizeof(ushort);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteUInt16BigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(int num, int? position = null)
+        {
+            const int numSize = sizeof(int);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteInt32BigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(uint num, int? position = null)
+        {
+            const int numSize = sizeof(uint);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteUInt32BigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(long num, int? position = null)
+        {
+            const int numSize = sizeof(long);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteInt64BigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(ulong num, int? position = null)
+        {
+            const int numSize = sizeof(ulong);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteUInt64BigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(double num, int? position = null)
+        {
+            const int numSize = sizeof(double);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteDoubleBigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
+        }
+
+        public int Write(float num, int? position = null)
+        {
+            const int numSize = sizeof(float);
+            var start = position ?? Position;
+            var end = start + numSize;
+            var span = Span[start..end];
+            BinaryPrimitives.WriteSingleBigEndian(span, num);
+
+            return UpdatePosition(numSize, position);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

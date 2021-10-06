@@ -5,6 +5,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Playback.Module;
 
+/*
 public class PlaybackModule : HostModule
 {
     public PlaybackModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -20,3 +21,4 @@ public class PlaybackModule : HostModule
         var fusion = services.AddFusion();
     }
 }
+*/

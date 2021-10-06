@@ -3,6 +3,7 @@ using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
 using ActualChat.Hosting;
 using ActualChat.Redis;
+using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Connections;
@@ -86,6 +87,8 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddTransient<AudioHub>();
         services.AddSingleton<AudioStreamer>();
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
+        services.AddSingleton<AudioSourceStreamer>();
+        services.AddTransient<IAudioSourceStreamer>(c => c.GetRequiredService<AudioSourceStreamer>());
         services.AddSingleton<TranscriptStreamer>();
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
         services.AddSingleton<SourceAudioRecorder>();

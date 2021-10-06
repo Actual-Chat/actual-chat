@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using ActualChat.Blobs;
 using ActualChat.Chat;
 using ActualChat.Testing.Host;
+using ActualChat.Transcription;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication;
 using Stl.Time;
@@ -52,7 +53,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
             });
         var recordingSpec = new AudioRecord(
             "1",
-            new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         _ = sourceAudioRecorder.RecordSourceAudio(session,recordingSpec, channel.Reader, CancellationToken.None);
@@ -75,7 +76,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
-        var audioStreamer = sourceAudioProcessor.AudioStreamer;
+        var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
         var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
@@ -106,7 +107,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
-        var audioStreamer = sourceAudioProcessor.AudioStreamer;
+        var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var transcriptStreamer = sourceAudioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
@@ -137,25 +138,27 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var size = 0;
         // TODO(AK): we need to figure out how to notify consumers about new streamID - with new ChatEntry?
         var streamId = new StreamId(audioRecordId, 0);
-        var stream = await transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
-        await foreach (var message in stream.ReadAllAsync()) {
-            Out.WriteLine(message.Text);
-            size = message.TextOffset + message.Text.Length;
+        var updates = await transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
+        await foreach (var update in updates.ReadAllAsync()) {
+            if (update.UpdatedPart == null)
+                continue;
+            Out.WriteLine(update.UpdatedPart.Text);
+            size = (int) update.UpdatedPart.TextToTimeMap.SourceRange.Max;
         }
-
         return size;
     }
 
     private static async Task<int> ReadAudioData(
         AudioRecordId audioRecordId,
-        IAudioStreamer audioStreamer)
+        IAudioSourceStreamer audioStreamer)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var audioReader = await audioStreamer.GetAudioStream(streamId, CancellationToken.None);
+        var audioSource = await audioStreamer.GetAudioSource(streamId, CancellationToken.None);
+        var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
 
-        int sum = 0;
-        await foreach (BlobPart message in audioReader.ReadAllAsync())
-            sum += message.Data.Length;
+        int sum = header.Length;
+        await foreach (var audioFrame in audioSource)
+            sum += audioFrame.Data.Length;
 
         return sum;
     }
@@ -164,7 +167,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
     {
         var record = new AudioRecord(
             chatId,
-            new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var channel = Channel.CreateBounded<BlobPart>(

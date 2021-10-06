@@ -17,7 +17,7 @@ namespace ActualChat.Audio.Db
         {
             var audioRecording = modelBuilder.Entity<DbAudioRecord>();
             audioRecording
-                .Property(ar => ar.AudioCodec)
+                .Property(ar => ar.AudioCodecKind)
                 .HasConversion<string>();
             audioRecording
                 .HasMany(e => e.Segments)

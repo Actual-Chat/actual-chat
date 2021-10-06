@@ -27,7 +27,7 @@ namespace ActualChat.Transcription.IntegrationTests
             var transcriber = new GoogleTranscriber(_logger);
             var request = new TranscriptionRequest(
                 "123",
-                new AudioFormat { Codec = AudioCodec.Opus, ChannelCount = 1, SampleRate = 48_000 },
+                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
                 new TranscriptionOptions {
                     Language = "ru-RU",
                     IsDiarizationEnabled = false,
@@ -38,10 +38,12 @@ namespace ActualChat.Transcription.IntegrationTests
                 { SingleReader = true, SingleWriter = true });
 
             _ = ReadAudioFileSimulatingSpeech(fileName, channel.Writer);
+            var audioSourceProvider = new AudioSourceProvider();
+            var audioSource = await audioSourceProvider.ExtractMediaSource(channel, CancellationToken.None);
 
-            var transcriptResult = await transcriber.Transcribe(request, channel.Reader, CancellationToken.None);
-            await foreach (var speechFragment in transcriptResult.ReadAllAsync())
-                _logger.LogInformation(speechFragment.Text);
+            var updates = await transcriber.Transcribe(request, audioSource, CancellationToken.None);
+            await foreach (var update in updates.ReadAllAsync())
+                _logger.LogInformation(update?.UpdatedPart?.Text ?? "");
         }
 
         private async IAsyncEnumerable<Base64Encoded> ReadAudioFileSimulatingSpeech(string file)

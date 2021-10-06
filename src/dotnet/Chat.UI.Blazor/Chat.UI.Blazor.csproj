@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
-    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

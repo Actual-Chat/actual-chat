@@ -2,11 +2,13 @@ using System.Text.Json.Serialization;
 
 namespace ActualChat;
 
-[Serializable]
+[DataContract]
 public readonly struct Range<T> : IEquatable<Range<T>>
     where T : notnull
 {
+    [DataMember(Order = 0)]
     public T Start { get; } // Typically inclusive
+    [DataMember(Order = 1)]
     public T End { get; } // Typically exclusive
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsEmpty => EqualityComparer<T>.Default.Equals(Start, End);
