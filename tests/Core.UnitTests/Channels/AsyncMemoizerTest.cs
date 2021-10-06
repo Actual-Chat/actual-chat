@@ -62,22 +62,14 @@ namespace ActualChat.Core.UnitTests.Channels
 
         private async Task RunRangeTest<T>(IEnumerable<T> source)
         {
-            var cSource = Channel.CreateUnbounded<T>();
-            var memoizer = cSource.Memoize();
-            var copyTask = source.CopyTo(cSource, ChannelCompletionMode.CompleteAndPropagateError);
-
-            var channels = Enumerable.Range(0, 2)
-                .Select(_ => Channel.CreateUnbounded<T>())
-                .ToArray();
-            foreach (var channel in channels)
-                await memoizer.AddReplayTarget(channel);
-            await copyTask;
-            foreach (var channel in channels) {
-                // await channel.Reader.Completion;
-                var items = channel.ToAsyncEnumerable().ToEnumerable();
-                // var items = channel.Reader.ReadAllAsync().ToEnumerable();
+            var memo = source.ToAsyncEnumerable().Memoize();
+            var replays = Enumerable.Range(0, 2)
+                .Select(_ => memo.Replay());
+            foreach (var replay in replays) {
+                var items = replay.ToEnumerable();
                 items.Should().BeEquivalentTo(source);
             }
+            await memo.DistributeTask;
         }
     }
 }
