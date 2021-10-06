@@ -8,18 +8,12 @@
     <EntityFrameworkCoreNpgsqlVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreNpgsqlVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <BlazoriseVersion>0.9.4.*</BlazoriseVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.14-rc1</StlFusionVersion>
+    <StlFusionVersion>2.0.18-rc1</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.14" />
-    <PackageReference Update="Blazorise" Version="$(BlazoriseVersion)" />
-    <PackageReference Update="Blazorise.Bootstrap" Version="$(BlazoriseVersion)" />
-    <PackageReference Update="Blazorise.DataGrid" Version="$(BlazoriseVersion)" />
-    <PackageReference Update="Blazorise.Icons.FontAwesome" Version="$(BlazoriseVersion)" />
-    <PackageReference Update="Blazorise.Sidebar" Version="$(BlazoriseVersion)" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*" />
     <PackageReference Update="MessagePack" Version="2.3.*" />
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*" />
@@ -97,7 +91,7 @@
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20204-02" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
-    <PackageReference Update="Microsoft.Playwright" Version="1.14.1" />
+    <PackageReference Update="Microsoft.Playwright" Version="1.15.0" ExcludeAssets="buildTransitive" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.240" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="bunit" Version="1.2.49" />

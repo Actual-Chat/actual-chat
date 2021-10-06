@@ -1,7 +1,7 @@
+using System.Reflection;
 using System.Threading.Channels;
 using ActualChat.Channels;
 using Stl.Async;
-using Stl.Channels;
 using Stl.Testing;
 using Xunit.Abstractions;
 
@@ -12,7 +12,35 @@ namespace ActualChat.Core.UnitTests.Channels
         public AsyncMemoizerTest(ITestOutputHelper @out) : base(@out) { }
 
         [Fact]
-        public async Task MemoizeCompletedEmptyChannelTest()
+        public async Task SyncPointTest()
+        {
+            var cSource = Channel.CreateUnbounded<int>();
+            var memoizer = cSource.Reader.Memoize();
+            _ = cSource.Writer.WriteAsync(1);
+            (await memoizer.Replay().Take(1).CountAsync()).Should().Be(1);
+            _ = cSource.Writer.WriteAsync(2);
+            (await memoizer.Replay().Take(2).CountAsync()).Should().Be(2);
+
+            var take3Task = memoizer.Replay().Take(3).CountAsync();
+            await Task.Delay(100);
+            take3Task.IsCompleted.Should().BeFalse();
+            _ = cSource.Writer.WriteAsync(3);
+            (await take3Task).Should().Be(3);
+
+            // Check for targets removal
+            _ = cSource.Writer.WriteAsync(4);
+            // Let's wait when unused channels are definitely removed
+            await memoizer.Replay().Take(4).CountAsync();
+
+            var targets = (HashSet<ChannelWriter<int>>)
+                memoizer.GetType()
+                    .GetField("_targets", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(memoizer)!;
+            targets.Count.Should().Be(1);
+        }
+
+        [Fact]
+        public async Task CompletedEmptyChannelTest()
         {
             var tasks = Enumerable.Range(0, 1000).Select(async _ => {
                 var cSource = Channel.CreateUnbounded<int>();
@@ -33,7 +61,7 @@ namespace ActualChat.Core.UnitTests.Channels
         }
 
         [Fact]
-        public async Task MemoizeEmptyChannelTest()
+        public async Task EmptyChannelTest()
         {
             var tasks = Enumerable.Range(0, 1000).Select(async _ => {
                 var cSource = Channel.CreateUnbounded<int>();
@@ -69,7 +97,7 @@ namespace ActualChat.Core.UnitTests.Channels
                 var items = replay.ToEnumerable();
                 items.Should().BeEquivalentTo(source);
             }
-            await memo.DistributeTask;
+            await memo.WriteTask;
         }
     }
 }

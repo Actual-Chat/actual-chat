@@ -5,10 +5,6 @@ public static class AsyncEnumerableExt
     public static AsyncMemoizer<T> Memoize<T>(
         this IAsyncEnumerable<T> source,
         CancellationToken cancellationToken = default)
-        => new(source.GetAsyncEnumerator(cancellationToken), cancellationToken);
-    public static AsyncMemoizer<T> Memoize<T>(
-        this IAsyncEnumerator<T> source,
-        CancellationToken cancellationToken = default)
         => new(source, cancellationToken);
 
     public static async ValueTask<Option<T>> TryReadAsync<T>(

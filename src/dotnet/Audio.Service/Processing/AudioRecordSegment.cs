@@ -1,58 +1,41 @@
-using ActualChat.Audio.WebM;
-using ActualChat.Blobs;
-using ActualChat.Channels;
 
 namespace ActualChat.Audio.Processing;
 
 public sealed class AudioRecordSegment
 {
-    private readonly WebMDocumentBuilder _webMBuilder;
-    private readonly IReadOnlyList<AudioMetadataEntry> _metadata;
-    private readonly double _offset;
-    private readonly AsyncMemoizer<BlobPart> _memoizer;
+    private readonly Task<TimeSpan> _durationTask;
     private AudioStreamPart? _audioStreamPart;
 
-    public StreamId StreamId { get; }
     public int Index { get; }
+    public StreamId StreamId { get; }
     public AudioRecord AudioRecord { get; }
+    public AudioSource Source { get; }
+    public TimeSpan Offset { get; }
 
     public AudioRecordSegment(
         int index,
         AudioRecord audioRecord,
-        WebMDocumentBuilder webMBuilder,
-        IReadOnlyList<AudioMetadataEntry> metadata,
-        double offset,
-        ChannelReader<BlobPart> source)
+        AudioSource source,
+        TimeSpan offset,
+        Task<TimeSpan> durationTask)
     {
+        _durationTask = durationTask;
         Index = index;
+        StreamId = new StreamId(audioRecord.Id, index);
         AudioRecord = audioRecord;
-        StreamId = new StreamId(AudioRecord.Id, Index);
-        _webMBuilder = webMBuilder;
-        _metadata = metadata;
-        _offset = offset;
-        _memoizer = source.Memoize();
-    }
-
-    public async Task<ChannelReader<BlobPart>> GetAudioStream()
-    {
-        var channel = Channel.CreateUnbounded<BlobPart>(
-            new UnboundedChannelOptions {
-                SingleWriter = true
-            });
-        await _memoizer.AddReplayTarget(channel.Writer);
-        return channel.Reader;
+        Source = source;
+        Offset = offset;
     }
 
     public async Task<AudioStreamPart> GetAudioStreamPart()
     {
-        await _memoizer.DistributeTask;
+        var duration = await _durationTask.ConfigureAwait(false);
         return _audioStreamPart ??= new AudioStreamPart(
             Index,
             StreamId,
             AudioRecord,
-            _webMBuilder.ToDocument(),
-            _metadata,
-            _offset,
-            _metadata.Sum(md => md.Duration));
+            Source,
+            Offset,
+            duration);
     }
 }

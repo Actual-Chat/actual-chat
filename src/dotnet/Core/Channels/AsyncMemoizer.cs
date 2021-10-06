@@ -6,99 +6,99 @@ namespace ActualChat.Channels;
 public sealed class AsyncMemoizer<T>
 {
     private readonly IAsyncEnumerator<T> _source;
-    private readonly List<ChannelWriter<T>> _targets = new();
+    private readonly HashSet<ChannelWriter<T>> _targets = new();
     private readonly Channel<(ChannelWriter<T> Target, int CopiedItemCount)> _newTargets;
     private readonly ArrayBufferWriter<Result<T>> _bufferWriter;
     private volatile Buffer _buffer;
 
-    public Task FillBufferTask { get; }
-    public Task DistributeTask { get; }
+    public Task ReadTask { get; }
+    public Task WriteTask { get; }
 
-    public AsyncMemoizer(IAsyncEnumerator<T> source, CancellationToken cancellationToken)
+    public AsyncMemoizer(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
     {
-        _source = source;
+        _source = source.GetAsyncEnumerator(cancellationToken);
         _newTargets = Channel.CreateBounded<(ChannelWriter<T>, int)>(
             new BoundedChannelOptions(16) {
                 SingleReader = true,
             });
         _bufferWriter = new ArrayBufferWriter<Result<T>>(16);
         _buffer = new Buffer(_bufferWriter.WrittenMemory);
-        DistributeTask = Task.Run(() => Distribute(cancellationToken), cancellationToken);
-        FillBufferTask = Task.Run(() => FillBuffer(cancellationToken),cancellationToken);
+        WriteTask = Task.Run(() => Write(cancellationToken), cancellationToken);
+        ReadTask = Task.Run(() => Read(cancellationToken),cancellationToken);
     }
 
     public async IAsyncEnumerable<T> Replay(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions() {
-                SingleReader = true,
-                SingleWriter = true,
-            });
+        // AY: SingleWriter should be false!
+        var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions() { SingleReader = true });
         await AddReplayTarget(channel, cancellationToken).ConfigureAwait(false);
-        var reader = channel.Reader;
-        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        while (reader.TryRead(out var item))
-            yield return item;
+        try {
+            var reader = channel.Reader;
+            while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            while (reader.TryRead(out var item))
+                yield return item;
+        }
+        finally {
+            channel.Writer.TryComplete();
+        }
     }
 
     public async IAsyncEnumerable<T> Replay(
         int bufferSize,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // AY: SingleWriter should be false!
         var channel = bufferSize != int.MaxValue
-            ? Channel.CreateBounded<T>(new BoundedChannelOptions(bufferSize) {
-                SingleReader = true,
-                SingleWriter = true
-            })
-            : Channel.CreateUnbounded<T>(new UnboundedChannelOptions() {
-                SingleReader = true,
-                SingleWriter = true,
-            });
+            ? Channel.CreateBounded<T>(new BoundedChannelOptions(bufferSize) { SingleReader = true })
+            : Channel.CreateUnbounded<T>(new UnboundedChannelOptions() { SingleReader = true });
         await AddReplayTarget(channel, cancellationToken).ConfigureAwait(false);
-        var reader = channel.Reader;
-        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        while (reader.TryRead(out var item))
-            yield return item;
-    }
-
-    public async IAsyncEnumerable<T> Replay(
-        Func<Channel<T>> channelFactory,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var channel = channelFactory.Invoke();
-        await AddReplayTarget(channel, cancellationToken).ConfigureAwait(false);
-        var reader = channel.Reader;
-        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        while (reader.TryRead(out var item))
-            yield return item;
+        try {
+            var reader = channel.Reader;
+            while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            while (reader.TryRead(out var item))
+                yield return item;
+        }
+        finally {
+            channel.Writer.TryComplete();
+        }
     }
 
     public async Task AddReplayTarget(ChannelWriter<T> channel, CancellationToken cancellationToken = default)
     {
-        var skipCount = await _buffer.WriteTo(channel, 0, cancellationToken).ConfigureAwait(false);
+        var buffer = _buffer;
+        var skipCount = buffer.Items.Length;
+        var success = await buffer.TryCopyTo(channel, 0, cancellationToken).ConfigureAwait(false);
+        if (!success)
+            return;
         while (await _newTargets.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
         while (_newTargets.Writer.TryWrite((channel, skipCount)))
             return;
-        if (!DistributeTask.IsCompleted)
-            await DistributeTask.SuppressCancellation().ConfigureAwait(false);
-        await _buffer.WriteTo(channel, skipCount, cancellationToken).ConfigureAwait(false);
+        if (!WriteTask.IsCompleted)
+            await WriteTask.SuppressCancellation().ConfigureAwait(false);
+        await _buffer.TryCopyTo(channel, skipCount, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task FillBuffer(CancellationToken cancellationToken)
+    private async Task Read(CancellationToken cancellationToken)
     {
         try {
+            var readTask = _source.ReadResultAsync(cancellationToken);
             while (true) {
-                var result = await _source.ReadResultAsync(cancellationToken).ConfigureAwait(false);
+                var result = await readTask.ConfigureAwait(false);
                 var memory = _bufferWriter.GetMemory(8);
                 var index = 0;
                 memory.Span[index++] = result;
                 _bufferWriter.Advance(1);
+                readTask = _source.ReadResultAsync(cancellationToken);
                 while (!result.HasError && _bufferWriter.FreeCapacity > 0) {
-                    result = await _source.ReadResultAsync(cancellationToken).ConfigureAwait(false);
+                    if (!readTask.IsCompleted)
+                        break;
+                    result = await readTask; // Sync wait
                     memory.Span[index++] = result;
                     _bufferWriter.Advance(1);
+                    readTask = _source.ReadResultAsync(cancellationToken);
                 }
                 var newBuffer = new Buffer(_bufferWriter.WrittenMemory);
                 var oldBuffer = Interlocked.Exchange(ref _buffer, newBuffer);
@@ -109,11 +109,13 @@ public sealed class AsyncMemoizer<T>
         }
         finally {
             _newTargets.Writer.TryComplete();
+            await _source.DisposeAsync().ConfigureAwait(false);
         }
     }
 
-    private async Task Distribute(CancellationToken cancellationToken)
+    private async Task Write(CancellationToken cancellationToken)
     {
+        var closedTargets = new HashSet<ChannelWriter<T>>();
         var buffer = await SwitchToNewBuffer(null).ConfigureAwait(false);
         var newTargetReadTask = _newTargets.Reader.TryReadAsync(cancellationToken).AsTask();
         var hasMoreNewTargets = true;
@@ -130,8 +132,11 @@ public sealed class AsyncMemoizer<T>
 
             if (hasMoreNewTargets && newTargetReadTask!.IsCompleted) {
                 if ((await newTargetReadTask).IsSome(out var newTarget)) {
-                    await buffer.WriteTo(newTarget.Target, newTarget.CopiedItemCount, cancellationToken).ConfigureAwait(false);
-                    _targets.Add(newTarget.Target);
+                    var success = await buffer
+                        .TryCopyTo(newTarget.Target, newTarget.CopiedItemCount, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (success)
+                        _targets.Add(newTarget.Target);
                     newTargetReadTask = null;
                 }
                 else
@@ -145,10 +150,21 @@ public sealed class AsyncMemoizer<T>
             var newBuffer = _buffer;
             if (newBuffer == oldBuffer)
                 return newBuffer;
-            for (var i = skipCount; i < newBuffer.Items.Length; i++) {
-                var item = newBuffer.Items.Span[i];
-                foreach (var target in _targets)
-                    await target.WriteResultAsync(item, cancellationToken);
+            foreach (var target in _targets) {
+                try {
+                    for (var i = skipCount; i < newBuffer.Items.Length; i++) {
+                        var item = newBuffer.Items.Span[i];
+                        await target.WriteResultAsync(item, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (ChannelClosedException) {
+                    closedTargets.Add(target);
+                }
+            }
+            if (closedTargets.Count > 0) {
+                foreach (var closedTarget in closedTargets)
+                    _targets.Remove(closedTarget);
+                closedTargets.Clear();
             }
             return newBuffer;
         }
@@ -169,15 +185,20 @@ public sealed class AsyncMemoizer<T>
         public void MarkOutdated()
             => TaskSource.For(WhenOutdatedTask).TrySetResult(default);
 
-        public async ValueTask<int> WriteTo(
+        public async ValueTask<bool> TryCopyTo(
             ChannelWriter<T> channel,
             int skipCount,
             CancellationToken cancellationToken)
         {
-            var items = Items;
-            for (var i = skipCount; i < items.Length; i++)
-                await channel.WriteResultAsync(items.Span[i], cancellationToken).ConfigureAwait(false);
-            return items.Length;
+            try {
+                var items = Items;
+                for (var i = skipCount; i < items.Length; i++)
+                    await channel.WriteResultAsync(items.Span[i], cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+            catch (ChannelClosedException) {
+                return false;
+            }
         }
     }
 }

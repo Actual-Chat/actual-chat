@@ -129,6 +129,8 @@ namespace ActualChat.Audio.WebM
                     _spanReader.Position = beginPosition;
                     if (_spanReader.Position < _spanReader.Length)
                         _resume = true;
+                    else if (resume)
+                        _resume = true;
                     return false;
                 }
 

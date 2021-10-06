@@ -1,0 +1,25 @@
+/* Firefox */
+
+.chat-page .content {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.white') theme('colors.white');
+}
+
+/* Chrome, Edge, and Safari */
+
+.chat-page .content::-webkit-scrollbar {
+    @apply w-3;
+}
+
+.chat-page .content::-webkit-scrollbar-track {
+    background: theme('colors.white');
+}
+
+.chat-page .content::-webkit-scrollbar-thumb {
+    background-color: theme('colors.gray.800');
+    border-radius: 10px;
+    border: 3px solid theme('colors.white');
+}
+.chat-page .content:hover::-webkit-scrollbar-thumb {
+    background-color: theme('colors.gray.600');
+}

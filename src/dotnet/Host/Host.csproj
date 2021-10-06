@@ -22,7 +22,7 @@
     <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
     <ProjectReference Include="..\UI.Blazor.Host\UI.Blazor.Host.csproj" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <Content Update="Pages\_Host.cshtml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="$(ProjectDir)\Resources\**" CopyToOutputDirectory="PreserveNewest" LinkBase="Resources\" />

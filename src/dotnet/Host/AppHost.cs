@@ -1,16 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reactive;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using ActualChat.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration.Memory;
 using Stl.Async;
 
 namespace ActualChat.Host
@@ -29,7 +18,7 @@ namespace ActualChat.Host
 
         public virtual Task Build(CancellationToken cancellationToken = default)
         {
-            Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+            var webBuilder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
                 .ConfigureHostConfiguration(ConfigureHostConfiguration)
                 .ConfigureWebHostDefaults(builder => builder
                     .UseDefaultServiceProvider((ctx, options) => {
@@ -40,8 +29,9 @@ namespace ActualChat.Host
                     })
                     .UseStartup<Startup>()
                     .ConfigureServices(ConfigureAppServices)
-                )
-                .Build();
+                );
+
+            Host = webBuilder.Build();
             return Task.CompletedTask;
         }
 
@@ -49,7 +39,7 @@ namespace ActualChat.Host
         {
             var log = Host.Services.GetRequiredService<ILogger<AppHost>>();
 
-            async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<Unit> taskSource)
+            async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
             {
                 try {
                     log.LogInformation("{DbInitializer} started", dbInitializer.GetType().Name);
@@ -69,9 +59,9 @@ namespace ActualChat.Host
             }
 
             var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
-                .ToDictionary(i => i, i => TaskSource.New<Unit>(true));
+                .ToDictionary(i => i, i => TaskSource.New<bool>(runContinuationsAsynchronously: true));
             var initializeTasks = initializeTaskSources
-                .ToDictionary(kv => kv.Key, kv => (Task) kv.Value.Task);
+                .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
             foreach (var (dbInitializer, _) in initializeTasks) {
                 dbInitializer.ShouldRecreateDb = shouldRecreateDb;
                 dbInitializer.InitializeTasks = initializeTasks;
