@@ -1,5 +1,4 @@
 using System.Reflection;
-using ActualChat.Host.Internal;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -8,7 +7,6 @@ using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Stl.DependencyInjection;
-using Stl.Fusion;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
@@ -38,7 +36,6 @@ namespace ActualChat.Host.Module
 
             // Plugins (IPluginHost)
             services.AddSingleton(Plugins);
-            services.AddSingleton<HostPluginHelper>();
 
             // Fusion services
             services.AddSingleton(new Publisher.Options() { Id = Settings.PublisherId });

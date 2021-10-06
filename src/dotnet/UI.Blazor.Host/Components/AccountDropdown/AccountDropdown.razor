@@ -1,0 +1,101 @@
+@namespace ActualChat.UI.Blazor.Host
+
+@inject ClientAuthHelper _clientAuthHelper
+
+@{
+    var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+}
+
+<AuthorizeView>
+    <Authorized>
+        <div class="flex-shrink-0 flex">
+            <div class="flex items-center">
+                <div class="relative">
+                    <div class="relative">
+                        <div class="absolute bottom-0 left-0 w-48 rounded-md @(_isOpen ? "" : "hidden")">
+                            <div class="py-1 rounded-md bg-white shadow-lg mb-1 relative select-none">
+                                <span class="block px-4 py-2 text-sm text-gray-200 hover:bg-gray-50">Settings</span>
+                                <a @onclick="SignOut" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">Sign out</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button @onclick="() => _isOpen = !_isOpen" class="max-w-xs flex items-center text-sm rounded-full text-gray-50 outline-none">
+                            <img class="inline-block h-8 w-8 rounded-full" src="//www.gravatar.com/avatar/937b2a391ff886f3d41bf54606200234" alt="avatar">
+                            <div class="ml-3">
+                                <p class="text-sm leading-5 font-medium text-gray-50 opacity-75 hover:opacity-100">
+                                    @context.User.Identity.Name
+                                </p>
+                                <div class="flex flex-row items-center px-1">
+                                    <span class="rounded-full block w-2 h-2 mr-2 bg-green-500"></span>
+                                    <span class="text-gray-400 font-medium text-xs text-left leading-4 opacity-50 hover:opacity-100"><a href="#">Online</a></span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="flex-shrink-0 flex">
+            <div class="flex items-center">
+                <div class="relative">
+                    <div class="relative">
+                        <div class="absolute bottom-0 left-0 w-48 rounded-md @(_isOpen ? "" : "hidden")">
+                            <div class="py-1 rounded-md bg-white shadow-lg mb-1 relative">
+                                @foreach (var (name, displayName) in unusedAuthSchemas) {
+                                    <a @onclick="@(_ => SignIn(name))" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
+                                        Sign in with @displayName
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button @onclick="() => _isOpen = !_isOpen" class="inline-flex justify-center w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 text-gray-700 transition duration-150 ease-in-out bg-gray-50 border border-gray-300 rounded-md hover:text-gray-500 outline-none active:bg-gray-50 active:text-gray-800" type="button" aria-haspopup="true" aria-expanded="true" aria-controls="account-dropdown-items">
+                            <span>Sign in</span>
+                            <svg class="ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code{
+    private bool _isOpen = false;
+
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
+    private User User => AuthState.User;
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+
+    protected override async Task OnParametersSetAsync()
+        => AuthState = await AuthStateTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) {
+            // GetSchemas requires JS interop, so it can be called only at this point
+            AuthSchemas = await _clientAuthHelper.GetSchemas();
+            StateHasChanged();
+        }
+    }
+
+    public void SignOut()
+    {
+        _clientAuthHelper.SignOut();
+        _isOpen = false;
+    }
+
+    public void SignIn(string name)
+    {
+        _clientAuthHelper.SignIn(name);
+        _isOpen = false;
+    }
+
+}

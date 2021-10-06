@@ -1,0 +1,11 @@
+@namespace ActualChat.UI.Blazor
+@if (Error != null) {
+    <Error @key="@Error" Title="Update failed!" Dismissed="@Dismissed">@Error.Message</Error>
+}
+
+@code {
+    [Parameter]
+    public Exception? Error { get; set; }
+    [Parameter]
+    public EventCallback Dismissed { get; set; }
+}

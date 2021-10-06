@@ -1,25 +1,16 @@
-using System;
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 using ActualChat.Audio.Client.Module;
-using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Audio.UI.Blazor;
 using ActualChat.Chat.Client.Module;
-using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Chat.UI.Blazor;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
-using ActualChat.Users.UI.Blazor.Module;
+using ActualChat.Users.UI.Blazor;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
-using Stl.Collections;
-using Stl.Fusion;
-using Stl.Fusion.Client;
-using Stl.OS;
 using Stl.DependencyInjection;
+using Stl.Fusion.Client;
 using Stl.Plugins;
-using Stl.Text;
 
 namespace ActualChat.UI.Blazor.Host;
 
@@ -39,7 +30,6 @@ public static class Program
         // Logging
         var logging = builder.Logging;
         logging.SetMinimumLevel(LogLevel.Information);
-        // logging.AddFilter(typeof(App).Namespace, LogLevel.Information);
 
         // Other services shared with plugins
         services.AddSingleton(new HostInfo() {
@@ -77,7 +67,7 @@ public static class Program
             o.IsMessageLoggingEnabled = false;
         });
         fusionClient.ConfigureHttpClientFactory((c, name, o) => {
-            var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.InvariantCulture);
+            var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.Ordinal);
             var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
             o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
         });
