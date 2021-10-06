@@ -200,6 +200,22 @@ internal static class Program
             }
         });
 
+        Target("npm-install", async () => {
+            var nodeModulesDir = Path.Combine("src", "nodejs", "node_modules");
+            if (!Directory.Exists(nodeModulesDir)) {
+                var npm = TryFindCommandPath("npm")
+                    ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
+
+                await Cli
+                    .Wrap(npm)
+                    .WithArguments("ci")
+                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
+                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
+                    .ToConsole(Blue("npm install: "))
+                    .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
+            }
+        });
+
         Target("coverage", async () => {
             var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
             if (!Directory.Exists(resultsDirectory))
@@ -248,7 +264,7 @@ internal static class Program
             }
         });
 
-        Target("build", DependsOn("clean-dist"), async () => {
+        Target("build", DependsOn("clean-dist", "npm-install"), async () => {
             var npm = TryFindCommandPath("npm")
                 ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
 
@@ -270,7 +286,7 @@ internal static class Program
                     .ToConsole(Blue("webpack: "))
                     .ExecuteAsync(token).Task;
 
-                    await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
+                await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
             }
             finally {
                 if (!cts.IsCancellationRequested)
