@@ -12,6 +12,7 @@
     <PackageReference Include="CliWrap" />
     <PackageReference Include="System.CommandLine.DragonFruit" />
     <PackageReference Include="Crayon" />
+    <PackageReference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>
     <UpToDateCheckInput Condition="Exists('..\version.json')" Include="..\version.json" />
