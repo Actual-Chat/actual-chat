@@ -1,41 +1,50 @@
 using System.Threading.Channels;
 using ActualChat.Channels;
+using Stl.Async;
 using Stl.Channels;
 using Stl.Testing;
 using Xunit.Abstractions;
 
 namespace ActualChat.Core.UnitTests.Channels
 {
-    public class DistributorTest : TestBase
+    public class AsyncMemoizerTest : TestBase
     {
-        public DistributorTest(ITestOutputHelper @out) : base(@out)
-        { }
+        public AsyncMemoizerTest(ITestOutputHelper @out) : base(@out) { }
 
-        [Fact(Skip = "Fix deadlock first!")]
-        public async Task DistributeCompletedEmptyChannelTest()
+        [Fact]
+        public async Task MemoizeCompletedEmptyChannelTest()
         {
-            var tasks = Enumerable.Range(0, 10).Select(async _ => {
+            var tasks = Enumerable.Range(0, 1000).Select(async _ => {
                 var cSource = Channel.CreateUnbounded<int>();
                 cSource.Writer.Complete();
-                var distributor = cSource.Distribute();
+                var memoizer = cSource.Reader.Memoize();
                 var cTarget = Channel.CreateUnbounded<int>();
-                await distributor.AddTarget(cTarget).ConfigureAwait(false);
-                await cTarget.Reader.Completion.ConfigureAwait(false);
+                var success = await memoizer.AddReplayTarget(cTarget)
+                    .WithTimeout(TimeSpan.FromSeconds(5))
+                    .ConfigureAwait(false);
+                Assert.True(success);
+                success = await cTarget.Reader.Completion
+                    .WithTimeout(TimeSpan.FromSeconds(5))
+                    .ConfigureAwait(false);
+                Assert.True(success);
             }).ToArray();
             foreach (var task in tasks)
                 await task.ConfigureAwait(false);
         }
 
         [Fact]
-        public async Task DistributeEmptyChannelTest()
+        public async Task MemoizeEmptyChannelTest()
         {
-            var tasks = Enumerable.Range(0, 10).Select(async _ => {
+            var tasks = Enumerable.Range(0, 1000).Select(async _ => {
                 var cSource = Channel.CreateUnbounded<int>();
-                var distributor = cSource.Distribute();
+                var memoizer = cSource.Memoize();
                 var cTarget = Channel.CreateUnbounded<int>();
-                await distributor.AddTarget(cTarget).ConfigureAwait(false);
+                await memoizer.AddReplayTarget(cTarget).ConfigureAwait(false);
                 cSource.Writer.Complete();
-                await cTarget.Reader.Completion.ConfigureAwait(false);
+                var success = await cTarget.Reader.Completion
+                    .WithTimeout(TimeSpan.FromSeconds(5))
+                    .ConfigureAwait(false);
+                Assert.True(success);
             }).ToArray();
             foreach (var task in tasks)
                 await task.ConfigureAwait(false);
@@ -44,7 +53,7 @@ namespace ActualChat.Core.UnitTests.Channels
         [Fact]
         public async Task BasicTest()
         {
-            var tasks = Enumerable.Range(0, 50)
+            var tasks = Enumerable.Range(0, 100)
                 .Select(i => RunRangeTest(Enumerable.Range(0, i)))
                 .ToArray();
             foreach (var task in tasks)
@@ -54,14 +63,14 @@ namespace ActualChat.Core.UnitTests.Channels
         private async Task RunRangeTest<T>(IEnumerable<T> source)
         {
             var cSource = Channel.CreateUnbounded<T>();
-            var distributor = cSource.Distribute();
+            var memoizer = cSource.Memoize();
             var copyTask = source.CopyTo(cSource, ChannelCompletionMode.CompleteAndPropagateError);
 
             var channels = Enumerable.Range(0, 2)
                 .Select(_ => Channel.CreateUnbounded<T>())
                 .ToArray();
             foreach (var channel in channels)
-                await distributor.AddTarget(channel);
+                await memoizer.AddReplayTarget(channel);
             await copyTask;
             foreach (var channel in channels) {
                 // await channel.Reader.Completion;

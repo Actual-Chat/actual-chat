@@ -9,7 +9,7 @@ public sealed class AudioRecordSegment
     private readonly WebMDocumentBuilder _webMBuilder;
     private readonly IReadOnlyList<AudioMetadataEntry> _metadata;
     private readonly double _offset;
-    private readonly ChannelDistributor<BlobPart> _distributor;
+    private readonly AsyncMemoizer<BlobPart> _distributor;
     private AudioStreamPart? _audioStreamPart;
 
     public StreamId StreamId { get; }
@@ -30,7 +30,7 @@ public sealed class AudioRecordSegment
         _webMBuilder = webMBuilder;
         _metadata = metadata;
         _offset = offset;
-        _distributor = source.Distribute();
+        _distributor = source.Memoize();
     }
 
     public async Task<ChannelReader<BlobPart>> GetAudioStream()
@@ -39,7 +39,7 @@ public sealed class AudioRecordSegment
             new UnboundedChannelOptions {
                 SingleWriter = true
             });
-        await _distributor.AddTarget(channel.Writer);
+        await _distributor.AddReplayTarget(channel.Writer);
         return channel.Reader;
     }
 
