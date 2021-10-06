@@ -248,10 +248,35 @@ internal static class Program
             }
         });
 
-        Target("build", async () => {
-            await Cli.Wrap(dotnet).WithArguments($"build -noLogo -c {configuration}")
-                .ToConsole()
-                .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
+        Target("build", DependsOn("clean-dist"), async () => {
+            var npm = TryFindCommandPath("npm")
+                ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
+
+            // if one of process exits then close another on Cancel()
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var token = cts.Token;
+            try {
+                var dotnetTask = Cli
+                    .Wrap(dotnet)
+                    .WithArguments($"build -noLogo -c {configuration}")
+                    .ToConsole(Green("dotnet: "))
+                    .ExecuteAsync(token).Task;
+
+                var npmTask = Cli
+                    .Wrap(npm)
+                    .WithArguments($"run build:{configuration}")
+                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
+                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
+                    .ToConsole(Blue("webpack: "))
+                    .ExecuteAsync(token).Task;
+
+                    await Task.WhenAll(dotnetTask, npmTask).ConfigureAwait(false);
+            }
+            finally {
+                if (!cts.IsCancellationRequested)
+                    cts.Cancel();
+                cts.Dispose();
+            }
         });
 
         Target("restore", async () => {
