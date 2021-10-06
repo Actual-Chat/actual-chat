@@ -28,7 +28,7 @@ public static class AudioSourceHelper
         _ = Task.Run(()
             => TransformStreamingFrames(reader, channel, durationTaskSource, cancellationToken), cancellationToken);
 
-        return new AudioSource(format!, durationTaskSource.Task, channel.Distribute(CancellationToken.None));
+        return new AudioSource(format!, durationTaskSource.Task, channel.Memoize(CancellationToken.None));
     }
 
     private static async ValueTask TransformStreamingFrames(

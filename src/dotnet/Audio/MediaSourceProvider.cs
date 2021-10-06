@@ -28,13 +28,13 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 => TransformAudioDataToFrames(formatTaskSource, durationTaskSource, frameChannel.Writer, audioData, cancellationToken),
             cancellationToken);
 
-        return CreateMediaSource(formatTaskSource.Task, durationTaskSource.Task, frameChannel.Reader.Distribute(cancellationToken));
+        return CreateMediaSource(formatTaskSource.Task, durationTaskSource.Task, frameChannel.Reader.Memoize(cancellationToken));
     }
 
     protected abstract ValueTask<TMediaSource> CreateMediaSource(
         Task<TMediaFormat> formatTask,
         Task<TimeSpan> durationTask,
-        ChannelDistributor<TMediaFrame> framesDistributor);
+        AsyncMemoizer<TMediaFrame> framesMemoizer);
 
     protected abstract TMediaFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader);
 
