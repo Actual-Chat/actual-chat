@@ -154,8 +154,9 @@ public class SourceAudioProcessorTest : AppHostTestBase
     {
         var streamId = new StreamId(audioRecordId, 0);
         var audioSource = await audioStreamer.GetAudioSource(streamId, CancellationToken.None);
+        var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
 
-        int sum = 0;
+        int sum = header.Length;
         await foreach (var audioFrame in audioSource)
             sum += audioFrame.Data.Length;
 

@@ -37,6 +37,9 @@ namespace ActualChat.Audio.UnitTests
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
                 var audio = segment.Source;
+                var header = Convert.FromBase64String(audio.Format.CodecSettings);
+
+                size += header.Length;
                 size += await audio.SumAsync(audioMessage => audioMessage.Data.Length);
 
                 var part = await segment.GetAudioStreamPart();
@@ -73,6 +76,9 @@ namespace ActualChat.Audio.UnitTests
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
                 var audio = segment.Source;
+                var header = Convert.FromBase64String(audio.Format.CodecSettings);
+
+                size += header.Length;
                 size += await audio.SumAsync(p => p.Data.Length);
 
                 var part = await segment.GetAudioStreamPart();
