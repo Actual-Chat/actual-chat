@@ -16,19 +16,19 @@ namespace ActualChat.Core.UnitTests.Channels
         {
             var cSource = Channel.CreateUnbounded<int>();
             var memoizer = cSource.Reader.Memoize();
-            await cSource.Writer.WriteAsync(1);
+            _ = cSource.Writer.WriteAsync(1);
             (await memoizer.Replay().Take(1).CountAsync()).Should().Be(1);
-            await cSource.Writer.WriteAsync(2);
+            _ = cSource.Writer.WriteAsync(2);
             (await memoizer.Replay().Take(2).CountAsync()).Should().Be(2);
 
             var take3Task = memoizer.Replay().Take(3).CountAsync();
             await Task.Delay(100);
             take3Task.IsCompleted.Should().BeFalse();
-            await cSource.Writer.WriteAsync(3);
+            _ = cSource.Writer.WriteAsync(3);
             (await take3Task).Should().Be(3);
 
             // Check for targets removal
-            await cSource.Writer.WriteAsync(4);
+            _ = cSource.Writer.WriteAsync(4);
             // Let's wait when unused channels are definitely removed
             await memoizer.Replay().Take(4).CountAsync();
 
