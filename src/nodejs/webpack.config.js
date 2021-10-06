@@ -40,13 +40,13 @@ module.exports = (env, args) => {
     watchOptions: {
       aggregateTimeout: 50, // ms
       ignored: ['node_modules/**', outputPath + '/**'],
+      followSymlinks: false,
     },
     resolve: {
       extensions: ['.ts', '.js', '...'],
     },
-    devtool: false,
     // to enable ts debug uncomment the line below
-    //devtool: args.mode === 'development' ? 'source-map' : false,
+    devtool: args.mode === 'development' ? 'source-map' : false,
     // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
@@ -72,6 +72,10 @@ module.exports = (env, args) => {
               },
             }
           ], exclude: /node_modules/
+        },
+        {
+          test: /^\.d.ts$/,
+          loader: 'ignore-loader'
         },
         {
           test: /\.css$/i,

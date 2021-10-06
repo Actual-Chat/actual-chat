@@ -1,7 +1,6 @@
 {
   "include": [
     "./**/*.ts",
-    "./../dotnet/*Blazor*/exports.ts",
   ],
   "compilerOptions": {
     "alwaysStrict": true,
