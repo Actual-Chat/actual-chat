@@ -1,13 +1,12 @@
 namespace ActualChat.Transcription;
 
+[DataContract]
 public record TranscriptUpdate
 {
-    public double StartOffset { get; init; }
-    public double Duration { get; init; }
-    public string Text { get; init; } = "";
+    [DataMember(Order = 0)]
+    public Transcript? UpdatedPart { get; init; }
 
-    public int TextIndex { get; init; } = 0;
-    public string SpeakerId { get; init; } = "";
-    public double Confidence { get; init; } = 1;
-    public bool IsFinal { get; init; }
+    public TranscriptUpdate() { }
+    public TranscriptUpdate(Transcript? updatedPart)
+        => UpdatedPart = updatedPart;
 }

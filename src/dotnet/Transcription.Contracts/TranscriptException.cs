@@ -1,24 +1,14 @@
 namespace ActualChat.Transcription;
 
-public class TranscriptException : Exception
+public class TranscriptionException : Exception
 {
-    public TranscriptException(string? code, string? message) : base(message)
-    {
-        Code = code;
-    }
-
-    public TranscriptException() : base()
-    {
-    }
-
-    public TranscriptException(string? message) : base(message)
-    {
-    }
-
-    public TranscriptException(string? message, Exception? innerException) : base(message, innerException)
-    {
-    }
-
     public string? Code { get; init; }
 
+    public TranscriptionException(string? code, string? message) : base(message)
+        => Code = code;
+
+    public TranscriptionException() : base() { }
+    public TranscriptionException(string? message) : base(message) { }
+    public TranscriptionException(string? message, Exception? innerException) : base(message, innerException) { }
+    protected TranscriptionException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 }

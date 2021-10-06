@@ -39,9 +39,9 @@ namespace ActualChat.Transcription.IntegrationTests
 
             _ = ReadAudioFileSimulatingSpeech(fileName, channel.Writer);
 
-            var transcriptResult = await transcriber.Transcribe(request, channel.Reader, CancellationToken.None);
-            await foreach (var speechFragment in transcriptResult.ReadAllAsync())
-                _logger.LogInformation(speechFragment.Text);
+            var updates = await transcriber.Transcribe(request, channel.Reader, CancellationToken.None);
+            await foreach (var update in updates.ReadAllAsync())
+                _logger.LogInformation(update?.UpdatedPart?.Text ?? "");
         }
 
         private async IAsyncEnumerable<Base64Encoded> ReadAudioFileSimulatingSpeech(string file)

@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
+    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
   </ItemGroup>
 

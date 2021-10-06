@@ -20,7 +20,7 @@ public class AudioActivityExtractor
                 SingleWriter = true,
                 AllowSynchronousContinuations = true
             });
-        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, segments, cancellationToken), default);
+        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, segments.Writer, cancellationToken), default);
         return segments;
     }
 
@@ -30,6 +30,7 @@ public class AudioActivityExtractor
         ChannelWriter<AudioRecordSegment> target,
         CancellationToken cancellationToken)
     {
+        Exception? error = null;
         var segmentIndex = 0;
         var webmBuilder = new WebMDocumentBuilder();
         var metadata = new List<AudioMetadataEntry>();
@@ -53,10 +54,10 @@ public class AudioActivityExtractor
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
 
-                buffer.Slice(lastState.Position,remainingLength)
+                buffer.Slice(lastState.Position, remainingLength)
                     .CopyTo(buffer[..remainingLength]);
-                data.CopyTo(buffer[lastState.Remaining..]);
-                var dataLength = lastState.Remaining + data.Length;
+                data.CopyTo(buffer[remainingLength..]);
+                var dataLength = remainingLength + data.Length;
 
                 // TODO(AK): get actual duration\offset from Clusters\SimpleBlocks and fill metaData
                 var state = BuildWebMDocument(
@@ -77,9 +78,12 @@ public class AudioActivityExtractor
                 webmBuilder.AddCluster(cluster);
             }
         }
+        catch (Exception e) {
+            error = e;
+        }
         finally {
-            audioSource.Writer.Complete();
-            target.Complete();
+            audioSource.Writer.Complete(error);
+            target.Complete(error);
         }
     }
 
@@ -87,20 +91,24 @@ public class AudioActivityExtractor
     private WebMReader.State BuildWebMDocument(WebMReader webMReader, WebMDocumentBuilder builder)
     {
         while (webMReader.Read())
-            switch (webMReader.EbmlEntryType) {
-            case EbmlEntryType.None:
+            switch (webMReader.ReadResultKind) {
+            case WebMReadResultKind.None:
                 throw new InvalidOperationException();
-            case EbmlEntryType.Ebml:
+            case WebMReadResultKind.Ebml:
                 // TODO: add support of EBML Stream where multiple headers and segments can appear
-                builder.SetHeader((EBML)webMReader.Entry);
+                builder.SetHeader((EBML)webMReader.ReadResult);
                 break;
-            case EbmlEntryType.Segment:
-                webMReader.Entry.Complete();
-                builder.SetSegment((Segment)webMReader.Entry);
+            case WebMReadResultKind.Segment:
+                ((Segment)webMReader.ReadResult).Complete();
+                builder.SetSegment((Segment)webMReader.ReadResult);
                 break;
-            case EbmlEntryType.Cluster:
-                webMReader.Entry.Complete();
-                builder.AddCluster((Cluster)webMReader.Entry);
+            case WebMReadResultKind.CompleteCluster:
+                ((Cluster)webMReader.ReadResult).Complete();
+                builder.AddCluster((Cluster)webMReader.ReadResult);
+                break;
+            case WebMReadResultKind.Block:
+                break;
+            case WebMReadResultKind.BeginCluster:
                 break;
             default:
                 throw new NotSupportedException("Unsupported EbmlEntryType.");
