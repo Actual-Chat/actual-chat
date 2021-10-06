@@ -45,7 +45,7 @@ public sealed class AudioRecordSegment
 
     public async Task<AudioStreamPart> GetAudioStreamPart()
     {
-        await _memoizer.DistributeTask;
+        await _memoizer.WriteTask;
         return _audioStreamPart ??= new AudioStreamPart(
             Index,
             StreamId,
