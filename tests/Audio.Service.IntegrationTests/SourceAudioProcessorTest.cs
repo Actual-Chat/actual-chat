@@ -76,7 +76,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
-        var audioStreamer = sourceAudioProcessor.AudioStreamer;
+        var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
         var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
@@ -107,7 +107,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
-        var audioStreamer = sourceAudioProcessor.AudioStreamer;
+        var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var transcriptStreamer = sourceAudioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
@@ -150,14 +150,15 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
     private static async Task<int> ReadAudioData(
         AudioRecordId audioRecordId,
-        IAudioStreamer audioStreamer)
+        IAudioSourceStreamer audioStreamer)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var audioReader = await audioStreamer.GetAudioStream(streamId, CancellationToken.None);
+        var audioSource = await audioStreamer.GetAudioSource(streamId, CancellationToken.None);
+        var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
 
-        int sum = 0;
-        await foreach (BlobPart message in audioReader.ReadAllAsync())
-            sum += message.Data.Length;
+        int sum = header.Length;
+        await foreach (var audioFrame in audioSource)
+            sum += audioFrame.Data.Length;
 
         return sum;
     }
