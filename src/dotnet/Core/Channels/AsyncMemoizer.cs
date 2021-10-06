@@ -84,13 +84,14 @@ public sealed class AsyncMemoizer<T>
                 var index = 0;
                 memory.Span[index++] = result;
                 _bufferWriter.Advance(1);
+                readTask = _source.ReadResultAsync(cancellationToken);
                 while (!result.HasError && _bufferWriter.FreeCapacity > 0) {
-                    readTask = _source.ReadResultAsync(cancellationToken);
                     if (!readTask.IsCompleted)
                         break;
                     result = await readTask; // Sync wait
                     memory.Span[index++] = result;
                     _bufferWriter.Advance(1);
+                    readTask = _source.ReadResultAsync(cancellationToken);
                 }
                 var newBuffer = new Buffer(_bufferWriter.WrittenMemory);
                 var oldBuffer = Interlocked.Exchange(ref _buffer, newBuffer);
