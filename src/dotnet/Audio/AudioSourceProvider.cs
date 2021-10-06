@@ -1,13 +1,17 @@
 using ActualChat.Audio.WebM.Models;
+using ActualChat.Channels;
 
 namespace ActualChat.Audio;
 
 public class AudioSourceProvider : MediaSourceProvider<AudioSource, AudioFormat, AudioFrame>
 {
-    protected override async ValueTask<AudioSource> CreateMediaSource(Task<AudioFormat> formatTask, ChannelReader<AudioFrame> frameReader)
+    protected override async ValueTask<AudioSource> CreateMediaSource(
+        Task<AudioFormat> formatTask,
+        Task<TimeSpan> durationTask,
+        AsyncMemoizer<AudioFrame> framesMemoizer)
     {
         var format = await formatTask.ConfigureAwait(false);
-        return new AudioSource(format, frameReader.ReadAllAsync());
+        return new AudioSource(format, durationTask, framesMemoizer);
     }
 
     protected override AudioFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader)

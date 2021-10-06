@@ -38,8 +38,10 @@ namespace ActualChat.Transcription.IntegrationTests
                 { SingleReader = true, SingleWriter = true });
 
             _ = ReadAudioFileSimulatingSpeech(fileName, channel.Writer);
+            var audioSourceProvider = new AudioSourceProvider();
+            var audioSource = await audioSourceProvider.ExtractMediaSource(channel, CancellationToken.None);
 
-            var updates = await transcriber.Transcribe(request, channel.Reader, CancellationToken.None);
+            var updates = await transcriber.Transcribe(request, audioSource, CancellationToken.None);
             await foreach (var update in updates.ReadAllAsync())
                 _logger.LogInformation(update?.UpdatedPart?.Text ?? "");
         }

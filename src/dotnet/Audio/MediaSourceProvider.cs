@@ -2,6 +2,7 @@ using System.Buffers;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
+using ActualChat.Channels;
 using ActualChat.Media;
 
 namespace ActualChat.Audio;
@@ -22,21 +23,24 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         });
 
         var formatTaskSource = new TaskCompletionSource<TMediaFormat>();
+        var durationTaskSource = new TaskCompletionSource<TimeSpan>();
         _ = Task.Run(()
-                => TransformAudioDataToFrames(formatTaskSource, frameChannel.Writer, audioData, cancellationToken),
+                => TransformAudioDataToFrames(formatTaskSource, durationTaskSource, frameChannel.Writer, audioData, cancellationToken),
             cancellationToken);
 
-        return CreateMediaSource(formatTaskSource.Task, frameChannel.Reader);
+        return CreateMediaSource(formatTaskSource.Task, durationTaskSource.Task, frameChannel.Reader.Memoize(cancellationToken));
     }
 
     protected abstract ValueTask<TMediaSource> CreateMediaSource(
         Task<TMediaFormat> formatTask,
-        ChannelReader<TMediaFrame> frameReader);
+        Task<TimeSpan> durationTask,
+        AsyncMemoizer<TMediaFrame> framesMemoizer);
 
     protected abstract TMediaFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader);
 
     private async Task TransformAudioDataToFrames(
         TaskCompletionSource<TMediaFormat> formatTaskSource,
+        TaskCompletionSource<TimeSpan> durationTaskSource,
         ChannelWriter<TMediaFrame> writer,
         ChannelReader<BlobPart> audioData,
         CancellationToken cancellationToken)
@@ -74,13 +78,19 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         }
         finally {
             writer.TryComplete(error);
-            if (error != null)
+            if (error != null) {
                 formatTaskSource.SetException(error);
-            else if (!formatTaskSource.Task.IsCompleted)
-                formatTaskSource.SetCanceled(cancellationToken);
+                durationTaskSource.SetException(error);
+            }
+            else{
+                if (!formatTaskSource.Task.IsCompleted)
+                    formatTaskSource.SetCanceled(cancellationToken);
+                var durationWithoutLastBlock
+                    = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs));
+                durationTaskSource.SetResult(durationWithoutLastBlock);
+            }
         }
     }
-
 
     private WebMReader.State BuildAudioFrames(
         WebMReader webMReader,

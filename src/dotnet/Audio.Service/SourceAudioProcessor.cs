@@ -1,4 +1,3 @@
-using System.Text;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Transcription;
@@ -15,7 +14,7 @@ public class SourceAudioProcessor : BackgroundService
     public AudioSaver AudioSaver { get; }
     public SourceAudioRecorder SourceAudioRecorder { get; }
     public AudioActivityExtractor AudioActivityExtractor { get; }
-    public AudioStreamer AudioStreamer { get; }
+    public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
     public IServerSideChatService Chat { get; }
 
@@ -24,7 +23,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioSaver audioSaver,
         SourceAudioRecorder sourceAudioRecorder,
         AudioActivityExtractor audioActivityExtractor,
-        AudioStreamer audioStreamer,
+        AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
         IServerSideChatService chat,
         ILogger<SourceAudioProcessor> log)
@@ -34,7 +33,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioSaver = audioSaver;
         SourceAudioRecorder = sourceAudioRecorder;
         AudioActivityExtractor = audioActivityExtractor;
-        AudioStreamer = audioStreamer;
+        AudioSourceStreamer = audioSourceStreamer;
         TranscriptStreamer = transcriptStreamer;
         Chat = chat;
     }
@@ -46,8 +45,8 @@ public class SourceAudioProcessor : BackgroundService
 
         // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
         while (true) {
-            var record = await SourceAudioRecorder.DequeueSourceAudio(stoppingToken);
-            _ = ProcessSourceAudio(record!, stoppingToken);
+            var record = await SourceAudioRecorder.DequeueSourceAudio(stoppingToken).ConfigureAwait(false);
+            _ = ProcessSourceAudio(record, stoppingToken);
         }
     }
 
@@ -108,8 +107,8 @@ public class SourceAudioProcessor : BackgroundService
                 IsPunctuationEnabled = true,
                 MaxSpeakerCount = 1,
             });
-        var audioStream = await segment.GetAudioStream().ConfigureAwait(false);
-        var updates = await Transcriber.Transcribe(request, audioStream, cancellationToken).ConfigureAwait(false);
+        var audioSource = segment.Source;
+        var updates = await Transcriber.Transcribe(request, audioSource, cancellationToken).ConfigureAwait(false);
 
         Exception? error = null;
         try {
@@ -159,5 +158,5 @@ public class SourceAudioProcessor : BackgroundService
     }
 
     private async Task PublishAudioStream(AudioRecordSegment segment, CancellationToken cancellationToken)
-        => await AudioStreamer.PublishAudioStream(segment.StreamId, await segment.GetAudioStream(), cancellationToken).ConfigureAwait(false);
+        => await AudioSourceStreamer.PublishAudioSource(segment.StreamId, segment.Source, cancellationToken).ConfigureAwait(false);
 }

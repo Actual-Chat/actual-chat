@@ -36,12 +36,15 @@ namespace ActualChat.Audio.UnitTests
             await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                var audio = await segment.GetAudioStream();
-                size += await audio.ReadAllAsync().SumAsync(audioMessage => audioMessage.Data.Length);
+                var audio = segment.Source;
+                var header = Convert.FromBase64String(audio.Format.CodecSettings);
+
+                size += header.Length;
+                size += await audio.SumAsync(audioMessage => audioMessage.Data.Length);
 
                 var part = await segment.GetAudioStreamPart();
-                part.Document.Should().NotBeNull();
-                part.Metadata.Count.Should().BeGreaterThan(0);
+                part.AudioSource.Should().NotBeNull();
+                part.Duration.Should().BeGreaterThan(TimeSpan.Zero);
             }
 
             var bytesRead = await readTask;
@@ -72,14 +75,15 @@ namespace ActualChat.Audio.UnitTests
             await foreach (var segment in segments.ReadAllAsync()) {
                 segment.Index.Should().Be(0);
                 segment.AudioRecord.Should().Be(record);
-                var audio = await segment.GetAudioStream();
-                size += await audio
-                    .ReadAllAsync()
-                    .SumAsync(p => p.Data.Length);
+                var audio = segment.Source;
+                var header = Convert.FromBase64String(audio.Format.CodecSettings);
+
+                size += header.Length;
+                size += await audio.SumAsync(p => p.Data.Length);
 
                 var part = await segment.GetAudioStreamPart();
-                part.Document.Should().NotBeNull();
-                part.Metadata.Count.Should().BeGreaterThan(0);
+                part.AudioSource.Should().NotBeNull();
+                part.Duration.Should().BeGreaterThan(TimeSpan.Zero);
             }
 
             var bytesRead = await readTask;
@@ -111,8 +115,8 @@ namespace ActualChat.Audio.UnitTests
                 segment.AudioRecord.Should().Be(record);
 
                 var part = await segment.GetAudioStreamPart();
-                part.Document.Should().NotBeNull();
-                part.Metadata.Count.Should().BeGreaterThan(0);
+                part.AudioSource.Should().NotBeNull();
+                part.Duration.Should().BeGreaterThan(TimeSpan.Zero);
             }
         }
 
