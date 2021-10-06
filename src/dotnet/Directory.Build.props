@@ -17,6 +17,10 @@
     <GenerateDocumentationFile >true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
+     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
