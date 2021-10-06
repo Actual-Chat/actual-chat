@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
-using System.Runtime.Versioning;
 using System.Text;
 using System.Text.RegularExpressions;
 using Bullseye;
@@ -11,6 +10,7 @@ using CliWrap.Buffered;
 using Crayon;
 using static Build.CliWrapCommandExtensions;
 using static Build.WinApi;
+using static Build.Windows;
 using static Bullseye.Targets;
 using static Crayon.Output;
 
@@ -90,51 +90,90 @@ internal static class Program
             const string pipeName = "buildstep-watch";
             // if one of process exits then close another on Cancel()
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            Process process = new();
+            // cliwrap doesn't kill childs of the process..
+            // https://github.com/Tyrrrz/CliWrap/blob/49f34ad145501da2d5381058a9ab8d336e788511/CliWrap/Utils/Polyfills.cs#L117
+            using Process dotnetProcess = new();
+            using Process npmProcess = new();
             try {
                 // any other than `dotnet watch run` command will use legacy ho-reload behavior (profile), so it's better to use the default watch running args
                 // CliWrap doesn't give us process object, which is needed for the workaround of https://github.com/dotnet/aspnetcore/issues/37190
 
-                var psi = new ProcessStartInfo("cmd.exe", $"/c \"title watch && set ASPNETCORE_ENVIRONMENT=Development && dotnet watch -v run\" >\\\\.\\pipe\\{pipeName}") {
+                var psiDotnet = new ProcessStartInfo("cmd.exe", $"/c \"title watch && set ASPNETCORE_ENVIRONMENT=Development && dotnet watch -v run\" >\\\\.\\pipe\\{pipeName}") {
                     UseShellExecute = true,
                     // ConsoleKey event doesn't work with a nointeractive window, so we have to hide the window after process start
                     WindowStyle = ProcessWindowStyle.Normal,
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetFullPath(Path.Combine("src", "dotnet", "Host")),
                 };
-
-
-                process.StartInfo = psi;
-                _ = ReadNamedPipeAsync(process, pipeName, cts.Token);
-                process.Start();
-                if (process.HasExited) {
+                dotnetProcess.StartInfo = psiDotnet;
+                _ = ReadNamedPipeAsync(dotnetProcess, pipeName, cts.Token);
+                dotnetProcess.Start();
+                if (dotnetProcess.HasExited) {
                     throw new WithoutStackException("Can't start dotnet watch");
                 }
-                _ = ShowWindow(process.MainWindowHandle, SW_HIDE);
-                _ = Task.Delay(500).ContinueWith(t => _ = ShowWindow(process.MainWindowHandle, SW_HIDE));
+                _ = ShowWindow(dotnetProcess.MainWindowHandle, SW_HIDE);
+                _ = Task.Delay(500).ContinueWith(t => _ = ShowWindow(dotnetProcess.MainWindowHandle, SW_HIDE));
 
-                Task dotnetWatch = process.WaitForExitAsync(cts.Token);
-                var npmWatch = Cli.Wrap(npm)
-                    .WithArguments("run watch")
-                    .WithWorkingDirectory(Path.Combine("src", "nodejs"))
-                    .WithEnvironmentVariables(new Dictionary<string, string?>(1) { ["CI"] = "true" })
-                    .ToConsole(Blue("webpack: "))
-                    .ExecuteAsync(cts.Token);
+                var psiNpm = new ProcessStartInfo(npm, "run watch") {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetFullPath(Path.Combine("src", "nodejs")),
+                };
+                psiNpm.EnvironmentVariables.Add("CI", "true");
+                npmProcess.StartInfo = psiNpm;
+                npmProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => {
+                    if (e?.Data == null)
+                        return;
+                    Console.WriteLine(Blue("webpack: ") + e.Data);
+                };
+                npmProcess.ErrorDataReceived += (object sender, DataReceivedEventArgs e) => {
+                    if (e?.Data == null)
+                        return;
+                    Console.WriteLine(Blue("webpack: ") + Red(e.Data));
+                };
+                npmProcess.Start();
+                if (npmProcess.HasExited) {
+                    throw new WithoutStackException("Can't start webpack watch");
+                }
+                npmProcess.BeginErrorReadLine();
+                npmProcess.BeginOutputReadLine();
 
-                await Task.WhenAny(dotnetWatch, npmWatch.Task).ConfigureAwait(false);
+                var npmTask = npmProcess.WaitForExitAsync(cts.Token);
+                var dotnetTask = dotnetProcess.WaitForExitAsync(cts.Token);
+                await Task.WhenAny(npmTask, dotnetTask).ConfigureAwait(false);
             }
             finally {
+                KillProcessTree(dotnetProcess);
+                KillProcessTree(npmProcess);
                 if (!cts.IsCancellationRequested)
                     cts.Cancel();
-                if (!process.HasExited && process.Id != 0) {
-                    try {
-                        process.Kill(entireProcessTree: true);
-                    }
-                    catch { }
-                }
+
                 cts.Dispose();
             }
             Console.WriteLine(Yellow("The watching is over"));
+
+            /// <seealso cref="Process.Kill(bool)"/> doesn't kill all child processes of npm.bat, this is workaround of that
+            static void KillProcessTree(Process process)
+            {
+                if (!process.HasExited && process.Id != 0) {
+                    try {
+                        var childs = GetChildProcesses((uint)process.Id);
+                        process.Kill(entireProcessTree: true);
+                        foreach (var child in childs) {
+                            try {
+                                var childProcess = Process.GetProcessById((int)child.ProcessId);
+                                if (childProcess.Id != 0 && !childProcess.HasExited) {
+                                    childProcess.Kill(entireProcessTree: true);
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+                }
+            }
         });
 
         ///<summary> the part of workaround of <see href="https://github.com/dotnet/aspnetcore/issues/37190" /> </summary>
@@ -437,20 +476,4 @@ internal class WithoutStackException : Exception
     protected WithoutStackException(SerializationInfo info, StreamingContext context) : base(info, context)
     {
     }
-}
-
-internal static class WinApi
-{
-    public const uint WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101, SW_HIDE = 0x0;
-    public const nuint VK_A = 0x41, VK_RETURN = 0x0D;
-
-    [DllImport("User32", ExactSpelling = true, EntryPoint = "PostMessageW", SetLastError = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [SupportedOSPlatform("windows5.0")]
-    public static extern int PostMessage(IntPtr hWnd, uint Msg, nuint wParam, nuint lParam);
-
-    [DllImport("User32", ExactSpelling = true)]
-    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [SupportedOSPlatform("windows5.0")]
-    internal static extern int ShowWindow(IntPtr hWnd, uint nCmdShow);
 }
