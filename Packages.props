@@ -9,7 +9,7 @@
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.14-rc1</StlFusionVersion>
+    <StlFusionVersion>2.0.18-rc1</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
