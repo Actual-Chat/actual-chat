@@ -7,13 +7,14 @@ namespace ActualChat.Chat
         public long Version { get; init; }
         public UserId AuthorId { get; init; }
         public Moment BeginsAt { get; init; }
-        public Moment EndsAt { get; init; }
+        public Moment? EndsAt { get; init; }
         public ChatContentType ContentType { get; init; }
         public string Content { get; init; } = "";
         public StreamId StreamId { get; init; } = "";
 
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-        public double Duration => (EndsAt - BeginsAt).TotalSeconds;
+        public double? Duration
+            => EndsAt == null ? null : (EndsAt.Value - BeginsAt).TotalSeconds;
         [JsonIgnore, Newtonsoft.Json.JsonIgnore]
         public bool IsStreaming => !StreamId.IsNone;
 
