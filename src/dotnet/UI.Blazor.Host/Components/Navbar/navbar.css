@@ -1,0 +1,3 @@
+#navbar-toggle:checked~#navbar-links {
+    @apply translate-x-0;
+}

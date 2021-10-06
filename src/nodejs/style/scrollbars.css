@@ -1,0 +1,25 @@
+/* Firefox */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.gray.700') theme('colors.gray.800');
+}
+
+/* Chrome, Edge, and Safari */
+
+*::-webkit-scrollbar {
+    @apply w-3;
+}
+
+*::-webkit-scrollbar-track {
+    background: theme('colors.gray.800');
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: theme('colors.gray.700');
+    border-radius: 10px;
+    border: 3px solid theme('colors.gray.800');
+}
+*:hover::-webkit-scrollbar-thumb {
+    background-color: theme('colors.gray.500');
+}

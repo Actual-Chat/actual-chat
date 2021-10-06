@@ -1,0 +1,120 @@
+@page "/chat"
+@page "/chat/{ChatId}"
+@namespace ActualChat.Chat.UI.Blazor
+@using ActualChat.Comparison
+@using ActualChat.Audio.UI.Blazor
+@using Stl.Mathematics
+@using ActualChat.Chat.UI.Blazor.Services
+@inherits ComputedStateComponent<ChatPageModel>
+@inject ChatPageService _service
+@inject IChatService _chats
+@inject Session _session
+@inject UICommandRunner _cmd
+@inject NavigationManager _nav
+@inject ILogger<ChatPage> _log
+
+@{
+    var error = State.Error;
+    var model = State.LatestNonErrorValue;
+    if (model.IsUnavailable)
+        _nav.Unavailable("chat");
+    if (model.MustLogin)
+        _nav.Login("to view this chat");
+    var chat = model.Chat ?? new();
+}
+
+<div class="chat-page h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
+    <div class="header flex flex-row justify-between mt-0 font-medium bg-gray-800 text-gray-200 p-3 select-none">
+        <div class="opacity-75 hover:opacity-100">
+            @("#"+chat.Title.NullIfEmpty() ?? "Loading...")
+        </div>
+        <div class="mr-2">
+            <AudioPlayer StreamId="@LastStreamId"></AudioPlayer>
+            <WhenError Error="@error"/>
+        </div>
+    </div>
+    <div class="content flex-1 flex flex-col overflow-y-auto bg-white p-3">
+        <VirtualList
+            SpacerSize="6000" LoadZoneSize="2000" BufferZoneSize="4000"
+            Provider="GetMessages"
+            KeyComparer="LongAsStringKeyComparer.Default">
+            <Item>
+                <ChatMessage Entry="@context.Value" OnListen="@OnListen"/>
+            </Item>
+        </VirtualList>
+    </div>
+    <div class="footer flex sticky m-0">
+        <ChatMessageEditor ChatId="@chat.Id"/>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    public string? LastStreamId { get; set; } = "";
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (ChatId.IsNullOrEmpty())
+            _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
+        return base.OnParametersSetAsync();
+    }
+
+    protected override Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
+        => _service.GetChatPageModel(_session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
+
+    private async Task<VirtualListResponse<ChatEntry>> GetMessages(VirtualListQuery query, CancellationToken cancellationToken)
+    {
+        var model = await _service.GetChatPageModel(_session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
+        var chatId = model.Chat?.Id ?? default;
+        if (chatId.IsNone)
+            return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
+
+        var idLogCover = ChatConstants.IdLogCover;
+        var range = await _chats.GetIdRange(_session, chatId.Value, cancellationToken);
+        if (query.IncludedRange == default) {
+            query = query with {
+                IncludedRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())
+            };
+        }
+
+        var startId = long.Parse(query.IncludedRange.Start);
+        if (query.ExpandStartBy > 0)
+            startId -= (long) query.ExpandStartBy;
+        startId = MathExt.Max(range.Start, startId);
+
+        var endId = long.Parse(query.IncludedRange.End);
+        if (query.ExpandEndBy > 0)
+            endId += (long) query.ExpandEndBy;
+        endId = MathExt.Min(range.End, endId);
+
+        var ranges = idLogCover.GetTileCover((startId, endId + 1));
+        var entryLists = await Task.WhenAll(
+            ranges.Select(r => _chats.GetEntries(_session, chatId.Value, r, cancellationToken)));
+
+        // temp dirty hack
+        // LastStreamId = entryLists
+        //     .SelectMany(e => e)
+        //     .LastOrDefault(e => e.IsStreaming)?
+        //     .StreamId;
+        // StateHasChanged();
+
+        var result = VirtualListResponse.New(
+            entryLists.SelectMany(entries => entries),
+            entry => entry.Id.ToString(),
+            startId == range.Start,
+            endId == range.End);
+        return result;
+    }
+
+    private void OnListen(string streamId)
+    {
+        LastStreamId = null;
+
+        LastStreamId = streamId;
+
+        StateHasChanged();
+    }
+
+}

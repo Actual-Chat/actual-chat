@@ -1,13 +1,12 @@
-﻿@page "/"
+@page "/"
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.Host.Pages
-@using ActualChat.Host.Internal
 @using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
+@using ActualChat.UI.Blazor.Host
 @inject IServiceProvider _services
 @inject ServerAuthHelper _serverAuthHelper
-@inject HostPluginHelper _hostPluginHelper
 @inject HostSettings _hostSettings
 @inject BlazorCircuitContext _blazorCircuitContext
 @{
@@ -17,6 +16,8 @@
     var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = _serverAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     Layout = null;
+    // TODO: add HeadOutlet component (to edit <head>)
+    // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
 }
 
 <!DOCTYPE html>
@@ -26,11 +27,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <title>Actual Chat</title>
     <base href="~/"/>
-    <link href="css/app.css" rel="stylesheet"/>
-    @foreach (var styleSheetPath in _hostPluginHelper.CssUrls) {
-        <link href="@styleSheetPath" rel="stylesheet"/>
-    }
-    <partial name="Blazorise.Head"/>
+    <link href="/dist/bundle.css" rel="stylesheet"/>
     <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
     <script>
         window.FusionAuth.schemas = "@authSchemas";
@@ -38,7 +35,36 @@
     </script>
 </head>
 <body>
-@if (isCloseWindowRequest) {
+<div id="blazor-error-ui" class="hidden fixed inset-x-0 mt-12" style="z-index:100000;">
+    <div class="flex w-full justify-center">
+        <div class="flex flex-1 max-w-3xl bg-red-100 shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+            <div class="bg-red-500 w-16 text-white justify-center flex items-center">
+                <i class="fa fa-2x fa-exclamation-triangle"></i>
+            </div>
+            <div class="h-full flex-1 flex border-r-8 border-red-500">
+                <div class="flex-1 px-4 py-2 break-words">
+                    <p class="text-grey-dark font-bold">Error</p>
+                    <p class="text-grey-dark">
+                        <environment include="Staging,Production">
+                            An error has occurred. This application may no longer respond until reloaded.
+                        </environment>
+                        <environment include="Development">
+                            An unhandled exception has occurred. See browser dev tools for details.
+                        </environment>
+                    </p>
+                </div>
+                <div class="flex-col w-8 items-start mx-auto pt-2 px-1 text-right text-grey-dark ml-3 mr-1">
+                    <i class="block dismiss cursor-pointer fa fa-times fa-fw"></i>
+                    <i class="reload block cursor-pointer fa fa-repeat fa-fw"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@if (isCloseWindowRequest)
+{
     <script>
         setTimeout(function () {
             window.close();
@@ -47,28 +73,47 @@
     <div class="alert alert-primary">
         @(closeWindowFlowName) completed, you can close this window.
     </div>
-} else {
-    <app id="app">
+}
+else
+{
+    <app id="app" class="flex flex-col h-screen" >
         @(await Html.RenderApp(_services, HttpContext))
+        @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
-    <div id="blazor-error-ui">
-        <environment include="Staging,Production">
-            An error has occurred. This application may no longer respond until reloaded.
-        </environment>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.js" integrity="sha384-jIP8x04pGV2+EJ4CazrWXBB4PQcrVXziBPF+ooznA+Q3958AOH7HXOBXx6A6Zpw1" crossorigin="anonymous"></script>
+    <script src="/dist/bundle.js"></script>
+    @if(isServerSideBlazor)
+    {
+        <script src="_framework/blazor.server.js" autostart="false"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Blazor.start({
+                    reconnectionOptions: {
+                        maxRetries: 60,
+                        retryIntervalMilliseconds: 2000
+                    }
+                });
+            });
+        </script>
         <environment include="Development">
-            An unhandled exception has occurred. See browser dev tools for details.
+        <script>
+            document.addEventListener('readystatechange', event => {
+                if (event.target.readyState === 'complete'){
+                    @* https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Platform/Circuits/DefaultReconnectionHandler.ts *@
+                    Blazor.defaultReconnectionHandler.onConnectionDown = function () {
+                        console.warn("[onConnectionDown]: Can't reconnect to restore state, force reload after 5 sec.");
+                        setTimeout(function () {location.reload(); }, 5000);
+                    }
+                }
+            });
+        </script>
         </environment>
-        <a href="" class="reload">Reload</a>
-        <a class="dismiss">🗙</a>
-    </div>
-
-    <partial name="Blazorise.Body"/>
-    @foreach (var scriptPath in _hostPluginHelper.ScriptUrls) {
-        <script type="module" src="@scriptPath"></script>
     }
-    <script type="module" src="./js/app.js"></script>
-    <script src="_framework/blazor.@(isServerSideBlazor ? "server" : "webassembly").js"></script>
+    else
+    {
+        <script src="_framework/blazor.webassembly.js"></script>
+    }
 }
 </body>
 </html>

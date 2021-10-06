@@ -1,13 +1,18 @@
 using System.Collections.Immutable;
+using System.Linq;
 using ActualChat.Audio.Client.Module;
-using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Audio.Module;
 using ActualChat.Chat.Client.Module;
-using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Chat.Module;
+using ActualChat.Db.Module;
 using ActualChat.Host.Module;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Module;
+using ActualChat.Module;
+using ActualChat.Transcription.Module;
+using ActualChat.UI.Blazor.Host;
 using ActualChat.Users.Client.Module;
-using ActualChat.Users.UI.Blazor.Module;
+using ActualChat.Users.Module;
+using ActualChat.Users.Client.Module;
 using ActualChat.Web.Module;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -35,14 +40,8 @@ namespace ActualChat.Host
             services.AddLogging(logging => {
                 logging.ClearProviders();
                 logging.AddConsole();
-                logging.SetMinimumLevel(LogLevel.Warning);
-                if (Env.IsDevelopment()) {
-                    logging.AddFilter(typeof(Constants).Namespace, LogLevel.Information);
-                    logging.AddFilter("Microsoft.AspNetCore.Hosting", LogLevel.Information);
-                    // logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Transaction", LogLevel.Debug);
-                    logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Information);
-                    logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
-                }
+                logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information :LogLevel.Warning);
+                // use appsettings*.json to configure logging filters
             });
 
             // HostInfo

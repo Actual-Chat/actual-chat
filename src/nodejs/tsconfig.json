@@ -1,0 +1,38 @@
+{
+  "include": [
+    "./**/*.ts",
+    "./../dotnet/*Blazor*/exports.ts",
+  ],
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "moduleResolution": "node",
+    "newLine": "lf",
+    "charset": "utf-8",
+    "emitBOM": false,
+    "noEmitOnError": true,
+    // change to true (?)
+    "noImplicitAny": false,
+    // change to false (?)
+    "allowJs": true,
+    "checkJs": true,
+    "sourceMap": true,
+    /* Basic Options */
+    "target": "es2015", /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
+    "module": "es2015", /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'. */
+    "lib": [
+      "dom",
+      "es6",
+      "es2017",
+      "es2018"
+    ],
+    "typeRoots": [
+      "./node_modules/@types/",
+    ],
+    "baseUrl": "../dotnet/",
+    "paths": {
+      "@blazor/*": [
+        "blazor__*"
+      ],
+    }
+  }
+}
