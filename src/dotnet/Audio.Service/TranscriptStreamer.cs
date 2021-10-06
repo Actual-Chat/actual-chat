@@ -1,4 +1,5 @@
 using ActualChat.Redis;
+using ActualChat.Transcription;
 
 namespace ActualChat.Audio;
 
@@ -15,15 +16,15 @@ public class TranscriptStreamer : ITranscriptStreamer
         _redisDb = rootRedisDb.WithKeyPrefix("transcripts");
     }
 
-    public Task PublishTranscriptStream(StreamId streamId, ChannelReader<TranscriptPart> channel, CancellationToken cancellationToken)
+    public Task PublishTranscriptStream(StreamId streamId, ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<TranscriptPart>(streamId);
-        return streamer.Write(channel, cancellationToken);
+        var streamer = _redisDb.GetStreamer<TranscriptUpdate>(streamId);
+        return streamer.Write(transcriptUpdates, cancellationToken);
     }
 
-    public Task<ChannelReader<TranscriptPart>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
+    public Task<ChannelReader<TranscriptUpdate>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<TranscriptPart>(streamId);
+        var streamer = _redisDb.GetStreamer<TranscriptUpdate>(streamId);
         return Task.FromResult(streamer.Read(cancellationToken));
     }
 }

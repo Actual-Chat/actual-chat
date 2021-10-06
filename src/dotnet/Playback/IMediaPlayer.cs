@@ -2,19 +2,16 @@ using ActualChat.Media;
 
 namespace ActualChat.Playback;
 
-public interface IMediaPlayer<TMediaChannel, TMediaFormat, TMediaFrame> : IAsyncDisposable
-    where TMediaFormat : notnull
-    where TMediaChannel : MediaChannel<TMediaFormat, TMediaFrame>
-    where TMediaFrame : MediaFrame
+public interface IMediaPlayer : IAsyncDisposable
 {
-    Task Play(Symbol playId, ChannelReader<TMediaChannel> source, CancellationToken cancellationToken);
+    Task Play(IAsyncEnumerable<MediaTrack> tracks, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<TMediaFrame?> GetPlayingMediaFrame(
-        Symbol playId, Symbol channelId,
+    Task<PlayingMediaFrame?> GetPlayingMediaFrame(
+        Symbol trackId,
         CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<TMediaFrame?> GetPlayingMediaFrame(
-        Symbol playId, Symbol channelId, Range<Moment> timestampRange,
+    Task<PlayingMediaFrame?> GetPlayingMediaFrame(
+        Symbol trackId, Range<Moment> timestampRange,
         CancellationToken cancellationToken);
 }

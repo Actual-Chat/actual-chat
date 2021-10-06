@@ -1,6 +1,6 @@
 namespace ActualChat.Audio;
 
-public enum AudioCodec
+public enum AudioCodecKind
 {
     Wav = 0,
     Flac,

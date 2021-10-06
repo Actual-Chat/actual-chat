@@ -1,12 +1,22 @@
 using System.Collections.Immutable;
+using System.Linq;
+using ActualChat.Audio.Client.Module;
+using ActualChat.Audio.Module;
+using ActualChat.Chat.Client.Module;
+using ActualChat.Chat.Module;
+using ActualChat.Db.Module;
 using ActualChat.Host.Module;
 using ActualChat.Hosting;
+using ActualChat.Module;
+using ActualChat.Transcription.Module;
+using ActualChat.UI.Blazor.Host;
+using ActualChat.Users.Client.Module;
+using ActualChat.Users.Module;
+using ActualChat.Users.Client.Module;
 using ActualChat.Web.Module;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Collections;
 using Stl.Plugins;
-using Stl.Text;
 
 namespace ActualChat.Host
 {
@@ -49,9 +59,8 @@ namespace ActualChat.Host
                 .Add(services)
                 .AddSingleton(Cfg)
                 .AddSingleton(Env);
-            var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
-            // FileSystemPluginFinder fails on .NET 6:
-            // "System.IO.FileLoadException: Could not load file or assembly 'System.Private.CoreLib, Version=6.0.0.0, ..."
+
+            // FileSystemPluginFinder cache fails on .NET 6 some times, so...
             /*
             pluginHostBuilder.UsePlugins(
                 // Core modules
@@ -70,8 +79,8 @@ namespace ActualChat.Host
                 // "The rest of Startup.cs" module
                 typeof(AppHostModule)
             );
+            Plugins = pluginHostBuilder.Build();
             */
-            // Plugins = pluginHostBuilder.Build();
             Plugins = new PluginHostBuilder(pluginServices).Build();
             HostModules = Plugins
                 .GetPlugins<HostModule>()

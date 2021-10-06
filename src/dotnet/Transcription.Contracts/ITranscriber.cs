@@ -1,11 +1,11 @@
-﻿using ActualChat.Blobs;
+﻿using ActualChat.Audio;
 
 namespace ActualChat.Transcription;
 
 public interface ITranscriber
 {
-    Task<ChannelReader<TranscriptFragment>> Transcribe(
+    Task<ChannelReader<TranscriptUpdate>> Transcribe(
         TranscriptionRequest request,
-        ChannelReader<BlobPart> audioData,
+        AudioSource audioSource,
         CancellationToken cancellationToken);
 }

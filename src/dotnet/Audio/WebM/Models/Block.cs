@@ -5,10 +5,12 @@ namespace ActualChat.Audio.WebM.Models
     /// <summary>
     /// http://matroska.sourceforge.net/technical/specs/index.html#block_structure
     /// </summary>
-    public class Block : IParseRawBinary
+    public class Block : BaseModel, IParseRawBinary
     {
         private const byte LacingBits = 0b0000110;
         private const byte InvisibleBit = 0b00010000;
+
+        public override EbmlElementDescriptor Descriptor => MatroskaSpecification.BlockDescriptor;
 
         /// <summary>
         /// Track Number (Track Entry)
@@ -23,7 +25,7 @@ namespace ActualChat.Audio.WebM.Models
         public int NumFrames { get; private set; }
 
         /// <summary>
-        /// Lace-coded size of each frame of the lace, except for the last one (multiple uint8). 
+        /// Lace-coded size of each frame of the lace, except for the last one (multiple uint8).
         /// *This is not used with Fixed-size lacing as it is calculated automatically from (total size of lace) / (number of frames in lace).
         /// </summary>
         public byte LaceCodedSizeOfEachFrame { get; private set; }
@@ -43,7 +45,7 @@ namespace ActualChat.Audio.WebM.Models
         /// </summary>
         public Lacing Lacing { get; private set; }
 
-        // TODO: AK [OPTIMIZE] Try to get rid of byte array and replace with e.g. Memory<byte>
+        // TODO(AK): [OPTIMIZE] Try to get rid of byte array and replace with e.g. Memory<byte>
         public byte[]? Data { get; private set; }
 
         public virtual void Parse(ReadOnlySpan<byte> span)
@@ -61,21 +63,21 @@ namespace ActualChat.Audio.WebM.Models
             {
                 NumFrames = spanReader.ReadByte()!.Value;
 
-                if (Lacing != Lacing.FixedSize) 
+                if (Lacing != Lacing.FixedSize)
                     LaceCodedSizeOfEachFrame = spanReader.ReadByte()!.Value;
             }
 
             Data = span[spanReader.Position..].ToArray();
         }
 
-        public ulong GetSize()
+        public override ulong GetSize()
         {
             var size = 0UL;
             size += EbmlHelper.GetSize(TrackNumber);
             size += 2;
             size += 1;
             size += (ulong?)Data?.Length ?? 0UL;
-            
+
             return size;
         }
 
@@ -83,7 +85,7 @@ namespace ActualChat.Audio.WebM.Models
         {
             if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.Block, GetSize(), ref writer))
                 return false;
-            
+
             writer.Write(VInt.EncodeSize(TrackNumber));
             writer.Write(TimeCode);
             writer.Write(Flags);
