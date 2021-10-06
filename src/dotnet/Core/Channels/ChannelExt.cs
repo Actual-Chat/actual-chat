@@ -4,14 +4,14 @@ public static class ChannelExt
 {
     internal static readonly ChannelClosedException ChannelClosedError = new();
 
-    public static ChannelDistributor<T> Distribute<T>(
+    public static AsyncMemoizer<T> Memoize<T>(
         this Channel<T> source,
         CancellationToken cancellationToken = default)
-        => new(source, cancellationToken);
-    public static ChannelDistributor<T> Distribute<T>(
+        => new(source.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+    public static AsyncMemoizer<T> Memoize<T>(
         this ChannelReader<T> source,
         CancellationToken cancellationToken = default)
-        => new(source, cancellationToken);
+        => new(source.ReadAllAsync(cancellationToken), cancellationToken);
 
     public static async ValueTask<Option<T>> TryReadAsync<T>(
         this ChannelReader<T> channel,
