@@ -113,15 +113,15 @@
     {
         if (JSComponentRef != null) {
             try {
-                await JSComponentRef.InvokeVoidAsync("dispose");
+                await JSComponentRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
             }
-            catch {
+            catch(JSDisconnectedException){
                 // Intended
             }
-            await JSComponentRef.DisposeAsync();
+            await JSComponentRef.DisposeSilentAsync().ConfigureAwait(true);
         }
         ComponentRef?.Dispose();
-        await base.DisposeAsync();
+        await base.DisposeAsync().ConfigureAwait(true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

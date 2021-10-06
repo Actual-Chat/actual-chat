@@ -27,10 +27,10 @@
 
     public async ValueTask DisposeAsync()
     {
-        await StopRecording();
+        await StopRecording().ConfigureAwait(true);
         ComponentRef?.Dispose();
         if (JSComponentRef != null)
-            await JSComponentRef.DisposeAsync();
+            await JSComponentRef.DisposeSilentAsync().ConfigureAwait(true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
