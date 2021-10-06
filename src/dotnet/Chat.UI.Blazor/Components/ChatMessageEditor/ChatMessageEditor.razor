@@ -55,7 +55,7 @@
             return;
         await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
     }
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
@@ -77,7 +77,7 @@
 
     public async ValueTask DisposeAsync(){
         if(_jsRef != null){
-            await _jsRef.DisposeAsync();
+            await _jsRef.DisposeSilentAsync().ConfigureAwait(true);
         }
         _thisRef?.Dispose();
     }
