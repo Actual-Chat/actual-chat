@@ -14,9 +14,9 @@ public sealed class AsyncMemoizer<T>
     public Task FillBufferTask { get; }
     public Task DistributeTask { get; }
 
-    public AsyncMemoizer(IAsyncEnumerator<T> source, CancellationToken cancellationToken)
+    public AsyncMemoizer(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
     {
-        _source = source;
+        _source = source.GetAsyncEnumerator(cancellationToken);
         _newTargets = Channel.CreateBounded<(ChannelWriter<T>, int)>(
             new BoundedChannelOptions(16) {
                 SingleReader = true,
@@ -61,18 +61,6 @@ public sealed class AsyncMemoizer<T>
             yield return item;
     }
 
-    public async IAsyncEnumerable<T> Replay(
-        Func<Channel<T>> channelFactory,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var channel = channelFactory.Invoke();
-        await AddReplayTarget(channel, cancellationToken).ConfigureAwait(false);
-        var reader = channel.Reader;
-        while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-        while (reader.TryRead(out var item))
-            yield return item;
-    }
-
     public async Task AddReplayTarget(ChannelWriter<T> channel, CancellationToken cancellationToken = default)
     {
         var skipCount = await _buffer.WriteTo(channel, 0, cancellationToken).ConfigureAwait(false);
@@ -89,14 +77,18 @@ public sealed class AsyncMemoizer<T>
     private async Task FillBuffer(CancellationToken cancellationToken)
     {
         try {
+            var readTask = _source.ReadResultAsync(cancellationToken);
             while (true) {
-                var result = await _source.ReadResultAsync(cancellationToken).ConfigureAwait(false);
+                var result = await readTask.ConfigureAwait(false);
                 var memory = _bufferWriter.GetMemory(8);
                 var index = 0;
                 memory.Span[index++] = result;
                 _bufferWriter.Advance(1);
                 while (!result.HasError && _bufferWriter.FreeCapacity > 0) {
-                    result = await _source.ReadResultAsync(cancellationToken).ConfigureAwait(false);
+                    readTask = _source.ReadResultAsync(cancellationToken);
+                    if (!readTask.IsCompleted)
+                        break;
+                    result = await readTask; // Sync wait
                     memory.Span[index++] = result;
                     _bufferWriter.Advance(1);
                 }
@@ -109,6 +101,7 @@ public sealed class AsyncMemoizer<T>
         }
         finally {
             _newTargets.Writer.TryComplete();
+            await _source.DisposeAsync().ConfigureAwait(false);
         }
     }
 

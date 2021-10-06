@@ -7,15 +7,11 @@ public static class ChannelExt
     public static AsyncMemoizer<T> Memoize<T>(
         this Channel<T> source,
         CancellationToken cancellationToken = default)
-        => new(
-            source.Reader.ReadAllAsync(cancellationToken).GetAsyncEnumerator(cancellationToken),
-            cancellationToken);
+        => new(source.Reader.ReadAllAsync(cancellationToken), cancellationToken);
     public static AsyncMemoizer<T> Memoize<T>(
         this ChannelReader<T> source,
         CancellationToken cancellationToken = default)
-        => new(
-            source.ReadAllAsync(cancellationToken).GetAsyncEnumerator(cancellationToken),
-            cancellationToken);
+        => new(source.ReadAllAsync(cancellationToken), cancellationToken);
 
     public static async ValueTask<Option<T>> TryReadAsync<T>(
         this ChannelReader<T> channel,

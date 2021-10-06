@@ -1,7 +1,6 @@
 using System.Threading.Channels;
 using ActualChat.Channels;
 using Stl.Async;
-using Stl.Channels;
 using Stl.Testing;
 using Xunit.Abstractions;
 
@@ -10,6 +9,23 @@ namespace ActualChat.Core.UnitTests.Channels
     public class AsyncMemoizerTest : TestBase
     {
         public AsyncMemoizerTest(ITestOutputHelper @out) : base(@out) { }
+
+        [Fact]
+        public async Task MemoizeSyncPointTest()
+        {
+            var cSource = Channel.CreateUnbounded<int>();
+            var memoizer = cSource.Reader.Memoize();
+            cSource.Writer.WriteAsync(1);
+            (await memoizer.Replay().Take(1).CountAsync()).Should().Be(1);
+            cSource.Writer.WriteAsync(2);
+            (await memoizer.Replay().Take(2).CountAsync()).Should().Be(2);
+
+            var take3Task = memoizer.Replay().Take(3).CountAsync();
+            await Task.Delay(100);
+            take3Task.IsCompleted.Should().BeFalse();
+            cSource.Writer.WriteAsync(3);
+            (await take3Task).Should().Be(3);
+        }
 
         [Fact]
         public async Task MemoizeCompletedEmptyChannelTest()
