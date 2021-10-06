@@ -46,7 +46,7 @@
     <!-- Web toolchain settings -->
 
     <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
-    <TypeScriptCompilerBlocked>true</TypeScriptCompilerBlocked>
+    <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
 
     <!-- Suppressed warnings -->

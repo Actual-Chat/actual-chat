@@ -1,0 +1,4 @@
+// full vs uses msbuild item, this workaround of https://github.com/microsoft/TypeScript/issues/11224 / https://github.com/microsoft/vscode/issues/12463 for vscode / rider
+{
+    "extends": "../nodejs/tsconfig.json"
+}
