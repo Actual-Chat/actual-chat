@@ -2,10 +2,17 @@ using ActualChat.Media;
 
 namespace ActualChat.Playback;
 
-public abstract class MediaTrackPlayer
+public abstract class MediaTrackPlayer : IAsyncDisposable
 {
     public MediaTrack Track { get; init; } = null!;
     public event Action<PlayingMediaFrame?, PlayingMediaFrame?>? Playing;
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+
+        GC.SuppressFinalize(this);
+    }
 
     public virtual async Task Play(CancellationToken cancellationToken)
     {
@@ -28,6 +35,10 @@ public abstract class MediaTrackPlayer
     }
 
     protected abstract ValueTask OnPlayStart();
+
     protected abstract ValueTask OnPlayNextFrame(PlayingMediaFrame nextFrame);
+
     protected abstract ValueTask OnPlayStop();
+
+    protected abstract ValueTask DisposeAsyncCore();
 }

@@ -7,14 +7,14 @@
 
 @inject BlazorCircuitContext _circuitContext
 
-<audio autoplay @ref="Ref"></audio>
+@* <audio autoplay @ref="Ref"></audio> *@
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
     protected IJSObjectReference? JSComponentRef { get; set; }
     protected DotNetObjectReference<IAudioPlayerBackend>? ComponentRef { get; set; }
 
-    public ElementReference Ref { get; set; }
+    // public ElementReference Ref { get; set; }
 
     [Parameter]
     public string StreamId { get; set; } = null!;
@@ -23,7 +23,7 @@
     {
         if (firstRender) {
             ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioPlayer.create", Ref, ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioPlayer.create", ComponentRef);
         }
     }
 
