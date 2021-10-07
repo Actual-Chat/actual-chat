@@ -1,6 +1,6 @@
 export class ChatMessageEditor {
 
-    _backendRef: DotNet.DotNetObject;
+    _blazorRef: DotNet.DotNetObject;
 
     static create(backendRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(backendRef);
@@ -10,14 +10,14 @@ export class ChatMessageEditor {
         if (backendRef === undefined || backendRef === null) {
             throw new Error("dotnet backend object is undefined");
         }
-        this._backendRef = backendRef;
+        this._blazorRef = backendRef;
     }
 
     public addEventListener(): void {
         const editorId = "chat-message-editor-input";
         let input = document.getElementById(editorId);
         input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
-            this._backendRef.invokeMethodAsync("SetMessage", event.target.innerText);
+            this._blazorRef.invokeMethodAsync("SetMessage", event.target.innerText);
         });
     }
 
