@@ -1,4 +1,4 @@
 @echo off
-pushd src/nodejs
+pushd src\nodejs
 npm run watch
 popd
