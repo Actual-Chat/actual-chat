@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.UI.Blazor;
 
-public static class IJSObjectReferenceExtensions
+public static class JSObjectReferenceExt
 {
     /// <summary>
     /// Workaround for blazor server after <seealso href="https://github.com/dotnet/aspnetcore/pull/32901"/>
