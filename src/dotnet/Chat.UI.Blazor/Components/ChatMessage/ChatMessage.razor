@@ -1,74 +1,69 @@
-@namespace ActualChat.Chat.UI.Blazor
-@inherits ComputedStateComponent<ChatMessageModel>
-@using Stl.Generators
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ActualChat.Chat.UI.Blazor.Components.ChatMessageModel>
 @using ActualChat.Users
 
 @{
-    var model = State.LatestNonErrorValue;
+    var model = State.LatestNonErrorValue ?? new(null, null);
 }
 
-@if(model?.UserInfo == null)
+@if(model.UserInfo == null)
 {
-<div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
-    <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
-    <div class="flex-1 overflow-hidden">
-        <div class="flex flex-row">
-            <div class="font-bold bg-gray-200 rounded-md border-white border-2 w-32 h-4"></div>
-            <div class="bg-gray-200 w-10 h-4 rounded-md border-white border-2"></div>
+    <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
+        <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
+        <div class="flex-1 overflow-hidden">
+            <div class="flex flex-row">
+                <div class="font-bold bg-gray-200 rounded-md border-white border-2 w-32 h-4"></div>
+                <div class="bg-gray-200 w-10 h-4 rounded-md border-white border-2"></div>
+            </div>
+            @for(int i = 0; i < (_seed % 3) + 2; ++i) {
+                <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: @(Math.Abs(_seed << i) % 36 + 5)%;"></div>
+            }
         </div>
-        @for(int i = 0; i < (_seed % 3) + 2; ++i) {
-            <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: @(Math.Abs(_seed << i) % 36 + 5)%;"></div>
-        }
     </div>
-</div>
-}
-else
-{
-<div class="flex items-start mb-4 text-sm">
-    <img src="//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=@model.UserInfo.Name" class="w-10 h-10 rounded-full mr-3 select-none">
-    <div class="flex-1 overflow-hidden">
-        <div>
-            <span class="font-bold text-gray-900 @(model.IsOnline != true ? "opacity-75" : "")">
-                @model.UserInfo.Name
-            </span>
-            <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
+} else {
+    <div class="flex items-start mb-4 text-sm">
+        <img src="//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=@model.UserInfo.Name" class="w-10 h-10 rounded-full mr-3 select-none">
+        <div class="flex-1 overflow-hidden">
+            <div>
+                <span class="font-bold text-gray-900 @(model.IsOnline != true ? "opacity-75" : "")">
+                    @model.UserInfo.Name
+                </span>
+                <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
+            </div>
+            @if (Entry.IsStreaming){
+                <ChatMessageTranscript StreamId="@Entry.StreamId" OnListen="@ListenCallback"/>
+            } else {
+                <ChatMessageText Text="@Entry.Content"/>
+            }
         </div>
-        @if (Entry.IsStreaming){
-            <ChatMessageTranscript StreamId="@Entry.StreamId" OnListen="@ListenCallback"/>
-        }
-        else {
-            <ChatMessageText Text="@Entry.Content"/>
-        }
     </div>
-</div>
 }
+
 @code {
-    [Parameter]
-    public ChatEntry Entry { get; set; } = null!;
-
-    [Parameter]
-    public EventCallback<string> OnListen { get; set; }
+    private readonly int _seed = Random.Shared.Next();
 
     [Inject] protected IUserInfoService UserInfos { get; set; } = null!;
     [Inject] protected IUserStateService UserStates { get; set; } = null!;
     [Inject] protected Session Session { get; set; } = null!;
 
-    private readonly int _seed = Random.Shared.Next();
+    [Parameter]
+    public ChatEntry Entry { get; set; } = null!;
+    [Parameter]
+    public EventCallback<string> OnListen { get; set; }
 
     private void ListenCallback(string streamId)
     {
-        if(OnListen.HasDelegate)
+        if (OnListen.HasDelegate)
             OnListen.InvokeAsync(streamId);
     }
 
     protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken)
     {
-        if (Entry == null || Entry.AuthorId.IsNone)
+        if (Entry == null! || Entry.AuthorId.IsNone)
             return new ChatMessageModel(null, null);
 
         var userInfo = await UserInfos.TryGet(Entry.AuthorId, cancellationToken).ConfigureAwait(true);
         var isOnline = await UserStates.IsOnline(Entry.AuthorId, cancellationToken).ConfigureAwait(true);
         return new ChatMessageModel(userInfo, isOnline);
     }
-
 }

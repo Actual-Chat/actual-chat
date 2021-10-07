@@ -2,7 +2,7 @@
 @inject TestListService _listService
 
 @{
-    var item = State.LatestNonErrorValue ?? new(0, "");
+    var item = State.ValueOrDefault ?? new(0, "Loading...");
 }
 
 <div style="font-size: @(item.FontSize)em">
