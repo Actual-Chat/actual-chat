@@ -3,6 +3,7 @@ using System.Data;
 using System.Linq.Expressions;
 using ActualChat.Chat.Db;
 using ActualChat.Hosting;
+using ActualChat.Redis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.CommandR;
@@ -69,6 +70,9 @@ namespace ActualChat.Chat.Module
 
             services.AddMvc().AddApplicationPart(GetType().Assembly);
             services.AddSingleton<IMarkupParser, MarkupParser>();
+
+            // IChatService
+            services.AddSingleton(c => c.GetRequiredService<RedisDb>().GetSequenceSet<ChatService>("chat.seq"));
             fusion.AddComputeService<ChatService>();
             services.AddSingleton(c => (IChatService) c.GetRequiredService<ChatService>());
             services.AddSingleton(c => (IServerSideChatService) c.GetRequiredService<ChatService>());

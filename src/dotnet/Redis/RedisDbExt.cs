@@ -12,4 +12,14 @@ public static class RedisDbExt
 
     public static RedisStreamer<T> GetStreamer<T>(this RedisDb redisDb, string key, RedisStreamer<T>.Options? settings = null)
         => new(redisDb, key, settings);
+
+    public static RedisHash GetHash(this RedisDb redisDb, string hashKey)
+        => new(redisDb, hashKey);
+
+    public static RedisSequenceSet GetSequenceSet(
+        this RedisDb redisDb, string hashKey, long autoResetDistance = 10)
+        => new(redisDb.GetHash(hashKey), autoResetDistance);
+    public static RedisSequenceSet<TScope> GetSequenceSet<TScope>(
+        this RedisDb redisDb, string hashKey, long autoResetDistance = 10)
+        => new(redisDb.GetHash(hashKey), autoResetDistance);
 }
