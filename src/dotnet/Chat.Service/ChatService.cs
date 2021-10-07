@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reactive;
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Redis;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ namespace ActualChat.Chat
         protected IUserInfoService UserInfos { get; init; }
         protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
         protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
+        protected RedisSequenceSet<ChatService> IdSequences { get; init; }
 
         public ChatService(IServiceProvider services) : base(services)
         {
@@ -26,50 +28,11 @@ namespace ActualChat.Chat
             UserInfos = services.GetRequiredService<IUserInfoService>();
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
+            IdSequences = services.GetRequiredService<RedisSequenceSet<ChatService>>();
         }
 
         // Commands
-        public virtual async Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken)
-        {
-            var chatEntry = command.Entry;
-            var context = CommandContext.GetCurrent();
-            if (Computed.IsInvalidating()) {
-                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetIdRange(chatEntry.ChatId, default);
-                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
-                return null!;
-            }
 
-            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
-
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
-            chatEntry = dbChatEntry.ToModel();
-            context.Operation().Items.Set(chatEntry);
-            return chatEntry;
-        }
-
-        public virtual async Task<ChatEntry> UpdateEntry(ChatCommands.UpdateEntry command, CancellationToken cancellationToken)
-        {
-            var chatEntry = command.Entry;
-            var context = CommandContext.GetCurrent();
-            if (Computed.IsInvalidating()) {
-                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetIdRange(chatEntry.ChatId, default);
-                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, true);
-                return null!;
-            }
-
-            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
-
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
-            chatEntry = dbChatEntry.ToModel();
-            context.Operation().Items.Set(chatEntry);
-            return chatEntry;
-        }
-
-        // Queries
         public virtual async Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken)
         {
             var (session, title) = command;
@@ -124,6 +87,46 @@ namespace ActualChat.Chat
                 Content = text,
                 ContentType = ChatContentType.Text,
             };
+            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+            chatEntry = dbChatEntry.ToModel();
+            context.Operation().Items.Set(chatEntry);
+            return chatEntry;
+        }
+
+        public virtual async Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken)
+        {
+            var chatEntry = command.Entry;
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating()) {
+                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+                _ = GetIdRange(chatEntry.ChatId, default);
+                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
+                return null!;
+            }
+
+            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
+
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
+            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+            chatEntry = dbChatEntry.ToModel();
+            context.Operation().Items.Set(chatEntry);
+            return chatEntry;
+        }
+
+        public virtual async Task<ChatEntry> UpdateEntry(ChatCommands.UpdateEntry command, CancellationToken cancellationToken)
+        {
+            var chatEntry = command.Entry;
+            var context = CommandContext.GetCurrent();
+            if (Computed.IsInvalidating()) {
+                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+                _ = GetIdRange(chatEntry.ChatId, default);
+                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, true);
+                return null!;
+            }
+
+            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
+
+            await using var dbContext = await CreateCommandDbContext(cancellationToken);
             var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
             chatEntry = dbChatEntry.ToModel();
             context.Operation().Items.Set(chatEntry);
@@ -309,11 +312,12 @@ namespace ActualChat.Chat
             DbChatEntry dbChatEntry;
             if (isNew) {
                 var dbChatId = (string) chatEntry.ChatId;
-                var id = 1 + await dbContext.ChatEntries.AsQueryable()
+                var maxId = await dbContext.ChatEntries.AsQueryable()
                     .Where(e => e.ChatId == dbChatId)
                     .OrderByDescending(e => e.Id)
                     .Select(e => e.Id)
                     .FirstOrDefaultAsync(cancellationToken);
+                var id = await IdSequences.Next(dbChatId, maxId);
                 chatEntry = chatEntry with {
                     Id = id,
                     Version = VersionGenerator.NextVersion(),

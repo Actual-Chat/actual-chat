@@ -9,8 +9,7 @@ public class RedisHashTest : RedisTestBase
     [Fact]
     public async Task BasicTest()
     {
-        var redis = GetRedisDb();
-        var hash = new RedisHash(redis, "hash");
+        var hash = GetRedisDb().GetHash("hash");
         await hash.Clear();
         (await hash.GetAll()).Length.Should().Be(0);
 
