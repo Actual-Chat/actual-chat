@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace ActualChat.UI.Blazor.Internal;
+namespace ActualChat.UI.Blazor.Components;
 
 public interface IVirtualListBackend
 {

@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.Internal;
+namespace ActualChat.Chat.UI.Blazor.Components;
 
 /// <summary>
 /// Is used from js, part of workaround <see href="https://github.com/dotnet/aspnetcore/issues/9974"/>

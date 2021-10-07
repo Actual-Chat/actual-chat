@@ -18,6 +18,8 @@ public class SourceAudioProcessor : BackgroundService
     public TranscriptStreamer TranscriptStreamer { get; }
     public IServerSideChatService Chat { get; }
 
+    public MomentClockSet ClockSet { get; }
+
     public SourceAudioProcessor(
         ITranscriber transcriber,
         AudioSaver audioSaver,
@@ -26,6 +28,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
         IServerSideChatService chat,
+        MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
         _log = log;
@@ -36,6 +39,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioSourceStreamer = audioSourceStreamer;
         TranscriptStreamer = transcriptStreamer;
         Chat = chat;
+        ClockSet = clockSet;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -54,21 +58,23 @@ public class SourceAudioProcessor : BackgroundService
     {
         var audioStream = SourceAudioRecorder.GetSourceAudioStream(audioRecord.Id, cancellationToken);
         var segments = AudioActivityExtractor.GetSegmentsWithAudioActivity(audioRecord, audioStream, cancellationToken);
-        while (await segments.WaitToReadAsync(cancellationToken))
+        while (await segments.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
         while (segments.TryRead(out var segment)) {
             var audioTask = PublishAudioStream(segment, cancellationToken);
-            var chatEntryTask = PublishChatEntry(segment, cancellationToken);
+            var textChatEntryTask = PublishTextChatEntry(segment, cancellationToken);
+            var audioChatEntryTask = PublishAudioChatEntry(segment, cancellationToken);
             var transcriptTask = PublishTranscriptStream(segment, cancellationToken);
-            _ = Persist(segment, cancellationToken);
-            await Task.WhenAll(audioTask, chatEntryTask).ConfigureAwait(false);
-            _ = UpdateChatEntry(chatEntryTask, transcriptTask, cancellationToken);
+            var blobIdTask = Persist(segment, cancellationToken);
+            await Task.WhenAll(audioTask, textChatEntryTask, audioChatEntryTask).ConfigureAwait(false);
+            _ = UpdateTextChatEntry(textChatEntryTask, transcriptTask, cancellationToken);
+            _ = UpdateAudioChatEntry(audioChatEntryTask, blobIdTask, cancellationToken);
         }
     }
 
-    private async Task Persist(AudioRecordSegment segment, CancellationToken cancellationToken)
+    private async Task<string> Persist(AudioRecordSegment segment, CancellationToken cancellationToken)
     {
-        var audioStreamPart = await segment.GetAudioStreamPart();
-        await AudioSaver.Save(audioStreamPart, cancellationToken);
+        var audioStreamPart = await segment.GetAudioStreamPart().ConfigureAwait(false);
+        return await AudioSaver.Save(audioStreamPart, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<Transcript> PublishTranscriptStream(AudioRecordSegment segment, CancellationToken cancellationToken)
@@ -128,21 +134,35 @@ public class SourceAudioProcessor : BackgroundService
         return transcript;
     }
 
-    private async Task<ChatEntry> PublishChatEntry(
-        AudioRecordSegment audioRecordSegment,
+    private async Task<ChatEntry> PublishTextChatEntry(
+        AudioRecordSegment audio,
         CancellationToken cancellationToken)
     {
-        var e = audioRecordSegment;
-        var chatEntry = new ChatEntry(e.AudioRecord.ChatId, 0) {
-            AuthorId = e.AudioRecord.UserId,
+        var chatEntry = new ChatEntry(audio.AudioRecord.ChatId, 0) {
+            AuthorId = audio.AudioRecord.UserId,
             Content = "...",
             ContentType = ChatContentType.Text,
-            StreamId = e.StreamId,
+            StreamId = audio.StreamId,
+            BeginsAt = ClockSet.CpuClock.UtcNow,
         };
         return await Chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task UpdateChatEntry(
+    private async Task<ChatEntry> PublishAudioChatEntry(
+        AudioRecordSegment audio,
+        CancellationToken cancellationToken)
+    {
+        var chatEntry = new ChatEntry(audio.AudioRecord.ChatId, 0) {
+            AuthorId = audio.AudioRecord.UserId,
+            Content = "",
+            ContentType = ChatContentType.Audio,
+            StreamId = audio.StreamId,
+            BeginsAt = ClockSet.CpuClock.UtcNow,
+        };
+        return await Chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task UpdateTextChatEntry(
         Task<ChatEntry> chatEntryTask,
         Task<Transcript> transcriptTask,
         CancellationToken cancellationToken)
@@ -152,7 +172,24 @@ public class SourceAudioProcessor : BackgroundService
 
         var updated = chatEntry with {
             Content = transcript.Text,
-            StreamId = StreamId.None
+            StreamId = StreamId.None,
+            EndsAt = ClockSet.CpuClock.UtcNow,
+        };
+        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task UpdateAudioChatEntry(
+        Task<ChatEntry> chatEntryTask,
+        Task<string> blobIdTask,
+        CancellationToken cancellationToken)
+    {
+        var chatEntry = await chatEntryTask.ConfigureAwait(false);
+        var blobId = await blobIdTask.ConfigureAwait(false);
+
+        var updated = chatEntry with {
+            Content = blobId,
+            StreamId = StreamId.None,
+            EndsAt = ClockSet.CpuClock.UtcNow,
         };
         await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken).ConfigureAwait(false);
     }

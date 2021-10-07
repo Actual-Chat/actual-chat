@@ -1,8 +1,7 @@
-@namespace ActualChat.UI.Blazor
+@namespace ActualChat.UI.Blazor.Components
 @typeparam TItem
 @inherits ComputedStateComponent<VirtualListResponse<TItem>>
 @implements IVirtualListBackend
-@using ActualChat.UI.Blazor.Internal
 @using System.Collections.Immutable
 @using ActualChat.Mathematics
 @using Stl.Collections
@@ -111,17 +110,9 @@
 
     public override async ValueTask DisposeAsync()
     {
-        if (JSComponentRef != null) {
-            try {
-                await JSComponentRef.InvokeVoidAsync("dispose");
-            }
-            catch {
-                // Intended
-            }
-            await JSComponentRef.DisposeAsync();
-        }
+        await JSComponentRef.DisposeSilentAsync("dispose").ConfigureAwait(true);
         ComponentRef?.Dispose();
-        await base.DisposeAsync();
+        await base.DisposeAsync().ConfigureAwait(true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
