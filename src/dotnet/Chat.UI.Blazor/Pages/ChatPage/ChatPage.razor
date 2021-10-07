@@ -1,11 +1,11 @@
 @page "/chat"
 @page "/chat/{ChatId}"
-@namespace ActualChat.Chat.UI.Blazor
+@namespace ActualChat.Chat.UI.Blazor.Pages
 @using ActualChat.Comparison
 @using ActualChat.Audio.UI.Blazor
 @using Stl.Mathematics
 @using ActualChat.Chat.UI.Blazor.Services
-@inherits ComputedStateComponent<ChatPageModel>
+@inherits ComputedStateComponent<ActualChat.Chat.UI.Blazor.Pages.ChatPageModel>
 @inject ChatPageService _service
 @inject IChatService _chats
 @inject Session _session

@@ -12,7 +12,6 @@
     </svg>
 </button>
 
-
 @code {
     private IJSObjectReference? JSComponentRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
@@ -28,9 +27,8 @@
     public async ValueTask DisposeAsync()
     {
         await StopRecording().ConfigureAwait(true);
+        await JSComponentRef.DisposeSilentAsync().ConfigureAwait(true);
         ComponentRef?.Dispose();
-        if (JSComponentRef != null)
-            await JSComponentRef.DisposeSilentAsync().ConfigureAwait(true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

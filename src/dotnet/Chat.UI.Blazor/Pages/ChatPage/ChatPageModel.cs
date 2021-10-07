@@ -1,6 +1,4 @@
-using System;
-
-namespace ActualChat.Chat.UI.Blazor.Models
+namespace ActualChat.Chat.UI.Blazor.Pages
 {
     public record ChatPageModel
     {

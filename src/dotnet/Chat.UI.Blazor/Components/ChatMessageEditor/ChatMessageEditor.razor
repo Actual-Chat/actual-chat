@@ -1,12 +1,11 @@
-@namespace ActualChat.Chat.UI.Blazor
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor
-@using ActualChat.Chat.UI.Blazor.Internal
 @implements IChatMessageEditorBackend
+@implements IAsyncDisposable
 @inject IChatService _chats
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
-@implements IAsyncDisposable
 
 <div class="sticky bottom-0 self-end bg-white w-full">
     <div class="flex flex-row justify-between mx-3 my-2">
@@ -40,8 +39,8 @@
     // TODO(AY): Add some store that remembers typed messages
     private string Message { get; set; } = "";
 
-    private IJSObjectReference? _jsRef { get; set; }
-    private DotNetObjectReference<IChatMessageEditorBackend>? _thisRef { get; set; }
+    private IJSObjectReference? _jsRef;
+    private DotNetObjectReference<IChatMessageEditorBackend>? _thisRef;
 
     [Parameter]
     public string ChatId { get; set; } = "";
@@ -75,10 +74,9 @@
         StateHasChanged();
     }
 
-    public async ValueTask DisposeAsync(){
-        if(_jsRef != null){
-            await _jsRef.DisposeSilentAsync().ConfigureAwait(true);
-        }
+    public async ValueTask DisposeAsync()
+    {
+        await _jsRef.DisposeSilentAsync().ConfigureAwait(true);
         _thisRef?.Dispose();
     }
 }

@@ -1,5 +1,4 @@
-﻿/*
-.virtual-list {
+﻿.virtual-list {
     overflow-y: scroll;
     height: 100%;
 }
@@ -10,9 +9,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
-*/
 
-/*
 .virtual-list > .content::before {
     content: "";
     position: absolute;
@@ -27,7 +24,6 @@
     -webkit-filter: blur(16px);
     opacity: 0.33;
 }
-*/
 
 .virtual-list .items {
     display: flex;
@@ -44,7 +40,6 @@
 .virtual-list .items-displayed {
     background: white;
 }
-
 
 .virtual-list .spacer-end {
     height: 500px;

@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Internal;
+namespace ActualChat.UI.Blazor.Components;
 
 public interface IVirtualListStatistics
 {

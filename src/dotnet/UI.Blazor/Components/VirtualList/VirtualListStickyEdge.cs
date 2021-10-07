@@ -1,8 +1,7 @@
-namespace ActualChat.UI.Blazor
+namespace ActualChat.UI.Blazor.Components;
+
+public enum VirtualListStickyEdge
 {
-    public enum VirtualListStickyEdge
-    {
-        Bottom = 0,
-        Top = 1,
-    }
+    Bottom = 0,
+    Top = 1,
 }
