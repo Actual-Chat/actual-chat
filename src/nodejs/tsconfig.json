@@ -4,6 +4,7 @@
   ],
   "compilerOptions": {
     "alwaysStrict": true,
+    "downlevelIteration": false,
     "moduleResolution": "node",
     "newLine": "lf",
     "charset": "utf-8",
@@ -11,6 +12,8 @@
     "noEmitOnError": true,
     // change to true (?)
     "noImplicitAny": false,
+    // change to true (?)
+    "strictNullChecks": false,
     // change to false (?)
     "allowJs": true,
     "checkJs": true,
@@ -20,6 +23,7 @@
     "module": "es2015", /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'. */
     "lib": [
       "dom",
+      "dom.iterable",
       "es6",
       "es2017",
       "es2018"
