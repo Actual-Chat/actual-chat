@@ -39,11 +39,17 @@
     // TODO(AY): Add some store that remembers typed messages
     private string Message { get; set; } = "";
 
-    private IJSObjectReference? _jsRef;
-    private DotNetObjectReference<IChatMessageEditorBackend>? _thisRef;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<IChatMessageEditorBackend> _thisRef = null!;
 
     [Parameter]
     public string ChatId { get; set; } = "";
+
+    public async ValueTask DisposeAsync()
+    {
+        await _jsRef.DisposeSilentAsync().ConfigureAwait(true);
+        _thisRef?.Dispose();
+    }
 
     private async Task Post()
     {
@@ -67,16 +73,10 @@
     [JSInvokable]
     public void SetMessage(string message)
     {
-        if(message.IsNullOrEmpty() || message == Message){
-            return;
-        }
+        if (message.IsNullOrEmpty() || message == Message) return;
+
         Message = message;
         StateHasChanged();
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await _jsRef.DisposeSilentAsync().ConfigureAwait(true);
-        _thisRef?.Dispose();
-    }
 }
