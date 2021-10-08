@@ -11,7 +11,7 @@
     <div class="flex flex-row justify-between mx-3 my-2">
         <AuthorizeView>
             <Authorized>
-                <div id="chat-message-editor-input" class="flex-1 p-2 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
+                <div @ref="_ref" class="flex-1 p-2 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
             </Authorized>
             <NotAuthorized>
                 <div class="flex-1 p-2 mr-1 outline-none rounded-xl border-2 break-all border-gray-300 hover:border-gray-200 bg-gray-100 border-opacity-10"></div>
@@ -34,12 +34,16 @@
         </div>
     </div>
 </div>
+<code><pre>@Log</pre></code>
 
 @code {
+    string Log;
+
     // TODO(AY): Add some store that remembers typed messages
     private string Message { get; set; } = "";
 
-    private IJSObjectReference _jsRef = null!;
+    private ElementReference _ref;
+    private IJSObjectReference? _jsRef = null;
     private DotNetObjectReference<IChatMessageEditorBackend> _blazorRef = null!;
 
     [Parameter]
@@ -59,14 +63,17 @@
         var (_, ce) = await _cmd.Run(new ChatCommands.Post(_session, ChatId, Message));
         if (ce.IsFailed)
             return;
-        await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
+        if (_jsRef != null)
+            await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
-            _jsRef = await _js.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create", _blazorRef);
+        }
+        if (!_ref.Id.IsNullOrEmpty() && _jsRef == null) {
+            _jsRef = await _js.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create", _ref, _blazorRef);
             await _jsRef.InvokeVoidAsync("addEventListener", Array.Empty<object?>());
         }
     }
@@ -77,6 +84,12 @@
         if (message.IsNullOrEmpty() || message == Message) return;
 
         Message = message;
+        StateHasChanged();
+    }
+
+    private void ShowSerializedReference()
+    {
+        Log += System.Text.Json.JsonSerializer.Serialize(_ref) + "\r\n";
         StateHasChanged();
     }
 
