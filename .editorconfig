@@ -718,6 +718,7 @@ dotnet_naming_symbols.any_typeparam.applicable_kinds = type_parameter
 
 
 dotnet_code_quality_unused_parameters = non_public # IDE0060: Remove unused parameter
+dotnet_diagnostic.IDE0032.severity = silent # Use auto properties
 dotnet_diagnostic.VSTHRD200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
 dotnet_diagnostic.IDE1006.severity = none
 dotnet_diagnostic.RCS1037.severity = silent # RCS1037: Remove trailing white-space
