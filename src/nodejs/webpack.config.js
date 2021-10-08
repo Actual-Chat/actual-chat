@@ -2,6 +2,26 @@
 
 'use strict';
 
+// https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
+class WatchRunPlugin {
+  apply(compiler) {
+    compiler.hooks.watchRun.tap('WatchRun', (comp) => {
+      if (comp.modifiedFiles && comp.modifiedFiles.size > 0) {
+        const changedFiles = Array.from(comp.modifiedFiles, (file) => `\n  ${file}`).join('');
+        console.log('\x1b[35m-----------------------');
+        console.log('FILES CHANGED:', changedFiles);
+        console.log('-----------------------\x1b[0m');
+      }
+      if (comp.removedFiles && comp.removedFiles.size > 0) {
+        const removedFiles = Array.from(comp.removedFiles, (file) => `\n  ${file}`).join('');
+        console.log('\x1b[35m-----------------------');
+        console.log('FILES REMOVED:', removedFiles);
+        console.log('-----------------------\x1b[0m');
+      }
+    });
+  }
+}
+
 const path = require('path');
 //const fs = require("fs");
 // entry: () => fs.readdirSync("./React/").filter(f => f.endsWith(".js")).map(f => `./React/${f}`),
@@ -38,8 +58,17 @@ module.exports = (env, args) => {
       },
     },
     watchOptions: {
-      aggregateTimeout: 50, // ms
-      ignored: ['node_modules/**', outputPath + '/**'],
+      aggregateTimeout: 30, // ms
+      ignored: [
+        _('node_modules'),
+        _('../dotnet/UI.Blazor.Host/wwwroot'),
+        '**/*.cs',
+        _('../../tests/'),
+        _('../../docs/'),
+        '**/*.csproj',
+        '**/*.targets',
+        '**/*.props',
+      ],
       followSymlinks: false,
     },
     resolve: {
@@ -55,7 +84,8 @@ module.exports = (env, args) => {
         filename: '[name].css',
         ignoreOrder: true,
         experimentalUseImportModule: true,
-      })
+      }),
+      new WatchRunPlugin(),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
@@ -74,12 +104,11 @@ module.exports = (env, args) => {
           ], exclude: /node_modules/
         },
         {
-          test: /^\.d.ts$/,
+          test: /^\.d.ts$/i,
           loader: 'ignore-loader'
         },
         {
           test: /\.css$/i,
-          //type: "css",
           use: [
             {
               loader: MiniCssExtractPlugin.loader,
