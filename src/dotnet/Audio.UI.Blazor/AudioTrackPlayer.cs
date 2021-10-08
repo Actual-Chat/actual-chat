@@ -11,7 +11,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private IJSObjectReference? _jsRef;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
 
-    public AudioTrackPlayer(IJSRuntime js)
+    public AudioTrackPlayer(IJSRuntime js, MediaTrack mediaTrack) : base(mediaTrack)
     {
         _js = js;
     }
@@ -32,9 +32,10 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
     protected override async ValueTask OnPlayNextFrame(PlayingMediaFrame nextFrame)
     {
-        var chunk = nextFrame.Frame.Data.ToArray();
+        var chunk = nextFrame.Frame.Data;
+        var offsetSecs = nextFrame.Frame.Offset.TotalSeconds;
         if (_jsRef != null)
-            await _jsRef.InvokeVoidAsync("appendAudio", chunk);
+            await _jsRef.InvokeVoidAsync("appendAudio", chunk, offsetSecs);
     }
 
     protected override ValueTask OnPlayStop()

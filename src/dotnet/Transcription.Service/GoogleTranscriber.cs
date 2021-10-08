@@ -76,7 +76,7 @@ public class GoogleTranscriber : ITranscriber
 
             await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
                 await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(audioFrame.Data.Span),
+                    AudioContent = ByteString.CopyFrom(audioFrame.Data),
                 }).ConfigureAwait(false);
         }
         catch (ChannelClosedException) { }

@@ -24,8 +24,9 @@ public class MediaTrackPlayerFactory : IMediaTrackPlayerFactory
     {
         foreach (var factory in _factories) {
             var player = factory(track);
-            if (player != null)
+            if (player != null) {
                 return player;
+            }
         }
 
         throw new InvalidOperationException($"There is no factory registered for the {track.GetType()} player");

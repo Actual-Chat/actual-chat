@@ -4,8 +4,11 @@ namespace ActualChat.Playback;
 
 public abstract class MediaTrackPlayer : IAsyncDisposable
 {
-    public MediaTrack Track { get; init; } = null!;
+    public MediaTrack Track { get; }
     public event Action<PlayingMediaFrame?, PlayingMediaFrame?>? Playing;
+
+    protected MediaTrackPlayer(MediaTrack track)
+        => Track = track;
 
     public async ValueTask DisposeAsync()
     {
