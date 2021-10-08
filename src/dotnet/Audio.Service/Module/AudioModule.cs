@@ -72,7 +72,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         });
 
         // Module's own services
-        services.AddSingleton<AudioSaver>();
+        services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioActivityExtractor>();
         services.AddSingleton<SourceAudioProcessor>();
         services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());

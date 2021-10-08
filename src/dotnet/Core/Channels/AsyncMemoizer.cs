@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Reactive;
+using System.Runtime.ExceptionServices;
 
 namespace ActualChat.Channels;
 
@@ -24,7 +25,7 @@ public sealed class AsyncMemoizer<T>
         _bufferWriter = new ArrayBufferWriter<Result<T>>(16);
         _buffer = new Buffer(_bufferWriter.WrittenMemory);
         WriteTask = Task.Run(() => Write(cancellationToken), cancellationToken);
-        ReadTask = Task.Run(() => Read(cancellationToken),cancellationToken);
+        ReadTask = Task.Run(() => Read(cancellationToken), cancellationToken);
     }
 
     public async IAsyncEnumerable<T> Replay(
@@ -103,8 +104,12 @@ public sealed class AsyncMemoizer<T>
                 var newBuffer = new Buffer(_bufferWriter.WrittenMemory);
                 var oldBuffer = Interlocked.Exchange(ref _buffer, newBuffer);
                 oldBuffer.MarkOutdated();
-                if (result.HasError)
-                    break;
+                var resultError = result.Error;
+                if (resultError != null) {
+                    if (resultError is ChannelClosedException)
+                        break;
+                    ExceptionDispatchInfo.Capture(resultError).Throw();
+                }
             }
         }
         finally {

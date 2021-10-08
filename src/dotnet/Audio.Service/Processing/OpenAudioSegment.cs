@@ -1,41 +1,34 @@
 
 namespace ActualChat.Audio.Processing;
 
-public sealed class AudioRecordSegment
+public sealed class OpenAudioSegment
 {
-    private readonly Task<TimeSpan> _durationTask;
-    private AudioStreamPart? _audioStreamPart;
+    private AudioSegment? _audioSegment;
 
     public int Index { get; }
     public StreamId StreamId { get; }
     public AudioRecord AudioRecord { get; }
     public AudioSource Source { get; }
     public TimeSpan Offset { get; }
+    public Task<TimeSpan> DurationTask { get; }
 
-    public AudioRecordSegment(
+    public OpenAudioSegment(
         int index,
         AudioRecord audioRecord,
         AudioSource source,
         TimeSpan offset,
         Task<TimeSpan> durationTask)
     {
-        _durationTask = durationTask;
         Index = index;
         StreamId = new StreamId(audioRecord.Id, index);
         AudioRecord = audioRecord;
         Source = source;
         Offset = offset;
+        DurationTask = durationTask;
     }
 
-    public async Task<AudioStreamPart> GetAudioStreamPart()
-    {
-        var duration = await _durationTask.ConfigureAwait(false);
-        return _audioStreamPart ??= new AudioStreamPart(
-            Index,
-            StreamId,
-            AudioRecord,
-            Source,
-            Offset,
-            duration);
-    }
+    public async Task<AudioSegment> Close()
+        => _audioSegment ??= new AudioSegment(
+            Index, StreamId, AudioRecord, Source, Offset,
+            await DurationTask.ConfigureAwait(false));
 }

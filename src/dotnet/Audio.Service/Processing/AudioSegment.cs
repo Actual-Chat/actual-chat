@@ -1,8 +1,6 @@
-using ActualChat.Audio.WebM;
-
 namespace ActualChat.Audio.Processing;
 
-public record AudioStreamPart(
+public record AudioSegment(
     int Index,
     StreamId StreamId,
     AudioRecord AudioRecord,
