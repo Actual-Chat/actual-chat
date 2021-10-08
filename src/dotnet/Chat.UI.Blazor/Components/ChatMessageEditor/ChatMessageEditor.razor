@@ -34,11 +34,8 @@
         </div>
     </div>
 </div>
-<code><pre>@Log</pre></code>
 
 @code {
-    string Log;
-
     // TODO(AY): Add some store that remembers typed messages
     private string Message { get; set; } = "";
 
@@ -86,11 +83,4 @@
         Message = message;
         StateHasChanged();
     }
-
-    private void ShowSerializedReference()
-    {
-        Log += System.Text.Json.JsonSerializer.Serialize(_ref) + "\r\n";
-        StateHasChanged();
-    }
-
 }
