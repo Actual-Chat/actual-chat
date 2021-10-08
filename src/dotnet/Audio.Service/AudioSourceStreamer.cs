@@ -39,8 +39,8 @@ public class AudioSourceStreamer : IAudioSourceStreamer
     public async Task<AudioSource> GetAudioSource(StreamId streamId, CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<AudioSourcePart>(streamId);
-        var audioSourcePartReader = streamer.Read(cancellationToken);
-        return await AudioSourceHelper.ConvertToAudioSource(audioSourcePartReader, cancellationToken).ConfigureAwait(false);
+        var parts = streamer.Read(cancellationToken);
+        return await parts.ToAudioSource(cancellationToken).ConfigureAwait(false);
     }
 
     private static async ValueTask TransformFramesForStreaming(
@@ -53,7 +53,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
             writer.TryWrite(new AudioSourcePart(audioSource.Format, Frame: null, Duration: null));
             await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
                 writer.TryWrite(new AudioSourcePart(Format:null, Frame: audioFrame, Duration: null));
-            var duration = await audioSource.Duration.ConfigureAwait(false);
+            var duration = await audioSource.DurationTask.ConfigureAwait(false);
             writer.TryWrite(new AudioSourcePart(Format:null, Frame: null, Duration: duration));
         }
         catch (Exception e) {

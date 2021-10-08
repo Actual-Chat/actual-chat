@@ -6,26 +6,26 @@ public interface IMediaSource
 {
     MediaFormat Format { get; }
     IAsyncEnumerable<MediaFrame> Frames { get; }
-    Task<TimeSpan> Duration { get; }
+    Task<TimeSpan> DurationTask { get; }
 }
 
 public abstract class MediaSource<TFormat, TFrame> : IMediaSource, IAsyncEnumerable<TFrame>
     where TFormat : MediaFormat
     where TFrame : MediaFrame
 {
-    private readonly AsyncMemoizer<TFrame> _framesMemoizer;
+    private readonly AsyncMemoizer<TFrame> _frameMemoizer;
     MediaFormat IMediaSource.Format => Format;
     public TFormat Format { get; }
-    public Task<TimeSpan> Duration { get; }
+    public Task<TimeSpan> DurationTask { get; }
 
     IAsyncEnumerable<MediaFrame> IMediaSource.Frames => Frames;
     public IAsyncEnumerable<TFrame> Frames => GetFrames();
 
-    protected MediaSource(TFormat format, Task<TimeSpan> durationTask, AsyncMemoizer<TFrame> framesMemoizer)
+    protected MediaSource(TFormat format, Task<TimeSpan> durationTask, AsyncMemoizer<TFrame> frameMemoizer)
     {
-        _framesMemoizer = framesMemoizer;
+        _frameMemoizer = frameMemoizer;
         Format = format;
-        Duration = durationTask;
+        DurationTask = durationTask;
     }
 
     public IAsyncEnumerator<TFrame> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -38,7 +38,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource, IAsyncEnumera
                 SingleWriter = true
             });
 
-        await _framesMemoizer.AddReplayTarget(channel).ConfigureAwait(false);
+        await _frameMemoizer.AddReplayTarget(channel).ConfigureAwait(false);
         while (await channel.Reader.WaitToReadAsync().ConfigureAwait(false))
         while (channel.Reader.TryRead(out var frame))
             yield return frame;
