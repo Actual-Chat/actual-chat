@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
-     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
+    <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
@@ -52,5 +52,10 @@
     <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration)\**\*.cs" />
   </ItemGroup>
 
+  <ItemGroup Label="dotnet watch">
+    <Watch Remove="**\*.ts" />
+    <Watch Remove="**\*.js" />
+    <Watch Remove="**\*.css" />
+  </ItemGroup>
 </Project>
 
