@@ -1,6 +1,7 @@
 import './virtual-list.css'
 
 export class VirtualList {
+    /** ref to div.virtual-list */
     private _elementRef: HTMLElement;
     private _blazorRef: DotNet.DotNetObject;
     private _spacerRef: HTMLElement;
@@ -22,13 +23,13 @@ export class VirtualList {
         this._blazorRef = backendRef;
         this._abortController = new AbortController();
         this._spacerRef = this._elementRef.querySelector(".spacer")!;
-        this._displayedItemsRef = this._elementRef.querySelector(".items-displayed") as HTMLElement;
+        this._displayedItemsRef = this._elementRef.querySelector(".items-displayed");
         this._updateClientSideStateTask = null!;
         this._onScrollStoppedTimeout = null!;
         this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
         this._resizedOnce = new Map<Element, boolean>();
 
-        let listenerOptions = { signal: this._abortController.signal };
+        let listenerOptions : AddEventListenerOptions = { signal: this._abortController.signal };
         elementRef.addEventListener("scroll", _ => this.updateClientSideStateAsync(), listenerOptions);
     };
 
@@ -45,9 +46,8 @@ export class VirtualList {
         this.setupResizeTracking();
         this.setupScrollTracking(mustNotifyWhenScrollStops);
     }
-
-    // Scroll stopped notification
-
+    
+    /** scroll stopped notification */
     setupScrollTracking(mustNotifyWhenScrollStops) {
         if (mustNotifyWhenScrollStops) {
             if (this._onScrollStoppedTimeout == null)
@@ -62,13 +62,10 @@ export class VirtualList {
     onScroll() {
         if (this._onScrollStoppedTimeout != null)
             clearTimeout(this._onScrollStoppedTimeout);
-        this._onScrollStoppedTimeout = setTimeout(
-            () => this.updateClientSideStateAsync(true),
-            2000);
+        this._onScrollStoppedTimeout = setTimeout(() => this.updateClientSideStateAsync(true), 2000);
     }
 
-    // Resize notifications
-
+    /** setups resize notifications */
     setupResizeTracking() {
         this._resizeObserver.disconnect();
         this._resizedOnce = new Map<Element, boolean>();
@@ -93,16 +90,13 @@ export class VirtualList {
 
         if (this._onResizeTimeout != null)
             clearTimeout(this._onResizeTimeout);
-        this._onResizeTimeout = setTimeout(
-            () => this.updateClientSideStateAsync(),
-            50);
+        this._onResizeTimeout = setTimeout(() => this.updateClientSideStateAsync(), 50);
     }
 
-    // UpdateClientSideState caller
-
+    /** sends the state to UpdateClientSideState dotnet part */
     async updateClientSideStateAsync(isScrollStopped = false) {
         if (this._updateClientSideStateTask != null) {
-            // This call should run in the same order / non-concurrently
+            // this call should run in the same order / non-concurrently
             await this._updateClientSideStateTask.then(v => v, _ => null);
             this._updateClientSideStateTask = null;
         }
@@ -131,8 +125,6 @@ export class VirtualList {
         }
         this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
     }
-
-    // Helpers
 
     getSpacerSize() {
         let entriesTop = this._displayedItemsRef.getBoundingClientRect().top;
