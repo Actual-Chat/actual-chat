@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ActualChat;
 
 [DataContract]
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct Range<T> : IEquatable<Range<T>>
     where T : notnull
 {
