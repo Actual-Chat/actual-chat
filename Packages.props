@@ -51,6 +51,7 @@
     <PackageReference Update="RestEase" Version="1.5.*" />
     <PackageReference Update="StackExchange.Redis" Version="2.2.*" />
     <PackageReference Update="Stl" Version="$(StlFusionVersion)" />
+    <PackageReference Update="Stl.CommandR" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Plugins" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.Server" Version="$(StlFusionVersion)" />

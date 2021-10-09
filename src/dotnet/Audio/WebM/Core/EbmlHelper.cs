@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using ActualChat.Audio.WebM.Models;
 
@@ -10,7 +6,7 @@ namespace ActualChat.Audio.WebM
     public static class EbmlHelper
     {
         private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(ulong value)
         {
@@ -28,7 +24,7 @@ namespace ActualChat.Audio.WebM
             if ((value & 0xFF00) != 0) length++;
             return length;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(long value)
         {
@@ -56,10 +52,10 @@ namespace ActualChat.Audio.WebM
             // then we need an extra byte for the sign bit.
             if ((v & 0x80) != 0)
                 length++;
-            
+
             return length;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(double value) => 8;
 
@@ -72,7 +68,7 @@ namespace ActualChat.Audio.WebM
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(string value, bool isAscii)
         {
-            var encoding = isAscii 
+            var encoding = isAscii
                 ? Encoding.ASCII
                 : Encoding.UTF8;
             return (ulong)encoding.GetByteCount(value);
@@ -97,7 +93,7 @@ namespace ActualChat.Audio.WebM
                 return 7;
             return 8;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, ulong value) => GetSize(identifier) + GetSize(value) + 1;
 
@@ -169,7 +165,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, ulong value, ref SpanWriter writer)
         {
@@ -183,7 +179,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
@@ -200,7 +196,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
@@ -213,7 +209,7 @@ namespace ActualChat.Audio.WebM
 
             return WriteEbmlElement(identifier, value.Ticks, ref writer);
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
@@ -230,7 +226,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
@@ -258,7 +254,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
@@ -281,7 +277,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, byte[]? value, ref SpanWriter writer)
         {
@@ -311,7 +307,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         public static bool Write(this IReadOnlyList<Block>? blocks, ref SpanWriter writer)
         {
             if (blocks == null)
@@ -323,7 +319,7 @@ namespace ActualChat.Audio.WebM
 
             return true;
         }
-        
+
         public static bool Write(this IReadOnlyList<SimpleTag>? tags, ref SpanWriter writer)
         {
             if (tags == null)

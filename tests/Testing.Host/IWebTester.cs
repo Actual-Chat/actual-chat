@@ -1,5 +1,4 @@
 using ActualChat.Host;
-using Stl.Fusion.Authentication;
 
 namespace ActualChat.Testing.Host
 {

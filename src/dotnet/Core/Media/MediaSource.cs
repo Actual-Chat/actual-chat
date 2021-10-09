@@ -1,5 +1,3 @@
-using ActualChat.Channels;
-
 namespace ActualChat.Media;
 
 public interface IMediaSource

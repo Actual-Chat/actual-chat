@@ -1,6 +1,4 @@
 using StackExchange.Redis;
-using Stl.Testing;
-using Xunit.Abstractions;
 
 namespace ActualChat.Redis.UnitTests;
 

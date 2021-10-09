@@ -1,14 +1,10 @@
 using ActualChat.Audio.WebM;
-using Stl.Testing;
-using Xunit.Abstractions;
 
 namespace ActualChat.Audio.UnitTests
 {
     public class VIntTests : TestBase
     {
-        public VIntTests(ITestOutputHelper @out) : base(@out)
-        {
-        }
+        public VIntTests(ITestOutputHelper @out) : base(@out) { }
 
         [Fact]
         public void EncodeSizeSingleByteTest()

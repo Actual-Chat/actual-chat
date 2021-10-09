@@ -1,7 +1,5 @@
 ﻿using ActualChat.Testing.Host;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication;
-using Xunit.Abstractions;
 
 namespace ActualChat.UI.Blazor.IntegrationTests
 {

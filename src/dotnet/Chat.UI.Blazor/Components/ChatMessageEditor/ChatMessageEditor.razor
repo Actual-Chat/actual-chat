@@ -57,7 +57,7 @@
     {
         if (ChatId.IsNullOrEmpty() || Message.IsNullOrEmpty())
             return;
-        var (_, ce) = await _cmd.Run(new ChatCommands.Post(_session, ChatId, Message));
+        var (_, ce) = await _cmd.Run(new ChatCommands.PostMessage(_session, ChatId, Message));
         if (ce.IsFailed)
             return;
         if (_jsRef != null)

@@ -1,7 +1,6 @@
 using ActualChat.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
-using Stl.Fusion.Authentication;
 
 namespace ActualChat.Testing.Host
 {

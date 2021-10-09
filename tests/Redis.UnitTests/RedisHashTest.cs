@@ -1,6 +1,4 @@
-﻿using Xunit.Abstractions;
-
-namespace ActualChat.Redis.UnitTests;
+﻿namespace ActualChat.Redis.UnitTests;
 
 public class RedisHashTest : RedisTestBase
 {
