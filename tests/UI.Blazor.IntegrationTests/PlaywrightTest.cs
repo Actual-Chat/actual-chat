@@ -1,7 +1,5 @@
 using System.Text.RegularExpressions;
 using ActualChat.Testing.Host;
-using Stl.Fusion.Authentication;
-using Xunit.Abstractions;
 
 namespace ActualChat.UI.Blazor.IntegrationTests
 {

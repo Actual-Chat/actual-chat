@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Reactive;
 using System.Runtime.ExceptionServices;
 
 namespace ActualChat.Channels;

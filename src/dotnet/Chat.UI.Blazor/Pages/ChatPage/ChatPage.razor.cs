@@ -5,7 +5,6 @@ using ActualChat.UI.Blazor.Components;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
 using Stl.Mathematics;
@@ -99,7 +98,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
 
         var idLogCover = ChatConstants.IdLogCover;
-        var range = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
+        var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
         if (query.IncludedRange == default) {
             query = query with {
                 IncludedRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())

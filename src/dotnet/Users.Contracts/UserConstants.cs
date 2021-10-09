@@ -1,10 +1,7 @@
-using Stl.Fusion.Authentication;
+namespace ActualChat.Users;
 
-namespace ActualChat.Users
+public static class UserConstants
 {
-    public static class UserConstants
-    {
-        public static string AdminUserId { get; set; } = "admin";
-        public static Session AdminSession { get; set; } = null!;
-    }
+    public static string AdminUserId { get; set; } = "admin";
+    public static Session AdminSession { get; set; } = null!;
 }

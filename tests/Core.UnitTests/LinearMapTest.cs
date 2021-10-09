@@ -1,6 +1,4 @@
 using ActualChat.Mathematics;
-using Stl.Testing;
-using Xunit.Abstractions;
 
 namespace ActualChat.Core.UnitTests
 {

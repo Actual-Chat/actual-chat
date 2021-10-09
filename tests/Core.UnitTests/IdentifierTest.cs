@@ -1,7 +1,3 @@
-using Stl.Serialization;
-using Stl.Testing;
-using Xunit.Abstractions;
-
 namespace ActualChat.Core.UnitTests
 {
     public class IdentifierTest : TestBase

@@ -1,9 +1,3 @@
-using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
-using Stl.CommandR.Configuration;
-using Stl.Fusion;
-
 namespace ActualChat.Chat
 {
     public interface IServerSideChatService : IChatService
@@ -32,7 +26,7 @@ namespace ActualChat.Chat
             CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken);
+        Task<Range<long>> GetMinMaxId(ChatId chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPermissions> GetPermissions(ChatId chatId, UserId userId, CancellationToken cancellationToken);

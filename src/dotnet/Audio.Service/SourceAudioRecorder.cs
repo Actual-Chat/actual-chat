@@ -1,6 +1,5 @@
 using ActualChat.Blobs;
 using ActualChat.Redis;
-using Stl.Fusion.Authentication;
 
 namespace ActualChat.Audio;
 

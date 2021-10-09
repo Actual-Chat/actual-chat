@@ -2,10 +2,9 @@ using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion.Authentication;
 using Stl.Plugins;
 
-namespace ActualChat.Users.UI.Blazor;
+namespace ActualChat.Users.UI.Blazor.Module;
 
 public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 {

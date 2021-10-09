@@ -5,14 +5,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Xunit.DependencyInjection" />
-    <PackageReference Include="Xunit.DependencyInjection.Logging" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Stl.Testing" />
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Xunit.DependencyInjection" />
+    <PackageReference Include="Xunit.DependencyInjection.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\dotnet\Core\Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

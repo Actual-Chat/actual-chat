@@ -1,17 +1,12 @@
-﻿using System.Collections.Immutable;
-using Stl.CommandR.Configuration;
-using Stl.Fusion;
-using Stl.Fusion.Authentication;
-
-namespace ActualChat.Chat
+﻿namespace ActualChat.Chat
 {
     public interface IChatService
     {
         // Commands
         [CommandHandler]
-        Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken);
+        Task<Chat> CreateChat(ChatCommands.CreateChat command, CancellationToken cancellationToken);
         [CommandHandler]
-        Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken);
+        Task<ChatEntry> PostMessage(ChatCommands.PostMessage command, CancellationToken cancellationToken);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
@@ -22,12 +17,13 @@ namespace ActualChat.Chat
             Session session, ChatId chatId, Range<long>? idRange,
             CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
+        Task<Range<long>> GetMinMaxId(
+            Session session, ChatId chatId,
+            CancellationToken cancellationToken);
+
+        [ComputeMethod(KeepAliveTime = 1)]
         Task<ImmutableArray<ChatEntry>> GetEntries(
             Session session, ChatId chatId, Range<long> idRange,
-            CancellationToken cancellationToken);
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetIdRange(
-            Session session, ChatId chatId,
             CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]

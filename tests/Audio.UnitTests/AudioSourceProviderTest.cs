@@ -1,9 +1,5 @@
 using System.Buffers;
-using System.Threading.Channels;
 using ActualChat.Blobs;
-using Grpc.Core;
-using Stl.Time;
-using Channel = System.Threading.Channels.Channel;
 
 namespace ActualChat.Audio.UnitTests;
 
@@ -101,8 +97,6 @@ public class AudioSourceProviderTest
         await foreach (var audioFrame in source.Frames) {
             if (audioFrame.Offset < offset)
                 continue;
-
-
             await fileStream.WriteAsync(audioFrame.Data);
         }
     }
