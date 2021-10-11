@@ -31,6 +31,11 @@ public abstract class MediaTrackPlayer : IAsyncDisposable
                 await OnPlayNextFrame(nextFrame).ConfigureAwait(false);
             }
         }
+        catch (Exception ex) {
+            //TODO(AK): handle MediaTrackPlayer errors!
+            // temp
+            Console.Out.WriteLine(ex.ToString());
+        }
         finally {
             Playing?.Invoke(prevFrame, null);
             await OnPlayStop().ConfigureAwait(false);

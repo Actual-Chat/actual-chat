@@ -1,4 +1,4 @@
-﻿using ActualChat.Audio;
+using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Playback;
 using ActualChat.UI.Blazor.Components;
@@ -13,10 +13,9 @@ namespace ActualChat.Chat.UI.Blazor.Pages;
 
 public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 {
-    private readonly CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _listenForNewChatEntriesCts = new();
     private AsyncServiceScope? _scope;
     private IMediaPlayer _mediaPlayer = null!;
-    private ChannelWriter<MediaTrack> _mediaTrackWriter = null!;
 
     [Inject]
     protected IServiceScopeFactory ScopeFactory { get; set; } = default!;
@@ -53,8 +52,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
     public override async ValueTask DisposeAsync()
     {
-        _mediaTrackWriter.TryComplete();
-        _cts.Cancel();
+        _listenForNewChatEntriesCts.Cancel();
         if (_scope != null)
             await ((IAsyncDisposable)_scope).DisposeAsync();
 
@@ -65,17 +63,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     {
         if (!firstRender) return Task.CompletedTask;
 
-        var channel = Channel.CreateBounded<MediaTrack>(new BoundedChannelOptions(20) {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true
-        });
-        _mediaTrackWriter = channel.Writer;
         _mediaPlayer = ScopedServices.GetRequiredService<IMediaPlayer>();
-        // temp switch
-        if (ListenToStream)
-            _ = _mediaPlayer.Play(channel.Reader.ReadAllAsync(_cts.Token), _cts.Token);
+        _ = ListenForNewChatEntries(_listenForNewChatEntriesCts.Token);
 
         return Task.CompletedTask;
     }
@@ -119,10 +108,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var entryLists = await Task.WhenAll(
             ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)));
 
-        var chatEntries = entryLists.SelectMany(entries => entries).ToList();
-        foreach (var chatEntry in chatEntries.Where(ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
-            _ = EnqueueAudioChatEntryForListening(chatEntry);
-        }
+        var chatEntries = entryLists.SelectMany(entries => entries);
         var result = VirtualListResponse.New(
             chatEntries.Where(ce =>ce.ContentType == ChatContentType.Text),
             entry => entry.Id.ToString(),
@@ -131,13 +117,58 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         return result;
     }
 
+    private async Task ListenForNewChatEntries(CancellationToken cancellationToken)
+    {
+        try {
+            var minMax = await Chats.GetMinMaxId(Session, ChatId, cancellationToken).ConfigureAwait(false);
+            var startReadingFrom = minMax.End & ~0b11111;
+
+            while (true) {
+                cancellationToken.ThrowIfCancellationRequested();
+                var readRange = new Range<long>(startReadingFrom, startReadingFrom + 64);
+                var entries = await Chats.GetEntries(Session, ChatId, readRange, cancellationToken).ConfigureAwait(false);
+                foreach (var entry in entries.Where(ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
+                    if (startReadingFrom < entry.Id)
+                        startReadingFrom = entry.Id;
+                    _ = EnqueueAudioChatEntryForListening(entry);
+                }
+
+                startReadingFrom &= ~0b11111;
+
+                await Task.Delay(300, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception e) {
+            Console.WriteLine(e);
+            throw;
+        }
+
+        // ReSharper disable once FunctionNeverReturns
+    }
+
     private async Task EnqueueAudioChatEntryForListening(ChatEntry entry)
     {
         try {
-            var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _cts.Token);
+            var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _listenForNewChatEntriesCts.Token);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
             var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt);
-            await _mediaTrackWriter.WriteAsync(mediaTrack).ConfigureAwait(false);
+            await _mediaPlayer.EnqueueTrack(mediaTrack).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not TaskCanceledException) {
+            Log.LogError(
+                e,
+                "Error reading media stream. Chat: {ChatId}, Entry: {ChatEntryId}, StreamId: {StreamId}",
+                entry.ChatId, entry.Id, entry.StreamId);
+        }
+    }
+
+    private async Task PlayMediaTrack(ChatEntry entry)
+    {
+        try {
+            var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _listenForNewChatEntriesCts.Token);
+            var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
+            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt);
+            await _mediaPlayer.Play(mediaTrack, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not TaskCanceledException) {
             Log.LogError(
