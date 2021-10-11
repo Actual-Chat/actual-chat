@@ -1,4 +1,29 @@
 {
-  "PostgresConnectionString": "Server=localhost;Database=ac_dev_audio;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
-  "RedisConnectionString": "localhost"
+  "UsersSettings": {
+    "Db": "Server=localhost;Database=ac_dev_users;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "MicrosoftAccountClientId": "6839dbf7-d1d3-4eb2-a7e1-ce8d48f34d00",
+    "MicrosoftAccountClientSecret": "REFYeH4yNTNfcVNWX2h0WkVoc1V6NHIueDN+LWRxUTA2Zw==",
+    "GitHubClientId": "7a38bc415f7e1200fee2",
+    "GitHubClientSecret": "OGNkMTAzM2JmZjljOTk3ODc5MjhjNTNmMmE3Y2Q1NWU0ZmNlNjU0OA=="
+  },
+  "AudioSettings": {
+    "Db": "Server=localhost;Database=ac_dev_audio;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "Redis": "localhost",
+    "UseMessagePackWithSignalR": false
+  },
+  "ChatSettings": {
+    "Db": "Server=localhost;Database=ac_dev_chat;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "DefaultChatId": ""
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.AspNetCore.SignalR.Internal": "Warning",
+      "Microsoft.EntityFrameworkCore.Database": "Warning",
+      "Stl": "Warning",
+      "Microsoft.Hosting.Lifetime": "Warning"
+
+    }
+  }
 }

@@ -60,8 +60,6 @@ namespace ActualChat.Testing
     public record class TestSettings
     {
         public string TempDirectory { get; set; } = "";
-        public string PostgresConnectionString { get; set; } = "";
-        public string RedisConnectionString { get; set; } = "";
         public bool IsRunningInContainer { get; set; } = false;
     }
 }
