@@ -48,6 +48,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     protected override async ValueTask DisposeAsyncCore()
     {
         try {
+            await OnPlayStop();
             if (_jsRef != null)
                 await _jsRef.DisposeAsync().ConfigureAwait(false);
         }

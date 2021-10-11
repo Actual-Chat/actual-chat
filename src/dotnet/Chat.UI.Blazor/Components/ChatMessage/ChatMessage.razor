@@ -49,12 +49,12 @@
     [Parameter]
     public ChatEntry Entry { get; set; } = null!;
     [Parameter]
-    public EventCallback<string> OnListen { get; set; }
+    public EventCallback<ChatEntry> OnListen { get; set; }
 
-    private void ListenCallback(string streamId)
+    private void ListenCallback(string _)
     {
         if (OnListen.HasDelegate)
-            OnListen.InvokeAsync(streamId);
+            OnListen.InvokeAsync(Entry);
     }
 
     protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken)
