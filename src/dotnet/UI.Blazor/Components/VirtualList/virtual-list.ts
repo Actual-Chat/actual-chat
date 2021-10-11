@@ -40,13 +40,14 @@ export class VirtualList {
 
     afterRender(mustScroll, viewOffset, mustNotifyWhenScrollStops) {
         let spacerSize = this.getSpacerSize();
+        console.log("afterRender: ", { mustScroll, viewOffset, wantResizeSpacer: mustNotifyWhenScrollStops, spacerSize });
         if (mustScroll)
             this._elementRef.scrollTo(0, viewOffset + spacerSize);
         let _ = this.updateClientSideStateAsync()
         this.setupResizeTracking();
         this.setupScrollTracking(mustNotifyWhenScrollStops);
     }
-    
+
     /** scroll stopped notification */
     setupScrollTracking(mustNotifyWhenScrollStops) {
         if (mustNotifyWhenScrollStops) {
@@ -94,7 +95,7 @@ export class VirtualList {
     }
 
     /** sends the state to UpdateClientSideState dotnet part */
-    async updateClientSideStateAsync(isScrollStopped = false) {
+    async updateClientSideStateAsync(isSafeToScroll = false) {
         if (this._updateClientSideStateTask != null) {
             // this call should run in the same order / non-concurrently
             await this._updateClientSideStateTask.then(v => v, _ => null);
@@ -103,12 +104,12 @@ export class VirtualList {
         let spacerSize = this.getSpacerSize();
         let state = {
             renderIndex: parseInt(this._elementRef.dataset["renderIndex"]!),
-            isScrollStopped: isScrollStopped,
+            IsSafeToScroll: isSafeToScroll,
             viewOffset: this._elementRef.scrollTop - spacerSize,
             viewSize: this._elementRef.getBoundingClientRect().height,
             itemSizes: {}
         };
-        if (!isScrollStopped) {
+        if (!isSafeToScroll) {
             let items = this._elementRef.querySelectorAll(".items-unmeasured .item").values() as IterableIterator<HTMLElement>;
             for (let item of items) {
                 let key = item.dataset["key"];
