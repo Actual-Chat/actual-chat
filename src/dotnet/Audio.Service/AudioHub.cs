@@ -2,7 +2,6 @@ using ActualChat.Blobs;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using Stl.Fusion.Authentication;
 
 namespace ActualChat.Audio;
 

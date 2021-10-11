@@ -1,13 +1,9 @@
 using System.Buffers;
-using System.Threading.Channels;
 using ActualChat.Blobs;
 using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication;
-using Stl.Time;
-using Xunit.Abstractions;
 
 namespace ActualChat.Audio.IntegrationTests;
 
@@ -79,7 +75,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
-        var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
+        var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
         var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
@@ -111,7 +107,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var transcriptStreamer = sourceAudioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChatService>();
 
-        var chat = await chatService.Create(new ChatCommands.Create(session, "Test"), default);
+        var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
         var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 

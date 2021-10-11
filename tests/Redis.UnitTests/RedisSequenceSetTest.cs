@@ -1,8 +1,4 @@
-﻿using Stl;
-using Stl.Async;
-using Xunit.Abstractions;
-
-namespace ActualChat.Redis.UnitTests;
+﻿namespace ActualChat.Redis.UnitTests;
 
 public class RedisSequenceSetTest : RedisTestBase
 {

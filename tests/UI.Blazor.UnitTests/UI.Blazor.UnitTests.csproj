@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\dotnet\UI.Blazor\UI.Blazor.csproj" />
+  </ItemGroup>
+
+</Project>

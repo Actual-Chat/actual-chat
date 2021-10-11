@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Immutable;
 using Microsoft.AspNetCore.Mvc;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.Server;
 
 namespace ActualChat.Chat.Controllers
@@ -22,17 +19,17 @@ namespace ActualChat.Chat.Controllers
         // Commands
 
         [HttpPost]
-        public Task<Chat> Create([FromBody] ChatCommands.Create command, CancellationToken cancellationToken)
+        public Task<Chat> CreateChat([FromBody] ChatCommands.CreateChat command, CancellationToken cancellationToken)
         {
             command.UseDefaultSession(_sessionResolver);
-            return _chats.Create(command, cancellationToken);
+            return _chats.CreateChat(command, cancellationToken);
         }
 
         [HttpPost]
-        public Task<ChatEntry> Post([FromBody] ChatCommands.Post command, CancellationToken cancellationToken)
+        public Task<ChatEntry> PostMessage([FromBody] ChatCommands.PostMessage command, CancellationToken cancellationToken)
         {
             command.UseDefaultSession(_sessionResolver);
-            return _chats.Post(command, cancellationToken);
+            return _chats.PostMessage(command, cancellationToken);
         }
 
         // Queries
@@ -58,11 +55,11 @@ namespace ActualChat.Chat.Controllers
             => _chats.GetEntries(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
-        public Task<Range<long>> GetIdRange(
+        public Task<Range<long>> GetMinMaxId(
             Session session,
             ChatId chatId,
             CancellationToken cancellationToken)
-            => _chats.GetIdRange(session, chatId, cancellationToken);
+            => _chats.GetMinMaxId(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPermissions> GetPermissions(

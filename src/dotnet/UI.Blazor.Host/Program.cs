@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor;
 using ActualChat.Chat.Client.Module;
@@ -7,6 +6,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor;
+using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;

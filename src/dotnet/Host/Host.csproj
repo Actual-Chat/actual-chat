@@ -29,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup Label="dotnet watch">
+    <Watch Include="wwwroot\dist\**" />
     <Watch Remove="wwwroot\**\*.map" />
     <Watch Remove="wwwroot\**\*.eot" />
     <Watch Remove="wwwroot\**\*.ttf" />

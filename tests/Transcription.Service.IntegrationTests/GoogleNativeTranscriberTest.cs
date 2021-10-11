@@ -1,7 +1,5 @@
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using Stl.Testing;
-using Xunit.Abstractions;
 
 namespace ActualChat.Transcription.IntegrationTests
 {

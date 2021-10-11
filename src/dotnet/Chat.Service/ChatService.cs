@@ -1,21 +1,16 @@
-﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Reactive;
 using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Redis;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication;
 using Stl.Fusion.EntityFramework;
-using Stl.Fusion.Operations;
 
 namespace ActualChat.Chat
 {
     // [ComputeService, ServiceAlias(typeof(IChatService))]
-    public class ChatService : DbServiceBase<ChatDbContext>, IServerSideChatService
+    public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChatService
     {
         protected IAuthService Auth { get; init; }
         protected IUserInfoService UserInfos { get; init; }
@@ -30,108 +25,6 @@ namespace ActualChat.Chat
             DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
             DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
             IdSequences = services.GetRequiredService<RedisSequenceSet<ChatService>>();
-        }
-
-        // Commands
-
-        public virtual async Task<Chat> Create(ChatCommands.Create command, CancellationToken cancellationToken)
-        {
-            var (session, title) = command;
-            var context = CommandContext.GetCurrent();
-            if (Computed.IsInvalidating())
-                return null!; // Nothing to invalidate
-
-            var user = await Auth.GetUser(session, cancellationToken);
-            user.MustBeAuthenticated();
-
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var now = Clocks.SystemClock.Now;
-            var id = (ChatId) Ulid.NewUlid().ToString();
-            var dbChat = new DbChat() {
-                Id = id,
-                Version = VersionGenerator.NextVersion(),
-                Title = title,
-                AuthorId = user.Id,
-                CreatedAt = now,
-                IsPublic = false,
-                Owners = new List<DbChatOwner> { new () { ChatId = id, UserId = user.Id } },
-            };
-            dbContext.Add(dbChat);
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            var chat = dbChat.ToModel();
-            context.Operation().Items.Set(chat);
-            return chat;
-        }
-
-        public virtual async Task<ChatEntry> Post(ChatCommands.Post command, CancellationToken cancellationToken)
-        {
-            var (session, chatId, text) = command;
-            var context = CommandContext.GetCurrent();
-            if (Computed.IsInvalidating()) {
-                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetIdRange(chatId, default);
-                InvalidateChatPages(chatId, invChatEntry.Id, false);
-                return null!;
-            }
-
-            var user = await Auth.GetUser(session, cancellationToken);
-            user.MustBeAuthenticated();
-            await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken);
-
-            var dbContext = await CreateCommandDbContext(cancellationToken);
-            var now = Clocks.SystemClock.Now;
-            var chatEntry = new ChatEntry(chatId, 0) {
-                AuthorId = (string) user.Id,
-                BeginsAt = now,
-                EndsAt = now,
-                Content = text,
-                ContentType = ChatContentType.Text,
-            };
-            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
-            chatEntry = dbChatEntry.ToModel();
-            context.Operation().Items.Set(chatEntry);
-            return chatEntry;
-        }
-
-        public virtual async Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken)
-        {
-            var chatEntry = command.Entry;
-            var context = CommandContext.GetCurrent();
-            if (Computed.IsInvalidating()) {
-                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetIdRange(chatEntry.ChatId, default);
-                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
-                return null!;
-            }
-
-            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
-
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
-            chatEntry = dbChatEntry.ToModel();
-            context.Operation().Items.Set(chatEntry);
-            return chatEntry;
-        }
-
-        public virtual async Task<ChatEntry> UpdateEntry(ChatCommands.UpdateEntry command, CancellationToken cancellationToken)
-        {
-            var chatEntry = command.Entry;
-            var context = CommandContext.GetCurrent();
-            if (Computed.IsInvalidating()) {
-                var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-                _ = GetIdRange(chatEntry.ChatId, default);
-                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, true);
-                return null!;
-            }
-
-            await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
-
-            await using var dbContext = await CreateCommandDbContext(cancellationToken);
-            var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
-            chatEntry = dbChatEntry.ToModel();
-            context.Operation().Items.Set(chatEntry);
-            return chatEntry;
         }
 
         // Queries
@@ -187,6 +80,27 @@ namespace ActualChat.Chat
             return await dbMessages.LongCountAsync(cancellationToken);
         }
 
+        public virtual async Task<Range<long>> GetMinMaxId(
+            Session session,
+            ChatId chatId,
+            CancellationToken cancellationToken)
+        {
+            var user = await Auth.GetUser(session, cancellationToken);
+            await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
+            return await GetMinMaxId(chatId, cancellationToken);
+        }
+
+        public virtual async Task<Range<long>> GetMinMaxId(ChatId chatId, CancellationToken cancellationToken)
+        {
+            await using var dbContext = CreateDbContext();
+            var lastId = await dbContext.ChatEntries.AsQueryable()
+                .Where(e => e.ChatId == (string) chatId)
+                .OrderByDescending(e => e.Id)
+                .Select(e => e.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            return (0, lastId);
+        }
+
         public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(
             Session session,
             ChatId chatId,
@@ -213,27 +127,6 @@ namespace ActualChat.Chat
                 .ToListAsync(cancellationToken);
             var entries = dbEntries.Select(m => m.ToModel()).ToImmutableArray();
             return entries;
-        }
-
-        public virtual async Task<Range<long>> GetIdRange(
-            Session session,
-            ChatId chatId,
-            CancellationToken cancellationToken)
-        {
-            var user = await Auth.GetUser(session, cancellationToken);
-            await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
-            return await GetIdRange(chatId, cancellationToken);
-        }
-
-        public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
-        {
-            await using var dbContext = CreateDbContext();
-            var lastId = await dbContext.ChatEntries.AsQueryable()
-                .Where(e => e.ChatId == (string)chatId)
-                .OrderByDescending(e => e.Id)
-                .Select(e => e.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            return (0, lastId);
         }
 
         // Permissions

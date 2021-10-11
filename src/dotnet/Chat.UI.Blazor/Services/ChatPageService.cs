@@ -1,5 +1,4 @@
 using ActualChat.Chat.UI.Blazor.Pages;
-using Stl.Fusion.Authentication;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

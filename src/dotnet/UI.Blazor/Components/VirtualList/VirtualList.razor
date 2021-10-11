@@ -87,8 +87,8 @@
         }
     }
 
-    protected IJSObjectReference? JSComponentRef { get; set; }
-    protected DotNetObjectReference<IVirtualListBackend>? ComponentRef { get; set; }
+    protected IJSObjectReference JsRef { get; set; } = null!;
+    protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
     protected RenderInfo? LastRenderInfo { get; set; }
     protected VirtualListQuery? LastQuery { get; set; }
     protected VirtualListQuery NextQuery { get; set; } = new(default);
@@ -110,16 +110,17 @@
 
     public override async ValueTask DisposeAsync()
     {
-        await JSComponentRef.DisposeSilentAsync("dispose").ConfigureAwait(true);
-        ComponentRef?.Dispose();
+        if (JsRef != null)
+            await JsRef.DisposeSilentAsync("dispose").ConfigureAwait(true);
+        BlazorRef?.Dispose();
         await base.DisposeAsync().ConfigureAwait(true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ComponentRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.VirtualList.create", Ref, ComponentRef);
+            BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
+            JsRef = await _js.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.VirtualList.create", Ref, BlazorRef);
         }
         if (_appBlazorCircuitContext.IsPrerendering)
             return;
@@ -127,9 +128,9 @@
         if (ri == null)
             return;
         // _log.LogInformation("AfterRender: {SpacerSize} | {DisplayedRange}, [ {ViewRange} ]", ri.SpacerSize, ri.DisplayedRange, ri.ViewRange);
-        if (JSComponentRef != null) {
+        if (JsRef != null) {
             var mustNotifyWhenScrollStops = ri.SpacerSize < SpacerSize / 2 || ri.SpacerSize > SpacerSize * 2;
-            await JSComponentRef.InvokeVoidAsync(
+            await JsRef.InvokeVoidAsync(
                 "afterRender", ri.MustScrollAfterRender, ri.ViewRange.Start, mustNotifyWhenScrollStops);
         }
     }

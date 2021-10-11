@@ -1,7 +1,4 @@
 using ActualChat.Mathematics;
-using Stl.Testing;
-using Stl.Time;
-using Xunit.Abstractions;
 
 namespace ActualChat.Core.UnitTests
 {

@@ -1,10 +1,6 @@
 using System.Buffers;
-using System.Threading.Channels;
 using ActualChat.Audio.Processing;
 using ActualChat.Blobs;
-using Stl.Testing;
-using Stl.Time;
-using Xunit.Abstractions;
 
 namespace ActualChat.Audio.UnitTests
 {
@@ -32,19 +28,19 @@ namespace ActualChat.Audio.UnitTests
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
             var size = 0;
-            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel, default);
-            await foreach (var segment in segments.ReadAllAsync()) {
-                segment.Index.Should().Be(0);
-                segment.AudioRecord.Should().Be(record);
-                var audio = segment.Source;
+            var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
+            await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
+                openAudioSegment.Index.Should().Be(0);
+                openAudioSegment.AudioRecord.Should().Be(record);
+                var audio = openAudioSegment.Source;
                 var header = Convert.FromBase64String(audio.Format.CodecSettings);
 
                 size += header.Length;
                 size += await audio.SumAsync(audioMessage => audioMessage.Data.Length);
 
-                var part = await segment.GetAudioStreamPart();
-                part.AudioSource.Should().NotBeNull();
-                part.Duration.Should().BeGreaterThan(TimeSpan.Zero);
+                var audioSegment = await openAudioSegment.Close();
+                audioSegment.AudioSource.Should().NotBeNull();
+                audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
             }
 
             var bytesRead = await readTask;
@@ -71,19 +67,19 @@ namespace ActualChat.Audio.UnitTests
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel, default);
-            await foreach (var segment in segments.ReadAllAsync()) {
-                segment.Index.Should().Be(0);
-                segment.AudioRecord.Should().Be(record);
-                var audio = segment.Source;
+            var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
+            await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
+                openAudioSegment.Index.Should().Be(0);
+                openAudioSegment.AudioRecord.Should().Be(record);
+                var audio = openAudioSegment.Source;
                 var header = Convert.FromBase64String(audio.Format.CodecSettings);
 
                 size += header.Length;
                 size += await audio.SumAsync(p => p.Data.Length);
 
-                var part = await segment.GetAudioStreamPart();
-                part.AudioSource.Should().NotBeNull();
-                part.Duration.Should().BeGreaterThan(TimeSpan.Zero);
+                var audioSegment = await openAudioSegment.Close();
+                audioSegment.AudioSource.Should().NotBeNull();
+                audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
             }
 
             var bytesRead = await readTask;
@@ -109,14 +105,14 @@ namespace ActualChat.Audio.UnitTests
                 "RU-ru",
                 CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var segments = audioActivityExtractor.GetSegmentsWithAudioActivity(record, channel, default);
-            await foreach (var segment in segments.ReadAllAsync()) {
-                segment.Index.Should().Be(0);
-                segment.AudioRecord.Should().Be(record);
+            var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
+            await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
+                openAudioSegment.Index.Should().Be(0);
+                openAudioSegment.AudioRecord.Should().Be(record);
 
-                var part = await segment.GetAudioStreamPart();
-                part.AudioSource.Should().NotBeNull();
-                part.Duration.Should().BeGreaterThan(TimeSpan.Zero);
+                var audioSegment = await openAudioSegment.Close();
+                audioSegment.AudioSource.Should().NotBeNull();
+                audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
             }
         }
 

@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace ActualChat.Transcription
 {
     public record TranscriptionOptions

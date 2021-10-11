@@ -6,11 +6,9 @@ using ActualChat.Redis;
 using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
-using Stl.CommandR.Configuration;
 using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
@@ -72,7 +70,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         });
 
         // Module's own services
-        services.AddSingleton<AudioSaver>();
+        services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioActivityExtractor>();
         services.AddSingleton<SourceAudioProcessor>();
         services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());

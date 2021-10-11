@@ -91,6 +91,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playback", "src\dotnet\Play
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.UnitTests", "tests\Redis.UnitTests\Redis.UnitTests.csproj", "{C5FD17CE-66A9-4CDF-A3E1-793668707583}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.UnitTests", "tests\UI.Blazor.UnitTests\UI.Blazor.UnitTests.csproj", "{B253C7E1-0E79-46A1-AAB6-5017D06405D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -229,6 +231,10 @@ Global
 		{C5FD17CE-66A9-4CDF-A3E1-793668707583}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C5FD17CE-66A9-4CDF-A3E1-793668707583}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C5FD17CE-66A9-4CDF-A3E1-793668707583}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B253C7E1-0E79-46A1-AAB6-5017D06405D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B253C7E1-0E79-46A1-AAB6-5017D06405D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B253C7E1-0E79-46A1-AAB6-5017D06405D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B253C7E1-0E79-46A1-AAB6-5017D06405D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -268,6 +274,7 @@ Global
 		{D66CB283-D965-4AB5-A796-33931246D297} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{43E54532-23A6-4BFE-AE54-777D865BC954} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{C5FD17CE-66A9-4CDF-A3E1-793668707583} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{B253C7E1-0E79-46A1-AAB6-5017D06405D2} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

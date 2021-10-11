@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
-     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
+    <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
@@ -30,7 +30,14 @@
     <PackageReference Include="Roslynator.Analyzers" />
     <PackageReference Include="Meziantou.Analyzer" />
     <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" />
+
+    <!-- Global usings -->
+    <Using Include="ActualChat" />
+    <Using Include="ActualChat.Channels" />
     <Using Include="System.Collections" />
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Reactive" /> <!-- Mainly for Unit type -->
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
     <Using Include="System.Runtime.Serialization" />
@@ -43,7 +50,11 @@
     <Using Include="Stl.Text" />
     <Using Include="Stl.Time" />
     <Using Include="Stl.Fusion" />
+    <Using Include="Stl.Fusion.Authentication" />
+    <Using Include="Stl.Fusion.Operations" />
     <Using Include="Stl.CommandR" />
+    <Using Include="Stl.CommandR.Configuration" />
+    <Using Include="Stl.CommandR.Commands" />
     <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
@@ -52,5 +63,10 @@
     <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration)\**\*.cs" />
   </ItemGroup>
 
+  <ItemGroup Label="dotnet watch">
+    <Watch Remove="**\*.ts" />
+    <Watch Remove="**\*.js" />
+    <Watch Remove="**\*.css" />
+  </ItemGroup>
 </Project>
 

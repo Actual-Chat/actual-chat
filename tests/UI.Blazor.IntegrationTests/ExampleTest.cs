@@ -4,9 +4,6 @@ using ActualChat.Testing;
 using ActualChat.Testing.Host;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication;
-using Stl.Generators.Internal;
-using Xunit.Abstractions;
 
 namespace ActualChat.UI.Blazor.IntegrationTests
 {

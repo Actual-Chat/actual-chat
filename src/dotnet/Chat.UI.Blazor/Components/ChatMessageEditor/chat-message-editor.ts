@@ -1,29 +1,30 @@
 export class ChatMessageEditor {
 
-    _blazorRef: DotNet.DotNetObject;
+    private _blazorRef: DotNet.DotNetObject;
+    private _input: HTMLDivElement;
 
-    static create(backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(backendRef);
+    static create(input: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(input, backendRef);
     }
 
-    constructor(backendRef: DotNet.DotNetObject) {
+    constructor(input: HTMLDivElement, backendRef: DotNet.DotNetObject) {
+        if (input === undefined || input === null ) {
+            throw new Error("input element is undefined");
+        }
         if (backendRef === undefined || backendRef === null) {
             throw new Error("dotnet backend object is undefined");
         }
+        this._input = input;
         this._blazorRef = backendRef;
     }
 
     public addEventListener(): void {
-        const editorId = "chat-message-editor-input";
-        let input = document.getElementById(editorId);
-        input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
+        this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
             this._blazorRef.invokeMethodAsync("SetMessage", event.target.innerText);
         });
     }
 
     public clearMessage(): void {
-        const editorId = "chat-message-editor-input";
-        let input = document.getElementById(editorId);
-        input.innerHTML = "";
+        this._input.innerHTML = "";
     }
 }

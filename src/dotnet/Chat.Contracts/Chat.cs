@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Immutable;
-
-#pragma warning disable MA0049 // allows ActualChat.Chat.Chat 
+﻿#pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
 
 namespace ActualChat.Chat
 {

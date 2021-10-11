@@ -4,25 +4,25 @@ namespace ActualChat.Audio.Processing;
 
 public class AudioActivityExtractor
 {
-    public ChannelReader<AudioRecordSegment> GetSegmentsWithAudioActivity(
+    public ChannelReader<OpenAudioSegment> SplitToAudioSegments(
         AudioRecord audioRecord,
         ChannelReader<BlobPart> audioReader,
         CancellationToken cancellationToken)
     {
-        var segments = Channel.CreateUnbounded<AudioRecordSegment>(
+        var openAudioSegments = Channel.CreateUnbounded<OpenAudioSegment>(
             new UnboundedChannelOptions {
                 SingleReader = true,
                 SingleWriter = true,
                 AllowSynchronousContinuations = true,
             });
-        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, segments.Writer, cancellationToken), default);
-        return segments;
+        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, openAudioSegments.Writer, cancellationToken), default);
+        return openAudioSegments;
     }
 
     private async Task ExtractSegments(
         AudioRecord audioRecord,
         ChannelReader<BlobPart> content,
-        ChannelWriter<AudioRecordSegment> target,
+        ChannelWriter<OpenAudioSegment> target,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
@@ -30,13 +30,13 @@ public class AudioActivityExtractor
         var segmentIndex = 0;
         try {
             var audioSource = await audioSourceProvider.ExtractMediaSource(content, cancellationToken).ConfigureAwait(false);
-            var segment = new AudioRecordSegment(
+            var openAudioSegment = new OpenAudioSegment(
                 segmentIndex,
                 audioRecord,
                 audioSource,
                 TimeSpan.Zero,
-                audioSource.Duration);
-            await target.WriteAsync(segment, cancellationToken).ConfigureAwait(false);
+                audioSource.DurationTask);
+            await target.WriteAsync(openAudioSegment, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {
             error = e;
