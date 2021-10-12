@@ -1,4 +1,4 @@
-import './virtual-list.css'
+import './virtual-list.css';
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -15,7 +15,7 @@ export class VirtualList {
     private _onResizeTimeout: any;
 
     static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
-        return new VirtualList(elementRef, backendRef)
+        return new VirtualList(elementRef, backendRef);
     }
 
     constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
@@ -29,7 +29,7 @@ export class VirtualList {
         this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
         this._resizedOnce = new Map<Element, boolean>();
 
-        let listenerOptions : AddEventListenerOptions = { signal: this._abortController.signal };
+        let listenerOptions: AddEventListenerOptions = { signal: this._abortController.signal };
         elementRef.addEventListener("scroll", _ => this.updateClientSideStateAsync(), listenerOptions);
     };
 
@@ -40,10 +40,10 @@ export class VirtualList {
 
     afterRender(mustScroll, viewOffset, mustNotifyWhenScrollStops) {
         let spacerSize = this.getSpacerSize();
-        console.log("afterRender: ", { mustScroll, viewOffset, wantResizeSpacer: mustNotifyWhenScrollStops, spacerSize });
+        // console.log("afterRender: ", { mustScroll, viewOffset, wantResizeSpacer: mustNotifyWhenScrollStops, spacerSize });
         if (mustScroll)
             this._elementRef.scrollTo(0, viewOffset + spacerSize);
-        let _ = this.updateClientSideStateAsync()
+        let _ = this.updateClientSideStateAsync();
         this.setupResizeTracking();
         this.setupScrollTracking(mustNotifyWhenScrollStops);
     }
@@ -101,27 +101,28 @@ export class VirtualList {
             await this._updateClientSideStateTask.then(v => v, _ => null);
             this._updateClientSideStateTask = null;
         }
-        let spacerSize = this.getSpacerSize();
-        let state = {
-            renderIndex: parseInt(this._elementRef.dataset["renderIndex"]!),
+        let state: Required<IClientSideState> = {
+            RenderIndex: parseInt(this._elementRef.dataset["renderIndex"]!),
+            Height: this._elementRef.getBoundingClientRect().height,
             IsSafeToScroll: isSafeToScroll,
-            viewOffset: this._elementRef.scrollTop - spacerSize,
-            viewSize: this._elementRef.getBoundingClientRect().height,
-            itemSizes: {}
+            SpacerSize: this.getSpacerSize(),
+            ScrollTop: this._elementRef.scrollTop,
+            ScrollHeight: this._elementRef.scrollHeight,
+            ItemSizes: {},
         };
         if (!isSafeToScroll) {
             let items = this._elementRef.querySelectorAll(".items-unmeasured .item").values() as IterableIterator<HTMLElement>;
             for (let item of items) {
                 let key = item.dataset["key"];
-                state.itemSizes[key] = item.getBoundingClientRect().height;
+                state.ItemSizes[key] = item.getBoundingClientRect().height;
             }
             items = this._elementRef.querySelectorAll(".items-displayed .item").values() as IterableIterator<HTMLElement>;
             for (let item of items) {
                 let key = item.dataset["key"];
-                let knownSize = parseFloat(item.dataset["size"]!)
+                let knownSize = parseFloat(item.dataset["size"]!);
                 let size = item.getBoundingClientRect().height;
                 if (Math.abs(size - knownSize) >= 0.001)
-                    state.itemSizes[key] = size;
+                    state.ItemSizes[key] = size;
             }
         }
         this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
@@ -132,4 +133,26 @@ export class VirtualList {
         let spacerTop = this._spacerRef.getBoundingClientRect().top;
         return entriesTop - spacerTop;
     }
+}
+
+/** should be in consist with IVirtualListBackend.ClientSideState */
+interface IClientSideState {
+    RenderIndex: number;
+
+    /** Is Blazor side can call scroll programmly at the moment or not */
+    IsSafeToScroll: boolean;
+
+    /** Size of div.spacer */
+    SpacerSize: number;
+
+    /** Is used to implement sticky top/bottom */
+    ScrollTop: number;
+
+    /** Is used to implement sticky bottom */
+    ScrollHeight: number;
+
+    /** Height of div.virtual-list */
+    Height: number;
+
+    ItemSizes: Record<string, number>;
 }

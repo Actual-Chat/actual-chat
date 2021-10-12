@@ -1,10 +1,12 @@
 using ActualChat.Mathematics;
+using ActualChat.UI.Blazor.Components.Internal;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public partial class VirtualList<TItem> : IVirtualListBackend
+public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListResponse<TItem>>, IVirtualListBackend
 {
     [Inject]
     private IJSRuntime _js { get; set; } = null!;
@@ -16,20 +18,10 @@ public partial class VirtualList<TItem> : IVirtualListBackend
     private ILogger<VirtualList<TItem>> _logger { get; set; } = null!;
 
     /// <inheritdoc />
-    protected async override Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
+        base.OnInitialized();
         Context = CreateRenderContext();
-        await base.OnInitializedAsync().ConfigureAwait(true);
-        if (State == null) {
-            _logger.LogWarning("[OnInitializedAsync] State before update is null");
-        }
-        await State.Update().ConfigureAwait(true);
-        if (State == null) {
-            _logger.LogWarning("[OnInitializedAsync] State is null");
-        }
-        else if (State.Computed.IsConsistent()) {
-            _logger.LogWarning("[OnInitializedAsync] State is consistent. Items count: {Count}", State.Value.Items.Count);
-        }
     }
 
     /// <inheritdoc />
@@ -53,21 +45,31 @@ public partial class VirtualList<TItem> : IVirtualListBackend
         public bool IsMeasured => Size >= 0;
     }
 
-    public class RenderContext
+    public sealed class RenderContext
     {
-        public long RenderIndex { get; set; } = 0;
-        public VirtualListResponse<TItem> Response { get; set; } = null!;
-        public Dictionary<string, ItemRenderInfo> ItemByKey { get; set; } = null!;
-        public List<ItemRenderInfo> LoadedItems { get; set; } = null!;
-        public List<ItemRenderInfo> UnmeasuredItems { get; set; } = null!;
-        public List<ItemRenderInfo> DisplayedItems { get; set; } = null!;
-        public double SpacerSize { get; set; } // That's "prefix spacer"
-        public Range<double> ViewRange { get; set; } // Relative to the top item's top
+        public long RenderIndex = 0;
+        public VirtualListResponse<TItem> Response = null!;
+        public Dictionary<string, ItemRenderInfo> ItemByKey = null!;
+        public List<ItemRenderInfo> LoadedItems = null!;
+        public List<ItemRenderInfo> UnmeasuredItems = null!;
+        public List<ItemRenderInfo> DisplayedItems = null!;
+
+        /// <summary>
+        /// That's "prefix spacer"
+        /// </summary>
+        public double SpacerSize;
+
+        /// <summary>
+        /// Relative to the top item's top
+        /// </summary>
+        public Range<double> ViewRange;
+
         /// <summary>
         /// Should we force scroll after render (<see cref="MustScrollAfterRender">)
         /// if <seealso cref="DisplayedItems" /> isn't empty
         /// </summary>
         public bool MustScrollWhenNonEmpty { get; set; }
+
         /// <summary>
         /// Forces scroll after a Blazor <seealso cref="OnAfterRenderAsync(bool)" />
         /// </summary>
@@ -79,6 +81,16 @@ public partial class VirtualList<TItem> : IVirtualListBackend
         /// </summary>
         public bool IsSafeToScroll { get; set; }
 
+        /// <summary>
+        /// Is used to calculate sticky bottom or sticky top
+        /// </summary>
+        public double ScrollTop { get; set; }
+
+        /// <summary>
+        /// Is used to calculate sticky bottom
+        /// </summary>
+        public double ScrollHeight { get; set; }
+
         // Pre-computed properties
         public Range<double> DisplayedRange
             => DisplayedItems.Count > 0
@@ -87,11 +99,17 @@ public partial class VirtualList<TItem> : IVirtualListBackend
 
         // Computed properties
         public bool IsViewLoaded
-            => DisplayedRange.Expand(1).Contains(ViewRange) || Response.HasVeryFirstItem && Response.HasVeryLastItem;
-        public bool IsViewingTop
-            => Response.HasVeryFirstItem && (DisplayedItems.Count == 0 || ViewRange.Expand(1).Overlaps(DisplayedItems[0].Range));
-        public bool IsViewingBottom
-            => Response.HasVeryLastItem && (DisplayedItems.Count == 0 || ViewRange.Expand(1).Overlaps(DisplayedItems[^1].Range));
+            => DisplayedRange.Expand(1).Contains(ViewRange) || (Response.HasVeryFirstItem && Response.HasVeryLastItem);
+
+        /// <summary>
+        /// <c>True</c> if user scrolled up to the top of <c>div.virtual-list</c>
+        /// </summary>
+        public bool IsViewingTop => DisplayedItems.Count > 0 && ScrollTop <= 0.5d;
+
+        /// <summary>
+        /// <c>True</c> if user scrolled down to the bottom of <c>div.virtual-list</c>
+        /// </summary>
+        public bool IsViewingBottom => DisplayedItems.Count > 0 && ScrollHeight - ScrollTop - ViewRange.Size() <= 0.5d;
 
         public void UpdateRanges()
         {
@@ -130,7 +148,7 @@ public partial class VirtualList<TItem> : IVirtualListBackend
     public override async ValueTask DisposeAsync()
     {
         if (JsRef != null)
-            await JsRef.DisposeSilentAsync("dispose").ConfigureAwait(true);
+            await JsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         BlazorRef?.Dispose();
         await base.DisposeAsync().ConfigureAwait(true);
         GC.SuppressFinalize(this);
@@ -149,7 +167,6 @@ public partial class VirtualList<TItem> : IVirtualListBackend
             return;
         if (JsRef != null) {
             var wantResizeSpacer = ctx.SpacerSize < SpacerSize / 2.0d || ctx.SpacerSize > SpacerSize * 2.0d;
-            _logger.LogInformation("AfterRender: MustScroll: {MustScroll} wantResizeSpacer : {wantResizeSpacer } Spacer:{SpacerSize} | Range:{DisplayedRange}, [ {ViewRange} ]", ctx.MustScrollAfterRender, wantResizeSpacer, ctx.SpacerSize, ctx.DisplayedRange, ctx.ViewRange);
             await JsRef.InvokeVoidAsync("afterRender", ctx.MustScrollAfterRender, ctx.ViewRange.Start, wantResizeSpacer).ConfigureAwait(true);
         }
     }
@@ -190,14 +207,18 @@ public partial class VirtualList<TItem> : IVirtualListBackend
     {
         var ctx = Context;
         if (ctx == null) {
-            _logger.LogWarning("Call UpdateClientSideState with uninitialized render context");
+            // something is wrong with js part, shouldn't happen
+            const string warn = $"Call {nameof(UpdateClientSideState)} with uninitialized {nameof(Context)}";
+            _logger.LogWarning(warn);
             return;
         }
-
         ctx.IsSafeToScroll = clientSideState.IsSafeToScroll;
+        ctx.ScrollTop = clientSideState.ScrollTop;
+        ctx.ScrollHeight = clientSideState.ScrollHeight;
+        ctx.SpacerSize = clientSideState.SpacerSize;
 
+        // we can drop part of calculations if js changes are from outdated blazor render
         if (clientSideState.RenderIndex != ctx.RenderIndex) {
-            _logger.LogWarning("Skipped UpdateClientSideState due to outdated RenderIndex");
             return;
         }
 
@@ -213,13 +234,13 @@ public partial class VirtualList<TItem> : IVirtualListBackend
             item.Range = item.Range.Resize(size);
             isItemSizeChanged = true;
         }
-
-        var isViewRangeChanged = clientSideState.ViewRange != ctx.ViewRange;
-        ctx.ViewRange = clientSideState.ViewRange;
-
-        void DelayedStateHasChanged()
-        {
-            _ = Task.Delay(10).ContinueWith(_ => InvokeAsync(StateHasChanged), TaskScheduler.Default);
+        // offset from the top of div.virtual-list without div.spacer size
+        var viewOffset = clientSideState.ScrollTop - clientSideState.SpacerSize;
+        var viewRange = new Range<double>(viewOffset, viewOffset + clientSideState.Height);
+        var isViewRangeChanged = false;
+        if (viewRange != ctx.ViewRange) {
+            ctx.ViewRange = viewRange;
+            isViewRangeChanged = true;
         }
 
         if (isItemSizeChanged) {
@@ -232,6 +253,9 @@ public partial class VirtualList<TItem> : IVirtualListBackend
         else if (isViewRangeChanged || !prevIsViewLoaded || !ctx.IsViewLoaded) {
             TryRecomputeState();
         }
+
+        void DelayedStateHasChanged()
+            => Task.Delay(10).ContinueWith(_ => InvokeAsync(StateHasChanged), TaskScheduler.Default);
     }
 
     protected virtual VirtualListQuery GetQuery()
@@ -270,7 +294,7 @@ public partial class VirtualList<TItem> : IVirtualListBackend
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
         var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
-        var itemSize = Statistics.ItemSizeEstimate;
+        var itemSize = Statistics.ItemSize;
         var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
         var query = new VirtualListQuery(keyRange) {
             ExpandStartBy = Math.Min(MaxExpandOnQuery, Math.Round(startGap / itemSize / responseFulfillmentRatio, 1)),
@@ -279,6 +303,7 @@ public partial class VirtualList<TItem> : IVirtualListBackend
             ExpectedEndExpansion = Math.Ceiling(endGap / itemSize),
         };
         if (ri.IsViewingTop) {
+            // take max top
             query = query with {
                 ExpandStartBy = MaxExpandOnQuery,
                 ExpectedStartExpansion = 0,
@@ -286,12 +311,12 @@ public partial class VirtualList<TItem> : IVirtualListBackend
         }
 
         if (ri.IsViewingBottom) {
+            // take max bottom
             query = query with {
                 ExpandEndBy = MaxExpandOnQuery,
                 ExpectedEndExpansion = 0,
             };
         }
-
         return query;
     }
 
@@ -334,23 +359,37 @@ public partial class VirtualList<TItem> : IVirtualListBackend
             // Everything is new, so let's scroll to the very top
             ctx.ViewRange = new(0, viewSize);
             ctx.MustScrollWhenNonEmpty = true;
+            _logger.LogWarning("Everything is new, so let's scroll to the very top");
         }
 
-        // Checking whether we should scroll to the top or to the bottom
-        if (ctx.DisplayedItems.Count > 0 && (prev.IsViewingTop || prev.IsViewingBottom)) {
+        IsScrollNeeded();
+        SetScrollIfNeeded(ctx);
+        return ctx;
+
+        /// <summary> Checks whether we should scroll to the top or to the bottom </summary>
+        void IsScrollNeeded()
+        {
+            var isViewingBottom = prev.IsViewingBottom;
+            var isViewingTop = prev.IsViewingTop;
             var displayedRange = ctx.DisplayedRange;
             var topViewRange = new Range<double>(0, viewSize);
             var bottomViewRange = new Range<double>(displayedRange.End - viewSize, displayedRange.End);
-            var newViewRange = PreferredStickyEdge == VirtualListStickyEdge.Bottom
-                ? prev.IsViewingBottom ? bottomViewRange : topViewRange
-                : prev.IsViewingTop ? topViewRange : bottomViewRange;
-            if (Math.Abs(ctx.ViewRange.Start - newViewRange.Start) >= 0.5) {
-                ctx.ViewRange = newViewRange;
+
+            if (isViewingBottom && isViewingTop) {
+                ctx.ViewRange = PreferredStickyEdge == VirtualListStickyEdge.Bottom
+                    ? prev.IsViewingBottom ? bottomViewRange : topViewRange
+                    : prev.IsViewingTop ? topViewRange : bottomViewRange;
+                ctx.MustScrollWhenNonEmpty = true;
+            }
+            else if (prev.IsViewingBottom) {
+                ctx.ViewRange = bottomViewRange;
+                ctx.MustScrollWhenNonEmpty = true;
+            }
+            else if (prev.IsViewingTop) {
+                ctx.ViewRange = topViewRange;
                 ctx.MustScrollWhenNonEmpty = true;
             }
         }
-        ScrollLogic(ctx);
-        return ctx;
     }
 
     /// <summary>
@@ -372,14 +411,14 @@ public partial class VirtualList<TItem> : IVirtualListBackend
         ctx.ViewRange = ctx.DisplayedRange;
         ctx.MustScrollWhenNonEmpty = true;
 
-        ScrollLogic(ctx);
+        SetScrollIfNeeded(ctx);
         return ctx;
     }
 
     /// <summary>
     /// Fixes scroll / pager size for provided <paramref name="ctx" /> render context
     /// </summary>
-    private void ScrollLogic(RenderContext ctx)
+    private void SetScrollIfNeeded(RenderContext ctx)
     {
         if (ctx.MustScrollWhenNonEmpty && ctx.DisplayedItems.Count != 0) {
             ctx.MustScrollAfterRender = true;
