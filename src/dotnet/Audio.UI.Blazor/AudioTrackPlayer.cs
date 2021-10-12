@@ -1,4 +1,4 @@
-using ActualChat.Audio.UI.Blazor.Internal;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Playback;
 using Microsoft.JSInterop;
 
@@ -48,6 +48,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     protected override async ValueTask DisposeAsyncCore()
     {
         try {
+            await OnPlayStop();
             if (_jsRef != null)
                 await _jsRef.DisposeAsync().ConfigureAwait(false);
         }

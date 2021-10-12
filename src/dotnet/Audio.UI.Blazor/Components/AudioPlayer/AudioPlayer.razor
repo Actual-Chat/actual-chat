@@ -1,69 +1,99 @@
-@using System.Threading.Channels
-@using Stl
-@namespace ActualChat.Audio.UI.Blazor
-@implements IAudioPlayerBackend
+@namespace ActualChat.Audio.UI.Blazor.Components
+@implements ActualChat.Audio.UI.Blazor.Components.IAudioPlayerBackend
+@using ActualChat.Playback
+@using Microsoft.Extensions.DependencyInjection
 @inject IJSRuntime _js
 @inject IAudioSourceStreamer _audioStreamer
-
 @inject BlazorCircuitContext _circuitContext
 
-@* <audio autoplay @ref="Ref"></audio> *@
+<button @onclick="ToggleListening" class="block px-2 py-2 @(IsListening ? "text-blue-500" : "text-gray-500")">
+    <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+        <path d="M22 22.966v1.034h-20v-1.034c0-2.1.166-3.312 2.648-3.886 2.804-.647 5.572-1.227 4.241-3.682-3.943-7.274-1.124-11.398 3.111-11.398 4.152 0 7.043 3.972 3.11 11.398-1.292 2.44 1.375 3.02 4.241 3.682 2.483.573 2.649 1.786 2.649 3.886zm-10-21.229c2.228-.004 3.948 1.329 4.492 3.513h1.212c-.528-2.963-2.624-5.25-5.704-5.25s-5.176 2.287-5.704 5.25h1.212c.544-2.184 2.264-3.518 4.492-3.513zm5.542 10.263c1.608 0 2.458-1.507 2.458-3.01 0-1.497-.842-2.99-2.755-2.99.832 1.603.925 3.656.297 6zm-11.112 0c-.632-2.331-.534-4.384.313-6-1.913 0-2.743 1.489-2.743 2.984 0 1.505.843 3.016 2.43 3.016z"/>
+    </svg>
+</button>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
-    protected IJSObjectReference? JSComponentRef { get; set; }
-    protected DotNetObjectReference<IAudioPlayerBackend>? ComponentRef { get; set; }
-
-    // public ElementReference Ref { get; set; }
+    private IMediaPlayer? _mediaPlayer;
+    // protected DotNetObjectReference<IAudioPlayerBackend>? ComponentRef { get; set; }
 
     [Parameter]
     public string StreamId { get; set; } = null!;
+    [CascadingParameter]
+    public IServiceProvider ScopedServices { get; set; } = null!;
+
+    public bool IsListening { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioPlayer.create", ComponentRef);
+            _mediaPlayer = ScopedServices.GetRequiredService<IMediaPlayer>();
+    // ComponentRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
         }
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        await base.OnParametersSetAsync();
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource = null;
+    // protected override async Task OnParametersSetAsync()
+    // {
+    //     await base.OnParametersSetAsync();
+    //     _cancellationTokenSource?.Cancel();
+    //     _cancellationTokenSource = null;
+    //
+    //     // if (!_circuitContext.IsPrerendering && !StreamId.IsNullOrEmpty()) {
+    //     //     _cancellationTokenSource = new CancellationTokenSource();
+    //     //     // var audioSource = await _audioStreamer.GetAudioSource(StreamId, _cancellationTokenSource.Token);
+    //     //     // _ = ReadAudio(audioSource, _cancellationTokenSource.Token);
+    //     // }
+    // }
 
-        if (!_circuitContext.IsPrerendering && !StreamId.IsNullOrEmpty()) {
-            _cancellationTokenSource = new CancellationTokenSource();
-            var audioSource = await _audioStreamer.GetAudioSource(StreamId, _cancellationTokenSource.Token);
-            _ = ReadAudio(audioSource, _cancellationTokenSource.Token);
-        }
-    }
+    private Task ToggleListening()
+        => IsListening ? StopListening() : StartListening();
 
-    private Task AppendAudio(byte[] chunk)
+    private Task StartListening()
     {
-        if (JSComponentRef == null)
+        if (_mediaPlayer == null)
             return Task.CompletedTask;
 
-        return JSComponentRef.InvokeVoidAsync("appendAudio", chunk).AsTask();
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource = new CancellationTokenSource();
+        _ = _mediaPlayer.PlayEnqueuedTracks(_cancellationTokenSource.Token);
+
+        IsListening = true;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private async Task ReadAudio(AudioSource audioSource, CancellationToken cancellationToken)
+    private Task StopListening()
     {
-        try {
-            var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
-            await AppendAudio(header);
+        if (_mediaPlayer == null)
+            return Task.CompletedTask;
 
-            await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
-                await AppendAudio(audioFrame.Data.ToArray());
-        }
-        catch (ChannelClosedException) {
-        }
-        finally {
-            // if (JSComponentRef != null)
-            //     await JSComponentRef.InvokeVoidAsync("stop");
-        }
+        _cancellationTokenSource?.Cancel();
+
+        IsListening = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
+
+    // private Task AppendAudio(byte[] chunk)
+    // {
+    //     // if (JSComponentRef == null)
+    //         return Task.CompletedTask;
+    //
+    //     // return JSComponentRef.InvokeVoidAsync("appendAudio", chunk).AsTask();
+    // }
+
+    // private async Task ReadAudio(AudioSource audioSource, CancellationToken cancellationToken)
+    // {
+    //     try {
+    //         var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
+    //         await AppendAudio(header);
+    //
+    //         await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
+    //             await AppendAudio(audioFrame.Data.ToArray());
+    //     }
+    //     catch (ChannelClosedException) {
+    //     }
+    // }
 
 
 }

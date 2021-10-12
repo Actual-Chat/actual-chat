@@ -24,7 +24,7 @@ export class AudioPlayer {
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this._audio = new Audio();
-        // this._audio.autoplay = true;
+        this._audio.autoplay = true;
         this._blazorRef = blazorRef;
         this._sourceBuffer = null;
         this._bufferQueue = [];
@@ -36,7 +36,7 @@ export class AudioPlayer {
 
 
         this._audio.addEventListener('ended', (e) => {
-            console.log(JSON.stringify(e));
+            console.log('Audio ended. ' + JSON.stringify(e));
         });
         this._audio.addEventListener('error', (e) => {
             let err = this._audio.error;
@@ -44,10 +44,10 @@ export class AudioPlayer {
             console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', (e) => {
-            console.log(JSON.stringify(e));
+            console.log('Audio stalled. ' + JSON.stringify(e));
         });
         this._audio.addEventListener('waiting', (e) => {
-            console.log(JSON.stringify(e));
+            console.log('Audio is waiting. ' + JSON.stringify(e));
         });
 
         this._bufferCreated = new Promise<SourceBuffer>(resolve => {
@@ -73,8 +73,9 @@ export class AudioPlayer {
                             this._sourceBuffer.appendBuffer(update.chunk);
                         }
                     }
-                    resolve(this._sourceBuffer);
                 });
+
+                resolve(this._sourceBuffer);
             });
         });
 
@@ -82,16 +83,22 @@ export class AudioPlayer {
     }
 
     public dispose(): void {
-        this._mediaSource.endOfStream();
+        console.log('Audio player dispose() call');
+        this.stop(null);
+        this._audio.pause();
     }
 
     public async initialize(byteArray: Uint8Array): Promise<void> {
-        console.log(this._audio.readyState);
-        if (this._sourceBuffer !== null)
+        console.log('Audio player initialized.');
+        if (this._sourceBuffer !== null) {
             this._sourceBuffer.appendBuffer(byteArray);
+            console.log('Audio init header has been appended.');
+        }
         else {
+            console.log('Audio init: waiting for SourceBuffer.');
             let sourceBuffer = await this._bufferCreated;
             sourceBuffer.appendBuffer(byteArray);
+            console.log('Audio init header has been appended with delay.');
         }
     }
 
@@ -127,11 +134,21 @@ export class AudioPlayer {
             }
         }
         catch(err) {
-            console.error(err);
+            console.error('Error appending audio. ' + JSON.stringify(err));
         }
     }
 
     public stop(error: EndOfStreamError | null) {
-        this._mediaSource.endOfStream(error);
+        console.log('Audio player stop() call');
+        if (this._sourceBuffer.updating) {
+            this._sourceBuffer.onupdateend = _ => {
+                if (!this._sourceBuffer.updating)
+                    this._mediaSource.endOfStream();
+            }
+        }
+        else {
+            this._mediaSource.endOfStream();
+        }
+        this._audio.pause();
     }
 }

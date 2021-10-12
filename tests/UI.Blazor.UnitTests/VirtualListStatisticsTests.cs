@@ -13,11 +13,11 @@ public class VirtualListStatisticsTests
             ItemCountResetValue = reset,
         };
 
-        Assert.Equal(0, stats.ItemSizeEstimate);
+        Assert.Equal(0, stats.ItemSize);
 
         for (int i = 0; i < treshold + 5; ++i) {
             stats.AddItem(10.0d);
-            Assert.Equal(10.0d, stats.ItemSizeEstimate);
+            Assert.Equal(10.0d, stats.ItemSize);
         }
     }
 
