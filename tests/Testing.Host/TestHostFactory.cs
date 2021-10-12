@@ -13,8 +13,8 @@ namespace ActualChat.Testing.Host
 {
     public static class TestHostFactory
     {
-        private static readonly List<string> TestSettingsFiles = new List<string>()
-            { "testsettings.json", "testsettings.docker.json", "testsettings.local.json" };
+        private static readonly string[] TestSettingsFiles = new[]
+            {"testsettings.json", "testsettings.docker.json", "testsettings.local.json"};
 
         public static async Task<AppHost> NewAppHost(Action<AppHost>? configure = null)
         {
@@ -58,27 +58,41 @@ namespace ActualChat.Testing.Host
 
         private static void GetTestAppSettings(IConfigurationBuilder config)
         {
+            var newSources = new List<IConfigurationSource>();
             var sources = config.Sources;
-            var jsonSettings = sources.FirstOrDefault(
-                                   x => x is JsonConfigurationSource b && b.Path == "appsettings.json") ??
-                               throw new Exception("Can't find appsettings.json source.");
-            var jsonDevSettings = sources.FirstOrDefault(
-                                      x => x is JsonConfigurationSource b &&
-                                           b.Path == "appsettings.Development.json") ??
-                                  throw new Exception("Can't find appsettings.Development.json source.");
-            sources.Remove(jsonSettings);
-            sources.Remove(jsonDevSettings);
-            foreach (var settingFile in TestSettingsFiles) {
-                sources.Add(new JsonConfigurationSource {
-                    FileProvider =
-                        new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestSettings).Assembly.Location)),
+            foreach (var source in sources) {
+                if (source is JsonConfigurationSource b && b.Path.Contains("appsettings"))
+                    continue;
+                newSources.Add(source);
+            }
+
+            sources = newSources;
+            var fileProvider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestSettings).Assembly.Location));
+            foreach (var settingsFile in TestSettingsFiles) {
+                if (!File.Exists(Path.Combine(fileProvider.Root, settingsFile)))
+                    continue;
+                var (addToSources, optionalField) = CheckSettingsFile(settingsFile);
+                if (addToSources)
+                    sources.Add(new JsonConfigurationSource {
+                    FileProvider = fileProvider,
                     OnLoadException = null,
-                    Optional = false,
-                    Path = $"{settingFile}",
+                    Optional = optionalField,
+                    Path = $"{settingsFile}",
                     ReloadDelay = 100,
                     ReloadOnChange = false
                 });
             }
+        }
+
+        private static (bool, bool) CheckSettingsFile(string fileName)
+        {
+            return fileName switch {
+                "testsettings.docker.json" when Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") !=
+                                                null => (true, false),
+                "testsettings.local.json" => (true, true),
+                "testsettings.json" => (true, false),
+                _ => (false, false)
+            };
         }
     }
 }
