@@ -42,7 +42,7 @@ public class VirtualListStatistics : IVirtualListStatistics
     public long ItemCountResetValue { get; init; } = 900;
 
     /// <inheritdoc />
-    public double ItemSize => _itemSizeSum / _itemCount;
+    public double ItemSize => _itemCount == 0 ? 0 : _itemSizeSum / _itemCount;
 
     /// <summary>
     /// Acts similarly to <see cref="ItemCountResetThreshold"/>, but for response count statistics.
@@ -54,7 +54,7 @@ public class VirtualListStatistics : IVirtualListStatistics
     public long ResponseCountResetValue { get; init; } = 8;
 
     /// <inheritdoc />
-    public double ResponseFulfillmentRatio => _responseFulfillmentRatioSum / _responseCount;
+    public double ResponseFulfillmentRatio => _responseCount == 0 ? 0 : _responseFulfillmentRatioSum / _responseCount;
 
     public void AddItem(double size)
     {
