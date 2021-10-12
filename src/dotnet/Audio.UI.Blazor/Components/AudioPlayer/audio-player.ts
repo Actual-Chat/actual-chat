@@ -17,7 +17,6 @@ export class AudioPlayer {
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
 
-
     public static create(blazorRef: DotNet.DotNetObject) {
         return new AudioPlayer(blazorRef);
     }
@@ -33,7 +32,6 @@ export class AudioPlayer {
         this._mediaSource.addEventListener('sourceended', _ => { console.log('sourceended: ' + this._mediaSource.readyState); });
         this._mediaSource.addEventListener('sourceclose', _ => { console.log('sourceclose: ' + this._mediaSource.readyState); });
         this._mediaSource.addEventListener('error', _ => { console.log('source error: ' + this._mediaSource.readyState); });
-
 
         this._audio.addEventListener('ended', (e) => {
             console.log('Audio ended. ' + JSON.stringify(e));
@@ -82,12 +80,6 @@ export class AudioPlayer {
         this._audio.src = URL.createObjectURL(this._mediaSource);
     }
 
-    public dispose(): void {
-        console.log('Audio player dispose() call');
-        this.stop(null);
-        this._audio.pause();
-    }
-
     public async initialize(byteArray: Uint8Array): Promise<void> {
         console.log('Audio player initialized.');
         if (this._sourceBuffer !== null) {
@@ -100,6 +92,12 @@ export class AudioPlayer {
             sourceBuffer.appendBuffer(byteArray);
             console.log('Audio init header has been appended with delay.');
         }
+    }
+
+    public dispose(): void {
+        console.log('Audio player dispose() call');
+        this.stop(null);
+        this._audio.pause();
     }
 
     public appendAudio(byteArray: Uint8Array, offsetSecs: number): void {

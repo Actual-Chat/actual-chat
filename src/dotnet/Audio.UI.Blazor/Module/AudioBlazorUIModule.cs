@@ -23,11 +23,7 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        services.AddScoped<IMediaTrackPlayerFactory>(serviceProvider => new MediaTrackPlayerFactory()
-            .WithFactory(track
-                => track.Source is AudioSource
-                    ? new AudioTrackPlayer(serviceProvider.GetRequiredService<IJSRuntime>(), track)
-                    : null));
-        services.AddScoped<IMediaPlayer, MediaPlayer>();
+        services.AddScoped<IMediaPlayerService, AudioPlayerService>();
+        services.AddTransient<MediaPlayer>();
     }
 }

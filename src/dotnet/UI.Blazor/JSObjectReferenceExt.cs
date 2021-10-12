@@ -8,12 +8,12 @@ namespace ActualChat.UI.Blazor;
 /// </summary>
 public static class JSObjectReferenceExt
 {
-    public static ValueTask DisposeSilentAsync(this IJSObjectReference? jsObjectRef)
+    public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef)
         => jsObjectRef == null
             ? ValueTask.CompletedTask
             : jsObjectRef.DisposeAsync().Suppress<JSDisconnectedException>();
 
-    public static async ValueTask DisposeSilentAsync(this IJSObjectReference? jsObjectRef, string jsMethodName)
+    public static async ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef, string jsMethodName)
     {
         if (jsObjectRef == null)
             return;

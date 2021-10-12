@@ -21,11 +21,18 @@ public class RedisPubSub : AsyncDisposableBase
         FullKey = RedisDb.FullKey(Key);
     }
 
-    protected override async ValueTask DisposeInternal(bool disposing)
+    protected override async ValueTask DisposeAsyncCore()
     {
         var queue = _queue;
+        _queue = null;
         if (queue != null)
             await queue.UnsubscribeAsync().ConfigureAwait(false);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        _queue?.Unsubscribe();
+        _queue = null;
     }
 
     public async ValueTask<ChannelMessageQueue> GetQueue()

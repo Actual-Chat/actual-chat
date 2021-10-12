@@ -1,23 +1,18 @@
-using ActualChat.Media;
-
 namespace ActualChat.Playback;
 
-public abstract class MediaTrackPlayer : IAsyncDisposable
+public abstract class MediaTrackPlayer : AsyncProcessBase
 {
+    protected ILogger<MediaTrackPlayer> Log { get; init; }
     public MediaTrack Track { get; }
     public event Action<PlayingMediaFrame?, PlayingMediaFrame?>? Playing;
 
-    protected MediaTrackPlayer(MediaTrack track)
-        => Track = track;
-
-    public async ValueTask DisposeAsync()
+    protected MediaTrackPlayer(MediaTrack track, ILogger<MediaTrackPlayer> log)
     {
-        await DisposeAsyncCore();
-
-        GC.SuppressFinalize(this);
+        Log = log;
+        Track = track;
     }
 
-    public virtual async Task Play(CancellationToken cancellationToken)
+    protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         PlayingMediaFrame? prevFrame = null;
         await OnPlayStart().ConfigureAwait(false);
@@ -32,21 +27,23 @@ public abstract class MediaTrackPlayer : IAsyncDisposable
             }
         }
         catch (Exception ex) {
-            //TODO(AK): handle MediaTrackPlayer errors!
-            // temp
-            Console.Out.WriteLine(ex.ToString());
+            Log.LogError(ex, "Failed to play media track");
         }
         finally {
-            Playing?.Invoke(prevFrame, null);
-            await OnPlayStop().ConfigureAwait(false);
+            try {
+                Playing?.Invoke(prevFrame, null);
+                await OnPlayStop().ConfigureAwait(false);
+            }
+            finally {
+                // AY: Sorry, but it's a self-disposing thing
+                _ = DisposeAsync();
+            }
         }
     }
 
+    // Protected methods
+
     protected abstract ValueTask OnPlayStart();
-
     protected abstract ValueTask OnPlayNextFrame(PlayingMediaFrame nextFrame);
-
     protected abstract ValueTask OnPlayStop();
-
-    protected abstract ValueTask DisposeAsyncCore();
 }
