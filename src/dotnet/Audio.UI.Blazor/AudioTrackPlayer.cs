@@ -1,4 +1,4 @@
-using ActualChat.Audio.UI.Blazor.Internal;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Playback;
 using Microsoft.JSInterop;
 

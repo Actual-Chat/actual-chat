@@ -1,9 +1,7 @@
-@using System.Threading.Channels
+@namespace ActualChat.Audio.UI.Blazor.Components
+@implements ActualChat.Audio.UI.Blazor.Components.IAudioPlayerBackend
 @using ActualChat.Playback
 @using Microsoft.Extensions.DependencyInjection
-@using Stl
-@namespace ActualChat.Audio.UI.Blazor
-@implements IAudioPlayerBackend
 @inject IJSRuntime _js
 @inject IAudioSourceStreamer _audioStreamer
 @inject BlazorCircuitContext _circuitContext
