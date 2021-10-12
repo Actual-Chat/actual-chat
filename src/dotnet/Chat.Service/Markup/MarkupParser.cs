@@ -38,7 +38,7 @@ namespace ActualChat.Chat
             }
 
             bool HasPrefix(string prefix)
-                => text.AsSpan(start).StartsWith(prefix);
+                => text.AsSpan(start).StartsWith(prefix, StringComparison.Ordinal);
 
             // Parses "{directive}[{out value}]"
             bool TryParseDirective(string directive, out string value) {

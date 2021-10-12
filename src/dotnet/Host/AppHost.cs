@@ -1,4 +1,6 @@
+using System.Drawing;
 using ActualChat.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration.Memory;
 using Stl.Async;
 
@@ -9,6 +11,7 @@ namespace ActualChat.Host
         public string ServerUrls { get; set; } = "http://localhost:7080";
         public Action<IConfigurationBuilder>? HostConfigurationBuilder { get; set; }
         public Action<WebHostBuilderContext, IServiceCollection>? AppServicesBuilder { get; set; }
+        public Action<IConfigurationBuilder>? AppConfigurationBuilder { get; set; }
 
         public IHost Host { get; protected set; } = null!;
         public IServiceProvider Services => Host.Services;
@@ -27,6 +30,7 @@ namespace ActualChat.Host
                             options.ValidateOnBuild = true;
                         }
                     })
+                    .ConfigureAppConfiguration(ConfigureAppConfiguration)
                     .UseStartup<Startup>()
                     .ConfigureServices(ConfigureAppServices)
                 );
@@ -94,6 +98,9 @@ namespace ActualChat.Host
             });
             HostConfigurationBuilder?.Invoke(cfg);
         }
+
+        protected virtual void ConfigureAppConfiguration(IConfigurationBuilder appBuilder)
+            => AppConfigurationBuilder?.Invoke(appBuilder);
 
         protected virtual void ConfigureAppServices(
             WebHostBuilderContext webHost, IServiceCollection services)

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
 using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
 using Stl.Versioning;
@@ -48,7 +49,8 @@ namespace ActualChat.Chat.Db
         public void UpdateFrom(ChatEntry model)
         {
             if (model.Id == 0)
-                throw new ArgumentOutOfRangeException($"{nameof(model)}.{nameof(model.Id)}");
+                throw new ArgumentOutOfRangeException(
+                    string.Format(NumberFormatInfo.InvariantInfo, "{0}.{1}", nameof(model), nameof(model.Id)));
             Id = model.Id;
             ChatId = model.ChatId;
             CompositeId = GetCompositeId(model.ChatId, model.Id);
