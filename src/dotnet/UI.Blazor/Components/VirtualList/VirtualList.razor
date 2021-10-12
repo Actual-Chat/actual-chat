@@ -5,9 +5,9 @@
 @implements IVirtualListBackend
 
 @* We want to drop irrelevant js state changes, thus we send the render index to js side *@
-<div @ref="Ref" class="@Class virtual-list" style="@Style" data-render-index="@Context.RenderIndex">
+<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full" style="@Style" data-render-index="@Context.RenderIndex">
     <div class="content relative">
-        <div class="items items-unmeasured">
+        <div class="items items-unmeasured flex flex-col flex-nowrap items-stretch overflow-y-hidden h-0 invisible">
             @foreach (var e in Context.UnmeasuredItems)
             {
                 <div @key="e.Key" class="item" data-key="@e.Key">
@@ -15,8 +15,14 @@
                 </div>
             }
         </div>
-        <div class="spacer spacer-start opacity-0" style="height: @(Context.SpacerSize)px"></div>
-        <div class="items items-displayed">
+        <div class="spacer spacer-start overflow-y-hidden" style="height: @(Context.SpacerSize)px">
+            <Skeleton>
+                @for(int i = 0; i < SkeletonCount; ++i){
+                    @SkeletonTemplate
+                }
+            </Skeleton>
+        </div>
+        <div class="items items-displayed flex flex-col flex-nowrap items-stretch">
             @foreach (var e in Context.DisplayedItems)
             {
                 <div @key="e.Key" class="item" data-key="@e.Key" data-size="@e.Size">
@@ -26,7 +32,13 @@
         </div>
         @if (!Context.Response.HasVeryLastItem)
         {
-            <div class="spacer spacer-end opacity-0"></div>
+            <div class="spacer spacer-end overflow-y-hidden h-96">
+                <Skeleton>
+                    @for(int i = 0; i < SkeletonCount; ++i){
+                        @SkeletonTemplate
+                    }
+                </Skeleton>
+            </div>
         }
     </div>
 </div>
