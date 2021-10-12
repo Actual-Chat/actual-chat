@@ -15,7 +15,7 @@ namespace ActualChat.Chat.Module
         {
             await base.Initialize(cancellationToken);
             var dependencies = InitializeTasks
-                .Where(kv => kv.Key.GetType().Name.StartsWith("Users"))
+                .Where(kv => kv.Key.GetType().Name.StartsWith("Users", StringComparison.Ordinal))
                 .Select(kv => kv.Value)
                 .ToArray();
             await Task.WhenAll(dependencies);

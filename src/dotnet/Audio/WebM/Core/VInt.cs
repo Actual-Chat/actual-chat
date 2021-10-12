@@ -28,13 +28,14 @@ namespace ActualChat.Audio.WebM
     /// <summary>
     ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
     /// </summary>
-    public readonly struct VInt
+    [StructLayout(LayoutKind.Auto)]
+    public readonly struct VInt : IEquatable<VInt>
     {
         private const ulong MaxValue = (1L << 56) - 1;
         private const ulong UnknownSizeValue = MaxValue | (1ul << 56);
         private const ulong MaxSizeValue = MaxValue - 1;
         private const ulong MaxElementIdValue = (1 << 28) - 1;
-        
+
         private static readonly sbyte[] ExtraBytesSize =
             { 4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -62,7 +63,7 @@ namespace ActualChat.Audio.WebM
             EncodedValue = encodedValue;
             _length = (byte)length;
         }
-        
+
         public ulong EncodedValue { get; }
 
         public ulong Value => EncodedValue & DataBitsMask[_length];
@@ -79,22 +80,22 @@ namespace ActualChat.Audio.WebM
 
         public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
 
-        public static VInt Unknown = UnknownSize(2);
+        public static readonly VInt Unknown = UnknownSize(2);
 
         public static VInt EncodeSize(ulong value, int length = 0)
         {
             if (length < 0 || length > 8)
                 throw new ArgumentOutOfRangeException(nameof(length));
-            
+
             if (value == MaxValue)
                 return new VInt(UnknownSizeValue, 8);
-            
+
             if (value == UnknownSizeValue)
                 return new VInt(value, 8);
-                
+
             if (value > MaxSizeValue)
                 throw new ArgumentException("Value exceed VInt capacity", nameof(value));
-            
+
             var marker = 1UL << (7 * length);
 
             if (length == 0) {
@@ -134,13 +135,13 @@ namespace ActualChat.Audio.WebM
 
             return new VInt(encodedValue, extraBytes + 1);
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VInt FromValue(ulong value)
         {
             return new VInt(value, (int)EbmlHelper.GetSize(value));
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static VInt FromValue(long value)
         {

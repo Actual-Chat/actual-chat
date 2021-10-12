@@ -193,7 +193,7 @@
         ri.IsScrollStopped = clientSideState.IsScrollStopped;
 
         void DelayedStateHasChanged() {
-            _ = Task.Delay(10).ContinueWith(_ => InvokeAsync(StateHasChanged));
+            _ = Task.Delay(10).ContinueWith(_ => InvokeAsync(StateHasChanged), TaskScheduler.Default);
         }
 
         if (isItemSizeChanged) {

@@ -11,6 +11,7 @@ public abstract class HostModule : Plugin
     protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
 
     protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
+
     protected HostModule(IPluginHost plugins) : base(plugins)
         => HostInfo = plugins.GetRequiredService<HostInfo>();
 
@@ -23,11 +24,12 @@ public abstract class HostModule<TSettings> : HostModule
     public TSettings Settings { get; } = null!;
 
     protected HostModule(IPluginInfoProvider.Query _) : base(_) { }
+
     protected HostModule(IPluginHost plugins) : base(plugins)
     {
         var settingsType = typeof(TSettings);
-        var sectionName = settingsType.Name.TrimSuffix("Settings", "Cfg", "Config", "Configuration");
-        var settings = (TSettings) plugins.Activate(settingsType);
+        var sectionName = settingsType.Name;
+        var settings = (TSettings)plugins.Activate(settingsType);
         var cfg = plugins.GetRequiredService<IConfiguration>();
         cfg.GetSection(sectionName)?.Bind(settings);
         Settings = settings;

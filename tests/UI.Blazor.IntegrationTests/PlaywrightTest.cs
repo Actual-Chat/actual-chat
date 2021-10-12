@@ -23,19 +23,23 @@ namespace ActualChat.UI.Blazor.IntegrationTests
             using var tester = appHost.NewPlaywrightTester();
             var user = await tester.SignIn(new User("", "it-fucking-works"));
             var page = await tester.NewPage("chat/the-actual-one");
-            await Task.Delay(200);
+            await Task.Delay(1000);
 
             var chatPage = await page.QuerySelectorAsync(".chat-page");
             chatPage.Should().NotBeNull();
-            var input = await page.QuerySelectorAsync("input[type='search']");
+            var input = await page.QuerySelectorAsync("[role='textbox']");
             input.Should().NotBeNull();
+            var button = await page.QuerySelectorAsync("button >> nth=-1");
+            button.Should().NotBeNull();
+
+            var messages = await page.QuerySelectorAllAsync(".chat-page .content");
+            (await messages.Last().TextContentAsync()).Should().NotBe("Test-123");
 
             await input!.TypeAsync("Test-123");
-            await input.PressAsync("Enter");
-            await Task.Delay(200);
+            await button!.ClickAsync();
+            await Task.Delay(1000);
 
-            var messages = await page.QuerySelectorAllAsync(".chat-page .message .content");
-            messages.Count.Should().BeGreaterThan(0);
+            messages = await page.QuerySelectorAllAsync(".chat-page .content");
             (await messages.Last().TextContentAsync()).Should().Be("Test-123");
         }
 
@@ -45,17 +49,12 @@ namespace ActualChat.UI.Blazor.IntegrationTests
             using var appHost = await TestHostFactory.NewAppHost();
             using var tester = appHost.NewPlaywrightTester();
             var user = await tester.SignIn(new User("", "ChatPageTester"));
-            var page = await tester.NewPage("chat/the-actual-ont");
-            await Task.Delay(200);
+            var page = await tester.NewPage("chat/the-actual-one");
+            await Task.Delay(1000);
             user.Id.Value.Should().NotBeNullOrEmpty();
             user.Name.Should().Be("ChatPageTester");
-            var content = await page.ContentAsync();
-            var badgeCount = 0;
-            if (content.Contains("badge")) {
-                var badges = Regex.Matches(content, "badge");
-                badgeCount = badges.Count;
-            }
-            badgeCount.Should().Be(2);
+            var messages = await page.QuerySelectorAllAsync(".chat-page .content");
+            messages.Count.Should().BeGreaterThan(0);
             await Task.Delay(200);
         }
     }

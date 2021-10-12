@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Redis;
@@ -222,7 +222,7 @@ namespace ActualChat.Chat
             else {
                 dbChatEntry = await dbContext.FindAsync<DbChatEntry>(
                     ComposeKey(DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id)),
-                    cancellationToken);
+                    cancellationToken) ?? throw new InvalidOperationException($"Chat entry with key {chatEntry.ChatId}, {chatEntry.Id} is not found");
                 chatEntry = chatEntry with {
                     Version = VersionGenerator.NextVersion(dbChatEntry.Version),
                 };
