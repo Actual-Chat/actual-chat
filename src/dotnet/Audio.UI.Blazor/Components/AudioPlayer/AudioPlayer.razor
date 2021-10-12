@@ -6,7 +6,6 @@
 @implements IAudioPlayerBackend
 @inject IJSRuntime _js
 @inject IAudioSourceStreamer _audioStreamer
-
 @inject BlazorCircuitContext _circuitContext
 
 <button @onclick="ToggleListening" class="block px-2 py-2 @(IsListening ? "text-blue-500" : "text-gray-500")">
@@ -22,7 +21,6 @@
 
     [Parameter]
     public string StreamId { get; set; } = null!;
-
     [CascadingParameter]
     public IServiceProvider ScopedServices { get; set; } = null!;
 

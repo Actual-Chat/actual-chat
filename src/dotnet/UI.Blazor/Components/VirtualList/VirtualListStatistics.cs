@@ -2,7 +2,13 @@ namespace ActualChat.UI.Blazor.Components;
 
 public interface IVirtualListStatistics
 {
-    double ItemSizeEstimate { get; }
+    /// <summary>
+    /// Estimated item size.
+    /// </summary>
+    double ItemSize { get; }
+    /// <summary>
+    /// Estimated response fulfillment ratio.
+    /// </summary>
     double ResponseFulfillmentRatio { get; }
 
     void AddItem(double size);
@@ -18,47 +24,53 @@ public class VirtualListStatistics : IVirtualListStatistics
     private long _responseCount;
     private double _responseFulfillmentRatioSum;
 
+    /// <summary>
+    /// Once item count reaches that value, it's reset to
+    /// <see cref="ItemCountResetThreshold"/>, and the item size
+    /// sum is adjusted proportionally.<br/>
+    /// This allows to introduce exponentially decaying weights
+    /// to the <see cref="ItemSize"/> statistics.
+    /// </summary>
     public long ItemCountResetThreshold { get; init; } = 1000;
     /// <summary>
-    /// Number of remainig items after <see cref="ItemCountResetThreshold"/> is reached. <br />
-    /// Should be less than threshold.
+    /// Once item count reaches <see cref="ItemCountResetThreshold"/>,
+    /// it's reset to this value, and the item size
+    /// sum is adjusted proportionally.<br/>
+    /// This allows to introduce exponentially decaying weights
+    /// to the <see cref="ItemSize"/> statistics.
     /// </summary>
     public long ItemCountResetValue { get; init; } = 900;
 
-    private double _itemSizeEstimate;
     /// <inheritdoc />
-    public double ItemSizeEstimate => _itemSizeEstimate;
-
-    public long ResponseCountResetThreshold { get; init; } = 10;
+    public double ItemSize => _itemSizeSum / _itemCount;
 
     /// <summary>
-    /// Number of remainig items after <see cref="ResponseCountResetThreshold"/> is reached. <br />
-    /// Should be less than threshold.
+    /// Acts similarly to <see cref="ItemCountResetThreshold"/>, but for response count statistics.
+    /// </summary>
+    public long ResponseCountResetThreshold { get; init; } = 10;
+    /// <summary>
+    /// Acts similarly to <see cref="ItemCountResetValue"/>, but for response count statistics.
     /// </summary>
     public long ResponseCountResetValue { get; init; } = 8;
 
-    private double _responseFulfillmentRatio;
-
     /// <inheritdoc />
-    public double ResponseFulfillmentRatio => _responseFulfillmentRatio;
+    public double ResponseFulfillmentRatio => _responseFulfillmentRatioSum / _responseCount;
 
     public void AddItem(double size)
     {
         _itemSizeSum += size;
         ++_itemCount;
+        if (_itemCount < ItemCountResetThreshold) return;
 
-        if (_itemCount >= ItemCountResetThreshold) {
-            // we change the item count too, so remaining items will have increased weight
-            _itemSizeSum *= (double)ItemCountResetValue / ItemCountResetThreshold;
-            _itemCount = ItemCountResetValue;
-        }
-        _itemSizeEstimate = _itemSizeSum / _itemCount;
+        // We change the item count too, so remaining items will have increased weight
+        _itemSizeSum *= (double)ItemCountResetValue / ItemCountResetThreshold;
+        _itemCount = ItemCountResetValue;
     }
 
     public void RemoveItem(double size)
     {
-        if (_itemCount <= 0)
-            return;
+        if (_itemCount <= 0) return;
+
         _itemSizeSum -= size;
         _itemCount--;
     }
@@ -67,11 +79,10 @@ public class VirtualListStatistics : IVirtualListStatistics
     {
         _responseFulfillmentRatioSum += fulfillmentRatio;
         ++_responseCount;
-        if (_responseCount >= ResponseCountResetThreshold) {
-            // we change the item count too, so remaining items will have increased weight
-            _responseFulfillmentRatioSum *= (double)ResponseCountResetValue / ResponseCountResetThreshold;
-            _responseCount = ResponseCountResetValue;
-        }
-        _responseFulfillmentRatio = _responseFulfillmentRatioSum / _responseCount;
+        if (_responseCount < ResponseCountResetThreshold) return;
+
+        // We change the item count too, so remaining items will have increased weight
+        _responseFulfillmentRatioSum *= (double)ResponseCountResetValue / ResponseCountResetThreshold;
+        _responseCount = ResponseCountResetValue;
     }
 }

@@ -240,7 +240,7 @@
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
         var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
-        var itemSize = Statistics.ItemSizeEstimate;
+        var itemSize = Statistics.ItemSize;
         var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
         var query = new VirtualListQuery(keyRange) {
             ExpandStartBy = Math.Min(MaxExpandOnQuery, Math.Round(startGap / itemSize / responseFulfillmentRatio, 1)),
