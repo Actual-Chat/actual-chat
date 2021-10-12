@@ -88,7 +88,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var entryLists = await Task.WhenAll(
-            ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)));
+            ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken))).ConfigureAwait(false);
 
         var chatEntries = entryLists.SelectMany(entries => entries);
         var result = VirtualListResponse.New(
@@ -101,6 +101,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
     private async Task WatchRealtimeMedia(CancellationToken cancellationToken)
     {
+        var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
+        var idLogCover = ChatConstants.IdLogCover;
         try {
             var lastChatEntry = 0L;
             var computedMinMax = await Computed.Capture(ct
@@ -114,11 +116,10 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                     if (lastChatEntry == 0)
                         lastChatEntry = Math.Max(0, maxEntry - 128);
 
-                    var maxEntryTiles = LogCover.Default.Long.GetCoveringTiles(maxEntry).ToList();
-                    var lastChatEntryTiles = LogCover.Default.Long.GetCoveringTiles(lastChatEntry);
-                    var readRange = maxEntryTiles.Intersect(lastChatEntryTiles).FirstOrDefault(maxEntryTiles.Skip(1).First());
-
-                    var chatEntries = await Chats.GetEntries(Session, ChatId, readRange, cancellationToken).ConfigureAwait(false);
+                    var ranges = idLogCover.GetTileCover((lastChatEntry, maxEntry + 1));
+                    var entryLists = await Task.WhenAll(
+                        ranges.Select(r => Chats.GetEntries(Session, chatId, r, cancellationToken))).ConfigureAwait(false);
+                    var chatEntries = entryLists.SelectMany(entries => entries);
                     foreach (var entry in chatEntries.Where(ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
                         if (lastChatEntry >= entry.Id) continue;
 

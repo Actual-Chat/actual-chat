@@ -15,8 +15,8 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         PlayingMediaFrame? prevFrame = null;
-        await OnPlayStart().ConfigureAwait(false);
         try {
+            await OnPlayStart().ConfigureAwait(false);
             var zeroTimestamp = Track.ZeroTimestamp;
             var frames = Track.Source.Frames;
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
