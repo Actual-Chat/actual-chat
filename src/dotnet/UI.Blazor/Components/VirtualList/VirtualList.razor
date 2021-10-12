@@ -111,7 +111,7 @@
     public override async ValueTask DisposeAsync()
     {
         if (JsRef != null)
-            await JsRef.DisposeSilentAsync("dispose").ConfigureAwait(true);
+            await JsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         BlazorRef?.Dispose();
         await base.DisposeAsync().ConfigureAwait(true);
     }

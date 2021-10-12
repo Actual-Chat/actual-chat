@@ -15,41 +15,37 @@
         _nav.Login("to view this chat");
     var chat = model.Chat ?? new();
 }
-<CascadingValue Value="@ScopedServices">
-    <div class="chat-page h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
-        <div class="header flex flex-row justify-between mt-0 font-medium bg-gray-800 text-gray-200 p-3 select-none">
-            <div class="opacity-75 hover:opacity-100">
-                @("#"+chat.Title.NullIfEmpty() ?? "Loading...")
-            </div>
-            <div class="mr-2">
-                <WhenError Error="@error"/>
-            </div>
+<div class="chat-page h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
+    <div class="header flex flex-row justify-between mt-0 font-medium bg-gray-800 text-gray-200 p-3 select-none">
+        <div class="opacity-75 hover:opacity-100">
+            @("#"+chat.Title.NullIfEmpty() ?? "Loading...")
         </div>
-        <div class="content flex-1 flex flex-col overflow-y-auto bg-white p-3">
-            <VirtualList
-                SpacerSize="6000" LoadZoneSize="2000" BufferZoneSize="4000"
-                Provider="GetMessages"
-                KeyComparer="LongAsStringKeyComparer.Default">
-                <Item>
-                    <ChatMessage Entry="@context.Value" OnListen="@OnListen"/>
-                </Item>
-            </VirtualList>
-        </div>
-        <div class="footer flex sticky m-0">
-            <ChatMessageEditor ChatId="@chat.Id"/>
+        <div class="mr-2">
+            <WhenError Error="@error"/>
         </div>
     </div>
-</CascadingValue>
+    <div class="content flex-1 flex flex-col overflow-y-auto bg-white p-3">
+        <VirtualList
+            SpacerSize="6000" LoadZoneSize="2000" BufferZoneSize="4000"
+            Provider="GetMessages"
+            KeyComparer="LongAsStringKeyComparer.Default">
+            <Item>
+                <ChatMessage Entry="@context.Value" OnListen="@OnListen"/>
+            </Item>
+        </VirtualList>
+    </div>
+    <div class="footer flex sticky m-0">
+        <ChatMessageEditor ChatId="@chat.Id" RealtimePlayer="RealtimePlayer"/>
+    </div>
+</div>
 
 @code {
-
     [Parameter]
     public string ChatId { get; set; } = "";
 
     private void OnListen(ChatEntry entry)
     {
-        _ = PlayMediaTrack(entry);
-
+        _ = PlayHistoricalMediaTrack(entry);
         StateHasChanged();
     }
 }

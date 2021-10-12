@@ -26,7 +26,7 @@
     public async ValueTask DisposeAsync()
     {
         await StopRecording().ConfigureAwait(true);
-        await JSComponentRef.DisposeSilentAsync().ConfigureAwait(true);
+        await JSComponentRef.DisposeSilentlyAsync().ConfigureAwait(true);
         ComponentRef?.Dispose();
     }
 
