@@ -1,5 +1,6 @@
 using ActualChat.Host;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
@@ -13,9 +14,6 @@ namespace ActualChat.Testing.Host
 {
     public static class TestHostFactory
     {
-        private static readonly string[] TestSettingsFiles = new[]
-            {"testsettings.json", "testsettings.docker.json", "testsettings.local.json"};
-
         public static async Task<AppHost> NewAppHost(Action<AppHost>? configure = null)
         {
             var port = WebTestExt.GetUnusedTcpPort();
@@ -58,41 +56,35 @@ namespace ActualChat.Testing.Host
 
         private static void GetTestAppSettings(IConfigurationBuilder config)
         {
-            var newSources = new List<IConfigurationSource>();
-            var sources = config.Sources;
-            foreach (var source in sources) {
-                if (source is JsonConfigurationSource b && b.Path.Contains("appsettings"))
-                    continue;
-                newSources.Add(source);
+            var toDelete = config.Sources.Where(s => s is JsonConfigurationSource source
+                && source.Path.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var source in toDelete) {
+                config.Sources.Remove(source);
             }
 
-            sources = newSources;
             var fileProvider = new PhysicalFileProvider(Path.GetDirectoryName(typeof(TestSettings).Assembly.Location));
-            foreach (var settingsFile in TestSettingsFiles) {
-                if (!File.Exists(Path.Combine(fileProvider.Root, settingsFile)))
-                    continue;
-                var (addToSources, optionalField) = CheckSettingsFile(settingsFile);
-                if (addToSources)
-                    sources.Add(new JsonConfigurationSource {
+            foreach (var (fileName, optional) in GetTestSettingsFiles()) {
+                config.Sources.Add(new JsonConfigurationSource {
                     FileProvider = fileProvider,
                     OnLoadException = null,
-                    Optional = optionalField,
-                    Path = $"{settingsFile}",
+                    Optional = optional,
+                    Path = fileName,
                     ReloadDelay = 100,
                     ReloadOnChange = false
                 });
             }
-        }
 
-        private static (bool, bool) CheckSettingsFile(string fileName)
-        {
-            return fileName switch {
-                "testsettings.docker.json" when Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") !=
-                                                null => (true, false),
-                "testsettings.local.json" => (true, true),
-                "testsettings.json" => (true, false),
-                _ => (false, false)
-            };
+            static List<(string FileName, bool Optional)> GetTestSettingsFiles()
+            {
+                List<(string FileName, bool Optional)> result = new(3) {
+                    ("testsettings.json", Optional: false),
+                    ("testsettings.local.json", Optional: true)
+                };
+                if (bool.TryParse(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), out var isRunningContainer)
+                    && isRunningContainer)
+                    result.Add(("testsettings.docker.json", Optional: true));
+                return result;
+            }
         }
     }
 }
