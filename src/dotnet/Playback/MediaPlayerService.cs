@@ -13,7 +13,7 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
     protected CancellationTokenSource StopTokenSource { get; }
     protected CancellationToken StopToken { get; }
 
-    public MediaPlayerService(
+    protected MediaPlayerService(
         IServiceProvider services,
         ILogger<MediaPlayerService> log)
     {

@@ -1,11 +1,13 @@
 using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Mathematics;
 using ActualChat.Playback;
 using ActualChat.UI.Blazor.Components;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Components;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
+using Stl.Fusion;
 using Stl.Mathematics;
 
 namespace ActualChat.Chat.UI.Blazor.Pages;
@@ -100,25 +102,36 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     private async Task WatchRealtimeMedia(CancellationToken cancellationToken)
     {
         try {
-            var minMax = await Chats.GetMinMaxId(Session, ChatId, cancellationToken).ConfigureAwait(false);
-            var startReadingFrom = minMax.End & ~0b11111;
-
+            var lastChatEntry = 0L;
+            var computedMinMax = await Computed.Capture(ct
+                => Chats.GetMinMaxId(Session, ChatId, ct), cancellationToken).ConfigureAwait(false);
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();
-                var readRange = new Range<long>(startReadingFrom, startReadingFrom + 64);
-                var entries = await Chats.GetEntries(Session, ChatId, readRange, cancellationToken).ConfigureAwait(false);
-                foreach (var entry in entries.Where(ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
-                    if (startReadingFrom < entry.Id)
-                        startReadingFrom = entry.Id;
-                    _ = AddRealtimeMediaTrack(entry);
-                }
 
-                startReadingFrom &= ~0b11111;
-                await Task.Delay(300, cancellationToken).ConfigureAwait(false);
+                if (computedMinMax.IsConsistent()) {
+                    var minMax = computedMinMax.Value;
+                    var maxEntry = minMax.End;
+                    if (lastChatEntry == 0)
+                        lastChatEntry = Math.Max(0, maxEntry - 128);
+
+                    var maxEntryTiles = LogCover.Default.Long.GetCoveringTiles(maxEntry).ToList();
+                    var lastChatEntryTiles = LogCover.Default.Long.GetCoveringTiles(lastChatEntry);
+                    var readRange = maxEntryTiles.Intersect(lastChatEntryTiles).FirstOrDefault(maxEntryTiles.Skip(1).First());
+
+                    var chatEntries = await Chats.GetEntries(Session, ChatId, readRange, cancellationToken).ConfigureAwait(false);
+                    foreach (var entry in chatEntries.Where(ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
+                        if (lastChatEntry >= entry.Id) continue;
+
+                        lastChatEntry = entry.Id;
+                        _ = AddRealtimeMediaTrack(entry);
+                    }
+                }
+                await computedMinMax.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                computedMinMax = await computedMinMax.Update(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception e) {
-            Console.WriteLine(e);
+            Log.LogError("Error watching for new chat entries for audio", e);
             throw;
         }
 
