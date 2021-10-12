@@ -93,7 +93,7 @@
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20204-02" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
-    <PackageReference Update="Microsoft.Playwright" Version="1.15.0" ExcludeAssets="buildTransitive" />
+    <PackageReference Update="Microsoft.Playwright" Version="1.15.4" ExcludeAssets="buildTransitive" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.240" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="bunit" Version="1.2.49" />
