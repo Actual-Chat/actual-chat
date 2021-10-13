@@ -32,6 +32,18 @@
             <Item>
                 <ChatMessage Entry="@context.Value" OnListen="@OnListen"/>
             </Item>
+            <SkeletonTemplate>
+                <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
+                        <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
+                        <div class="flex-1 overflow-hidden">
+                            <div class="flex flex-row">
+                                <div class="font-bold bg-gray-200 rounded-md border-white border-2 w-32 h-4"></div>
+                                <div class="bg-gray-200 w-10 h-4 rounded-md border-white border-2"></div>
+                            </div>
+                            <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: 30%;"></div>
+                        </div>
+                    </div>
+            </SkeletonTemplate>
         </VirtualList>
     </div>
     <div class="footer flex sticky m-0">
