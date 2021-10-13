@@ -44,7 +44,7 @@ trim_trailing_whitespace = false
 indent_size = 4
 insert_final_newline = true
 
-[*.cs]
+[{*.cs, *.razor}]
 # ReSharper properties
 resharper_align_multiline_binary_expressions_chain = false
 resharper_blank_lines_after_block_statements = 0
@@ -56,6 +56,11 @@ resharper_csharp_blank_lines_around_field = 0
 resharper_csharp_blank_lines_around_namespace = 0
 resharper_csharp_blank_lines_inside_region = 0
 resharper_csharp_blank_lines_around_single_line_invocable = 1
+resharper_csharp_invocable_declaration_braces = next_line
+resharper_csharp_anonymous_method_declaration_braces = end_of_line
+resharper_csharp_accessor_owner_declaration_braces = end_of_line
+resharper_csharp_accessor_declaration_braces = end_of_line
+resharper_csharp_case_block_braces = end_of_line
 resharper_csharp_other_braces = end_of_line
 resharper_csharp_wrap_before_binary_opsign = true
 resharper_indent_pars = outside
@@ -335,6 +340,7 @@ dotnet_diagnostic.ca5394.severity = none # CA5394: Random is an insecure random 
 dotnet_diagnostic.ca1303.severity = none # CA1303: Method passes a literal string as parameter 'value' of a call
 dotnet_diagnostic.ca1416.severity = none # CA1416: is only supported on: 'windows' 5.1.2600 and later.
 dotnet_diagnostic.ca2201.severity = none # CA2201: Exception type System.Exception is not sufficiently specific
+dotnet_diagnostic.MA0003.severity = none # MA0003: Name parameter
 dotnet_diagnostic.ma0051.severity = none # MA0051: Method is too long
 dotnet_diagnostic.ma0026.severity = none # MA0026 TODO
 dotnet_diagnostic.vsthrd003.severity = none # VSTHRD003 Avoid awaiting or returning a Task representing work that was not started within your context as that can lead to deadlocks.
