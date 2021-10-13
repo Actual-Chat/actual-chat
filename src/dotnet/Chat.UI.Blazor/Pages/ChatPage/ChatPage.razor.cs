@@ -79,7 +79,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
         if (query.IncludedRange == default)
             query = query with {
-                IncludedRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())
+                IncludedRange =
+                new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString()),
             };
 
         var startId = long.Parse(query.IncludedRange.Start);
@@ -93,13 +94,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         endId = MathExt.Min(range.End, endId);
 
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
-        var entryLists = await Task.WhenAll(
-                ranges.Select(
-                    r => Chats.GetEntries(
-                        Session,
-                        chatId.Value,
-                        r,
-                        cancellationToken)))
+        var entryLists = await Task
+            .WhenAll(ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)))
             .ConfigureAwait(false);
 
         var chatEntries = entryLists.SelectMany(entries => entries);
@@ -117,10 +113,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var idLogCover = ChatConstants.IdLogCover;
         try {
             var lastChatEntry = 0L;
-            var computedMinMax = await Computed.Capture(
-                    ct
-                        => Chats.GetMinMaxId(Session, ChatId, ct),
-                    cancellationToken)
+            var computedMinMax = await Computed.Capture(ct => Chats.GetMinMaxId(Session, ChatId, ct), cancellationToken)
                 .ConfigureAwait(false);
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -133,12 +126,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
                     var ranges = idLogCover.GetTileCover((lastChatEntry, maxEntry + 1));
                     var entryLists = await Task.WhenAll(
-                            ranges.Select(
-                                r => Chats.GetEntries(
-                                    Session,
-                                    chatId,
-                                    r,
-                                    cancellationToken)))
+                            ranges.Select(r => Chats.GetEntries(Session, chatId, r, cancellationToken)))
                         .ConfigureAwait(false);
                     var chatEntries = entryLists.SelectMany(entries => entries);
                     foreach (var entry in chatEntries.Where(
