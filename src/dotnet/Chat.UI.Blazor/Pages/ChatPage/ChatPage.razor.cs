@@ -1,20 +1,17 @@
 using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Mathematics;
 using ActualChat.Playback;
 using ActualChat.UI.Blazor.Components;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Components;
-using Stl.Fusion;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
 using Stl.Mathematics;
-
 namespace ActualChat.Chat.UI.Blazor.Pages;
 
 public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 {
-    private readonly CancellationTokenSource _watchRealtimeMediaCts = new();
+    private readonly CancellationTokenSource _watchRealtimeMediaCts = new ();
 
     [Inject]
     protected Session Session { get; set; } = default!;
@@ -62,38 +59,52 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected override Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
         => Service.GetChatPageModel(Session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
 
-    private async Task<VirtualListResponse<ChatEntry>> GetMessages(VirtualListQuery query, CancellationToken cancellationToken)
+    private async Task<VirtualListResponse<ChatEntry>> GetMessages(
+        VirtualListQuery query,
+        CancellationToken cancellationToken)
     {
-        var model = await Service.GetChatPageModel(Session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
+        var model = await Service.GetChatPageModel(
+            Session,
+            ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId,
+            cancellationToken);
         var chatId = model.Chat?.Id ?? default;
         if (chatId.IsNone)
-            return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
+            return VirtualListResponse.New(
+                Enumerable.Empty<ChatEntry>(),
+                entry => entry.Id.ToString(),
+                true,
+                true);
 
         var idLogCover = ChatConstants.IdLogCover;
         var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
-        if (query.IncludedRange == default) {
+        if (query.IncludedRange == default)
             query = query with {
                 IncludedRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())
             };
-        }
 
         var startId = long.Parse(query.IncludedRange.Start);
         if (query.ExpandStartBy > 0)
-            startId -= (long) query.ExpandStartBy;
+            startId -= (long)query.ExpandStartBy;
         startId = MathExt.Max(range.Start, startId);
 
         var endId = long.Parse(query.IncludedRange.End);
         if (query.ExpandEndBy > 0)
-            endId += (long) query.ExpandEndBy;
+            endId += (long)query.ExpandEndBy;
         endId = MathExt.Min(range.End, endId);
 
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var entryLists = await Task.WhenAll(
-            ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken))).ConfigureAwait(false);
+                ranges.Select(
+                    r => Chats.GetEntries(
+                        Session,
+                        chatId.Value,
+                        r,
+                        cancellationToken)))
+            .ConfigureAwait(false);
 
         var chatEntries = entryLists.SelectMany(entries => entries);
         var result = VirtualListResponse.New(
-            chatEntries.Where(ce =>ce.ContentType == ChatContentType.Text),
+            chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
             entry => entry.Id.ToString(),
             startId == range.Start,
             endId == range.End);
@@ -106,8 +117,11 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var idLogCover = ChatConstants.IdLogCover;
         try {
             var lastChatEntry = 0L;
-            var computedMinMax = await Computed.Capture(ct
-                => Chats.GetMinMaxId(Session, ChatId, ct), cancellationToken).ConfigureAwait(false);
+            var computedMinMax = await Computed.Capture(
+                    ct
+                        => Chats.GetMinMaxId(Session, ChatId, ct),
+                    cancellationToken)
+                .ConfigureAwait(false);
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -119,9 +133,16 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
                     var ranges = idLogCover.GetTileCover((lastChatEntry, maxEntry + 1));
                     var entryLists = await Task.WhenAll(
-                        ranges.Select(r => Chats.GetEntries(Session, chatId, r, cancellationToken))).ConfigureAwait(false);
+                            ranges.Select(
+                                r => Chats.GetEntries(
+                                    Session,
+                                    chatId,
+                                    r,
+                                    cancellationToken)))
+                        .ConfigureAwait(false);
                     var chatEntries = entryLists.SelectMany(entries => entries);
-                    foreach (var entry in chatEntries.Where(ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
+                    foreach (var entry in chatEntries.Where(
+                        ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
                         if (lastChatEntry >= entry.Id) continue;
 
                         lastChatEntry = entry.Id;
@@ -155,7 +176,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             Log.LogError(
                 e,
                 "Error reading media stream. Chat: {ChatId}, Entry: {ChatEntryId}, StreamId: {StreamId}",
-                entry.ChatId, entry.Id, entry.StreamId);
+                entry.ChatId,
+                entry.Id,
+                entry.StreamId);
         }
     }
 
@@ -173,7 +196,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             Log.LogError(
                 e,
                 "Error reading media stream. Chat: {ChatId}, Entry: {ChatEntryId}, StreamId: {StreamId}",
-                entry.ChatId, entry.Id, entry.StreamId);
+                entry.ChatId,
+                entry.Id,
+                entry.StreamId);
         }
     }
 }
