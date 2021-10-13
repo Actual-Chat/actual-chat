@@ -98,7 +98,7 @@ internal static class Program
                 // any other than `dotnet watch run` command will use legacy ho-reload behavior (profile), so it's better to use the default watch running args
                 // CliWrap doesn't give us process object, which is needed for the workaround of https://github.com/dotnet/aspnetcore/issues/37190
 
-                var psiDotnet = new ProcessStartInfo("cmd.exe", $"/c \""+
+                var psiDotnet = new ProcessStartInfo("cmd.exe", $"/c \"" +
                 "title watch " +
                 "&& set ASPNETCORE_ENVIRONMENT=Development " +
                 "&& set MSBUILDDISABLENODEREUSE=1 " +
@@ -261,7 +261,7 @@ internal static class Program
             }
         });
 
-        Target("coverage", async () => {
+        Target("coverage", DependsOn("restore-tools"), async () => {
             var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
             if (!Directory.Exists(resultsDirectory))
                 Directory.CreateDirectory(resultsDirectory);
@@ -340,8 +340,17 @@ internal static class Program
             }
         });
 
+        Target("restore-tools", async () => {
+            await Cli.Wrap(dotnet).WithArguments("tool restore")
+                .ToConsole()
+                .ExecuteAsync().Task.ConfigureAwait(false);
+
+            await Cli.Wrap(dotnet).WithArguments("playwright install")
+                .ToConsole()
+                .ExecuteAsync().Task.ConfigureAwait(false);
+        });
+
         Target("restore", async () => {
-            var isPublicRelease = bool.Parse(Environment.GetEnvironmentVariable("NBGV_PublicRelease") ?? "false");
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try {
                 await Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +

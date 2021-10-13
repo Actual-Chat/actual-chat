@@ -9,7 +9,7 @@
 @inject IJSRuntime _js
 
 <div class="sticky bottom-0 self-end bg-white w-full">
-    <div class="flex flex-row justify-between mx-3 my-2">
+    <div class="flex flex-row justify-between mx-3 my-2" @onkeydown="OnKeyDown">
         <AuthorizeView>
             <Authorized>
                 <MediaPlayerToggle Player="RealtimePlayer" />
@@ -22,7 +22,7 @@
         <div class="flex flex-row h-full px-1 justify-center justify-items-center">
             <AuthorizeView>
                 <Authorized>
-                    <button @onclick="Post" class="block px-3 py-2 text-green-500">
+                    <button @onclick="Post" class="message-submit block px-3 py-2 text-green-500">
                         <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
                             <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z" />
                         </svg>
@@ -66,6 +66,14 @@
             return;
         if (_jsRef != null)
             await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && args.ShiftKey == false) {
+            return Post();
+        }
+        return Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

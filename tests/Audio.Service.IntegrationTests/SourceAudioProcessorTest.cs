@@ -37,7 +37,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         var dequeueTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
         var channel = Channel.CreateBounded<BlobPart>(
@@ -76,7 +76,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var chatService = services.GetRequiredService<IChatService>();
 
         var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
@@ -108,7 +108,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var chatService = services.GetRequiredService<IChatService>();
 
         var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
