@@ -40,6 +40,7 @@
     <!-- Global usings -->
     <Using Include="ActualChat" />
     <Using Include="ActualChat.Channels" />
+    <Using Include="ActualChat.Testing" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Immutable" />
     <Using Include="System.Linq" />

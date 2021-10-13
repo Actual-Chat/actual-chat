@@ -2,14 +2,14 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
-    <AspNetCoreVersion>6.0.0-rc.1*</AspNetCoreVersion>
+    <AspNetCoreVersion>6.0.0-rc.2*</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>$(AspNetCoreVersion)</MicrosoftExtensionsVersion>
     <EntityFrameworkCoreVersion>$(AspNetCoreVersion)</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreNpgsqlVersion>6.0.0-rc.1*</EntityFrameworkCoreNpgsqlVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.22-rc1</StlFusionVersion>
+    <StlFusionVersion>2.0.30-rc2</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
