@@ -324,6 +324,7 @@ dotnet_code_quality_unused_parameters = non_public # IDE0060: Remove unused para
 dotnet_diagnostic.ide0032.severity = silent # Use auto properties
 dotnet_diagnostic.vsthrd200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
 dotnet_diagnostic.ide1006.severity = none
+dotnet_diagnostic.rcs1001.severity = none # RCS1001: Add braces (when expression spans over multiple lines)
 dotnet_diagnostic.rcs1037.severity = silent # RCS1037: Remove trailing white-space
 dotnet_diagnostic.rcs1139.severity = none # RCS1139: Add summary element to documentation comment.
 dotnet_diagnostic.rcs1021.severity = none # RCS1021: Simplify lambda expression.
