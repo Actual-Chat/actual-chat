@@ -2,23 +2,11 @@ using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
-
 namespace ActualChat.Audio;
 
 public class SourceAudioProcessor : BackgroundService
 {
-    public static bool SkipAutoStart { get; set; } = true;
-
     private readonly ILogger<SourceAudioProcessor> _log;
-    public ITranscriber Transcriber { get; }
-    public AudioSegmentSaver AudioSegmentSaver { get; }
-    public SourceAudioRecorder SourceAudioRecorder { get; }
-    public AudioActivityExtractor AudioActivityExtractor { get; }
-    public AudioSourceStreamer AudioSourceStreamer { get; }
-    public TranscriptStreamer TranscriptStreamer { get; }
-    public IServerSideChatService Chat { get; }
-
-    public MomentClockSet ClockSet { get; }
 
     public SourceAudioProcessor(
         ITranscriber transcriber,
@@ -41,6 +29,17 @@ public class SourceAudioProcessor : BackgroundService
         Chat = chat;
         ClockSet = clockSet;
     }
+
+    public static bool SkipAutoStart { get; set; } = true;
+    public ITranscriber Transcriber { get; }
+    public AudioSegmentSaver AudioSegmentSaver { get; }
+    public SourceAudioRecorder SourceAudioRecorder { get; }
+    public AudioActivityExtractor AudioActivityExtractor { get; }
+    public AudioSourceStreamer AudioSourceStreamer { get; }
+    public TranscriptStreamer TranscriptStreamer { get; }
+    public IServerSideChatService Chat { get; }
+
+    public MomentClockSet ClockSet { get; }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -77,18 +76,21 @@ public class SourceAudioProcessor : BackgroundService
         return await AudioSegmentSaver.Save(audioSegment, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Transcript> PublishTranscriptStream(OpenAudioSegment segment, CancellationToken cancellationToken)
+    private async Task<Transcript> PublishTranscriptStream(
+        OpenAudioSegment segment,
+        CancellationToken cancellationToken)
     {
         var transcript = Channel.CreateBounded<TranscriptUpdate>(
             new BoundedChannelOptions(100) {
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
                 SingleWriter = true,
-                AllowSynchronousContinuations = true
+                AllowSynchronousContinuations = true,
             });
 
         var transcribeTask = Transcribe(segment, transcript.Writer, cancellationToken);
-        await TranscriptStreamer.PublishTranscriptStream(segment.StreamId, transcript.Reader, cancellationToken).ConfigureAwait(false);
+        await TranscriptStreamer.PublishTranscriptStream(segment.StreamId, transcript.Reader, cancellationToken)
+            .ConfigureAwait(false);
         return await transcribeTask.ConfigureAwait(false);
     }
 
@@ -145,7 +147,8 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = openAudioSegment.StreamId,
             BeginsAt = ClockSet.CpuClock.UtcNow,
         };
-        return await Chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken).ConfigureAwait(false);
+        return await Chat.CreateEntry(new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<ChatEntry> PublishAudioChatEntry(
@@ -159,7 +162,8 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = openAudioSegment.StreamId,
             BeginsAt = ClockSet.CpuClock.UtcNow,
         };
-        return await Chat.CreateEntry( new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken).ConfigureAwait(false);
+        return await Chat.CreateEntry(new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task UpdateTextChatEntry(
@@ -174,8 +178,10 @@ public class SourceAudioProcessor : BackgroundService
             Content = transcript.Text,
             StreamId = StreamId.None,
             EndsAt = ClockSet.CpuClock.UtcNow,
+            TextToTimeMap = transcript.TextToTimeMap,
         };
-        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken).ConfigureAwait(false);
+        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task UpdateAudioChatEntry(
@@ -191,9 +197,11 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = StreamId.None,
             EndsAt = ClockSet.CpuClock.UtcNow,
         };
-        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken).ConfigureAwait(false);
+        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task PublishAudioStream(OpenAudioSegment segment, CancellationToken cancellationToken)
-        => await AudioSourceStreamer.PublishAudioSource(segment.StreamId, segment.Source, cancellationToken).ConfigureAwait(false);
+        => await AudioSourceStreamer.PublishAudioSource(segment.StreamId, segment.Source, cancellationToken)
+            .ConfigureAwait(false);
 }
