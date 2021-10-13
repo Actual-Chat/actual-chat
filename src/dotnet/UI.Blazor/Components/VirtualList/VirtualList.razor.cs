@@ -133,6 +133,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListResp
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
     [Parameter] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
+    [Parameter] public RenderFragment SkeletonTemplate { get; set; } = null!;
+    [Parameter] public int SkeletonCount { get; set; } = 100;
     [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
