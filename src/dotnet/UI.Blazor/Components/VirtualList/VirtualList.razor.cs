@@ -361,7 +361,6 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListResp
             // Everything is new, so let's scroll to the very top
             ctx.ViewRange = new(0, viewSize);
             ctx.MustScrollWhenNonEmpty = true;
-            _logger.LogWarning("Everything is new, so let's scroll to the very top");
         }
 
         IsScrollNeeded();
