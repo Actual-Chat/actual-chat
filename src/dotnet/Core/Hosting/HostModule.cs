@@ -29,7 +29,7 @@ public abstract class HostModule<TSettings> : HostModule
     {
         var settingsType = typeof(TSettings);
         var sectionName = settingsType.Name;
-        var settings = (TSettings)plugins.Activate(settingsType);
+        var settings = (TSettings) plugins.Activate(settingsType);
         var cfg = plugins.GetRequiredService<IConfiguration>();
         cfg.GetSection(sectionName)?.Bind(settings);
         Settings = settings;
