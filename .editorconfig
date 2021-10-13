@@ -55,6 +55,7 @@ resharper_blank_lines_around_property = 0
 resharper_csharp_blank_lines_around_field = 0
 resharper_csharp_blank_lines_around_namespace = 0
 resharper_csharp_blank_lines_inside_region = 0
+resharper_csharp_blank_lines_around_single_line_invocable = 1
 resharper_csharp_other_braces = end_of_line
 resharper_csharp_wrap_before_binary_opsign = true
 resharper_indent_pars = outside
