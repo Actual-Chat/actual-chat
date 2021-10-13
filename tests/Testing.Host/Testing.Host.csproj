@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="bunit" />
     <PackageReference Include="Microsoft.Playwright" ExcludeAssets="buildTransitive" GeneratePathProperty="true" />
+    <PackageReference Include="coverlet.collector" GeneratePathProperty="true" />
   </ItemGroup>
 
   <!-- <workaround of multiple copies from Microsoft.Playwright> -->
@@ -36,7 +37,7 @@
     <Message Text="[Playwright] Copying shell script from $(PkgMicrosoft_Playwright) to $(OutputPath)..." Importance="High" />
     <Copy SourceFiles="@(_CopyItemsShell)" DestinationFiles="@(_CopyItemsShell->'$(OutDir)\%(RecursiveDir)%(Filename)%(Extension)')"/>
   </Target>
-  <Target Name="PlaywrightCopyAfterPublish" AfterTargets="Publish"  Condition="'$(PkgMicrosoft_Playwright)' != ''">
+  <Target Name="PlaywrightCopyAfterPublish" AfterTargets="Publish" Condition="'$(PkgMicrosoft_Playwright)' != ''">
     <ItemGroup>
       <_PublishCopyItems Include="$(PkgMicrosoft_Playwright)\.playwright\**" />
     </ItemGroup>
@@ -51,4 +52,28 @@
 
   <!-- </workaround of multiple copies from Microsoft.Playwright> -->
 
+  <!-- <workaround of multiple copies of coverlet.collector ReferencedPathMaps> -->
+  <Target Name="ReferencedPathMaps" BeforeTargets="CoreCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Pkgcoverlet_collector)' != ''">
+    <MSBuild Projects="@(AnnotatedProjects->'%(FullPath)')"
+            Targets="$(_CoverletSourceRootTargetName)"
+            Properties="TargetFramework=%(AnnotatedProjects.NearestTargetFramework)"
+            SkipNonexistentTargets="true">
+      <Output TaskParameter="TargetOutputs" ItemName="_LocalTopLevelSourceRoot" />
+    </MSBuild>
+    <ItemGroup>
+      <_byProject Include="@(_LocalTopLevelSourceRoot->'%(MSBuildSourceProjectFile)')" OriginalPath="%(Identity)" />
+      <_mapping Include="@(_byProject->'%(Identity)|%(OriginalPath)=%(MappedPath)')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_sourceRootMappingFilePath>$([MSBuild]::EnsureTrailingSlash('$(OutputPath)'))CoverletSourceRootsMapping</_sourceRootMappingFilePath>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_sourceRootMappingFilePath)" Lines="@(_mapping)"
+                      Overwrite="true" Encoding="Unicode"
+                      Condition="'@(_mapping)'!=''"
+                      WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <FileWrites Include="$(_sourceRootMappingFilePath)" Condition="'@(_mapping)'!=''" />
+    </ItemGroup>
+  </Target>
+  <!-- </workaround of multiple copies of coverlet.collector CoverletSourceRootsMapping> -->
 </Project>
