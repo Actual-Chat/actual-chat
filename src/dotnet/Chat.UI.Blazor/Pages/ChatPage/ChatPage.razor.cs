@@ -5,9 +5,9 @@ using ActualChat.Playback;
 using ActualChat.UI.Blazor.Components;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Components;
+using Stl.Fusion;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
-using Stl.Fusion;
 using Stl.Mathematics;
 
 namespace ActualChat.Chat.UI.Blazor.Pages;
@@ -40,7 +40,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         _watchRealtimeMediaCts.Cancel();
         RealtimePlayer?.Dispose();
         HistoricalPlayer?.Dispose();
-        await base.DisposeAsync();
+        await base.DisposeAsync().ConfigureAwait(true);
+        GC.SuppressFinalize(this);
     }
 
     protected override Task OnAfterRenderAsync(bool firstRender)
@@ -132,7 +133,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             }
         }
         catch (Exception e) {
-            Log.LogError("Error watching for new chat entries for audio", e);
+            Log.LogError(e, "Error watching for new chat entries for audio");
             throw;
         }
 
