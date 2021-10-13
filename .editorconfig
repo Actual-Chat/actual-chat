@@ -44,32 +44,34 @@ trim_trailing_whitespace = false
 indent_size = 4
 insert_final_newline = true
 
-# Microsoft .NET properties
+[*.cs]
+# ReSharper properties
+resharper_align_multiline_binary_expressions_chain = false
+resharper_blank_lines_after_block_statements = 0
+resharper_blank_lines_after_start_comment = 0
+resharper_blank_lines_after_using_list = 0
+resharper_blank_lines_around_auto_property = 0
+resharper_blank_lines_around_property = 0
+resharper_csharp_blank_lines_around_field = 0
+resharper_csharp_blank_lines_around_namespace = 0
+resharper_csharp_blank_lines_inside_region = 0
+resharper_csharp_other_braces = end_of_line
+resharper_csharp_wrap_before_binary_opsign = true
+resharper_indent_pars = outside
+resharper_indent_preprocessor_other = do_not_change
+resharper_max_attribute_length_for_same_line = 70
+resharper_place_accessorholder_attribute_on_same_line = false
+resharper_place_expr_method_on_single_line = false
+resharper_place_field_attribute_on_same_line = false
+resharper_place_simple_initializer_on_single_line = false
+resharper_remove_blank_lines_near_braces_in_code = false
+resharper_space_before_new_parentheses = true
+resharper_wrap_array_initializer_style = chop_if_long
+resharper_wrap_object_and_collection_initializer_style = chop_always
 csharp_prefer_static_local_function = true:suggestion
 csharp_prefer_simple_using_statement = true:suggestion
 csharp_style_prefer_switch_expression = true:suggestion
-dotnet_style_readonly_field = true:suggestion
-csharp_new_line_before_members_in_object_initializers = false
-csharp_new_line_before_open_brace = local_functions,methods,types
-csharp_preferred_modifier_order = public, private, protected, internal, static, extern, new, virtual, abstract, sealed, override, readonly, unsafe, volatile, async:suggestion
 csharp_prefer_braces = false:suggestion
-csharp_style_expression_bodied_accessors = true:suggestion
-csharp_style_expression_bodied_constructors = true:none
-csharp_style_expression_bodied_methods = true:suggestion
-csharp_style_expression_bodied_properties = true:suggestion
-csharp_style_expression_bodied_operators = true:silent
-csharp_style_expression_bodied_indexers = true:silent
-csharp_style_expression_bodied_lambdas = true:silent
-csharp_style_expression_bodied_local_functions = true:silent
-dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:suggestion
-dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:suggestion
-dotnet_style_predefined_type_for_locals_parameters_members = true:warning
-dotnet_style_predefined_type_for_member_access = true:warning
-dotnet_style_qualification_for_event = false:suggestion
-dotnet_style_qualification_for_field = false:suggestion
-dotnet_style_qualification_for_method = false:suggestion
-dotnet_style_qualification_for_property = false:suggestion
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
 
 # ReSharper properties
 resharper_csharp_naming_rule.constants = AaBb
@@ -92,6 +94,7 @@ resharper_enforce_line_ending_style = true
 resharper_keep_existing_declaration_block_arrangement = true
 resharper_keep_existing_embedded_block_arrangement = true
 resharper_keep_existing_enum_arrangement = true
+resharper_keep_existing_attribute_arrangement = true
 resharper_max_formal_parameters_on_line = 4
 resharper_max_invocation_arguments_on_line = 3
 resharper_use_indent_from_vs = false
@@ -109,7 +112,6 @@ resharper_web_config_module_not_resolved_highlighting = warning
 resharper_web_config_type_not_resolved_highlighting = warning
 resharper_web_config_wrong_module_highlighting = warning
 
-[*.cs]
 # Indentation options
 # https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference#
 
@@ -154,12 +156,14 @@ dotnet_style_prefer_conditional_expression_over_return = true:silent
 csharp_prefer_simple_default_expression = true:suggestion
 
 # Expression-bodied members
-csharp_style_expression_bodied_methods = true:none
-csharp_style_expression_bodied_constructors = true:none
+csharp_style_expression_bodied_methods = true:suggestion
+csharp_style_expression_bodied_constructors = true:suggestion
 csharp_style_expression_bodied_operators = true:suggestion
 csharp_style_expression_bodied_properties = true:suggestion
 csharp_style_expression_bodied_indexers = true:suggestion
 csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_expression_bodied_lambdas = true:silent
+csharp_style_expression_bodied_local_functions = true:suggestion
 
 # Pattern matching
 csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
@@ -316,21 +320,21 @@ dotnet_naming_symbols.any_typeparam.applicable_kinds = type_parameter
 
 
 dotnet_code_quality_unused_parameters = non_public # IDE0060: Remove unused parameter
-dotnet_diagnostic.IDE0032.severity = silent # Use auto properties
-dotnet_diagnostic.VSTHRD200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
-dotnet_diagnostic.IDE1006.severity = none
-dotnet_diagnostic.RCS1037.severity = silent # RCS1037: Remove trailing white-space
-dotnet_diagnostic.RCS1139.severity = none # RCS1139: Add summary element to documentation comment.
-dotnet_diagnostic.RCS1021.severity = none # RCS1021: Simplify lambda expression.
-dotnet_diagnostic.CA2012.severity = silent # CA2012: ValueTask instances returned from method calls should always be used, typically awaited. Not doing so often represents a functional bug, but even if it doesn't, it can result in degraded performance if the target method pools objects for use with ValueTasks.
-dotnet_diagnostic.CA1014.severity = none # CA1014: Mark assemblies with CLSCompliant
-dotnet_diagnostic.CA1716.severity = none # CA1716: Rename namespace Shared so that it no longer conflicts with the reserved language keyword 'Shared'
-dotnet_diagnostic.CA5394.severity = none # CA5394: Random is an insecure random number generator. Use cryptographically secure random number generators when randomness is required for security.
-dotnet_diagnostic.CA1303.severity = none # CA1303: Method passes a literal string as parameter 'value' of a call
-dotnet_diagnostic.CA1416.severity = none # CA1416: is only supported on: 'windows' 5.1.2600 and later.
-dotnet_diagnostic.CA2201.severity = none # CA2201: Exception type System.Exception is not sufficiently specific
-dotnet_diagnostic.MA0051.severity = none # MA0051: Method is too long
-dotnet_diagnostic.MA0026.severity = none # MA0026 TODO
-dotnet_diagnostic.VSTHRD003.severity = none # VSTHRD003 Avoid awaiting or returning a Task representing work that was not started within your context as that can lead to deadlocks.
-dotnet_diagnostic.RZ10012.severity = error # Found markup element with unexpected name
-dotnet_diagnostic.MA0016.severity = none # MA0016: Prefer return collection abstraction instead of implementation
+dotnet_diagnostic.ide0032.severity = silent # Use auto properties
+dotnet_diagnostic.vsthrd200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
+dotnet_diagnostic.ide1006.severity = none
+dotnet_diagnostic.rcs1037.severity = silent # RCS1037: Remove trailing white-space
+dotnet_diagnostic.rcs1139.severity = none # RCS1139: Add summary element to documentation comment.
+dotnet_diagnostic.rcs1021.severity = none # RCS1021: Simplify lambda expression.
+dotnet_diagnostic.ca2012.severity = silent # CA2012: ValueTask instances returned from method calls should always be used, typically awaited. Not doing so often represents a functional bug, but even if it doesn't, it can result in degraded performance if the target method pools objects for use with ValueTasks.
+dotnet_diagnostic.ca1014.severity = none # CA1014: Mark assemblies with CLSCompliant
+dotnet_diagnostic.ca1716.severity = none # CA1716: Rename namespace Shared so that it no longer conflicts with the reserved language keyword 'Shared'
+dotnet_diagnostic.ca5394.severity = none # CA5394: Random is an insecure random number generator. Use cryptographically secure random number generators when randomness is required for security.
+dotnet_diagnostic.ca1303.severity = none # CA1303: Method passes a literal string as parameter 'value' of a call
+dotnet_diagnostic.ca1416.severity = none # CA1416: is only supported on: 'windows' 5.1.2600 and later.
+dotnet_diagnostic.ca2201.severity = none # CA2201: Exception type System.Exception is not sufficiently specific
+dotnet_diagnostic.ma0051.severity = none # MA0051: Method is too long
+dotnet_diagnostic.ma0026.severity = none # MA0026 TODO
+dotnet_diagnostic.vsthrd003.severity = none # VSTHRD003 Avoid awaiting or returning a Task representing work that was not started within your context as that can lead to deadlocks.
+dotnet_diagnostic.rz10012.severity = error # Found markup element with unexpected name
+dotnet_diagnostic.ma0016.severity = none # MA0016: Prefer return collection abstraction instead of implementation
