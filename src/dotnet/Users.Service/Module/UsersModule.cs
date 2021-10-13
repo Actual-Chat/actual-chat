@@ -121,6 +121,5 @@ public class UsersModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserStateService, UserStateService>();
         var commander = services.AddCommander();
         commander.AddCommandService<AuthServiceCommandFilters>();
-
     }
 }
