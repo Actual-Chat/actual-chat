@@ -1,7 +1,51 @@
+@using ActualChat.Mathematics
 @namespace ActualChat.Chat.UI.Blazor.Components
-<span class="content">@Text</span>
+@if (Words == null)
+{
+    <span class="content">@Text</span>
+}
+else
+{
+    foreach (var word in Words!)
+    {
+        <span class="content hover:scale-105">@word</span>
+    }
+}
 
 @code {
+
     [Parameter]
+    [EditorRequired]
     public string Text { get; set; } = null!;
+
+    [Parameter]
+    public LinearMap? TextToTimeMap { get; set; }
+
+    private IReadOnlyCollection<(string,double)>? Words { get; set; }
+
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (TextToTimeMap != null && !Text.IsNullOrEmpty())
+        {
+            var map = TextToTimeMap.Value;
+            var words = new List<(string, double)>();
+            var previousBoundary = 0;
+            for (var i = 1; i < map.SourcePoints.Length - 1; i++)
+            {
+                var boundary = map.SourcePoints[i];
+                var currentBoundary = (int)boundary;
+                words.Add((Text[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0));
+                previousBoundary = currentBoundary;
+            }
+            if (words.Count > 0)
+            {
+                words.Add((Text[previousBoundary..], map.Map(previousBoundary) ?? 0));
+                Words = words;
+            }
+        }
+
+        return base.OnParametersSetAsync();
+    }
+
 }
