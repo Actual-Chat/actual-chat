@@ -34,7 +34,7 @@ public class VirtualListStatisticsTests
         Assert.Equal(0, stats.ResponseFulfillmentRatio);
 
         for (int i = 0; i < treshold + 5; ++i) {
-            stats.AddResponse(10.0d);
+            stats.AddResponse(100, 10);
             Assert.Equal(10.0d, stats.ResponseFulfillmentRatio);
         }
     }
