@@ -270,6 +270,8 @@ internal static class Program
                 "--nologo " +
                 "--filter \"FullyQualifiedName~UnitTests\" " +
                 "--no-restore " +
+                "--blame-hang " +
+                "--blame-hang-timeout 60s " +
                 $"--collect:\"XPlat Code Coverage\" --results-directory {resultsDirectory} " +
                 $"--logger trx;LogFileName=\"{Path.Combine(resultsDirectory, "unit.trx").Replace("\"", "\\\"")}\" " +
                 $"-c {configuration} " +

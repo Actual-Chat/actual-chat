@@ -71,7 +71,7 @@
     <Using Include="Xunit" />
     <Using Include="Xunit.Abstractions" />
 
-    <None Update="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
+    <None Include="$(MSBuildThisFileDirectory)template.xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Link="$(AssemblyName).xunit.runner.json"/>
   </ItemGroup>
 
 </Project>
