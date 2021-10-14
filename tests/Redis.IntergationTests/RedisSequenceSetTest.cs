@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Redis.UnitTests;
+﻿namespace ActualChat.Redis.IntergationTests;
 
 public class RedisSequenceSetTest : RedisTestBase
 {
