@@ -11,64 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="bunit" />
-    <PackageReference Include="Microsoft.Playwright" ExcludeAssets="buildTransitive" GeneratePathProperty="true" />
+    <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 
-  <!-- <workaround of multiple copies from Microsoft.Playwright> -->
-  <Target Name="CopyPlaywrightFilesToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(PkgMicrosoft_Playwright)' != ''">
-    <ItemGroup>
-      <_CopyItems Include="$(PkgMicrosoft_Playwright)\.playwright\**" />
-    </ItemGroup>
-    <Message Text="[Playwright] Copying drivers from $(PkgMicrosoft_Playwright) to $(OutputPath)..." Importance="High" />
-    <Copy SourceFiles="@(_CopyItems)" DestinationFiles="@(_CopyItems->'$(OutDir).playwright\%(RecursiveDir)%(Filename)%(Extension)')"/>
-  </Target>
-  <Target Name="CopyRuntimeConfigToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(PkgMicrosoft_Playwright)' != ''">
-    <ItemGroup Condition="Exists('$(PkgMicrosoft_Playwright)\lib\$(TargetFramework)\Microsoft.Playwright.runtimeconfig.json')">
-      <_CopyRuntimeConfigItems Include="$(PkgMicrosoft_Playwright)\lib\$(TargetFramework)\Microsoft.Playwright.runtimeconfig.json" />
-    </ItemGroup>
-    <Message Text="[Playwright] Copying config from $(PkgMicrosoft_Playwright)\lib\$(TargetFramework) to $(OutDir)..." Importance="High" />
-    <Copy SourceFiles="@(_CopyRuntimeConfigItems)" DestinationFiles="@(_CopyRuntimeConfigItems->'$(OutDir)\%(RecursiveDir)%(Filename)%(Extension)')"/>
-  </Target>
-  <Target Name="CopyPlaywrightShellToOutput" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(PkgMicrosoft_Playwright)' != ''">
-    <ItemGroup>
-      <_CopyItemsShell Include="$(PkgMicrosoft_Playwright)\buildTransitive\playwright.ps1" />
-    </ItemGroup>
-    <Message Text="[Playwright] Copying shell script from $(PkgMicrosoft_Playwright) to $(OutputPath)..." Importance="High" />
-    <Copy SourceFiles="@(_CopyItemsShell)" DestinationFiles="@(_CopyItemsShell->'$(OutDir)\%(RecursiveDir)%(Filename)%(Extension)')"/>
-  </Target>
-  <Target Name="PlaywrightCopyAfterPublish" AfterTargets="Publish" Condition="'$(PkgMicrosoft_Playwright)' != ''">
-    <ItemGroup>
-      <_PublishCopyItems Include="$(PkgMicrosoft_Playwright)\.playwright\**" />
-    </ItemGroup>
-    <Message Text="[Playwright] Copying files to publish folder..." Importance="High" />
-    <Copy SourceFiles="@(_PublishCopyItems)" DestinationFiles="@(_PublishCopyItems->'$(PublishDir)\.playwright\%(RecursiveDir)%(Filename)%(Extension)')"/>
-  </Target>
-  <Target Name="PlaywrightBuildCleanup" AfterTargets="Clean" Condition="'$(PkgMicrosoft_Playwright)' != ''">
-    <Message Text="[Playwright] Cleaning up .playwright folder and artifacts..." Importance="High" />
-    <RemoveDir Directories="$(OutDir)\.playwright" Condition="Exists('$(OutDir)\.playwright')"/>
-    <Delete Files="$(OutDir)\playwright.ps1" Condition="Exists('$(OutDir)\playwright.ps1')" />
-  </Target>
-
-  <!-- </workaround of multiple copies from Microsoft.Playwright> -->
-
-  <!-- <workaround of multiple copies of coverlet.collector ReferencedPathMaps> -->
-  <Target Name="___ReferencedPathMaps" BeforeTargets="CoreCompile" DependsOnTargets="ResolveProjectReferences">
-    <Message Text="[Coverlet] Generate CoverletSourceRootsMapping file..." Importance="High" />
-    <MSBuild Projects="@(AnnotatedProjects->'%(FullPath)')" Targets="$(_CoverletSourceRootTargetName)" Properties="TargetFramework=%(AnnotatedProjects.NearestTargetFramework)" SkipNonexistentTargets="true">
-      <Output TaskParameter="TargetOutputs" ItemName="_LocalTopLevelSourceRoot" />
-    </MSBuild>
-    <ItemGroup>
-      <_byProject Include="@(_LocalTopLevelSourceRoot->'%(MSBuildSourceProjectFile)')" OriginalPath="%(Identity)" />
-      <_mapping Include="@(_byProject->'%(Identity)|%(OriginalPath)=%(MappedPath)')" />
-    </ItemGroup>
-    <PropertyGroup>
-      <_sourceRootMappingFilePath>$([MSBuild]::EnsureTrailingSlash('$(OutputPath)'))CoverletSourceRootsMapping</_sourceRootMappingFilePath>
-    </PropertyGroup>
-    <WriteLinesToFile File="$(_sourceRootMappingFilePath)" Lines="@(_mapping)" Overwrite="true" Encoding="Unicode" Condition="'@(_mapping)'!=''" WriteOnlyWhenDifferent="true" />
-    <ItemGroup>
-      <FileWrites Include="$(_sourceRootMappingFilePath)" Condition="'@(_mapping)'!=''" />
-    </ItemGroup>
-  </Target>
-  <!-- </workaround of multiple copies of coverlet.collector CoverletSourceRootsMapping> -->
 </Project>
