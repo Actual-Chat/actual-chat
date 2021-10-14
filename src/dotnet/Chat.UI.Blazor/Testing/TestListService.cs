@@ -1,3 +1,4 @@
+using System.Globalization;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using Stl.Time.Internal;
@@ -27,21 +28,25 @@ public class TestListService
         var range = await GetListRange(cancellationToken);
         if (query.InclusiveRange == default) {
             var key = _resetToBottom ? range.End : _resetToTop ? 0 : range.Start + (range.End - range.Start) / 2;
-            query = query with { InclusiveRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
+            query = query with { InclusiveRange = new Range<string>(
+                key.ToString(CultureInfo.InvariantCulture),
+                (key + 20).ToString(CultureInfo.InvariantCulture)) };
         }
 
-        var start = int.Parse(query.InclusiveRange.Start);
+        var start = int.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             start -= (int) query.ExpandStartBy;
         start = Math.Max(range.Start, start);
 
-        var end = int.Parse(query.InclusiveRange.End);
+        var end = int.Parse(query.InclusiveRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             end += (int) query.ExpandEndBy;
         end = Math.Min(range.End, end);
 
         var result = VirtualListData.New(
-            Enumerable.Range(start, end - start + 1).Select(i => i.ToString()),
+            Enumerable
+                .Range(start, end - start + 1)
+                .Select(i => i.ToString(CultureInfo.InvariantCulture)),
             item => item,
             start == range.Start,
             end == range.End);
@@ -52,7 +57,7 @@ public class TestListService
     [ComputeMethod]
     public virtual async Task<TestListItem> GetItem(string key, CancellationToken cancellationToken)
     {
-        var intKey = int.Parse(key);
+        var intKey = int.Parse(key, NumberStyles.Integer, CultureInfo.InvariantCulture);
         var seed = await GetSeed(cancellationToken);
         var range = await GetListRange(cancellationToken);
         var rnd = new Random(intKey + (intKey + seed) / 10);

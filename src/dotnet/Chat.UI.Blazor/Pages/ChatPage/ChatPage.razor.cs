@@ -1,3 +1,4 @@
+using System.Globalization;
 using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Playback;
@@ -78,21 +79,26 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             cancellationToken);
         var chatId = model.Chat?.Id ?? default;
         if (chatId.IsNone)
-            return VirtualListData.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
+            return VirtualListData.New(
+                Enumerable.Empty<ChatEntry>(),
+                entry => entry.Id.ToString(CultureInfo.InvariantCulture),
+                true, true);
 
         var idLogCover = ChatConstants.IdLogCover;
         var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
-        if (query.InclusiveRange == default) {
+        if (query.InclusiveRange == default)
             query = query with {
-                InclusiveRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())
+                InclusiveRange = new Range<string>(
+                    (range.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
+                    range.End.ToString(CultureInfo.InvariantCulture))
             };
 
-        var startId = long.Parse(query.InclusiveRange.Start);
+        var startId = long.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
         startId = MathExt.Max(range.Start, startId);
 
-        var endId = long.Parse(query.InclusiveRange.End);
+        var endId = long.Parse(query.InclusiveRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
         endId = MathExt.Min(range.End, endId);
@@ -105,7 +111,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chatEntries = entryLists.SelectMany(entries => entries);
         var result = VirtualListData.New(
             chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
-            entry => entry.Id.ToString(),
+            entry => entry.Id.ToString(CultureInfo.InvariantCulture),
             startId == range.Start,
             endId == range.End);
         return result;
