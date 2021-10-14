@@ -18,14 +18,17 @@ jobs:
         with:
           dotnet-version: "6.0.x"
           include-prerelease: true
+      - name: Restore
+        run: dotnet run --project build --configuration Release -- --host=GitHubActions restore
       - name: Build
-        run: dotnet build --nologo --configuration Debug
+        run: dotnet build --nologo --no-restore --configuration Debug
       - name: Run unit tests
-        run: dotnet run --project build --configuration Release -- --host=GitHubActions --skip-dependencies --configuration=Debug clean-coverage unit-coverage
-      - name: Parse Trx files
+        run: dotnet run --project build --configuration Release -- --host=GitHubActions --skip-dependencies --configuration=Debug clean-tests unit-tests
+      - name: Parse trx files
         uses: Issafalcon/trx-parser@v0.2.2
         id: trx-parser
         if: ${{ always() }}
+        continue-on-error: true
         with:
           TRX_PATH: ${{ github.workspace }}/artifacts/tests/output
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
