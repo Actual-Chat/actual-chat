@@ -9,11 +9,11 @@
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.30-rc2</StlFusionVersion>
+    <StlFusionVersion>2.0.33-rc2</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
-    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.14" />
+    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.16" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*" />
     <PackageReference Update="MessagePack" Version="2.3.*" />
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*" />
@@ -61,7 +61,7 @@
     <PackageReference Update="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageReference Update="Storage.Net" Version="9.3.*" />
-    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.2.1" />
+    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.2.2" />
     <PackageReference Update="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
     <PackageReference Update="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
