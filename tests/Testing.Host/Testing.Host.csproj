@@ -12,7 +12,7 @@
   <ItemGroup>
     <PackageReference Include="bunit" />
     <PackageReference Include="Microsoft.Playwright" ExcludeAssets="buildTransitive" GeneratePathProperty="true" />
-    <PackageReference Include="coverlet.collector" GeneratePathProperty="true" />
+    <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 
   <!-- <workaround of multiple copies from Microsoft.Playwright> -->
@@ -53,11 +53,9 @@
   <!-- </workaround of multiple copies from Microsoft.Playwright> -->
 
   <!-- <workaround of multiple copies of coverlet.collector ReferencedPathMaps> -->
-  <Target Name="ReferencedPathMaps" BeforeTargets="CoreCompile" DependsOnTargets="ResolveProjectReferences" Condition="'$(Pkgcoverlet_collector)' != ''">
-    <MSBuild Projects="@(AnnotatedProjects->'%(FullPath)')"
-            Targets="$(_CoverletSourceRootTargetName)"
-            Properties="TargetFramework=%(AnnotatedProjects.NearestTargetFramework)"
-            SkipNonexistentTargets="true">
+  <Target Name="___ReferencedPathMaps" BeforeTargets="CoreCompile" DependsOnTargets="ResolveProjectReferences">
+    <Message Text="[Coverlet] Generate CoverletSourceRootsMapping file..." Importance="High" />
+    <MSBuild Projects="@(AnnotatedProjects->'%(FullPath)')" Targets="$(_CoverletSourceRootTargetName)" Properties="TargetFramework=%(AnnotatedProjects.NearestTargetFramework)" SkipNonexistentTargets="true">
       <Output TaskParameter="TargetOutputs" ItemName="_LocalTopLevelSourceRoot" />
     </MSBuild>
     <ItemGroup>
@@ -67,10 +65,7 @@
     <PropertyGroup>
       <_sourceRootMappingFilePath>$([MSBuild]::EnsureTrailingSlash('$(OutputPath)'))CoverletSourceRootsMapping</_sourceRootMappingFilePath>
     </PropertyGroup>
-    <WriteLinesToFile File="$(_sourceRootMappingFilePath)" Lines="@(_mapping)"
-                      Overwrite="true" Encoding="Unicode"
-                      Condition="'@(_mapping)'!=''"
-                      WriteOnlyWhenDifferent="true" />
+    <WriteLinesToFile File="$(_sourceRootMappingFilePath)" Lines="@(_mapping)" Overwrite="true" Encoding="Unicode" Condition="'@(_mapping)'!=''" WriteOnlyWhenDifferent="true" />
     <ItemGroup>
       <FileWrites Include="$(_sourceRootMappingFilePath)" Condition="'@(_mapping)'!=''" />
     </ItemGroup>

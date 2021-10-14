@@ -1,5 +1,9 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
+  <!-- <workaround of multiple copies of coverlet.collector ReferencedPathMaps> -->
+  <Target Name="ReferencedPathMaps" />
+  <!-- </workaround of multiple copies of coverlet.collector CoverletSourceRootsMapping> -->
+
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences" Condition="$(CopyLocalLockFileAssemblies) == true">
     <ItemGroup>
       <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
