@@ -11,9 +11,7 @@ public class GoogleTranscriber : ITranscriber
     private readonly ILogger<GoogleTranscriber> _log;
 
     public GoogleTranscriber(ILogger<GoogleTranscriber> log)
-    {
-        _log = log;
-    }
+        => _log = log;
 
     public async Task<ChannelReader<TranscriptUpdate>> Transcribe(
         TranscriptionRequest request,
@@ -21,7 +19,7 @@ public class GoogleTranscriber : ITranscriber
         CancellationToken cancellationToken)
     {
         var (streamId, format, options) = request;
-        _log.LogInformation("Start transcription of StreamId = {StreamId}", (string) streamId);
+        _log.LogInformation("Start transcription of StreamId = {StreamId}", (string)streamId);
 
         var builder = new SpeechClientBuilder();
         var speechClient = await builder.BuildAsync(cancellationToken);
@@ -33,21 +31,22 @@ public class GoogleTranscriber : ITranscriber
             EnableAutomaticPunctuation = options.IsPunctuationEnabled,
             DiarizationConfig = new SpeakerDiarizationConfig {
                 EnableSpeakerDiarization = true,
-                MaxSpeakerCount = options.MaxSpeakerCount ?? 5
-            }
+                MaxSpeakerCount = options.MaxSpeakerCount ?? 5,
+            },
         };
 
         var streamingRecognizeStream = speechClient.StreamingRecognize();
         await streamingRecognizeStream.WriteAsync(new StreamingRecognizeRequest {
-            StreamingConfig = new StreamingRecognitionConfig {
-                Config = config,
-                InterimResults = true,
-                SingleUtterance = false
-            },
-        }).ConfigureAwait(false);
-        var responseStream =  (IAsyncEnumerable<StreamingRecognizeResponse>)streamingRecognizeStream.GetResponseStream();
+                StreamingConfig = new StreamingRecognitionConfig {
+                    Config = config,
+                    InterimResults = true,
+                    SingleUtterance = false,
+                },
+            })
+            .ConfigureAwait(false);
+        var responseStream = (IAsyncEnumerable<StreamingRecognizeResponse>)streamingRecognizeStream.GetResponseStream();
         var transcriptChannel = Channel.CreateUnbounded<TranscriptUpdate>(
-            new UnboundedChannelOptions{ SingleWriter = true });
+            new UnboundedChannelOptions { SingleWriter = true });
 
         _ = Task.Run(()
                 => PushAudioForTranscription(streamingRecognizeStream,
@@ -71,13 +70,15 @@ public class GoogleTranscriber : ITranscriber
         try {
             var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
             await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
-                AudioContent = ByteString.CopyFrom(header),
-            }).ConfigureAwait(false);
+                    AudioContent = ByteString.CopyFrom(header),
+                })
+                .ConfigureAwait(false);
 
             await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
                 await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(audioFrame.Data),
-                }).ConfigureAwait(false);
+                        AudioContent = ByteString.CopyFrom(audioFrame.Data),
+                    })
+                    .ConfigureAwait(false);
         }
         catch (ChannelClosedException) { }
         catch (Exception e) {
@@ -102,22 +103,33 @@ public class GoogleTranscriber : ITranscriber
                 while (updateExtractor.Updates.TryDequeue(out var update))
                     await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
             }
-
         }
         catch (Exception e) {
             error = e;
         }
         finally {
-            updateExtractor.FinalizeCurrentPart();
-            while (updateExtractor.Updates.TryDequeue(out var update))
-                await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
-            writer.Complete(error);
+            if (error != null)
+                writer.Complete(error);
+            else
+                try {
+                    updateExtractor.FinalizeCurrentPart();
+                    while (updateExtractor.Updates.TryDequeue(out var update))
+                        await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    error = e;
+                }
+                finally {
+                    writer.Complete(error);
+                }
         }
 
         void ProcessResponse(StreamingRecognizeResponse response)
         {
             if (response.Error != null) {
-                _log.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}", response.Error.Code, response.Error.Message);
+                _log.LogError("Transcription error: Code {ErrorCode}; Message: {ErrorMessage}",
+                    response.Error.Code,
+                    response.Error.Message);
                 throw new TranscriptionException(
                     response.Error.Code.ToString(CultureInfo.InvariantCulture),
                     response.Error.Message);
@@ -128,17 +140,45 @@ public class GoogleTranscriber : ITranscriber
                 var endTime = result.ResultEndTime;
                 var text = alternative.Transcript;
                 var finalizedPart = updateExtractor.FinalizedPart;
-                var currentPart = new Transcript() {
+                var finalizedTextLength = finalizedPart.Text.Length;
+                var finalizedSpeechDuration = finalizedPart.Duration;
+                var currentPart = new Transcript {
                     Text = text,
-                    TextToTimeMap =  new LinearMap(
-                        new [] {(double) finalizedPart.Text.Length, finalizedPart.Text.Length + text.Length},
-                        new [] {finalizedPart.Duration, endTime.ToTimeSpan().TotalSeconds})
+                    TextToTimeMap = new LinearMap(
+                        new[] { (double)finalizedTextLength, finalizedTextLength + text.Length },
+                        new[] { finalizedSpeechDuration, finalizedSpeechDuration + endTime.ToTimeSpan().TotalSeconds }),
                 };
-                updateExtractor.UpdateCurrentPart(currentPart);
-                if (result.IsFinal)
+                if (result.IsFinal) {
+                    var sourcePoints = new List<double> { finalizedTextLength };
+                    var targetPoints = new List<double> { finalizedSpeechDuration };
+                    var textIndex = 0;
+                    foreach (var word in alternative.Words) {
+                        var wordIndex = text.IndexOf(word.Word, textIndex, StringComparison.InvariantCultureIgnoreCase);
+                        if (wordIndex < 0)
+                            continue;
+
+                        textIndex = wordIndex + word.Word.Length;
+                        if (!(sourcePoints[^1] < finalizedTextLength + wordIndex))
+                            continue;
+
+                        sourcePoints.Add(finalizedTextLength + wordIndex);
+                        targetPoints.Add(finalizedSpeechDuration + word.StartTime.ToTimeSpan().TotalSeconds);
+                    }
+                    sourcePoints.Add(finalizedTextLength + text.Length);
+                    targetPoints.Add(finalizedSpeechDuration + endTime.ToTimeSpan().TotalSeconds);
+                    if (sourcePoints.Count > 2)
+                        currentPart = new Transcript {
+                            Text = text,
+                            TextToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray()),
+                        };
+
+                    updateExtractor.UpdateCurrentPart(currentPart);
                     updateExtractor.FinalizeCurrentPart();
-                else
+                }
+                else {
+                    updateExtractor.UpdateCurrentPart(currentPart);
                     break; // We process only the first one of non-final results
+                }
             }
         }
     }
