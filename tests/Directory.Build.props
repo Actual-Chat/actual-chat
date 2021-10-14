@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\tests</OutputPath>
+    <OutputPath>$(RepoRoot)artifacts\tests\$(MSBuildProjectName)</OutputPath>
     <!-- CA1034 - Do not nest type -->
     <!-- CA1822	- Member can be marked as static -->
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
