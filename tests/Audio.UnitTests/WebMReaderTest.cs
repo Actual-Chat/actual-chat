@@ -19,7 +19,8 @@ public class WebMReaderTest : TestBase
         using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer);
-
+        while (bytesRead < 3 * 1024)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
         bytesRead.Should().BeGreaterThan(3 * 1024);
 
         var entries = Parse(buffer.Span[..bytesRead]).ToList();
@@ -43,8 +44,10 @@ public class WebMReaderTest : TestBase
         using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
+        while (bytesRead < 0x26)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
 
-        var entries = Parse(buffer.Span[..0x26]).ToList();
+        var entries = Parse(buffer.Span[..bytesRead]).ToList();
         entries.Should().HaveCount(1);
         entries.Should().NotContainNulls();
         entries[0].Should().BeOfType<EBML>();
@@ -65,6 +68,10 @@ public class WebMReaderTest : TestBase
         var bytesRead1 = await inputStream.ReadAsync(buffer1);
         var bytesRead2 = await inputStream.ReadAsync(buffer2);
 
+        while (bytesRead1 < 3 * 1024)
+            bytesRead1 += await inputStream.ReadAsync(buffer1[bytesRead1..]);
+        while (bytesRead2 < 3 * 1024)
+            bytesRead2 += await inputStream.ReadAsync(buffer2[bytesRead2..]);
         bytesRead1.Should().BeGreaterThan(3 * 1024);
         bytesRead2.Should().BeGreaterThan(3 * 1024);
 
