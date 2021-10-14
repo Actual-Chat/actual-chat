@@ -165,7 +165,7 @@ public sealed class AsyncMemoizer<T>
                     closedTargets.Add(target);
                 }
             }
-            if (closedTargets.Count > 0) {
+            if (closedTargets.Count != 0) {
                 foreach (var closedTarget in closedTargets)
                     _targets.Remove(closedTarget);
                 closedTargets.Clear();

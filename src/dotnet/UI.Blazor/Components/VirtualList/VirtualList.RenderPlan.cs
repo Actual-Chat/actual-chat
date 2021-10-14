@@ -20,7 +20,6 @@ public partial class VirtualList<TItem>
         [JsonIgnore]
         public VirtualList<TItem> VirtualList { get; set; } = null!;
         public long RenderIndex { get; set; } = 0;
-        public VirtualListClientSideState? ClientSideState { get; set; }
         [JsonIgnore]
         public VirtualListClientSideState? NextClientSideState { get; set; }
         [JsonIgnore]
@@ -36,6 +35,7 @@ public partial class VirtualList<TItem>
 
         /// <summary> Relative to the top item's top! </summary>
         public Range<double> Viewport { get; set; }
+        public Range<double> DisplayedRange { get; set; }
 
         /// <summary> Prefix spacer size. </summary>
         public double SpacerSize { get; set; }
@@ -49,12 +49,6 @@ public partial class VirtualList<TItem>
 
         /// <summary> Forces programmatic scroll to the <see cref="Viewport"/>. </summary>
         public bool MustScroll { get; set; }
-
-        // Pre-computed properties
-        public Range<double> DisplayedRange
-            => DisplayedItems.Count > 0
-                ? (DisplayedItems[0].Range.Start, DisplayedItems[^1].Range.End)
-                : default;
 
         protected ILogger Log => VirtualList.Log;
         protected IVirtualListStatistics Statistics => VirtualList.Statistics;
@@ -73,17 +67,22 @@ public partial class VirtualList<TItem>
 
         public virtual RenderPlan Next()
         {
-            var plan = (RenderPlan) MemberwiseClone();
-            plan.RenderIndex = RenderIndex + 1;
-            plan.Data = VirtualList.Data;
-            plan.NextClientSideState = null;
-            plan.ClientSideState = NextClientSideState;
+            try {
+                var plan = (RenderPlan) MemberwiseClone();
+                plan.RenderIndex = RenderIndex + 1;
+                plan.Data = VirtualList.Data;
+                plan.NextClientSideState = null;
 
-            plan.IsUserScrollDetected = false;
-            plan.NotifyWhenSafeToScroll = false;
-            plan.MustScroll = false;
-            plan.Update(this);
-            return plan;
+                plan.IsUserScrollDetected = false;
+                plan.NotifyWhenSafeToScroll = false;
+                plan.MustScroll = false;
+                plan.Update(this);
+                return plan;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Error while computing the next RenderPlan");
+                throw;
+            }
         }
 
         public bool IsFullyLoaded(Range<double> viewport)
@@ -92,13 +91,14 @@ public partial class VirtualList<TItem>
         public void Update(RenderPlan? lastPlan)
         {
             var statistics = Statistics;
-            var newItemSizes = ClientSideState?.ItemSizes;
+            var newItemSizes = lastPlan?.NextClientSideState?.ItemSizes;
             var prevItemByKey = lastPlan?.ItemByKey;
 
             LoadedItems = new List<ItemRenderPlan>();
             ItemByKey = new Dictionary<string, ItemRenderPlan>(StringComparer.Ordinal);
             DisplayedItems = new List<ItemRenderPlan>();
             UnmeasuredItems = new List<ItemRenderPlan>();
+            var itemRange = default(Range<double>);
             foreach (var (key, item) in Data.Items) {
                 var newItem = new ItemRenderPlan { Key = key, Item = item };
                 if (newItemSizes != null && newItemSizes.TryGetValue(key, out var newSize)) {
@@ -110,33 +110,31 @@ public partial class VirtualList<TItem>
 
                 LoadedItems.Add(newItem);
                 ItemByKey.Add(key, newItem);
-                if (newItem.IsMeasured)
+                if (newItem.IsMeasured) {
+                    itemRange = new(itemRange.End, itemRange.End + newItem.Size);
+                    newItem.Range = itemRange;
                     DisplayedItems.Add(newItem);
+                }
                 else
                     UnmeasuredItems.Add(newItem);
             }
+            DisplayedRange = new Range<double>(0, itemRange.End);
 
-            UpdateItemRanges();
             UpdateViewportAndSpacer(lastPlan);
-        }
-
-        public void UpdateItemRanges()
-        {
-            // Recomputing item ranges
-            foreach (var (item, range) in GetRanges(DisplayedItems))
-                item.Range = range;
         }
 
         protected void UpdateViewportAndSpacer(RenderPlan? lastPlan)
         {
             // First, let's update the Viewport and IsUserScrollDetected
-            if (ClientSideState != null) {
+            var clientSideState = lastPlan?.NextClientSideState;
+            if (lastPlan == null)
+                IsUserScrollDetected = true; // First render = user scroll too
+            else if (clientSideState != null) {
                 // Remember that all server-side offsets are relative to the first item's top / spacer top
-                var viewportStart = ClientSideState.ScrollTop - SpacerSize; // SpacerSize == lastPlan.SpacerSize here
-                var viewport = new Range<double>(viewportStart, viewportStart + ClientSideState.ClientHeight);
-                IsUserScrollDetected = !Viewport.Equals(viewport, 0.01);
-                if (IsUserScrollDetected)
-                    Viewport = viewport;
+                var viewportStart = clientSideState.ScrollTop - lastPlan.SpacerSize;
+                var viewport = new Range<double>(viewportStart, viewportStart + clientSideState.ClientHeight);
+                IsUserScrollDetected = !Viewport.Equals(viewport, 0.1);
+                Viewport = viewport;
             }
 
             // Find a measured (visible) item that exists in both old & new plans
@@ -175,16 +173,27 @@ public partial class VirtualList<TItem>
             var idealSpacerSize = Data.HasVeryFirstItem ? 0 : VirtualList.SpacerSize;
 
             var justGotVeryFirstItem = Data.HasVeryFirstItem && !(lastPlan?.Data.HasVeryFirstItem ?? false);
+            if (justGotVeryFirstItem) {
+                Log.LogInformation("Just got very first item");
+            }
             if (IsUserScrollDetected) {
-                IsStartAligned = Data.HasVeryFirstItem && 8 >= Math.Abs(Viewport.Start);
-                IsEndAligned = Data.HasVeryLastItem && 8 >= Math.Abs(DisplayedRange.End - Viewport.End);
+                if (lastPlan == null) { // First frame
+                    IsStartAligned = VirtualList.AutoScrollEdge == VirtualListEdge.Start;
+                    IsEndAligned = !IsStartAligned;
+                }
+                else {
+                    IsStartAligned = Data.HasVeryFirstItem && Viewport.Start <= 8;
+                    IsEndAligned = Data.HasVeryLastItem && Viewport.End >= DisplayedRange.End - 8;
+                }
+                Log.LogInformation("User scroll detected; align = {Align}",
+                    new [] {IsStartAligned ? "start" : "", IsEndAligned ? "end" : ""}.ToDelimitedString());
             }
 
             // 1. Deciding if we must scroll no matter what
             MustScroll |= justGotVeryFirstItem || IsStartAligned || IsEndAligned;
             if (IsStartAligned) {
                 Viewport = topViewport;
-                if (IsEndAligned && VirtualList.PreferredAutoScrollEdge == VirtualListEdge.End)
+                if (IsEndAligned && VirtualList.AutoScrollEdge == VirtualListEdge.End)
                     Viewport = bottomViewport;
             } else if (IsEndAligned)
                 Viewport = bottomViewport;
@@ -194,9 +203,11 @@ public partial class VirtualList<TItem>
                 SpacerSize = idealSpacerSize;
             else {
                 // 3. We aren't scrolling, but maybe we still want to adjust the spacer...
-                var mustAdjustSpacerSize = Math.Abs(SpacerSize - idealSpacerSize) < VirtualList.SpacerSize / 2.0;
-                var isSafeToScroll = ClientSideState?.IsSafeToScroll ?? false;
-                if (mustAdjustSpacerSize && isSafeToScroll) {
+                var mustAdjustSpacerSize = Math.Abs(SpacerSize - idealSpacerSize) > VirtualList.SpacerSize / 2.0;
+                if (!mustAdjustSpacerSize)
+                    return;
+                var isSafeToScroll = lastPlan?.NextClientSideState?.IsSafeToScroll ?? false;
+                if (isSafeToScroll) {
                     // 3a. We can resize it right now
                     SpacerSize = idealSpacerSize;
                     MustScroll = true;
@@ -218,15 +229,6 @@ public partial class VirtualList<TItem>
                     return (item, prevItem);
             }
             return (null, null);
-        }
-
-        protected static IEnumerable<(ItemRenderPlan Item, Range<double> Range)> GetRanges(IEnumerable<ItemRenderPlan> items)
-        {
-            var range = default(Range<double>);
-            foreach (var item in items) {
-                range = new(range.End, range.End + item.Size);
-                yield return (item, range);
-            }
         }
     }
 }

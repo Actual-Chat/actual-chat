@@ -80,25 +80,26 @@ namespace ActualChat.Chat
             return await dbMessages.LongCountAsync(cancellationToken);
         }
 
-        public virtual async Task<Range<long>> GetMinMaxId(
+        public virtual async Task<Range<long>> GetIdRange(
             Session session,
             ChatId chatId,
             CancellationToken cancellationToken)
         {
             var user = await Auth.GetUser(session, cancellationToken);
             await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken);
-            return await GetMinMaxId(chatId, cancellationToken);
+            return await GetIdRange(chatId, cancellationToken);
         }
 
-        public virtual async Task<Range<long>> GetMinMaxId(ChatId chatId, CancellationToken cancellationToken)
+        public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
         {
             await using var dbContext = CreateDbContext();
-            var lastId = await dbContext.ChatEntries.AsQueryable()
-                .Where(e => e.ChatId == (string) chatId)
-                .OrderByDescending(e => e.Id)
-                .Select(e => e.Id)
+            var firstId = await dbContext.ChatEntries.AsQueryable()
+                .Where(e => e.ChatId == chatId.Value).OrderBy(e => e.Id).Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken);
-            return (0, lastId);
+            var lastId = await dbContext.ChatEntries.AsQueryable()
+                .Where(e => e.ChatId == chatId.Value).OrderByDescending(e => e.Id).Select(e => e.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            return (firstId, lastId);
         }
 
         public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(

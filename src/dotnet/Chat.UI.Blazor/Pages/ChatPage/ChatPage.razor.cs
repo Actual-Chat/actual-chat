@@ -86,23 +86,23 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                 true);
 
         var idLogCover = ChatConstants.IdLogCover;
-        var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
                 InclusiveRange = new Range<string>(
-                    (range.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
-                    range.End.ToString(CultureInfo.InvariantCulture)),
+                    (chatIdRange.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
+                    chatIdRange.End.ToString(CultureInfo.InvariantCulture))
             };
 
         var startId = long.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
-        startId = MathExt.Max(range.Start, startId);
+        startId = Math.Clamp(startId, chatIdRange.Start, chatIdRange.End);
 
         var endId = long.Parse(query.InclusiveRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
-        endId = MathExt.Min(range.End, endId);
+        endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
 
         var ranges = idLogCover.GetTileCover((startId, endId + 1));
         var entryLists = await Task
@@ -113,8 +113,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var result = VirtualListData.New(
             chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
             entry => entry.Id.ToString(CultureInfo.InvariantCulture),
-            startId == range.Start,
-            endId == range.End);
+            startId == chatIdRange.Start,
+            endId == chatIdRange.End);
         return result;
     }
 
@@ -124,7 +124,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var idLogCover = ChatConstants.IdLogCover;
         try {
             var lastChatEntry = 0L;
-            var computedMinMax = await Computed.Capture(ct => Chats.GetMinMaxId(Session, ChatId, ct), cancellationToken)
+            var computedMinMax = await Computed.Capture(ct => Chats.GetIdRange(Session, ChatId, ct), cancellationToken)
                 .ConfigureAwait(false);
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();

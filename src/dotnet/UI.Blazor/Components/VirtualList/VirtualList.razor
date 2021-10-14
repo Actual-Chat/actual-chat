@@ -38,15 +38,13 @@
                 </div>
             }
         </div>
-        @if (!Plan.Data.HasVeryLastItem) {
-            <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
-                style="height: @(SpacerSize)px">
-                <SkeletonContainer>
-                    @for(int i = 0; i < SkeletonCount; ++i) {
-                        @Skeleton
-                    }
-                </SkeletonContainer>
-            </div>
-        }
+        <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
+            style="height: @(Plan.Data.HasVeryLastItem ? 0 : SpacerSize)px">
+            <SkeletonContainer>
+                @for (var i = 0; i < SkeletonCount; ++i) {
+                    @Skeleton
+                }
+            </SkeletonContainer>
+        </div>
     </div>
 </div>

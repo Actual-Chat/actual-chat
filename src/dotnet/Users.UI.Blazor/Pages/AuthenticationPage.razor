@@ -64,7 +64,7 @@
                 </ul>
             }
         </div>
-        @if (user.IsAuthenticated && state.Sessions.Count > 0) {
+        @if (user.IsAuthenticated && state.Sessions.Count != 0) {
             <div>Sessions:</div>
             <div>
                 <table class="table table-sm">
