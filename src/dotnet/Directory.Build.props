@@ -21,6 +21,11 @@
     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
   </ItemGroup>
 
+  <ItemGroup Condition="$(MSBuildProjectName.Contains('Service'))">
+    <InternalsVisibleTo Include="$(RootNamespace).UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).IntegrationTests" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
