@@ -1,43 +1,51 @@
 @using ActualChat.UI.Blazor.Components.Internal
+@using ActualChat.Mathematics
 @namespace ActualChat.UI.Blazor.Components
 @typeparam TItem
-@inherits ComputedStateComponent<VirtualListResponse<TItem>>
+@inherits ComputedStateComponent<VirtualListData<TItem>>
 @implements IVirtualListBackend
+@{
+    LastPlan = Plan;
+    // Log.LogInformation("Rendering: RenderIndex = {RenderIndex}", Plan.RenderIndex);
+    // Log.LogInformation("Rendering: {Plan}", JsonFormatter.Format(Plan));
+}
 
-@* We want to drop irrelevant js state changes, thus we send the render index to js side *@
-<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full" style="@Style" data-render-index="@Context.RenderIndex">
+@* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
+<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full" style="@Style"
+     data-render-index="@Plan.RenderIndex"
+     data-scroll-top="@(Plan.Viewport.Start + Plan.SpacerSize)"
+     data-client-height="@(Plan.Viewport.Size())">
     <div class="content relative">
         <div class="items items-unmeasured flex flex-col flex-nowrap items-stretch overflow-y-hidden h-0 invisible">
-            @foreach (var e in Context.UnmeasuredItems)
-            {
+            @foreach (var e in Plan.UnmeasuredItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
                     @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
-        <div class="spacer spacer-start overflow-y-hidden" style="height: @(Context.SpacerSize)px">
-            <Skeleton>
-                @for(int i = 0; i < SkeletonCount; ++i){
-                    @SkeletonTemplate
+        <div class="spacer spacer-start overflow-y-hidden flex flex-col-reverse flex-nowrap items-stretch"
+             style="height: @(Plan.SpacerSize)px">
+            <SkeletonContainer>
+                @for (var i = 0; i < SkeletonCount; ++i) {
+                    @Skeleton
                 }
-            </Skeleton>
+            </SkeletonContainer>
         </div>
         <div class="items items-displayed flex flex-col flex-nowrap items-stretch">
-            @foreach (var e in Context.DisplayedItems)
-            {
+            @foreach (var e in Plan.DisplayedItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key" data-size="@e.Size">
                     @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
-        @if (!Context.Response.HasVeryLastItem)
-        {
-            <div class="spacer spacer-end overflow-y-hidden h-96">
-                <Skeleton>
-                    @for(int i = 0; i < SkeletonCount; ++i){
-                        @SkeletonTemplate
+        @if (!Plan.Data.HasVeryLastItem) {
+            <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
+                style="height: @(SpacerSize)px">
+                <SkeletonContainer>
+                    @for(int i = 0; i < SkeletonCount; ++i) {
+                        @Skeleton
                     }
-                </Skeleton>
+                </SkeletonContainer>
             </div>
         }
     </div>

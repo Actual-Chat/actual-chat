@@ -27,8 +27,8 @@ public class VirtualListStatisticsTests
         const int treshold = 5;
         const int reset = 3;
         var stats = new VirtualListStatistics() {
-            ResponseCountResetThreshold = treshold,
-            ResponseCountResetValue = reset,
+            ResponseExpectedCountSumResetThreshold = treshold,
+            ResponseExpectedCountSumResetValue = reset,
         };
 
         Assert.Equal(0, stats.ResponseFulfillmentRatio);

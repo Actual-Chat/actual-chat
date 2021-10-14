@@ -68,8 +68,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected override Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
         => Service.GetChatPageModel(Session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
 
-    private async Task<VirtualListResponse<ChatEntry>> GetMessages(
-        VirtualListQuery query,
+    private async Task<VirtualListData<ChatEntry>> GetMessages(
+        VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
         var model = await Service.GetChatPageModel(
@@ -78,22 +78,21 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             cancellationToken);
         var chatId = model.Chat?.Id ?? default;
         if (chatId.IsNone)
-            return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
+            return VirtualListData.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
 
         var idLogCover = ChatConstants.IdLogCover;
         var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
-        if (query.IncludedRange == default)
+        if (query.InclusiveRange == default) {
             query = query with {
-                IncludedRange =
-                new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString()),
+                InclusiveRange = new Range<string>((range.End - idLogCover.MinTileSize).ToString(), range.End.ToString())
             };
 
-        var startId = long.Parse(query.IncludedRange.Start);
+        var startId = long.Parse(query.InclusiveRange.Start);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
         startId = MathExt.Max(range.Start, startId);
 
-        var endId = long.Parse(query.IncludedRange.End);
+        var endId = long.Parse(query.InclusiveRange.End);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
         endId = MathExt.Min(range.End, endId);
@@ -104,7 +103,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             .ConfigureAwait(false);
 
         var chatEntries = entryLists.SelectMany(entries => entries);
-        var result = VirtualListResponse.New(
+        var result = VirtualListData.New(
             chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
             entry => entry.Id.ToString(),
             startId == range.Start,

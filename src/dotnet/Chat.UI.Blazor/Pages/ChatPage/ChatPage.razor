@@ -26,12 +26,12 @@
     <div class="content flex-1 flex flex-col overflow-y-auto bg-white p-3">
         <VirtualList
             SpacerSize="6000" LoadZoneSize="2000" BufferZoneSize="4000"
-            Provider="GetMessages"
+            DataSource="GetMessages"
             KeyComparer="LongAsStringKeyComparer.Default">
             <Item>
                 <ChatMessage Entry="@context.Value" OnListen="@OnListen"/>
             </Item>
-            <SkeletonTemplate>
+            <Skeleton>
                 <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
                     <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
                     <div class="flex-1 overflow-hidden">
@@ -42,7 +42,7 @@
                         <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: 30%;"></div>
                     </div>
                 </div>
-            </SkeletonTemplate>
+            </Skeleton>
         </VirtualList>
     </div>
     <div class="footer flex sticky m-0">

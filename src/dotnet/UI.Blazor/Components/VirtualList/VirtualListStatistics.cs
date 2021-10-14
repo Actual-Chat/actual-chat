@@ -12,8 +12,7 @@ public interface IVirtualListStatistics
     double ResponseFulfillmentRatio { get; }
 
     void AddItem(double size);
-    void AddResponse(double fulfillmentRatio);
-    void RemoveItem(double size);
+    void AddResponse(long actualCount, long expectedCount);
 }
 
 public class VirtualListStatistics : IVirtualListStatistics
@@ -21,9 +20,12 @@ public class VirtualListStatistics : IVirtualListStatistics
     private long _itemCount;
     private double _itemSizeSum;
 
-    private long _responseCount;
-    private double _responseFulfillmentRatioSum;
+    private double _responseActualCountSum;
+    private long _responseExpectedCountSum;
 
+    public double DefaultItemSize { get; init; } = 16;
+    public double MinItemSize { get; init; } = 8;
+    public double MaxItemSize { get; init; } = 16_384;
     /// <summary>
     /// Once item count reaches that value, it's reset to
     /// <see cref="ItemCountResetThreshold"/>, and the item size
@@ -42,19 +44,28 @@ public class VirtualListStatistics : IVirtualListStatistics
     public long ItemCountResetValue { get; init; } = 900;
 
     /// <inheritdoc />
-    public double ItemSize => _itemCount == 0 ? 0 : _itemSizeSum / _itemCount;
+    public double ItemSize
+        => Math.Clamp(
+            _itemCount == 0 ? DefaultItemSize : _itemSizeSum / _itemCount,
+            MinItemSize, MaxItemSize);
 
+    public double DefaultResponseFulfillmentRatio { get; init; } = 1;
+    public double MinResponseFulfillmentRatio { get; init; } = 0.001;
+    public double MaxResponseFulfillmentRatio { get; init; } = 1;
     /// <summary>
     /// Acts similarly to <see cref="ItemCountResetThreshold"/>, but for response count statistics.
     /// </summary>
-    public long ResponseCountResetThreshold { get; init; } = 10;
+    public long ResponseExpectedCountSumResetThreshold { get; init; } = 1000;
     /// <summary>
     /// Acts similarly to <see cref="ItemCountResetValue"/>, but for response count statistics.
     /// </summary>
-    public long ResponseCountResetValue { get; init; } = 8;
+    public long ResponseExpectedCountSumResetValue { get; init; } = 800;
 
     /// <inheritdoc />
-    public double ResponseFulfillmentRatio => _responseCount == 0 ? 0 : _responseFulfillmentRatioSum / _responseCount;
+    public double ResponseFulfillmentRatio
+        => Math.Clamp(
+            _responseExpectedCountSum < 1 ? DefaultResponseFulfillmentRatio : _responseActualCountSum / _responseExpectedCountSum,
+            MinResponseFulfillmentRatio, MaxResponseFulfillmentRatio);
 
     public void AddItem(double size)
     {
@@ -63,26 +74,18 @@ public class VirtualListStatistics : IVirtualListStatistics
         if (_itemCount < ItemCountResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight
-        _itemSizeSum *= (double)ItemCountResetValue / ItemCountResetThreshold;
+        _itemSizeSum *= (double) ItemCountResetValue / _itemCount;
         _itemCount = ItemCountResetValue;
     }
 
-    public void RemoveItem(double size)
+    public void AddResponse(long actualCount, long expectedCount)
     {
-        if (_itemCount <= 0) return;
-
-        _itemSizeSum -= size;
-        _itemCount--;
-    }
-
-    public void AddResponse(double fulfillmentRatio)
-    {
-        _responseFulfillmentRatioSum += fulfillmentRatio;
-        ++_responseCount;
-        if (_responseCount < ResponseCountResetThreshold) return;
+        _responseActualCountSum += actualCount;
+        _responseExpectedCountSum += expectedCount;
+        if (_responseExpectedCountSum < ResponseExpectedCountSumResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight
-        _responseFulfillmentRatioSum *= (double)ResponseCountResetValue / ResponseCountResetThreshold;
-        _responseCount = ResponseCountResetValue;
+        _responseActualCountSum *= (double) ResponseExpectedCountSumResetValue / _responseExpectedCountSum;
+        _responseExpectedCountSum = ResponseExpectedCountSumResetValue;
     }
 }

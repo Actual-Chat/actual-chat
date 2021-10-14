@@ -1,73 +1,107 @@
 import './virtual-list.css';
 
+const ScrollNotifyTimeout : number = 100;
+const ScrollStoppedTimeout : number = 2000;
+
 export class VirtualList {
     /** ref to div.virtual-list */
-    private _elementRef: HTMLElement;
-    private _blazorRef: DotNet.DotNetObject;
-    private _spacerRef: HTMLElement;
-    private _displayedItemsRef: HTMLElement;
-    private _abortController: AbortController;
+    private readonly _elementRef: HTMLElement;
+    private readonly _blazorRef: DotNet.DotNetObject;
+    private readonly _spacerRef: HTMLElement;
+    private readonly _displayedItemsRef: HTMLElement;
+    private readonly _abortController: AbortController;
 
-    private _resizeObserver: ResizeObserver;
+    private readonly _resizeObserver: ResizeObserver;
+    private _onResizeTimeout: any = null;
     private _resizedOnce: Map<Element, boolean>;
-    private _updateClientSideStateTask: Promise<unknown> | null;
-    private _onScrollStoppedTimeout: any;
-    private _onResizeTimeout: any;
 
-    static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
+    private _notifyWhenSafeToScroll: boolean = false;
+    private _isSafeToScroll: boolean = true;
+    private _onScrollNotifyTimeout: any = null;
+    private _onScrollStoppedTimeout: any = null;
+
+    private _updateClientSideStateTask: Promise<unknown> | null = null;
+
+    public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
         return new VirtualList(elementRef, backendRef);
     }
 
-    constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
+    public constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
         this._elementRef = elementRef;
         this._blazorRef = backendRef;
         this._abortController = new AbortController();
         this._spacerRef = this._elementRef.querySelector(".spacer")!;
         this._displayedItemsRef = this._elementRef.querySelector(".items-displayed");
-        this._updateClientSideStateTask = null!;
-        this._onScrollStoppedTimeout = null!;
         this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
         this._resizedOnce = new Map<Element, boolean>();
 
-        let listenerOptions: AddEventListenerOptions = { signal: this._abortController.signal };
-        elementRef.addEventListener("scroll", _ => this.updateClientSideStateAsync(), listenerOptions);
+        let listenerOptions: any = { signal: this._abortController.signal };
+        this._elementRef.addEventListener("scroll", _ => this.onScroll(), listenerOptions);
     };
 
-    dispose() {
+    public dispose() {
         this._abortController.abort();
         this._resizeObserver.disconnect();
     }
 
-    afterRender(mustScroll, viewOffset, mustNotifyWhenScrollStops) {
-        let spacerSize = this.getSpacerSize();
-        // console.log("afterRender: ", { mustScroll, viewOffset, wantResizeSpacer: mustNotifyWhenScrollStops, spacerSize });
+    public afterRender(mustScroll, scrollTop, notifyWhenSafeToScroll) {
+        // console.log("afterRender: ", { mustScroll, scrollTop, notifyWhenSafeToScroll });
+        this._notifyWhenSafeToScroll = notifyWhenSafeToScroll;
         if (mustScroll)
-            this._elementRef.scrollTo(0, viewOffset + spacerSize);
+            this._elementRef.scrollTo(0, scrollTop);
         let _ = this.updateClientSideStateAsync();
         this.setupResizeTracking();
-        this.setupScrollTracking(mustNotifyWhenScrollStops);
     }
 
-    /** scroll stopped notification */
-    setupScrollTracking(mustNotifyWhenScrollStops) {
-        if (mustNotifyWhenScrollStops) {
-            if (this._onScrollStoppedTimeout == null)
-                this.onScroll();
-        } else {
-            if (this._onScrollStoppedTimeout != null)
-                clearTimeout(this._onScrollStoppedTimeout);
-            this._onScrollStoppedTimeout = null;
+    /** sends the state to UpdateClientSideState dotnet part */
+    protected async updateClientSideStateAsync() {
+        if (this._updateClientSideStateTask != null) {
+            // this call should run in the same order / non-concurrently
+            await this._updateClientSideStateTask.then(v => v, _ => null);
+            this._updateClientSideStateTask = null;
         }
-    }
+        let originalScrollTop = parseFloat(this._elementRef.dataset["scrollTop"]!);
+        let originalClientHeight = parseFloat(this._elementRef.dataset["clientHeight"]!);
+        let scrollTop = this._elementRef.scrollTop;
+        let clientHeight = this._elementRef.getBoundingClientRect().height;
+        let isUserScrollDetected =
+            Math.abs(originalScrollTop - scrollTop) > 0.1
+            || Math.abs(originalClientHeight - clientHeight) > 0.1;
 
-    onScroll() {
-        if (this._onScrollStoppedTimeout != null)
-            clearTimeout(this._onScrollStoppedTimeout);
-        this._onScrollStoppedTimeout = setTimeout(() => this.updateClientSideStateAsync(true), 2000);
+        let state: Required<IClientSideState> = {
+            RenderIndex: parseInt(this._elementRef.dataset["renderIndex"]!),
+            IsSafeToScroll: this._isSafeToScroll,
+            ScrollTop: scrollTop,
+            ClientHeight: clientHeight,
+            ItemSizes: {},
+        };
+
+        let items = this._elementRef.querySelectorAll(".items-unmeasured .item").values() as IterableIterator<HTMLElement>;
+        for (let item of items) {
+            let key = item.dataset["key"];
+            state.ItemSizes[key] = item.getBoundingClientRect().height;
+        }
+        items = this._elementRef.querySelectorAll(".items-displayed .item").values() as IterableIterator<HTMLElement>;
+        for (let item of items) {
+            let key = item.dataset["key"];
+            let knownSize = parseFloat(item.dataset["size"]!);
+            let size = item.getBoundingClientRect().height;
+            if (Math.abs(size - knownSize) >= 0.001)
+                state.ItemSizes[key] = size;
+        }
+
+        let mustUpdateClientSideState =
+            isUserScrollDetected
+            || Object.keys(state.ItemSizes).length > 0
+            || (this._notifyWhenSafeToScroll && state.IsSafeToScroll);
+        if (!mustUpdateClientSideState)
+            return;
+
+        this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
     }
 
     /** setups resize notifications */
-    setupResizeTracking() {
+    private setupResizeTracking() {
         this._resizeObserver.disconnect();
         this._resizedOnce = new Map<Element, boolean>();
         if (this._onResizeTimeout != null)
@@ -78,12 +112,34 @@ export class VirtualList {
             this._resizeObserver.observe(item);
     }
 
-    onResize(entries: ResizeObserverEntry[]) {
+    private onScroll() {
+        this._isSafeToScroll = false;
+        if (this._onScrollNotifyTimeout == null)
+            this._onScrollNotifyTimeout = setTimeout(
+                () => this.onScrollNotify(), ScrollNotifyTimeout);
+        if (this._onScrollStoppedTimeout != null)
+            clearTimeout(this._onScrollStoppedTimeout);
+        this._onScrollStoppedTimeout = setTimeout(
+            () => this.onScrollStopped(), ScrollStoppedTimeout);
+    }
+
+    private onScrollNotify() {
+        this._onScrollNotifyTimeout = null;
+        let _ = this.updateClientSideStateAsync();
+    }
+
+    private onScrollStopped() {
+        this._isSafeToScroll = true;
+        if (!this._notifyWhenSafeToScroll)
+            return
+        let _ = this.updateClientSideStateAsync();
+    }
+
+    private onResize(entries: ResizeObserverEntry[]) {
         let mustIgnore = false;
         for (let entry of entries) {
-            if (this._resizedOnce.has(entry.target)) {
+            if (this._resizedOnce.has(entry.target))
                 mustIgnore = true;
-            }
             this._resizedOnce.set(entry.target, true);
         }
         if (mustIgnore)
@@ -92,46 +148,6 @@ export class VirtualList {
         if (this._onResizeTimeout != null)
             clearTimeout(this._onResizeTimeout);
         this._onResizeTimeout = setTimeout(() => this.updateClientSideStateAsync(), 50);
-    }
-
-    /** sends the state to UpdateClientSideState dotnet part */
-    async updateClientSideStateAsync(isSafeToScroll = false) {
-        if (this._updateClientSideStateTask != null) {
-            // this call should run in the same order / non-concurrently
-            await this._updateClientSideStateTask.then(v => v, _ => null);
-            this._updateClientSideStateTask = null;
-        }
-        let state: Required<IClientSideState> = {
-            RenderIndex: parseInt(this._elementRef.dataset["renderIndex"]!),
-            Height: this._elementRef.getBoundingClientRect().height,
-            IsSafeToScroll: isSafeToScroll,
-            SpacerSize: this.getSpacerSize(),
-            ScrollTop: this._elementRef.scrollTop,
-            ScrollHeight: this._elementRef.scrollHeight,
-            ItemSizes: {},
-        };
-        if (!isSafeToScroll) {
-            let items = this._elementRef.querySelectorAll(".items-unmeasured .item").values() as IterableIterator<HTMLElement>;
-            for (let item of items) {
-                let key = item.dataset["key"];
-                state.ItemSizes[key] = item.getBoundingClientRect().height;
-            }
-            items = this._elementRef.querySelectorAll(".items-displayed .item").values() as IterableIterator<HTMLElement>;
-            for (let item of items) {
-                let key = item.dataset["key"];
-                let knownSize = parseFloat(item.dataset["size"]!);
-                let size = item.getBoundingClientRect().height;
-                if (Math.abs(size - knownSize) >= 0.001)
-                    state.ItemSizes[key] = size;
-            }
-        }
-        this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
-    }
-
-    getSpacerSize() {
-        let entriesTop = this._displayedItemsRef.getBoundingClientRect().top;
-        let spacerTop = this._spacerRef.getBoundingClientRect().top;
-        return entriesTop - spacerTop;
     }
 }
 
@@ -142,17 +158,11 @@ interface IClientSideState {
     /** Is Blazor side can call scroll programmly at the moment or not */
     IsSafeToScroll: boolean;
 
-    /** Size of div.spacer */
-    SpacerSize: number;
-
-    /** Is used to implement sticky top/bottom */
+    /** Used to detect user scroll */
     ScrollTop: number;
 
-    /** Is used to implement sticky bottom */
-    ScrollHeight: number;
-
     /** Height of div.virtual-list */
-    Height: number;
+    ClientHeight: number;
 
     ItemSizes: Record<string, number>;
 }

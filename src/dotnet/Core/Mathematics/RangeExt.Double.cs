@@ -2,6 +2,10 @@ namespace ActualChat.Mathematics;
 
 public static partial class RangeExt
 {
+    public static bool Equals(this Range<double> range, Range<double> otherRange, double epsilon)
+        => Math.Abs(range.Start - otherRange.Start) < epsilon
+            && Math.Abs(range.End - otherRange.End) < epsilon;
+
     public static double Size(this Range<double> range)
         => range.End - range.Start;
 

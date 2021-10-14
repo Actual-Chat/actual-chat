@@ -21,26 +21,26 @@ public class TestListService
     }
 
     [ComputeMethod]
-    public virtual async Task<VirtualListResponse<string>> GetItemKeys(
-        VirtualListQuery query, CancellationToken cancellationToken)
+    public virtual async Task<VirtualListData<string>> GetItemKeys(
+        VirtualListDataQuery query, CancellationToken cancellationToken)
     {
         var range = await GetListRange(cancellationToken);
-        if (query.IncludedRange == default) {
+        if (query.InclusiveRange == default) {
             var key = _resetToBottom ? range.End : _resetToTop ? 0 : range.Start + (range.End - range.Start) / 2;
-            query = query with { IncludedRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
+            query = query with { InclusiveRange = new Range<string>(key.ToString(), (key + 20).ToString()) };
         }
 
-        var start = int.Parse(query.IncludedRange.Start);
+        var start = int.Parse(query.InclusiveRange.Start);
         if (query.ExpandStartBy > 0)
             start -= (int) query.ExpandStartBy;
         start = Math.Max(range.Start, start);
 
-        var end = int.Parse(query.IncludedRange.End);
+        var end = int.Parse(query.InclusiveRange.End);
         if (query.ExpandEndBy > 0)
             end += (int) query.ExpandEndBy;
         end = Math.Min(range.End, end);
 
-        var result = VirtualListResponse.New(
+        var result = VirtualListData.New(
             Enumerable.Range(start, end - start + 1).Select(i => i.ToString()),
             item => item,
             start == range.Start,

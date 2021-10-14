@@ -1,16 +1,17 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public record VirtualListResponse<TItem>(List<KeyValuePair<string, TItem>> Items)
+public record VirtualListData<TItem>(List<KeyValuePair<string, TItem>> Items)
 {
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
+    public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
 
-    public VirtualListResponse() : this(new List<KeyValuePair<string, TItem>>()) { }
+    public VirtualListData() : this(new List<KeyValuePair<string, TItem>>()) { }
 }
 
-public static class VirtualListResponse
+public static class VirtualListData
 {
-    public static VirtualListResponse<TItem> New<TItem>(
+    public static VirtualListData<TItem> New<TItem>(
         List<KeyValuePair<string, TItem>> items,
         bool hasVeryFirstItem = false,
         bool hasVeryLastItem = false)
@@ -19,7 +20,7 @@ public static class VirtualListResponse
             HasVeryLastItem = hasVeryLastItem,
         };
 
-    public static VirtualListResponse<TItem> New<TItem>(
+    public static VirtualListData<TItem> New<TItem>(
         IEnumerable<KeyValuePair<string, TItem>> items,
         bool hasVeryFirstItem = false,
         bool hasVeryLastItem = false)
@@ -28,7 +29,7 @@ public static class VirtualListResponse
             HasVeryLastItem = hasVeryLastItem,
         };
 
-    public static VirtualListResponse<TItem> New<TItem>(
+    public static VirtualListData<TItem> New<TItem>(
         IEnumerable<TItem> items,
         Func<TItem, string> keySelector,
         bool hasVeryFirstItem = false,
