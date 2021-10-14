@@ -12,14 +12,14 @@ export class VirtualList {
     private readonly _abortController: AbortController;
 
     private readonly _resizeObserver: ResizeObserver;
-    private _onResizeTimeout: any = null;
     private _resizedOnce: Map<Element, boolean>;
 
+    private _suppressOnScrollTo: number | null;
     private _notifyWhenSafeToScroll: boolean = false;
     private _isSafeToScroll: boolean = true;
-    private _onScrollNotifyTimeout: any = null;
     private _onScrollStoppedTimeout: any = null;
 
+    private _updateClientSideStateTimeout: any = null;
     private _updateClientSideStateTask: Promise<unknown> | null = null;
 
     public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
@@ -45,12 +45,25 @@ export class VirtualList {
     }
 
     public afterRender(mustScroll, scrollTop, notifyWhenSafeToScroll) {
-        // console.log("afterRender: ", { mustScroll, scrollTop, notifyWhenSafeToScroll });
+        console.log("afterRender: ", mustScroll, scrollTop, notifyWhenSafeToScroll);
         this._notifyWhenSafeToScroll = notifyWhenSafeToScroll;
-        if (mustScroll)
+        if (mustScroll) {
+            this._suppressOnScrollTo = scrollTop;
             this._elementRef.scrollTo(0, scrollTop);
-        let _ = this.updateClientSideStateAsync();
+        }
         this.setupResizeTracking();
+        this.updateClientSideState();
+    }
+
+    protected updateClientSideState()
+    {
+        if (this._updateClientSideStateTimeout != null)
+            return;
+        this._updateClientSideStateTimeout =
+            setTimeout(() => {
+                this._updateClientSideStateTimeout = null;
+                let _ = this.updateClientSideStateAsync();
+            }, 50)
     }
 
     /** sends the state to UpdateClientSideState dotnet part */
@@ -97,6 +110,7 @@ export class VirtualList {
         if (!mustUpdateClientSideState)
             return;
 
+        console.log("invoking UpdateClientSideState", state)
         this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
     }
 
@@ -104,8 +118,6 @@ export class VirtualList {
     private setupResizeTracking() {
         this._resizeObserver.disconnect();
         this._resizedOnce = new Map<Element, boolean>();
-        if (this._onResizeTimeout != null)
-            clearTimeout(this._onResizeTimeout);
         let items = this._elementRef.querySelectorAll(".items-displayed .item").values();
         this._resizeObserver.observe(this._elementRef);
         for (let item of items)
@@ -113,41 +125,40 @@ export class VirtualList {
     }
 
     private onScroll() {
+        if (this._suppressOnScrollTo != null) {
+            if (Math.abs(this._suppressOnScrollTo - this._elementRef.scrollTop) < 0.1) {
+                // console.log("onScroll is suppressed")
+                return;
+            }
+            this._suppressOnScrollTo = null;
+        }
+
         this._isSafeToScroll = false;
-        if (this._onScrollNotifyTimeout == null)
-            this._onScrollNotifyTimeout = setTimeout(
-                () => this.onScrollNotify(), ScrollNotifyTimeout);
         if (this._onScrollStoppedTimeout != null)
             clearTimeout(this._onScrollStoppedTimeout);
-        this._onScrollStoppedTimeout = setTimeout(
-            () => this.onScrollStopped(), ScrollStoppedTimeout);
-    }
+        this._onScrollStoppedTimeout =
+            setTimeout(() => {
+                this._onScrollStoppedTimeout = null;
+                this._isSafeToScroll = true;
+                if (!this._notifyWhenSafeToScroll)
+                    return
+                this.updateClientSideState();
+            }, ScrollStoppedTimeout);
 
-    private onScrollNotify() {
-        this._onScrollNotifyTimeout = null;
-        let _ = this.updateClientSideStateAsync();
-    }
-
-    private onScrollStopped() {
-        this._isSafeToScroll = true;
-        if (!this._notifyWhenSafeToScroll)
-            return
-        let _ = this.updateClientSideStateAsync();
+        this.updateClientSideState();
     }
 
     private onResize(entries: ResizeObserverEntry[]) {
-        let mustIgnore = false;
+        let mustIgnore = true;
         for (let entry of entries) {
             if (this._resizedOnce.has(entry.target))
-                mustIgnore = true;
+                continue;
             this._resizedOnce.set(entry.target, true);
+            mustIgnore = false;
         }
         if (mustIgnore)
             return;
-
-        if (this._onResizeTimeout != null)
-            clearTimeout(this._onResizeTimeout);
-        this._onResizeTimeout = setTimeout(() => this.updateClientSideStateAsync(), 50);
+        this.updateClientSideState();
     }
 }
 

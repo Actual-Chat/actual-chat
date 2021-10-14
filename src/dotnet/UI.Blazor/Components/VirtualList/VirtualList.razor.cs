@@ -39,7 +39,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
     [Parameter] public long MaxExpectedExpansion { get; set; } = 1_000_000;
-    [Parameter] public VirtualListEdge PreferredAutoScrollEdge { get; set; } = VirtualListEdge.End;
+    [Parameter] public VirtualListEdge AutoScrollEdge { get; set; } = VirtualListEdge.End;
 
     [Parameter]
     public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =
@@ -64,7 +64,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected override bool ShouldRender()
     {
         if (Data != Plan.Data)
-            Plan = Plan.Next();
+            Plan = (LastPlan ?? Plan).Next();
         return !ReferenceEquals(Plan, LastPlan);
     }
 
@@ -96,12 +96,12 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         // await Task.Delay(1000); // Debug only!
         lastPlan.NextClientSideState = clientSideState;
-        var hasItemSizeChanges = clientSideState.ItemSizes.Count > 0;
+        var hasItemSizeChanges = clientSideState.ItemSizes.Count != 0;
 
         // Remember that all server-side offsets are relative to the first item's top / spacer top
         var viewportStart = clientSideState.ScrollTop - lastPlan.SpacerSize;
         var viewport = new Range<double>(viewportStart, viewportStart + clientSideState.ClientHeight);
-        var isUserScrollDetected = !lastPlan.Viewport.Equals(viewport, 0.01);
+        var isUserScrollDetected = !lastPlan.Viewport.Equals(viewport, 0.1);
 
         var mustRender = hasItemSizeChanges || lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll;
         var mustUpdateData = isUserScrollDetected || !lastPlan.IsFullyLoaded(viewport);
@@ -132,7 +132,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     {
         var query = Query;
         LastQuery = query;
-        // Log.LogInformation("ComputeState: {Query}", query);
+        Log.LogInformation("ComputeState: {Query}", query);
         var response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
 
         // Adding statistics
@@ -201,7 +201,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ExpandEndBy = expectedEndExpansion / responseFulfillmentRatio,
         };
 
-        // Log.LogInformation("GetQuery: {Query}", query);
+        Log.LogInformation("GetQuery: {Query}", query);
         // Log.LogInformation("GetQuery: {Viewport} < {LoaderZone} < {BufferZone} | {DisplayedRange}",
         //     plan.Viewport, loaderZone, bufferZone, plan.DisplayedRange);
         return query;

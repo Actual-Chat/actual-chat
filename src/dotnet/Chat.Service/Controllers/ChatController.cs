@@ -55,11 +55,11 @@ namespace ActualChat.Chat.Controllers
             => _chats.GetEntries(session, chatId, idRange, cancellationToken);
 
         [HttpGet, Publish]
-        public Task<Range<long>> GetMinMaxId(
+        public Task<Range<long>> GetIdRange(
             Session session,
             ChatId chatId,
             CancellationToken cancellationToken)
-            => _chats.GetMinMaxId(session, chatId, cancellationToken);
+            => _chats.GetIdRange(session, chatId, cancellationToken);
 
         [HttpGet, Publish]
         public Task<ChatPermissions> GetPermissions(

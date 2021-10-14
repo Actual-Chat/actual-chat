@@ -15,8 +15,8 @@ namespace ActualChat.Chat.Client
         [Get(nameof(TryGet))]
         Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-        [Get(nameof(GetMinMaxId))]
-        Task<Range<long>> GetMinMaxId(
+        [Get(nameof(GetIdRange))]
+        Task<Range<long>> GetIdRange(
             Session session, ChatId chatId,
             CancellationToken cancellationToken);
         [Get(nameof(GetEntryCount))]

@@ -38,7 +38,7 @@ else
                 words.Add((Text[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0));
                 previousBoundary = currentBoundary;
             }
-            if (words.Count > 0)
+            if (words.Count != 0)
             {
                 words.Add((Text[previousBoundary..], map.Map(previousBoundary) ?? 0));
                 Words = words;

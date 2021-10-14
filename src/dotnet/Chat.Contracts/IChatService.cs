@@ -17,7 +17,7 @@
             Session session, ChatId chatId, Range<long>? idRange,
             CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetMinMaxId(
+        Task<Range<long>> GetIdRange(
             Session session, ChatId chatId,
             CancellationToken cancellationToken);
 

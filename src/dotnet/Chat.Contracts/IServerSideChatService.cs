@@ -26,7 +26,7 @@ namespace ActualChat.Chat
             CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetMinMaxId(ChatId chatId, CancellationToken cancellationToken);
+        Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<ChatPermissions> GetPermissions(ChatId chatId, UserId userId, CancellationToken cancellationToken);

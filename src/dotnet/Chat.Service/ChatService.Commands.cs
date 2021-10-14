@@ -44,7 +44,7 @@ public partial class ChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            _ = GetMinMaxId(chatId, default);
+            _ = GetIdRange(chatId, default);
             InvalidateChatPages(chatId, invChatEntry.Id, false);
             return null!;
         }
@@ -76,7 +76,7 @@ public partial class ChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            _ = GetMinMaxId(chatEntry.ChatId, default);
+            _ = GetIdRange(chatEntry.ChatId, default);
             InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
             return null!;
         }
@@ -98,7 +98,7 @@ public partial class ChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            _ = GetMinMaxId(chatEntry.ChatId, default);
+            _ = GetIdRange(chatEntry.ChatId, default);
             InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, true);
             return null!;
         }
