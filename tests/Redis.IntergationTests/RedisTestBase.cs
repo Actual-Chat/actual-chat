@@ -1,6 +1,6 @@
 using StackExchange.Redis;
 
-namespace ActualChat.Redis.UnitTests;
+namespace ActualChat.Redis.IntergationTests;
 
 public class RedisTestBase : TestBase
 {

@@ -2,30 +2,23 @@ name: Unit tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-      with:
-        # Avoid shallow clone for Nerdbank.GitVersioning
-        fetch-depth: 0
-    - uses: dotnet/nbgv@master
-      id: nbgv
-      with:
-        setAllVars: true
-        setCommonVars: true
-    - run: "echo 'SemVer2: ${{ steps.nbgv.outputs.SemVer2 }}'"
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: "6.0.x"
-        include-prerelease: true
-    - name: Build
-      run: dotnet run --project build -c Release --no-launch-profile -- --configuration Debug build
-    - name: Run unit tests
-      run: dotnet run --project build -c Release --no-launch-profile -- --configuration Debug unit-coverage
+      - uses: actions/checkout@v2
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: "6.0.x"
+          include-prerelease: true
+      - name: Build
+        run: dotnet build --nologo --configuration Debug
+      - name: Run unit tests
+        run: dotnet test --nologo --configuration Debug --no-build --logger:"console;verbosity=detailed" --filter "FullyQualifiedName~UnitTests"
