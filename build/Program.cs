@@ -36,7 +36,7 @@ internal static class Program
     /// <param name="verbose">Enable verbose output.</param>
     /// <param name="cancellationToken">The terminate program cancellation</param>
     /// <param name="configuration">The configuration for building</param>
-    private static async Task Main(
+    private static async Task<int> Main(
         string[] arguments,
         bool clear,
         bool dryRun,
@@ -378,15 +378,19 @@ internal static class Program
         try {
             /// <see cref="RunTargetsAndExitAsync"/> will hang Target on ctrl+c
             await RunTargetsWithoutExitingAsync(arguments, options, ex => ex is OperationCanceledException || ex is WithoutStackException).ConfigureAwait(false);
+            return 0;
         }
         catch (TargetFailedException targetException) {
             if (targetException.InnerException is OperationCanceledException || targetException.InnerException is WithoutStackException) {
                 Console.WriteLine(Red(targetException.Message));
             }
+            return 1;
         }
         catch (Exception ex) {
             Console.WriteLine(Red($"Unhandled exception: {ex}"));
+            return 1;
         }
+
 
         static void SetEnvVariables()
         {
