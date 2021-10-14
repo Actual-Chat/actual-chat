@@ -127,6 +127,8 @@ namespace ActualChat.Audio.UnitTests
             var readBuffer = readBufferLease.Memory;
             var index = 0;
             var bytesRead = await inputStream.ReadAsync(readBuffer);
+            while (bytesRead < 1 * 1024)
+                bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
             size += bytesRead;
             while (bytesRead > 0) {
                 var command = new BlobPart(
@@ -135,7 +137,13 @@ namespace ActualChat.Audio.UnitTests
                 await writer.WriteAsync(command, CancellationToken.None);
 
                 // await Task.Delay(300); //emulate real-time speech delay
-                bytesRead = await inputStream.ReadAsync(readBuffer);
+                var read = 0;
+                var readInternal = 0;
+                do {
+                    readInternal = await inputStream.ReadAsync(readBuffer[read..]);
+                    read += readInternal;
+                } while (readInternal > 0 && read < 1 * 1024);
+                bytesRead = read;
                 size += bytesRead;
             }
 

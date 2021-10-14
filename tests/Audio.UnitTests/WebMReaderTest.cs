@@ -45,9 +45,9 @@ public class WebMReaderTest : TestBase
         var buffer = bufferLease.Memory;
         var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
         while (bytesRead < 0x26)
-            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..0x26]);
 
-        var entries = Parse(buffer.Span[..bytesRead]).ToList();
+        var entries = Parse(buffer.Span[..0x26]).ToList();
         entries.Should().HaveCount(1);
         entries.Should().NotContainNulls();
         entries[0].Should().BeOfType<EBML>();
@@ -55,7 +55,7 @@ public class WebMReaderTest : TestBase
 
 
     [Fact]
-    public async Task SequentalBlockReaderTest()
+    public async Task SequentialBlockReaderTest()
     {
         await using var inputStream = new FileStream(
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
