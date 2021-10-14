@@ -2,153 +2,158 @@ using System.Buffers;
 using ActualChat.Audio.Processing;
 using ActualChat.Blobs;
 
-namespace ActualChat.Audio.UnitTests
+namespace ActualChat.Audio.UnitTests;
+
+public class AudioActivityPeriodExtractorTest : TestBase
 {
-    public class AudioActivityPeriodExtractorTest : TestBase
+    public AudioActivityPeriodExtractorTest(ITestOutputHelper @out) : base(@out) { }
+
+    [Fact]
+    public async Task SplitStreamDontReadTest()
     {
-        public AudioActivityPeriodExtractorTest(ITestOutputHelper @out) : base(@out) { }
+        var audioActivityExtractor = new AudioActivityExtractor();
+        var channel = Channel.CreateBounded<BlobPart>(
+            new BoundedChannelOptions(100) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true,
+                AllowSynchronousContinuations = true,
+            });
 
-        [Fact]
-        public async Task SplitStreamReadBeforeCompletionTest()
-        {
-            var audioActivityExtractor = new AudioActivityExtractor();
-            var channel = Channel.CreateBounded<BlobPart>(
-                new BoundedChannelOptions(100) {
-                    FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true,
-                    SingleWriter = true,
-                    AllowSynchronousContinuations = false
-                });
+        _ = ReadFromFile(channel);
+        var record = new AudioRecord(
+            "test-id",
+            "1",
+            "1",
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            "RU-ru",
+            CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var readTask = ReadFromFile(channel.Writer);
-            var record = new AudioRecord(
-                "test-id", "1", "1",
-                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-                "RU-ru",
-                CpuClock.Now.EpochOffset.TotalSeconds);
+        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
+        await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
+            openAudioSegment.Index.Should().Be(0);
+            openAudioSegment.AudioRecord.Should().Be(record);
 
-            var size = 0;
-            var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
-            await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
-                openAudioSegment.Index.Should().Be(0);
-                openAudioSegment.AudioRecord.Should().Be(record);
-                var audio = openAudioSegment.Source;
-                var header = Convert.FromBase64String(audio.Format.CodecSettings);
+            var audioSegment = await openAudioSegment.Close();
+            audioSegment.AudioSource.Should().NotBeNull();
+            audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
+        }
+    }
 
-                size += header.Length;
-                size += await audio.SumAsync(audioMessage => audioMessage.Data.Length);
+    [Fact]
+    public async Task SplitStreamReadAfterCompletionTest()
+    {
+        var audioActivityExtractor = new AudioActivityExtractor();
+        var channel = Channel.CreateBounded<BlobPart>(
+            new BoundedChannelOptions(100) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true,
+                AllowSynchronousContinuations = false,
+            });
 
-                var audioSegment = await openAudioSegment.Close();
-                audioSegment.AudioSource.Should().NotBeNull();
-                audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
-            }
+        var size = 0;
+        var readTask = ReadFromFile(channel.Writer);
+        var record = new AudioRecord(
+            "test-id",
+            "1",
+            "1",
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            "RU-ru",
+            CpuClock.Now.EpochOffset.TotalSeconds);
 
-            var bytesRead = await readTask;
-            size.Should().Be(bytesRead);
+        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
+        await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
+            openAudioSegment.Index.Should().Be(0);
+            openAudioSegment.AudioRecord.Should().Be(record);
+            var audio = openAudioSegment.Source;
+            var header = Convert.FromBase64String(audio.Format.CodecSettings);
+
+            size += header.Length;
+            size += await audio.SumAsync(p => p.Data.Length);
+
+            var audioSegment = await openAudioSegment.Close();
+            audioSegment.AudioSource.Should().NotBeNull();
+            audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
         }
 
-        [Fact]
-        public async Task SplitStreamReadAfterCompletionTest()
-        {
-            var audioActivityExtractor = new AudioActivityExtractor();
-            var channel = Channel.CreateBounded<BlobPart>(
-                new BoundedChannelOptions(100) {
-                    FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true,
-                    SingleWriter = true,
-                    AllowSynchronousContinuations = false
-                });
+        var bytesRead = await readTask;
+        size.Should().Be(bytesRead);
+    }
 
-            var size = 0;
-            var readTask = ReadFromFile(channel.Writer);
-            var record = new AudioRecord(
-                "test-id", "1", "1",
-                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-                "RU-ru",
-                CpuClock.Now.EpochOffset.TotalSeconds);
+    [Fact]
+    public async Task SplitStreamReadBeforeCompletionTest()
+    {
+        var audioActivityExtractor = new AudioActivityExtractor();
+        var channel = Channel.CreateBounded<BlobPart>(
+            new BoundedChannelOptions(100) {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true,
+                AllowSynchronousContinuations = false,
+            });
 
-            var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
-            await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
-                openAudioSegment.Index.Should().Be(0);
-                openAudioSegment.AudioRecord.Should().Be(record);
-                var audio = openAudioSegment.Source;
-                var header = Convert.FromBase64String(audio.Format.CodecSettings);
+        var readTask = ReadFromFile(channel.Writer);
+        var record = new AudioRecord(
+            "test-id",
+            "1",
+            "1",
+            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            "RU-ru",
+            CpuClock.Now.EpochOffset.TotalSeconds);
 
-                size += header.Length;
-                size += await audio.SumAsync(p => p.Data.Length);
+        var size = 0;
+        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
+        await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
+            openAudioSegment.Index.Should().Be(0);
+            openAudioSegment.AudioRecord.Should().Be(record);
+            var audio = openAudioSegment.Source;
+            var header = Convert.FromBase64String(audio.Format.CodecSettings);
 
-                var audioSegment = await openAudioSegment.Close();
-                audioSegment.AudioSource.Should().NotBeNull();
-                audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
-            }
+            size += header.Length;
+            size += await audio.SumAsync(audioMessage => audioMessage.Data.Length);
 
-            var bytesRead = await readTask;
-            size.Should().Be(bytesRead);
+            var audioSegment = await openAudioSegment.Close();
+            audioSegment.AudioSource.Should().NotBeNull();
+            audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
         }
 
-        [Fact]
-        public async Task SplitStreamDontReadTest()
-        {
-            var audioActivityExtractor = new AudioActivityExtractor();
-            var channel = Channel.CreateBounded<BlobPart>(
-                new BoundedChannelOptions(100) {
-                    FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true,
-                    SingleWriter = true,
-                    AllowSynchronousContinuations = true
-                });
+        var bytesRead = await readTask;
+        size.Should().Be(bytesRead);
+    }
 
-            _ = ReadFromFile(channel);
-            var record = new AudioRecord(
-                "test-id", "1", "1",
-                new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-                "RU-ru",
-                CpuClock.Now.EpochOffset.TotalSeconds);
+    private static async Task<int> ReadFromFile(ChannelWriter<BlobPart> writer)
+    {
+        var size = 0;
+        await using var inputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, @"data", "file.webm"),
+            FileMode.Open,
+            FileAccess.Read);
+        using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
+        var readBuffer = readBufferLease.Memory;
+        var index = 0;
+        var bytesRead = await inputStream.ReadAsync(readBuffer);
+        while (bytesRead < 1 * 1024)
+            bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
+        size += bytesRead;
+        while (bytesRead > 0) {
+            var command = new BlobPart(
+                index++,
+                readBuffer[..bytesRead].ToArray());
+            await writer.WriteAsync(command, CancellationToken.None);
 
-            var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, channel, default);
-            await foreach (var openAudioSegment in openAudioSegments.ReadAllAsync()) {
-                openAudioSegment.Index.Should().Be(0);
-                openAudioSegment.AudioRecord.Should().Be(record);
-
-                var audioSegment = await openAudioSegment.Close();
-                audioSegment.AudioSource.Should().NotBeNull();
-                audioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
-            }
-        }
-
-        private static async Task<int> ReadFromFile(ChannelWriter<BlobPart> writer)
-        {
-            var size = 0;
-            await using var inputStream = new FileStream(
-                Path.Combine(Environment.CurrentDirectory, @"data", "file.webm"),
-                FileMode.Open,
-                FileAccess.Read);
-            using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
-            var readBuffer = readBufferLease.Memory;
-            var index = 0;
-            var bytesRead = await inputStream.ReadAsync(readBuffer);
-            while (bytesRead < 1 * 1024)
-                bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
+            // await Task.Delay(300); //emulate real-time speech delay
+            var read = 0;
+            var readInternal = 0;
+            do {
+                readInternal = await inputStream.ReadAsync(readBuffer[read..]);
+                read += readInternal;
+            } while (readInternal > 0 && read < 1 * 1024);
+            bytesRead = read;
             size += bytesRead;
-            while (bytesRead > 0) {
-                var command = new BlobPart(
-                    index++,
-                    readBuffer[..bytesRead].ToArray());
-                await writer.WriteAsync(command, CancellationToken.None);
-
-                // await Task.Delay(300); //emulate real-time speech delay
-                var read = 0;
-                var readInternal = 0;
-                do {
-                    readInternal = await inputStream.ReadAsync(readBuffer[read..]);
-                    read += readInternal;
-                } while (readInternal > 0 && read < 1 * 1024);
-                bytesRead = read;
-                size += bytesRead;
-            }
-
-            writer.Complete();
-            return size;
         }
+
+        writer.Complete();
+        return size;
     }
 }

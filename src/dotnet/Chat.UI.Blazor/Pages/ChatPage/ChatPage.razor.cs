@@ -82,7 +82,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             return VirtualListData.New(
                 Enumerable.Empty<ChatEntry>(),
                 entry => entry.Id.ToString(CultureInfo.InvariantCulture),
-                true, true);
+                true,
+                true);
 
         var idLogCover = ChatConstants.IdLogCover;
         var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
@@ -90,7 +91,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             query = query with {
                 InclusiveRange = new Range<string>(
                     (range.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
-                    range.End.ToString(CultureInfo.InvariantCulture))
+                    range.End.ToString(CultureInfo.InvariantCulture)),
             };
 
         var startId = long.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
