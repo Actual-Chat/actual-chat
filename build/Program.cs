@@ -261,16 +261,14 @@ internal static class Program
             }
         });
 
-        Target("unit-coverage", DependsOn("restore-tools"), async () => {
+        Target("unit-coverage", async () => {
             var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
             if (!Directory.Exists(resultsDirectory))
                 Directory.CreateDirectory(resultsDirectory);
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments($"test " +
                 "--nologo " +
-                // waits for WebMWriterTest / WebMReaderTest fixes
-                //"--filter \"FullyQualifiedName~UnitTests\" " +
-                "--filter \"FullyQualifiedName~UnitTests&FullyQualifiedName!~WebMReaderTest\" " +
+                "--filter \"FullyQualifiedName~UnitTests\" " +
                 "--no-restore " +
                 $"--collect:\"XPlat Code Coverage\" --results-directory {resultsDirectory} " +
                 $"--logger trx;LogFileName=\"{Path.Combine(resultsDirectory, "unit.trx").Replace("\"", "\\\"")}\" " +
