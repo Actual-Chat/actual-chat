@@ -1,12 +1,10 @@
 using ActualChat.Host;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using Stl.Collections;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
 
@@ -44,14 +42,14 @@ namespace ActualChat.Testing.Host
 
         public static FilePath GetManifestPath()
         {
-            FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
+            static FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
                 => assemblyPath.ChangeExtension("staticwebassets.runtime.json");
 
             var hostAssemblyPath = (FilePath)typeof(AppHost).Assembly.Location;
             var manifestPath = AssemblyPathToManifestPath(hostAssemblyPath);
             if (File.Exists(manifestPath))
                 return manifestPath;
-            throw new Exception("Can't find manifest.");
+            throw new FileNotFoundException("Can't find manifest.", manifestPath);
         }
 
         private static void GetTestAppSettings(IConfigurationBuilder config)
