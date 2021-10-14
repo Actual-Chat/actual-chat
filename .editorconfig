@@ -46,6 +46,16 @@ insert_final_newline = true
 
 [{*.cs, *.razor}]
 # ReSharper properties
+resharper_csharp_place_simple_embedded_statement_on_same_line = never
+resharper_csharp_place_simple_case_statement_on_same_line = never
+resharper_csharp_place_simple_embedded_block_on_same_line = false
+resharper_csharp_place_simple_switch_expression_on_single_line = false
+resharper_csharp_place_simple_property_pattern_on_single_line = true
+resharper_csharp_wrap_property_pattern = chop_if_long
+resharper_csharp_keep_existing_initializer_arrangement = true
+resharper_csharp_place_simple_initializer_on_single_line = true
+resharper_csharp_wrap_object_and_collection_initializer_style = chop_if_long
+resharper_csharp_wrap_chained_method_calls = chop_if_long
 resharper_align_multiline_binary_expressions_chain = false
 resharper_csharp_blank_lines_before_single_line_comment = 0
 resharper_csharp_blank_lines_after_block_statements = 0
@@ -108,7 +118,7 @@ resharper_csharp_naming_rule.public_fields = AaBb
 resharper_csharp_naming_rule.static_readonly = AaBb
 resharper_csharp_naming_rule.types_and_namespaces = AaBb
 resharper_csharp_wrap_after_declaration_lpar = true
-resharper_csharp_wrap_after_invocation_lpar = true
+resharper_csharp_wrap_after_invocation_lpar = false
 resharper_csharp_wrap_extends_list_style = chop_if_long
 resharper_csharp_wrap_parameters_style = chop_if_long
 resharper_csharp_wrap_arguments_style = chop_if_long
