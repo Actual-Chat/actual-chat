@@ -23,7 +23,7 @@ jobs:
       - name: Run unit tests
         run: dotnet run --project build --configuration Release -- --host=GitHubActions --skip-dependencies --configuration=Debug clean-coverage unit-coverage
       - name: Parse Trx files
-        uses: NasAmin/trx-parser@v0.2.0
+        uses: Issafalcon/trx-parser@v0.2.2
         id: trx-parser
         if: ${{ always() }}
         with:
