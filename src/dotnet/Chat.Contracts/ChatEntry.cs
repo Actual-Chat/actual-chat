@@ -1,11 +1,10 @@
 ﻿using System.Text.Json.Serialization;
 using ActualChat.Mathematics;
+
 namespace ActualChat.Chat;
 
 public record ChatEntry(ChatId ChatId, long Id)
 {
-    public ChatEntry() : this("", 0) { }
-
     public long Version { get; init; }
     public UserId AuthorId { get; init; }
     public Moment BeginsAt { get; init; }
@@ -13,12 +12,14 @@ public record ChatEntry(ChatId ChatId, long Id)
     public ChatContentType ContentType { get; init; }
     public string Content { get; init; } = "";
     public StreamId StreamId { get; init; } = "";
-
     public LinearMap? TextToTimeMap { get; init; }
 
     [JsonIgnore] [Newtonsoft.Json.JsonIgnore]
     public double? Duration
         => EndsAt == null ? null : (EndsAt.Value - BeginsAt).TotalSeconds;
+
     [JsonIgnore] [Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsNone;
+
+    public ChatEntry() : this("", 0) { }
 }

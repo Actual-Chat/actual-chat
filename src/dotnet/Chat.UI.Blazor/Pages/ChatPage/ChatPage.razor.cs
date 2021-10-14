@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
 using Stl.Mathematics;
+
 namespace ActualChat.Chat.UI.Blazor.Pages;
 
 public partial class ChatPage : ComputedStateComponent<ChatPageModel>
@@ -15,20 +16,28 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
     [Inject]
     protected Session Session { get; set; } = default!;
+
     [Inject]
     protected UICommandRunner Cmd { get; set; } = default!;
+
     [Inject]
     protected ChatPageService Service { get; set; } = default!;
+
     [Inject]
     protected IChatService Chats { get; set; } = default!;
+
     [Inject]
     protected IAudioSourceStreamer AudioStreamer { get; set; } = default!;
+
     [Inject]
     protected IMediaPlayerService MediaPlayerService { get; set; } = default!;
+
     [Inject]
     protected MediaPlayer RealtimePlayer { get; set; } = default!;
+
     [Inject]
     protected MediaPlayer HistoricalPlayer { get; set; } = default!;
+
     [Inject]
     protected ILogger<ChatPage> Log { get; set; } = default!;
 
@@ -69,11 +78,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             cancellationToken);
         var chatId = model.Chat?.Id ?? default;
         if (chatId.IsNone)
-            return VirtualListResponse.New(
-                Enumerable.Empty<ChatEntry>(),
-                entry => entry.Id.ToString(),
-                true,
-                true);
+            return VirtualListResponse.New(Enumerable.Empty<ChatEntry>(), entry => entry.Id.ToString(), true, true);
 
         var idLogCover = ChatConstants.IdLogCover;
         var range = await Chats.GetMinMaxId(Session, chatId.Value, cancellationToken);
