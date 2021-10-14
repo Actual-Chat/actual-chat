@@ -26,6 +26,9 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
                 await OnPlayNextFrame(nextFrame).ConfigureAwait(false);
             }
         }
+        catch (TaskCanceledException) {
+            throw;
+        }
         catch (Exception ex) {
             Log.LogError(ex, "Failed to play media track");
         }
