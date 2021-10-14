@@ -3,7 +3,6 @@ using ActualChat.Blobs;
 
 namespace ActualChat.Audio.UnitTests;
 
-
 public class AudioSourceProviderTest
 {
     [Fact]
@@ -67,6 +66,8 @@ public class AudioSourceProviderTest
         var readBuffer = readBufferLease.Memory;
         var index = 0;
         var bytesRead = await inputStream.ReadAsync(readBuffer);
+        while (bytesRead < 1 * 1024)
+            bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
         size += bytesRead;
         while (bytesRead > 0) {
             var command = new BlobPart(
@@ -97,6 +98,7 @@ public class AudioSourceProviderTest
         await foreach (var audioFrame in source.Frames) {
             if (audioFrame.Offset < offset)
                 continue;
+
             await fileStream.WriteAsync(audioFrame.Data);
         }
     }
