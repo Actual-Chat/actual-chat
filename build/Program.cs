@@ -261,21 +261,21 @@ internal static class Program
             }
         });
 
-        Target("unit-coverage", async () => {
+        Target("unit-tests", async () => {
             var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
             if (!Directory.Exists(resultsDirectory))
                 Directory.CreateDirectory(resultsDirectory);
             var cmd = await Cli.Wrap(dotnet)
-                .WithArguments($"test " +
+                .WithArguments("test " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~UnitTests\" " +
                 "--no-restore " +
                 "--blame-hang " +
                 "--blame-hang-timeout 60s " +
-                $"--collect:\"XPlat Code Coverage\" --results-directory {resultsDirectory} " +
-                $"--logger trx;LogFileName=\"{Path.Combine(resultsDirectory, "unit.trx").Replace("\"", "\\\"")}\" " +
-                $"-c {configuration} " +
-                "-- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=json,cobertura"
+                $"--results-directory {resultsDirectory} " +
+                "--logger:console;verbosity=detailed " +
+                $"--logger:trx;LogFileName=\"{Path.Combine(resultsDirectory, "unit.trx").Replace("\"", "\\\"")}\" " +
+                $"-c {configuration} "
                 )
                 .ToConsole()
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
@@ -284,7 +284,7 @@ internal static class Program
             TryRemoveTestsOutputDirectories(resultsDirectory);
         });
 
-        Target("integration-coverage", DependsOn("restore-tools"), async () => {
+        Target("integration-tests", DependsOn("restore-tools"), async () => {
             var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
             if (!Directory.Exists(resultsDirectory))
                 Directory.CreateDirectory(resultsDirectory);
@@ -293,10 +293,12 @@ internal static class Program
                 "--nologo " +
                 "--filter \"FullyQualifiedName~IntegrationTests\" " +
                 "--no-restore " +
-                $"--collect:\"XPlat Code Coverage\" --results-directory {resultsDirectory} " +
-                $"--logger trx;LogFileName=\"{Path.Combine(resultsDirectory, "integration.trx").Replace("\"", "\\\"")}\" " +
-                $"-c {configuration} " +
-                "-- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=json,cobertura"
+                "--blame-hang " +
+                "--blame-hang-timeout 300s " +
+                $"--results-directory {resultsDirectory} " +
+                "--logger:console;verbosity=detailed " +
+                $"--logger:trx;LogFileName=\"{Path.Combine(resultsDirectory, "integration.trx").Replace("\"", "\\\"")}\" " +
+                $"-c {configuration} "
                 )
                 .ToConsole()
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
@@ -305,14 +307,14 @@ internal static class Program
             TryRemoveTestsOutputDirectories(resultsDirectory);
         });
 
-        Target("clean-coverage", () => {
+        Target("clean-tests", () => {
             var extensionDir = Path.Combine("artifacts", "tests", "output");
             if (Directory.Exists(extensionDir)) {
                 Directory.Delete(extensionDir, recursive: true);
             }
         });
 
-        Target("coverage", DependsOn("clean-coverage", "unit-coverage", "integration-coverage"), () => { });
+        Target("tests", DependsOn("clean-tests", "unit-tests", "integration-tests"), () => { });
 
         Target("build", DependsOn("clean-dist", "npm-install"), async () => {
             var npm = TryFindCommandPath("npm")
@@ -324,7 +326,7 @@ internal static class Program
             try {
                 var dotnetTask = Cli
                     .Wrap(dotnet)
-                    .WithArguments($"build -noLogo -c {configuration}")
+                    .WithArguments($"build -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
@@ -363,7 +365,12 @@ internal static class Program
                 await Cli.Wrap(dotnet).WithArguments($"msbuild -noLogo " +
                         "-t:Restore " +
                         "-p:RestoreForce=true " +
-                        "-p:RestoreIgnoreFailedSources=True " +
+                        "-maxCpuCount " +
+                        "-nodeReuse:false " +
+                        "-p:UseRazorBuildServer=false " +
+                        "-p:UseSharedCompilation=false " +
+                        "-p:EnableAnalyzer=false " +
+                        "-p:EnableNETAnalyzers=false " +
                         $"-p:Configuration={configuration}"
                     ).ToConsole(Green("dotnet restore: "))
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
