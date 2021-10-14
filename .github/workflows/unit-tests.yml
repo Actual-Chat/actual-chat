@@ -25,6 +25,7 @@ jobs:
       - name: Parse Trx files
         uses: NasAmin/trx-parser@v0.2.0
         id: trx-parser
+        if: ${{ always() }}
         with:
           TRX_PATH: ${{ github.workspace }}/artifacts/tests/output
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
