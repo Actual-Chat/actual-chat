@@ -121,6 +121,11 @@
         &lt;/Or&gt;
       &lt;/Entry.Match&gt;
     &lt;/Entry&gt;
+    &lt;Entry DisplayName="Events"&gt;
+      &lt;Entry.Match&gt;
+        &lt;Kind Is="Event" /&gt;
+      &lt;/Entry.Match&gt;
+    &lt;/Entry&gt;
     &lt;Entry DisplayName="Constructors"&gt;
       &lt;Entry.Match&gt;
           &lt;Kind Is="Constructor" /&gt;
