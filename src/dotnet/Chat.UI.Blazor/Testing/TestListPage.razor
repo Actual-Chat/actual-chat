@@ -8,13 +8,18 @@
 <VirtualList style="height: 600px;"
              SpacerSize="6000"
              LoadZoneSize="200" BufferZoneSize="400"
-             Provider="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
+             DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
         <TestListItemBadge Key="@context.Key" />
     </Item>
+    <Skeleton>
+        <div>
+            Skeleton...
+        </div>
+    </Skeleton>
 </VirtualList>
 
 @code {
-    private Task<VirtualListResponse<string>> GetVirtualListItems(VirtualListQuery query, CancellationToken cancellationToken)
+    private Task<VirtualListData<string>> GetVirtualListItems(VirtualListDataQuery query, CancellationToken cancellationToken)
         => _listService.GetItemKeys(query, cancellationToken);
 }

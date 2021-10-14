@@ -13,11 +13,16 @@ public static class JSObjectReferenceExt
             ? ValueTask.CompletedTask
             : jsObjectRef.DisposeAsync().Suppress<JSDisconnectedException>();
 
-    public static async ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef, string jsMethodName)
+    public static ValueTask DisposeSilentlyAsync(this IJSObjectReference? jsObjectRef, string jsMethodName)
     {
-        if (jsObjectRef == null)
-            return;
-        await jsObjectRef.InvokeVoidAsync(jsMethodName).Suppress<JSDisconnectedException>().ConfigureAwait(true);
-        await jsObjectRef.DisposeAsync().Suppress<JSDisconnectedException>();
+        return jsObjectRef == null
+            ? ValueTask.CompletedTask
+            : DisposeSilentlyAsyncImpl(jsObjectRef, jsMethodName);
+
+        async ValueTask DisposeSilentlyAsyncImpl(IJSObjectReference jsObjectRef1, string jsMethodName1)
+        {
+            await jsObjectRef1.InvokeVoidAsync(jsMethodName1).Suppress<JSDisconnectedException>().ConfigureAwait(true);
+            await jsObjectRef1.DisposeAsync().Suppress<JSDisconnectedException>().ConfigureAwait(false);
+        }
     }
 }
