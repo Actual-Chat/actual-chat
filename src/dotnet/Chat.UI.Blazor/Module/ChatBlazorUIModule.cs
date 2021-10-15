@@ -14,6 +14,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
     public static string ImportName => "chat";
 
     public ChatBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }
+
     [ServiceConstructor]
     public ChatBlazorUIModule(IPluginHost plugins) : base(plugins) { }
 
@@ -25,6 +26,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
         fusion.AddComputeService<TestListService>();
         fusion.AddComputeService<ChatPageService>();
+        fusion.AddComputeService<AudioIndexService>();
     }
 }
-

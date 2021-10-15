@@ -7,7 +7,6 @@ using Cysharp.Text;
 using Microsoft.AspNetCore.Components;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.UI;
-using Stl.Mathematics;
 
 namespace ActualChat.Chat.UI.Blazor.Pages;
 
@@ -38,6 +37,15 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
     [Inject]
     protected MediaPlayer HistoricalPlayer { get; set; } = default!;
+
+    [Inject]
+    protected AudioIndexService AudioIndex { get; set; } = default!;
+
+    [Inject]
+    protected IChatMediaStorageResolver MediaStorageResolver { get; set; } = default!;
+
+    [Inject]
+    protected IAudioDownloader AudioDownloader { get; set; } = default!;
 
     [Inject]
     protected ILogger<ChatPage> Log { get; set; } = default!;
@@ -91,7 +99,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             query = query with {
                 InclusiveRange = new Range<string>(
                     (chatIdRange.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
-                    chatIdRange.End.ToString(CultureInfo.InvariantCulture))
+                    chatIdRange.End.ToString(CultureInfo.InvariantCulture)),
             };
 
         var startId = long.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
@@ -109,7 +117,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             .WhenAll(ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)))
             .ConfigureAwait(false);
 
-        var chatEntries = entryLists.SelectMany(entries => entries);
+        var chatEntries = entryLists.SelectMany(entries => entries).ToList();
+        AudioIndex.AddAudioEntries(chatEntries.Where(ce => ce.ContentType == ChatContentType.Audio));
+
         var result = VirtualListData.New(
             chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
             entry => entry.Id.ToString(CultureInfo.InvariantCulture),
@@ -184,9 +194,12 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     private async Task PlayHistoricalMediaTrack(ChatEntry entry, double offset)
     {
         try {
-            var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _watchRealtimeMediaCts.Token);
+            var playbackOffset = TimeSpan.FromSeconds(offset);
+            var audioEntry = AudioIndex.FindAudioEntry(entry, playbackOffset);
+            var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
+            var audioSource = await AudioDownloader.GetAudioSource(audioBlobUri, _watchRealtimeMediaCts.Token);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt);
+            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt, playbackOffset);
             await HistoricalPlayer.Stop();
             await HistoricalPlayer.AddMediaTrack(mediaTrack);
             _ = HistoricalPlayer.Play();

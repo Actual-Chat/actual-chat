@@ -5,6 +5,6 @@ namespace ActualChat.Playback;
 public record MediaTrack(
     Symbol Id,
     IMediaSource Source,
-    Moment ZeroTimestamp)
-    : IHasId<Symbol>
+    Moment ZeroTimestamp,
+    TimeSpan Offset = default) : IHasId<Symbol>
 { }

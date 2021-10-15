@@ -5,23 +5,24 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Db\Db.csproj" />
-    <ProjectReference Include="..\Redis\Redis.csproj" />
-    <ProjectReference Include="..\Web\Web.csproj" />
-    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
-    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
-    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
+    <ProjectReference Include="..\Audio.Client\Audio.Client.csproj"/>
+    <ProjectReference Include="..\Db\Db.csproj"/>
+    <ProjectReference Include="..\Redis\Redis.csproj"/>
+    <ProjectReference Include="..\Web\Web.csproj"/>
+    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj"/>
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj"/>
+    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack"/>
   </ItemGroup>
 
   <ItemGroup>
     <!-- ToDo: fix t4 generation without vs/rider or move to sourcegenerators, move generation results to a separate folder (?)  -->
-    <None Update="Ebml\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="Ebml\%(Filename).cs" />
-    <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs" />
-    <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs" />
+    <None Update="Ebml\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="Ebml\%(Filename).cs"/>
+    <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs"/>
+    <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs"/>
   </ItemGroup>
 
   <ItemGroup>

@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using ActualChat.Audio.Client;
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
 using ActualChat.Hosting;
@@ -21,8 +22,14 @@ namespace ActualChat.Audio.Module;
 public class AudioModule : HostModule<AudioSettings>, IWebModule
 {
     public AudioModule(IPluginInfoProvider.Query _) : base(_) { }
+
     [ServiceConstructor]
     public AudioModule(IPluginHost plugins) : base(plugins) { }
+
+    public void ConfigureApp(IApplicationBuilder app)
+        => app.UseEndpoints(endpoints => {
+            endpoints.MapHub<AudioHub>("/api/hub/audio");
+        });
 
     public override void InjectServices(IServiceCollection services)
     {
@@ -50,18 +57,21 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             });
             dbContext.AddNpgsqlOperationLogChangeTracking();
         });
-        services.AddCommander().AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
-            if (handler is not InterfaceCommandHandler<ICommand> ich)
-                return true;
-            if (ich.ServiceType != typeof(DbOperationScopeProvider<AudioDbContext>))
-                return true;
-            // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(AudioRecord).Assembly)
-                return true;
-            return false;
-        });
+        services.AddCommander()
+            .AddHandlerFilter((handler, commandType) => {
+                // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
+                if (handler is not InterfaceCommandHandler<ICommand> ich)
+                    return true;
+                if (ich.ServiceType != typeof(DbOperationScopeProvider<AudioDbContext>))
+                    return true;
+
+                // 2. Make sure it's intact only for local commands
+                var commandAssembly = commandType.Assembly;
+                if (commandAssembly == typeof(AudioRecord).Assembly)
+                    return true;
+
+                return false;
+            });
 
         // Redis
         services.AddSingleton(_ => {
@@ -91,12 +101,6 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
         services.AddSingleton<SourceAudioRecorder>();
         services.AddTransient<ISourceAudioRecorder>(c => c.GetRequiredService<SourceAudioRecorder>());
-    }
-
-    public void ConfigureApp(IApplicationBuilder app)
-    {
-        app.UseEndpoints(endpoints => {
-            endpoints.MapHub<AudioHub>("/api/hub/audio");
-        });
+        services.AddSingleton<IAudioDownloader, AudioDownloader>();
     }
 }
