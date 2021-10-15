@@ -39,7 +39,7 @@
             }
         </div>
         <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
-            style="height: @(Plan.Data.HasVeryLastItem ? 0 : SpacerSize)px">
+            style="height: @(Plan.BottomSpacerSize)px">
             <SkeletonContainer>
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     @Skeleton

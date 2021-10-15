@@ -29,4 +29,20 @@ public static partial class RangeExt
         var result = new Range<double>(Math.Max(range.Start, other.Start), Math.Min(range.End, other.End));
         return result.Size() < 0 ? default : result;
     }
+
+    public static Range<double> FitInto(this Range<double> range, Range<double> fitRange)
+    {
+        var fitRangeSize = fitRange.Size();
+        var size = range.Size();
+        if (size > fitRangeSize) {
+            size = fitRangeSize;
+            range = range.Resize(size);
+        }
+
+        if (range.Start < fitRange.Start)
+            range = (fitRange.Start, size);
+        if (range.End > fitRange.End)
+            range = (fitRange.End - size, fitRange.End);
+        return range;
+    }
 }
