@@ -181,7 +181,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         }
     }
 
-    private async Task PlayHistoricalMediaTrack(ChatEntry entry)
+    private async Task PlayHistoricalMediaTrack(ChatEntry entry, double offset)
     {
         try {
             var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _watchRealtimeMediaCts.Token);

@@ -1,0 +1,7 @@
+.content {
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+}
+
+.content .word {
+    @apply hover:text-blue-800 hover:cursor-pointer;
+}

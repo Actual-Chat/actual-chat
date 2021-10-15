@@ -29,7 +29,7 @@
             DataSource="GetMessages"
             KeyComparer="LongAsStringKeyComparer.Default">
             <Item>
-                <ChatMessage Entry="@context.Value" OnListen="@OnListen"/>
+                <ChatMessage Entry="@context.Value" OnListen="@ListenCallback"/>
             </Item>
             <Skeleton>
                 <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
@@ -55,9 +55,10 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    private void OnListen(ChatEntry entry)
+    private void ListenCallback((ChatEntry entry, double offset) startAt)
     {
-        _ = PlayHistoricalMediaTrack(entry);
+        var (entry, offset) = startAt;
+        _ = PlayHistoricalMediaTrack(entry, offset);
         StateHasChanged();
     }
 
