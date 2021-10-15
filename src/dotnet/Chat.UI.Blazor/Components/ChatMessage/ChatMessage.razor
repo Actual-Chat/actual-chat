@@ -35,17 +35,17 @@ else
             </div>
             @if (Entry.TextToTimeMap != null)
             {
-                <span @onclick="OnPlay" class="pr-2 cursor-pointer select-none opacity-75 hover:opacity-100">
+                <span @onclick="PlayCallback" class="mr-2 cursor-pointer select-none opacity-75 hover:opacity-100">
                     <i class="fa fa-play text-green-600" aria-hidden="true"></i>
                 </span>
             }
             @if (Entry.IsStreaming)
             {
-                <ChatMessageTranscript StreamId="@Entry.StreamId" OnListen="@ListenCallback"/>
+                <ChatMessageTranscript StreamId="@Entry.StreamId" OnListen="ListenCallback"/>
             }
             else
             {
-                <ChatMessageText Text="@Entry.Content" TextToTimeMap="@Entry.TextToTimeMap"/>
+                <ChatMessageText Text="@Entry.Content" TextToTimeMap="@Entry.TextToTimeMap" OnWordClick="WordClickCallback"/>
             }
         </div>
     </div>
@@ -68,20 +68,7 @@ else
     public ChatEntry Entry { get; set; } = null!;
 
     [Parameter]
-    public EventCallback<ChatEntry> OnListen { get; set; }
-
-    private void OnPlay()
-    {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync(Entry);
-    }
-
-    // TODO(AK): will be removed
-    private void ListenCallback(string _)
-    {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync(Entry);
-    }
+    public EventCallback<(ChatEntry, double)> OnListen { get; set; }
 
     protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken)
     {
@@ -91,6 +78,24 @@ else
         var userInfo = await UserInfos.TryGet(Entry.AuthorId, cancellationToken).ConfigureAwait(true);
         var isOnline = await UserStates.IsOnline(Entry.AuthorId, cancellationToken).ConfigureAwait(true);
         return new ChatMessageModel(userInfo, isOnline);
+    }
+
+    private void PlayCallback()
+    {
+        if (OnListen.HasDelegate)
+            OnListen.InvokeAsync((Entry, 0));
+    }
+
+    private void ListenCallback(string _)
+    {
+        if (OnListen.HasDelegate)
+            OnListen.InvokeAsync((Entry, 0));
+    }
+
+    private void WordClickCallback(double offset)
+    {
+        if (OnListen.HasDelegate)
+            OnListen.InvokeAsync((Entry, offset));
     }
 
 }

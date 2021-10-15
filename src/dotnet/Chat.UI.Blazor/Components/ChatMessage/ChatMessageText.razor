@@ -6,9 +6,9 @@
 }
 else
 {
-    foreach (var word in Words!)
+    foreach (var (word, offset) in Words!)
     {
-        <span class="content subpixel-antialiased hover:text-blue-800 hover:cursor-pointer hover:underline">@word.Item1</span>
+        <span class="content word" @onclick="() => HandleWordClick(offset)">@word</span>
     }
 }
 
@@ -20,6 +20,9 @@ else
 
     [Parameter]
     public LinearMap? TextToTimeMap { get; set; }
+
+    [Parameter]
+    public EventCallback<double> OnWordClick { get; set; }
 
     private IReadOnlyCollection<(string,double)>? Words { get; set; }
 
@@ -46,6 +49,12 @@ else
         }
 
         return base.OnParametersSetAsync();
+    }
+
+    private void HandleWordClick(double offset)
+    {
+        if (OnWordClick.HasDelegate)
+            OnWordClick.InvokeAsync(offset);
     }
 
 }
