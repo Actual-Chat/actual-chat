@@ -14,7 +14,7 @@ export class VirtualList {
     private readonly _resizeObserver: ResizeObserver;
     private _resizedOnce: Map<Element, boolean>;
 
-    private _suppressOnScrollTo: number | null;
+    private _renderIndex: number = -1;
     private _notifyWhenSafeToScroll: boolean = false;
     private _isSafeToScroll: boolean = true;
     private _onScrollStoppedTimeout: any = null;
@@ -44,16 +44,23 @@ export class VirtualList {
         this._resizeObserver.disconnect();
     }
 
-    public afterRender(mustScroll, scrollTop, notifyWhenSafeToScroll) {
-        console.log("afterRender: ", mustScroll, scrollTop, notifyWhenSafeToScroll);
+    protected isFullyRendered() {
+        let renderIndex = parseInt(this._elementRef.dataset["renderIndex"]!);
+        return renderIndex == this._renderIndex;
+    }
+
+    public afterRender(renderIndex, mustScroll, scrollTop, notifyWhenSafeToScroll) {
+        // At this point this.isFullyRendered() returns false
+        console.log("afterRender: ", renderIndex, mustScroll, scrollTop, notifyWhenSafeToScroll);
         this._notifyWhenSafeToScroll = notifyWhenSafeToScroll;
-        if (mustScroll && this._elementRef.scrollTop != scrollTop) {
-            this._suppressOnScrollTo = scrollTop;
+        if (mustScroll && this._elementRef.scrollTop != scrollTop)
             this._elementRef.scrollTop = scrollTop;
-        }
         this.setupResizeTracking();
-        if (this._elementRef.querySelectorAll(".items-unmeasured .item").length > 0)
-            this.updateClientSideState(true);
+        this._renderIndex = renderIndex;
+        // At this point this.isFullyRendered() returns true
+
+        // let hasUnmeasuredItems = this._elementRef.querySelectorAll(".items-unmeasured .item").length > 0;
+        this.updateClientSideState(true);
     }
 
     protected updateClientSideState(immediately: boolean = false)
@@ -82,6 +89,9 @@ export class VirtualList {
             await this._updateClientSideStateTask.then(v => v, _ => null);
             this._updateClientSideStateTask = null;
         }
+        if (!this.isFullyRendered())
+            return; // Rendering is in progress, so the update will follow up anyway
+
         let originalScrollTop = parseFloat(this._elementRef.dataset["scrollTop"]!);
         let originalClientHeight = parseFloat(this._elementRef.dataset["clientHeight"]!);
         let scrollTop = this._elementRef.scrollTop;
@@ -91,7 +101,7 @@ export class VirtualList {
             || Math.abs(originalClientHeight - clientHeight) > 0.1;
 
         let state: Required<IClientSideState> = {
-            RenderIndex: parseInt(this._elementRef.dataset["renderIndex"]!),
+            RenderIndex: this._renderIndex,
             IsSafeToScroll: this._isSafeToScroll,
             ScrollTop: scrollTop,
             ClientHeight: clientHeight,
@@ -134,13 +144,8 @@ export class VirtualList {
     }
 
     private onScroll() {
-        if (this._suppressOnScrollTo != null) {
-            if (Math.abs(this._suppressOnScrollTo - this._elementRef.scrollTop) < 0.1) {
-                console.log("onScroll is suppressed")
-                return;
-            }
-            this._suppressOnScrollTo = null;
-        }
+        if (!this.isFullyRendered())
+            return; // We aren't interested in render/programmatic scroll events
 
         this._isSafeToScroll = false;
         if (this._onScrollStoppedTimeout != null)
@@ -158,6 +163,9 @@ export class VirtualList {
     }
 
     private onResize(entries: ResizeObserverEntry[]) {
+        if (!this.isFullyRendered())
+            return; // We aren't interested in render/programmatic resize events
+
         let mustIgnore = true;
         for (let entry of entries) {
             if (this._resizedOnce.has(entry.target))

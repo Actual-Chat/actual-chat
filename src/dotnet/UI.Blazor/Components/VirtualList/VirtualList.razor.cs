@@ -78,6 +78,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         if (CircuitContext.IsPrerendering || JSRef == null! || plan == null)
             return;
         await JSRef.InvokeVoidAsync("afterRender",
+            plan.RenderIndex,
             plan.MustScroll,
             plan.Viewport.Start + Plan.SpacerSize,
             plan.NotifyWhenSafeToScroll
@@ -101,7 +102,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         // Remember that all server-side offsets are relative to the first item's top / spacer top
         var viewportStart = clientSideState.ScrollTop - lastPlan.SpacerSize;
         var viewport = new Range<double>(viewportStart, viewportStart + clientSideState.ClientHeight);
-        var isUserScrollDetected = !lastPlan.Viewport.Equals(viewport, 0.1);
+        var isUserScrollDetected = !lastPlan.Viewport.Equals(viewport, 1);
 
         var mustRender = hasItemSizeChanges || lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll;
         var mustUpdateData = isUserScrollDetected || !lastPlan.IsFullyLoaded(viewport);
