@@ -10,6 +10,7 @@ namespace ActualChat.Audio.Client.Module;
 public class AudioClientModule : HostModule
 {
     public AudioClientModule(IPluginInfoProvider.Query _) : base(_) { }
+
     [ServiceConstructor]
     public AudioClientModule(IPluginHost plugins) : base(plugins) { }
 
@@ -25,5 +26,6 @@ public class AudioClientModule : HostModule
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<IAudioSourceStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
+        services.AddSingleton<IAudioDownloader, AudioDownloader>();
     }
 }
