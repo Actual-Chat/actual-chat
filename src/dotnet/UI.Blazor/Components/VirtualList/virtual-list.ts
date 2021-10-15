@@ -1,7 +1,7 @@
 import './virtual-list.css';
 
-const ScrollNotifyTimeout : number = 100;
 const ScrollStoppedTimeout : number = 2000;
+const UpdateClientSideStateTimeout : number = 200;
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -47,23 +47,32 @@ export class VirtualList {
     public afterRender(mustScroll, scrollTop, notifyWhenSafeToScroll) {
         console.log("afterRender: ", mustScroll, scrollTop, notifyWhenSafeToScroll);
         this._notifyWhenSafeToScroll = notifyWhenSafeToScroll;
-        if (mustScroll) {
+        if (mustScroll && this._elementRef.scrollTop != scrollTop) {
             this._suppressOnScrollTo = scrollTop;
-            this._elementRef.scrollTo(0, scrollTop);
+            this._elementRef.scrollTop = scrollTop;
         }
         this.setupResizeTracking();
-        this.updateClientSideState();
+        if (this._elementRef.querySelectorAll(".items-unmeasured .item").length > 0)
+            this.updateClientSideState(true);
     }
 
-    protected updateClientSideState()
+    protected updateClientSideState(immediately: boolean = false)
     {
-        if (this._updateClientSideStateTimeout != null)
-            return;
-        this._updateClientSideStateTimeout =
-            setTimeout(() => {
+        if (immediately) {
+            if (this._updateClientSideStateTimeout != null) {
+                clearTimeout(this._updateClientSideStateTimeout);
                 this._updateClientSideStateTimeout = null;
-                let _ = this.updateClientSideStateAsync();
-            }, 50)
+            }
+            let _ = this.updateClientSideStateAsync();
+        } else {
+            if (this._updateClientSideStateTimeout != null)
+                return;
+            this._updateClientSideStateTimeout =
+                setTimeout(() => {
+                    this._updateClientSideStateTimeout = null;
+                    let _ = this.updateClientSideStateAsync();
+                }, UpdateClientSideStateTimeout)
+        }
     }
 
     /** sends the state to UpdateClientSideState dotnet part */
@@ -127,7 +136,7 @@ export class VirtualList {
     private onScroll() {
         if (this._suppressOnScrollTo != null) {
             if (Math.abs(this._suppressOnScrollTo - this._elementRef.scrollTop) < 0.1) {
-                // console.log("onScroll is suppressed")
+                console.log("onScroll is suppressed")
                 return;
             }
             this._suppressOnScrollTo = null;
