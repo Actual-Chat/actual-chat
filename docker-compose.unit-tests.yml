@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  tests:
+    build:
+      context: .
+      target: base
+    command: >-
+      /bin/sh -c "
+      dotnet build --nologo --no-restore --configuration Debug &&
+      dotnet run --project build --configuration Release --no-build --no-launch-profile -- --configuration Debug unit-tests
+      "

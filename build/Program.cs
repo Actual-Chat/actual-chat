@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Bullseye;
 using CliWrap;
@@ -282,6 +284,73 @@ internal static class Program
 
             MoveAttachmentsToResultsDirectory(resultsDirectory, cmd.StandardOutput);
             TryRemoveTestsOutputDirectories(resultsDirectory);
+        });
+
+        Target("generate-version", DependsOn("restore-tools"), async () => {
+            var cmd = await Cli.Wrap(dotnet)
+                .WithArguments("nbgv get-version --format json")
+                .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
+            var nbgv = JsonSerializer.Deserialize<NbgvModel>(cmd.StandardOutput ?? throw new WithoutStackException("nbgv returned null"));
+
+            var dict = new Dictionary<string, string>(StringComparer.Ordinal) {
+                { "BuildVersion", nbgv.Version ?? "0.0.0.0" },
+                { "AssemblyInformationalVersion", nbgv.AssemblyInformationalVersion ?? "0.0.0.0" },
+                { "AssemblyFileVersion", nbgv.AssemblyFileVersion ?? "0.0.0.0" },
+                { "FileVersion", nbgv.AssemblyFileVersion ?? "0.0.0.0" },
+                { "BuildVersionSimple", nbgv.SimpleVersion ?? "0.0.0.0" },
+                { "NuGetPackageVersion", nbgv.NuGetPackageVersion ?? "0.0.0.0" },
+                { "Version", nbgv.NuGetPackageVersion ?? nbgv.SemVer2 ?? "0.0.0.0" },
+                { "PackageVersion", nbgv.NuGetPackageVersion ?? nbgv.SemVer2 ?? "0.0.0.0" },
+                { "NPMPackageVersion", nbgv.NuGetPackageVersion ?? nbgv.SemVer2 ?? "0.0.0.0" },
+                { "MajorMinorVersion", nbgv.MajorMinorVersion ?? "0.0" },
+                { "AssemblyVersion", nbgv.AssemblyVersion ?? "0.0.0.0" },
+            };
+            var dictWithCondition = new Dictionary<string, string>(StringComparer.Ordinal) {
+                { "PrereleaseVersion", nbgv.PrereleaseVersion ?? "" },
+                { "PrereleaseVersionNoLeadingHyphen", nbgv.PrereleaseVersionNoLeadingHyphen ?? "" },
+                { "GitCommitId", nbgv.GitCommitId ?? "4b825dc642cb6eb9a060e54bf8d69288fbee4904" },
+                { "GitCommitIdShort", nbgv.GitCommitIdShort ?? "4b825dc642" },
+                { "GitCommitDateTicks", nbgv.GitCommitDate.Ticks.ToString(CultureInfo.InvariantCulture)},
+                { "GitVersionHeight", nbgv.VersionHeight.ToString(CultureInfo.InvariantCulture) },
+                { "BuildNumber", nbgv.BuildNumber.ToString(CultureInfo.InvariantCulture) },
+                { "BuildVersionNumberComponent", nbgv.BuildNumber.ToString(CultureInfo.InvariantCulture)},
+                { "PublicRelease", nbgv.PublicRelease.ToString() },
+                { "CloudBuildNumber", nbgv.CloudBuildNumber ?? nbgv.NuGetPackageVersion ?? "0.0.0.0" },
+                { "SemVerBuildSuffix", nbgv.BuildMetadataFragment ?? "" },
+                { "ChocolateyPackageVersion", nbgv.ChocolateyPackageVersion ?? nbgv.NuGetPackageVersion ?? "0.0.0.0" },
+            };
+
+            var sb = new StringBuilder(1024);
+            sb.AppendLine("  <PropertyGroup>");
+            foreach (var (key, val) in dict) {
+                sb.AppendLine($"    <{key}>{val}</{key}>");
+            }
+            foreach (var (key, val) in dictWithCondition) {
+                sb.AppendLine($"    <{key} Condition=\"'$({key})' == ''\">{val}</{key}>");
+            }
+            sb.AppendLine("  </PropertyGroup>");
+            var props = sb.ToString();
+            var tasks = new[] {
+                File.WriteAllTextAsync("Nerdbank.GitVersioning.targets", $"<Project>\n<Target Name=\"GetBuildVersion\">\n{props}</Target>\n</Project>"),
+                // we need GitCommitId and other before *.targets is loaded
+                File.WriteAllTextAsync("Nerdbank.GitVersioning.props", $"<Project>\n{props}</Project>"),
+            };
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            Console.WriteLine($"Generated version is {Bold(Yellow(nbgv.NuGetPackageVersion ?? nbgv.SemVer2 ?? "0.0.0.0"))}");
+
+            if (!File.Exists(".dockerignore"))
+                return;
+
+            var dockerIgnore = await File.ReadAllTextAsync(".dockerignore").ConfigureAwait(false);
+            if (!dockerIgnore.Contains(".git")) {
+                dockerIgnore = ".git\n" + dockerIgnore;
+            }
+            else {
+                // uncomment any .git pattern
+                const RegexOptions regexOptions = RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.IgnoreCase;
+                dockerIgnore = Regex.Replace(dockerIgnore, "^[^#]*[#]+(.*\\.git.*)$", "$1", regexOptions, TimeSpan.FromSeconds(5));
+            }
+            await File.WriteAllTextAsync(".dockerignore", dockerIgnore).ConfigureAwait(false);
         });
 
         Target("integration-tests", DependsOn("restore-tools"), async () => {
