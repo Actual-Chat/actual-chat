@@ -7,6 +7,12 @@
       "commands": [
         "playwright"
       ]
+    },
+    "nbgv": {
+      "version": "3.4.240",
+      "commands": [
+        "nbgv"
+      ]
     }
   }
 }

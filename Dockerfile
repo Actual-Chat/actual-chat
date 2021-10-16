@@ -1,17 +1,18 @@
-FROM mcr.microsoft.com/dotnet/aspnet:6.0.0-rc.1-alpine3.14-amd64 as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:6.0.0-rc.2-alpine3.14-amd64 as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
     DOTNET_NOLOGO=1 \
     POWERSHELL_TELEMETRY_OPTOUT=1 \
     POWERSHELL_UPDATECHECK_OPTOUT=1 \
+    DOTNET_ROLL_FORWARD=Major \
+    DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 RUN apk add icu-libs --no-cache
 
-# TODO: separate dotnet build image from webpack build image
-FROM mcr.microsoft.com/dotnet/sdk:6.0.100-rc.1-alpine3.14-amd64 as base
+FROM mcr.microsoft.com/dotnet/sdk:6.0.100-rc.2-alpine3.14-amd64 as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -19,11 +20,32 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     POWERSHELL_TELEMETRY_OPTOUT=1 \
     POWERSHELL_UPDATECHECK_OPTOUT=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
+# workaround of https://github.com/microsoft/playwright-dotnet/issues/1791
+    DOTNET_ROLL_FORWARD=Major \
+    DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     NUGET_CERT_REVOCATION_MODE=offline
 
 WORKDIR /src
-RUN apk add --no-cache icu-libs npm && \
-    npm -g config set user root && \
+COPY lib/ lib/
+COPY nuget.config Directory.Build.* Packages.props .editorconfig ActualChat.sln ./
+COPY .config/ .config/
+# copy from {repoRoot}/src/dotnet/
+COPY src/dotnet/*/*.csproj ./
+RUN for file in $(ls *.csproj); do mkdir -p src/dotnet/${file%.*}/ && mv $file src/dotnet/${file%.*}/; done
+COPY src/dotnet/Directory.Build.* src/dotnet/tsconfig.json src/dotnet/
+
+# copy from {repoRoot}/tests/
+COPY tests/*/*.csproj ./
+RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/${file%.*}/; done
+COPY tests/Directory.Build.* tests/.editorconfig tests/
+
+COPY build/ build/
+RUN dotnet run --project build --configuration Release -- restore restore-tools
+
+# node:14-alpine because it's cached on gh actions VM
+FROM node:14-alpine as nodejs-restore
+WORKDIR /src/src/nodejs
+RUN npm -g config set user root && \
     npm -g config set audit false && \
     npm -g config set audit-level critical && \
     npm -g config set fund false && \
@@ -31,27 +53,24 @@ RUN apk add --no-cache icu-libs npm && \
     npm -g config set progress false && \
     npm -g config set update-notifier false && \
     npm -g config set loglevel warn && \
-    npm -g config set depth 0
+    npm -g config set depth 0 && \
+    apk add --no-cache git
+COPY src/nodejs/package-lock.json src/nodejs/package.json ./
+RUN npm ci
+COPY src/nodejs/ ./
 
-COPY nuget.config Directory.Build.* Packages.props ActualChat.sln ./
+FROM nodejs-restore as nodejs-build
+COPY src/dotnet/ /src/src/dotnet/
+RUN npm run build:Release
 
-# copy from {repoRoot}/src/dotnet/
-COPY src/dotnet/*/*.csproj ./
-RUN for file in $(ls *.csproj); do mkdir -p src/dotnet/${file%.*}/ && mv $file src/dotnet/${file%.*}/; done
-COPY src/dotnet/Directory.Build.* src/dotnet/
+FROM dotnet-restore as base
+COPY src/dotnet/ src/dotnet/
+COPY tests/ tests/
 
-# copy from {repoRoot}/tests/
-COPY tests/*/*.csproj ./
-RUN for file in $(ls *.csproj); do mkdir -p tests/${file%.*}/ && mv $file tests/${file%.*}/; done
-COPY tests/Directory.Build.* tests/
-
-RUN dotnet restore -nodeReuse:false
-
-COPY ./ ./
-
-FROM base as build
+FROM base as dotnet-build
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/Host/Host.csproj
 
 FROM runtime as app
-COPY --from=build /app .
+COPY --from=dotnet-build /app .
+COPY --from=nodejs-build /src/src/dotnet/UI.Blazor.Host/wwwroot/ /app/wwwroot/
 ENTRYPOINT ["dotnet", "ActualChat.Host.dll"]

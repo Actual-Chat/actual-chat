@@ -1,4 +1,4 @@
-# .git will be uncommented on CI, locally we need this for nbgv
+# git will be uncommented on CI, locally we need this for nbgv
 #**/.git
 docker-compose*.yml
 *.md

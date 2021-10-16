@@ -1,6 +1,7 @@
 tests/Testing/testsettings.local.json
 src/dotnet/UI.Blazor.Host/wwwroot/dist/
 build/Build.sln
+Nerdbank.GitVersioning.*
 # IDE folders & files
 .vs/
 .vscode/

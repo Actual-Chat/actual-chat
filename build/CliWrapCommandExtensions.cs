@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using CliWrap;
 using static Crayon.Output;
 
@@ -35,5 +33,3 @@ internal static class CliWrapCommandExtensions
         return str;
     }
 }
-
-
