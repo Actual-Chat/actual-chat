@@ -7,7 +7,7 @@ public class AudioIndexServiceTest
     [Fact]
     public void AudioIndexTest()
     {
-        var audioIndex = new AudioIndexService();
+        var audioIndex = new AudioIndexService(Mock.Of<ILogger<AudioIndexService>>());
         // @formatter:off
         audioIndex.AddAudioEntries(new[] {
             new ChatEntry {
