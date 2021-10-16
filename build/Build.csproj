@@ -8,6 +8,8 @@
     <DependencyVersion>Highest</DependencyVersion>
     <!-- Don't change this until gh actions vm will support net6.0 -->
     <TargetFramework>net5.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Bullseye" />
