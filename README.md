@@ -3,6 +3,23 @@
 
 
 
+## Prerequisites
+
+- [Git](https://git-scm.com/downloads)
+- [.NET 6 RC2](https://dotnet.microsoft.com/download/dotnet/6.0)
+- `dotnet workload install wasm-tools`  
+- [Docker](https://www.docker.com/get-started)
+- [NodeJS 16+](https://nodejs.org/en/) and the latest `npm`;
+  [npm-windows-update](https://www.npmjs.com/package/npm-windows-upgrade)
+  is the simplest way to update `npm` on Windows
+- [Edge](https://www.microsoft.com/en-us/edge#platform)
+  or [Chrome](https://chromeenterprise.google/browser/download/)
+- [Playwright](https://playwright.dev/docs/intro/#installation)
+
+Recommended IDEs:
+- [Rider](https://www.jetbrains.com/rider/)
+- [Visual Studio Code](https://code.visualstudio.com/)
+
 ## Conventions
 
 We use:
