@@ -54,7 +54,7 @@
 
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            _log.LogError(e, "Error while reading the transcript.");
+            _log.LogError(e, "Error while reading the transcript");
             throw;
         }
     }

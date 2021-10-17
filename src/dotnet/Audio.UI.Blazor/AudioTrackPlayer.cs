@@ -65,5 +65,5 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     }
 
     protected Task CircuitInvoke(Func<Task> workItem)
-        => _circuitContext.RootComponent!.GetDispatcher().InvokeAsync(workItem);
+        => _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
 }

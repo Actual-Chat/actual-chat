@@ -7,7 +7,7 @@
 @inject IServiceProvider _services
 @inject ServerAuthHelper _serverAuthHelper
 @inject HostSettings _hostSettings
-@inject BlazorCircuitContext _blazorCircuitContext
+@inject BlazorCircuitContext _circuitContext
 @{
     await _serverAuthHelper.UpdateAuthState(HttpContext);
     var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);

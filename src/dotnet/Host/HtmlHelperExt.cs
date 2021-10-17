@@ -24,12 +24,12 @@ public static class HtmlHelperExt
     public static async Task<IHtmlContent> PrerenderApp(
         this IHtmlHelper html, IServiceProvider services, HttpContext httpContext)
     {
-        var blazorCircuitContext = services.GetRequiredService<BlazorCircuitContext>();
+        var circuitContext = services.GetRequiredService<BlazorCircuitContext>();
         var serverAuthHelper = services.GetRequiredService<ServerAuthHelper>();
         var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(httpContext);
         var sessionId = serverAuthHelper.Session.Id.Value;
 
-        using var prerendering = blazorCircuitContext.Prerendering();
+        using var prerendering = circuitContext.Prerendering();
         var errorCount = 0;
         while (true) {
             // Workaround for https://github.com/dotnet/aspnetcore/issues/26966

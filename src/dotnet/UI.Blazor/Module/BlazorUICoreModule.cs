@@ -25,6 +25,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         var fusionAuth = fusion.AddAuthentication().AddBlazor();
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext
         services.AddScoped<BlazorCircuitContext, AppBlazorCircuitContext>();
+        services.AddTransient(c => (AppBlazorCircuitContext) c.GetRequiredService<BlazorCircuitContext>());
 
         // Other UI-related services
         services.AddScoped<AppBlazorCircuitContext>();
