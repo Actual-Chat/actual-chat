@@ -3,7 +3,7 @@
 @using Stl.Plugins
 @implements IDisposable
 @inject IPluginHost _plugins
-@inject BlazorCircuitContext _blazorCircuitContext
+@inject BlazorCircuitContext _circuitContext
 
 @{
     var moduleAssemblies = _plugins.GetPlugins<IBlazorUIModule>()
@@ -30,10 +30,10 @@
 
     protected override void OnInitialized()
     {
-        if (!_blazorCircuitContext.IsPrerendering)
-            _blazorCircuitContext.RootComponent = this;
+        if (!_circuitContext.IsPrerendering)
+            _circuitContext.RootComponent = this;
     }
 
     public void Dispose()
-        => _blazorCircuitContext.Dispose();
+        => _circuitContext.Dispose();
 }
