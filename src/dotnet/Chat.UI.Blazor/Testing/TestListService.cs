@@ -81,7 +81,7 @@ public class TestListService
         => Task.FromResult(
             (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalMilliseconds * 67) % 101); // 0..100
 
-    [ComputeMethod(AutoInvalidateTime = 0.05)]
+    [ComputeMethod(AutoInvalidateTime = 0.25)]
     protected virtual Task<int> GetWordCount(CancellationToken cancellationToken)
         => Task.FromResult(
             (int) Math.Round((CoarseClockHelper.Now - CoarseClockHelper.Start).TotalMilliseconds) / 100 % 100); // 0..99

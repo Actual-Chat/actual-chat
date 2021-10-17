@@ -11,10 +11,9 @@
 }
 
 @* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
-<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full" style="@Style"
-     data-render-index="@Plan.RenderIndex"
-     data-scroll-top="@(Plan.Viewport.Start + Plan.SpacerSize)"
-     data-client-height="@(Plan.Viewport.Size())">
+<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full"
+     style="@Style"
+     data-render-index="@Plan.RenderIndex">
     <div class="content relative">
         <div class="items items-unmeasured flex flex-col flex-nowrap items-stretch overflow-y-hidden h-0 invisible">
             @foreach (var e in Plan.UnmeasuredItems) {
@@ -33,13 +32,13 @@
         </div>
         <div class="items items-displayed flex flex-col flex-nowrap items-stretch">
             @foreach (var e in Plan.DisplayedItems) {
-                <div @key="e.Key" class="item" data-key="@e.Key" data-size="@e.Size">
+                <div @key="e.Key" class="item" data-key="@e.Key">
                     @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
         <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
-            style="height: @(Plan.BottomSpacerSize)px">
+             style="height: @(Plan.BottomSpacerSize)px">
             <SkeletonContainer>
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     @Skeleton

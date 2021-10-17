@@ -1,13 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Users
+@using TaskExt = Stl.Async.TaskExt
 @inherits ComputedStateComponent<ChatMessageModel>
 
 @{
-    var model = State.LatestNonErrorValue ?? new ChatMessageModel(null, null);
+    var model = State.LatestNonErrorValue ?? new(null, null);
 }
 
-@if (model.UserInfo == null)
-{
+@if (model.UserInfo == null) {
     <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
         <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
         <div class="flex-1 overflow-hidden">
@@ -56,15 +56,12 @@ else
 
     [Inject]
     protected IUserInfoService UserInfos { get; set; } = null!;
-
     [Inject]
     protected IUserStateService UserStates { get; set; } = null!;
-
     [Inject]
     protected Session Session { get; set; } = null!;
 
-    [Parameter]
-    [EditorRequired]
+    [Parameter, EditorRequired]
     public ChatEntry Entry { get; set; } = null!;
 
     [Parameter]
@@ -75,8 +72,10 @@ else
         if (Entry == null! || Entry.AuthorId.IsNone)
             return new ChatMessageModel(null, null);
 
-        var userInfo = await UserInfos.TryGet(Entry.AuthorId, cancellationToken).ConfigureAwait(true);
-        var isOnline = await UserStates.IsOnline(Entry.AuthorId, cancellationToken).ConfigureAwait(true);
+        var (userInfo, isOnline) = await
+            UserInfos.TryGet(Entry.AuthorId, cancellationToken)
+                .Join(UserStates.IsOnline(Entry.AuthorId, cancellationToken))
+                .ConfigureAwait(false);
         return new ChatMessageModel(userInfo, isOnline);
     }
 
