@@ -3,6 +3,7 @@ import './virtual-list.css';
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
 const SizeEpsilon: number = 0.1
+const DebugMode: boolean = false
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -61,7 +62,8 @@ export class VirtualList {
     }
 
     public afterRender(renderState: Required<IRenderState>) {
-        console.log("afterRender: ", renderState);
+        if (DebugMode)
+            console.log("<- afterRender:", renderState);
         if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon)
             this._elementRef.scrollTop = renderState.scrollTop;
         this.resetResizeTracking();
@@ -117,13 +119,14 @@ export class VirtualList {
 
         let gotNewlyMeasuredItems = false;
         if (rs.mustMeasure) {
-            // console.log("Measuring new items...")
             let items = this._elementRef.querySelectorAll(".items-unmeasured .item").values() as IterableIterator<HTMLElement>;
             for (let item of items) {
                 let key = item.dataset["key"];
                 state.itemSizes[key] = item.getBoundingClientRect().height;
                 gotNewlyMeasuredItems = true;
             }
+            if (DebugMode)
+                console.log("Measured items:", state.itemSizes)
         }
 
         let gotResizedItems = false;
@@ -143,12 +146,17 @@ export class VirtualList {
         let isClientHeightChanged = Math.abs(state.clientHeight - rs.clientHeight) > SizeEpsilon;
         state.isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isClientHeightChanged;
 
-        let wasBottomAligned = Math.abs(rs.scrollTop + rs.clientHeight - rs.scrollHeight) <= SizeEpsilon;
-        let isBottomAligned = Math.abs(state.scrollTop + state.clientHeight - state.scrollHeight) <= SizeEpsilon;
+        let wasAtBottom = Math.abs(rs.scrollTop + rs.clientHeight - rs.scrollHeight) <= SizeEpsilon;
+        let isAtBottom = Math.abs(state.scrollTop + state.clientHeight - state.scrollHeight) <= SizeEpsilon;
         state.isUserScrollDetected =
             state.isBodyResized
-            || isScrollTopChanged && !(wasBottomAligned && isBottomAligned);
-        // console.log("isUserScrollDetected", state.isUserScrollDetected, wasBottomAligned, isBottomAligned, isScrollTopChanged);
+            || isScrollTopChanged && !(wasAtBottom && isAtBottom);
+        if (DebugMode)
+            console.log("Detected:",
+                state.isUserScrollDetected ? "user scroll" : "",
+                isScrollTopChanged ? "scrollTop changed" : "",
+                wasAtBottom ? "was at bottom" : "",
+                isAtBottom ? "is at bottom" : "");
 
         let mustUpdateClientSideState =
             state.isViewportChanged
@@ -157,7 +165,8 @@ export class VirtualList {
         if (!mustUpdateClientSideState)
             return;
 
-        console.log("invoking UpdateClientSideState", state)
+        if (DebugMode)
+            console.log("-> UpdateClientSideState:", state)
         this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
     }
 
