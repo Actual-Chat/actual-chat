@@ -13,7 +13,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Inject]
     protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject]
-    protected ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+    protected internal ILogger<VirtualList<TItem>> Log { get; init; } = null!;
 
     protected ElementReference Ref { get; set; }
     protected IJSObjectReference JSRef { get; set; } = null!;
@@ -23,25 +23,27 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     /// The main state of the virtual list. Contains an information to correct render the component. <br />
     /// The js side updates this context.
     /// </summary>
-    protected RenderPlan? LastPlan { get; set; } = null!;
-    protected RenderPlan Plan { get; set; } = null!;
+    protected int LastAfterRenderRenderIndex { get; set; } = -1;
+    protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
+    protected VirtualListRenderPlan<TItem> Plan { get; set; } = null!;
     protected VirtualListDataQuery? LastQuery { get; set; }
     protected VirtualListDataQuery Query { get; set; } = new(default);
-    protected IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
-    protected virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? new();
+    protected internal VirtualListClientSideState ClientSideState { get; set; } = null!;
+    protected internal IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
+    protected internal virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? new();
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
-    [Parameter] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
-    [Parameter] public RenderFragment Skeleton { get; set; } = null!;
+    [Parameter, EditorRequired] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
+    [Parameter] public RenderFragment Skeleton { get; set; } = _ => { };
     [Parameter] public int SkeletonCount { get; set; } = 100;
     [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
     [Parameter] public double BufferZoneSize { get; set; } = 2160;
     [Parameter] public long MaxExpectedExpansion { get; set; } = 1_000_000;
-    [Parameter] public VirtualListEdge AutoScrollEdge { get; set; } = VirtualListEdge.End;
+    [Parameter] public VirtualListEdge PreferredTrackingEdge { get; set; } = VirtualListEdge.End;
 
-    [Parameter]
+    [Parameter, EditorRequired]
     public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =
         (_, _) => Task.FromResult(new VirtualListData<TItem>());
     [Parameter]
@@ -63,8 +65,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     protected override bool ShouldRender()
     {
-        if (Data != Plan.Data)
-            Plan = (LastPlan ?? Plan).Next();
+        if (!ReferenceEquals(Plan.Data, Data))
+            Plan = Plan.Next();
         return !ReferenceEquals(Plan, LastPlan);
     }
 
@@ -77,12 +79,24 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var plan = LastPlan;
         if (CircuitContext.IsPrerendering || JSRef == null! || plan == null)
             return;
-        await JSRef.InvokeVoidAsync("afterRender",
-            plan.RenderIndex,
-            plan.MustScroll,
-            plan.Viewport.Start + Plan.SpacerSize,
-            plan.NotifyWhenSafeToScroll
-            ).ConfigureAwait(true);
+        if (plan.RenderIndex == LastAfterRenderRenderIndex)
+            return; // Nothing new is rendered
+
+        var renderState = new VirtualListRenderState() {
+            RenderIndex = plan.RenderIndex,
+
+            SpacerSize = plan.SpacerSize,
+            ScrollTop = plan.Viewport.Start + Plan.SpacerSize,
+            ScrollHeight = plan.FullRange.Size(),
+            ClientHeight = plan.Viewport.Size(),
+            ItemSizes = plan.DisplayedItems.ToDictionary(i => i.Key, i => i.Range.Size(), StringComparer.Ordinal),
+
+            MustMeasure = plan.UnmeasuredItems.Count != 0,
+            MustScroll = plan.MustScroll,
+            NotifyWhenSafeToScroll = plan.NotifyWhenSafeToScroll,
+        };
+        Log.LogInformation("OnAfterRender: RenderIndex = {RenderIndex}", renderState.RenderIndex);
+        await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
 
     [JSInvokable]
@@ -96,16 +110,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         }
 
         // await Task.Delay(1000); // Debug only!
-        lastPlan.NextClientSideState = clientSideState;
-        var hasItemSizeChanges = clientSideState.ItemSizes.Count != 0;
-
-        // Remember that all server-side offsets are relative to the first item's top / spacer top
-        var viewportStart = clientSideState.ScrollTop - lastPlan.SpacerSize;
+        ClientSideState = clientSideState;
+        var viewportStart = clientSideState.ScrollTop - clientSideState.SpacerSize;
         var viewport = new Range<double>(viewportStart, viewportStart + clientSideState.ClientHeight);
-        var isUserScrollDetected = !lastPlan.Viewport.Equals(viewport, 1);
 
-        var mustRender = hasItemSizeChanges || lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll;
-        var mustUpdateData = isUserScrollDetected || !lastPlan.IsFullyLoaded(viewport);
+        var mustRender = clientSideState.IsViewportChanged
+            || clientSideState.ItemSizes.Count != 0
+            || lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll;
+        var mustUpdateData = clientSideState.IsViewportChanged || !lastPlan.IsFullyLoaded(viewport);
         if (!(mustRender || mustUpdateData)) {
             // Log.LogInformation("UpdateClientSideState: no render or update needed");
             return;
@@ -135,6 +147,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         LastQuery = query;
         Log.LogInformation("ComputeState: {Query}", query);
         var response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
+        Log.LogInformation("ComputeState: -> keys [{Key0}...{KeyE}], has {Range} item(s)",
+            response.Items.FirstOrDefault().Key,
+            response.Items.LastOrDefault().Key,
+            response.HasAllItems ? "all" : response.HasVeryFirstItem ? "first" : "last");
 
         // Adding statistics
         var startExpansion = response.Items
@@ -152,7 +168,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         return response;
     }
 
-    protected virtual VirtualListDataQuery GetDataQuery(RenderPlan plan)
+    protected virtual VirtualListDataQuery GetDataQuery(VirtualListRenderPlan<TItem> plan)
     {
         if (plan.UnmeasuredItems.Count != 0) // Let's wait for measurement to complete first
             return LastQuery!;
@@ -189,9 +205,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         var expectedStartExpansion = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxExpectedExpansion);
         var expectedEndExpansion = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxExpectedExpansion);
-        if (plan.IsStartAligned)
+        if (plan.IsTrackingStart)
             expectedStartExpansion = MaxExpectedExpansion;
-        if (plan.IsEndAligned)
+        if (plan.IsTrackingEnd)
             expectedEndExpansion = MaxExpectedExpansion;
 
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
@@ -202,8 +218,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ExpandEndBy = expectedEndExpansion / responseFulfillmentRatio,
         };
 
-        Log.LogInformation("GetQuery: {Query}", query);
-        // Log.LogInformation("GetQuery: {Viewport} < {LoaderZone} < {BufferZone} | {DisplayedRange}",
+        Log.LogInformation("GetDataQuery: {Query}", query);
+        // Log.LogInformation("GetDataQuery: {Viewport} < {LoaderZone} < {BufferZone} | {DisplayedRange}",
         //     plan.Viewport, loaderZone, bufferZone, plan.DisplayedRange);
         return query;
     }
