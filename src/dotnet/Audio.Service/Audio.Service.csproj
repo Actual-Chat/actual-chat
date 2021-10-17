@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Audio.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- ToDo: fix t4 generation without vs/rider or move to sourcegenerators, move generation results to a separate folder (?)  -->
     <None Update="Ebml\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="Ebml\%(Filename).cs"/>
     <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs"/>
