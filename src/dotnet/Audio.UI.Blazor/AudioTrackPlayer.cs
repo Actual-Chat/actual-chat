@@ -9,10 +9,10 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 {
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
-    private IJSObjectReference? _jsRef;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
+    private IJSObjectReference? _jsRef;
 
-    public AudioSource AudioSource => (AudioSource) Track.Source;
+    public AudioSource AudioSource => (AudioSource)Track.Source;
 
     public AudioTrackPlayer(
         MediaTrack mediaTrack,
@@ -27,19 +27,20 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
     protected override async ValueTask OnPlayStart()
     {
-        if (_jsRef == null) {
+        if (_jsRef == null)
             await CircuitInvoke(async () => {
-                _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-                _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                    $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                    _blazorRef);
-            }).ConfigureAwait(false);
-        }
+                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                    _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                        $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                        _blazorRef);
+                })
+                .ConfigureAwait(false);
 
         var header = Convert.FromBase64String(AudioSource.Format.CodecSettings);
         await CircuitInvoke(async () => {
-            await _jsRef!.InvokeVoidAsync("initialize", header);
-        }).ConfigureAwait(false);
+                await _jsRef!.InvokeVoidAsync("initialize", header);
+            })
+            .ConfigureAwait(false);
     }
 
     protected override async ValueTask OnPlayNextFrame(PlayingMediaFrame nextFrame)
@@ -48,19 +49,24 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         var offsetSecs = nextFrame.Frame.Offset.TotalSeconds;
         if (_jsRef != null)
             await CircuitInvoke(async () => {
-                await _jsRef.InvokeVoidAsync("appendAudio", chunk, offsetSecs);
-            }).ConfigureAwait(false);
+                    await _jsRef.InvokeVoidAsync("appendAudio", chunk, offsetSecs);
+                })
+                .ConfigureAwait(false);
     }
 
-    protected override async ValueTask OnPlayStop()
+    protected override async ValueTask OnPlayStop(bool stopImmediately, CancellationToken cancellationToken)
     {
         if (_jsRef == null)
             return;
 
         await CircuitInvoke(async () => {
-            await _jsRef.InvokeVoidAsync("stop");
-            await _jsRef.DisposeAsync();
-        }).ConfigureAwait(false);
+                if (stopImmediately)
+                    await _jsRef.InvokeVoidAsync("stop", cancellationToken, "network");
+                else
+                    await _jsRef.InvokeVoidAsync("endOfStream", cancellationToken);
+                await _jsRef.DisposeAsync();
+            })
+            .ConfigureAwait(false);
         _jsRef = null;
     }
 

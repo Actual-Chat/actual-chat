@@ -117,9 +117,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             .WhenAll(ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)))
             .ConfigureAwait(false);
 
-        var chatEntries = entryLists.SelectMany(entries => entries).ToList();
-        AudioIndex.AddAudioEntries(chatEntries.Where(ce => ce.ContentType == ChatContentType.Audio));
-
+        var chatEntries = entryLists.SelectMany(entries => entries);
         var result = VirtualListData.New(
             chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
             entry => entry.Id.ToString(CultureInfo.InvariantCulture),
@@ -195,12 +193,26 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     {
         try {
             var playbackOffset = TimeSpan.FromSeconds(offset);
-            var audioEntry = AudioIndex.FindAudioEntry(entry, playbackOffset);
+            var audioEntry =
+                await AudioIndex.FindAudioEntry(Session, entry, playbackOffset, _watchRealtimeMediaCts.Token);
+            if (audioEntry == null)
+                throw new InvalidOperationException($"Unable to find audio chat entry for ChatEntry.Id: {entry.Id}");
+
+            if (audioEntry.IsStreaming) {
+                await AddRealtimeMediaTrack(audioEntry);
+                return;
+            }
+
             var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
             var audioSource = await AudioDownloader.GetAudioSource(audioBlobUri, _watchRealtimeMediaCts.Token);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
             var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt, playbackOffset);
-            await HistoricalPlayer.Stop();
+
+            try {
+                await HistoricalPlayer.Stop();
+            }
+            catch (OperationCanceledException) { }
+
             await HistoricalPlayer.AddMediaTrack(mediaTrack);
             _ = HistoricalPlayer.Play();
         }
