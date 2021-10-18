@@ -125,35 +125,42 @@ public class AudioActivityPeriodExtractorTest : TestBase
     private static async Task<int> ReadFromFile(ChannelWriter<BlobPart> writer)
     {
         var size = 0;
-        await using var inputStream = new FileStream(
-            Path.Combine(Environment.CurrentDirectory, @"data", "file.webm"),
-            FileMode.Open,
-            FileAccess.Read);
-        using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
-        var readBuffer = readBufferLease.Memory;
-        var index = 0;
-        var bytesRead = await inputStream.ReadAsync(readBuffer);
-        while (bytesRead < 1 * 1024)
-            bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
-        size += bytesRead;
-        while (bytesRead > 0) {
-            var command = new BlobPart(
-                index++,
-                readBuffer[..bytesRead].ToArray());
-            await writer.WriteAsync(command, CancellationToken.None);
-
-            // await Task.Delay(300); //emulate real-time speech delay
-            var read = 0;
-            var readInternal = 0;
-            do {
-                readInternal = await inputStream.ReadAsync(readBuffer[read..]);
-                read += readInternal;
-            } while (readInternal > 0 && read < 1 * 1024);
-            bytesRead = read;
+        Exception? error = null;
+        try {
+            await using var inputStream = new FileStream(
+                Path.Combine(Environment.CurrentDirectory, @"data", "file.webm"),
+                FileMode.Open,
+                FileAccess.Read);
+            using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
+            var readBuffer = readBufferLease.Memory;
+            var index = 0;
+            var bytesRead = await inputStream.ReadAsync(readBuffer);
+            while (bytesRead < 1 * 1024)
+                bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
             size += bytesRead;
-        }
+            while (bytesRead > 0) {
+                var command = new BlobPart(
+                    index++,
+                    readBuffer[..bytesRead].ToArray());
+                await writer.WriteAsync(command, CancellationToken.None);
 
-        writer.Complete();
+                // await Task.Delay(300); //emulate real-time speech delay
+                var read = 0;
+                var readInternal = 0;
+                do {
+                    readInternal = await inputStream.ReadAsync(readBuffer[read..]);
+                    read += readInternal;
+                } while (readInternal > 0 && read < 1 * 1024);
+                bytesRead = read;
+                size += bytesRead;
+            }
+        }
+        catch (Exception e) {
+            error = e;
+        }
+        finally {
+            writer.Complete(error);
+        }
         return size;
     }
 }
