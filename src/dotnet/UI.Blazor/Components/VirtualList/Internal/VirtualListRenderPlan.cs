@@ -176,8 +176,8 @@ public class VirtualListRenderPlan<TItem>
             }
             // Log.LogInformation("Position: {Position}",
             //     (IsViewportAtStart ? "start " : "") + (IsViewportAtEnd ? "end" : ""));
-            // Log.LogInformation("Tracking: {Tracking}",
-            //     (IsTrackingStart ? "start " : "") + (IsTrackingEnd ? "end" : ""));
+            Log.LogInformation("Tracking: {Tracking}",
+                (IsTrackingStart ? "start " : "") + (IsTrackingEnd ? "end" : ""));
         }
 
         var firstItemChanged = Data.HasVeryFirstItem

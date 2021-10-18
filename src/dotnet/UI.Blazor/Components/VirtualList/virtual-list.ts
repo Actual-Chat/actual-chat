@@ -195,7 +195,6 @@ export class VirtualList {
             if (DebugMode)
                 console.log('[x] updateClientSideStateImpl: no reason to update');
             return;
-
         }
 
         if (DebugMode)
