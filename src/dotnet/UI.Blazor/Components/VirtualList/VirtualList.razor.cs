@@ -97,6 +97,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             MustScroll = plan.MustScroll,
             NotifyWhenSafeToScroll = plan.NotifyWhenSafeToScroll,
         };
+        if (!plan.IsFullyLoaded(plan.Viewport))
+            UpdateData();
         Log.LogInformation("OnAfterRender: RenderIndex = {RenderIndex}", renderState.RenderIndex);
         await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
@@ -113,26 +115,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         // await Task.Delay(1000); // Debug only!
         ClientSideState = clientSideState;
-        var viewportStart = clientSideState.ScrollTop - clientSideState.SpacerSize;
-        var viewport = new Range<double>(viewportStart, viewportStart + clientSideState.ClientHeight);
-
         var mustRender = clientSideState.IsViewportChanged
             || clientSideState.ItemSizes.Count != 0
             || lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll;
-        var mustUpdateData = clientSideState.IsViewportChanged || !lastPlan.IsFullyLoaded(viewport);
-        if (!(mustRender || mustUpdateData)) {
-            Log.LogInformation("UpdateClientSideState: no render or update needed");
-            return lastPlan.RenderIndex;
-        }
-
-        Log.LogInformation(
-            "UpdateClientSideState: mustRender = {MustRender}, mustUpdateData = {MustUpdateData}",
-            mustRender, mustUpdateData);
-        Plan = lastPlan.Next();
-        if (mustRender)
+        Log.LogInformation("UpdateClientSideState: mustRender = {MustRender}", mustRender);
+        if (mustRender) {
+            Plan = lastPlan.Next();
             _ = this.StateHasChangedAsync();
-        if (mustUpdateData)
-            UpdateData();
+        }
         return lastPlan.RenderIndex;
     }
 
