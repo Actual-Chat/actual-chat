@@ -16,6 +16,7 @@ jobs:
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
+          lfs: true
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
       # # In this step, this action saves a list of existing images,
