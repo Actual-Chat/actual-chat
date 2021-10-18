@@ -372,3 +372,5 @@ dotnet_diagnostic.ma0026.severity = none # MA0026 TODO
 dotnet_diagnostic.vsthrd003.severity = none # VSTHRD003 Avoid awaiting or returning a Task representing work that was not started within your context as that can lead to deadlocks.
 dotnet_diagnostic.rz10012.severity = error # Found markup element with unexpected name
 dotnet_diagnostic.ma0016.severity = none # MA0016: Prefer return collection abstraction instead of implementation
+dotnet_diagnostic.RCS1079.severity = none # (duplicate of MA0025) RCS1079: Implement the functionality instead of throwing new NotImplementedException
+dotnet_diagnostic.MA0046.severity = none # Use EventHandler<T> to declare events

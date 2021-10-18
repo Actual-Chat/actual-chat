@@ -20,7 +20,7 @@ public abstract class HubClientBase
         _hubConnectionLazy = new Lazy<HubConnection>(CreateHubConnection);
     }
 
-    protected virtual HubConnection CreateHubConnection()
+    protected HubConnection CreateHubConnection()
     {
         var builder = new HubConnectionBuilder()
             .WithUrl(HubUrl)
@@ -35,14 +35,13 @@ public abstract class HubClientBase
         if  (HubConnection.State != HubConnectionState.Disconnected)
             return;
 
-        var random = new Random();
         var delayInterval = 500;
         var attempt = 0;
         while (attempt < 10)
             try {
                 attempt++;
                 if (HubConnection.State == HubConnectionState.Disconnected)
-                    await HubConnection.StartAsync(cancellationToken);
+                    await HubConnection.StartAsync(cancellationToken).ConfigureAwait(false);
                 else
                     return;
             }
@@ -51,9 +50,9 @@ public abstract class HubClientBase
             }
             catch(Exception e) {
                 Log.LogError(e, "Failed to reconnect SignalR Hub");
-                await Task.Delay(delayInterval, cancellationToken);
+                await Task.Delay(delayInterval, cancellationToken).ConfigureAwait(false);
                 if (delayInterval < 5000)
-                    delayInterval += random.Next(1000);
+                    delayInterval += Random.Shared.Next(1000);
             }
     }
 }

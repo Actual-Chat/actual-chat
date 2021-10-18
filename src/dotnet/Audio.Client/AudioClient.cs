@@ -23,7 +23,7 @@ public class AudioClient : HubClientBase,
 
     public async Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
     {
-        await EnsureConnected(cancellationToken);
+        await EnsureConnected(cancellationToken).ConfigureAwait(false);
         return await HubConnection.StreamAsChannelAsync<BlobPart>("GetAudioStream",
             streamId,
             cancellationToken).ConfigureAwait(false);
@@ -34,7 +34,7 @@ public class AudioClient : HubClientBase,
         await EnsureConnected(cancellationToken).ConfigureAwait(false);
         var parts = await HubConnection.StreamAsChannelAsync<AudioSourcePart>("GetAudioSourceParts",
             streamId,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return await parts.ToAudioSource(cancellationToken).ConfigureAwait(false);
     }
 

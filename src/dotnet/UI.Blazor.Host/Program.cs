@@ -5,7 +5,6 @@ using ActualChat.Chat.UI.Blazor;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Users.Client.Module;
-using ActualChat.Users.UI.Blazor;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -20,10 +19,10 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        await ConfigureServices(builder.Services, builder);
+        await ConfigureServices(builder.Services, builder).ConfigureAwait(false);
         var host = builder.Build();
-        await host.Services.HostedServices().Start();
-        await host.RunAsync();
+        await host.Services.HostedServices().Start().ConfigureAwait(false);
+        await host.RunAsync().ConfigureAwait(false);
     }
 
     public static async Task ConfigureServices(IServiceCollection services, WebAssemblyHostBuilder builder)
@@ -55,7 +54,7 @@ public static class Program
             typeof(UsersClientModule),
             typeof(UsersBlazorUIModule)
         );
-        var plugins = await pluginHostBuilder.BuildAsync();
+        var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
         services.AddSingleton(plugins);
 
         var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
@@ -68,7 +67,7 @@ public static class Program
             o.IsLoggingEnabled = true;
             o.IsMessageLoggingEnabled = false;
         });
-        fusionClient.ConfigureHttpClientFactory((c, name, o) => {
+        fusionClient.ConfigureHttpClientFactory((_, name, o) => {
             var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.Ordinal);
             var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
             o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
@@ -78,6 +77,6 @@ public static class Program
         plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
 
         // UriMapper
-        services.AddSingleton(c => new UriMapper(baseUri));
+        services.AddSingleton(_ => new UriMapper(baseUri));
     }
 }

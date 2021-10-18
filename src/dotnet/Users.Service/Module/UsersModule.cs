@@ -97,7 +97,8 @@ public class UsersModule : HostModule<UsersSettings>
                 return true;
             // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(EditUserCommand).Assembly && commandType.Namespace == typeof(EditUserCommand).Namespace)
+            if (commandAssembly == typeof(EditUserCommand).Assembly
+                && string.Equals(commandType.Namespace, typeof(EditUserCommand).Namespace, StringComparison.Ordinal))
                 return true;
             if (commandAssembly == typeof(UserInfo).Assembly)
                 return true;

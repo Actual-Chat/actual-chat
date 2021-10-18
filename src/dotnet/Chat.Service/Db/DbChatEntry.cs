@@ -74,12 +74,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public void UpdateFrom(ChatEntry model)
     {
         if (model.Id == 0)
-            throw new ArgumentOutOfRangeException(
-                string.Format(
-                    NumberFormatInfo.InvariantInfo,
-                    "{0}.{1}",
-                    nameof(model),
-                    nameof(model.Id)));
+            throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
         Id = model.Id;
         ChatId = model.ChatId;
         CompositeId = GetCompositeId(model.ChatId, model.Id);

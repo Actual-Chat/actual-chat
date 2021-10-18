@@ -103,7 +103,7 @@
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.0.63" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Roslynator.Analyzers" Version="3.2.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="1.0.670" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="1.0.672" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
   </ItemGroup>
 
 </Project>

@@ -10,12 +10,12 @@ public class BuiltInChatMediaStorageResolver : IChatMediaStorageResolver
     public Uri GetAudioBlobAddress(ChatEntry audioEntry)
     {
         if (audioEntry.ContentType != ChatContentType.Audio)
-            throw new InvalidOperationException(
-                $"Only Audio chat entries supported, but {nameof(audioEntry)} has Id: {audioEntry.Id}, ContentType: {audioEntry.ContentType} ");
+            throw new InvalidOperationException(Invariant(
+                $"Only Audio chat entries supported, but {nameof(audioEntry)} has Id: {audioEntry.Id}, ContentType: {audioEntry.ContentType} "));
 
         if (audioEntry.Content.IsNullOrEmpty())
-            throw new InvalidOperationException(
-                $"{nameof(audioEntry)} doesn't have BlobId at {nameof(audioEntry.Content)}");
+            throw new InvalidOperationException(Invariant(
+                $"{nameof(audioEntry)} doesn't have BlobId at {nameof(audioEntry.Content)}"));
 
         return _uriMapper.ToAbsolute("/api/audio/download/" + audioEntry.Content);
     }
