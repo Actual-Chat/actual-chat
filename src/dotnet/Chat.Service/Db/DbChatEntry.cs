@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Text.Json;
@@ -8,18 +9,18 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
-[global::Microsoft.EntityFrameworkCore.IndexAttribute(nameof(ChatId), nameof(Id))]
-[global::Microsoft.EntityFrameworkCore.IndexAttribute(
+[IndexAttribute(nameof(ChatId), nameof(Id))]
+[IndexAttribute(
     nameof(ChatId),
     nameof(BeginsAt),
     nameof(EndsAt),
     nameof(ContentType))]
-[global::Microsoft.EntityFrameworkCore.IndexAttribute(
+[IndexAttribute(
     nameof(ChatId),
     nameof(EndsAt),
     nameof(BeginsAt),
     nameof(ContentType))]
-[global::Microsoft.EntityFrameworkCore.IndexAttribute(nameof(ChatId), nameof(Version))]
+[IndexAttribute(nameof(ChatId), nameof(Version))]
 public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
     private DateTime _beginsAt;
@@ -29,9 +30,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
-    [Key]
-    public string CompositeId { get; set; } = "";
+    [Key] public string CompositeId { get; set; } = "";
     public string ChatId { get; set; } = "";
+    public long Id { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
+
     public string AuthorId { get; set; } = "";
 
     public DateTime BeginsAt {
@@ -51,8 +54,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public string? StreamId { get; set; }
 
     public string? TextToTimeMap { get; set; }
-    public long Id { get; set; }
-    [ConcurrencyCheck] public long Version { get; set; }
 
     public static string GetCompositeId(string chatId, long id)
         => ZString.Format("{0}:{1}", chatId, id);

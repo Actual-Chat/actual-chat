@@ -3,5 +3,5 @@ namespace ActualChat.UI.Blazor.Components.Internal;
 
 public interface IVirtualListBackend
 {
-    Task UpdateClientSideState(VirtualListClientSideState clientSideState);
+    Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState);
 }

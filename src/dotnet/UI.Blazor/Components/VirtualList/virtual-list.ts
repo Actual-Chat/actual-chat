@@ -3,7 +3,7 @@ import './virtual-list.css';
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
 const SizeEpsilon: number = 0.1
-const DebugMode: boolean = false
+const DebugMode: boolean = true
 
 export class VirtualList {
     /** ref to div.virtual-list */
@@ -21,6 +21,7 @@ export class VirtualList {
 
     private _updateClientSideStateTimeout: any = null;
     private _updateClientSideStateTask: Promise<unknown> | null = null;
+    private _blazorRenderIndex: number = -1;
 
     public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
         return new VirtualList(elementRef, backendRef);
@@ -64,44 +65,70 @@ export class VirtualList {
     public afterRender(renderState: Required<IRenderState>) {
         if (DebugMode)
             console.log("<- afterRender:", renderState);
-        if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon)
+        if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon) {
+            if (DebugMode)
+                console.log("Scrolling to:", renderState.scrollTop)
             this._elementRef.scrollTop = renderState.scrollTop;
+        }
         this.resetResizeTracking();
         this._renderState = renderState; // At this point this.isFullyRendered() returns true
 
-        this.updateClientSideStateDebounced(renderState.mustMeasure);
+        if (renderState.renderIndex < this._blazorRenderIndex) {
+            if (DebugMode)
+                console.log("afterRender skips updateClientSideStateDebounced:",
+                    renderState.renderIndex, "<", this._blazorRenderIndex);
+            return; // such an update will be ignored anyway
+        }
+        let immediately = renderState.mustMeasure || this._blazorRenderIndex == renderState.renderIndex
+        this.updateClientSideStateDebounced(immediately);
     }
 
     protected updateClientSideStateDebounced(immediately: boolean = false)
     {
+        if (DebugMode)
+            console.log("updateClientSideStateDebounced", immediately ? "immediately": "");
         if (immediately) {
             if (this._updateClientSideStateTimeout != null) {
                 clearTimeout(this._updateClientSideStateTimeout);
                 this._updateClientSideStateTimeout = null;
             }
-            let _ = this.updateClientSideStateAsync();
+            let _ = this.updateClientSideState();
         } else {
             if (this._updateClientSideStateTimeout != null)
                 return;
             this._updateClientSideStateTimeout =
                 setTimeout(() => {
                     this._updateClientSideStateTimeout = null;
-                    let _ = this.updateClientSideStateAsync();
+                    let _ = this.updateClientSideState();
                 }, UpdateClientSideStateTimeout)
         }
     }
 
-    /** sends the state to UpdateClientSideState dotnet part */
-    protected async updateClientSideStateAsync() {
-        if (this._updateClientSideStateTask != null) {
-            // this call should run in the same order / non-concurrently
-            await this._updateClientSideStateTask.then(v => v, _ => null);
-            this._updateClientSideStateTask = null;
-        }
-        if (!this.isFullyRendered())
+    protected updateClientSideState() {
+        let prevTask = this._updateClientSideStateTask;
+        let nextTask = (async () => {
+            if (prevTask != null)
+                await prevTask.then(v => v, _ => null);
+            await this.updateClientSideStateImpl();
+        })();
+        this._updateClientSideStateTask = nextTask;
+        return nextTask;
+    }
+
+    protected async updateClientSideStateImpl() {
+        if (!this.isFullyRendered()) {
+            if (DebugMode)
+                console.log('[x] updateClientSideStateImpl (not fully rendered)');
             return; // Rendering is in progress, so the update will follow up anyway
+        }
 
         let rs = this._renderState;
+        if (rs.renderIndex <= this._blazorRenderIndex) {
+            if (DebugMode)
+                console.log('[x] updateClientSideStateImpl', rs.renderIndex, "<", this._blazorRenderIndex);
+            return; // This update was already pushed
+        }
+
         let state: Required<IClientSideState> = {
             renderIndex: rs.renderIndex,
 
@@ -126,7 +153,7 @@ export class VirtualList {
                 gotNewlyMeasuredItems = true;
             }
             if (DebugMode)
-                console.log("Measured items:", state.itemSizes)
+                console.log("updateClientSideStateImpl: measured items:", state.itemSizes)
         }
 
         let gotResizedItems = false;
@@ -149,25 +176,33 @@ export class VirtualList {
         let wasAtBottom = Math.abs(rs.scrollTop + rs.clientHeight - rs.scrollHeight) <= SizeEpsilon;
         let isAtBottom = Math.abs(state.scrollTop + state.clientHeight - state.scrollHeight) <= SizeEpsilon;
         state.isUserScrollDetected =
-            state.isBodyResized
+            rs.renderIndex <= 1
+            || state.isBodyResized
             || isScrollTopChanged && !(wasAtBottom && isAtBottom);
         if (DebugMode)
-            console.log("Detected:",
-                state.isUserScrollDetected ? "user scroll" : "",
-                isScrollTopChanged ? "scrollTop changed" : "",
-                wasAtBottom ? "was at bottom" : "",
-                isAtBottom ? "is at bottom" : "");
+            console.log("updateClientSideStateImpl: detected:",
+                state.isUserScrollDetected ? "user scroll," : "",
+                isScrollTopChanged ? "scrollTop changed," : "",
+                wasAtBottom ? "was at bottom," : "",
+                isAtBottom ? "is at bottom," : "");
 
         let mustUpdateClientSideState =
-            state.isViewportChanged
+            rs.renderIndex == this._blazorRenderIndex
+            || state.isViewportChanged
             || Object.keys(state.itemSizes).length > 0
             || (rs.notifyWhenSafeToScroll && state.isSafeToScroll);
-        if (!mustUpdateClientSideState)
+        if (!mustUpdateClientSideState) {
+            if (DebugMode)
+                console.log('[x] updateClientSideStateImpl: no reason to update');
             return;
+
+        }
 
         if (DebugMode)
             console.log("-> UpdateClientSideState:", state)
-        this._updateClientSideStateTask = this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
+        let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state)
+        if (result > this._blazorRenderIndex)
+            this._blazorRenderIndex = result;
     }
 
     /** setups resize notifications */
@@ -193,9 +228,8 @@ export class VirtualList {
             setTimeout(() => {
                 this._onScrollStoppedTimeout = null;
                 this._isSafeToScroll = true;
-                if (!this._renderState.notifyWhenSafeToScroll)
-                    return
-                this.updateClientSideStateDebounced();
+                if (this._renderState.notifyWhenSafeToScroll)
+                    this.updateClientSideStateDebounced(true);
             }, ScrollStoppedTimeout);
 
         this.updateClientSideStateDebounced();
