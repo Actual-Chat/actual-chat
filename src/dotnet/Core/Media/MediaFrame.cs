@@ -6,7 +6,7 @@ public abstract class MediaFrame
     [DataMember(Order = 0)]
     public TimeSpan Offset { get; init; }
     [DataMember(Order = 1)]
-    public byte[] Data { get; init; }
+    public byte[] Data { get; init; } = Array.Empty<byte>();
 
     public abstract bool IsKeyFrame { get; }
 }

@@ -4,7 +4,7 @@ using Microsoft.Playwright;
 
 namespace ActualChat.Testing.Host
 {
-    public class PlaywrightTester : IWebTester
+    public sealed class PlaywrightTester : IWebTester
     {
         private IPlaywright? _playwright;
         private IBrowser? _browser;
@@ -23,7 +23,10 @@ namespace ActualChat.Testing.Host
         }
 
         public void Dispose()
-            => _playwright?.Dispose();
+        {
+            _playwright?.Dispose();
+            GC.SuppressFinalize(this);
+        }
 
         public async ValueTask<IPlaywright> GetPlaywright()
             => _playwright ??= await Playwright.CreateAsync();

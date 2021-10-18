@@ -30,6 +30,7 @@ public readonly struct Range<T> : IEquatable<Range<T>>
     public override string ToString()
         => SystemJsonSerializer.Default.Write(this, GetType());
 
+#pragma warning disable CA1000, MA0018 // Do not declare static members on generic types
     public static Range<T> Parse(string value)
         => SystemJsonSerializer.Default.Reader.Read<Range<T>>(value);
 

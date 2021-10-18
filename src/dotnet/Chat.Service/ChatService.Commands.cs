@@ -13,10 +13,10 @@ public partial class ChatService
         if (Computed.IsInvalidating())
             return null!; // Nothing to invalidate
 
-        var user = await Auth.GetUser(session, cancellationToken);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         user.MustBeAuthenticated();
 
-        await using var dbContext = await CreateCommandDbContext(cancellationToken);
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
         var id = (ChatId)Ulid.NewUlid().ToString();
         var dbChat = new DbChat() {
@@ -29,7 +29,7 @@ public partial class ChatService
             Owners = new List<DbChatOwner> { new() { ChatId = id, UserId = user.Id } },
         };
         dbContext.Add(dbChat);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
@@ -49,11 +49,11 @@ public partial class ChatService
             return null!;
         }
 
-        var user = await Auth.GetUser(session, cancellationToken);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         user.MustBeAuthenticated();
-        await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken);
+        await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
-        var dbContext = await CreateCommandDbContext(cancellationToken);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
         var chatEntry = new ChatEntry(chatId, 0) {
             AuthorId = (string)user.Id,
@@ -62,7 +62,7 @@ public partial class ChatService
             Content = text,
             ContentType = ChatContentType.Text,
         };
-        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
         context.Operation().Items.Set(chatEntry);
         return chatEntry;
@@ -81,10 +81,11 @@ public partial class ChatService
             return null!;
         }
 
-        await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
+        await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken)
+            .ConfigureAwait(false);
 
-        await using var dbContext = await CreateCommandDbContext(cancellationToken);
-        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
         context.Operation().Items.Set(chatEntry);
         return chatEntry;
@@ -103,10 +104,11 @@ public partial class ChatService
             return null!;
         }
 
-        await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken);
+        await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken)
+            .ConfigureAwait(false);
 
-        await using var dbContext = await CreateCommandDbContext(cancellationToken);
-        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken);
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
         context.Operation().Items.Set(chatEntry);
         return chatEntry;

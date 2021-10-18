@@ -33,7 +33,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         var context = CommandContext.GetCurrent();
 
         // Invoke command handler(s) with lower priority
-        await context.InvokeRemainingHandlers(cancellationToken);
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
             var invUserInfo = context.Operation().Items.TryGet<UserInfo>();
@@ -43,21 +43,21 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         }
 
         // Let's try to fix auto-generated user name here
-        await using var dbContext = await CreateCommandDbContext(cancellationToken);
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         var userId = sessionInfo.UserId;
-        var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken);
+        var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
-        var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken);
-        if (newName != dbUser.Name) {
+        var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(newName, dbUser.Name, StringComparison.Ordinal)) {
             dbUser.Name = newName;
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
         var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
         context.Operation().Items.Set(userInfo);
 
-        await MarkOnline(userId, cancellationToken);
+        await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
     }
 
     // Validates user name on edit
@@ -66,7 +66,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            await context.InvokeRemainingHandlers(cancellationToken);
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             if (command.Name != null)
                 _ = UserInfos.TryGetByName(command.Name, default);
             return;
@@ -76,19 +76,20 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             if (error != null)
                 throw error;
 
-            var user = await Auth.GetUser(command.Session, cancellationToken);
+            var user = await Auth.GetUser(command.Session, cancellationToken).ConfigureAwait(false);
             user = user.MustBeAuthenticated();
             var userId = user.Id;
 
             await using var dbContext = CreateDbContext();
             var isNameUsed = await dbContext.Users.AsQueryable()
-                .AnyAsync(u => u.Name == command.Name && u.Id != userId, cancellationToken);
+                .AnyAsync(u => u.Name == command.Name && u.Id != userId, cancellationToken)
+                .ConfigureAwait(false);
             if (isNameUsed)
                 throw new InvalidOperationException("This name is already used by someone else.");
         }
 
         // Invoke command handler(s) with lower priority
-        await context.InvokeRemainingHandlers(cancellationToken);
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
     }
 
     // Updates online presence state
@@ -97,15 +98,14 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         SetupSessionCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken);
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>();
         if (sessionInfo?.IsAuthenticated != true)
             return;
         var userId = sessionInfo.UserId;
-        await MarkOnline(userId, cancellationToken);
+        await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
     }
-
 
     // Private methods
 
@@ -113,7 +113,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
         if (Computed.IsInvalidating()) {
             var c = Computed.TryGetExisting(() => UserStates.IsOnline(userId, default));
-            if (c == null || !c.IsConsistent())
+            if (c?.IsConsistent() != true)
                 return;
             if (c.IsValue(out var v) && v)
                 return;
@@ -124,15 +124,15 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             return;
         }
 
-        await using var dbContext = await CreateCommandDbContext(cancellationToken);
-        var userState = await dbContext.UserStates.FindAsync(ComposeKey(userId));
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var userState = await dbContext.UserStates.FindAsync(ComposeKey(userId), cancellationToken).ConfigureAwait(false);
         if (userState == null) {
             userState = new DbUserState() { UserId = userId };
             dbContext.Add(userState);
         }
 
         userState.OnlineCheckInAt = Clocks.SystemClock.Now;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<string> NormalizeName(
@@ -163,13 +163,15 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         // Iterating through these tail numbers to get the unique user name
         var namePrefix = name.Substring(0, numberStartIndex);
         var nameSuffix = name.Substring(numberStartIndex);
-        var nextNumber = long.TryParse(nameSuffix, out var number) ? number + 1 : 1;
+        var nextNumber = long.TryParse(nameSuffix, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number) ? number + 1 : 1;
         while (true) {
             var isNameUsed = await dbContext.Users.AsQueryable()
-                .AnyAsync(u => u.Name == name && u.Id != userId, cancellationToken);
+                .AnyAsync(u => u.Name == name && u.Id != userId, cancellationToken)
+                .ConfigureAwait(false);
             if (!isNameUsed)
                 break;
-            name = namePrefix + nextNumber++;
+            name = namePrefix + nextNumber.ToString(CultureInfo.InvariantCulture);
+            ++nextNumber;
         }
         return name;
     }

@@ -16,8 +16,8 @@ public class AudioIndexService
         try {
             foreach (var audioEntry in audioEntries) {
                 if (audioEntry.ContentType != ChatContentType.Audio)
-                    throw new InvalidOperationException(
-                        $"Only Audio chat entries supported, but {nameof(audioEntries)} contains Id: {audioEntry.Id}, ContentType: {audioEntry.ContentType} ");
+                    throw new InvalidOperationException(Invariant(
+                        $"Only Audio chat entries supported, but {nameof(audioEntries)} contains Id: {audioEntry.Id}, ContentType: {audioEntry.ContentType}"));
 
                 var entryStart = audioEntry.BeginsAt.EpochOffsetTicks;
                 var binarySearchIndex = _index.BinarySearch(entryStart);
