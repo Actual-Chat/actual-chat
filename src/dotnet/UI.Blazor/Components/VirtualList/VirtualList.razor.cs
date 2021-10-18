@@ -23,7 +23,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     /// The main state of the virtual list. Contains an information to correct render the component. <br />
     /// The js side updates this context.
     /// </summary>
-    protected int LastAfterRenderRenderIndex { get; set; } = -1;
+    protected internal long NextRenderIndex { get; set; }
+    protected long LastAfterRenderRenderIndex { get; set; } = -1;
     protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
     protected VirtualListRenderPlan<TItem> Plan { get; set; } = null!;
     protected VirtualListDataQuery? LastQuery { get; set; }
@@ -82,6 +83,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         if (plan.RenderIndex == LastAfterRenderRenderIndex)
             return; // Nothing new is rendered
 
+        LastAfterRenderRenderIndex = plan.RenderIndex;
         var renderState = new VirtualListRenderState() {
             RenderIndex = plan.RenderIndex,
 
@@ -100,13 +102,13 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     }
 
     [JSInvokable]
-    public async Task UpdateClientSideState(VirtualListClientSideState clientSideState)
+    public async Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
     {
         var lastPlan = LastPlan;
         if (lastPlan == null! || clientSideState.RenderIndex != lastPlan.RenderIndex) {
-            // Log.LogInformation("Dropping outdated update: {RenderIndex} < {ExpectedRenderIndex}",
-            //     clientSideState.RenderIndex, lastPlan?.RenderIndex);
-            return;
+            Log.LogInformation("Dropping outdated update: {RenderIndex} < {ExpectedRenderIndex}",
+                clientSideState.RenderIndex, lastPlan?.RenderIndex);
+            return lastPlan?.RenderIndex ?? -1;
         }
 
         // await Task.Delay(1000); // Debug only!
@@ -119,17 +121,19 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             || lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll;
         var mustUpdateData = clientSideState.IsViewportChanged || !lastPlan.IsFullyLoaded(viewport);
         if (!(mustRender || mustUpdateData)) {
-            // Log.LogInformation("UpdateClientSideState: no render or update needed");
-            return;
+            Log.LogInformation("UpdateClientSideState: no render or update needed");
+            return lastPlan.RenderIndex;
         }
 
-        // Log.LogInformation("UpdateClientSideState: mustRender = {MustRender}, mustUpdateData = {MustUpdateData}",
-        //     mustRender, mustUpdateData);
+        Log.LogInformation(
+            "UpdateClientSideState: mustRender = {MustRender}, mustUpdateData = {MustUpdateData}",
+            mustRender, mustUpdateData);
         Plan = lastPlan.Next();
         if (mustRender)
             _ = this.StateHasChangedAsync();
         if (mustUpdateData)
             UpdateData();
+        return lastPlan.RenderIndex;
     }
 
     protected void UpdateData()

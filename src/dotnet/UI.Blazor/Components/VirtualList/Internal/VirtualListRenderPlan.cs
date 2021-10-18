@@ -58,7 +58,7 @@ public class VirtualListRenderPlan<TItem>
     public VirtualListRenderPlan(VirtualList<TItem> virtualList)
     {
         VirtualList = virtualList;
-        RenderIndex = 0;
+        RenderIndex = VirtualList.NextRenderIndex++;
         Data = VirtualList.Data;
 
         SpacerSize = VirtualList.SpacerSize;
@@ -70,7 +70,7 @@ public class VirtualListRenderPlan<TItem>
     {
         try {
             var plan = (VirtualListRenderPlan<TItem>) MemberwiseClone();
-            plan.RenderIndex = RenderIndex + 1;
+            plan.RenderIndex = VirtualList.NextRenderIndex++;
             plan.Data = VirtualList.Data;
             plan.ClientSideState = VirtualList.ClientSideState;
 
