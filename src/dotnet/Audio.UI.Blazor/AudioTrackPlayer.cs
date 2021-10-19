@@ -25,7 +25,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         _js = js;
     }
 
-    protected override async ValueTask OnPlayStart()
+    protected override async ValueTask OnPlayStart(TimeSpan offset)
     {
         if (_jsRef == null)
             await CircuitInvoke(async () => {
@@ -38,7 +38,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
         var header = Convert.FromBase64String(AudioSource.Format.CodecSettings);
         await CircuitInvoke(async () => {
-                await _jsRef!.InvokeVoidAsync("initialize", header);
+                await _jsRef!.InvokeVoidAsync("initialize", header, offset.TotalSeconds);
             })
             .ConfigureAwait(false);
     }
@@ -61,7 +61,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
         await CircuitInvoke(async () => {
                 if (stopImmediately)
-                    await _jsRef.InvokeVoidAsync("stop", cancellationToken, "network");
+                    await _jsRef.InvokeVoidAsync("stop", CancellationToken.None, "network");
                 else
                     await _jsRef.InvokeVoidAsync("endOfStream", cancellationToken);
                 await _jsRef.DisposeAsync();
