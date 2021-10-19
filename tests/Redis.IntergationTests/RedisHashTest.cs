@@ -2,7 +2,7 @@
 
 public class RedisHashTest : RedisTestBase
 {
-    public RedisHashTest(ITestOutputHelper @out) : base(@out) { }
+    public RedisHashTest(TestSettings testSettings) : base(testSettings) { }
 
     [Fact]
     public async Task BasicTest()
