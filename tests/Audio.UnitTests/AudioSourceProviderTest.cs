@@ -17,12 +17,16 @@ public class AudioSourceProviderTest
         var audioSource = await audioSourceTask;
 
         var offset = TimeSpan.Zero;
-        await foreach (var audioFrame in audioSource)
+        await foreach (var audioFrame in audioSource) {
+            audioFrame.Data.Should().NotBeNull();
+            audioFrame.Data.Should().NotBeEmpty();
+            audioFrame.Offset.Should().BeGreaterOrEqualTo(offset);
             offset = audioFrame.Offset > offset
                 ? audioFrame.Offset
                 : offset;
+        }
 
-        offset.Should().Be(TimeSpan.FromMilliseconds(12120));
+        offset.Should().Be(TimeSpan.FromMilliseconds(12240));
     }
 
 

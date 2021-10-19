@@ -2,11 +2,22 @@ using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Transcription;
 using Microsoft.Extensions.Hosting;
+
 namespace ActualChat.Audio;
 
 public class SourceAudioProcessor : BackgroundService
 {
     private readonly ILogger<SourceAudioProcessor> _log;
+
+    public static bool SkipAutoStart { get; set; } = true;
+    public ITranscriber Transcriber { get; }
+    public AudioSegmentSaver AudioSegmentSaver { get; }
+    public SourceAudioRecorder SourceAudioRecorder { get; }
+    public AudioActivityExtractor AudioActivityExtractor { get; }
+    public AudioSourceStreamer AudioSourceStreamer { get; }
+    public TranscriptStreamer TranscriptStreamer { get; }
+    public IServerSideChatService Chat { get; }
+    public MomentClockSet ClockSet { get; }
 
     public SourceAudioProcessor(
         ITranscriber transcriber,
@@ -30,17 +41,6 @@ public class SourceAudioProcessor : BackgroundService
         ClockSet = clockSet;
     }
 
-    public static bool SkipAutoStart { get; set; } = true;
-    public ITranscriber Transcriber { get; }
-    public AudioSegmentSaver AudioSegmentSaver { get; }
-    public SourceAudioRecorder SourceAudioRecorder { get; }
-    public AudioActivityExtractor AudioActivityExtractor { get; }
-    public AudioSourceStreamer AudioSourceStreamer { get; }
-    public TranscriptStreamer TranscriptStreamer { get; }
-    public IServerSideChatService Chat { get; }
-
-    public MomentClockSet ClockSet { get; }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (SkipAutoStart)
@@ -59,9 +59,10 @@ public class SourceAudioProcessor : BackgroundService
         var segments = AudioActivityExtractor.SplitToAudioSegments(audioRecord, audioStream, cancellationToken);
         while (await segments.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
         while (segments.TryRead(out var segment)) {
+            var beginsAt = ClockSet.CpuClock.UtcNow;
             var audioTask = PublishAudioStream(segment, cancellationToken);
-            var textChatEntryTask = PublishTextChatEntry(segment, cancellationToken);
-            var audioChatEntryTask = PublishAudioChatEntry(segment, cancellationToken);
+            var textChatEntryTask = PublishTextChatEntry(segment, beginsAt, cancellationToken);
+            var audioChatEntryTask = PublishAudioChatEntry(segment, beginsAt, cancellationToken);
             var transcriptTask = PublishTranscriptStream(segment, cancellationToken);
             var blobIdTask = Persist(segment, cancellationToken);
             await Task.WhenAll(audioTask, textChatEntryTask, audioChatEntryTask).ConfigureAwait(false);
@@ -138,6 +139,7 @@ public class SourceAudioProcessor : BackgroundService
 
     private async Task<ChatEntry> PublishTextChatEntry(
         OpenAudioSegment openAudioSegment,
+        Moment beginsAt,
         CancellationToken cancellationToken)
     {
         var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
@@ -145,7 +147,7 @@ public class SourceAudioProcessor : BackgroundService
             Content = "...",
             ContentType = ChatContentType.Text,
             StreamId = openAudioSegment.StreamId,
-            BeginsAt = ClockSet.CpuClock.UtcNow,
+            BeginsAt = beginsAt,
         };
         return await Chat.CreateEntry(new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken)
             .ConfigureAwait(false);
@@ -153,6 +155,7 @@ public class SourceAudioProcessor : BackgroundService
 
     private async Task<ChatEntry> PublishAudioChatEntry(
         OpenAudioSegment openAudioSegment,
+        Moment beginsAt,
         CancellationToken cancellationToken)
     {
         var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
@@ -160,7 +163,7 @@ public class SourceAudioProcessor : BackgroundService
             Content = "",
             ContentType = ChatContentType.Audio,
             StreamId = openAudioSegment.StreamId,
-            BeginsAt = ClockSet.CpuClock.UtcNow,
+            BeginsAt = beginsAt,
         };
         return await Chat.CreateEntry(new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken)
             .ConfigureAwait(false);
