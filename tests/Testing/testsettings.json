@@ -8,12 +8,11 @@
     "GitHubClientSecret": "OGNkMTAzM2JmZjljOTk3ODc5MjhjNTNmMmE3Y2Q1NWU0ZmNlNjU0OA=="
   },
   "AudioSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
-    "Redis": "localhost",
+    "Db": "Server=localhost;Database=ac_tests_audio;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
     "UseMessagePackWithSignalR": false
   },
   "ChatSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "Db": "Server=localhost;Database=ac_tests_chat;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
     "DefaultChatId": ""
   },
   "Logging": {
