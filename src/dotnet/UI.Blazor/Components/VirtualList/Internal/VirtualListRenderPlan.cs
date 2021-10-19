@@ -166,10 +166,7 @@ public class VirtualListRenderPlan<TItem>
 
     protected void UpdateScrollRelated(VirtualListRenderPlan<TItem>? lastPlan)
     {
-        var displayedRange = DisplayedRange;
-        var viewportSize = Viewport.Size();
-
-        if (ClientSideState?.IsUserScrollDetected ?? true && lastPlan != null) {
+        if (lastPlan != null && (ClientSideState?.IsUserScrollDetected ?? true)) {
             if (Data.HasVeryFirstItem && IsViewportAtStart())
                 TrackingEdge = VirtualListEdge.Start;
             else if (Data.HasVeryLastItem && IsViewportAtEnd())
