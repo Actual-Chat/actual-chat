@@ -2,6 +2,7 @@
 using ActualChat.Audio.Client;
 using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
+using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis;
 using ActualChat.Transcription;
@@ -37,26 +38,12 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // DB-related
+        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        dbModule.AddDefaultDbServices<AudioDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, AudioDbInitializer>();
 
         var fusion = services.AddFusion();
-        services.AddDbContextFactory<AudioDbContext>(builder => {
-            builder.UseNpgsql(Settings.Db);
-            if (IsDevelopmentInstance)
-                builder.EnableSensitiveDataLogging();
-        });
-        services.AddDbContextServices<AudioDbContext>(dbContext => {
-            services.AddSingleton(new CompletionProducer.Options {
-                IsLoggingEnabled = true,
-            });
-            services.AddTransient(c => new DbOperationScope<AudioDbContext>(c) {
-                IsolationLevel = IsolationLevel.RepeatableRead,
-            });
-            dbContext.AddOperations((_, o) => {
-                o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
-            });
-            dbContext.AddNpgsqlOperationLogChangeTracking();
-        });
         services.AddCommander()
             .AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
