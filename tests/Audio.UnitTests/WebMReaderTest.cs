@@ -53,6 +53,29 @@ public class WebMReaderTest : TestBase
         entries[0].Should().BeOfType<EBML>();
     }
 
+    [Fact(Skip = "Not yet fixed")]
+    public async Task ReadRemuxedWebMTest()
+    {
+        await using var inputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, "data", "0001.webm"),
+            FileMode.Open,
+            FileAccess.Read);
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(50 * 1024);
+        var buffer = bufferLease.Memory;
+        var bytesRead = await inputStream.ReadAsync(buffer);
+        while (bytesRead < 50 * 1024)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
+        bytesRead.Should().BeGreaterOrEqualTo(50 * 1024);
+
+        var entries = Parse(buffer.Span[..bytesRead]).ToList();
+        entries.Should().HaveCount(4);
+        entries.Should().NotContainNulls();
+        entries[0].Should().BeOfType<EBML>();
+        entries[1].Should().BeOfType<Segment>();
+        entries[2].Should().BeOfType<Cluster>();
+        entries[3].Should().BeOfType<SimpleBlock>();
+    }
+
 
     [Fact]
     public async Task SequentialBlockReaderTest()

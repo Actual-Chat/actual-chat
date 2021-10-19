@@ -20,150 +20,145 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * */
 
-using System;
-using System.Runtime.CompilerServices;
+namespace ActualChat.Audio.WebM;
 
-namespace ActualChat.Audio.WebM
+/// <summary>
+///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
+/// </summary>
+[StructLayout(LayoutKind.Auto)]
+public readonly struct VInt : IEquatable<VInt>
 {
-    /// <summary>
-    ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
-    /// </summary>
-    [StructLayout(LayoutKind.Auto)]
-    public readonly struct VInt : IEquatable<VInt>
+    private const ulong MaxValue = (1L << 56) - 1;
+    private const ulong UnknownSizeValue = MaxValue | (1ul << 56);
+    private const ulong MaxSizeValue = MaxValue - 1;
+    private const ulong MaxElementIdValue = (1 << 28) - 1;
+
+    private static readonly sbyte[] ExtraBytesSize =
+        { 4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+    private static readonly ulong[] DataBitsMask = {
+        (1L << 0) - 1,
+        (1L << 7) - 1,
+        (1L << 14) - 1,
+        (1L << 21) - 1,
+        (1L << 28) - 1,
+        (1L << 35) - 1,
+        (1L << 42) - 1,
+        (1L << 49) - 1,
+        (1L << 56) - 1,
+    };
+
+    private readonly byte _length;
+
+
+    private VInt(ulong encodedValue, int length)
     {
-        private const ulong MaxValue = (1L << 56) - 1;
-        private const ulong UnknownSizeValue = MaxValue | (1ul << 56);
-        private const ulong MaxSizeValue = MaxValue - 1;
-        private const ulong MaxElementIdValue = (1 << 28) - 1;
+        if (length < 1 || (length > 8 && encodedValue != UnknownSizeValue))
+            throw new ArgumentOutOfRangeException(nameof(length));
 
-        private static readonly sbyte[] ExtraBytesSize =
-            { 4, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-        private static readonly ulong[] DataBitsMask = {
-            (1L << 0) - 1,
-            (1L << 7) - 1,
-            (1L << 14) - 1,
-            (1L << 21) - 1,
-            (1L << 28) - 1,
-            (1L << 35) - 1,
-            (1L << 42) - 1,
-            (1L << 49) - 1,
-            (1L << 56) - 1
-        };
-
-        private readonly byte _length;
-
-
-
-        private VInt(ulong encodedValue, int length)
-        {
-            if (length < 1 || (length > 8 && encodedValue != UnknownSizeValue))
-                throw new ArgumentOutOfRangeException(nameof(length));
-
-            EncodedValue = encodedValue;
-            _length = (byte)length;
-        }
-
-        public ulong EncodedValue { get; }
-
-        public ulong Value => EncodedValue & DataBitsMask[_length];
-
-        public bool IsReserved => Value == DataBitsMask[_length];
-
-        public bool IsValidIdentifier {
-            get {
-                var isShortest = _length == 1 || Value > DataBitsMask[_length - 1];
-                return isShortest && !IsReserved;
-            }
-        }
-        public uint Length => _length;
-
-        public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
-
-        public static readonly VInt Unknown = UnknownSize(2);
-
-        public static VInt EncodeSize(ulong value, int length = 0)
-        {
-            if (length < 0 || length > 8)
-                throw new ArgumentOutOfRangeException(nameof(length));
-
-            if (value == MaxValue)
-                return new VInt(UnknownSizeValue, 8);
-
-            if (value == UnknownSizeValue)
-                return new VInt(value, 8);
-
-            if (value > MaxSizeValue)
-                throw new ArgumentException("Value exceed VInt capacity", nameof(value));
-
-            var marker = 1UL << (7 * length);
-
-            if (length == 0) {
-                while (DataBitsMask[++length] <= value) { }
-                marker = 1UL << (7 * length);
-            }
-
-            if (length > 0 && (DataBitsMask[length] | marker) <= value)
-                throw new ArgumentException("Specified width is not sufficient to encode value", nameof(value));
-
-            return new VInt(value | marker, length);
-        }
-
-        public static VInt UnknownSize(int length)
-        {
-            if (length < 0 || length > 8)
-                throw new ArgumentOutOfRangeException(nameof(length));
-
-            var sizeMarker = 1UL << (7 * length);
-            var dataBits = (1UL << (7 * length)) - 1;
-            return new VInt(sizeMarker | dataBits, length);
-        }
-
-        public static VInt FromEncoded(ulong encodedValue)
-        {
-            if (encodedValue == 0)
-                throw new ArgumentException("Zero is not a correct value", nameof(encodedValue));
-
-            var mostSignificantOctetIndex = 7;
-            while (encodedValue >> (mostSignificantOctetIndex * 8) == 0x0) mostSignificantOctetIndex--;
-
-            var marker = (byte)((encodedValue >> (mostSignificantOctetIndex * 8)) & 0xff);
-            var extraBytes = marker >> 4 > 0 ? ExtraBytesSize[marker >> 4] : 4 + ExtraBytesSize[marker];
-
-            if (extraBytes != mostSignificantOctetIndex)
-                throw new ArgumentException("Width marker does not match its position", nameof(encodedValue));
-
-            return new VInt(encodedValue, extraBytes + 1);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static VInt FromValue(ulong value)
-        {
-            return new VInt(value, (int)EbmlHelper.GetSize(value));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static VInt FromValue(long value)
-        {
-            var size = (int)EbmlHelper.GetSize(value);
-            return value > 0 ? new VInt((ulong)value, size) : new VInt((ulong)-value | (1UL << ((8*size) - 1)) , size);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked {
-                return (EncodedValue.GetHashCode() * 397) ^ _length.GetHashCode();
-            }
-        }
-
-        public bool Equals(VInt other) => other.EncodedValue == EncodedValue && other._length == _length;
-
-        public override bool Equals(object? obj)
-        {
-            if (ReferenceEquals(null, obj)) return false;
-            return obj is VInt i && Equals(i);
-        }
-
-        public override string ToString() => $"VInt({EncodedValue:X})";
+        EncodedValue = encodedValue;
+        _length = (byte)length;
     }
+
+    public ulong EncodedValue { get; }
+
+    public ulong Value => EncodedValue & DataBitsMask[_length];
+
+    public bool IsReserved => Value == DataBitsMask[_length];
+
+    public bool IsValidIdentifier {
+        get {
+            var isShortest = _length == 1 || Value > DataBitsMask[_length - 1];
+            return isShortest && !IsReserved;
+        }
+    }
+
+    public uint Length => _length;
+
+    public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
+
+    public static readonly VInt Unknown = UnknownSize(2);
+
+    public static VInt EncodeSize(ulong value, int length = 0)
+    {
+        if (length < 0 || length > 8)
+            throw new ArgumentOutOfRangeException(nameof(length));
+
+        if (value == MaxValue)
+            return new VInt(UnknownSizeValue, 8);
+
+        if (value == UnknownSizeValue)
+            return new VInt(value, 8);
+
+        var marker = 1UL << (7 * length);
+
+        if ((value & (marker - 1)) > MaxSizeValue)
+            throw new ArgumentException("Value exceed VInt capacity", nameof(value));
+
+        if (length == 0) {
+            while (DataBitsMask[++length] <= value) { }
+            marker = 1UL << (7 * length);
+        }
+
+        if (length > 0 && (DataBitsMask[length] | marker) <= value)
+            throw new ArgumentException("Specified width is not sufficient to encode value", nameof(value));
+
+        return new VInt(value | marker, length);
+    }
+
+    public static VInt UnknownSize(int length)
+    {
+        if (length < 0 || length > 8)
+            throw new ArgumentOutOfRangeException(nameof(length));
+
+        var sizeMarker = 1UL << (7 * length);
+        var dataBits = (1UL << (7 * length)) - 1;
+        return new VInt(sizeMarker | dataBits, length);
+    }
+
+    public static VInt FromEncoded(ulong encodedValue)
+    {
+        if (encodedValue == 0)
+            throw new ArgumentException("Zero is not a correct value", nameof(encodedValue));
+
+        var mostSignificantOctetIndex = 7;
+        while (encodedValue >> (mostSignificantOctetIndex * 8) == 0x0) mostSignificantOctetIndex--;
+
+        var marker = (byte)((encodedValue >> (mostSignificantOctetIndex * 8)) & 0xff);
+        var extraBytes = marker >> 4 > 0 ? ExtraBytesSize[marker >> 4] : 4 + ExtraBytesSize[marker];
+
+        if (extraBytes != mostSignificantOctetIndex)
+            throw new ArgumentException("Width marker does not match its position", nameof(encodedValue));
+
+        return new VInt(encodedValue, extraBytes + 1);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static VInt FromValue(ulong value)
+        => new VInt(value, (int)EbmlHelper.GetSize(value));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static VInt FromValue(long value)
+    {
+        var size = (int)EbmlHelper.GetSize(value);
+        return value > 0 ? new VInt((ulong)value, size) : new VInt((ulong)-value | (1UL << ((8 * size) - 1)), size);
+    }
+
+    public override int GetHashCode()
+    {
+        unchecked {
+            return (EncodedValue.GetHashCode() * 397) ^ _length.GetHashCode();
+        }
+    }
+
+    public bool Equals(VInt other) => other.EncodedValue == EncodedValue && other._length == _length;
+
+    public override bool Equals(object? obj)
+    {
+        if (ReferenceEquals(null, obj)) return false;
+
+        return obj is VInt i && Equals(i);
+    }
+
+    public override string ToString() => $"VInt({EncodedValue:X})";
 }
