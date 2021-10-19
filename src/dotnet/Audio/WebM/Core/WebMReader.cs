@@ -159,72 +159,77 @@ public ref struct WebMReader
                     return false;
                 }
             }
-            else if (CurrentDescriptor.ListEntry) {
-                if (container is Cluster cluster)
-                    if (cluster.BlockGroups == null
-                        && cluster.SimpleBlocks == null
-                        && cluster.EncryptedBlocks == null) {
-                        switch (_element.Descriptor.Identifier.EncodedValue) {
-                            case MatroskaSpecification.SimpleBlock:
-                                cluster.SimpleBlocks = new List<SimpleBlock>();
-                                break;
-                            case MatroskaSpecification.BlockGroup:
-                                cluster.BlockGroups = new List<BlockGroup>();
-                                break;
-                            case MatroskaSpecification.EncryptedBlock:
-                                cluster.EncryptedBlocks = new List<EncryptedBlock>();
-                                break;
+            else {
+                if (CurrentDescriptor.ListEntry) {
+                    if (container is Cluster cluster)
+                        if (cluster.BlockGroups == null
+                            && cluster.SimpleBlocks == null
+                            && cluster.EncryptedBlocks == null) {
+                            switch (_element.Descriptor.Identifier.EncodedValue) {
+                                case MatroskaSpecification.SimpleBlock:
+                                    cluster.SimpleBlocks = new List<SimpleBlock>();
+                                    break;
+                                case MatroskaSpecification.BlockGroup:
+                                    cluster.BlockGroups = new List<BlockGroup>();
+                                    break;
+                                case MatroskaSpecification.EncryptedBlock:
+                                    cluster.EncryptedBlocks = new List<EncryptedBlock>();
+                                    break;
+                            }
+
+                            _entry = container;
+                            _element = _container;
+                            _spanReader.Position = beginPosition;
+                            ReadResultKind = WebMReadResultKind.BeginCluster;
+                            _resume = true;
+                            return true;
                         }
 
-                        _entry = container;
-                        _element = _container;
-                        _spanReader.Position = beginPosition;
-                        ReadResultKind = WebMReadResultKind.BeginCluster;
-                        _resume = true;
-                        return true;
+                    switch (CurrentDescriptor.Identifier.EncodedValue) {
+                        case MatroskaSpecification.Block:
+                            var block = new Block();
+                            _entry = block;
+                            block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, block);
+                            break;
+                        case MatroskaSpecification.BlockAdditional:
+                            var blockAdditional = new BlockAdditional();
+                            _entry = blockAdditional;
+                            blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockAdditional);
+                            break;
+                        case MatroskaSpecification.BlockVirtual:
+                            var blockVirtual = new BlockVirtual();
+                            _entry = blockVirtual;
+                            blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockVirtual);
+                            break;
+                        case MatroskaSpecification.EncryptedBlock:
+                            var encryptedBlock = new EncryptedBlock();
+                            _entry = encryptedBlock;
+                            encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, encryptedBlock);
+                            break;
+                        case MatroskaSpecification.SimpleBlock:
+                            var simpleBlock = new SimpleBlock();
+                            _entry = simpleBlock;
+                            simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, simpleBlock);
+                            break;
+                        default:
+                            throw new InvalidOperationException();
                     }
 
-                switch (CurrentDescriptor.Identifier.EncodedValue) {
-                    case MatroskaSpecification.Block:
-                        var block = new Block();
-                        _entry = block;
-                        block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                        container.FillListEntry(_container.Descriptor, CurrentDescriptor, block);
-                        break;
-                    case MatroskaSpecification.BlockAdditional:
-                        var blockAdditional = new BlockAdditional();
-                        _entry = blockAdditional;
-                        blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                        container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockAdditional);
-                        break;
-                    case MatroskaSpecification.BlockVirtual:
-                        var blockVirtual = new BlockVirtual();
-                        _entry = blockVirtual;
-                        blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                        container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockVirtual);
-                        break;
-                    case MatroskaSpecification.EncryptedBlock:
-                        var encryptedBlock = new EncryptedBlock();
-                        _entry = encryptedBlock;
-                        encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                        container.FillListEntry(_container.Descriptor, CurrentDescriptor, encryptedBlock);
-                        break;
-                    case MatroskaSpecification.SimpleBlock:
-                        var simpleBlock = new SimpleBlock();
-                        _entry = simpleBlock;
-                        simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                        container.FillListEntry(_container.Descriptor, CurrentDescriptor, simpleBlock);
-                        break;
-                    default:
-                        throw new InvalidOperationException();
+                    ReadResultKind = WebMReadResultKind.Block;
+                    _resume = true;
+                    return true;
                 }
 
-                ReadResultKind = WebMReadResultKind.Block;
-                _resume = true;
-                return true;
+                if (CurrentDescriptor.Identifier.EncodedValue == MatroskaSpecification.Void)
+                    _spanReader.Position += (int)_element.Size;
+                else
+                    container.FillScalar(_container.Descriptor, CurrentDescriptor, (int)_element.Size, ref _spanReader);
             }
-            else
-                container.FillScalar(_container.Descriptor, CurrentDescriptor, (int)_element.Size, ref _spanReader);
 
             beginPosition = _spanReader.Position;
         }
@@ -289,17 +294,12 @@ public ref struct WebMReader
 
         var eof = Math.Min(readUntil, _spanReader.Length);
         var sizeValue = size.Value.Value;
-        if (_spanReader.Position + (int)sizeValue > eof) {
+        if (_spanReader.Position + (int)sizeValue > eof)
             if (idValue.EncodedValue != MatroskaSpecification.Cluster
                 && idValue.EncodedValue != MatroskaSpecification.Segment) {
-                _element = new EbmlElement(idValue, UnknownSize, elementDescriptor!);
-                return false;
-            }
-            if (sizeValue != UnknownSize) {
                 _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
                 return false;
             }
-        }
 
         _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
 
