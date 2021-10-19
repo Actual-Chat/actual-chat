@@ -2,7 +2,7 @@
 
 public class RedisSequenceSetTest : RedisTestBase
 {
-    public RedisSequenceSetTest(ITestOutputHelper @out) : base(@out) { }
+    public RedisSequenceSetTest(TestSettings testSettings) : base(testSettings) { }
 
     [Fact]
     public async Task BasicTest()

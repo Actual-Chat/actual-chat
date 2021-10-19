@@ -61,6 +61,7 @@ namespace ActualChat.Testing
     {
         public string TempDirectory { get; set; } = "";
         public bool IsRunningInContainer { get; set; } = false;
+        public string RedisConnectionString { get; set; } = "";
     }
 }
 
