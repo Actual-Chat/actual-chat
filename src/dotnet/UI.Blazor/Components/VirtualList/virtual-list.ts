@@ -2,18 +2,20 @@ import './virtual-list.css';
 
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
-const SizeEpsilon: number = 0.1
-const DebugMode: boolean = true
+const SizeEpsilon: number = 0.6;
+const StickyEdgeEpsilon: number = 4;
 
 export class VirtualList {
     /** ref to div.virtual-list */
+    private readonly _debugMode: boolean = false;
     private readonly _elementRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _spacerRef: HTMLElement;
+    private readonly _endSpacerRef: HTMLElement;
     private readonly _displayedItemsRef: HTMLElement;
     private readonly _abortController: AbortController;
     private readonly _resizeObserver: ResizeObserver;
-    private _bodyResizeEventCount: number = 0;
+    private _listResizeEventCount: number = 0;
 
     private _renderState: Required<IRenderState>
     private _isSafeToScroll: boolean = true;
@@ -23,15 +25,17 @@ export class VirtualList {
     private _updateClientSideStateTask: Promise<unknown> | null = null;
     private _blazorRenderIndex: number = -1;
 
-    public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
-        return new VirtualList(elementRef, backendRef);
+    public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject, debugMode: boolean) {
+        return new VirtualList(elementRef, backendRef, debugMode);
     }
 
-    public constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject) {
+    public constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject, debugMode: boolean) {
+        this._debugMode = debugMode;
         this._elementRef = elementRef;
         this._blazorRef = backendRef;
         this._abortController = new AbortController();
-        this._spacerRef = this._elementRef.querySelector(".spacer")!;
+        this._spacerRef = this._elementRef.querySelector(".spacer-start")!;
+        this._endSpacerRef = this._elementRef.querySelector(".spacer-end")!;
         this._displayedItemsRef = this._elementRef.querySelector(".items-displayed");
         this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
         let listenerOptions: any = { signal: this._abortController.signal };
@@ -41,10 +45,12 @@ export class VirtualList {
             renderIndex: -1,
 
             spacerSize: 0,
-            scrollTop: 0,
+            endSpacerSize: 0,
             scrollHeight: 0,
-            clientHeight: 0,
             itemSizes: {},
+
+            scrollTop: 0,
+            clientHeight: 0,
 
             mustMeasure: false,
             mustScroll: false,
@@ -63,18 +69,33 @@ export class VirtualList {
     }
 
     public afterRender(renderState: Required<IRenderState>) {
-        if (DebugMode)
-            console.log("<- afterRender:", renderState);
+        if (this._debugMode)
+            console.log("<- afterRender: #" + renderState.renderIndex, renderState);
         if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon) {
-            if (DebugMode)
+            if (this._debugMode)
                 console.log("Scrolling to:", renderState.scrollTop)
             this._elementRef.scrollTop = renderState.scrollTop;
         }
+
+        if (this._debugMode) {
+            // Render consistency checks
+            let spacerSize = this._spacerRef.getBoundingClientRect().height;
+            let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
+            let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
+            let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+            if (Math.abs(renderState.scrollHeight - scrollHeight) > SizeEpsilon) {
+                console.warn("afterRender: scrollHeight doesn't match the expected one! ",
+                    "[spacerSize: " + renderState.spacerSize + " -> " + spacerSize + "]",
+                    "[endSpacerSize: " + renderState.endSpacerSize + " -> " + endSpacerSize + "]",
+                    "[scrollHeight: " + renderState.scrollHeight + " -> " + scrollHeight + "]");
+            }
+        }
+
         this.resetResizeTracking();
         this._renderState = renderState; // At this point this.isFullyRendered() returns true
 
         if (renderState.renderIndex < this._blazorRenderIndex) {
-            if (DebugMode)
+            if (this._debugMode)
                 console.log("afterRender skips updateClientSideStateDebounced:",
                     renderState.renderIndex, "<", this._blazorRenderIndex);
             return; // such an update will be ignored anyway
@@ -85,7 +106,7 @@ export class VirtualList {
 
     protected updateClientSideStateDebounced(immediately: boolean = false)
     {
-        if (DebugMode)
+        if (this._debugMode)
             console.log("updateClientSideStateDebounced", immediately ? "immediately": "");
         if (immediately) {
             if (this._updateClientSideStateTimeout != null) {
@@ -117,31 +138,42 @@ export class VirtualList {
 
     protected async updateClientSideStateImpl() {
         if (!this.isFullyRendered()) {
-            if (DebugMode)
-                console.log('[x] updateClientSideStateImpl (not fully rendered)');
+            if (this._debugMode)
+                console.log('updateClientSideStateImpl: skipped (not fully rendered)');
             return; // Rendering is in progress, so the update will follow up anyway
         }
 
         let rs = this._renderState;
         if (rs.renderIndex <= this._blazorRenderIndex) {
-            if (DebugMode)
-                console.log('[x] updateClientSideStateImpl', rs.renderIndex, "<", this._blazorRenderIndex);
+            if (this._debugMode)
+                console.log('updateClientSideStateImpl: skipped for #', rs.renderIndex, "<", this._blazorRenderIndex);
             return; // This update was already pushed
         }
+
+        if (this._debugMode)
+            console.log('updateClientSideStateImpl: #' + rs.renderIndex);
+
+        let spacerSize = this._spacerRef.getBoundingClientRect().height;
+        let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
+        let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
+        let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+        let trueScrollHeight = this._elementRef.scrollHeight;
 
         let state: Required<IClientSideState> = {
             renderIndex: rs.renderIndex,
 
+            spacerSize: spacerSize,
+            endSpacerSize: endSpacerSize,
+            scrollHeight: scrollHeight,
+            itemSizes: {}, // Will be updated further
+
+            scrollTop: this._elementRef.scrollTop,
+            clientHeight: this._elementRef.getBoundingClientRect().height,
+
             isSafeToScroll: this._isSafeToScroll,
-            isBodyResized: this._bodyResizeEventCount > 1, // First is always an initial measure event
+            isListResized: this._listResizeEventCount > 1, // First is always an initial measure event
             isViewportChanged: false, // Will be updated further
             isUserScrollDetected: false, // Will be updated further
-
-            spacerSize: rs.spacerSize,
-            scrollTop: this._elementRef.scrollTop,
-            scrollHeight: this._elementRef.scrollHeight,
-            clientHeight: this._elementRef.getBoundingClientRect().height,
-            itemSizes: {},
         };
 
         let gotNewlyMeasuredItems = false;
@@ -152,7 +184,7 @@ export class VirtualList {
                 state.itemSizes[key] = item.getBoundingClientRect().height;
                 gotNewlyMeasuredItems = true;
             }
-            if (DebugMode)
+            if (this._debugMode)
                 console.log("updateClientSideStateImpl: measured items:", state.itemSizes)
         }
 
@@ -173,32 +205,42 @@ export class VirtualList {
         let isClientHeightChanged = Math.abs(state.clientHeight - rs.clientHeight) > SizeEpsilon;
         state.isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isClientHeightChanged;
 
-        let wasAtBottom = Math.abs(rs.scrollTop + rs.clientHeight - rs.scrollHeight) <= SizeEpsilon;
-        let isAtBottom = Math.abs(state.scrollTop + state.clientHeight - state.scrollHeight) <= SizeEpsilon;
-        state.isUserScrollDetected =
-            rs.renderIndex <= 1
-            || state.isBodyResized
-            || isScrollTopChanged && !(wasAtBottom && isAtBottom);
-        if (DebugMode)
-            console.log("updateClientSideStateImpl: detected:",
-                state.isUserScrollDetected ? "user scroll," : "",
-                isScrollTopChanged ? "scrollTop changed," : "",
-                wasAtBottom ? "was at bottom," : "",
-                isAtBottom ? "is at bottom," : "");
+        let wasAtTheEnd = Math.abs(rs.scrollTop + rs.clientHeight - rs.scrollHeight) <= StickyEdgeEpsilon;
+        let isAtTheEnd = Math.abs(state.scrollTop + state.clientHeight - state.scrollHeight) <= StickyEdgeEpsilon;
+        let stillAtTheEnd = wasAtTheEnd && isAtTheEnd;
+        state.isUserScrollDetected = isScrollTopChanged && !stillAtTheEnd && !state.isListResized;
+        if (this._debugMode) {
+            console.log("updateClientSideStateImpl: changes:",
+                Object.keys(state.itemSizes).length > 0 ? "[items sizes]" : "",
+                state.isUserScrollDetected ? "[user scroll]" : "",
+                state.isViewportChanged ? "[viewport]" : "",
+                state.isListResized ? "[body resized]" : "");
+            if (state.isViewportChanged)
+                console.log("updateClientSideStateImpl: viewport change:",
+                    isScrollTopChanged ? "[scrollTop " + rs.scrollTop + " -> " + state.scrollTop + "]" : "",
+                    isScrollHeightChanged ? "[scrollHeight " + rs.scrollHeight + " -> " + state.scrollHeight + "]" : "",
+                    isClientHeightChanged ? "[clientHeight " + rs.clientHeight + " -> " + state.clientHeight + "]" : "");
+            if (wasAtTheEnd != isAtTheEnd)
+                console.log("updateClientSideStateImpl: location change:",
+                    wasAtTheEnd ? "[was @ end]" : "[wasn't @ end]",
+                    rs.scrollTop, " + ", rs.clientHeight, " == ", rs.scrollHeight,
+                    isAtTheEnd ? "[is @ end]" : "[isn't @ end]",
+                    state.scrollTop, " + ", state.clientHeight, " == ", state.scrollHeight, "(", trueScrollHeight, ")",
+                    );
+        }
 
         let mustUpdateClientSideState =
-            rs.renderIndex == this._blazorRenderIndex
-            || state.isViewportChanged
+            state.isViewportChanged
             || Object.keys(state.itemSizes).length > 0
             || (rs.notifyWhenSafeToScroll && state.isSafeToScroll);
         if (!mustUpdateClientSideState) {
-            if (DebugMode)
-                console.log('[x] updateClientSideStateImpl: no reason to update');
+            if (this._debugMode)
+                console.log('updateClientSideStateImpl: server call skipped');
             return;
         }
 
-        if (DebugMode)
-            console.log("-> UpdateClientSideState:", state)
+        if (this._debugMode)
+            console.log("updateClientSideStateImpl: server call", state)
         let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state)
         if (result > this._blazorRenderIndex)
             this._blazorRenderIndex = result;
@@ -206,10 +248,9 @@ export class VirtualList {
 
     /** setups resize notifications */
     private resetResizeTracking() {
-        this._bodyResizeEventCount = 0;
+        this._listResizeEventCount = 0;
 
         this._resizeObserver.disconnect();
-        this._resizeObserver.observe(document.body);
         this._resizeObserver.observe(this._elementRef);
         let items = this._elementRef.querySelectorAll(".items-displayed .item").values();
         for (let item of items)
@@ -239,8 +280,8 @@ export class VirtualList {
             return; // We aren't interested in render/programmatic resize events
 
         for (let entry of entries) {
-            if (entry.target == document.body)
-                this._bodyResizeEventCount++;
+            if (entry.target == this._elementRef)
+                this._listResizeEventCount++;
         }
         this.updateClientSideStateDebounced();
     }
@@ -250,16 +291,18 @@ export class VirtualList {
 interface IClientSideState {
     renderIndex: number;
 
+    spacerSize: number;
+    endSpacerSize: number;
+    scrollHeight: number;
+    itemSizes: Record<string, number>;
+
+    scrollTop: number;
+    clientHeight: number;
+
     isSafeToScroll: boolean;
-    isBodyResized: boolean;
+    isListResized: boolean;
     isViewportChanged: boolean;
     isUserScrollDetected: boolean;
-
-    spacerSize: number;
-    scrollTop: number;
-    scrollHeight: number
-    clientHeight: number;
-    itemSizes: Record<string, number>;
 }
 
 /** same as VirtualListRenderInfo */
@@ -267,10 +310,12 @@ interface IRenderState {
     renderIndex: number;
 
     spacerSize: number;
-    scrollTop: number;
+    endSpacerSize: number;
     scrollHeight: number
-    clientHeight: number;
     itemSizes: Record<string, number>;
+
+    scrollTop: number;
+    clientHeight: number;
 
     mustMeasure: boolean
     mustScroll: boolean

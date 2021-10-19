@@ -3,6 +3,7 @@ using ActualChat.UI.Blazor.Components.Internal;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Stl.Fusion.Blazor;
+using Stl.Reflection;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -19,10 +20,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected IJSObjectReference JSRef { get; set; } = null!;
     protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
-    /// <summary>
-    /// The main state of the virtual list. Contains an information to correct render the component. <br />
-    /// The js side updates this context.
-    /// </summary>
+    // ReSharper disable once StaticMemberInGenericType
+    protected internal bool DebugMode { get; } = false;
     protected internal long NextRenderIndex { get; set; }
     protected long LastAfterRenderRenderIndex { get; set; } = -1;
     protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
@@ -66,7 +65,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     protected override bool ShouldRender()
     {
-        if (!ReferenceEquals(Plan.Data, Data))
+        var isPlanActual = ReferenceEquals(Plan.Data, Data) && ReferenceEquals(Plan.ClientSideState, ClientSideState);
+        if (!isPlanActual)
             Plan = Plan.Next();
         return !ReferenceEquals(Plan, LastPlan);
     }
@@ -75,7 +75,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>($"{BlazorUICoreModule.ImportName}.VirtualList.create", Ref, BlazorRef).ConfigureAwait(true);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.VirtualList.create",
+                Ref, BlazorRef, DebugMode
+                ).ConfigureAwait(true);
         }
         var plan = LastPlan;
         if (CircuitContext.IsPrerendering || JSRef == null! || plan == null)
@@ -88,10 +91,12 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             RenderIndex = plan.RenderIndex,
 
             SpacerSize = plan.SpacerSize,
-            ScrollTop = plan.Viewport.Start + Plan.SpacerSize,
+            EndSpacerSize = plan.EndSpacerSize,
             ScrollHeight = plan.FullRange.Size(),
-            ClientHeight = plan.Viewport.Size(),
             ItemSizes = plan.DisplayedItems.ToDictionary(i => i.Key, i => i.Range.Size(), StringComparer.Ordinal),
+
+            ScrollTop = plan.Viewport.Start + Plan.SpacerSize,
+            ClientHeight = plan.Viewport.Size(),
 
             MustMeasure = plan.UnmeasuredItems.Count != 0,
             MustScroll = plan.MustScroll,
@@ -99,7 +104,15 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         };
         if (!plan.IsFullyLoaded(plan.Viewport))
             UpdateData();
-        Log.LogInformation("OnAfterRender: RenderIndex = {RenderIndex}", renderState.RenderIndex);
+        if (DebugMode) {
+            Log.LogInformation("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
+            // var debugRenderState = MemberwiseCloner.Invoke(renderState);
+            // debugRenderState.ItemSizes = new() {{"n/a", 0}};
+            // Log.LogInformation("OnAfterRender: #{RenderIndex}, RenderState = {RenderState}, ClientSideState = {ClientSideState}",
+            //     renderState.RenderIndex,
+            //     JsonFormatter.Format(debugRenderState),
+            //     plan.ClientSideState == null ? "null" : JsonFormatter.Format(plan.ClientSideState));
+        }
         await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
 
@@ -108,21 +121,18 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     {
         var lastPlan = LastPlan;
         if (lastPlan == null! || clientSideState.RenderIndex != lastPlan.RenderIndex) {
-            Log.LogInformation("Dropping outdated update: {RenderIndex} < {ExpectedRenderIndex}",
-                clientSideState.RenderIndex, lastPlan?.RenderIndex);
+            if (DebugMode)
+                Log.LogInformation("UpdateClientSideState: outdated RenderIndex = {RenderIndex} < {ExpectedRenderIndex}",
+                    clientSideState.RenderIndex, lastPlan?.RenderIndex);
             return Task.FromResult(lastPlan?.RenderIndex ?? -1);
         }
 
         // await Task.Delay(1000); // Debug only!
+        if (DebugMode)
+            Log.LogInformation("UpdateClientSideState: RenderIndex = {RenderIndex}",
+                clientSideState.RenderIndex);
         ClientSideState = clientSideState;
-        var mustRender = clientSideState.IsViewportChanged
-            || clientSideState.ItemSizes.Count != 0
-            || (lastPlan.NotifyWhenSafeToScroll && clientSideState.IsSafeToScroll);
-        Log.LogInformation("UpdateClientSideState: mustRender = {MustRender}", mustRender);
-        if (mustRender) {
-            Plan = lastPlan.Next();
-            _ = this.StateHasChangedAsync();
-        }
+        _ = this.StateHasChangedAsync();
         return Task.FromResult(lastPlan.RenderIndex);
     }
 
@@ -139,12 +149,20 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     {
         var query = Query;
         LastQuery = query;
-        Log.LogInformation("ComputeState: {Query}", query);
-        var response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
-        Log.LogInformation("ComputeState: -> keys [{Key0}...{KeyE}], has {Range} item(s)",
-            response.Items.FirstOrDefault().Key,
-            response.Items.LastOrDefault().Key,
-            response.HasAllItems ? "all" : response.HasVeryFirstItem ? "first" : "last");
+        VirtualListData<TItem> response;
+        try {
+            response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
+            if (DebugMode)
+                Log.LogInformation("ComputeState: {Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
+                    query,
+                    response.Items.FirstOrDefault().Key,
+                    response.Items.LastOrDefault().Key,
+                    response.HasAllItems ? "all" : response.HasVeryFirstItem ? "start" : "end");
+        }
+        catch (Exception e) {
+            Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
+            throw;
+        }
 
         // Adding statistics
         var startExpansion = response.Items
@@ -199,9 +217,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         var expectedStartExpansion = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxExpectedExpansion);
         var expectedEndExpansion = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxExpectedExpansion);
-        if (plan.IsTrackingStart)
+        if (plan.TrackingEdge == VirtualListEdge.Start)
             expectedStartExpansion = MaxExpectedExpansion;
-        if (plan.IsTrackingEnd)
+        else if (plan.TrackingEdge == VirtualListEdge.End)
             expectedEndExpansion = MaxExpectedExpansion;
 
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
@@ -212,9 +230,11 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ExpandEndBy = expectedEndExpansion / responseFulfillmentRatio,
         };
 
-        Log.LogInformation("GetDataQuery: {Query}", query);
-        // Log.LogInformation("GetDataQuery: {Viewport} < {LoaderZone} < {BufferZone} | {DisplayedRange}",
-        //     plan.Viewport, loaderZone, bufferZone, plan.DisplayedRange);
+        if (DebugMode) {
+            Log.LogInformation("GetDataQuery: {Query}", query);
+            // Log.LogInformation("GetDataQuery: {Viewport} < {LoaderZone} < {BufferZone} | {DisplayedRange}",
+            //     plan.Viewport, loaderZone, bufferZone, plan.DisplayedRange);
+        }
         return query;
     }
 }
