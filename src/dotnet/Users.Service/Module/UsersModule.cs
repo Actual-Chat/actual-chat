@@ -1,4 +1,5 @@
 using System.Data;
+using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -31,8 +32,6 @@ public class UsersModule : HostModule<UsersSettings>
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        services.AddSingleton<IDbInitializer, UsersDbInitializer>();
-
         // ASP.NET Core authentication providers
         services.AddAuthentication(options => {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -56,25 +55,11 @@ public class UsersModule : HostModule<UsersSettings>
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         });
 
-        // Fusion services
-        var fusion = services.AddFusion();
-        services.AddDbContextFactory<UsersDbContext>(builder => {
-            builder.UseNpgsql(Settings.Db);
-            if (IsDevelopmentInstance)
-                builder.EnableSensitiveDataLogging();
-        });
+        // DB-related
+        var dbModule = Plugins.GetPlugins<DbModule>().Single();
+        dbModule.AddDefaultDbServices<UsersDbContext>(services, Settings.Db);
+        services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         services.AddDbContextServices<UsersDbContext>(dbContext => {
-            services.AddSingleton(new CompletionProducer.Options {
-                IsLoggingEnabled = true,
-            });
-            services.AddTransient(c => new DbOperationScope<UsersDbContext>(c) {
-                IsolationLevel = IsolationLevel.RepeatableRead,
-            });
-            dbContext.AddOperations((_, o) => {
-                o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
-            });
-            dbContext.AddNpgsqlOperationLogChangeTracking();
-
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton(_ => new DbAuthService<UsersDbContext>.Options() {
                 MinUpdatePresencePeriod = TimeSpan.FromSeconds(45),
@@ -89,6 +74,9 @@ public class UsersModule : HostModule<UsersSettings>
                 options.MinUpdatePresencePeriod = TimeSpan.FromSeconds(55);
             });
         });
+
+        // Fusion services
+        var fusion = services.AddFusion();
         services.AddCommander().AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)

@@ -1,7 +1,8 @@
-namespace ActualChat.Db
+﻿namespace ActualChat.Db
 {
     public class DbSettings
     {
-        public bool UseInMemoryDb { get; set; } = false;
+        public string DefaultDb { get; set; } = "memory://{dbName}";
+        public string OverrideDb { get; set; } = "";
     }
 }
