@@ -21,12 +21,13 @@ export class AudioPlayer {
     private _playingQueue: AudioUpdate[];
     private _removedBefore: number;
     private _audioEnded?: () => void;
+    private _startOffset?: number;
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this._audio = new Audio();
-        this._audio.autoplay = true;
+        // this._audio.autoplay = true;
         this._blazorRef = blazorRef;
         this._sourceBuffer = null;
         this._bufferQueue = [];
@@ -80,12 +81,18 @@ export class AudioPlayer {
                 let time = this._audio.currentTime;
                 let playingFrame = this._playingQueue.shift();
                 let frameTime = playingFrame.offsetSecs;
-                if (time > frameTime) {
-                    playingFrame.played();
-                } else {
-                    this._playingQueue.unshift(playingFrame);
-                    break;
-                }
+                // if (time > frameTime) {
+                playingFrame.played();
+                // } else {
+                //     this._playingQueue.unshift(playingFrame);
+                //     break;
+                // }
+            }
+        });
+        this._audio.addEventListener('canplay', (e) => {
+            if (this._startOffset) {
+                this._audio.currentTime = this._startOffset;
+                this._startOffset = null;
             }
         });
 
@@ -93,8 +100,8 @@ export class AudioPlayer {
             this._mediaSource.addEventListener('sourceopen', _ => {
                 URL.revokeObjectURL(this._audio.src);
 
-                this._audio.play().then(_ => {
-                });
+                // this._audio.play().then(_ => {
+                // });
 
                 let mime = 'audio/webm; codecs=opus';
                 this._sourceBuffer = this._mediaSource.addSourceBuffer(mime);
@@ -111,7 +118,10 @@ export class AudioPlayer {
                         } else {
                             if (update instanceof AudioUpdate) {
                                 this._sourceBuffer.appendBuffer(update.chunk);
-                                this._playingQueue.push(update);
+                                if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA)
+                                    this._playingQueue.push(update);
+                                else
+                                    update.played();
                             } else
                                 this._mediaSource.endOfStream();
                         }
@@ -129,8 +139,10 @@ export class AudioPlayer {
         return new AudioPlayer(blazorRef);
     }
 
-    public async initialize(byteArray: Uint8Array): Promise<void> {
+    public async initialize(byteArray: Uint8Array, offset: number): Promise<void> {
         console.log('Audio player initialized.');
+        this._startOffset = offset;
+
         if (this._sourceBuffer !== null) {
             this._sourceBuffer.appendBuffer(byteArray);
             console.log('Audio init header has been appended.');
@@ -173,12 +185,18 @@ export class AudioPlayer {
                             let updateWithProperOrder = this._bufferQueue.shift();
                             if (updateWithProperOrder instanceof AudioUpdate) {
                                 this._sourceBuffer.appendBuffer(updateWithProperOrder.chunk);
-                                this._playingQueue.push(updateWithProperOrder);
+                                if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA)
+                                    this._playingQueue.push(updateWithProperOrder);
+                                else
+                                    updateWithProperOrder.played();
                             } else
                                 this._mediaSource.endOfStream();
                         } else {
                             this._sourceBuffer.appendBuffer(byteArray);
-                            this._playingQueue.push(newUpdate);
+                            if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA)
+                                this._playingQueue.push(newUpdate);
+                            else
+                                newUpdate.played();
                         }
                     }
                 }
@@ -206,6 +224,8 @@ export class AudioPlayer {
 
     public stop(error: EndOfStreamError | null) {
         console.log('Audio player stop() call');
+        this._audio.pause();
+
         if (this._sourceBuffer.updating) {
             this._sourceBuffer.onupdateend = _ => {
                 if (!this._sourceBuffer.updating)
@@ -214,6 +234,5 @@ export class AudioPlayer {
         } else {
             this._mediaSource.endOfStream();
         }
-        this._audio.pause();
     }
 }

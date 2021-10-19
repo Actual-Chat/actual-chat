@@ -17,11 +17,28 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         PlayingMediaFrame? prevFrame = null;
         Exception? error = null;
         try {
-            await OnPlayStart().ConfigureAwait(false);
+            await OnPlayStart(Track.Offset).ConfigureAwait(false);
             var zeroTimestamp = Track.ZeroTimestamp;
             var frames = Track.Source.Frames;
-            // var framesWithOffset = frames.SkipWhile(f => f.Offset < Track.Offset).SkipWhile(f => !f.IsKeyFrame);
+            var shouldSkipNonKeyFrames = false;
+            var beginOfStream = Track.Offset.TotalSeconds > 5
+                ? Track.Offset.Subtract(TimeSpan.FromSeconds(5))
+                : TimeSpan.Zero;
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (frame.Offset < beginOfStream) {
+                    shouldSkipNonKeyFrames = true;
+                    continue;
+                }
+
+                if (shouldSkipNonKeyFrames) {
+                    if (frame.IsKeyFrame)
+                        shouldSkipNonKeyFrames = false;
+                    else
+                        continue;
+                }
+
                 var nextFrame = new PlayingMediaFrame(frame, zeroTimestamp + frame.Offset);
                 Playing?.Invoke(prevFrame, nextFrame);
                 prevFrame = nextFrame;
@@ -51,7 +68,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
 
     // Protected methods
 
-    protected abstract ValueTask OnPlayStart();
+    protected abstract ValueTask OnPlayStart(TimeSpan offset);
     protected abstract ValueTask OnPlayNextFrame(PlayingMediaFrame nextFrame);
     protected abstract ValueTask OnPlayStop(bool stopImmediately, CancellationToken cancellationToken);
 }

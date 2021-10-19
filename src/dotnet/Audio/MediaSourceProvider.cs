@@ -24,10 +24,16 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var formatTaskSource = TaskSource.New<TMediaFormat>(true);
         var durationTaskSource = TaskSource.New<TimeSpan>(true);
         _ = Task.Run(
-            () => TransformAudioDataToFrames(formatTaskSource, durationTaskSource, frameChannel.Writer, audioData, cancellationToken),
+            () => TransformAudioDataToFrames(formatTaskSource,
+                durationTaskSource,
+                frameChannel.Writer,
+                audioData,
+                cancellationToken),
             cancellationToken);
 
-        return CreateMediaSource(formatTaskSource.Task, durationTaskSource.Task, frameChannel.Reader.Memoize(cancellationToken));
+        return CreateMediaSource(formatTaskSource.Task,
+            durationTaskSource.Task,
+            frameChannel.Reader.Memoize(cancellationToken));
     }
 
     protected abstract ValueTask<TMediaSource> CreateMediaSource(
@@ -56,7 +62,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
 
-                buffer.Slice(lastState.Position,remainingLength)
+                buffer.Slice(lastState.Position, remainingLength)
                     .CopyTo(buffer[..remainingLength]);
                 data.CopyTo(buffer[lastState.Remaining..]);
                 var dataLength = lastState.Remaining + data.Length;
@@ -81,7 +87,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 formatTaskSource.TrySetException(error);
                 durationTaskSource.TrySetException(error);
             }
-            else{
+            else {
                 if (!formatTaskSource.Task.IsCompleted)
                     formatTaskSource.TrySetCanceled(cancellationToken);
                 var durationWithoutLastBlock
@@ -128,6 +134,18 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 case WebMReadResultKind.Block:
                     var block = (Block)webMReader.ReadResult;
                     currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
+                    if (block is SimpleBlock { IsKeyFrame: true }) {
+                        var mediaFrame = new TMediaFrame {
+                            Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond
+                                * (clusterOffsetMs + currentBlockOffsetMs)),
+                            Data = webMReader.Span[framesStart..state.Position].ToArray(),
+                        };
+                        if (!writer.TryWrite(mediaFrame))
+                            throw new InvalidOperationException("Unable to write MediaFrame");
+
+                        framesStart = state.Position;
+                        blockOffsetMs = currentBlockOffsetMs;
+                    }
                     break;
                 case WebMReadResultKind.BlockGroup:
                 default:
@@ -136,12 +154,14 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
             prevPosition = state.Position;
         }
 
-        var mediaFrame = new TMediaFrame {
-            Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs)),
-            Data = webMReader.Span[framesStart..prevPosition].ToArray(),
-        };
-        if (!writer.TryWrite(mediaFrame))
-            throw new InvalidOperationException("Unable to write MediaFrame");
+        if (framesStart != prevPosition) {
+            var finalMediaFrame = new TMediaFrame {
+                Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs)),
+                Data = webMReader.Span[framesStart..prevPosition].ToArray(),
+            };
+            if (!writer.TryWrite(finalMediaFrame))
+                throw new InvalidOperationException("Unable to write MediaFrame");
+        }
 
         blockOffsetMs = currentBlockOffsetMs;
 
