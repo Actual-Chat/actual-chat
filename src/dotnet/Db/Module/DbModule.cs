@@ -1,5 +1,7 @@
 ﻿using System.Data;
+using ActualChat.Configuration;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +28,7 @@ public class DbModule : HostModule<DbSettings>
         fusion.AddOperationReprocessor();
     }
 
-    public void AddDefaultDbServices<TDbContext>(
+    public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
         string? connectionString)
         where TDbContext: DbContext
@@ -37,11 +39,19 @@ public class DbModule : HostModule<DbSettings>
             connectionString = Settings.OverrideDb;
 
         // Replacing variables
-        var dbNameVar = typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant();
-        connectionString = connectionString.Replace("{dbName}", dbNameVar);
+        var instance = Plugins.GetPlugins<CoreModule>().Single().Settings.Instance;
+        connectionString = Variables.Inject(connectionString,
+            ("instance", instance),
+            ("instance_", instance.IsNullOrEmpty() ? "" : $"{instance}_"),
+            ("instance.", instance.IsNullOrEmpty() ? "" : $"{instance}."),
+            ("_instance", instance.IsNullOrEmpty() ? "" : $"_{instance}"),
+            (".instance", instance.IsNullOrEmpty() ? "" : $".{instance}"),
+            ("context", typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant()));
 
         // Creating DbInfo<TDbContext>
-        var dbKind = connectionString.StartsWith("memory://") ? DbKind.InMemory : DbKind.Default;
+        var dbKind = connectionString.StartsWith("memory://", StringComparison.Ordinal)
+            ? DbKind.InMemory
+            : DbKind.Default;
         var dbInfo = new DbInfo<TDbContext>() {
             DbKind = dbKind,
             ConnectionString = connectionString,
@@ -50,20 +60,15 @@ public class DbModule : HostModule<DbSettings>
         // Adding services
         services.AddSingleton(dbInfo);
         services.AddDbContextFactory<TDbContext>(builder => {
-            switch (dbKind) {
-            case DbKind.Default:
-                builder.UseNpgsql(connectionString);
-                break;
-            case DbKind.InMemory:
+            if (dbKind == DbKind.InMemory) {
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).Name);
                 builder.UseInMemoryDatabase(connectionString);
-                builder.ConfigureWarnings(warnings => {
-                    warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning);
-                });
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
+                builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
             }
+            else {
+                builder.UseNpgsql(connectionString);
+            }
+
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
         });

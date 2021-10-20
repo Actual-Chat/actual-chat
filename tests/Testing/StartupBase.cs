@@ -41,9 +41,8 @@ namespace ActualChat.Testing
 
         private void InitializeSettingsCore(TestSettings settings)
         {
-            if (string.IsNullOrEmpty(settings.TempDirectory)) {
+            if (string.IsNullOrEmpty(settings.TempDirectory))
                 settings.TempDirectory = GetBaseDirectory() & "tmp";
-            }
 
             settings.IsRunningInContainer = IsRunningInContainer();
         }
@@ -55,13 +54,6 @@ namespace ActualChat.Testing
             Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != null;
 
         protected virtual void InitializeSettings(TestSettings settings) { }
-    }
-
-    public record class TestSettings
-    {
-        public string TempDirectory { get; set; } = "";
-        public bool IsRunningInContainer { get; set; } = false;
-        public string RedisConnectionString { get; set; } = "";
     }
 }
 

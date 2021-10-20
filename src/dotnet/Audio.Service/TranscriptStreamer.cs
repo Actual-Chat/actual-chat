@@ -1,3 +1,4 @@
+using ActualChat.Audio.Db;
 using ActualChat.Redis;
 using ActualChat.Transcription;
 
@@ -9,11 +10,11 @@ public class TranscriptStreamer : ITranscriptStreamer
     private readonly RedisDb _redisDb;
 
     public TranscriptStreamer(
-        RedisDb rootRedisDb,
+        RedisDb<AudioDbContext> audioRedisDb,
         ILogger<TranscriptStreamer> log)
     {
         _log = log;
-        _redisDb = rootRedisDb.WithKeyPrefix("transcripts");
+        _redisDb = audioRedisDb.WithKeyPrefix("transcripts");
     }
 
     public Task PublishTranscriptStream(StreamId streamId, ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken)

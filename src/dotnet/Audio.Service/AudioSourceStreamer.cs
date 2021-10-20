@@ -1,3 +1,4 @@
+using ActualChat.Audio.Db;
 using ActualChat.Redis;
 
 namespace ActualChat.Audio;
@@ -8,11 +9,11 @@ public class AudioSourceStreamer : IAudioSourceStreamer
     private readonly RedisDb _redisDb;
 
     public AudioSourceStreamer(
-        RedisDb rootRedisDb,
+        RedisDb<AudioDbContext> audioRedisDb,
         ILogger<AudioStreamer> log)
     {
         _log = log;
-        _redisDb = rootRedisDb.WithKeyPrefix("audio");
+        _redisDb = audioRedisDb.WithKeyPrefix("audio-sources");
     }
 
     public Task PublishAudioSource(StreamId streamId, AudioSource audioSource, CancellationToken cancellationToken)

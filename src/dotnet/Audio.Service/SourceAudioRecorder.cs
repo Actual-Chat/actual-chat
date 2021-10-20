@@ -1,3 +1,4 @@
+using ActualChat.Audio.Db;
 using ActualChat.Blobs;
 using ActualChat.Redis;
 
@@ -6,20 +7,18 @@ namespace ActualChat.Audio;
 public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 {
     private readonly IAuthService _auth;
-    private readonly RedisDb _rootRedisDb;
     private readonly RedisDb _redisDb;
     private readonly RedisQueue<AudioRecord> _newRecordQueue;
     private readonly ILogger<SourceAudioRecorder> _log;
 
     public SourceAudioRecorder(
         IAuthService auth,
-        RedisDb rootRedisDb,
+        RedisDb<AudioDbContext> audioRedisDb,
         ILogger<SourceAudioRecorder> log)
     {
         _log = log;
         _auth = auth;
-        _rootRedisDb = rootRedisDb;
-        _redisDb = _rootRedisDb.WithKeyPrefix("source-audio");
+        _redisDb = audioRedisDb.WithKeyPrefix("source-audio");
         _newRecordQueue = _redisDb.GetQueue<AudioRecord>("new-records");
     }
 
