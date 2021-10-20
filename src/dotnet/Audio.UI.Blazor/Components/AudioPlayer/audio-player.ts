@@ -80,8 +80,8 @@ export class AudioPlayer {
             console.log(`Audio state: ${this.getReadyState()}`);
         });
         this._audio.addEventListener('timeupdate', (e) => {
+            let time = this._audio.currentTime;
             while (this._playingQueue.length > 0) {
-                let time = this._audio.currentTime;
                 let playingFrame = this._playingQueue.shift();
                 let frameTime = playingFrame.offsetSecs;
                 if (time > frameTime - 5) {
@@ -91,6 +91,8 @@ export class AudioPlayer {
                     break;
                 }
             }
+
+            this._blazorRef.invokeMethodAsync("SetCurrentPlaybackTime", time);
         });
         this._audio.addEventListener('canplay', (e) => {
             if (this._startOffset) {

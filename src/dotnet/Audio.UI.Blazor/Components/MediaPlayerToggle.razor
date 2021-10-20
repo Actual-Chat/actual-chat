@@ -1,6 +1,5 @@
-@namespace ActualChat.Audio.UI.Blazor.Components
-@implements ActualChat.Audio.UI.Blazor.Components.IAudioPlayerBackend
 @using ActualChat.Playback
+@namespace ActualChat.Audio.UI.Blazor.Components
 
 <button @onclick="Toggle" class="block px-2 py-2 @(Player.IsPlaying ? "text-blue-500" : "text-gray-500")">
     <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
@@ -9,11 +8,14 @@
 </button>
 
 @code {
+
     [Parameter]
     public MediaPlayer Player { get; set; } = null!;
 
     private Task Toggle()
-        => Player.IsPlaying ? Stop() : Play();
+    {
+        return Player.IsPlaying ? Stop() : Play();
+    }
 
     private Task Play()
     {
@@ -28,4 +30,5 @@
         StateHasChanged();
         return Task.CompletedTask;
     }
+
 }

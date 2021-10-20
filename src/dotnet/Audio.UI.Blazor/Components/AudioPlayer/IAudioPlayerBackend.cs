@@ -1,3 +1,6 @@
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public interface IAudioPlayerBackend { }
+public interface IAudioPlayerBackend
+{
+    void SetCurrentPlaybackTime(double offsetSeconds);
+}

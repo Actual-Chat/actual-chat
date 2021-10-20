@@ -4,12 +4,22 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
 {
     protected ILogger<MediaTrackPlayer> Log { get; init; }
     public MediaTrack Track { get; }
+
+    public TimeSpan CurrentPlaybackTime { get; private set; }
+
     public event Action<PlayingMediaFrame?, PlayingMediaFrame?>? Playing;
+    public event Action<TimeSpan>? PlaybackTimeChanged;
 
     protected MediaTrackPlayer(MediaTrack track, ILogger<MediaTrackPlayer> log)
     {
         Log = log;
         Track = track;
+    }
+
+    protected void RaisePlaybackTimeChanged(TimeSpan offset)
+    {
+        CurrentPlaybackTime = offset;
+        PlaybackTimeChanged?.Invoke(CurrentPlaybackTime);
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
