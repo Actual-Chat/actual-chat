@@ -37,20 +37,34 @@ public class PlaywrightTest : AppHostTestBase
         var button = await page.QuerySelectorAsync("button.message-submit").ConfigureAwait(false);
         button.Should().NotBeNull();
 
-        var messages = await page.QuerySelectorAllAsync(".chat-page .content").ConfigureAwait(false);
-        var lastMessage = await messages.Last().TextContentAsync().ConfigureAwait(false);
+        var messages = await GetMessages(page);
+        var lastMessage = await GetLastMessage(messages);
         lastMessage.Should().NotBe("Test-123");
 
         await input!.TypeAsync("Test-123").ConfigureAwait(false);
         await button!.ClickAsync().ConfigureAwait(false);
 
         // TODO: wait for network request or websocket event
-        await page.WaitForTimeoutAsync(3500f).ConfigureAwait(false);
 
-        messages = await page.QuerySelectorAllAsync(".chat-page .content").ConfigureAwait(false);
-        lastMessage = await messages.Last().TextContentAsync().ConfigureAwait(false);
+        var count = messages.Count;
+        var iterationCount = 0;
+        while (count == messages.Count) {
+            await Task.Delay(500);
+            iterationCount++;
+            messages = await GetMessages(page);
+            if (iterationCount >= 5) {
+                throw new Exception("Chat state has not changed in 6 iterations (~ 3 sec.).");
+            }
+        }
+        lastMessage = await GetLastMessage(messages);
         lastMessage.Should().Be("Test-123");
     }
+
+    private static async Task<IReadOnlyList<IElementHandle>> GetMessages(IPage page)
+        => await page.QuerySelectorAllAsync(".chat-page .content");
+
+    private static async Task<string?> GetLastMessage(IEnumerable<IElementHandle> messages)
+        => await messages.Last().TextContentAsync().ConfigureAwait(false);
 
     [Fact]
     public async Task ChatPageTest()
