@@ -16,22 +16,14 @@ namespace ActualChat.Db.Module;
 public class DbModule : HostModule<DbSettings>
 {
     public DbModule(IPluginInfoProvider.Query _) : base(_) { }
+
     [ServiceConstructor]
     public DbModule(IPluginHost plugins) : base(plugins) { }
-
-    public override void InjectServices(IServiceCollection services)
-    {
-        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
-            return; // Server-side only module
-
-        var fusion = services.AddFusion();
-        fusion.AddOperationReprocessor();
-    }
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
         string? connectionString)
-        where TDbContext: DbContext
+        where TDbContext : DbContext
     {
         if (connectionString.IsNullOrEmpty())
             connectionString = Settings.DefaultDb;
@@ -52,9 +44,10 @@ public class DbModule : HostModule<DbSettings>
         var dbKind = connectionString.StartsWith("memory://", StringComparison.Ordinal)
             ? DbKind.InMemory
             : DbKind.Default;
-        var dbInfo = new DbInfo<TDbContext>() {
+        var dbInfo = new DbInfo<TDbContext> {
             DbKind = dbKind,
             ConnectionString = connectionString,
+            ShouldRecreateDb = Settings.ShouldRecreateDb,
         };
 
         // Adding services
@@ -65,9 +58,8 @@ public class DbModule : HostModule<DbSettings>
                 builder.UseInMemoryDatabase(connectionString);
                 builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
             }
-            else {
+            else
                 builder.UseNpgsql(connectionString);
-            }
 
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
@@ -85,5 +77,14 @@ public class DbModule : HostModule<DbSettings>
             if (dbKind == DbKind.Default)
                 dbContext.AddNpgsqlOperationLogChangeTracking();
         });
+    }
+
+    public override void InjectServices(IServiceCollection services)
+    {
+        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+            return; // Server-side only module
+
+        var fusion = services.AddFusion();
+        fusion.AddOperationReprocessor();
     }
 }

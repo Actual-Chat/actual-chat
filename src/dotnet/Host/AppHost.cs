@@ -36,7 +36,7 @@ public class AppHost : IDisposable
         return Task.CompletedTask;
     }
 
-    public virtual async Task Initialize(bool shouldRecreateDb, CancellationToken cancellationToken = default)
+    public virtual async Task Initialize(CancellationToken cancellationToken = default)
     {
         var log = Host.Services.GetRequiredService<ILogger<AppHost>>();
 
@@ -60,13 +60,11 @@ public class AppHost : IDisposable
         }
 
         var initializeTaskSources = Host.Services.GetServices<IDbInitializer>()
-            .ToDictionary(i => i, i => TaskSource.New<bool>(runContinuationsAsynchronously: true));
+            .ToDictionary(i => i, i => TaskSource.New<bool>(true));
         var initializeTasks = initializeTaskSources
             .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
-        foreach (var (dbInitializer, _) in initializeTasks) {
-            dbInitializer.ShouldRecreateDb = shouldRecreateDb;
+        foreach (var (dbInitializer, _) in initializeTasks)
             dbInitializer.InitializeTasks = initializeTasks;
-        }
         var tasks = initializeTaskSources
             .Select(kv => InitializeOne(kv.Key, kv.Value))
             .ToArray();
@@ -74,25 +72,26 @@ public class AppHost : IDisposable
         // await Task.Delay(100, cancellationToken); // Just in case
     }
 
+    public virtual Task Run(CancellationToken cancellationToken = default)
+        => Host.RunAsync(cancellationToken);
+
     public virtual Task Start(CancellationToken cancellationToken = default)
         => Host.StartAsync(cancellationToken);
 
     public virtual Task Stop(CancellationToken cancellationToken = default)
         => Host.StopAsync(cancellationToken);
 
-    public virtual Task Run(CancellationToken cancellationToken = default)
-        => Host.RunAsync(cancellationToken);
-
     // Protected methods
 
     protected virtual void ConfigureHostConfiguration(IConfigurationBuilder cfg)
     {
         // Looks like there is no better way to set _default_ URL
-        cfg.Sources.Insert(0, new MemoryConfigurationSource() {
-            InitialData = new Dictionary<string, string>(StringComparer.Ordinal) {
-                {WebHostDefaults.ServerUrlsKey, ServerUrls},
-            }
-        });
+        cfg.Sources.Insert(0,
+            new MemoryConfigurationSource {
+                InitialData = new Dictionary<string, string>(StringComparer.Ordinal) {
+                    { WebHostDefaults.ServerUrlsKey, ServerUrls },
+                },
+            });
         HostConfigurationBuilder?.Invoke(cfg);
     }
 
@@ -100,6 +99,7 @@ public class AppHost : IDisposable
         => AppConfigurationBuilder?.Invoke(appBuilder);
 
     protected virtual void ConfigureAppServices(
-        WebHostBuilderContext webHost, IServiceCollection services)
+        WebHostBuilderContext webHost,
+        IServiceCollection services)
         => AppServicesBuilder?.Invoke(webHost, services);
 }
