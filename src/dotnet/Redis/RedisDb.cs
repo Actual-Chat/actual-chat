@@ -34,3 +34,10 @@ public class RedisDb
             ? this
             : new RedisDb(Redis, FullKey(keyPrefix));
 }
+
+public class RedisDb<TContext> : RedisDb
+{
+    public RedisDb(IConnectionMultiplexer redis, string keyPrefix = "")
+        : base(redis, keyPrefix)
+    { }
+}

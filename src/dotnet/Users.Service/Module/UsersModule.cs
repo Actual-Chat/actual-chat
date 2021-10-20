@@ -57,7 +57,7 @@ public class UsersModule : HostModule<UsersSettings>
 
         // DB-related
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDefaultDbServices<UsersDbContext>(services, Settings.Db);
+        dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
         services.AddDbContextServices<UsersDbContext>(dbContext => {
             // Overriding / adding extra DbAuthentication services

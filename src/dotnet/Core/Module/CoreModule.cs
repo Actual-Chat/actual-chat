@@ -8,7 +8,7 @@ using Stl.Plugins;
 
 namespace ActualChat.Module;
 
-public class CoreModule : HostModule
+public class CoreModule : HostModule<CoreSettings>
 {
     public CoreModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]

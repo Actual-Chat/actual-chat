@@ -5,13 +5,14 @@ namespace ActualChat.Redis.IntergationTests;
 
 public class RedisTestBase
 {
-    protected readonly TestSettings _testSettings;
-    public RedisTestBase(TestSettings testSettings)
-        => _testSettings = testSettings;
+    protected TestSettings Settings { get; }
+
+    public RedisTestBase(TestSettings settings)
+        => Settings = settings;
 
     public virtual RedisDb GetRedisDb()
     {
-        var redis = ConnectionMultiplexer.Connect(_testSettings.RedisConnectionString);
+        var redis = ConnectionMultiplexer.Connect(Settings.RedisConfiguration);
         return new RedisDb(redis).WithKeyPrefix("tests").WithKeyPrefix(GetType().Name);
     }
 }

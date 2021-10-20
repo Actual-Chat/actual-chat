@@ -1,3 +1,4 @@
+using ActualChat.Audio.Db;
 using ActualChat.Blobs;
 using ActualChat.Redis;
 
@@ -9,11 +10,11 @@ public class AudioStreamer : IAudioStreamer
     private readonly RedisDb _redisDb;
 
     public AudioStreamer(
-        RedisDb rootRedisDb,
+        RedisDb<AudioDbContext> audioRedisDb,
         ILogger<AudioStreamer> log)
     {
         _log = log;
-        _redisDb = rootRedisDb.WithKeyPrefix("audio-records");
+        _redisDb = audioRedisDb.WithKeyPrefix("audio-streams");
     }
 
     public Task PublishAudioStream(StreamId streamId, ChannelReader<BlobPart> channel, CancellationToken cancellationToken)
