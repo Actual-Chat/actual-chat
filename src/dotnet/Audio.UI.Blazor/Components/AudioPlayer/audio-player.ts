@@ -84,12 +84,12 @@ export class AudioPlayer {
                 let time = this._audio.currentTime;
                 let playingFrame = this._playingQueue.shift();
                 let frameTime = playingFrame.offsetSecs;
-                // if (time > frameTime) {
-                playingFrame.played();
-                // } else {
-                //     this._playingQueue.unshift(playingFrame);
-                //     break;
-                // }
+                if (time > frameTime - 5) {
+                    playingFrame.played();
+                } else {
+                    this._playingQueue.unshift(playingFrame);
+                    break;
+                }
             }
         });
         this._audio.addEventListener('canplay', (e) => {
@@ -118,12 +118,18 @@ export class AudioPlayer {
                         } else {
                             if (update instanceof AudioUpdate) {
                                 this._sourceBuffer.appendBuffer(update.chunk);
-                                if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA)
-                                    this._playingQueue.push(update);
-                                else
+                                if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA) {
+                                    if (this._audio.currentTime + 5 <= update.offsetSecs) {
+                                        this._playingQueue.push(update);
+                                    } else {
+                                        update.played();
+                                    }
+                                } else {
                                     update.played();
-                            } else
+                                }
+                            } else {
                                 this._mediaSource.endOfStream();
+                            }
                         }
                     }
                 });
@@ -187,18 +193,28 @@ export class AudioPlayer {
                             let updateWithProperOrder = this._bufferQueue.shift();
                             if (updateWithProperOrder instanceof AudioUpdate) {
                                 this._sourceBuffer.appendBuffer(updateWithProperOrder.chunk);
-                                if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA)
-                                    this._playingQueue.push(updateWithProperOrder);
-                                else
+                                if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA) {
+                                    if (this._audio.currentTime + 5 <= updateWithProperOrder.offsetSecs) {
+                                        this._playingQueue.push(updateWithProperOrder);
+                                    } else {
+                                        updateWithProperOrder.played();
+                                    }
+                                } else {
                                     updateWithProperOrder.played();
+                                }
                             } else
                                 this._mediaSource.endOfStream();
                         } else {
                             this._sourceBuffer.appendBuffer(byteArray);
-                            if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA)
-                                this._playingQueue.push(newUpdate);
-                            else
+                            if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA) {
+                                if (this._audio.currentTime + 5 <= newUpdate.offsetSecs) {
+                                    this._playingQueue.push(newUpdate);
+                                } else {
+                                    newUpdate.played();
+                                }
+                            } else {
                                 newUpdate.played();
+                            }
                         }
                     }
                 }

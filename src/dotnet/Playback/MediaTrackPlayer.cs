@@ -33,7 +33,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             // TODO(AK): this cancellation is requested unexpectedly during regular playback!!!!
             throw;
         }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             error = ex;
             Log.LogError(ex, "Failed to play media track");
         }
