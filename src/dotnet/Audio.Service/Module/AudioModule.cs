@@ -5,6 +5,7 @@ using ActualChat.Audio.Processing;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis;
+using ActualChat.Redis.Module;
 using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
@@ -40,7 +41,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
 
         // DB-related
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDefaultDbServices<AudioDbContext>(services, Settings.Db);
+        dbModule.AddDbContextServices<AudioDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, AudioDbInitializer>();
 
         var fusion = services.AddFusion();
@@ -61,10 +62,8 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             });
 
         // Redis
-        services.AddSingleton(_ => {
-            var redis = ConnectionMultiplexer.Connect(Settings.Redis);
-            return new RedisDb(redis);
-        });
+        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        redisModule.AddRedisDb<AudioDbContext>(services, Settings.Redis);
 
         // Module's own services
         services.AddSingleton<AudioSegmentSaver>();

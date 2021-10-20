@@ -20,6 +20,8 @@ public class BuiltInChatMediaStorageResolver : IChatMediaStorageResolver
         return _uriMapper.ToAbsolute("/api/audio/download/" + audioEntry.Content);
     }
 
-    public Uri GetVideBlobAddress(ChatEntry videoChatEntry)
+    public Uri GetVideoBlobAddress(ChatEntry videoChatEntry)
+#pragma warning disable MA0025
         => throw new NotImplementedException();
+#pragma warning restore MA0025
 }

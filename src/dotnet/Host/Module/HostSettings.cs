@@ -1,4 +1,4 @@
-namespace ActualChat.Host
+namespace ActualChat.Host.Module
 {
     public class HostSettings
     {

@@ -1,9 +1,9 @@
-﻿using System.Data;
-using ActualChat.Chat.Client;
+﻿using ActualChat.Chat.Client;
 using ActualChat.Chat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis;
+using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
@@ -26,9 +26,13 @@ public class ChatModule : HostModule<ChatSettings>
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // Redis-related
+        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        redisModule.AddRedisDb<ChatDbContext>(services, Settings.Redis);
+
         // DB-related
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDefaultDbServices<ChatDbContext>(services, Settings.Db);
+        dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
         services.AddDbContextServices<ChatDbContext>(dbContext => {
             dbContext.AddEntityResolver<string, DbChat>((_, options) => {
@@ -58,7 +62,10 @@ public class ChatModule : HostModule<ChatSettings>
         services.AddSingleton<IMarkupParser, MarkupParser>();
 
         // IChatService
-        services.AddSingleton(c => c.GetRequiredService<RedisDb>().GetSequenceSet<ChatService>("chat.seq"));
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
+            return chatRedisDb.GetSequenceSet<ChatService>("chat.seq");
+        });
         fusion.AddComputeService<ChatService>();
         services.AddSingleton(c => (IChatService)c.GetRequiredService<ChatService>());
         services.AddSingleton(c => (IServerSideChatService)c.GetRequiredService<ChatService>());

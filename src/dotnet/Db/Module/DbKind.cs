@@ -1,4 +1,4 @@
-namespace ActualChat.Db;
+namespace ActualChat.Db.Module;
 
 public enum DbKind
 {
