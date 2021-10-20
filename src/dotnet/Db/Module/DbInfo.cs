@@ -7,4 +7,5 @@ public class DbInfo<TDbContext>
 {
     public DbKind DbKind { get; init; }
     public string ConnectionString { get; init; } = "";
+    public bool ShouldRecreateDb { get; set; } = false;
 }
