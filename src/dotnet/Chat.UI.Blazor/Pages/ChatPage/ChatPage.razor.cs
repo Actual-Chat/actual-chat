@@ -1,4 +1,3 @@
-using System.Globalization;
 using ActualChat.Audio;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Playback;
@@ -204,9 +203,10 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             }
 
             var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
-            var audioSource = await AudioDownloader.GetAudioSource(audioBlobUri, _watchRealtimeMediaCts.Token);
+            var audioSource = await AudioDownloader
+                .GetAudioSource(audioBlobUri, playbackOffset, _watchRealtimeMediaCts.Token);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt, playbackOffset);
+            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt);
 
             try {
                 await HistoricalPlayer.Stop();

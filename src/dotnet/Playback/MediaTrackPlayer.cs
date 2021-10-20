@@ -20,24 +20,8 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             await OnPlayStart(Track.Offset).ConfigureAwait(false);
             var zeroTimestamp = Track.ZeroTimestamp;
             var frames = Track.Source.Frames;
-            var shouldSkipNonKeyFrames = false;
-            var beginOfStream = Track.Offset.TotalSeconds > 5
-                ? Track.Offset.Subtract(TimeSpan.FromSeconds(5))
-                : TimeSpan.Zero;
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 cancellationToken.ThrowIfCancellationRequested();
-
-                if (frame.Offset < beginOfStream) {
-                    shouldSkipNonKeyFrames = true;
-                    continue;
-                }
-
-                if (shouldSkipNonKeyFrames) {
-                    if (frame.IsKeyFrame)
-                        shouldSkipNonKeyFrames = false;
-                    else
-                        continue;
-                }
 
                 var nextFrame = new PlayingMediaFrame(frame, zeroTimestamp + frame.Offset);
                 Playing?.Invoke(prevFrame, nextFrame);

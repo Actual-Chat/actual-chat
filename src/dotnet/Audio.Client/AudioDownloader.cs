@@ -10,7 +10,10 @@ public class AudioDownloader : IAudioDownloader, IDisposable
     public AudioDownloader(IHttpClientFactory clientFactory)
         => _httpClient = clientFactory.CreateClient();
 
-    public async Task<AudioSource> GetAudioSource(Uri audioUri, CancellationToken cancellationToken)
+    public async Task<AudioSource> GetAudioSource(
+        Uri audioUri,
+        TimeSpan offset,
+        CancellationToken cancellationToken)
     {
         var response = await _httpClient.GetAsync(audioUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
@@ -26,7 +29,8 @@ public class AudioDownloader : IAudioDownloader, IDisposable
 
         _ = Task.Run(ReadBlobPartsFromStream, cancellationToken);
 
-        return await audioSourceProvider.ExtractMediaSource(audioBlobs, cancellationToken).ConfigureAwait(false);
+        return await audioSourceProvider.ExtractMediaSource(audioBlobs, offset, cancellationToken)
+            .ConfigureAwait(false);
 
         async Task ReadBlobPartsFromStream()
         {

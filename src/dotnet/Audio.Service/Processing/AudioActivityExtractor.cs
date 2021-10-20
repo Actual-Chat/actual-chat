@@ -15,7 +15,8 @@ public class AudioActivityExtractor
                 SingleWriter = true,
                 AllowSynchronousContinuations = true,
             });
-        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, openAudioSegments.Writer, cancellationToken), default);
+        _ = Task.Run(() => ExtractSegments(audioRecord, audioReader, openAudioSegments.Writer, cancellationToken),
+            default);
         return openAudioSegments;
     }
 
@@ -29,7 +30,8 @@ public class AudioActivityExtractor
         var audioSourceProvider = new AudioSourceProvider();
         var segmentIndex = 0;
         try {
-            var audioSource = await audioSourceProvider.ExtractMediaSource(content, cancellationToken).ConfigureAwait(false);
+            var audioSource = await audioSourceProvider.ExtractMediaSource(content, default, cancellationToken)
+                .ConfigureAwait(false);
             var openAudioSegment = new OpenAudioSegment(
                 segmentIndex,
                 audioRecord,
