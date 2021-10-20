@@ -25,6 +25,10 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         _js = js;
     }
 
+    [JSInvokable]
+    public void SetCurrentPlaybackTime(double offsetSeconds)
+        => RaisePlaybackTimeChanged(TimeSpan.FromSeconds(offsetSeconds));
+
     protected override async ValueTask OnPlayStart(TimeSpan offset)
     {
         if (_jsRef == null)
