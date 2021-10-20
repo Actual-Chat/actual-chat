@@ -13,6 +13,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
 {
     public ValueTask<TMediaSource> ExtractMediaSource(
         ChannelReader<BlobPart> audioData,
+        TimeSpan offset,
         CancellationToken cancellationToken)
     {
         var frameChannel = Channel.CreateUnbounded<TMediaFrame>(new UnboundedChannelOptions {
@@ -28,6 +29,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 durationTaskSource,
                 frameChannel.Writer,
                 audioData,
+                offset,
                 cancellationToken),
             cancellationToken);
 
@@ -48,6 +50,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         TaskSource<TimeSpan> durationTaskSource,
         ChannelWriter<TMediaFrame> writer,
         ChannelReader<BlobPart> audioData,
+        TimeSpan offset,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
@@ -71,6 +74,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                     lastState.IsEmpty
                         ? new WebMReader(bufferLease.Memory.Span[..dataLength])
                         : WebMReader.FromState(lastState).WithNewSource(bufferLease.Memory.Span[..dataLength]),
+                    offset,
                     formatTaskSource,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
@@ -99,6 +103,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
 
     private WebMReader.State BuildAudioFrames(
         WebMReader webMReader,
+        TimeSpan offset,
         TaskSource<TMediaFormat> formatTaskSource,
         ref int clusterOffsetMs,
         ref int blockOffsetMs,
@@ -107,8 +112,12 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var prevPosition = 0;
         var framesStart = 0;
         var currentBlockOffsetMs = 0;
+        var requestedOffsetMs = (int)offset.TotalMilliseconds;
         EBML? ebml = null;
         Segment? segment = null;
+        TMediaFrame? firstFrame = null;
+        // SimpleBlock? firstBlock = null;
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
         while (webMReader.Read()) {
             var state = webMReader.GetState();
             switch (webMReader.ReadResultKind) {
@@ -134,14 +143,49 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 case WebMReadResultKind.Block:
                     var block = (Block)webMReader.ReadResult;
                     currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
-                    if (block is SimpleBlock { IsKeyFrame: true }) {
-                        var mediaFrame = new TMediaFrame {
-                            Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond
-                                * (clusterOffsetMs + currentBlockOffsetMs)),
-                            Data = webMReader.Span[framesStart..state.Position].ToArray(),
-                        };
-                        if (!writer.TryWrite(mediaFrame))
-                            throw new InvalidOperationException("Unable to write MediaFrame");
+                    if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
+                        TMediaFrame mediaFrame;
+                        var originalFrameOffset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond
+                            * (clusterOffsetMs + currentBlockOffsetMs));
+
+                        if (requestedOffsetMs > 0) {
+                            var requestedClusterOffsetMs = requestedOffsetMs - clusterOffsetMs;
+                            TimeSpan frameOffset;
+                            if (simpleBlock.TimeCode >= requestedClusterOffsetMs) {
+                                simpleBlock.TimeCode -= (short)requestedClusterOffsetMs;
+                                frameOffset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond
+                                    * (clusterOffsetMs + simpleBlock.TimeCode));
+                            }
+                            else {
+                                simpleBlock.TimeCode = 0;
+                                frameOffset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * clusterOffsetMs);
+                            }
+                            var webMWriter = new WebMWriter(bufferLease.Memory.Span);
+                            webMWriter.Write(simpleBlock);
+
+                            mediaFrame = new TMediaFrame {
+                                Offset = frameOffset,
+                                Data = webMWriter.Written.ToArray(),
+                            };
+                        }
+                        else
+                            mediaFrame = new TMediaFrame {
+                                Offset = originalFrameOffset,
+                                Data = webMReader.Span[framesStart..state.Position].ToArray(),
+                            };
+
+                        if (offset <= originalFrameOffset) {
+                            if (firstFrame != null) {
+                                if (!writer.TryWrite(firstFrame))
+                                    throw new InvalidOperationException("Unable to write MediaFrame.");
+
+                                firstFrame = null;
+                            }
+                            if (!writer.TryWrite(mediaFrame))
+                                throw new InvalidOperationException("Unable to write MediaFrame.");
+                        }
+                        else
+                            firstFrame = mediaFrame;
 
                         framesStart = state.Position;
                         blockOffsetMs = currentBlockOffsetMs;
@@ -154,14 +198,8 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
             prevPosition = state.Position;
         }
 
-        if (framesStart != prevPosition) {
-            var finalMediaFrame = new TMediaFrame {
-                Offset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs)),
-                Data = webMReader.Span[framesStart..prevPosition].ToArray(),
-            };
-            if (!writer.TryWrite(finalMediaFrame))
-                throw new InvalidOperationException("Unable to write MediaFrame");
-        }
+        if (framesStart != prevPosition)
+            throw new InvalidOperationException("Unexpected WebM structure.");
 
         blockOffsetMs = currentBlockOffsetMs;
 

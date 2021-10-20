@@ -10,7 +10,8 @@ public class AudioSourceProviderTest
     {
         var audioSourceProvider = new AudioSourceProvider();
         var blobChannel = Channel.CreateUnbounded<BlobPart>();
-        var audioSourceTask = audioSourceProvider.ExtractMediaSource(blobChannel.Reader, CancellationToken.None);
+        var audioSourceTask =
+            audioSourceProvider.ExtractMediaSource(blobChannel.Reader, default, CancellationToken.None);
 
         _ = ReadFromFile(blobChannel.Writer, "file.webm");
 
@@ -29,13 +30,41 @@ public class AudioSourceProviderTest
         offset.Should().Be(TimeSpan.FromMilliseconds(12240));
     }
 
+    [Fact]
+    public async Task ExtractMediaSourceFromFileWithOffset()
+    {
+        var audioSourceProvider = new AudioSourceProvider();
+        var blobChannel = Channel.CreateUnbounded<BlobPart>();
+        var audioSourceTask =
+            audioSourceProvider.ExtractMediaSource(blobChannel.Reader, TimeSpan.FromSeconds(5), CancellationToken.None);
+
+        _ = ReadFromFile(blobChannel.Writer, "file.webm");
+
+        var audioSource = await audioSourceTask;
+
+        var offset = TimeSpan.Zero;
+        await foreach (var audioFrame in audioSource) {
+            audioFrame.Data.Should().NotBeNull();
+            audioFrame.Data.Should().NotBeEmpty();
+            audioFrame.Offset.Should().BeGreaterOrEqualTo(offset);
+            offset = audioFrame.Offset > offset
+                ? audioFrame.Offset
+                : offset;
+        }
+
+        offset.Should().Be(TimeSpan.FromMilliseconds(7240));
+
+        await WriteToFile(audioSource, default, "file-with-offset.webm");
+    }
+
 
     [Fact]
     public async Task SaveMediaSourceToFile()
     {
         var audioSourceProvider = new AudioSourceProvider();
         var blobChannel = Channel.CreateUnbounded<BlobPart>();
-        var audioSourceTask = audioSourceProvider.ExtractMediaSource(blobChannel.Reader, CancellationToken.None);
+        var audioSourceTask =
+            audioSourceProvider.ExtractMediaSource(blobChannel.Reader, default, CancellationToken.None);
 
         _ = ReadFromFile(blobChannel.Writer, "file.webm");
 
@@ -49,7 +78,8 @@ public class AudioSourceProviderTest
     {
         var audioSourceProvider = new AudioSourceProvider();
         var blobChannel = Channel.CreateUnbounded<BlobPart>();
-        var audioSourceTask = audioSourceProvider.ExtractMediaSource(blobChannel.Reader, CancellationToken.None);
+        var audioSourceTask =
+            audioSourceProvider.ExtractMediaSource(blobChannel.Reader, default, CancellationToken.None);
 
         _ = ReadFromFile(blobChannel.Writer, "large-file.webm");
 

@@ -1,19 +1,18 @@
-﻿namespace ActualChat.Audio.WebM.Models
+﻿namespace ActualChat.Audio.WebM.Models;
+
+public sealed class EncryptedBlock : Block
 {
-    public sealed class EncryptedBlock : Block
+    public override EbmlElementDescriptor Descriptor => MatroskaSpecification.EncryptedBlockDescriptor;
+
+    public override bool Write(ref SpanWriter writer)
     {
-        public override EbmlElementDescriptor Descriptor => MatroskaSpecification.EncryptedBlockDescriptor;
+        if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.EncryptedBlock, GetSize(), ref writer))
+            return false;
 
-        public override bool Write(ref SpanWriter writer)
-        {
-            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.EncryptedBlock, GetSize(), ref writer))
-                return false;
-
-            writer.Write(VInt.EncodeSize(TrackNumber));
-            writer.Write(TimeCode);
-            writer.Write(Flags);
-            writer.Write(Data);
-            return true;
-        }
+        writer.Write(VInt.EncodeSize(TrackNumber));
+        writer.Write(TimeCode);
+        writer.Write(Flags);
+        writer.Write(Data);
+        return true;
     }
 }

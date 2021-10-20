@@ -22,17 +22,19 @@ export class AudioPlayer {
     private _removedBefore: number;
     private _audioEnded?: () => void;
     private _startOffset?: number;
+    private _previousReadyState: number;
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this._audio = new Audio();
-        // this._audio.autoplay = true;
+        this._audio.autoplay = true;
         this._blazorRef = blazorRef;
         this._sourceBuffer = null;
         this._bufferQueue = [];
         this._playingQueue = [];
         this._mediaSource = new MediaSource();
+        this._previousReadyState = -1;
         this._mediaSource.addEventListener('sourceopen', _ => {
             console.log('sourceopen: ' + this._mediaSource.readyState);
         });
@@ -70,11 +72,12 @@ export class AudioPlayer {
             console.log(e.message);
             console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
         });
-        this._audio.addEventListener('stalled', (e) => {
-            console.log('Audio stalled. ' + JSON.stringify(e));
+        this._audio.addEventListener('stalled', _ => {
+            console.log('Audio stalled. ');
         });
         this._audio.addEventListener('waiting', (e) => {
-            console.log('Audio is waiting. ' + JSON.stringify(e));
+            console.log('Audio is waiting. ');
+            console.log(`Audio state: ${this.getReadyState()}`);
         });
         this._audio.addEventListener('timeupdate', (e) => {
             while (this._playingQueue.length > 0) {
@@ -99,9 +102,6 @@ export class AudioPlayer {
         this._bufferCreated = new Promise<SourceBuffer>(resolve => {
             this._mediaSource.addEventListener('sourceopen', _ => {
                 URL.revokeObjectURL(this._audio.src);
-
-                // this._audio.play().then(_ => {
-                // });
 
                 let mime = 'audio/webm; codecs=opus';
                 this._sourceBuffer = this._mediaSource.addSourceBuffer(mime);
@@ -166,8 +166,10 @@ export class AudioPlayer {
                     let e = this._audio.error;
                     console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
                 } else {
-                    console.log(`Audio state: ${this._audio.readyState}`);
-                    console.log(`MediaSource state: ${this._mediaSource.readyState}`);
+                    if (this._audio.readyState !== this._previousReadyState) {
+                        console.log(`Audio state: ${this.getReadyState()}`);
+                    }
+                    this._previousReadyState = this._audio.readyState;
                     if (this._sourceBuffer.updating) {
                         this._bufferQueue.push(new AudioUpdate(resolve, byteArray, offsetSecs));
                     } else {
@@ -233,6 +235,23 @@ export class AudioPlayer {
             }
         } else {
             this._mediaSource.endOfStream();
+        }
+    }
+
+    private getReadyState(): string {
+        switch (this._audio.readyState) {
+            case this._audio.HAVE_CURRENT_DATA:
+                return 'HAVE_CURRENT_DATA';
+            case this._audio.HAVE_ENOUGH_DATA:
+                return 'HAVE_ENOUGH_DATA';
+            case this._audio.HAVE_FUTURE_DATA:
+                return 'HAVE_FUTURE_DATA';
+            case this._audio.HAVE_METADATA:
+                return 'HAVE_METADATA';
+            case this._audio.HAVE_NOTHING:
+                return 'HAVE_NOTHING';
+            default:
+                return 'UNKNOWN - ' + this._audio.readyState;
         }
     }
 }
