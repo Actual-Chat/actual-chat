@@ -152,7 +152,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                         if (lastChatEntry >= entry.Id) continue;
 
                         lastChatEntry = entry.Id;
-                        _ = AddRealtimeMediaTrack(entry);
+                        _ = RegisterChatEntryForRealTimePlayback(entry);
                     }
                 }
                 await computedMinMax.WhenInvalidated(cancellationToken).ConfigureAwait(false);
@@ -167,15 +167,13 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         // ReSharper disable once FunctionNeverReturns
     }
 
-    private async Task AddRealtimeMediaTrack(ChatEntry entry)
+    private async Task RegisterChatEntryForRealTimePlayback(ChatEntry entry)
     {
-        if (!RealtimePlayer.IsPlaying)
-            return;
-
         try {
-            var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _watchRealtimeMediaCts.Token);
-            var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-            await RealtimePlayer.AddMediaTrack(trackId, audioSource, entry.BeginsAt).ConfigureAwait(false);
+            if (entry.IsStreaming) {
+                var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
+                await RealtimePlayer.AddCommand(new RegisterStreamCommand(entry.StreamId, trackId, entry.BeginsAt));
+            }
         }
         catch (Exception e) when (e is not TaskCanceledException) {
             Log.LogError(
@@ -197,7 +195,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                 throw new InvalidOperationException($"Unable to find audio chat entry for ChatEntry.Id: {entry.Id}");
 
             if (audioEntry.IsStreaming) {
-                await AddRealtimeMediaTrack(audioEntry);
+                await RegisterChatEntryForRealTimePlayback(audioEntry);
                 return;
             }
 
