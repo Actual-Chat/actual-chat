@@ -166,7 +166,7 @@ export class AudioPlayer {
             try {
                 if (this._audio.error !== null) {
                     let e = this._audio.error;
-                    console.error(`Error1 during append audio. Code: ${e.code}. Message: ${e.message}`);
+                    console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
                 } else {
                     if (this._audio.readyState !== this._previousReadyState) {
                         console.log(`Audio state: ${this.getReadyState()}`);
