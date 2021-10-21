@@ -31,6 +31,30 @@ public class AudioSourceProviderTest
     }
 
     [Fact]
+    public async Task ExtractMediaSourceFromFileWithMultipleCluster()
+    {
+        var audioSourceProvider = new AudioSourceProvider();
+        var blobChannel = Channel.CreateUnbounded<BlobPart>();
+        var audioSourceTask = audioSourceProvider
+            .ExtractMediaSource(blobChannel.Reader, default, CancellationToken.None);
+
+        _ = ReadFromFile(blobChannel.Writer, "large-file.webm");
+
+        var audioSource = await audioSourceTask;
+
+        var offset = TimeSpan.Zero;
+        await foreach (var audioFrame in audioSource) {
+            audioFrame.Data.Should().NotBeNull();
+            audioFrame.Data.Should().NotBeEmpty();
+            audioFrame.Offset.Should().BeGreaterOrEqualTo(offset);
+            audioFrame.Offset.Should().BeLessThan(offset.Add(TimeSpan.FromMilliseconds(150)));
+            offset = audioFrame.Offset > offset
+                ? audioFrame.Offset
+                : offset;
+        }
+    }
+
+    [Fact]
     public async Task ExtractMediaSourceFromFileWithOffset()
     {
         var audioSourceProvider = new AudioSourceProvider();
@@ -72,6 +96,7 @@ public class AudioSourceProviderTest
 
         await WriteToFile(audioSource, TimeSpan.FromSeconds(5), "result-file.webm");
     }
+
 
     [Fact]
     public async Task SkipClusterAndSaveMediaSourceToFile()
