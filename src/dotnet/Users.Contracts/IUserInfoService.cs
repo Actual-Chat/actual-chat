@@ -10,6 +10,5 @@ namespace ActualChat.Users
         Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken);
         [ComputeMethod(KeepAliveTime = 10)]
         Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken);
-
     }
 }

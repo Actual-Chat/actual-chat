@@ -1,12 +1,14 @@
 using System.Collections.Concurrent;
 using ActualChat.Mathematics;
+using ActualChat.Media;
+using Stl.Comparison;
 using Stl.Concurrency;
 
 namespace ActualChat.Playback;
 
 public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerService
 {
-    private readonly ConcurrentDictionary<Symbol, PlayingMediaFrame> _playingFrames = new();
+    private readonly ConcurrentDictionary<Symbol, PlayMediaFrameCommand> _playingFrames = new();
 
     protected IServiceProvider Services { get; }
     protected ILogger<MediaPlayerService> Log { get; }
@@ -24,75 +26,114 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
     }
 
     /// <inheritdoc/>
-    public async Task Play(IAsyncEnumerable<MediaTrack> tracks, CancellationToken cancellationToken)
+    public async Task Play(IAsyncEnumerable<MediaPlayerCommand> commands, CancellationToken cancellationToken)
     {
         using var linkedTokenSource = cancellationToken.LinkWith(StopToken);
         var linkedToken = linkedTokenSource.Token;
 
-        var trackPlayers = new ConcurrentDictionary<MediaTrack, MediaTrackPlayer>();
-        await foreach (var track in tracks.WithCancellation(linkedToken).ConfigureAwait(false)) {
-            if (trackPlayers.ContainsKey(track))
-                continue;
-            var trackPlayer = CreateMediaTrackPlayer(track);
-            trackPlayer.Playing += (prevFrame, nextFrame) => OnPlayingFrame(track, prevFrame, nextFrame);
-            _ = trackPlayer.Run(linkedToken);
-            _ = trackPlayer.RunningTask!.ContinueWith(
-                _ => trackPlayers.TryRemove(track, trackPlayer),
-                TaskScheduler.Default);
-            trackPlayers[track] = trackPlayer;
+        var trackPlayers = new ConcurrentDictionary<Ref<PlayMediaTrackCommand>, MediaTrackPlayer>();
+        await foreach (var command in commands.WithCancellation(linkedToken).ConfigureAwait(false)) {
+            switch (command) {
+            case PlayMediaTrackCommand playTrackCommand:
+                var commandRef = Ref.New(playTrackCommand); // Reference-based comparison works faster for records
+                if (trackPlayers.ContainsKey(commandRef))
+                    continue;
+                var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
+                trackPlayer.CommandProcessed += OnTrackPlayerCommandCommandProcessed;
+                _ = trackPlayer.Run(linkedToken);
+                _ = trackPlayer.RunningTask!.ContinueWith(
+                    // We want to remove players once they finish, otherwise it may cause mem leak
+                    _ => trackPlayers.TryRemove(commandRef, trackPlayer),
+                    TaskScheduler.Default);
+                trackPlayers[commandRef] = trackPlayer;
+                break;
+            case SetVolumeCommand setVolume:
+                var tasks = trackPlayers.Values
+                    .Select(p => p.EnqueueCommand(new SetTrackVolumeCommand(p, setVolume.Volume)).AsTask())
+                    .ToArray();
+                await Task.WhenAll(tasks).ConfigureAwait(false);
+                break;
+            default:
+                throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+            }
         }
 
         // ~= await Task.WhenAll(unfinishedPlayTasks).ConfigureAwait(false);
         while (true) {
-            var (track, trackPlayer) = trackPlayers.FirstOrDefault();
-            if (track == null!)
+            var (commandRef, trackPlayer) = trackPlayers.FirstOrDefault();
+            if (trackPlayer == null!)
                 break;
             await (trackPlayer.RunningTask ?? Task.CompletedTask).ConfigureAwait(false);
-            trackPlayers.TryRemove(track, trackPlayer);
+            trackPlayers.TryRemove(commandRef, trackPlayer);
         }
     }
 
-    public virtual Task<PlayingMediaFrame?> GetPlayingMediaFrame(
+    public virtual Task<PlayMediaFrameCommand?> GetPlayingMediaFrame(
         Symbol trackId,
         CancellationToken cancellationToken)
         => Task.FromResult(_playingFrames.GetValueOrDefault(trackId));
 
-    public virtual Task<PlayingMediaFrame?> GetPlayingMediaFrame(
+    public virtual Task<PlayMediaFrameCommand?> GetPlayingMediaFrame(
         Symbol trackId, Range<Moment> timestampRange,
         CancellationToken cancellationToken)
     {
-        MediaPlayConstants.TimestampLogCover.AssertIsTile(timestampRange);
-        var frame = _playingFrames.GetValueOrDefault(trackId);
-        var result = frame != null && timestampRange.Contains(frame.Timestamp) ? frame : null;
+        PlaybackConstants.TimestampLogCover.AssertIsTile(timestampRange);
+        var command = _playingFrames.GetValueOrDefault(trackId);
+        if (command == null)
+            return Task.FromResult(command);
+        var timestamp = command.Player.Command.RecordingStartedAt + command.Frame.Offset;
+        var result = timestampRange.Contains(timestamp) ? command : null;
         return Task.FromResult(result);
     }
 
     // Protected methods
 
-    protected abstract MediaTrackPlayer CreateMediaTrackPlayer(MediaTrack mediaTrack);
+    protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
-    protected virtual void OnPlayingFrame(MediaTrack mediaTrack, PlayingMediaFrame? prevFrame, PlayingMediaFrame? nextFrame)
+    protected virtual ValueTask OnTrackPlayerCommandCommandProcessed(MediaTrackPlayerCommand command)
     {
-        var timestampLogCover = MediaPlayConstants.TimestampLogCover;
-        if (nextFrame != null)
-            _playingFrames[mediaTrack.Id] = nextFrame;
+        PlayMediaFrameCommand? frameCmd, prevFrameCmd;
+        MediaTrackPlayer trackPlayer;
+        switch (command) {
+        case PlayMediaFrameCommand playCommand:
+            trackPlayer = playCommand.Player;
+            frameCmd = playCommand;
+            prevFrameCmd = _playingFrames.GetValueOrDefault(playCommand.Player.Command.TrackId);
+            break;
+        case StopPlaybackCommand stopCommand:
+            trackPlayer = stopCommand.Player;
+            frameCmd = null;
+            prevFrameCmd = _playingFrames.GetValueOrDefault(stopCommand.Player.Command.TrackId);
+            break;
+        default:
+            return ValueTask.CompletedTask;
+        }
+
+        var trackId = trackPlayer.Command.TrackId;
+        var timestampLogCover = PlaybackConstants.TimestampLogCover;
+        if (frameCmd != null) {
+            _playingFrames[trackId] = frameCmd;
+        }
         else
-            _playingFrames.TryRemove(mediaTrack.Id, out var _);
+            _playingFrames.TryRemove(trackId, out var _);
         using (Computed.Invalidate()) {
-            _ = GetPlayingMediaFrame(mediaTrack.Id, default);
-            if (prevFrame != null) {
-                foreach (var tile in timestampLogCover.GetCoveringTiles(prevFrame.Timestamp)) {
+            _ = GetPlayingMediaFrame(trackId, default);
+            if (prevFrameCmd != null) {
+                var timestamp = trackPlayer.Command.RecordingStartedAt + prevFrameCmd.Frame.Offset;
+                foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp)) {
                     // TODO(AK): this line throws exceptions - invalid range boundaries!
                     // _ = GetPlayingMediaFrame(mediaTrack.Id, tile, default);
                 }
             }
-            if (nextFrame != null) {
-                foreach (var tile in timestampLogCover.GetCoveringTiles(nextFrame.Timestamp)) {
+            if (frameCmd != null) {
+                var timestamp = trackPlayer.Command.RecordingStartedAt + frameCmd.Frame.Offset;
+                foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp)) {
                     // TODO(AK): this line throws exceptions - invalid range boundaries!
                     // _ = GetPlayingMediaFrame(mediaTrack.Id, tile, default);
                 }
             }
         }
+        return ValueTask.CompletedTask;
     }
 
     protected override ValueTask DisposeAsyncCore()
