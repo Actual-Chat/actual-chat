@@ -37,19 +37,37 @@ public class PlaywrightTest : AppHostTestBase
         var button = await page.QuerySelectorAsync("button.message-submit").ConfigureAwait(false);
         button.Should().NotBeNull();
 
-        var messages = await page.QuerySelectorAllAsync(".chat-page .content").ConfigureAwait(false);
-        var lastMessage = await messages.Last().TextContentAsync().ConfigureAwait(false);
+        var messages = await GetMessages(page).ConfigureAwait(false);
+        var lastMessage = await GetLastMessage(messages).ConfigureAwait(false);
         lastMessage.Should().NotBe("Test-123");
 
         await input!.TypeAsync("Test-123").ConfigureAwait(false);
         await button!.ClickAsync().ConfigureAwait(false);
 
-        // TODO: wait for network request or websocket event
-        await page.WaitForTimeoutAsync(3500f).ConfigureAwait(false);
-
-        messages = await page.QuerySelectorAllAsync(".chat-page .content").ConfigureAwait(false);
-        lastMessage = await messages.Last().TextContentAsync().ConfigureAwait(false);
+        var count = messages.Count;
+        messages = await WaitNewMessages(TimeSpan.FromSeconds(5), page, count).ConfigureAwait(false);
+        lastMessage = await GetLastMessage(messages).ConfigureAwait(false);
         lastMessage.Should().Be("Test-123");
+
+        static async Task<IReadOnlyList<IElementHandle>> WaitNewMessages(TimeSpan timeout, IPage page, int oldMessagesCount)
+        {
+            var stopTime = DateTime.Now + timeout;
+            var newMessages = await GetMessages(page).ConfigureAwait(false);
+            while (newMessages.Count == oldMessagesCount) {
+                await Task.Delay(500).ConfigureAwait(false);
+                newMessages = await GetMessages(page).ConfigureAwait(false);
+                if (DateTime.Now >= stopTime) {
+                    throw new Exception($"Chat state has not changed in {timeout.TotalSeconds} seconds.");
+                }
+            }
+            return newMessages;
+        }
+
+        static async Task<IReadOnlyList<IElementHandle>> GetMessages(IPage page)
+            => await page.QuerySelectorAllAsync(".chat-page .content");
+
+        static async Task<string?> GetLastMessage(IEnumerable<IElementHandle> messages)
+            => await messages.Last().TextContentAsync().ConfigureAwait(false);
     }
 
     [Fact]
