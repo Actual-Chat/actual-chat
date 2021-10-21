@@ -1,12 +1,12 @@
 class AudioUpdate {
     public played: () => void;
     public chunk: Uint8Array;
-    public offsetSecs: number;
+    public offset: number;
 
     public constructor(played: () => void, chunk: Uint8Array, offsetSecs: number) {
         this.played = played;
         this.chunk = chunk;
-        this.offsetSecs = offsetSecs;
+        this.offset = offsetSecs;
     }
 }
 
@@ -25,10 +25,6 @@ export class AudioPlayer {
     private _invokeOnPlaybackTimeChanged?: Promise<void> = null
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
-
-    public static create(blazorRef: DotNet.DotNetObject) {
-        return new AudioPlayer(blazorRef);
-    }
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this._audio = new Audio();
@@ -64,6 +60,7 @@ export class AudioPlayer {
         this._audio.addEventListener('error', (e) => {
             while (this._playingQueue.length > 0) {
                 let playingFrame = this._playingQueue.shift();
+                // console.log(`Resolved promise for audio frame. Offset: ${playingFrame.offset}`);
                 playingFrame.played();
             }
 
@@ -82,8 +79,9 @@ export class AudioPlayer {
             let time = this._audio.currentTime;
             while (this._playingQueue.length > 0) {
                 let playingFrame = this._playingQueue.shift();
-                let frameTime = playingFrame.offsetSecs;
+                let frameTime = playingFrame.offset;
                 if (time > frameTime - 5) {
+                    // console.log(`Resolved promise for audio frame. Offset: ${playingFrame.offset}`);
                     playingFrame.played();
                 } else {
                     this._playingQueue.unshift(playingFrame);
@@ -119,12 +117,14 @@ export class AudioPlayer {
                             if (update instanceof AudioUpdate) {
                                 this._sourceBuffer.appendBuffer(update.chunk);
                                 if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA) {
-                                    if (this._audio.currentTime + 5 <= update.offsetSecs) {
+                                    if (this._audio.currentTime + 5 <= update.offset) {
                                         this._playingQueue.push(update);
                                     } else {
+                                        // console.log(`Resolved promise for audio frame. Offset: ${update.offset}`);
                                         update.played();
                                     }
                                 } else {
+                                    // console.log(`Resolved promise for audio frame. Offset: ${update.offset}`);
                                     update.played();
                                 }
                             } else {
@@ -139,6 +139,10 @@ export class AudioPlayer {
         });
 
         this._audio.src = URL.createObjectURL(this._mediaSource);
+    }
+
+    public static create(blazorRef: DotNet.DotNetObject) {
+        return new AudioPlayer(blazorRef);
     }
 
     public async initialize(byteArray: Uint8Array, offset: number): Promise<void> {
@@ -162,6 +166,7 @@ export class AudioPlayer {
     }
 
     public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
+        // console.log(`Appending audio frame... Offset: ${offset}`);
         return new Promise<void>(resolve => {
             try {
                 if (this._audio.error !== null) {
@@ -190,12 +195,14 @@ export class AudioPlayer {
                             if (updateWithProperOrder instanceof AudioUpdate) {
                                 this._sourceBuffer.appendBuffer(updateWithProperOrder.chunk);
                                 if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA) {
-                                    if (this._audio.currentTime + 5 <= updateWithProperOrder.offsetSecs) {
+                                    if (this._audio.currentTime + 5 <= updateWithProperOrder.offset) {
                                         this._playingQueue.push(updateWithProperOrder);
                                     } else {
+                                        // console.log(`Resolved promise for audio frame. Offset: ${updateWithProperOrder.offset}`);
                                         updateWithProperOrder.played();
                                     }
                                 } else {
+                                    // console.log(`Resolved promise for audio frame. Offset: ${updateWithProperOrder.offset}`);
                                     updateWithProperOrder.played();
                                 }
                             } else
@@ -203,12 +210,14 @@ export class AudioPlayer {
                         } else {
                             this._sourceBuffer.appendBuffer(byteArray);
                             if (this._audio.readyState === this._audio.HAVE_ENOUGH_DATA) {
-                                if (this._audio.currentTime + 5 <= newUpdate.offsetSecs) {
+                                if (this._audio.currentTime + 5 <= newUpdate.offset) {
                                     this._playingQueue.push(newUpdate);
                                 } else {
+                                    // console.log(`Resolved promise for audio frame. Offset: ${newUpdate.offset}`);
                                     newUpdate.played();
                                 }
                             } else {
+                                // console.log(`Resolved promise for audio frame. Offset: ${newUpdate.offset}`);
                                 newUpdate.played();
                             }
                         }
@@ -220,7 +229,7 @@ export class AudioPlayer {
         });
     }
 
-    public endOfStream() : void {
+    public endOfStream(): void {
         console.log('Audio player endOfStream() call');
         if (this._sourceBuffer.updating) {
             this._bufferQueue.push(new AudioEnd());
@@ -247,11 +256,11 @@ export class AudioPlayer {
         }
     }
 
-    private async invokeOnPlaybackTimeChanged(time) : Promise<void> {
+    private async invokeOnPlaybackTimeChanged(time): Promise<void> {
         await this._blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
     }
 
-    private invokeOnPlaybackEnded(code: number | null = null, message: string | null = null) : Promise<void> {
+    private invokeOnPlaybackEnded(code: number | null = null, message: string | null = null): Promise<void> {
         return this._blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
     }
 

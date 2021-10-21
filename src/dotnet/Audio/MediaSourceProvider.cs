@@ -139,6 +139,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                     }
                     var cluster = (Cluster)webMReader.ReadResult;
                     clusterOffsetMs = (int)cluster.Timestamp;
+                    currentBlockOffsetMs = 0;
                     break;
                 case WebMReadResultKind.Block:
                     var block = (Block)webMReader.ReadResult;
