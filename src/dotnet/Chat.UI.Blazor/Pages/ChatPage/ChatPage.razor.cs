@@ -175,8 +175,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         try {
             var audioSource = await AudioStreamer.GetAudioSource(entry.StreamId, _watchRealtimeMediaCts.Token);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt);
-            await RealtimePlayer.AddMediaTrack(mediaTrack).ConfigureAwait(false);
+            await RealtimePlayer.AddMediaTrack(trackId, audioSource, entry.BeginsAt).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not TaskCanceledException) {
             Log.LogError(
@@ -206,14 +205,14 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             var audioSource = await AudioDownloader
                 .GetAudioSource(audioBlobUri, playbackOffset, _watchRealtimeMediaCts.Token);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-            var mediaTrack = new MediaTrack(trackId, audioSource, entry.BeginsAt);
+            var recordingStartedAt = audioEntry.BeginsAt + playbackOffset;
 
             try {
                 await HistoricalPlayer.Stop();
             }
             catch (OperationCanceledException) { }
 
-            await HistoricalPlayer.AddMediaTrack(mediaTrack);
+            await HistoricalPlayer.AddMediaTrack(trackId, audioSource, recordingStartedAt);
             _ = HistoricalPlayer.Play();
         }
         catch (Exception e) when (e is not TaskCanceledException) {

@@ -5,8 +5,9 @@ namespace ActualChat.Audio.UI.Blazor;
 
 public class AudioPlayerService : MediaPlayerService
 {
-    public AudioPlayerService(IServiceProvider services, ILogger<MediaPlayerService> log) : base(services, log) { }
+    public AudioPlayerService(IServiceProvider services, ILogger<MediaPlayerService> log)
+        : base(services, log) { }
 
-    protected override MediaTrackPlayer CreateMediaTrackPlayer(MediaTrack mediaTrack)
+    protected override MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack)
         => Services.Activate<AudioTrackPlayer>(mediaTrack);
 }

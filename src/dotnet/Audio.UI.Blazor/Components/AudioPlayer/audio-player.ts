@@ -20,11 +20,15 @@ export class AudioPlayer {
     private _bufferQueue: (AudioUpdate | AudioEnd)[];
     private _playingQueue: AudioUpdate[];
     private _removedBefore: number;
-    private _audioEnded?: () => void;
     private _startOffset?: number;
     private _previousReadyState: number;
+    private _invokeOnPlaybackTimeChanged?: Promise<void> = null
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
+
+    public static create(blazorRef: DotNet.DotNetObject) {
+        return new AudioPlayer(blazorRef);
+    }
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this._audio = new Audio();
@@ -54,9 +58,7 @@ export class AudioPlayer {
                 playingFrame.played();
             }
 
-            if (this._audioEnded)
-                this._audioEnded();
-
+            let _ = this.invokeOnPlaybackEnded();
             console.log('Audio ended. ' + JSON.stringify(e));
         });
         this._audio.addEventListener('error', (e) => {
@@ -65,11 +67,8 @@ export class AudioPlayer {
                 playingFrame.played();
             }
 
-            if (this._audioEnded)
-                this._audioEnded();
-
             let err = this._audio.error;
-            console.log(e.message);
+            let _ = this.invokeOnPlaybackEnded(err.code, err.message);
             console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', _ => {
@@ -91,8 +90,7 @@ export class AudioPlayer {
                     break;
                 }
             }
-
-            this._blazorRef.invokeMethodAsync("SetCurrentPlaybackTime", time);
+            let _ = this.invokeOnPlaybackTimeChanged(time);
         });
         this._audio.addEventListener('canplay', (e) => {
             if (this._startOffset) {
@@ -143,10 +141,6 @@ export class AudioPlayer {
         this._audio.src = URL.createObjectURL(this._mediaSource);
     }
 
-    public static create(blazorRef: DotNet.DotNetObject) {
-        return new AudioPlayer(blazorRef);
-    }
-
     public async initialize(byteArray: Uint8Array, offset: number): Promise<void> {
         console.log('Audio player initialized.');
         this._startOffset = offset;
@@ -167,29 +161,29 @@ export class AudioPlayer {
         this.stop(null);
     }
 
-    public appendAudio(byteArray: Uint8Array, offsetSecs: number): Promise<void> {
+    public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
         return new Promise<void>(resolve => {
             try {
                 if (this._audio.error !== null) {
                     let e = this._audio.error;
-                    console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
+                    console.error(`Error1 during append audio. Code: ${e.code}. Message: ${e.message}`);
                 } else {
                     if (this._audio.readyState !== this._previousReadyState) {
                         console.log(`Audio state: ${this.getReadyState()}`);
                     }
                     this._previousReadyState = this._audio.readyState;
                     if (this._sourceBuffer.updating) {
-                        this._bufferQueue.push(new AudioUpdate(resolve, byteArray, offsetSecs));
+                        this._bufferQueue.push(new AudioUpdate(resolve, byteArray, offset));
                     } else {
                         let currentTime = this._audio.currentTime;
                         let removedBefore = this._removedBefore;
                         if (currentTime > removedBefore + 5) {
                             this._sourceBuffer.remove(removedBefore, currentTime - 2);
                             this._removedBefore = currentTime - 2;
-                            this._bufferQueue.push(new AudioUpdate(resolve, byteArray, offsetSecs));
+                            this._bufferQueue.push(new AudioUpdate(resolve, byteArray, offset));
                         }
 
-                        let newUpdate = new AudioUpdate(resolve, byteArray, offsetSecs)
+                        let newUpdate = new AudioUpdate(resolve, byteArray, offset)
                         if (this._bufferQueue.length > 0) {
                             this._bufferQueue.push(newUpdate);
                             let updateWithProperOrder = this._bufferQueue.shift();
@@ -226,20 +220,17 @@ export class AudioPlayer {
         });
     }
 
-    public async endOfStream(): Promise<void> {
+    public endOfStream() : void {
         console.log('Audio player endOfStream() call');
-        return new Promise<void>(resolve => {
-            if (this._sourceBuffer.updating) {
+        if (this._sourceBuffer.updating) {
+            this._bufferQueue.push(new AudioEnd());
+        } else {
+            if (this._bufferQueue.length > 0) {
                 this._bufferQueue.push(new AudioEnd());
             } else {
-                if (this._bufferQueue.length > 0) {
-                    this._bufferQueue.push(new AudioEnd());
-                } else {
-                    this._mediaSource.endOfStream();
-                }
+                this._mediaSource.endOfStream();
             }
-            this._audioEnded = resolve;
-        });
+        }
     }
 
     public stop(error: EndOfStreamError | null) {
@@ -249,11 +240,19 @@ export class AudioPlayer {
         if (this._sourceBuffer.updating) {
             this._sourceBuffer.onupdateend = _ => {
                 if (!this._sourceBuffer.updating)
-                    this._mediaSource.endOfStream();
+                    this._mediaSource.endOfStream(error);
             }
         } else {
-            this._mediaSource.endOfStream();
+            this._mediaSource.endOfStream(error);
         }
+    }
+
+    private async invokeOnPlaybackTimeChanged(time) : Promise<void> {
+        await this._blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
+    }
+
+    private invokeOnPlaybackEnded(code: number | null = null, message: string | null = null) : Promise<void> {
+        return this._blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
     }
 
     private getReadyState(): string {
