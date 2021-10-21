@@ -2,15 +2,23 @@ using ActualChat.Media;
 
 namespace ActualChat.Playback;
 
-public abstract record MediaPlayerCommand { }
+public abstract record MediaPlayerCommand
+{ }
 
-public record SetVolumeCommand(double Volume) : MediaPlayerCommand { }
+public record SetVolumeCommand(double Volume) : MediaPlayerCommand
+{ }
 
 public record PlayMediaTrackCommand(
     Symbol TrackId,
     IMediaSource Source,
     Moment RecordingStartedAt,
     TimeSpan StartOffset = default
-    ) : MediaPlayerCommand
+) : MediaPlayerCommand
 { }
 
+public record RegisterStreamCommand(
+    StreamId StreamId,
+    string TrackId,
+    Moment RecordingStartedAt
+) : MediaPlayerCommand
+{ }
