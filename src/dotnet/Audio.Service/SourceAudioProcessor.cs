@@ -67,7 +67,7 @@ public class SourceAudioProcessor : BackgroundService
             var blobIdTask = Persist(segment, cancellationToken);
             await Task.WhenAll(audioTask, textChatEntryTask, audioChatEntryTask).ConfigureAwait(false);
             _ = UpdateTextChatEntry(textChatEntryTask, transcriptTask, cancellationToken);
-            _ = UpdateAudioChatEntry(audioChatEntryTask, blobIdTask, cancellationToken);
+            _ = UpdateAudioChatEntry(audioChatEntryTask, blobIdTask, segment, cancellationToken);
         }
     }
 
@@ -180,7 +180,7 @@ public class SourceAudioProcessor : BackgroundService
         var updated = chatEntry with {
             Content = transcript.Text,
             StreamId = StreamId.None,
-            EndsAt = ClockSet.CpuClock.UtcNow,
+            EndsAt = chatEntry.BeginsAt.ToDateTime().AddSeconds(transcript.Duration),
             TextToTimeMap = transcript.TextToTimeMap,
         };
         await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken)
@@ -190,15 +190,17 @@ public class SourceAudioProcessor : BackgroundService
     private async Task UpdateAudioChatEntry(
         Task<ChatEntry> chatEntryTask,
         Task<string> blobIdTask,
+        OpenAudioSegment segment,
         CancellationToken cancellationToken)
     {
         var chatEntry = await chatEntryTask.ConfigureAwait(false);
         var blobId = await blobIdTask.ConfigureAwait(false);
 
+        var duration = await segment.DurationTask;
         var updated = chatEntry with {
             Content = blobId,
             StreamId = StreamId.None,
-            EndsAt = ClockSet.CpuClock.UtcNow,
+            EndsAt = chatEntry.BeginsAt.ToDateTime().Add(duration),
         };
         await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken)
             .ConfigureAwait(false);
