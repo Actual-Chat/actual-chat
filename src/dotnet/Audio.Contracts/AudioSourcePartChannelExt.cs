@@ -34,9 +34,11 @@ public static class AudioSourcePartChannelExt
                 while (audioSourceParts.TryRead(out var part)) {
                     if (durationTask.IsCompleted)
                         throw new InvalidOperationException("AudioSourcePart.Duration part must be the last one.");
+
                     if (formatTask.IsCompleted) {
                         if (part.Format != null)
                             throw new InvalidOperationException("AudioSourcePart.Format part must be the first one.");
+
                         if (part.Duration.HasValue)
                             durationTaskSource.SetResult(part.Duration.GetValueOrDefault());
                         else if (part.Frame != null)
@@ -47,6 +49,7 @@ public static class AudioSourcePartChannelExt
                     else {
                         if (part.Format == null)
                             throw new InvalidOperationException("AudioSourcePart.Format part is expected first.");
+
                         formatTaskSource.SetResult(part.Format);
                     }
                 }

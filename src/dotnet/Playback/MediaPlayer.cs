@@ -91,11 +91,13 @@ public sealed class MediaPlayer : IDisposable
             while (reader.TryRead(out var playerCommand))
                 if (playerCommand is RegisterStreamCommand(var streamId, var trackId, var recordingStartedAt)) {
                     var recordingDateTime = recordingStartedAt.ToDateTime();
-                    var attemptPlaybackOfStreamNotOlderThan = ClockSet.CpuClock.Now.ToDateTime().AddMinutes(-1);
+                    var now = ClockSet.CpuClock.Now.ToDateTime();
+                    var attemptPlaybackOfStreamNotOlderThan = now.AddMinutes(-1);
                     if (recordingDateTime < attemptPlaybackOfStreamNotOlderThan)
                         continue;
 
-                    var audioSource = await _audioSourceStreamer.GetAudioSource(streamId, cancellationToken);
+                    var offset = now.Subtract(recordingDateTime);
+                    var audioSource = await _audioSourceStreamer.GetAudioSource(streamId, offset, cancellationToken);
                     await writer
                         .WriteAsync(
                             new PlayMediaTrackCommand(trackId, audioSource, recordingStartedAt),

@@ -13,21 +13,6 @@ public class SourceAudioProcessorTest : AppHostTestBase
         => SourceAudioProcessor.SkipAutoStart = true;
 
     [Fact]
-    public async Task NoRecordingTest()
-    {
-        using var appHost = await TestHostFactory.NewAppHost();
-        var services = appHost.Services;
-        var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
-        var cts = new CancellationTokenSource();
-        var dequeueTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
-        await Task.Delay(50);
-        dequeueTask.IsCompleted.Should().Be(false);
-        cts.Cancel();
-        await Task.Delay(50);
-        dequeueTask.IsCanceled.Should().BeTrue();
-    }
-
-    [Fact]
     public async Task EmptyRecordingTest()
     {
         using var appHost = await TestHostFactory.NewAppHost();
@@ -45,52 +30,37 @@ public class SourceAudioProcessorTest : AppHostTestBase
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
                 SingleWriter = true,
-                AllowSynchronousContinuations = true
+                AllowSynchronousContinuations = true,
             });
         var recordingSpec = new AudioRecord(
             "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = sourceAudioRecorder.RecordSourceAudio(session,recordingSpec, channel.Reader, CancellationToken.None);
+        _ = sourceAudioRecorder.RecordSourceAudio(session, recordingSpec, channel.Reader, CancellationToken.None);
         channel.Writer.Complete();
 
         var record = await dequeueTask;
-        record.Should().Be(recordingSpec with {
-            Id = record!.Id,
-            UserId = record.UserId
-        });
+        record.Should()
+            .Be(recordingSpec with {
+                Id = record!.Id,
+                UserId = record.UserId,
+            });
     }
 
     [Fact]
-    public async Task PerformRecordingTest()
+    public async Task NoRecordingTest()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         var services = appHost.Services;
-        var sessionFactory = services.GetRequiredService<ISessionFactory>();
-        var session = sessionFactory.CreateSession();
-        _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
-        var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
-        var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
-        var chatService = services.GetRequiredService<IChatService>();
-
-        var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
-        using var cts = new CancellationTokenSource();
-        var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
-
-        var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
-
-        var recording = await recordingTask;
-        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
-
-        var readTask = ReadAudioData(recording!.Id, audioStreamer);
-        var writtenSize = await pushAudioTask;
-        var readSize = await readTask;
-
-        await pipelineTask;
-
-        readSize.Should().Be(writtenSize);
+        var cts = new CancellationTokenSource();
+        var dequeueTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
+        await Task.Delay(50);
+        dequeueTask.IsCompleted.Should().Be(false);
+        cts.Cancel();
+        await Task.Delay(50);
+        dequeueTask.IsCanceled.Should().BeTrue();
     }
 
     [Fact]
@@ -127,6 +97,37 @@ public class SourceAudioProcessorTest : AppHostTestBase
         readSize.Should().Be(writtenSize);
     }
 
+    [Fact]
+    public async Task PerformRecordingTest()
+    {
+        using var appHost = await TestHostFactory.NewAppHost();
+        var services = appHost.Services;
+        var sessionFactory = services.GetRequiredService<ISessionFactory>();
+        var session = sessionFactory.CreateSession();
+        _ = await appHost.SignIn(session, new User("", "Bob"));
+        var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
+        var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
+        var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
+        var chatService = services.GetRequiredService<IChatService>();
+
+        var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
+        using var cts = new CancellationTokenSource();
+        var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
+
+        var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
+
+        var recording = await recordingTask;
+        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
+
+        var readTask = ReadAudioData(recording!.Id, audioStreamer);
+        var writtenSize = await pushAudioTask;
+        var readSize = await readTask;
+
+        await pipelineTask;
+
+        readSize.Should().Be(writtenSize);
+    }
+
     private async Task<int> ReadTranscriptStream(
         AudioRecordId audioRecordId,
         ITranscriptStreamer transcriptStreamer)
@@ -138,8 +139,9 @@ public class SourceAudioProcessorTest : AppHostTestBase
         await foreach (var update in updates.ReadAllAsync()) {
             if (update.UpdatedPart == null)
                 continue;
+
             Out.WriteLine(update.UpdatedPart.Text);
-            size = (int) update.UpdatedPart.TextToTimeMap.SourceRange.Max;
+            size = (int)update.UpdatedPart.TextToTimeMap.SourceRange.Max;
         }
         return size;
     }
@@ -149,17 +151,20 @@ public class SourceAudioProcessorTest : AppHostTestBase
         IAudioSourceStreamer audioStreamer)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var audioSource = await audioStreamer.GetAudioSource(streamId, CancellationToken.None);
+        var audioSource = await audioStreamer.GetAudioSource(streamId, default, CancellationToken.None);
         var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
 
-        int sum = header.Length;
+        var sum = header.Length;
         await foreach (var audioFrame in audioSource)
             sum += audioFrame.Data.Length;
 
         return sum;
     }
 
-    private static async Task<int> PushAudioData(Session session, string chatId, ISourceAudioRecorder sourceAudioRecorder)
+    private static async Task<int> PushAudioData(
+        Session session,
+        string chatId,
+        ISourceAudioRecorder sourceAudioRecorder)
     {
         var record = new AudioRecord(
             chatId,
@@ -171,13 +176,15 @@ public class SourceAudioProcessorTest : AppHostTestBase
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
                 SingleWriter = true,
-                AllowSynchronousContinuations = true
+                AllowSynchronousContinuations = true,
             });
 
         _ = sourceAudioRecorder.RecordSourceAudio(session, record, channel.Reader, CancellationToken.None);
 
         var size = 0;
-        await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"), FileMode.Open, FileAccess.Read);
+        await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
+            FileMode.Open,
+            FileAccess.Read);
         using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
         var readBuffer = readBufferLease.Memory;
         var index = 0;
