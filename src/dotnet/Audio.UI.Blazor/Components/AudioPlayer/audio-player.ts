@@ -22,7 +22,6 @@ export class AudioPlayer {
     private _removedBefore: number;
     private _startOffset?: number;
     private _previousReadyState: number;
-    private _invokeOnPlaybackTimeChanged?: Promise<void> = null
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
 
@@ -74,6 +73,19 @@ export class AudioPlayer {
         this._audio.addEventListener('waiting', (e) => {
             console.log('Audio is waiting. ');
             console.log(`Audio state: ${this.getReadyState()}`);
+
+            let time = this._audio.currentTime;
+            while (this._playingQueue.length > 0) {
+                let playingFrame = this._playingQueue.shift();
+                let frameTime = playingFrame.offset;
+                if (time > frameTime - 5) {
+                    // console.log(`Resolved promise for audio frame. Offset: ${playingFrame.offset}`);
+                    playingFrame.played();
+                } else {
+                    this._playingQueue.unshift(playingFrame);
+                    break;
+                }
+            }
         });
         this._audio.addEventListener('timeupdate', (e) => {
             let time = this._audio.currentTime;

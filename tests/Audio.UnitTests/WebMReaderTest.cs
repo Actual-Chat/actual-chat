@@ -35,7 +35,7 @@ public class WebMReaderTest : TestBase
     }
 
     [Fact]
-    public async Task ReaderSmallBufferTest()
+    public async Task ReadHeaderAndOneBlockTest()
     {
         await using var inputStream = new FileStream(
             Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
@@ -43,14 +43,39 @@ public class WebMReaderTest : TestBase
             FileAccess.Read);
         using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
         var buffer = bufferLease.Memory;
-        var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
-        while (bytesRead < 0x26)
-            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..0x26]);
+        var bytesRead = await inputStream.ReadAsync(buffer[..0x287]);
+        while (bytesRead < 0x287)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..0x287]);
 
-        var entries = Parse(buffer.Span[..0x26]).ToList();
-        entries.Should().HaveCount(1);
+        // WebMReader.Read doesn't return cluster, because it's not sure that the cluster is completed
+        var entries = Parse(buffer.Span[..0x287]).ToList();
+        entries.Should().HaveCount(4);
         entries.Should().NotContainNulls();
         entries[0].Should().BeOfType<EBML>();
+        entries[1].Should().BeOfType<Segment>();
+        entries[2].Should().BeOfType<Cluster>();
+        entries[3].Should().BeOfType<SimpleBlock>();
+    }
+
+    [Fact]
+    public async Task ReadOnlyHeaderTest()
+    {
+        await using var inputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
+            FileMode.Open,
+            FileAccess.Read);
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        var buffer = bufferLease.Memory;
+        var bytesRead = await inputStream.ReadAsync(buffer[..0xA1]);
+        while (bytesRead < 0xA1)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..0xA1]);
+
+        // WebMReader.Read doesn't return cluster, because it's not sure that the cluster is completed
+        var entries = Parse(buffer.Span[..0xA1]).ToList();
+        entries.Should().HaveCount(2);
+        entries.Should().NotContainNulls();
+        entries[0].Should().BeOfType<EBML>();
+        entries[1].Should().BeOfType<Segment>();
     }
 
     [Fact(Skip = "Not yet fixed")]
@@ -74,6 +99,25 @@ public class WebMReaderTest : TestBase
         entries[1].Should().BeOfType<Segment>();
         entries[2].Should().BeOfType<Cluster>();
         entries[3].Should().BeOfType<SimpleBlock>();
+    }
+
+    [Fact]
+    public async Task ReadSmallBufferTest()
+    {
+        await using var inputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
+            FileMode.Open,
+            FileAccess.Read);
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(3 * 1024);
+        var buffer = bufferLease.Memory;
+        var bytesRead = await inputStream.ReadAsync(buffer[..0x26]);
+        while (bytesRead < 0x26)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..0x26]);
+
+        var entries = Parse(buffer.Span[..0x26]).ToList();
+        entries.Should().HaveCount(1);
+        entries.Should().NotContainNulls();
+        entries[0].Should().BeOfType<EBML>();
     }
 
 

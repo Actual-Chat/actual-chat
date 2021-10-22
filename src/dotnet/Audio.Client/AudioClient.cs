@@ -13,36 +13,52 @@ public class AudioClient : HubClientBase,
 {
     public AudioClient(IServiceProvider services) : base(services, "api/hub/audio") { }
 
-    public async Task RecordSourceAudio(Session session, AudioRecord audioRecord, ChannelReader<BlobPart> content, CancellationToken cancellationToken)
+    public async Task<AudioSource> GetAudioSource(
+        StreamId streamId,
+        TimeSpan offset,
+        CancellationToken cancellationToken)
     {
         await EnsureConnected(cancellationToken).ConfigureAwait(false);
-        await HubConnection.SendAsync("RecordSourceAudio",
-            session, audioRecord, content,
-            cancellationToken).ConfigureAwait(false);
+        var parts = await HubConnection.StreamAsChannelAsync<AudioSourcePart>("GetAudioSourceParts",
+                streamId,
+                offset,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return await parts.ToAudioSource(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
     {
         await EnsureConnected(cancellationToken).ConfigureAwait(false);
         return await HubConnection.StreamAsChannelAsync<BlobPart>("GetAudioStream",
-            streamId,
-            cancellationToken).ConfigureAwait(false);
+                streamId,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    public async Task<AudioSource> GetAudioSource(StreamId streamId, CancellationToken cancellationToken)
+    public async Task RecordSourceAudio(
+        Session session,
+        AudioRecord audioRecord,
+        ChannelReader<BlobPart> content,
+        CancellationToken cancellationToken)
     {
         await EnsureConnected(cancellationToken).ConfigureAwait(false);
-        var parts = await HubConnection.StreamAsChannelAsync<AudioSourcePart>("GetAudioSourceParts",
-            streamId,
-            cancellationToken).ConfigureAwait(false);
-        return await parts.ToAudioSource(cancellationToken).ConfigureAwait(false);
+        await HubConnection.SendAsync("RecordSourceAudio",
+                session,
+                audioRecord,
+                content,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    public async Task<ChannelReader<TranscriptUpdate>> GetTranscriptStream(StreamId streamId, CancellationToken cancellationToken)
+    public async Task<ChannelReader<TranscriptUpdate>> GetTranscriptStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
     {
         await EnsureConnected(cancellationToken).ConfigureAwait(false);
         return await HubConnection.StreamAsChannelAsync<TranscriptUpdate>("GetTranscriptStream",
-            streamId,
-            cancellationToken).ConfigureAwait(false);
+                streamId,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 }
