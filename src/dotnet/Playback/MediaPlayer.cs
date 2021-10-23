@@ -5,23 +5,16 @@ namespace ActualChat.Playback;
 
 public sealed class MediaPlayer : IDisposable
 {
-    private readonly IAudioSourceStreamer _audioSourceStreamer;
     private CancellationTokenSource _stopPlayingCts = null!;
 
     public IMediaPlayerService MediaPlayerService { get; }
-    public MomentClockSet ClockSet { get; }
     public Channel<MediaPlayerCommand> Queue { get; private set; } = null!;
     public Task PlayingTask { get; private set; } = null!;
     public bool IsPlaying => PlayingTask is { IsCompleted: false };
 
-    public MediaPlayer(
-        IMediaPlayerService mediaPlayerService,
-        IAudioSourceStreamer audioSourceStreamer,
-        MomentClockSet clockSet)
+    public MediaPlayer(IMediaPlayerService mediaPlayerService)
     {
-        _audioSourceStreamer = audioSourceStreamer;
         MediaPlayerService = mediaPlayerService;
-        ClockSet = clockSet;
         Reset();
     }
 
@@ -54,17 +47,8 @@ public sealed class MediaPlayer : IDisposable
         if (!PlayingTask.IsCompleted)
             return PlayingTask;
 
-        var playbackChannel = Channel.CreateBounded<MediaPlayerCommand>(
-            new BoundedChannelOptions(256) {
-                SingleReader = false,
-                SingleWriter = true,
-                AllowSynchronousContinuations = true,
-            });
         var cancellationToken = _stopPlayingCts.Token;
-
-        _ = ResolveStreamCommands(Queue, playbackChannel, cancellationToken);
-        return PlayingTask = MediaPlayerService.Play(playbackChannel.Reader.ReadAllAsync(cancellationToken),
-            cancellationToken);
+        return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(cancellationToken), cancellationToken);
     }
 
     public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
@@ -75,45 +59,10 @@ public sealed class MediaPlayer : IDisposable
         var playingTask = PlayingTask;
         _stopPlayingCts.CancelAndDisposeSilently();
         Reset();
-        return playingTask;
+        return playingTask.SuppressExceptions();
     }
 
     // Private methods
-
-    private async Task ResolveStreamCommands(
-        ChannelReader<MediaPlayerCommand> reader,
-        ChannelWriter<MediaPlayerCommand> writer,
-        CancellationToken cancellationToken)
-    {
-        Exception? error = null;
-        try {
-            while (await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-            while (reader.TryRead(out var playerCommand))
-                if (playerCommand is RegisterStreamCommand(var streamId, var trackId, var recordingStartedAt)) {
-                    var recordingDateTime = recordingStartedAt.ToDateTime();
-                    var now = ClockSet.CpuClock.Now.ToDateTime();
-                    var attemptPlaybackOfStreamNotOlderThan = now.AddMinutes(-1);
-                    if (recordingDateTime < attemptPlaybackOfStreamNotOlderThan)
-                        continue;
-
-                    var offset = now.Subtract(recordingDateTime);
-                    var audioSource = await _audioSourceStreamer.GetAudioSource(streamId, offset, cancellationToken);
-                    await writer
-                        .WriteAsync(
-                            new PlayMediaTrackCommand(trackId, audioSource, recordingStartedAt),
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                else
-                    await writer.WriteAsync(playerCommand, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            error = e;
-        }
-        finally {
-            writer.Complete(error);
-        }
-    }
 
     private void Reset()
     {
