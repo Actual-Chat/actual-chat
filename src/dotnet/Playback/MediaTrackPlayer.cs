@@ -35,9 +35,8 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
                 await EnqueueCommand(new PlayMediaFrameCommand(this, frame)).ConfigureAwait(false);
         }
-        catch (TaskCanceledException) {
-            // TODO(AK): this cancellation is requested unexpectedly during regular playback!!!!
-            throw;
+        catch (OperationCanceledException) {
+            throw; // "Stop" is called, nothing to log here
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             error = ex;
