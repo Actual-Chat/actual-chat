@@ -58,7 +58,7 @@
     private void ListenCallback((ChatEntry entry, double offset) startAt)
     {
         var (entry, offset) = startAt;
-        _ = PlayHistoricalMediaTrack(entry, offset);
+        _ = PlayHistoricalMediaTrack(entry, TimeSpan.FromSeconds(offset), _watchRealtimeMediaCts.Token);
         StateHasChanged();
     }
 

@@ -41,7 +41,7 @@ public class AudioIndexService
                 : chatEntries[0];
         }
         catch (Exception e) {
-            _log.LogError(e, "Error finding Audio chat entry.");
+            _log.LogError(e, "Error finding Audio chat entry");
             throw;
         }
     }

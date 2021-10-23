@@ -26,7 +26,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected IChatService Chats { get; set; } = default!;
 
     [Inject]
-    protected IAudioSourceStreamer AudioStreamer { get; set; } = default!;
+    protected IAudioSourceStreamer AudioSourceStreamer { get; set; } = default!;
 
     [Inject]
     protected IMediaPlayerService MediaPlayerService { get; set; } = default!;
@@ -45,6 +45,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
     [Inject]
     protected IAudioDownloader AudioDownloader { get; set; } = default!;
+
+    [Inject]
+    protected MomentClockSet Clocks { get; set; } = default!;
 
     [Inject]
     protected ILogger<ChatPage> Log { get; set; } = default!;
@@ -152,7 +155,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                         if (lastChatEntry >= entry.Id) continue;
 
                         lastChatEntry = entry.Id;
-                        _ = RegisterChatEntryForRealTimePlayback(entry);
+                        _ = PlayRealtimeMediaTrack(entry, cancellationToken);
                     }
                 }
                 await computedMinMax.WhenInvalidated(cancellationToken).ConfigureAwait(false);
@@ -167,50 +170,47 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         // ReSharper disable once FunctionNeverReturns
     }
 
-    private async Task RegisterChatEntryForRealTimePlayback(ChatEntry entry)
+    private async Task PlayRealtimeMediaTrack(ChatEntry entry, CancellationToken cancellationToken)
     {
         try {
-            if (entry.IsStreaming) {
-                var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-                await RealtimePlayer.AddCommand(new RegisterStreamCommand(entry.StreamId, trackId, entry.BeginsAt));
-            }
+            if (!entry.IsStreaming) return;
+
+            var beginsAt = entry.BeginsAt;
+            var cutoffTime = Clocks.CpuClock.Now - TimeSpan.FromMinutes(1);
+            var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
+            if (beginsAt < cutoffTime) return;
+
+            var offset = beginsAt - cutoffTime;
+            var audioSource = await AudioSourceStreamer.GetAudioSource(entry.StreamId, offset, cancellationToken);
+            await RealtimePlayer.AddMediaTrack(trackId, audioSource, beginsAt, offset, cancellationToken);
         }
         catch (Exception e) when (e is not TaskCanceledException) {
-            Log.LogError(
-                e,
-                "Error reading media stream. Chat: {ChatId}, Entry: {ChatEntryId}, StreamId: {StreamId}",
+            Log.LogError(e,
+                "Error reading media stream. ChatId = {ChatId}, ChatEntryId = {ChatEntryId}, StreamId = {StreamId}",
                 entry.ChatId,
                 entry.Id,
                 entry.StreamId);
         }
     }
 
-    private async Task PlayHistoricalMediaTrack(ChatEntry entry, double offset)
+    private async Task PlayHistoricalMediaTrack(ChatEntry entry, TimeSpan offset, CancellationToken cancellationToken)
     {
         try {
-            var playbackOffset = TimeSpan.FromSeconds(offset);
-            var audioEntry =
-                await AudioIndex.FindAudioEntry(Session, entry, playbackOffset, _watchRealtimeMediaCts.Token);
+            var audioEntry = await AudioIndex.FindAudioEntry(Session, entry, offset, cancellationToken);
             if (audioEntry == null)
-                throw new InvalidOperationException($"Unable to find audio chat entry for ChatEntry.Id: {entry.Id}");
+                throw new InvalidOperationException($"Unable to find audio chat entry for ChatEntry.Id = {entry.Id}.");
 
             if (audioEntry.IsStreaming) {
-                await RegisterChatEntryForRealTimePlayback(audioEntry);
+                await PlayRealtimeMediaTrack(audioEntry, cancellationToken);
                 return;
             }
 
             var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
-            var audioSource = await AudioDownloader
-                .GetAudioSource(audioBlobUri, playbackOffset, _watchRealtimeMediaCts.Token);
+            var audioSource = await AudioDownloader.GetAudioSource(audioBlobUri, offset, cancellationToken);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
-            var recordingStartedAt = audioEntry.BeginsAt + playbackOffset;
 
-            try {
-                await HistoricalPlayer.Stop();
-            }
-            catch (OperationCanceledException) { }
-
-            await HistoricalPlayer.AddMediaTrack(trackId, audioSource, recordingStartedAt);
+            await HistoricalPlayer.Stop();
+            await HistoricalPlayer.AddMediaTrack(trackId, audioSource, audioEntry.BeginsAt + offset, cancellationToken);
             _ = HistoricalPlayer.Play();
         }
         catch (Exception e) when (e is not TaskCanceledException) {

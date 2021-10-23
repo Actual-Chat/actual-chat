@@ -57,7 +57,7 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
                     throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
             }
 
-        //TODO(AK): this code will not be reached!
+        // TODO(AK): to make this code reachable, the command sequence must have an end
         // ~= await Task.WhenAll(unfinishedPlayTasks).ConfigureAwait(false);
         while (true) {
             var (commandRef, trackPlayer) = trackPlayers.FirstOrDefault();
