@@ -15,10 +15,3 @@ public record PlayMediaTrackCommand(
     TimeSpan StartOffset = default
 ) : MediaPlayerCommand
 { }
-
-public record RegisterStreamCommand(
-    StreamId StreamId,
-    string TrackId,
-    Moment RecordingStartedAt
-) : MediaPlayerCommand
-{ }
