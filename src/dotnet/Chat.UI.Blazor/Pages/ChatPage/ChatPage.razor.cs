@@ -44,7 +44,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected IChatMediaStorageResolver MediaStorageResolver { get; set; } = default!;
 
     [Inject]
-    protected IAudioDownloader AudioDownloader { get; set; } = default!;
+    protected AudioDownloader AudioDownloader { get; set; } = default!;
 
     [Inject]
     protected MomentClockSet Clocks { get; set; } = default!;
@@ -206,7 +206,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             }
 
             var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
-            var audioSource = await AudioDownloader.GetAudioSource(audioBlobUri, offset, cancellationToken);
+            var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, offset, cancellationToken);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
 
             await HistoricalPlayer.Stop();

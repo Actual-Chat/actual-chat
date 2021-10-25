@@ -11,12 +11,12 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
     where TMediaFormat : MediaFormat
     where TMediaFrame : MediaFrame, new()
 {
-    public ValueTask<TMediaSource> ExtractMediaSource(
-        ChannelReader<BlobPart> audioData,
+    public ValueTask<TMediaSource> CreateMediaSource(
+        ChannelReader<BlobPart> blobParts,
         TimeSpan offset,
         CancellationToken cancellationToken)
     {
-        var frameChannel = Channel.CreateUnbounded<TMediaFrame>(new UnboundedChannelOptions {
+        var frames = Channel.CreateUnbounded<TMediaFrame>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
             AllowSynchronousContinuations = true,
@@ -25,17 +25,18 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var formatTaskSource = TaskSource.New<TMediaFormat>(true);
         var durationTaskSource = TaskSource.New<TimeSpan>(true);
         _ = Task.Run(
-            () => TransformAudioDataToFrames(formatTaskSource,
+            () => TransformBlobPartsToFrames(
+                frames.Writer,
+                formatTaskSource,
                 durationTaskSource,
-                frameChannel.Writer,
-                audioData,
+                blobParts,
                 offset,
                 cancellationToken),
             cancellationToken);
 
         return CreateMediaSource(formatTaskSource.Task,
             durationTaskSource.Task,
-            frameChannel.Reader.Memoize(cancellationToken));
+            frames.Reader.Memoize(cancellationToken));
     }
 
     protected abstract ValueTask<TMediaSource> CreateMediaSource(
@@ -45,11 +46,11 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
 
     protected abstract TMediaFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader);
 
-    private async Task TransformAudioDataToFrames(
+    private async Task TransformBlobPartsToFrames(
+        ChannelWriter<TMediaFrame> target,
         TaskSource<TMediaFormat> formatTaskSource,
         TaskSource<TimeSpan> durationTaskSource,
-        ChannelWriter<TMediaFrame> writer,
-        ChannelReader<BlobPart> audioData,
+        ChannelReader<BlobPart> blobParts,
         TimeSpan offset,
         CancellationToken cancellationToken)
     {
@@ -59,8 +60,8 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var lastState = new WebMReader.State();
         using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
         try {
-            while (await audioData.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-            while (audioData.TryRead(out var blobPart)) {
+            while (await blobParts.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            while (blobParts.TryRead(out var blobPart)) {
                 var (_, data) = blobPart;
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
@@ -78,7 +79,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                     formatTaskSource,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
-                    writer);
+                    target);
                 lastState = state;
             }
         }
@@ -86,7 +87,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
             error = e;
         }
         finally {
-            writer.TryComplete(error);
+            target.TryComplete(error);
             if (error != null) {
                 formatTaskSource.TrySetException(error);
                 durationTaskSource.TrySetException(error);

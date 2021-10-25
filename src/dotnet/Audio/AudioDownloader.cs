@@ -1,21 +1,24 @@
 using System.Buffers;
 using ActualChat.Blobs;
 
-namespace ActualChat.Audio.Client;
+namespace ActualChat.Audio;
 
-public class AudioDownloader : IAudioDownloader, IDisposable
+// ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
+public class AudioDownloader
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public AudioDownloader(IHttpClientFactory clientFactory)
-        => _httpClient = clientFactory.CreateClient();
+    public AudioDownloader(IHttpClientFactory httpClientFactory)
+        => _httpClientFactory = httpClientFactory;
 
-    public async Task<AudioSource> GetAudioSource(
+    public virtual async Task<AudioSource> DownloadAsAudioSource(
         Uri audioUri,
         TimeSpan offset,
         CancellationToken cancellationToken)
     {
-        var response = await _httpClient.GetAsync(audioUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+        var httpClient = _httpClientFactory.CreateClient();
+        var response = await httpClient
+            .GetAsync(audioUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
@@ -29,7 +32,8 @@ public class AudioDownloader : IAudioDownloader, IDisposable
 
         _ = Task.Run(ReadBlobPartsFromStream, cancellationToken);
 
-        return await audioSourceProvider.ExtractMediaSource(audioBlobs, offset, cancellationToken)
+        return await audioSourceProvider
+            .CreateMediaSource(audioBlobs, offset, cancellationToken)
             .ConfigureAwait(false);
 
         async Task ReadBlobPartsFromStream()
@@ -56,14 +60,9 @@ public class AudioDownloader : IAudioDownloader, IDisposable
                 error = e;
             }
             finally {
-                audioBlobs.Writer.Complete(error);
+                audioBlobs.Writer.TryComplete(error);
+                httpClient.Dispose();
             }
         }
-    }
-
-    public void Dispose()
-    {
-        _httpClient.Dispose();
-        GC.SuppressFinalize(this);
     }
 }
