@@ -10,7 +10,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private CancellationTokenSource? _delayTokenSource;
+    private CancellationTokenSource _delayTokenSource;
     private IJSObjectReference? _jsRef;
     private double _playedUpTo;
 
@@ -27,6 +27,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _circuitContext = circuitContext;
         _js = js;
+        _delayTokenSource = new CancellationTokenSource();
+
         Header = Convert.FromBase64String(AudioSource.Format.CodecSettings);
     }
 
@@ -44,8 +46,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     [JSInvokable]
     public void OnDataWaiting(double offset, int readyState)
     {
-        _delayTokenSource?.Cancel();
-        _delayTokenSource?.Dispose();
+        _delayTokenSource.Cancel();
+        _delayTokenSource.Dispose();
         _delayTokenSource = new CancellationTokenSource();
 
         Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {readyState}", offset, readyState);
@@ -66,7 +68,6 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                         _jsRef = await _js.InvokeAsync<IJSObjectReference>(
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                             _blazorRef);
-                        _delayTokenSource = new CancellationTokenSource();
                         await _jsRef!.InvokeVoidAsync("initialize", Header);
                         break;
                     case StopPlaybackCommand stop:
