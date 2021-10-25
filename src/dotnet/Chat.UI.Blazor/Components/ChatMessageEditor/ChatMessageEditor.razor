@@ -64,6 +64,7 @@
         var (_, ce) = await _cmd.Run(new ChatCommands.PostMessage(_session, ChatId, Message));
         if (ce.IsFailed)
             return;
+        Message = "";
         if (_jsRef != null)
             await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
     }
