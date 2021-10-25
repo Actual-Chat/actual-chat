@@ -1,6 +1,8 @@
+using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Db;
 using ActualChat.Redis;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -67,6 +69,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
         CancellationToken cancellationToken)
     {
         await using var dbContext = CreateDbContext();
+
         var dbMessages = dbContext.ChatEntries.AsQueryable()
             .Where(m => m.ChatId == (string)chatId);
 
@@ -93,12 +96,15 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
     public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
     {
         await using var dbContext = CreateDbContext();
+        await using var tx = await dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
         var firstId = await dbContext.ChatEntries.AsQueryable()
             .Where(e => e.ChatId == chatId.Value).OrderBy(e => e.Id).Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         var lastId = await dbContext.ChatEntries.AsQueryable()
             .Where(e => e.ChatId == chatId.Value).OrderByDescending(e => e.Id).Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
         return (firstId, lastId);
     }
 
@@ -121,7 +127,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
         ChatConstants.IdLogCover.AssertIsTile(idRange);
 
         await using var dbContext = CreateDbContext();
-        var dbEntries = await dbContext.ChatEntries.AsQueryable()
+        var dbEntries = await dbContext.ChatEntries.ForShare(DbWaitHint.NoWait) // Fine w/ proper invalidation
             .Where(m => m.ChatId == (string)chatId && m.Id >= idRange.Start && m.Id < idRange.End)
             .OrderBy(m => m.Id)
             .ToListAsync(cancellationToken)
@@ -208,7 +214,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
         DbChatEntry dbChatEntry;
         if (isNew) {
             var dbChatId = (string)chatEntry.ChatId;
-            var maxId = await dbContext.ChatEntries.AsQueryable()
+            var maxId = await dbContext.ChatEntries.ForUpdate() // To serialize inserts
                 .Where(e => e.ChatId == dbChatId)
                 .OrderByDescending(e => e.Id)
                 .Select(e => e.Id)
@@ -223,9 +229,11 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
             dbContext.Add(dbChatEntry);
         }
         else {
-            dbChatEntry = await dbContext.FindAsync<DbChatEntry>(
-                ComposeKey(DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id)),
-                cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException(Invariant(
+            var compositeId = DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id);
+            dbChatEntry = await dbContext.ChatEntries.ForUpdate()
+                .FirstOrDefaultAsync(e => e.CompositeId == compositeId, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new InvalidOperationException(Invariant(
                     $"Chat entry with key {chatEntry.ChatId}, {chatEntry.Id} is not found"));
             chatEntry = chatEntry with {
                 Version = VersionGenerator.NextVersion(dbChatEntry.Version),

@@ -23,10 +23,20 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
 
     public virtual async Task Initialize(CancellationToken cancellationToken)
     {
-        await using var dbContext = DbContextFactory.CreateDbContext();
+        await using var dbContext = await DbContextFactory
+            .CreateDbContextAsync(cancellationToken)
+            .ConfigureAwait(false);
+
         var db = dbContext.Database;
         if (ShouldRecreateDb)
             await db.EnsureDeletedAsync(cancellationToken);
         await db.EnsureCreatedAsync(cancellationToken);
+
+        var databaseName = db.GetDbConnection().Database;
+        await dbContext.Database
+            .ExecuteSqlRawAsync(
+                $"ALTER DATABASE \"{databaseName}\" SET DEFAULT_TRANSACTION_ISOLATION TO 'repeatable read';",
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 }

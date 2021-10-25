@@ -15,13 +15,14 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
     public override async Task Initialize(CancellationToken cancellationToken)
     {
         await base.Initialize(cancellationToken);
+        var dbContextFactory = Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
         if (ShouldRecreateDb) {
             var auth = Services.GetRequiredService<IServerSideAuthService>();
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
-            var dbContextFactory = Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
 
             // Creating admin user
-            await using var dbContext = dbContextFactory.CreateDbContext().ReadWrite();
             var adminIdentity = new UserIdentity("internal", "admin");
             dbContext.Users.Add(new DbUser() {
                 Id = UserConstants.AdminUserId,
