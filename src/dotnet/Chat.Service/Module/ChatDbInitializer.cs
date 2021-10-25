@@ -20,11 +20,11 @@ namespace ActualChat.Chat.Module
                 .ToArray();
             await Task.WhenAll(dependencies);
 
-            if (ShouldRecreateDb) {
-                var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
+            var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
+            await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+            if (ShouldRecreateDb) {
                 // Creating "The Actual One" chat
-                await using var dbContext = dbContextFactory.CreateDbContext().ReadWrite();
                 var defaultChatId = ChatConstants.DefaultChatId;
                 var adminUserId = UserConstants.AdminUserId;
                 var dbChat = new DbChat() {
