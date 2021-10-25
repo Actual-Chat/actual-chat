@@ -117,7 +117,6 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         EBML? ebml = null;
         Segment? segment = null;
         TMediaFrame? firstFrame = null;
-        // SimpleBlock? firstBlock = null;
         using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
         while (webMReader.Read()) {
             var state = webMReader.GetState();

@@ -81,6 +81,30 @@ public class AudioSourceProviderTest
         await WriteToFile(audioSource, default, "file-with-offset.webm");
     }
 
+    [Fact(Skip = "Not fixed yet")]
+    public async Task ExtractMediaSourceFromLargeFileWithOffset()
+    {
+        var audioSourceProvider = new AudioSourceProvider();
+        var blobChannel = Channel.CreateUnbounded<BlobPart>();
+        var audioSourceTask = audioSourceProvider
+            .CreateMediaSource(blobChannel.Reader, TimeSpan.FromSeconds(45), CancellationToken.None);
+
+        _ = ReadFromFile(blobChannel.Writer, "0002.webm");
+
+        var audioSource = await audioSourceTask;
+
+        var offset = TimeSpan.Zero;
+        await foreach (var audioFrame in audioSource) {
+            audioFrame.Data.Should().NotBeNull();
+            audioFrame.Data.Should().NotBeEmpty();
+            audioFrame.Offset.Should().BeGreaterOrEqualTo(offset);
+            audioFrame.Offset.Should().BeLessThan(offset.Add(TimeSpan.FromMilliseconds(150)));
+            offset = audioFrame.Offset > offset
+                ? audioFrame.Offset
+                : offset;
+        }
+    }
+
 
     [Fact]
     public async Task SaveMediaSourceToFile()
