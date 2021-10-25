@@ -12,7 +12,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
 
-    public AudioSource AudioSource => (AudioSource) Command.Source;
+    public AudioSource AudioSource => (AudioSource)Command.Source;
     public byte[] Header { get; }
 
     public AudioTrackPlayer(
@@ -36,38 +36,38 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         => OnStopped();
 
     protected override async ValueTask EnqueueCommandInternal(MediaTrackPlayerCommand command)
-    {
-        await CircuitInvoke(async () => {
-            switch (command) {
-            case StartPlaybackCommand:
-                _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-                _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                    $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                    _blazorRef);
-                await _jsRef!.InvokeVoidAsync("initialize", Header, Command.StartOffset.TotalSeconds);
-                break;
-            case StopPlaybackCommand stop:
-                if (_jsRef == null)
-                    break;
-                if (stop.Immediately)
-                    await _jsRef.InvokeVoidAsync("stop", "network");
-                else
-                    await _jsRef.InvokeVoidAsync("endOfStream");
-                await _jsRef.DisposeAsync();
-                break;
-            case PlayMediaFrameCommand playFrame:
-                var chunk = playFrame.Frame.Data;
-                var offset = playFrame.Frame.Offset.TotalSeconds;
-                await _jsRef!.InvokeVoidAsync("appendAudio", chunk, offset);
-                break;
-            case SetTrackVolumeCommand setVolume:
-                // TODO: Implement this
-                break;
-            default:
-                throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
-            }
-        }).ConfigureAwait(false);
-    }
+        => await CircuitInvoke(async () => {
+                switch (command) {
+                    case StartPlaybackCommand:
+                        _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                        _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                            $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                            _blazorRef);
+                        await _jsRef!.InvokeVoidAsync("initialize", Header);
+                        break;
+                    case StopPlaybackCommand stop:
+                        if (_jsRef == null)
+                            break;
+
+                        if (stop.Immediately)
+                            await _jsRef.InvokeVoidAsync("stop", "network");
+                        else
+                            await _jsRef.InvokeVoidAsync("endOfStream");
+                        await _jsRef.DisposeAsync();
+                        break;
+                    case PlayMediaFrameCommand playFrame:
+                        var chunk = playFrame.Frame.Data;
+                        var offset = playFrame.Frame.Offset.TotalSeconds;
+                        await _jsRef!.InvokeVoidAsync("appendAudio", chunk, offset);
+                        break;
+                    case SetTrackVolumeCommand setVolume:
+                        // TODO: Implement this
+                        break;
+                    default:
+                        throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+                }
+            })
+            .ConfigureAwait(false);
 
     protected Task CircuitInvoke(Func<Task> workItem)
         => _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);

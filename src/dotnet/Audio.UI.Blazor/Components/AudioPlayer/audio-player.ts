@@ -20,7 +20,6 @@ export class AudioPlayer {
     private _bufferQueue: (AudioUpdate | AudioEnd)[];
     private _playingQueue: AudioUpdate[];
     private _removedBefore: number;
-    private _startOffset?: number;
     private _previousReadyState: number;
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
@@ -103,10 +102,6 @@ export class AudioPlayer {
             let _ = this.invokeOnPlaybackTimeChanged(time);
         });
         this._audio.addEventListener('canplay', (e) => {
-            if (this._startOffset) {
-                this._audio.currentTime = this._startOffset;
-                this._startOffset = null;
-            }
         });
 
         this._bufferCreated = new Promise<SourceBuffer>(resolve => {
@@ -157,10 +152,8 @@ export class AudioPlayer {
         return new AudioPlayer(blazorRef);
     }
 
-    public async initialize(byteArray: Uint8Array, offset: number): Promise<void> {
+    public async initialize(byteArray: Uint8Array): Promise<void> {
         console.log('Audio player initialized.');
-        this._startOffset = offset;
-
         if (this._sourceBuffer !== null) {
             this._sourceBuffer.appendBuffer(byteArray);
             console.log('Audio init header has been appended.');
