@@ -12,7 +12,6 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private CancellationTokenSource _delayTokenSource;
     private IJSObjectReference? _jsRef;
-    private double _playedUpTo;
 
     public AudioSource AudioSource => (AudioSource)Command.Source;
     public byte[] Header { get; }
@@ -55,10 +54,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
     [JSInvokable]
     public void OnPlaybackTimeChanged(double offset)
-    {
-        _playedUpTo = offset;
-        _ = OnPlayedTo(TimeSpan.FromSeconds(offset));
-    }
+        => OnPlayedTo(TimeSpan.FromSeconds(offset));
 
     protected override async ValueTask EnqueueCommandInternal(MediaTrackPlayerCommand command)
         => await CircuitInvoke(async () => {
@@ -83,11 +79,11 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                     case PlayMediaFrameCommand playFrame:
                         var chunk = playFrame.Frame.Data;
                         var offset = playFrame.Frame.Offset.TotalSeconds;
+                        var buffered = await _jsRef!.InvokeAsync<double>("appendAudio", chunk, offset);
 
-                        if (offset > _playedUpTo + 10)
+                        if (buffered > 10)
                             await Task.Delay(TimeSpan.FromSeconds(5), _delayTokenSource.Token);
 
-                        await _jsRef!.InvokeVoidAsync("appendAudio", chunk, offset);
                         break;
                     case SetTrackVolumeCommand setVolume:
                         // TODO: Implement this

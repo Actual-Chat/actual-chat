@@ -103,7 +103,7 @@ export class AudioPlayer {
         this.stop(null);
     }
 
-    public appendAudio(byteArray: Uint8Array, offset: number): void {
+    public appendAudio(byteArray: Uint8Array, offset: number): number {
         if (this._audio.error !== null) {
             let e = this._audio.error;
             console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
@@ -130,6 +130,14 @@ export class AudioPlayer {
                     this._bufferQueue.push(new AudioUpdate(byteArray, offset));
                 }
             }
+
+            if (this._sourceBuffer.buffered.length > 0) {
+                let bufferedUpTo = this._sourceBuffer.buffered.end(this._sourceBuffer.buffered.length - 1);
+                return bufferedUpTo - this._audio.currentTime;
+            }
+
+            return 0;
+
         } catch (e) {
             console.error(e, e.stack);
         }
