@@ -182,7 +182,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
             var offset = beginsAt - cutoffTime;
             var audioSource = await AudioSourceStreamer.GetAudioSource(entry.StreamId, offset, cancellationToken);
-            await RealtimePlayer.AddMediaTrack(trackId, audioSource, beginsAt, offset, cancellationToken);
+            await RealtimePlayer.AddMediaTrack(trackId, audioSource, beginsAt, cancellationToken);
         }
         catch (Exception e) when (e is not TaskCanceledException) {
             Log.LogError(e,
