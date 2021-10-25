@@ -31,14 +31,6 @@ public sealed class MediaPlayer : IDisposable
         CancellationToken cancellationToken = default)
         => AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
 
-    public ValueTask AddMediaTrack(
-        Symbol trackId,
-        IMediaSource source,
-        Moment recordingStartedAt,
-        TimeSpan startOffset,
-        CancellationToken cancellationToken = default)
-        => AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt, startOffset), cancellationToken);
-
     public void Complete()
         => Queue.Writer.Complete();
 
