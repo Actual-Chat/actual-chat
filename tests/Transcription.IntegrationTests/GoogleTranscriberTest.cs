@@ -31,7 +31,7 @@ public class GoogleTranscriberTest : TestBase
 
         _ = ReadAudioFileSimulatingSpeech(fileName, channel.Writer);
         var audioSourceProvider = new AudioSourceProvider();
-        var audioSource = await audioSourceProvider.ExtractMediaSource(channel, default, CancellationToken.None);
+        var audioSource = await audioSourceProvider.CreateMediaSource(channel, default, CancellationToken.None);
 
         var transcript = new Transcript();
         var updates = await transcriber.Transcribe(request, audioSource, CancellationToken.None);

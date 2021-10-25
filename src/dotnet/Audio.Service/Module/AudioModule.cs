@@ -1,22 +1,14 @@
-﻿using System.Data;
-using ActualChat.Audio.Client;
-using ActualChat.Audio.Db;
+﻿using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using StackExchange.Redis;
 using Stl.DependencyInjection;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;
@@ -79,6 +71,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         if (!Debugging.SignalR.DisableMessagePackProtocol)
             signalR.AddMessagePackProtocol();
         services.AddTransient<AudioHub>();
+        services.AddSingleton<AudioDownloader>();
         services.AddSingleton<AudioStreamer>();
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
         services.AddSingleton<AudioSourceStreamer>();
@@ -87,6 +80,5 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
         services.AddSingleton<SourceAudioRecorder>();
         services.AddTransient<ISourceAudioRecorder>(c => c.GetRequiredService<SourceAudioRecorder>());
-        services.AddSingleton<IAudioDownloader, AudioDownloader>();
     }
 }

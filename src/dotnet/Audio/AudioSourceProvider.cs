@@ -24,7 +24,7 @@ public class AudioSourceProvider : MediaSourceProvider<AudioSource, AudioFormat,
             ChannelCount = (int) audio.Channels,
             CodecKind = trackEntry.CodecID switch {
                 "A_OPUS" => AudioCodecKind.Opus,
-                _ => throw new NotSupportedException($"Unsupported CodecID: {trackEntry.CodecID}.")
+                _ => throw new NotSupportedException($"Unsupported CodecID: {trackEntry.CodecID}."),
             },
             SampleRate = (int) audio.SamplingFrequency,
             CodecSettings = Convert.ToBase64String(rawHeader),

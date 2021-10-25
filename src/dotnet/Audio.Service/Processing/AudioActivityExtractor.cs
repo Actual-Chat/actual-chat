@@ -30,7 +30,7 @@ public class AudioActivityExtractor
         var audioSourceProvider = new AudioSourceProvider();
         var segmentIndex = 0;
         try {
-            var audioSource = await audioSourceProvider.ExtractMediaSource(content, default, cancellationToken)
+            var audioSource = await audioSourceProvider.CreateMediaSource(content, default, cancellationToken)
                 .ConfigureAwait(false);
             var openAudioSegment = new OpenAudioSegment(
                 segmentIndex,

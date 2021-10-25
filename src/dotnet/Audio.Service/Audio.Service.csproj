@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />
+<!--    <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />-->
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />

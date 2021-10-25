@@ -87,7 +87,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 
             var audioSourceProvider = new AudioSourceProvider();
             var audioSourceWithOffset = await audioSourceProvider
-                .ExtractMediaSource(channel, offset, cancellationToken)
+                .CreateMediaSource(channel, offset, cancellationToken)
                 .ConfigureAwait(false);
 
             await TransformFramesForStreaming(audioSourceWithOffset, writer, cancellationToken).ConfigureAwait(false);
