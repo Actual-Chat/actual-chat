@@ -4,41 +4,44 @@ public sealed class ConvertingSizeMeasure<TPoint, TSize> : SizeMeasure<TPoint, T
     where TPoint : notnull
     where TSize : notnull
 {
-    public Func<TPoint, double> PointToDouble { get; }
-    public Func<double, TPoint> PointFromDouble { get; }
-    public Func<TSize, double> SizeToDouble { get; }
-    public Func<double, TSize> SizeFromDouble { get; }
+    public Func<TPoint, long> PointToLong { get; }
+    public Func<long, TPoint> PointFromLong { get; }
+    public Func<TSize, long> SizeToLong { get; }
+    public Func<long, TSize> SizeFromLong { get; }
 
     public ConvertingSizeMeasure(
-        Func<TPoint, double> pointToDouble,
-        Func<double, TPoint> pointFromDouble,
-        Func<TSize, double> sizeToDouble,
-        Func<double, TSize> sizeFromDouble)
+        Func<TPoint, long> pointToLong,
+        Func<long, TPoint> pointFromLong,
+        Func<TSize, long> sizeToLong,
+        Func<long, TSize> sizeFromLong)
     {
-        PointToDouble = pointToDouble;
-        PointFromDouble = pointFromDouble;
-        SizeToDouble = sizeToDouble;
-        SizeFromDouble = sizeFromDouble;
+        PointToLong = pointToLong;
+        PointFromLong = pointFromLong;
+        SizeToLong = sizeToLong;
+        SizeFromLong = sizeFromLong;
     }
 
-    public override TSize GetDistance(TPoint start, TPoint end)
-        => SizeFromDouble(PointToDouble(end) - PointToDouble(start));
-    public override TPoint AddOffset(TPoint point, TSize offset)
-        => PointFromDouble(PointToDouble(point) + SizeToDouble(offset));
-
     public override TSize Add(TSize first, TSize second)
-        => SizeFromDouble(SizeToDouble(first) + SizeToDouble(second));
-    public override TSize Subtract(TSize first, TSize second)
-        => SizeFromDouble(SizeToDouble(first) - SizeToDouble(second));
-    public override TSize Multiply(TSize size, double multiplier)
-        => SizeFromDouble(SizeToDouble(size) * multiplier);
+        => SizeFromLong(SizeToLong(first) + SizeToLong(second));
+
+    public override TPoint AddOffset(TPoint point, TSize offset)
+        => PointFromLong(PointToLong(point) + SizeToLong(offset));
+
+    public override TSize GetDistance(TPoint start, TPoint end)
+        => SizeFromLong(PointToLong(end) - PointToLong(start));
 
     public override TSize Modulo(TSize size, TSize modulo)
     {
-        var doubleModulo = SizeToDouble(modulo);
-        var result = SizeToDouble(size) % doubleModulo;
+        var doubleModulo = SizeToLong(modulo);
+        var result = SizeToLong(size) % doubleModulo;
         if (result < 0)
             result += doubleModulo;
-        return SizeFromDouble(result);
+        return SizeFromLong(result);
     }
+
+    public override TSize Multiply(TSize size, double multiplier)
+        => SizeFromLong((long)(SizeToLong(size) * multiplier));
+
+    public override TSize Subtract(TSize first, TSize second)
+        => SizeFromLong(SizeToLong(first) - SizeToLong(second));
 }
