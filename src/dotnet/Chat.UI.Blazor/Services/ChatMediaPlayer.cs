@@ -8,7 +8,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatMediaPlayer
 {
-    private IChatService Chats { get; }
+    private IChatServiceFacade Chats { get; }
     private MediaPlayer MediaPlayer { get; }
     private IChatMediaResolver MediaResolver { get; }
     private AudioDownloader AudioDownloader { get; }
@@ -20,7 +20,7 @@ public sealed class ChatMediaPlayer
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
 
-    public ChatMediaPlayer(IChatService chats)
+    public ChatMediaPlayer(IChatServiceFacade chats)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         var services = ((IComputeService) chats).GetServiceProvider();

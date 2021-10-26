@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
 
@@ -23,7 +24,6 @@ public partial class ChatService
             Id = id,
             Version = VersionGenerator.NextVersion(),
             Title = title,
-            AuthorId = user.Id,
             CreatedAt = now,
             IsPublic = false,
             Owners = new List<DbChatOwner> { new() { ChatId = id, UserId = user.Id } },
@@ -50,18 +50,19 @@ public partial class ChatService
         }
 
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var authorId = await GetOrCreateAuthorId(session!, chatId, user, dbContext, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
+
         var chatEntry = new ChatEntry(chatId, 0) {
-            AuthorId = (string)user.Id,
+            AuthorId = authorId,
             BeginsAt = now,
             EndsAt = now,
             Content = text,
             Type = ChatEntryType.Text,
         };
+
         var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
         context.Operation().Items.Set(chatEntry);
@@ -80,11 +81,19 @@ public partial class ChatService
             _ = GetIdRange(chatEntry.ChatId, default); // We invalidate min-max Id range at last
             return null!;
         }
-
-        await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken)
-            .ConfigureAwait(false);
-
         await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbAuthor = await dbContext.Authors
+            .FirstOrDefaultAsync(a => a.Id == (string)chatEntry.AuthorId, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new Exception(Invariant($"Can't find author with id: {chatEntry.AuthorId}"));
+
+        await AssertHasPermissions(
+            chatEntry.ChatId,
+            dbAuthor.UserId ?? UserId.None,
+            ChatPermissions.Write,
+            cancellationToken
+        ).ConfigureAwait(false);
+
         var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
         context.Operation().Items.Set(chatEntry);
@@ -103,11 +112,14 @@ public partial class ChatService
             // No need to invalidate GetIdRange here
             return null!;
         }
-
-        await AssertHasPermissions(chatEntry.ChatId, chatEntry.AuthorId, ChatPermissions.Write, cancellationToken)
+        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbAuthor = await dbContext.Authors
+            .FirstOrDefaultAsync(a => a.Id == (string)chatEntry.AuthorId, cancellationToken)
             .ConfigureAwait(false);
 
-        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(chatEntry.ChatId, dbAuthor?.UserId ?? UserId.None, ChatPermissions.Write, cancellationToken)
+            .ConfigureAwait(false);
+
         var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
         context.Operation().Items.Set(chatEntry);

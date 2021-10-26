@@ -1,6 +1,6 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor;
-using ActualChat.Chat.Client.Module;
+using ActualChat.Chat.Client;
 using ActualChat.Chat.UI.Blazor;
 using ActualChat.Hosting;
 using ActualChat.Module;

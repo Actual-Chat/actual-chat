@@ -23,7 +23,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected ChatPageService Service { get; set; } = default!;
 
     [Inject]
-    protected IChatService Chats { get; set; } = default!;
+    protected IChatServiceFacade Chats { get; set; } = default!;
 
     [Inject]
     protected IAudioSourceStreamer AudioSourceStreamer { get; set; } = default!;

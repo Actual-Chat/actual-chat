@@ -1,11 +1,9 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace ActualChat.Users
+namespace ActualChat.Users;
+
+public interface IUserNameService
 {
-    public interface IUserNameService
-    {
-        ValidationException? ValidateName(in ReadOnlySpan<char> name);
-        ReadOnlySpan<char> ParseName(ReadOnlySpan<char> text);
-    }
+    ValidationException? ValidateName(in ReadOnlySpan<char> name);
+    ReadOnlySpan<char> ParseName(ReadOnlySpan<char> text);
 }

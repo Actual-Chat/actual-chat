@@ -6,27 +6,37 @@ using ActualChat.Db;
 using ActualChat.Redis;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
-
-// [ComputeService, ServiceAlias(typeof(IChatService))]
-public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChatService
+// ToDo: split this to two services (ChatServiceFacade and the real one)
+public partial class ChatService : DbServiceBase<ChatDbContext>, IChatService, IChatServiceFacade
 {
     protected IAuthService Auth { get; init; }
     protected IUserInfoService UserInfos { get; init; }
+    protected ISessionInfoService Sessions { get; init; }
+    protected IAuthorServiceFacade Authors { get; init; }
     protected IDbEntityResolver<string, DbChat> DbChatResolver { get; init; }
     protected IDbEntityResolver<string, DbChatEntry> DbChatEntryResolver { get; init; }
     protected RedisSequenceSet<ChatService> IdSequences { get; init; }
 
-    public ChatService(IServiceProvider services) : base(services)
+    public ChatService(
+        IAuthService authService,
+        IUserInfoService userInfoService,
+        IDbEntityResolver<string, DbChat> dbChatResolver,
+        IDbEntityResolver<string, DbChatEntry> dbChatEntryResolver,
+        RedisSequenceSet<ChatService> idSequences,
+        IAuthorServiceFacade authorService,
+        IServiceProvider services,
+        ISessionInfoService sessions) : base(services)
     {
-        Auth = services.GetRequiredService<IAuthService>();
-        UserInfos = services.GetRequiredService<IUserInfoService>();
-        DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-        DbChatEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatEntry>>();
-        IdSequences = services.GetRequiredService<RedisSequenceSet<ChatService>>();
+        Auth = authService;
+        UserInfos = userInfoService;
+        DbChatResolver = dbChatResolver;
+        DbChatEntryResolver = dbChatEntryResolver;
+        IdSequences = idSequences;
+        Authors = authorService;
+        Sessions = sessions;
     }
 
     // Queries
@@ -37,10 +47,8 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
         CancellationToken cancellationToken)
     {
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var chat = await TryGet(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return null;
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        var chat = await TryGet(chatId, cancellationToken).ConfigureAwait(false);
         return chat;
     }
 
@@ -241,8 +249,39 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
             dbChatEntry.UpdateFrom(chatEntry);
             dbContext.Update(dbChatEntry);
         }
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbChatEntry;
+    }
+
+    private async Task<string> GetOrCreateAuthorId(
+        Session session,
+        ChatId chatId,
+        User user,
+        ChatDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var sessionInfo = await Auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var authorId = sessionInfo.Options[$"{chatId}::authorId"] as string;
+        if (authorId == null) {
+            var author = await dbContext.Authors.FirstOrDefaultAsync(x => x.UserId == (string)user.Id, cancellationToken)
+                .ConfigureAwait(false);
+            if (author == null) {
+                // ToDo: use IAuthorService here after splitting to Facade and Service type
+                var authorInfo = await Authors.GetByUserId(session, user.Id, cancellationToken).ConfigureAwait(false);
+                author = new DbAuthor(authorInfo) {
+                    Id = Ulid.NewUlid().ToString(),
+                    UserId = user.IsAuthenticated ? (string?)user.Id : null,
+                };
+                await dbContext.Authors.AddAsync(author, cancellationToken).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            authorId = author.Id;
+
+            await Sessions.Update(new(session, new($"{chatId}::authorId", authorId)), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return authorId;
     }
 }
 

@@ -16,7 +16,7 @@ public class SourceAudioProcessor : BackgroundService
     public AudioActivityExtractor AudioActivityExtractor { get; }
     public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
-    public IServerSideChatService Chat { get; }
+    public IChatService Chat { get; }
     public MomentClockSet ClockSet { get; }
 
     public SourceAudioProcessor(
@@ -26,7 +26,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioActivityExtractor audioActivityExtractor,
         AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
-        IServerSideChatService chat,
+        IChatService chat,
         MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
@@ -149,7 +149,7 @@ public class SourceAudioProcessor : BackgroundService
         CancellationToken cancellationToken)
     {
         var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
-            AuthorId = openAudioSegment.AudioRecord.UserId,
+            AuthorId = openAudioSegment.AudioRecord.AuthorId,
             Content = "",
             Type = ChatEntryType.Audio,
             StreamId = openAudioSegment.StreamId,
@@ -165,7 +165,7 @@ public class SourceAudioProcessor : BackgroundService
         CancellationToken cancellationToken)
     {
         var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
-            AuthorId = openAudioSegment.AudioRecord.UserId,
+            AuthorId = openAudioSegment.AudioRecord.AuthorId,
             Content = "...",
             Type = ChatEntryType.Text,
             StreamId = openAudioSegment.StreamId,

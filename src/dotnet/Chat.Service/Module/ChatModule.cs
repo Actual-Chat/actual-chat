@@ -7,6 +7,7 @@ using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
+using Stl.Fusion.Client;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
@@ -52,10 +53,7 @@ public class ChatModule : HostModule<ChatSettings>
 
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
-                if (commandAssembly == typeof(Chat).Assembly)
-                    return true;
-
-                return false;
+                return commandAssembly == typeof(Chat).Assembly;
             });
 
         services.AddMvc().AddApplicationPart(GetType().Assembly);
@@ -67,8 +65,12 @@ public class ChatModule : HostModule<ChatSettings>
             return chatRedisDb.GetSequenceSet<ChatService>("chat.seq");
         });
         fusion.AddComputeService<ChatService>();
+        fusion.AddComputeService<IAuthorService, AuthorService>();
+        fusion.AddComputeService<IAuthorServiceFacade, AuthorServiceFacade>();
+        services.AddSingleton(c => (IChatServiceFacade)c.GetRequiredService<ChatService>());
         services.AddSingleton(c => (IChatService)c.GetRequiredService<ChatService>());
-        services.AddSingleton(c => (IServerSideChatService)c.GetRequiredService<ChatService>());
         services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
+        services.AddSingleton<IChatServiceFacade>(c => c.GetRequiredService<ChatService>());
+        services.AddSingleton<IChatService>(c => c.GetRequiredService<ChatService>());
     }
 }

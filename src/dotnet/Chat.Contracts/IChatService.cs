@@ -1,34 +1,34 @@
-﻿namespace ActualChat.Chat
+namespace ActualChat.Chat
 {
     public interface IChatService
     {
         // Commands
         [CommandHandler]
-        Task<Chat> CreateChat(ChatCommands.CreateChat command, CancellationToken cancellationToken);
+        Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken);
+
         [CommandHandler]
-        Task<ChatEntry> PostMessage(ChatCommands.PostMessage command, CancellationToken cancellationToken);
+        Task<ChatEntry> UpdateEntry(ChatCommands.UpdateEntry command, CancellationToken cancellationToken);
 
         // Queries
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);
+        Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
         Task<long> GetEntryCount(
-            Session session, ChatId chatId, Range<long>? idRange,
-            CancellationToken cancellationToken);
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetIdRange(
-            Session session, ChatId chatId,
+            ChatId chatId,
+            Range<long>? idRange,
             CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ImmutableArray<ChatEntry>> GetEntries(
-            Session session, ChatId chatId, Range<long> idRange,
+        Task<ImmutableArray<ChatEntry>> GetPage(
+            ChatId chatId,
+            Range<long> idRange,
             CancellationToken cancellationToken);
 
         [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPermissions> GetPermissions(
-            Session session, ChatId chatId,
-            CancellationToken cancellationToken);
+        Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken);
+
+        [ComputeMethod(KeepAliveTime = 1)]
+        Task<ChatPermissions> GetPermissions(ChatId chatId, UserId userId, CancellationToken cancellationToken);
     }
 }

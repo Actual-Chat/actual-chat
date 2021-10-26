@@ -5,7 +5,8 @@ public static class CancellationTokenSourceExt
     public static void CancelAndDisposeSilently(this CancellationTokenSource cancellationTokenSource)
     {
         try {
-            cancellationTokenSource.Cancel();
+            if(!cancellationTokenSource.IsCancellationRequested)
+                cancellationTokenSource.Cancel();
         }
         catch {
             // Intended

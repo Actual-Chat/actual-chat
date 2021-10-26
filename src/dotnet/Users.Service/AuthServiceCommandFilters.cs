@@ -26,13 +26,13 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
-    // Takes care of invalidation of IsOnlineAsync once user signs in
+    /// <summary> Takes care of invalidation of IsOnlineAsync once user signs in. </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
-    public virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSignInMarkOnline(SignInCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
-        // Invoke command handler(s) with lower priority
+        // Invoke command handlers with lower priority
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
@@ -60,7 +60,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
     }
 
-    // Validates user name on edit
+    /// <summary> Validates user name on edit </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
     protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
     {

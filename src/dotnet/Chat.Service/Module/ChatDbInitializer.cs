@@ -13,12 +13,12 @@ namespace ActualChat.Chat.Module
 
         public override async Task Initialize(CancellationToken cancellationToken)
         {
-            await base.Initialize(cancellationToken);
+            await base.Initialize(cancellationToken).ConfigureAwait(false);
             var dependencies = InitializeTasks
                 .Where(kv => kv.Key.GetType().Name.StartsWith("Users", StringComparison.Ordinal))
                 .Select(kv => kv.Value)
                 .ToArray();
-            await Task.WhenAll(dependencies);
+            await Task.WhenAll(dependencies).ConfigureAwait(false);
 
             var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
             await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -26,13 +26,12 @@ namespace ActualChat.Chat.Module
             if (ShouldRecreateDb) {
                 // Creating "The Actual One" chat
                 var defaultChatId = ChatConstants.DefaultChatId;
-                var adminUserId = UserConstants.AdminUserId;
+                var adminUserId = UserConstants.Admin.UserId;
                 var dbChat = new DbChat() {
                     Id = defaultChatId,
                     Version = VersionGenerator.NextVersion(),
                     Title = "The Actual One",
                     CreatedAt = Clocks.SystemClock.Now,
-                    AuthorId = adminUserId,
                     IsPublic = true,
                     Owners = {
                         new DbChatOwner() {
@@ -41,11 +40,18 @@ namespace ActualChat.Chat.Module
                         },
                     },
                 };
-                dbContext.Chats.Add(dbChat);
-                await dbContext.SaveChangesAsync(cancellationToken);
+                var dbAuthor = new DbAuthor() {
+                    Id = UserConstants.Admin.AuthorId,
+                    UserId = UserConstants.Admin.UserId,
+                    Name = UserConstants.Admin.Name,
+                    Picture = UserConstants.Admin.Picture,
+                    IsAnonymous = true,
+                };
+                await dbContext.Authors.AddAsync(dbAuthor, cancellationToken).ConfigureAwait(false);
+                await dbContext.Chats.AddAsync(dbChat, cancellationToken).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-                var rnd = new Random(101);
-                var words = new [] {"most", "chat", "actual", "ever", "amazing", "absolutely"};
+                var words = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely" };
                 for (var id = 0; id < 96; id++) {
                     var dbChatEntry = new DbChatEntry() {
                         ChatId = dbChat.Id,
@@ -53,20 +59,20 @@ namespace ActualChat.Chat.Module
                         CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
                         BeginsAt = Clocks.SystemClock.Now,
                         EndsAt = Clocks.SystemClock.Now,
-                        Content = GetRandomSentence(rnd, 30),
                         Type = ChatEntryType.Text,
-                        AuthorId = adminUserId,
+                        Content = GetRandomSentence(30),
+                        AuthorId = UserConstants.Admin.AuthorId,
                     };
                     if (id == 0)
                         dbChatEntry.Content = "First";
                     dbContext.Add(dbChatEntry);
                 }
-                await dbContext.SaveChangesAsync(cancellationToken);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-                string GetRandomSentence(Random random, int maxLength)
+                string GetRandomSentence(int maxLength)
                     => Enumerable
-                        .Range(0, random.Next(maxLength))
-                        .Select(_ => words![random.Next(words.Length)])
+                        .Range(0, Random.Shared.Next(maxLength))
+                        .Select(_ => words![Random.Shared.Next(words.Length)])
                         .ToDelimitedString(" ");
             }
         }

@@ -75,7 +75,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
         var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var transcriptStreamer = sourceAudioProcessor.TranscriptStreamer;
-        var chatService = services.GetRequiredService<IChatService>();
+        var chatService = services.GetRequiredService<IChatServiceFacade>();
 
         var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
         using var cts = new CancellationTokenSource();
@@ -108,7 +108,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var sourceAudioRecorder = sourceAudioProcessor.SourceAudioRecorder;
         var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
-        var chatService = services.GetRequiredService<IChatService>();
+        var chatService = services.GetRequiredService<IChatServiceFacade>();
 
         var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
         using var cts = new CancellationTokenSource();
