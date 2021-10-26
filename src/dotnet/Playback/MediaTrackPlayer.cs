@@ -4,21 +4,21 @@ namespace ActualChat.Playback;
 
 public abstract class MediaTrackPlayer : AsyncProcessBase
 {
-    private TrackPlaybackState _state;
+    private MediaTrackPlaybackState _state;
     protected ILogger<MediaTrackPlayer> Log { get; }
 
     protected IMediaSource Source { get; }
 
-    public TrackPlaybackState State => Volatile.Read(ref _state);
+    public MediaTrackPlaybackState State => Volatile.Read(ref _state);
 
-    public event Action<TrackPlaybackState>? PlaybackStateChanged;
+    public event Action<MediaTrackPlaybackState>? PlaybackStateChanged;
 
 
     protected MediaTrackPlayer(PlayMediaTrackCommand command, ILogger<MediaTrackPlayer> log)
     {
         Log = log;
         Source = command.Source;
-        _state = new TrackPlaybackState(command.TrackId, command.RecordingStartedAt);
+        _state = new MediaTrackPlaybackState(command.TrackId, command.RecordingStartedAt);
         _ = Run();
     }
 
@@ -48,8 +48,8 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             }
             finally {
                 var state = Volatile.Read(ref _state);
-                if (!state.Completed) {
-                    var stopped = state with { Completed = true };
+                if (!state.IsCompleted) {
+                    var stopped = state with { IsCompleted = true };
                     Volatile.Write(ref _state, stopped);
                     PlaybackStateChanged?.Invoke(stopped);
                 }
@@ -75,7 +75,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
 
     protected void OnStopped(bool withError)
     {
-        var state = Volatile.Read(ref _state) with { Completed = true };
+        var state = Volatile.Read(ref _state) with { IsCompleted = true };
         Volatile.Write(ref _state, state);
 
         PlaybackStateChanged?.Invoke(state);

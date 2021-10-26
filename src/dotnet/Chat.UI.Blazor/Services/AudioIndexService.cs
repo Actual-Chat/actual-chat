@@ -22,7 +22,7 @@ public class AudioIndexService
             var entryStart = entry.BeginsAt.ToDateTime().Add(offset).ToMoment();
             var startId = entry.Id - 64;
             var endId = entry.Id + 64;
-            var idLogCover = ChatConstants.IdLogCover;
+            var idLogCover = ChatConstants.IdTiles;
             var ranges = idLogCover.GetTileCover((startId, endId));
             var entryLists = await Task
                 .WhenAll(ranges.Select(r => _chatService.GetEntries(session, entry.ChatId, r, cancellationToken)))

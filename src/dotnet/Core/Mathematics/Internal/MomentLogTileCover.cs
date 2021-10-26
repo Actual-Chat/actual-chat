@@ -1,9 +1,9 @@
 namespace ActualChat.Mathematics.Internal;
 
-public sealed class MomentLogCover : ConvertingLogCover<Moment, TimeSpan>
+public sealed class MomentLogTileCover : ConvertingLogTileCover<Moment, TimeSpan>
 {
-    public MomentLogCover()
-        : this(new DoubleLogCover() {
+    public MomentLogTileCover()
+        : this(new DoubleLogTileCover() {
             Zero = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc).ToMoment().ToUnixEpoch(),
             MinTileSize = TimeSpan.FromMinutes(3).TotalSeconds,
             MaxTileSize = TimeSpan.FromMinutes(3 * Math.Pow(4, 10)).TotalSeconds, // ~ almost 6 years
@@ -11,9 +11,9 @@ public sealed class MomentLogCover : ConvertingLogCover<Moment, TimeSpan>
         })
     { }
 
-    public MomentLogCover(LogCover<double, double> baseLogCover)
+    public MomentLogTileCover(LogTileCover<double, double> baseTiles)
         : base(
-            baseLogCover,
+            baseTiles,
             SizeMeasure.New(
                 m => m.ToUnixEpoch(),
                 s => new Moment(TimeSpan.FromSeconds(s)),

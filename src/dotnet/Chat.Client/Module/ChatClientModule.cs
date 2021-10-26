@@ -21,6 +21,6 @@ public class ChatClientModule : HostModule
         var fusionClient = services.AddFusion().AddRestEaseClient();
         fusionClient.AddReplicaService<IChatService, IChatClientDef>();
 
-        services.AddSingleton<IChatMediaStorageResolver, BuiltInChatMediaStorageResolver>();
+        services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
     }
 }

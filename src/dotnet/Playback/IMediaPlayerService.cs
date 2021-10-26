@@ -3,12 +3,12 @@ namespace ActualChat.Playback;
 public interface IMediaPlayerService : IAsyncDisposable
 {
     [ComputeMethod]
-    Task<TrackPlaybackState?> GetPlayingMediaFrame(
+    Task<MediaTrackPlaybackState?> GetPlayingMediaFrame(
         Symbol trackId,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<TrackPlaybackState?> GetPlayingMediaFrame(
+    Task<MediaTrackPlaybackState?> GetPlayingMediaFrame(
         Symbol trackId,
         Range<Moment> timestampRange,
         CancellationToken cancellationToken);

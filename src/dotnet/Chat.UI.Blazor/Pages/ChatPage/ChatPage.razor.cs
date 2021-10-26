@@ -41,7 +41,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected AudioIndexService AudioIndex { get; set; } = default!;
 
     [Inject]
-    protected IChatMediaStorageResolver MediaStorageResolver { get; set; } = default!;
+    protected IChatMediaResolver MediaResolver { get; set; } = default!;
 
     [Inject]
     protected AudioDownloader AudioDownloader { get; set; } = default!;
@@ -95,7 +95,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                 true,
                 true);
 
-        var idLogCover = ChatConstants.IdLogCover;
+        var idLogCover = ChatConstants.IdTiles;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
@@ -131,7 +131,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     private async Task WatchRealtimeMedia(CancellationToken cancellationToken)
     {
         var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
-        var idLogCover = ChatConstants.IdLogCover;
+        var idLogCover = ChatConstants.IdTiles;
         try {
             var lastChatEntry = 0L;
             var computedMinMax = await Computed.Capture(ct => Chats.GetIdRange(Session, ChatId, ct), cancellationToken)
@@ -205,7 +205,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                 return;
             }
 
-            var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
+            var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
             var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, offset, cancellationToken);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
 
