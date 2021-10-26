@@ -10,7 +10,7 @@ public interface IAuthorServiceFacade
     /// Throws <seealso cref="System.Security.SecurityException"/> if <paramref name="userId"/>
     /// isn't current user and you don't have an admin rights.
     /// </summary>
-    [ComputeMethod(KeepAliveTime = 10)]
+    [ComputeMethod(KeepAliveTime = 10, AutoInvalidateTime = 20)]
     Task<Author> GetByUserId(Session session, UserId userId, CancellationToken cancellationToken);
 
     /// <summary>
