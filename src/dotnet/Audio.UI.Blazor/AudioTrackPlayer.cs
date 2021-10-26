@@ -11,6 +11,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
+    private bool DebugMode { get; } = true;
 
     public AudioSource AudioSource => (AudioSource) Command.Source;
     public byte[] Header { get; }
@@ -43,7 +44,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                 _jsRef = await _js.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                    _blazorRef);
+                    _blazorRef, DebugMode);
                 await _jsRef!.InvokeVoidAsync("initialize", Header, Command.StartOffset.TotalSeconds);
                 break;
             case StopPlaybackCommand stop:

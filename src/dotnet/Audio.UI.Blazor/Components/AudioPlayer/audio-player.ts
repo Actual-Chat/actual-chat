@@ -14,6 +14,7 @@ class AudioEnd {
 }
 
 export class AudioPlayer {
+    private readonly _debugMode: boolean;
     private readonly _audio: HTMLAudioElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private _sourceBuffer: SourceBuffer;
@@ -25,7 +26,8 @@ export class AudioPlayer {
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
 
-    public constructor(blazorRef: DotNet.DotNetObject) {
+    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        this._debugMode = debugMode;
         this._audio = new Audio();
         this._audio.autoplay = true;
         this._blazorRef = blazorRef;
@@ -35,16 +37,20 @@ export class AudioPlayer {
         this._mediaSource = new MediaSource();
         this._previousReadyState = -1;
         this._mediaSource.addEventListener('sourceopen', _ => {
-            console.log('sourceopen: ' + this._mediaSource.readyState);
+            if (debugMode)
+                console.log('sourceopen: ' + this._mediaSource.readyState);
         });
         this._mediaSource.addEventListener('sourceended', _ => {
-            console.log('sourceended: ' + this._mediaSource.readyState);
+            if (debugMode)
+                console.log('sourceended: ' + this._mediaSource.readyState);
         });
         this._mediaSource.addEventListener('sourceclose', _ => {
-            console.log('sourceclose: ' + this._mediaSource.readyState);
+            if (debugMode)
+                console.log('sourceclose: ' + this._mediaSource.readyState);
         });
         this._mediaSource.addEventListener('error', _ => {
-            console.log('source error: ' + this._mediaSource.readyState);
+            if (debugMode)
+                console.log('source error: ' + this._mediaSource.readyState);
         });
 
         this._audio.addEventListener('ended', (e) => {
@@ -54,25 +60,30 @@ export class AudioPlayer {
             }
 
             let _ = this.invokeOnPlaybackEnded();
-            console.log('Audio ended. ' + JSON.stringify(e));
+            if (debugMode)
+                console.log('Audio ended. ' + JSON.stringify(e));
         });
         this._audio.addEventListener('error', (e) => {
             while (this._playingQueue.length > 0) {
                 let playingFrame = this._playingQueue.shift();
-                // console.log(`Resolved promise for audio frame. Offset: ${playingFrame.offset}`);
+                // if (debugMode)
+                //     console.log(`Resolved promise for audio frame. Offset: ${playingFrame.offset}`);
                 playingFrame.played();
             }
 
             let err = this._audio.error;
             let _ = this.invokeOnPlaybackEnded(err.code, err.message);
-            console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
+            if (debugMode)
+                console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', _ => {
-            console.log('Audio stalled. ');
+            if (debugMode)
+                console.log('Audio stalled. ');
         });
         this._audio.addEventListener('waiting', (e) => {
-            console.log('Audio is waiting. ');
-            console.log(`Audio state: ${this.getReadyState()}`);
+            if (debugMode)
+                console.log('Audio is waiting. ');
+                console.log(`Audio state: ${this.getReadyState()}`);
 
             let time = this._audio.currentTime;
             while (this._playingQueue.length > 0) {
@@ -153,27 +164,32 @@ export class AudioPlayer {
         this._audio.src = URL.createObjectURL(this._mediaSource);
     }
 
-    public static create(blazorRef: DotNet.DotNetObject) {
-        return new AudioPlayer(blazorRef);
+    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        return new AudioPlayer(blazorRef, debugMode);
     }
 
     public async initialize(byteArray: Uint8Array, offset: number): Promise<void> {
-        console.log('Audio player initialized.');
+        if (this._debugMode)
+            console.log('Audio player initialized.');
         this._startOffset = offset;
 
         if (this._sourceBuffer !== null) {
             this._sourceBuffer.appendBuffer(byteArray);
-            console.log('Audio init header has been appended.');
+            if (this._debugMode)
+                console.log('Audio init header has been appended.');
         } else {
-            console.log('Audio init: waiting for SourceBuffer.');
+            if (this._debugMode)
+                console.log('Audio init: waiting for SourceBuffer.');
             let sourceBuffer = await this._bufferCreated;
             sourceBuffer.appendBuffer(byteArray);
-            console.log('Audio init header has been appended with delay.');
+            if (this._debugMode)
+                console.log('Audio init header has been appended with delay.');
         }
     }
 
     public dispose(): void {
-        console.log('Audio player dispose() call');
+        if (this._debugMode)
+            console.log('Audio player dispose() call');
         this.stop(null);
     }
 
@@ -183,10 +199,12 @@ export class AudioPlayer {
             try {
                 if (this._audio.error !== null) {
                     let e = this._audio.error;
-                    console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
+                    if (this._debugMode)
+                        console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
                 } else {
                     if (this._audio.readyState !== this._previousReadyState) {
-                        console.log(`Audio state: ${this.getReadyState()}`);
+                        if (this._debugMode)
+                            console.log(`Audio state: ${this.getReadyState()}`);
                     }
                     this._previousReadyState = this._audio.readyState;
                     if (this._sourceBuffer.updating) {
@@ -236,13 +254,15 @@ export class AudioPlayer {
                     }
                 }
             } catch (err) {
-                console.error('Error appending audio. ' + JSON.stringify(err));
+                if (this._debugMode)
+                    console.error('Error appending audio. ' + JSON.stringify(err));
             }
         });
     }
 
     public endOfStream(): void {
-        console.log('Audio player endOfStream() call');
+        if (this._debugMode)
+            console.log('Audio player endOfStream() call');
         if (this._sourceBuffer.updating) {
             this._bufferQueue.push(new AudioEnd());
         } else {
@@ -255,7 +275,8 @@ export class AudioPlayer {
     }
 
     public stop(error: EndOfStreamError | null) {
-        console.log('Audio player stop() call');
+        if (this._debugMode)
+            console.log('Audio player stop() call');
         this._audio.pause();
 
         if (this._sourceBuffer.updating) {
