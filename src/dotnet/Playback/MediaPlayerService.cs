@@ -105,10 +105,8 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             _ = GetPlayingMediaFrame(trackId, default);
 
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
-            foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp)) {
-                // TODO(AK): this line throws exceptions - invalid range boundaries!
-                // _ = GetPlayingMediaFrame(trackId, tile, default);
-            }
+            foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
+                _ = GetPlayingMediaFrame(trackId, tile, default);
         }
     }
 
