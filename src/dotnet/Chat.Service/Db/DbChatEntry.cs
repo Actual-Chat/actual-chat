@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Globalization;
 using System.Text.Json;
 using ActualChat.Mathematics;
 using Cysharp.Text;
@@ -53,6 +52,8 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public string Content { get; set; } = "";
     public string? StreamId { get; set; }
 
+    public long? AudioEntryId { get; set; }
+    public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
 
     public static string GetCompositeId(string chatId, long id)
@@ -66,6 +67,8 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             ContentType = ContentType,
             Content = Content,
             StreamId = StreamId ?? "",
+            AudioEntryId = AudioEntryId,
+            VideoEntryId = VideoEntryId,
             TextToTimeMap = TextToTimeMap != null
                 ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
                 : null,
@@ -85,6 +88,8 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         ContentType = model.ContentType;
         Content = model.Content;
         StreamId = model.StreamId;
+        AudioEntryId = model.AudioEntryId;
+        VideoEntryId = model.VideoEntryId;
         TextToTimeMap = model.TextToTimeMap != null
             ? JsonSerializer.Serialize(model.TextToTimeMap)
             : null;

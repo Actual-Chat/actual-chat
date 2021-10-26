@@ -7,7 +7,7 @@ namespace ActualChat.Playback;
 
 public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerService
 {
-    private readonly ConcurrentDictionary<Symbol, TrackPlaybackState> _playbackStateStorage = new ();
+    private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _playbackStates = new ();
 
     protected IServiceProvider Services { get; }
     protected ILogger<MediaPlayerService> Log { get; }
@@ -69,18 +69,18 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
         }
     }
 
-    public virtual Task<TrackPlaybackState?> GetPlayingMediaFrame(
+    public virtual Task<MediaTrackPlaybackState?> GetPlayingMediaFrame(
         Symbol trackId,
         CancellationToken cancellationToken)
-        => Task.FromResult(_playbackStateStorage.GetValueOrDefault(trackId));
+        => Task.FromResult(_playbackStates.GetValueOrDefault(trackId));
 
-    public virtual Task<TrackPlaybackState?> GetPlayingMediaFrame(
+    public virtual Task<MediaTrackPlaybackState?> GetPlayingMediaFrame(
         Symbol trackId,
         Range<Moment> timestampRange,
         CancellationToken cancellationToken)
     {
-        PlaybackConstants.TimestampLogCover.AssertIsTile(timestampRange);
-        var state = _playbackStateStorage.GetValueOrDefault(trackId);
+        PlaybackConstants.TimestampTiles.AssertIsTile(timestampRange);
+        var state = _playbackStates.GetValueOrDefault(trackId);
         if (state == null)
             return Task.FromResult(state);
 
@@ -93,14 +93,14 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
 
     protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
-    protected void OnPlaybackStateChanged(TrackPlaybackState state)
+    protected void OnPlaybackStateChanged(MediaTrackPlaybackState state)
     {
         var trackId = state.TrackId;
-        var timestampLogCover = PlaybackConstants.TimestampLogCover;
-        if (state.Completed)
-            _playbackStateStorage.TryRemove(trackId, out _);
+        var timestampLogCover = PlaybackConstants.TimestampTiles;
+        if (state.IsCompleted)
+            _playbackStates.TryRemove(trackId, out _);
         else
-            _playbackStateStorage[trackId] = state;
+            _playbackStates[trackId] = state;
         using (Computed.Invalidate()) {
             _ = GetPlayingMediaFrame(trackId, default);
 

@@ -4,5 +4,5 @@ namespace ActualChat.Playback;
 
 public static class PlaybackConstants
 {
-    public static LogCover<Moment, TimeSpan> TimestampLogCover { get; } = LogCover.Default.Moment;
+    public static LogTileCover<Moment, TimeSpan> TimestampTiles { get; } = LogCover.Default.Moment;
 }

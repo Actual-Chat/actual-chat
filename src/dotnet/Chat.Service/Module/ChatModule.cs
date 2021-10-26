@@ -69,6 +69,6 @@ public class ChatModule : HostModule<ChatSettings>
         fusion.AddComputeService<ChatService>();
         services.AddSingleton(c => (IChatService)c.GetRequiredService<ChatService>());
         services.AddSingleton(c => (IServerSideChatService)c.GetRequiredService<ChatService>());
-        services.AddSingleton<IChatMediaStorageResolver, BuiltInChatMediaStorageResolver>();
+        services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
     }
 }

@@ -1,8 +1,8 @@
 namespace ActualChat.Mathematics.Internal;
 
-public sealed class LongLogCover : LogCover<long, long>
+public sealed class LongLogTileCover : LogTileCover<long, long>
 {
-    public LongLogCover()
+    public LongLogTileCover()
     {
         MinTileSize = 16;
         MaxTileSize = 16_384;

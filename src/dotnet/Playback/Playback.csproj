@@ -4,8 +4,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj"/>
-    <ProjectReference Include="..\Audio\Audio.csproj"/>
+    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
+    <ProjectReference Include="..\Audio\Audio.csproj" />
   </ItemGroup>
 
 </Project>
