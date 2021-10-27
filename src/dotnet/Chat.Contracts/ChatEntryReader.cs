@@ -34,15 +34,25 @@ public sealed class ChatEntryReader
             var entriesComputed = await Computed
                 .Capture(ct => Chats.GetEntries(Session, ChatId, tile, ct), cancellationToken)
                 .ConfigureAwait(false);
-            var entries = entriesComputed.Value;
 
-            if (entries.Length == 0) {
+            afterInvalidation:
+            var entries = entriesComputed.Value;
+            foreach (var entry in entries) {
+                if (entry.Id <= lastReadEntryId)
+                    continue;
+
+                lastReadEntryId = entry.Id;
+                yield return entry; // Note that this "yield" can take arbitrary long time
+            }
+            var idRange = idRangeComputed.Value;
+            var isLastTile = entries.Length == 0 || entries.Last().Id >= idRange.End;
+            if (isLastTile) {
                 // Update is ~ free when the computed is consistent
                 idRangeComputed = await idRangeComputed.Update(cancellationToken).ConfigureAwait(false);
                 var maxEntryId = idRangeComputed.Value.End;
                 var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
                 if (tile.Start < lastTile.Start) {
-                    // An empty tile, though it's not the one that includes the very last chat entry
+                    // not the one that includes the very last chat entry
                     lastReadEntryId = tile.End;
                     continue;
                 }
@@ -52,8 +62,10 @@ public sealed class ChatEntryReader
 
                 // Ok, we're waiting for new entries.
                 // 1. This should happen for sure if we already read the last entry:
-                if (lastReadEntryId == maxEntryId)
+                if (lastReadEntryId == maxEntryId) {
                     await idRangeComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
                 // 2. And this should also happen unless _somehow_ the inserted entry landed
                 //    on the next tile (i.e. it was either N-times-rollback scenario or something similar).
                 //    In this case we want to probably adjust the tile by re-entering this block
@@ -61,18 +73,7 @@ public sealed class ChatEntryReader
                 await entriesComputed.WhenInvalidated(cancellationToken)
                     .WithTimeout(Clocks.CpuClock, InvalidationWaitTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                continue;
-            }
-
-            // Ok, we have some entries to yield back!
-            foreach (var entry in entries) {
-                if (!entriesComputed.IsConsistent())
-                    break; // This ensures we'll re-read entries
-
-                if (entry.Id > lastReadEntryId)
-                    yield return entry; // Note that this "yield" can take arbitrary long time
-
-                lastReadEntryId = entry.Id;
+                goto afterInvalidation; // sorry, but this is much more readable
             }
         }
     }
