@@ -52,7 +52,7 @@ public sealed class ChatEntryReader
         // Let's bisect (minId, maxId) range to find the right entry
         var (minId, maxId) = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
         while (true) {
-            var midId = minId + (maxId - minId) >> 1;
+            var midId = minId + ((maxId - minId) >> 1);
             var entry = await TryGet(midId, maxId, cancellationToken).ConfigureAwait(false);
             if (entry == null || minBeginsAt <= entry.BeginsAt) {
                 maxId = midId - 1;
