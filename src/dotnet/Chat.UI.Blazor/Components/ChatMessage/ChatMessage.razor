@@ -62,32 +62,28 @@
     [Parameter]
     public EventCallback<(ChatEntry Entry, double SkipTo)> PlayClick { get; set; }
 
-    protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken)
-    {
+    protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken) {
         if (Entry == null! || Entry.AuthorId.IsNone)
-            return new ChatMessageModel(null, null);
+            return new(null, null);
 
         var (userInfo, isOnline) = await
             UserInfos.TryGet(Entry.AuthorId, cancellationToken)
                 .Join(UserStates.IsOnline(Entry.AuthorId, cancellationToken))
                 .ConfigureAwait(false);
-        return new ChatMessageModel(userInfo, isOnline);
+        return new(userInfo, isOnline);
     }
 
-    private void OnPlay()
-    {
+    private void OnPlay() {
         if (PlayClick.HasDelegate)
             PlayClick.InvokeAsync((Entry, 0));
     }
 
-    private void OnTranscriptPlayClick(string _)
-    {
+    private void OnTranscriptPlayClick(string _) {
         if (PlayClick.HasDelegate)
             PlayClick.InvokeAsync((Entry, 0));
     }
 
-    private void OnTextWordClick(double offset)
-    {
+    private void OnTextWordClick(double offset) {
         if (PlayClick.HasDelegate)
             PlayClick.InvokeAsync((Entry, offset));
     }
