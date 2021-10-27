@@ -1,6 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Users
-@using TaskExt = Stl.Async.TaskExt
 @inherits ComputedStateComponent<ChatMessageModel>
 
 @{
@@ -20,9 +19,7 @@
             }
         </div>
     </div>
-}
-else
-{
+} else {
     <div class="flex items-start mb-4 text-sm">
         <img src="//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=@model.UserInfo.Name" class="w-10 h-10 rounded-full mr-3 select-none">
         <div class="flex-1 overflow-hidden">
@@ -51,12 +48,15 @@ else
 
     [Inject]
     protected IUserInfoService UserInfos { get; set; } = null!;
+
     [Inject]
     protected IUserStateService UserStates { get; set; } = null!;
+
     [Inject]
     protected Session Session { get; set; } = null!;
 
-    [Parameter, EditorRequired]
+    [Parameter]
+    [EditorRequired]
     public ChatEntry Entry { get; set; } = null!;
 
     [Parameter]
