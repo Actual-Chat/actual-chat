@@ -18,7 +18,7 @@ public sealed class ChatMediaPlayer : IDisposable
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public bool IsRealTimePlayer { get; init; } = false;
-    public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromSeconds(0.2);
 
     public bool IsPlaying => MediaPlayer.IsPlaying;
 

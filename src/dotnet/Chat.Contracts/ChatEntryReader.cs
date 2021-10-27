@@ -89,8 +89,13 @@ public sealed class ChatEntryReader
             if (entry == null)
                 minId = entryId + 1;
             else {
-                if (minBeginsAt == entry.BeginsAt)
+                if (minBeginsAt == entry.BeginsAt) {
+                    var prevEntry = await TryGet(entryId - 1, maxId, cancellationToken).ConfigureAwait(false);
+                    if (prevEntry != null && minBeginsAt == prevEntry.BeginsAt)
+                        return entryId - 1;
+
                     return entryId;
+                }
 
                 if (minBeginsAt > entry.BeginsAt)
                     minId = entryId + 1;
