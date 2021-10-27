@@ -68,9 +68,11 @@ public class DbModule : HostModule<DbSettings>
             services.AddSingleton(new CompletionProducer.Options {
                 IsLoggingEnabled = true,
             });
+            /*
             services.AddTransient(c => new DbOperationScope<TDbContext>(c) {
                 IsolationLevel = IsolationLevel.RepeatableRead,
             });
+            */
             dbContext.AddOperations((_, o) => {
                 o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
             });
