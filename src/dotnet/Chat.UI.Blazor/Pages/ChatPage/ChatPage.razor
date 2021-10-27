@@ -60,6 +60,7 @@
         if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue)
             return; // We can't do much in this case
 
+        await HistoricalPlayer.Stop();
         var audioEntryId = entry.AudioEntryId.GetValueOrDefault();
         var audioEntry = await Chats
             .CreateEntryReader(Session, HistoricalPlayer.ChatId)
