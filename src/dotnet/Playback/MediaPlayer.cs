@@ -30,6 +30,9 @@ public sealed class MediaPlayer : IDisposable
         CancellationToken cancellationToken = default)
         => AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
 
+    public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
+        => AddCommand(new SetVolumeCommand(volume), cancellationToken);
+
     public void Complete()
         => Queue.Writer.Complete();
 
@@ -41,9 +44,6 @@ public sealed class MediaPlayer : IDisposable
         var cancellationToken = _stopPlayingCts.Token;
         return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(cancellationToken), cancellationToken);
     }
-
-    public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
-        => AddCommand(new SetVolumeCommand(volume), cancellationToken);
 
     public Task Stop()
     {

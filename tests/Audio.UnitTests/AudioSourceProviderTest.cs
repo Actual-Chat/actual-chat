@@ -168,7 +168,7 @@ public class AudioSourceProviderTest
     }
 
 
-    private static async Task WriteToFile(AudioSource source, TimeSpan offset, string fileName)
+    private static async Task WriteToFile(AudioSource source, TimeSpan skipTo, string fileName)
     {
         await using var fileStream = new FileStream(
             Path.Combine(Environment.CurrentDirectory, @"data", fileName),
@@ -179,7 +179,7 @@ public class AudioSourceProviderTest
         await fileStream.WriteAsync(header);
 
         await foreach (var audioFrame in source.Frames) {
-            if (audioFrame.Offset < offset)
+            if (audioFrame.Offset < skipTo)
                 continue;
 
             await fileStream.WriteAsync(audioFrame.Data);

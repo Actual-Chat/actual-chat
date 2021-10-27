@@ -13,7 +13,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
 {
     public ValueTask<TMediaSource> CreateMediaSource(
         ChannelReader<BlobPart> blobParts,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var frames = Channel.CreateUnbounded<TMediaFrame>(new UnboundedChannelOptions {
@@ -30,7 +30,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                 formatTaskSource,
                 durationTaskSource,
                 blobParts,
-                offset,
+                skipTo,
                 cancellationToken),
             cancellationToken);
 
@@ -51,7 +51,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         TaskSource<TMediaFormat> formatTaskSource,
         TaskSource<TimeSpan> durationTaskSource,
         ChannelReader<BlobPart> blobParts,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
@@ -75,7 +75,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                     lastState.IsEmpty
                         ? new WebMReader(bufferLease.Memory.Span[..dataLength])
                         : WebMReader.FromState(lastState).WithNewSource(bufferLease.Memory.Span[..dataLength]),
-                    offset,
+                    skipTo,
                     formatTaskSource,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
@@ -104,7 +104,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
 
     private WebMReader.State BuildAudioFrames(
         WebMReader webMReader,
-        TimeSpan offset,
+        TimeSpan skipTo,
         TaskSource<TMediaFormat> formatTaskSource,
         ref int clusterOffsetMs,
         ref int blockOffsetMs,
@@ -113,7 +113,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var prevPosition = 0;
         var framesStart = 0;
         var currentBlockOffsetMs = 0;
-        var requestedOffsetMs = (int)offset.TotalMilliseconds;
+        var skipToMs = (int)skipTo.TotalMilliseconds;
         EBML? ebml = null;
         Segment? segment = null;
         TMediaFrame? firstFrame = null;
@@ -149,11 +149,11 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                         var originalFrameOffset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond
                             * (clusterOffsetMs + currentBlockOffsetMs));
 
-                        if (requestedOffsetMs > 0) {
-                            var requestedClusterOffsetMs = requestedOffsetMs - clusterOffsetMs;
+                        if (skipToMs > 0) {
+                            var clusterSkipToMs = skipToMs - clusterOffsetMs;
                             TimeSpan frameOffset;
-                            if (simpleBlock.TimeCode >= requestedClusterOffsetMs) {
-                                simpleBlock.TimeCode -= (short)requestedClusterOffsetMs;
+                            if (simpleBlock.TimeCode >= clusterSkipToMs) {
+                                simpleBlock.TimeCode -= (short)clusterSkipToMs;
                                 frameOffset = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond
                                     * (clusterOffsetMs + simpleBlock.TimeCode));
                             }
@@ -175,7 +175,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
                                 Data = webMReader.Span[framesStart..state.Position].ToArray(),
                             };
 
-                        if (offset <= originalFrameOffset) {
+                        if (skipTo <= originalFrameOffset) {
                             if (firstFrame != null) {
                                 if (!writer.TryWrite(firstFrame))
                                     throw new InvalidOperationException("Unable to write MediaFrame.");
