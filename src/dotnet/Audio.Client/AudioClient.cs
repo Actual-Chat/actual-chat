@@ -15,13 +15,13 @@ public class AudioClient : HubClientBase,
 
     public async Task<AudioSource> GetAudioSource(
         StreamId streamId,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         await EnsureConnected(cancellationToken).ConfigureAwait(false);
         var parts = await HubConnection.StreamAsChannelAsync<AudioSourcePart>("GetAudioSourceParts",
                 streamId,
-                offset,
+                skipTo,
                 cancellationToken)
             .ConfigureAwait(false);
         return await parts.ToAudioSource(cancellationToken).ConfigureAwait(false);

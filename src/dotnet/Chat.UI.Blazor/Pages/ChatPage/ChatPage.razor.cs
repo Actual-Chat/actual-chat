@@ -190,7 +190,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         }
     }
 
-    private async Task PlayHistoricalMediaTrack(ChatEntry entry, TimeSpan offset, CancellationToken cancellationToken)
+    private async Task PlayHistoricalMediaTrack(ChatEntry entry, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         try {
             var audioEntryId = entry.AudioEntryId
@@ -205,11 +205,11 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             }
 
             var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
-            var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, offset, cancellationToken);
+            var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, skipTo, cancellationToken);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
 
             await HistoricalPlayer.Stop();
-            await HistoricalPlayer.AddMediaTrack(trackId, audioSource, audioEntry.BeginsAt + offset, cancellationToken);
+            await HistoricalPlayer.AddMediaTrack(trackId, audioSource, audioEntry.BeginsAt + skipTo, cancellationToken);
             _ = HistoricalPlayer.Play();
         }
         catch (Exception e) when (e is not OperationCanceledException) {

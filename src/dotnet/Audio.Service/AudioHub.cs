@@ -27,9 +27,9 @@ public class AudioHub : Hub
 
     public Task<ChannelReader<AudioSourcePart>> GetAudioSourceParts(
         StreamId streamId,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
-        => _audioSourceStreamer.GetAudioSourceParts(streamId, offset, cancellationToken);
+        => _audioSourceStreamer.GetAudioSourceParts(streamId, skipTo, cancellationToken);
 
     public Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
         => _audioStreamer.GetAudioStream(streamId, cancellationToken);

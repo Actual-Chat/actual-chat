@@ -13,12 +13,12 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 
     public async Task<AudioSource> GetAudioSource(
         StreamId streamId,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<AudioSourcePart>(streamId);
         var parts = streamer.Read(cancellationToken);
-        if (offset == default)
+        if (skipTo == default)
             return await parts.ToAudioSource(cancellationToken).ConfigureAwait(false);
 
         var channel = Channel.CreateUnbounded<AudioSourcePart>(new UnboundedChannelOptions {
@@ -27,19 +27,19 @@ public class AudioSourceStreamer : IAudioSourceStreamer
             AllowSynchronousContinuations = true,
         });
 
-        _ = Task.Run(() => MakeAudioSourceWithOffset(parts, channel, offset, cancellationToken), cancellationToken);
+        _ = Task.Run(() => ApplySkipTo(parts, channel, skipTo, cancellationToken), cancellationToken);
 
         return await channel.Reader.ToAudioSource(cancellationToken).ConfigureAwait(false);
     }
 
     public Task<ChannelReader<AudioSourcePart>> GetAudioSourceParts(
         StreamId streamId,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<AudioSourcePart>(streamId);
         var parts = streamer.Read(cancellationToken);
-        if (offset == default)
+        if (skipTo == default)
             return Task.FromResult(parts);
 
         var channel = Channel.CreateUnbounded<AudioSourcePart>(new UnboundedChannelOptions {
@@ -48,7 +48,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
             AllowSynchronousContinuations = true,
         });
 
-        _ = Task.Run(() => MakeAudioSourceWithOffset(parts, channel, offset, cancellationToken), cancellationToken);
+        _ = Task.Run(() => ApplySkipTo(parts, channel, skipTo, cancellationToken), cancellationToken);
 
         return Task.FromResult(channel.Reader);
     }
@@ -67,12 +67,12 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         return streamer.Write(channel, cancellationToken);
     }
 
-    // private methods
+    // Private methods
 
-    private static async Task MakeAudioSourceWithOffset(
+    private static async Task ApplySkipTo(
         ChannelReader<AudioSourcePart> reader,
         ChannelWriter<AudioSourcePart> writer,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         Exception? error = null;
@@ -87,7 +87,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 
             var audioSourceProvider = new AudioSourceProvider();
             var audioSourceWithOffset = await audioSourceProvider
-                .CreateMediaSource(channel, offset, cancellationToken)
+                .CreateMediaSource(channel, skipTo, cancellationToken)
                 .ConfigureAwait(false);
 
             await TransformFramesForStreaming(audioSourceWithOffset, writer, cancellationToken).ConfigureAwait(false);
