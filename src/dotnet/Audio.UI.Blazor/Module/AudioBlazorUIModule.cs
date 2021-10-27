@@ -21,7 +21,8 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        services.AddScoped<IMediaPlayerService, AudioPlayerService>();
+        var fusion = services.AddFusion();
+        fusion.AddComputeService<IMediaPlayerService, AudioPlayerService>(ServiceLifetime.Scoped);
         services.AddTransient<MediaPlayer>();
     }
 }

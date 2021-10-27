@@ -2,31 +2,29 @@ using ActualChat.Audio;
 using ActualChat.Playback;
 using Cysharp.Text;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed class ChatMediaPlayer
+public sealed class ChatMediaPlayer : IDisposable
 {
     private IChatService Chats { get; }
-    private MediaPlayer MediaPlayer { get; }
     private IChatMediaResolver MediaResolver { get; }
     private AudioDownloader AudioDownloader { get; }
     private IAudioSourceStreamer AudioSourceStreamer { get; }
     private MomentClockSet Clocks { get; }
     private ILogger Log { get; }
 
+    public MediaPlayer MediaPlayer { get; }
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public bool MustWaitForNewEntries { get; init; } = false;
     public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromSeconds(1);
 
-    public ChatMediaPlayer(IChatService chats)
+    public ChatMediaPlayer(IServiceProvider services)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
-        var services = ((IComputeService) chats).GetServiceProvider();
         Log = services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
-        Chats = chats;
+        Chats = services.GetRequiredService<IChatService>();
         MediaPlayer = services.GetRequiredService<MediaPlayer>();
         MediaResolver = services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
@@ -34,10 +32,15 @@ public sealed class ChatMediaPlayer
         Clocks = services.Clocks();
     }
 
-    public async Task Play(Moment startAt, CancellationToken cancellationToken)
+    public void Dispose()
+        => MediaPlayer.Dispose();
+
+    public async Task Play(Moment startAt)
     {
         await MediaPlayer.Stop().ConfigureAwait(false);
         await MediaPlayer.Play().ConfigureAwait(false);
+        var cancellationToken = MediaPlayer.StopToken;
+
         try {
             var clock = Clocks.CpuClock;
             var entryReader = Chats.CreateEntryReader(Session, ChatId);
@@ -87,6 +90,11 @@ public sealed class ChatMediaPlayer
             throw;
         }
     }
+
+    public Task Stop()
+        => MediaPlayer.Stop();
+
+    // Private methods
 
     private async Task EnqueuePlayback(ChatEntry audioEntry, TimeSpan skipTo, CancellationToken cancellationToken)
     {

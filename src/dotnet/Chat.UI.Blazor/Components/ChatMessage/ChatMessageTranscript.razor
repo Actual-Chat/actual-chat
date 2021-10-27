@@ -18,7 +18,7 @@
     [Parameter]
     public string StreamId { get; set; } = null!;
     [Parameter]
-    public EventCallback<string> OnListen { get; set; }
+    public EventCallback<string> PlayClick { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -39,8 +39,8 @@
 
     private void OnPlay()
     {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync(StreamId);
+        if (PlayClick.HasDelegate)
+            PlayClick.InvokeAsync(StreamId);
     }
 
     private async Task ReadTranscript(ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken)

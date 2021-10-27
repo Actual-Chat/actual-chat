@@ -12,7 +12,9 @@
     <div class="flex flex-row justify-between mx-3 my-2" @onkeydown="OnKeyDown">
         <AuthorizeView>
             <Authorized>
-                <MediaPlayerToggle Player="RealtimePlayer" />
+                @if (RealtimePlayer != null) {
+                    <MediaPlayerToggle Player="RealtimePlayer"/>
+                }
                 <div @ref="_ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
             </Authorized>
             <NotAuthorized>
@@ -48,7 +50,7 @@
     [Parameter]
     public string ChatId { get; set; } = "";
     [Parameter]
-    public MediaPlayer RealtimePlayer { get; set; } = null!;
+    public MediaPlayer? RealtimePlayer { get; set; }
 
     public async ValueTask DisposeAsync()
     {
