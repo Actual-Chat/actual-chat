@@ -127,7 +127,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
         ChatConstants.IdTiles.AssertIsTile(idRange);
 
         await using var dbContext = CreateDbContext();
-        var dbEntries = await dbContext.ChatEntries.ForShare(DbWaitHint.NoWait) // Fine w/ proper invalidation
+        var dbEntries = await dbContext.ChatEntries
             .Where(m => m.ChatId == (string)chatId && m.Id >= idRange.Start && m.Id < idRange.End)
             .OrderBy(m => m.Id)
             .ToListAsync(cancellationToken)
