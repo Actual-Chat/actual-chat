@@ -11,7 +11,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
-    private bool DebugMode { get; } = true;
+    private bool DebugMode { get; } = false;
 
     public AudioSource AudioSource => (AudioSource) Command.Source;
     public byte[] Header { get; }

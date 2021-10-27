@@ -60,8 +60,9 @@ export class AudioPlayer {
             }
 
             let _ = this.invokeOnPlaybackEnded();
-            if (debugMode)
+            if (debugMode) {
                 console.log('Audio ended. ' + JSON.stringify(e));
+            }
         });
         this._audio.addEventListener('error', (e) => {
             while (this._playingQueue.length > 0) {
