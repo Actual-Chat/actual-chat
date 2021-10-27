@@ -151,7 +151,7 @@ public class SourceAudioProcessor : BackgroundService
         var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
             AuthorId = openAudioSegment.AudioRecord.UserId,
             Content = "",
-            ContentType = ChatContentType.Audio,
+            Type = ChatEntryType.Audio,
             StreamId = openAudioSegment.StreamId,
             BeginsAt = beginsAt,
         };
@@ -167,7 +167,7 @@ public class SourceAudioProcessor : BackgroundService
         var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
             AuthorId = openAudioSegment.AudioRecord.UserId,
             Content = "...",
-            ContentType = ChatContentType.Text,
+            Type = ChatEntryType.Text,
             StreamId = openAudioSegment.StreamId,
             AudioEntryId = audioChatEntry.Id,
             BeginsAt = audioChatEntry.BeginsAt,

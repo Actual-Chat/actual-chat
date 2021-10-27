@@ -60,7 +60,7 @@ public partial class ChatService
             BeginsAt = now,
             EndsAt = now,
             Content = text,
-            ContentType = ChatContentType.Text,
+            Type = ChatEntryType.Text,
         };
         var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
