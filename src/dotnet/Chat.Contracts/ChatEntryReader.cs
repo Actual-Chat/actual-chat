@@ -1,4 +1,3 @@
-using ActualChat.Mathematics;
 using Stl.Fusion.Interception;
 
 namespace ActualChat.Chat;
@@ -15,62 +14,16 @@ public sealed class ChatEntryReader
     public ChatEntryReader(IChatService chats)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
-        var services = ((IComputeService) chats).GetServiceProvider();
+        var services = ((IComputeService)chats).GetServiceProvider();
         Chats = chats;
         Clocks = services.Clocks();
-    }
-
-    public async Task<ChatEntry?> TryGet(long entryId, CancellationToken cancellationToken)
-    {
-        var tile = ChatConstants.IdTiles.GetMinCoveringTile(entryId);
-        var entries = await Chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
-        return entries.SingleOrDefault(e => e.Id == entryId);
-    }
-
-    public async Task<ChatEntry?> TryGet(long minEntryId, long maxEntryId, CancellationToken cancellationToken)
-    {
-        var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
-        while (true) {
-            var tile = ChatConstants.IdTiles.GetMinCoveringTile(minEntryId);
-            var entries = await Chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
-            if (entries.Length == 0) {
-                if (tile.Start >= lastTile.Start) // We're at the very last tile
-                    return null;
-                minEntryId = tile.End + 1;
-                continue;
-            }
-            foreach (var entry in entries) {
-                if (entry.Id >= minEntryId && entry.Id <= maxEntryId)
-                    return entry;
-            }
-            minEntryId = tile.End + 1;
-        }
-    }
-
-    public async Task<ChatEntry?> TryGet(Moment minBeginsAt, CancellationToken cancellationToken)
-    {
-        // Let's bisect (minId, maxId) range to find the right entry
-        var (minId, maxId) = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
-        while (true) {
-            var midId = minId + ((maxId - minId) >> 1);
-            var entry = await TryGet(midId, maxId, cancellationToken).ConfigureAwait(false);
-            if (entry == null || minBeginsAt <= entry.BeginsAt) {
-                maxId = midId - 1;
-                if (minId > maxId)
-                    return entry;
-            }
-            else {
-                minId = midId + 1;
-                if (minId > maxId)
-                    return null;
-            }
-        }
     }
 
     public async IAsyncEnumerable<ChatEntry> GetAllAfter(
         long minEntryId,
         bool waitForNewEntries,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
     {
         var idRangeComputed = await Computed
             .Capture(ct => Chats.GetIdRange(Session, ChatId, ct), cancellationToken)
@@ -115,10 +68,63 @@ public sealed class ChatEntryReader
             foreach (var entry in entries) {
                 if (!entriesComputed.IsConsistent())
                     break; // This ensures we'll re-read entries
+
                 if (entry.Id > lastReadEntryId)
                     yield return entry; // Note that this "yield" can take arbitrary long time
+
                 lastReadEntryId = entry.Id;
             }
+        }
+    }
+
+    public async Task<long> GetNextEntryId(Moment minBeginsAt, CancellationToken cancellationToken)
+    {
+        // Let's bisect (minId, maxId) range to find the right entry
+        var entryId = 0L;
+        var (minId, maxId) = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        while (minId <= maxId) {
+            entryId = minId + ((maxId - minId) >> 1);
+            var entry = await TryGet(entryId, maxId, cancellationToken).ConfigureAwait(false);
+            if (entry == null)
+                minId = entryId + 1;
+            else {
+                if (minBeginsAt == entry.BeginsAt)
+                    return entryId;
+
+                if (minBeginsAt > entry.BeginsAt)
+                    minId = entryId + 1;
+                else
+                    maxId = entryId - 1;
+            }
+        }
+        return entryId;
+    }
+
+    public async Task<ChatEntry?> TryGet(long entryId, CancellationToken cancellationToken)
+    {
+        var tile = ChatConstants.IdTiles.GetMinCoveringTile(entryId);
+        var entries = await Chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
+        return entries.SingleOrDefault(e => e.Id == entryId);
+    }
+
+    public async Task<ChatEntry?> TryGet(long minEntryId, long maxEntryId, CancellationToken cancellationToken)
+    {
+        var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
+        while (true) {
+            var tile = ChatConstants.IdTiles.GetMinCoveringTile(minEntryId);
+            var entries = await Chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
+            if (entries.Length == 0) {
+                if (tile.Start >= lastTile.Start) // We're at the very last tile
+                    return null;
+
+                minEntryId = tile.End + 1;
+                continue;
+            }
+            foreach (var entry in entries)
+                if (entry.Id >= minEntryId && entry.Id <= maxEntryId)
+                    return entry;
+
+            minEntryId = tile.End + 1;
         }
     }
 }

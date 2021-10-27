@@ -46,7 +46,7 @@
         </VirtualList>
     </div>
     <div class="footer flex sticky m-0">
-        <ChatMessageEditor ChatId="@chat.Id" RealtimePlayer="RealtimePlayer?.MediaPlayer"/>
+        <ChatMessageEditor ChatId="@chat.Id" RealtimePlayer="RealtimePlayer"/>
     </div>
 </div>
 
@@ -55,8 +55,7 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    private async Task OnMessagePlayClick((ChatEntry Entry, double SkipTo) what)
-    {
+    private async Task OnMessagePlayClick((ChatEntry Entry, double SkipTo) what) {
         var (entry, skipTo) = what;
         if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue)
             return; // We can't do much in this case

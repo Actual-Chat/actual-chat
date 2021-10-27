@@ -43,15 +43,14 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         HistoricalPlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
-            MustWaitForNewEntries = false,
+            IsRealTimePlayer = false,
         };
         RealtimePlayer?.Dispose();
         RealtimePlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
-            MustWaitForNewEntries = true,
+            IsRealTimePlayer = true,
         };
-        _ = RealtimePlayer.Play(Clocks.SystemClock.Now);
         StateHasChanged();
     }
 
