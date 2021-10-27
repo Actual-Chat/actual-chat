@@ -8,18 +8,12 @@ namespace ActualChat.Chat.UI.Blazor.Pages;
 
 public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 {
-    [Inject]
-    private Session Session { get; set; } = default!;
-    [Inject]
-    private UICommandRunner Cmd { get; set; } = default!;
-    [Inject]
-    private ChatPageService Service { get; set; } = default!;
-    [Inject]
-    private IChatService Chats { get; set; } = default!;
-    [Inject]
-    private MomentClockSet Clocks { get; set; } = default!;
-    [Inject]
-    private ILogger<ChatPage> Log { get; set; } = default!;
+    [Inject] private Session Session { get; set; } = default!;
+    [Inject] private UICommandRunner Cmd { get; set; } = default!;
+    [Inject] private ChatPageService Service { get; set; } = default!;
+    [Inject] private IChatService Chats { get; set; } = default!;
+    [Inject] private MomentClockSet Clocks { get; set; } = default!;
+    [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
 
     private ChatMediaPlayer? HistoricalPlayer { get; set; }
     private ChatMediaPlayer? RealtimePlayer { get; set; }
@@ -46,13 +40,13 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
         // ChatId changed, so we must recreate players
         HistoricalPlayer?.Dispose();
-        HistoricalPlayer = new ChatMediaPlayer(Services) {
+        HistoricalPlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
             MustWaitForNewEntries = false,
         };
         RealtimePlayer?.Dispose();
-        RealtimePlayer = new ChatMediaPlayer(Services) {
+        RealtimePlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
             MustWaitForNewEntries = true,
@@ -84,7 +78,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
-                InclusiveRange = new Range<string>(
+                InclusiveRange = new (
                     (chatIdRange.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
                     chatIdRange.End.ToString(CultureInfo.InvariantCulture)),
             };
