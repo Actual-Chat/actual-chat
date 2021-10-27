@@ -25,7 +25,6 @@ export class AudioPlayer {
 
     public constructor(blazorRef: DotNet.DotNetObject) {
         this._audio = new Audio();
-        this._audio.autoplay = true;
         this._blazorRef = blazorRef;
         this._sourceBuffer = null;
         this._bufferQueue = [];
@@ -60,6 +59,12 @@ export class AudioPlayer {
             let _ = this.invokeOnPlaybackTimeChanged(time);
         });
         this._audio.addEventListener('canplay', (e) => {
+        });
+        this._audio.addEventListener('loadeddata', async (e) => {
+            let audio = this._audio;
+            if (audio.readyState >= 1) {
+                await audio.play();
+            }
         });
 
         this._bufferCreated = new Promise<SourceBuffer>(resolve => {
