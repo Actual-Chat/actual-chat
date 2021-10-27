@@ -1,5 +1,6 @@
-@using ActualChat.Playback
-@namespace ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inject MomentClockSet _clocks
 
 <button @onclick="Toggle" class="block px-2 py-2 @(Player.IsPlaying ? "text-blue-500" : "text-gray-500")">
     <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
@@ -10,22 +11,19 @@
 @code {
 
     [Parameter]
-    public MediaPlayer Player { get; set; } = null!;
+    public ChatMediaPlayer Player { get; set; } = null!;
 
-    private Task Toggle()
-    {
+    private Task Toggle() {
         return Player.IsPlaying ? Stop() : Play();
     }
 
-    private Task Play()
-    {
-        Player.Play();
+    private Task Play() {
+        _ = Player.Play(_clocks.SystemClock.Now);
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    private Task Stop()
-    {
+    private Task Stop() {
         Player.Stop();
         StateHasChanged();
         return Task.CompletedTask;

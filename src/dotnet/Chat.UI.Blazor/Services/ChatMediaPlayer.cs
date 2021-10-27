@@ -17,8 +17,10 @@ public sealed class ChatMediaPlayer : IDisposable
     public MediaPlayer MediaPlayer { get; }
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
-    public bool MustWaitForNewEntries { get; init; } = false;
+    public bool IsRealTimePlayer { get; init; } = false;
     public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromSeconds(1);
+
+    public bool IsPlaying => MediaPlayer.IsPlaying;
 
     public ChatMediaPlayer(IServiceProvider services)
     {
@@ -44,32 +46,32 @@ public sealed class ChatMediaPlayer : IDisposable
         try {
             var clock = Clocks.CpuClock;
             var entryReader = Chats.CreateEntryReader(Session, ChatId);
-            var startEntry = await entryReader
-                .TryGet(startAt - ChatConstants.MaxEntryDuration, cancellationToken)
+            var priorEntriesOffset = IsRealTimePlayer
+                ? TimeSpan.Zero
+                : ChatConstants.MaxEntryDuration;
+            var startEntryId = await entryReader
+                .GetNextEntryId(startAt - priorEntriesOffset, cancellationToken)
                 .ConfigureAwait(false);
-            var startEntryId = startEntry?.Id ?? 0;
             var now = clock.Now;
-            var continuousSpanEndTime = now - ChatConstants.MaxEntryDuration; // Should be far away in past
+            var continuousSpanEndTime = now - priorEntriesOffset; // Should be far away in past
             var realtimeGap = now - startAt;
 
             var entries = entryReader
-                .GetAllAfter(startEntryId, MustWaitForNewEntries, cancellationToken)
+                .GetAllAfter(startEntryId, IsRealTimePlayer, cancellationToken)
                 .Where(e => e.Type == ChatEntryType.Audio);
             await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                if (entry.EndsAt < startAt) {
+                if (entry.EndsAt < startAt)
                     // We're normally starting @ (startAt - ChatConstants.MaxEntryDuration),
                     // so we need to skip a few entries.
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
-                }
 
                 now = clock.Now;
                 var beginsAt = Moment.Max(entry.BeginsAt, startAt);
-                if (entry.BeginsAt > continuousSpanEndTime) {
+                if (entry.BeginsAt > continuousSpanEndTime)
                     // There is a gap between the currently playing "block" and the entry;
                     // we're going to skip the gap here by adjusting the realtime gap.
                     realtimeGap = now - beginsAt;
-                }
 
                 var skipTo = beginsAt - entry.BeginsAt;
                 var enqueueDelay = beginsAt + realtimeGap - EnqueueToPlaybackDelay - now;
@@ -102,8 +104,10 @@ public sealed class ChatMediaPlayer : IDisposable
         try {
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
+
             if (audioEntry.IsStreaming) {
-                await EnqueueStreamingPlayback(audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
+                if (IsRealTimePlayer)
+                    await EnqueueStreamingPlayback(audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -120,7 +124,10 @@ public sealed class ChatMediaPlayer : IDisposable
         }
     }
 
-    private async Task EnqueueStreamingPlayback(ChatEntry audioEntry, TimeSpan skipTo, CancellationToken cancellationToken)
+    private async Task EnqueueStreamingPlayback(
+        ChatEntry audioEntry,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
     {
         try {
             if (audioEntry.Type != ChatEntryType.Audio)

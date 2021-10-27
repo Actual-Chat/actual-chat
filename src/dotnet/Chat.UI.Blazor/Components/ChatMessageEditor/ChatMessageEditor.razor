@@ -1,8 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IChatMessageEditorBackend
+@using ActualChat.Chat.UI.Blazor.Services
 @implements IAsyncDisposable
-@using ActualChat.Audio.UI.Blazor.Components
-@using ActualChat.Playback
 @inject IChatService _chats
 @inject Session _session
 @inject UICommandRunner _cmd
@@ -26,13 +25,13 @@
                 <Authorized>
                     <button @onclick="Post" class="message-submit block px-3 py-2 text-green-500">
                         <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-                            <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z" />
+                            <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                         </svg>
                     </button>
-                    <AudioRecorder ChatId="@ChatId" />
+                    <AudioRecorder ChatId="@ChatId"/>
                 </Authorized>
                 <NotAuthorized>
-                    <SignInDropdown Why="to chat" CssClass="px-3" />
+                    <SignInDropdown Why="to chat" CssClass="px-3"/>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
@@ -49,18 +48,17 @@
 
     [Parameter]
     public string ChatId { get; set; } = "";
-    [Parameter]
-    public MediaPlayer? RealtimePlayer { get; set; }
 
-    public async ValueTask DisposeAsync()
-    {
+    [Parameter]
+    public ChatMediaPlayer? RealtimePlayer { get; set; }
+
+    public async ValueTask DisposeAsync() {
         if (_jsRef != null)
             await _jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
         _blazorRef?.Dispose();
     }
 
-    private async Task Post()
-    {
+    private async Task Post() {
         if (ChatId.IsNullOrEmpty() || Message.IsNullOrEmpty())
             return;
         var (_, ce) = await _cmd.Run(new ChatCommands.PostMessage(_session, ChatId, Message));
@@ -71,16 +69,14 @@
             await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
     }
 
-    private Task OnKeyDown(KeyboardEventArgs args)
-    {
+    private Task OnKeyDown(KeyboardEventArgs args) {
         if (args.Key == "Enter" && args.ShiftKey == false) {
             return Post();
         }
         return Task.CompletedTask;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
         }
@@ -91,11 +87,11 @@
     }
 
     [JSInvokable]
-    public void SetMessage(string message)
-    {
+    public void SetMessage(string message) {
         if (message.IsNullOrEmpty() || message == Message) return;
 
         Message = message;
         StateHasChanged();
     }
+
 }
