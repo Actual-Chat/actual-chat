@@ -13,12 +13,12 @@ namespace ActualChat.Chat.Db;
     nameof(ChatId),
     nameof(BeginsAt),
     nameof(EndsAt),
-    nameof(ContentType))]
+    nameof(Type))]
 [IndexAttribute(
     nameof(ChatId),
     nameof(EndsAt),
     nameof(BeginsAt),
-    nameof(ContentType))]
+    nameof(Type))]
 [IndexAttribute(nameof(ChatId), nameof(Version))]
 public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
@@ -48,7 +48,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
     public double Duration { get; set; }
 
-    public ChatContentType ContentType { get; set; }
+    public ChatEntryType Type { get; set; }
     public string Content { get; set; } = "";
     public string? StreamId { get; set; }
 
@@ -64,7 +64,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             EndsAt = EndsAt,
-            ContentType = ContentType,
+            Type = Type,
             Content = Content,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
@@ -85,7 +85,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
         EndsAt = model.EndsAt;
-        ContentType = model.ContentType;
+        Type = model.Type;
         Content = model.Content;
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;

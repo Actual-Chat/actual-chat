@@ -9,9 +9,9 @@ public class BuiltInChatMediaResolver : IChatMediaResolver
 
     public Uri GetAudioBlobUri(ChatEntry audioEntry)
     {
-        if (audioEntry.ContentType != ChatContentType.Audio)
+        if (audioEntry.Type != ChatEntryType.Audio)
             throw new InvalidOperationException(Invariant(
-                $"Only Audio chat entries supported, but {nameof(audioEntry)} has Id: {audioEntry.Id}, ContentType: {audioEntry.ContentType}."));
+                $"Only Audio chat entries supported, but {nameof(audioEntry)} has Id: {audioEntry.Id}, Type: {audioEntry.Type}."));
 
         if (audioEntry.Content.IsNullOrEmpty())
             throw new InvalidOperationException(Invariant(

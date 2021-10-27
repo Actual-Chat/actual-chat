@@ -4,9 +4,10 @@ public static class ChatServiceExt
 {
     public static ChatEntryReader CreateEntryReader(
         this IChatService chats,
-        ChatId chatId, Session session)
+        Session session,
+        ChatId chatId)
         => new(chats) {
-            ChatId = chatId,
             Session = session,
+            ChatId = chatId,
         };
 }
