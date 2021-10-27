@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Globalization;
 using System.Text.Json;
 using ActualChat.Mathematics;
 using Cysharp.Text;
@@ -14,12 +13,12 @@ namespace ActualChat.Chat.Db;
     nameof(ChatId),
     nameof(BeginsAt),
     nameof(EndsAt),
-    nameof(ContentType))]
+    nameof(Type))]
 [IndexAttribute(
     nameof(ChatId),
     nameof(EndsAt),
     nameof(BeginsAt),
-    nameof(ContentType))]
+    nameof(Type))]
 [IndexAttribute(nameof(ChatId), nameof(Version))]
 public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
@@ -49,10 +48,12 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
     public double Duration { get; set; }
 
-    public ChatContentType ContentType { get; set; }
+    public ChatEntryType Type { get; set; }
     public string Content { get; set; } = "";
     public string? StreamId { get; set; }
 
+    public long? AudioEntryId { get; set; }
+    public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
 
     public static string GetCompositeId(string chatId, long id)
@@ -63,9 +64,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             EndsAt = EndsAt,
-            ContentType = ContentType,
+            Type = Type,
             Content = Content,
             StreamId = StreamId ?? "",
+            AudioEntryId = AudioEntryId,
+            VideoEntryId = VideoEntryId,
             TextToTimeMap = TextToTimeMap != null
                 ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
                 : null,
@@ -82,9 +85,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
         EndsAt = model.EndsAt;
-        ContentType = model.ContentType;
+        Type = model.Type;
         Content = model.Content;
         StreamId = model.StreamId;
+        AudioEntryId = model.AudioEntryId;
+        VideoEntryId = model.VideoEntryId;
         TextToTimeMap = model.TextToTimeMap != null
             ? JsonSerializer.Serialize(model.TextToTimeMap)
             : null;

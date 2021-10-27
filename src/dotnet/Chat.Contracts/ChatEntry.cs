@@ -9,9 +9,12 @@ public record ChatEntry(ChatId ChatId, long Id)
     public UserId AuthorId { get; init; }
     public Moment BeginsAt { get; init; }
     public Moment? EndsAt { get; init; }
-    public ChatContentType ContentType { get; init; }
+    public ChatEntryType Type { get; init; }
     public string Content { get; init; } = "";
+
     public StreamId StreamId { get; init; } = "";
+    public long? AudioEntryId { get; init; }
+    public long? VideoEntryId { get; init; }
     public LinearMap? TextToTimeMap { get; init; }
 
     [JsonIgnore] [Newtonsoft.Json.JsonIgnore]

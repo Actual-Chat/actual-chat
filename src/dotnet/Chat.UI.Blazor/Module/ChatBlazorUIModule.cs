@@ -26,6 +26,5 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
         fusion.AddComputeService<TestListService>();
         fusion.AddComputeService<ChatPageService>();
-        fusion.AddComputeService<AudioIndexService>();
     }
 }

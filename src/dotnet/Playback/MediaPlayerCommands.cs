@@ -11,7 +11,6 @@ public record SetVolumeCommand(double Volume) : MediaPlayerCommand
 public record PlayMediaTrackCommand(
     Symbol TrackId,
     IMediaSource Source,
-    Moment RecordingStartedAt,
-    TimeSpan StartOffset = default
+    Moment RecordingStartedAt
 ) : MediaPlayerCommand
 { }

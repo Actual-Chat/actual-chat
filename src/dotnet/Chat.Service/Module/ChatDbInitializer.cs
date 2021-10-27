@@ -54,7 +54,7 @@ namespace ActualChat.Chat.Module
                         BeginsAt = Clocks.SystemClock.Now,
                         EndsAt = Clocks.SystemClock.Now,
                         Content = GetRandomSentence(rnd, 30),
-                        ContentType = ChatContentType.Text,
+                        Type = ChatEntryType.Text,
                         AuthorId = adminUserId,
                     };
                     if (id == 0)

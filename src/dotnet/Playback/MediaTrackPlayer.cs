@@ -1,39 +1,37 @@
 using ActualChat.Media;
-using Stl.Locking;
 
 namespace ActualChat.Playback;
 
 public abstract class MediaTrackPlayer : AsyncProcessBase
 {
-    protected ILogger<MediaTrackPlayer> Log { get; init; }
-    protected Queue<MediaTrackPlayerCommand> CommandQueue { get; } = new();
-    protected AsyncLock CommandQueueLock { get; } = new(ReentryMode.CheckedFail);
+    private MediaTrackPlaybackState _state;
+    protected ILogger<MediaTrackPlayer> Log { get; }
 
-    public PlayMediaTrackCommand Command { get; }
-    public MediaFrame? PreviousFrame { get; protected set; }
-    public MediaFrame? CurrentFrame { get; protected set; }
-    public double Volume { get; protected set; } = 1;
-    public Task<Unit> WhenStopped { get; private set; }
+    protected IMediaSource Source { get; }
 
-    public event Func<MediaTrackPlayerCommand, ValueTask>? CommandEnqueued;
-    public event Func<MediaTrackPlayerCommand, ValueTask>? CommandProcessed;
+    public MediaTrackPlaybackState State => Volatile.Read(ref _state);
+
+    public event Action<MediaTrackPlaybackState>? PlaybackStateChanged;
+
 
     protected MediaTrackPlayer(PlayMediaTrackCommand command, ILogger<MediaTrackPlayer> log)
     {
         Log = log;
-        Command = command;
-        WhenStopped = TaskSource.New<Unit>(true).Task;
+        Source = command.Source;
+        _state = new MediaTrackPlaybackState(command.TrackId, command.RecordingStartedAt);
         _ = Run();
     }
+
+    public ValueTask EnqueueCommand(MediaTrackPlayerCommand command)
+        => ProcessCommand(command);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         Exception? error = null;
         try {
-            await EnqueueCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
-            var frames = Command.Source.Frames;
-            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
-                await EnqueueCommand(new PlayMediaFrameCommand(this, frame)).ConfigureAwait(false);
+            await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
+            await foreach (var frame in Source.Frames.WithCancellation(cancellationToken).ConfigureAwait(false))
+                await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw; // "Stop" is called, nothing to log here
@@ -46,100 +44,48 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             var immediately = cancellationToken.IsCancellationRequested || error != null;
             var stopCommand = new StopPlaybackCommand(this, immediately);
             try {
-                await EnqueueCommand(stopCommand).ConfigureAwait(false);
+                await ProcessCommand(stopCommand).ConfigureAwait(false);
             }
             finally {
-                try {
-                    var isEndedOpt = await WhenStopped
-                        .WithTimeout(TimeSpan.FromSeconds(5), CancellationToken.None)
-                        .ConfigureAwait(false);
-                    if (!isEndedOpt.HasValue) // Let's forcefully push "processed" event for stopCommand
-                        await OnCommandProcessed(stopCommand).ConfigureAwait(false);
+                var state = Volatile.Read(ref _state);
+                if (!state.IsCompleted) {
+                    var stopped = state with { IsCompleted = true };
+                    Volatile.Write(ref _state, stopped);
+                    PlaybackStateChanged?.Invoke(stopped);
                 }
-                finally {
-                    // AY: Sorry, but it's a self-disposing thing
-                    _ = DisposeAsync();
-                }
+
+                // AY: Sorry, but it's a self-disposing thing
+                _ = DisposeAsync();
             }
         }
-    }
-
-    public async ValueTask EnqueueCommand(MediaTrackPlayerCommand command)
-    {
-        using var _ = await CommandQueueLock.Lock().ConfigureAwait(false);
-        CommandQueue.Enqueue(command);
-        if (CommandEnqueued != null)
-            await CommandEnqueued.Invoke(command).ConfigureAwait(false);
-        await EnqueueCommandInternal(command).ConfigureAwait(false);
     }
 
     // Protected methods
 
-    protected abstract ValueTask EnqueueCommandInternal(MediaTrackPlayerCommand command);
+    protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
+    protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
-    protected async ValueTask OnPlayedTo(TimeSpan offset)
+    protected void OnPlayedTo(TimeSpan offset)
     {
-        using var _ = await CommandQueueLock.Lock().ConfigureAwait(false);
-        if (WhenStopped.IsCompleted)
-            return;
-        if (CurrentFrame != null && CurrentFrame.Offset > offset)
-            return;
-        while (CommandQueue.TryPeek(out var command)) {
-            switch (command) {
-            case StopPlaybackCommand stopCommand:
-            case PlayMediaFrameCommand playCommand when playCommand.Frame.Offset > offset:
-                // These commands are definitely further away, so we must exit here
-                return;
-            }
-            // These commands are fine to process & continue
-            await OnCommandProcessedInternal(command).ConfigureAwait(false);
-            CommandQueue.Dequeue();
-        }
+        var state = Volatile.Read(ref _state) with { PlayingAt = offset };
+        Volatile.Write(ref _state, state);
+
+        PlaybackStateChanged?.Invoke(state);
     }
 
-    protected async ValueTask OnStopped()
+    protected void OnStopped(bool withError)
     {
-        using var _ = await CommandQueueLock.Lock().ConfigureAwait(false);
-        if (WhenStopped.IsCompleted)
-            return;
-        if (!CommandQueue.Any(c => c is StopPlaybackCommand))
-            await EnqueueCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
-        while (CommandQueue.TryDequeue(out var command))
-            await OnCommandProcessedInternal(command).ConfigureAwait(false);
+        var state = Volatile.Read(ref _state) with { IsCompleted = true };
+        Volatile.Write(ref _state, state);
+
+        PlaybackStateChanged?.Invoke(state);
     }
 
-    protected async ValueTask OnCommandProcessed(MediaTrackPlayerCommand command)
+    protected void OnVolumeSet(double volume)
     {
-        using var _ = await CommandQueueLock.Lock().ConfigureAwait(false);
-        if (WhenStopped.IsCompleted)
-            return;
-        while (CommandQueue.TryDequeue(out var otherCommand)) {
-            await OnCommandProcessedInternal(otherCommand).ConfigureAwait(false);
-            if (ReferenceEquals(otherCommand, command))
-                return;
-        }
-        throw new InvalidOperationException("The specified command wasn't ever enqueued.");
-    }
+        var state = Volatile.Read(ref _state) with { Volume = volume };
+        Volatile.Write(ref _state, state);
 
-    protected virtual async ValueTask OnCommandProcessedInternal(MediaTrackPlayerCommand command)
-    {
-        if (WhenStopped.IsCompleted)
-            return;
-        switch (command) {
-        case StopPlaybackCommand stop:
-            PreviousFrame = CurrentFrame;
-            CurrentFrame = null;
-            TaskSource.For(WhenStopped).TrySetResult(default!);
-            break;
-        case PlayMediaFrameCommand playFrame:
-            PreviousFrame = CurrentFrame;
-            CurrentFrame = playFrame.Frame;
-            break;
-        case SetTrackVolumeCommand setVolume:
-            Volume = setVolume.Volume;
-            break;
-        }
-        if (CommandProcessed != null)
-            await CommandProcessed.Invoke(command).ConfigureAwait(false);
+        PlaybackStateChanged?.Invoke(state);
     }
 }

@@ -41,6 +41,8 @@ public static class Program
             Configuration = builder.Configuration,
         });
 
+        services.TryAddSingleton<IConfiguration>(builder.Configuration);
+
         // Creating plugins
         var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
         // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly

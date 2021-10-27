@@ -75,7 +75,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
 
         if (idRange.HasValue) {
             var idRangeValue = idRange.GetValueOrDefault();
-            ChatConstants.IdLogCover.AssertIsTile(idRangeValue);
+            ChatConstants.IdTiles.AssertIsTile(idRangeValue);
             dbMessages = dbMessages.Where(m =>
                 m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
         }
@@ -124,7 +124,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
         Range<long> idRange,
         CancellationToken cancellationToken)
     {
-        ChatConstants.IdLogCover.AssertIsTile(idRange);
+        ChatConstants.IdTiles.AssertIsTile(idRange);
 
         await using var dbContext = CreateDbContext();
         var dbEntries = await dbContext.ChatEntries.ForShare(DbWaitHint.NoWait) // Fine w/ proper invalidation
@@ -195,7 +195,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IServerSideChat
     {
         if (!isUpdate)
             _ = GetEntryCount(chatId, null, default);
-        foreach (var idRange in ChatConstants.IdLogCover.GetCoveringTiles(chatEntryId)) {
+        foreach (var idRange in ChatConstants.IdTiles.GetCoveringTiles(chatEntryId)) {
             _ = GetPage(chatId, idRange, default);
             if (!isUpdate)
                 _ = GetEntryCount(chatId, idRange, default);

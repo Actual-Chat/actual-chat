@@ -38,10 +38,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected MediaPlayer HistoricalPlayer { get; set; } = default!;
 
     [Inject]
-    protected AudioIndexService AudioIndex { get; set; } = default!;
-
-    [Inject]
-    protected IChatMediaStorageResolver MediaStorageResolver { get; set; } = default!;
+    protected IChatMediaResolver MediaResolver { get; set; } = default!;
 
     [Inject]
     protected AudioDownloader AudioDownloader { get; set; } = default!;
@@ -95,7 +92,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                 true,
                 true);
 
-        var idLogCover = ChatConstants.IdLogCover;
+        var idLogCover = ChatConstants.IdTiles;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
@@ -121,7 +118,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
         var chatEntries = entryLists.SelectMany(entries => entries);
         var result = VirtualListData.New(
-            chatEntries.Where(ce => ce.ContentType == ChatContentType.Text),
+            chatEntries.Where(ce => ce.Type == ChatEntryType.Text),
             entry => entry.Id.ToString(CultureInfo.InvariantCulture),
             startId == chatIdRange.Start,
             endId == chatIdRange.End);
@@ -131,7 +128,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     private async Task WatchRealtimeMedia(CancellationToken cancellationToken)
     {
         var chatId = ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId;
-        var idLogCover = ChatConstants.IdLogCover;
+        var idLogCover = ChatConstants.IdTiles;
         try {
             var lastChatEntry = 0L;
             var computedMinMax = await Computed.Capture(ct => Chats.GetIdRange(Session, ChatId, ct), cancellationToken)
@@ -151,7 +148,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                         .ConfigureAwait(false);
                     var chatEntries = entryLists.SelectMany(entries => entries);
                     foreach (var entry in chatEntries.Where(
-                        ce => ce.IsStreaming && ce.ContentType == ChatContentType.Audio)) {
+                        ce => ce.IsStreaming && ce.Type == ChatEntryType.Audio)) {
                         if (lastChatEntry >= entry.Id) continue;
 
                         lastChatEntry = entry.Id;
@@ -182,9 +179,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
             var offset = beginsAt - cutoffTime;
             var audioSource = await AudioSourceStreamer.GetAudioSource(entry.StreamId, offset, cancellationToken);
-            await RealtimePlayer.AddMediaTrack(trackId, audioSource, beginsAt, offset, cancellationToken);
+            await RealtimePlayer.AddMediaTrack(trackId, audioSource, beginsAt, cancellationToken);
         }
-        catch (Exception e) when (e is not TaskCanceledException) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e,
                 "Error reading media stream. ChatId = {ChatId}, ChatEntryId = {ChatEntryId}, StreamId = {StreamId}",
                 entry.ChatId,
@@ -196,16 +193,18 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     private async Task PlayHistoricalMediaTrack(ChatEntry entry, TimeSpan offset, CancellationToken cancellationToken)
     {
         try {
-            var audioEntry = await AudioIndex.FindAudioEntry(Session, entry, offset, cancellationToken);
-            if (audioEntry == null)
-                throw new InvalidOperationException($"Unable to find audio chat entry for ChatEntry.Id = {entry.Id}.");
+            var audioEntryId = entry.AudioEntryId
+                ?? throw new InvalidOperationException($"No audio entry for ChatEntry.Id = {entry.Id}.");
+            var entryReader = Chats.CreateEntryReader(Session, entry.ChatId);
+            var audioEntry = await entryReader.TryGet(audioEntryId, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException($"No audio entry for ChatEntry.Id = {entry.Id}.");
 
             if (audioEntry.IsStreaming) {
                 await PlayRealtimeMediaTrack(audioEntry, cancellationToken);
                 return;
             }
 
-            var audioBlobUri = MediaStorageResolver.GetAudioBlobAddress(audioEntry);
+            var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
             var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, offset, cancellationToken);
             var trackId = ZString.Concat("audio:", entry.ChatId, entry.Id);
 
@@ -213,7 +212,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             await HistoricalPlayer.AddMediaTrack(trackId, audioSource, audioEntry.BeginsAt + offset, cancellationToken);
             _ = HistoricalPlayer.Play();
         }
-        catch (Exception e) when (e is not TaskCanceledException) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(
                 e,
                 "Error reading media stream. Chat: {ChatId}, Entry: {ChatEntryId}, StreamId: {StreamId}",

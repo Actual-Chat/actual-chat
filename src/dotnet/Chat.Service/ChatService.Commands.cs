@@ -44,8 +44,8 @@ public partial class ChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            _ = GetIdRange(chatId, default);
             InvalidateChatPages(chatId, invChatEntry.Id, false);
+            _ = GetIdRange(chatId, default); // We invalidate min-max Id range at last
             return null!;
         }
 
@@ -60,7 +60,7 @@ public partial class ChatService
             BeginsAt = now,
             EndsAt = now,
             Content = text,
-            ContentType = ChatContentType.Text,
+            Type = ChatEntryType.Text,
         };
         var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
         chatEntry = dbChatEntry.ToModel();
@@ -76,8 +76,8 @@ public partial class ChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            _ = GetIdRange(chatEntry.ChatId, default);
             InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, false);
+            _ = GetIdRange(chatEntry.ChatId, default); // We invalidate min-max Id range at last
             return null!;
         }
 
@@ -99,8 +99,8 @@ public partial class ChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            _ = GetIdRange(chatEntry.ChatId, default);
             InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, true);
+            // No need to invalidate GetIdRange here
             return null!;
         }
 
