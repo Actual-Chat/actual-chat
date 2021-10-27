@@ -10,6 +10,7 @@ public sealed class MediaPlayer : IDisposable
     public Channel<MediaPlayerCommand> Queue { get; private set; } = null!;
     public Task PlayingTask { get; private set; } = null!;
     public bool IsPlaying => PlayingTask is { IsCompleted: false };
+    public CancellationToken StopToken { get; private set; }
 
     public MediaPlayer(IMediaPlayerService mediaPlayerService)
     {
@@ -41,8 +42,7 @@ public sealed class MediaPlayer : IDisposable
         if (!PlayingTask.IsCompleted)
             return PlayingTask;
 
-        var cancellationToken = _stopPlayingCts.Token;
-        return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+        return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
     }
 
     public Task Stop()
@@ -58,6 +58,7 @@ public sealed class MediaPlayer : IDisposable
     private void Reset()
     {
         _stopPlayingCts = new CancellationTokenSource();
+        StopToken = _stopPlayingCts.Token;
         PlayingTask = Task.CompletedTask;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
             new BoundedChannelOptions(256) {

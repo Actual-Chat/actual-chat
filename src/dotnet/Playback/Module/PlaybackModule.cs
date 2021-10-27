@@ -17,7 +17,6 @@ public class PlaybackModule : HostModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        // Common services
         var fusion = services.AddFusion();
     }
 }
