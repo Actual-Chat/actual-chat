@@ -38,7 +38,7 @@ public sealed class ChatMediaPlayer : IDisposable
     public async Task Play(Moment startAt)
     {
         await MediaPlayer.Stop().ConfigureAwait(false);
-        await MediaPlayer.Play().ConfigureAwait(false);
+        var playTask = MediaPlayer.Play();
         var cancellationToken = MediaPlayer.StopToken;
 
         try {
@@ -74,11 +74,12 @@ public sealed class ChatMediaPlayer : IDisposable
                 var skipTo = beginsAt - entry.BeginsAt;
                 var enqueueDelay = beginsAt + realtimeGap - EnqueueToPlaybackDelay - now;
                 continuousSpanEndTime = Moment.Max(continuousSpanEndTime, entry.EndsAt ?? now);
-                await clock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
+                if (enqueueDelay > TimeSpan.Zero)
+                    await clock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
                 await EnqueuePlayback(entry, skipTo, cancellationToken).ConfigureAwait(false);
             }
             MediaPlayer.Complete();
-            await MediaPlayer.PlayingTask.ConfigureAwait(false);
+            await playTask.ConfigureAwait(false);
         }
         catch {
             try {
