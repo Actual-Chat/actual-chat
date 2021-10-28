@@ -13,6 +13,7 @@ class AudioEnd {
 }
 
 export class AudioPlayer {
+    private readonly _debugMode: boolean;
     private readonly _audio: HTMLAudioElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private _sourceBuffer: SourceBuffer;
@@ -23,7 +24,8 @@ export class AudioPlayer {
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
 
-    public constructor(blazorRef: DotNet.DotNetObject) {
+    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        this._debugMode = debugMode;
         this._audio = new Audio();
         this._blazorRef = blazorRef;
         this._sourceBuffer = null;
@@ -32,24 +34,30 @@ export class AudioPlayer {
         this._previousReadyState = -1;
         this._previousOffset = -1;
         this._mediaSource.addEventListener('error', _ => {
-            console.log('source error: ' + this._mediaSource.readyState);
+            if (debugMode)
+                console.log('source error: ' + this._mediaSource.readyState);
         });
 
         this._audio.addEventListener('ended', (e) => {
             let _ = this.invokeOnPlaybackEnded();
-            console.log('Audio ended. ' + JSON.stringify(e));
+            if (debugMode) {
+                console.log('Audio ended. ' + JSON.stringify(e));
+            }
         });
         this._audio.addEventListener('error', (e) => {
             let err = this._audio.error;
             let _ = this.invokeOnPlaybackEnded(err.code, err.message);
-            console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
+            if (debugMode)
+                console.error(`Error during append audio. Code: ${err.code}. Message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', _ => {
-            console.log('Audio stalled. ');
+            if (debugMode)
+                console.log('Audio stalled. ');
         });
         this._audio.addEventListener('waiting', (e) => {
-            console.log('Audio is waiting. ');
-            console.log(`Audio state: ${this.getReadyState()}`);
+            if (debugMode)
+                console.log('Audio is waiting. ');
+                console.log(`Audio state: ${this.getReadyState()}`);
             let time = this._audio.currentTime;
             let readyState = this._audio.readyState;
             let _ = this.invokeOnDataWaiting(time, readyState);
@@ -81,37 +89,44 @@ export class AudioPlayer {
         this._audio.src = URL.createObjectURL(this._mediaSource);
     }
 
-    public static create(blazorRef: DotNet.DotNetObject) {
-        return new AudioPlayer(blazorRef);
+    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        return new AudioPlayer(blazorRef, debugMode);
     }
 
     public async initialize(byteArray: Uint8Array): Promise<void> {
-        console.log('Audio player initialized.');
+        if (this._debugMode)
+            console.log('Audio player initialized.');
 
         try {
             if (this._sourceBuffer !== null) {
                 this._sourceBuffer.appendBuffer(byteArray);
-                console.log('Audio init header has been appended.');
+                if (this._debugMode)
+                    console.log('Audio init header has been appended.');
             } else {
-                console.log('Audio init: waiting for SourceBuffer.');
+                if (this._debugMode)
+                    console.log('Audio init: waiting for SourceBuffer.');
                 let sourceBuffer = await this._bufferCreated;
                 sourceBuffer.appendBuffer(byteArray);
-                console.log('Audio init header has been appended with delay.');
+                if (this._debugMode)
+                    console.log('Audio init header has been appended with delay.');
             }
         } catch (e) {
-            console.error(e, e.stack);
+            if (this._debugMode)
+                console.error(e, e.stack);
         }
     }
 
     public dispose(): void {
-        console.log('Audio player dispose() call');
+        if (this._debugMode)
+            console.log('Audio player dispose() call');
         this.stop(null);
     }
 
     public appendAudio(byteArray: Uint8Array, offset: number): number {
         if (this._audio.error !== null) {
             let e = this._audio.error;
-            console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
+            if (this._debugMode)
+                console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
             return;
         }
 
@@ -128,7 +143,8 @@ export class AudioPlayer {
                 if (!queueItemAppended) {
                     this._sourceBuffer.appendBuffer(byteArray);
                     if (this._previousOffset > offset) {
-                        console.error(`Update offset is less than previously processed offset`);
+                        if (this._debugMode)
+                            console.error(`Update offset is less than previously processed offset`);
                     }
                     this._previousOffset = offset;
                 } else {
@@ -144,12 +160,14 @@ export class AudioPlayer {
             return 0;
 
         } catch (e) {
-            console.error(e, e.stack);
+            if (this._debugMode)
+                console.error(e, e.stack);
         }
     }
 
     public endOfStream(): void {
-        console.log('Audio player endOfStream() call');
+        if (this._debugMode)
+            console.log('Audio player endOfStream() call');
         if (this._sourceBuffer.updating) {
             this._bufferQueue.push(new AudioEnd());
         } else {
@@ -163,7 +181,8 @@ export class AudioPlayer {
     }
 
     public stop(error: EndOfStreamError | null) {
-        console.log('Audio player stop() call');
+        if (this._debugMode)
+            console.log('Audio player stop() call');
         this._audio.pause();
 
         if (this._sourceBuffer.updating) {
@@ -202,7 +221,8 @@ export class AudioPlayer {
                 let offset = update.offset;
                 this._sourceBuffer.appendBuffer(update.chunk);
                 if (this._previousOffset > offset) {
-                    console.error(`Update offset is less than previously processed offset`);
+                    if (this._debugMode)
+                        console.error(`Update offset is less than previously processed offset`);
                 }
                 this._previousOffset = offset;
             } else {
@@ -211,7 +231,8 @@ export class AudioPlayer {
 
             return true;
         } catch (e) {
-            console.error(e, e.stack);
+            if (this._debugMode)
+                console.error(e, e.stack);
         }
     }
 
