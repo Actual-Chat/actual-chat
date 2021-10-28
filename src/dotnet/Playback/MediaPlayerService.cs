@@ -39,7 +39,7 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
                         continue;
 
                     var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
-                    trackPlayer.PlaybackStateChanged += OnPlaybackStateChanged;
+                    trackPlayer.StateChanged += OnStateChanged;
                     _ = trackPlayer.Run(linkedToken);
                     _ = trackPlayer.RunningTask!.ContinueWith(
                         // We want to remove players once they finish, otherwise it may cause mem leak
@@ -93,7 +93,7 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
 
     protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
-    protected void OnPlaybackStateChanged(MediaTrackPlaybackState state)
+    protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
         var trackId = state.TrackId;
         var timestampLogCover = PlaybackConstants.TimestampTiles;
@@ -101,9 +101,16 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             _playbackStates.TryRemove(trackId, out _);
         else
             _playbackStates[trackId] = state;
+
         using (Computed.Invalidate()) {
             _ = GetPlayingMediaFrame(trackId, default);
 
+            // Invalidating GetPlayingMediaFrame for tiles associated with lastState.PlayingAt
+            var lastTimestamp = lastState.RecordingStartedAt + lastState.PlayingAt;
+            foreach (var tile in timestampLogCover.GetCoveringTiles(lastTimestamp))
+                _ = GetPlayingMediaFrame(trackId, tile, default);
+
+            // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
             foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
                 _ = GetPlayingMediaFrame(trackId, tile, default);
