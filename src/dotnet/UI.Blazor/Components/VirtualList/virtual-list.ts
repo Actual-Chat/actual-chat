@@ -71,11 +71,9 @@ export class VirtualList {
 
     public afterRender(renderState: Required<IRenderState>) {
         if (this._debugMode)
-            // console.log("<- afterRender: #" + renderState.renderIndex, renderState);
             console.log(`${LogScope}.afterRender, renderIndex: #${renderState.renderIndex}, renderState: ${renderState}`);
         if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon) {
             if (this._debugMode)
-                // console.log("Scrolling to:", renderState.scrollTop)
                 console.log(`${LogScope}.afterRender, Scrolling to: ${renderState.scrollTop}`)
             this._elementRef.scrollTop = renderState.scrollTop;
         }
@@ -87,10 +85,6 @@ export class VirtualList {
             let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
             let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
             if (Math.abs(renderState.scrollHeight - scrollHeight) > SizeEpsilon) {
-                // console.warn("afterRender: scrollHeight doesn't match the expected one! ",
-                //     "[spacerSize: " + renderState.spacerSize + " -> " + spacerSize + "]",
-                //     "[endSpacerSize: " + renderState.endSpacerSize + " -> " + endSpacerSize + "]",
-                //     "[scrollHeight: " + renderState.scrollHeight + " -> " + scrollHeight + "]");
                 console.warn(`${LogScope}.afterRender: scrollHeight doesn't match the expected one! `,
                     "[spacerSize: " + renderState.spacerSize + " -> " + spacerSize + "]",
                     "[endSpacerSize: " + renderState.endSpacerSize + " -> " + endSpacerSize + "]",
