@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 public interface IAuthorServiceFacade
 {
     /// <summary>
-    /// Returns the final <see cref="Author"/> object for <paramref name="userId"/> <br />
+    /// Returns the final <see cref="Author"/> object for <paramref name="userId"/>
     /// Throws <seealso cref="System.Security.SecurityException"/> if <paramref name="userId"/>
     /// isn't current user and you don't have an admin rights.
     /// </summary>

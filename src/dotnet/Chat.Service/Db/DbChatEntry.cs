@@ -62,7 +62,9 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         => ZString.Format("{0}:{1}", chatId, id);
 
     public ChatEntry ToModel()
-        => new(ChatId, Id) {
+        => new() {
+            Id = Id,
+            ChatId = ChatId,
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             EndsAt = EndsAt,

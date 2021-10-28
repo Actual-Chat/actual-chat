@@ -3,8 +3,10 @@ using ActualChat.Mathematics;
 
 namespace ActualChat.Chat;
 
-public record class ChatEntry(ChatId ChatId, long Id)
+public record class ChatEntry
 {
+    public ChatId ChatId { get; init; } = "";
+    public long Id { get; init; }
     public long Version { get; init; }
     public AuthorId AuthorId { get; init; }
     public Moment BeginsAt { get; init; }
@@ -25,6 +27,4 @@ public record class ChatEntry(ChatId ChatId, long Id)
     [JsonIgnore]
     [Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsNone;
-
-    public ChatEntry() : this("", 0) { }
 }

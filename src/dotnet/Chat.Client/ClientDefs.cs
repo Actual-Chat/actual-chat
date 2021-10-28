@@ -20,9 +20,10 @@ public interface IChatServiceFacadeDef
 {
     // Commands
     [Post(nameof(CreateChat))]
-    Task<Chat> CreateChat([Body] ChatCommands.CreateChat command, CancellationToken cancellationToken);
-    [Post(nameof(PostMessage))]
-    Task<ChatEntry> PostMessage([Body] ChatCommands.PostMessage command, CancellationToken cancellationToken);
+    Task<Chat> CreateChat([Body] IChatServiceFacade.CreateChatCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(CreateEntry))]
+    Task<ChatEntry> CreateEntry([Body] IChatServiceFacade.CreateEntryCommand command, CancellationToken cancellationToken);
 
     // Queries
     [Get(nameof(TryGet))]

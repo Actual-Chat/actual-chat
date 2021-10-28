@@ -42,13 +42,15 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             return;
         }
 
-        // Let's try to fix auto-generated user name here
-        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         var userId = sessionInfo.UserId;
         var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
+
+        // Let's try to fix auto-generated user name here
         var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken).ConfigureAwait(false);
         if (!string.Equals(newName, dbUser.Name, StringComparison.Ordinal)) {
             dbUser.Name = newName;
@@ -56,7 +58,6 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         }
         var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
         context.Operation().Items.Set(userInfo);
-
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
     }
 

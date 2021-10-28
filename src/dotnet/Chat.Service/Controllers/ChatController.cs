@@ -19,17 +19,17 @@ public class ChatController : ControllerBase, IChatServiceFacade
     // Commands
 
     [HttpPost]
-    public Task<Chat> CreateChat([FromBody] ChatCommands.CreateChat command, CancellationToken cancellationToken)
+    public Task<Chat> CreateChat([FromBody] IChatServiceFacade.CreateChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _chats.CreateChat(command, cancellationToken);
     }
 
     [HttpPost]
-    public Task<ChatEntry> PostMessage([FromBody] ChatCommands.PostMessage command, CancellationToken cancellationToken)
+    public Task<ChatEntry> CreateEntry([FromBody] IChatServiceFacade.CreateEntryCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
-        return _chats.PostMessage(command, cancellationToken);
+        return _chats.CreateEntry(command, cancellationToken);
     }
 
     // Queries

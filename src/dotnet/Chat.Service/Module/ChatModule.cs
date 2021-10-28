@@ -64,13 +64,11 @@ public class ChatModule : HostModule<ChatSettings>
             var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
             return chatRedisDb.GetSequenceSet<ChatService>("chat.seq");
         });
-        fusion.AddComputeService<ChatService>();
+        services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
+
         fusion.AddComputeService<IAuthorService, AuthorService>();
         fusion.AddComputeService<IAuthorServiceFacade, AuthorServiceFacade>();
-        services.AddSingleton(c => (IChatServiceFacade)c.GetRequiredService<ChatService>());
-        services.AddSingleton(c => (IChatService)c.GetRequiredService<ChatService>());
-        services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
-        services.AddSingleton<IChatServiceFacade>(c => c.GetRequiredService<ChatService>());
-        services.AddSingleton<IChatService>(c => c.GetRequiredService<ChatService>());
+        fusion.AddComputeService<IChatService, ChatService>();
+        fusion.AddComputeService<IChatServiceFacade, ChatServiceFacade>();
     }
 }

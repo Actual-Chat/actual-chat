@@ -9,6 +9,19 @@ public class DbChat : IHasId<string>, IHasVersion<long>
 {
     private DateTime _createdAt;
 
+    public DbChat() { }
+    public DbChat(Chat chat)
+    {
+        Title = chat.Title;
+        CreatedAt = chat.CreatedAt;
+        IsPublic = chat.IsPublic;
+        Id = chat.Id;
+        Owners = chat.OwnerIds.Select(x => new DbChatOwner() {
+            ChatId = chat.Id,
+            UserId = x.Value,
+        }).ToList();
+    }
+
     [Key] public string Id { get; set; } = "";
     [ConcurrencyCheck] public long Version { get; set; }
     public string Title { get; set; } = "";
@@ -22,7 +35,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>
     public List<DbChatOwner> Owners { get; set; } = new();
 
     public Chat ToModel()
-        => new(Id) {
+        => new() {
+            Id = Id,
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,

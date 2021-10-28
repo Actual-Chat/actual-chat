@@ -1,34 +1,31 @@
-namespace ActualChat.Chat
+namespace ActualChat.Chat;
+
+public interface IChatService
 {
-    public interface IChatService
-    {
-        // Commands
-        [CommandHandler]
-        Task<ChatEntry> CreateEntry(ChatCommands.CreateEntry command, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken);
 
-        [CommandHandler]
-        Task<ChatEntry> UpdateEntry(ChatCommands.UpdateEntry command, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<long> GetEntryCount(ChatId chatId, Range<long>? idRange, CancellationToken cancellationToken);
 
-        // Queries
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<ImmutableArray<ChatEntry>> GetEntries(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken);
 
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<long> GetEntryCount(
-            ChatId chatId,
-            Range<long>? idRange,
-            CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken);
 
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<ImmutableArray<ChatEntry>> GetPage(
-            ChatId chatId,
-            Range<long> idRange,
-            CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<ChatPermissions> GetPermissions(ChatId chatId, UserId userId, CancellationToken cancellationToken);
 
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken);
+    [CommandHandler, Internal]
+    Task<Chat> CreateChat(CreateChatCommand command, CancellationToken cancellationToken);
+    [CommandHandler, Internal]
+    Task<ChatEntry> CreateEntry(CreateEntryCommand command, CancellationToken cancellationToken);
+    [CommandHandler, Internal]
+    Task<ChatEntry> UpdateEntry(UpdateEntryCommand command, CancellationToken cancellationToken);
 
-        [ComputeMethod(KeepAliveTime = 1)]
-        Task<ChatPermissions> GetPermissions(ChatId chatId, UserId userId, CancellationToken cancellationToken);
-    }
+
+    public record CreateChatCommand(Chat Chat) : ICommand<Chat>;
+    public record CreateEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>;
+    public record UpdateEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>;
 }
