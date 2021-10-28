@@ -76,7 +76,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         => UpdateState(offset, (o, s) => s with { PlayingAt = o });
 
     protected virtual void OnStopped(Exception? error = null)
-        => UpdateState(s => s with { IsCompleted = true, Error = error });
+        => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
 
     protected virtual void OnVolumeSet(double volume)
         => UpdateState(volume, (v, s) => s with { Volume = v });
