@@ -2,17 +2,20 @@ const sampleRate = 16000;
 
 export class AudioRecorder {
 
-    static create(backendRef) {
-        return new AudioRecorder(backendRef);
+    static create(backendRef, debugMode) {
+        return new AudioRecorder(backendRef, debugMode);
     }
 
-    constructor(backendRef) {
+    constructor(backendRef, debugMode) {
         this.backendRef = backendRef;
+        this.debugMode = debugMode;
         this.recording = null;
         this.isMicrophoneAvailable = false;
 
         if (backendRef === undefined || backendRef === null) {
-            console.error("Audio Recorder backend is undefined");
+            if (this.debugMode) {
+                console.error("Audio Recorder backend is undefined");
+            }
         }
 
         // Temporarily
@@ -39,7 +42,9 @@ export class AudioRecorder {
         if (this.isRecording())
             return null;
         if (!this.isMicrophoneAvailable) {
-            console.error("Microphone is unavailable");
+            if (this.debugMode) {
+                console.error("Microphone is unavailable");
+            }
             return null;
         }
 
@@ -74,14 +79,18 @@ export class AudioRecorder {
                 disableLogs: false,
                 // as soon as the stream is available
                 ondataavailable: async (blob) => {
-                    console.log("audio blob is ready, Blob size: %d", blob.size);
+                    if (this.debugMode) {
+                        console.log("audio blob is ready, Blob size: %d", blob.size);
+                    }
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
 
                         await this.backendRef.invokeMethodAsync('OnAudioData', chunk);
                     } catch (err) {
-                        console.error(err);
+                        if (this.debugMode) {
+                            console.error(err);
+                        }
                     }
                 }
             });

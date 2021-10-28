@@ -12,6 +12,8 @@
 </button>
 
 @code {
+    [Inject]
+    protected internal ILogger<AudioRecorder> Log { get; init; } = null!;
     private IJSObjectReference? JSComponentRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
@@ -19,6 +21,8 @@
 
     private bool IsRecording => AudioChannel != null;
     //private Color ToggleColor => IsRecording ? Color.Secondary : Color.Primary;
+
+    private bool DebugMode { get; } = false;
 
     [Parameter]
     public string ChatId { get; set; } = "";
@@ -34,7 +38,12 @@
     {
         if (firstRender) {
             ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef);
+            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef, DebugMode);
+        }
+        if (DebugMode)
+        {
+            var logMessage = $"OnAfterRender: ChatId = {ChatId}, AudioRecorder loaded.";
+            Log.LogInformation(logMessage);
         }
     }
 
@@ -55,6 +64,8 @@
         StateHasChanged();
         if (JSComponentRef != null)
             await JSComponentRef.InvokeVoidAsync("startRecording");
+        if (DebugMode)
+            Log.LogInformation("StartRecording: Invoked");
     }
 
     private async Task StopRecording()
@@ -67,6 +78,8 @@
         StateHasChanged();
         if (JSComponentRef != null)
           await JSComponentRef.InvokeVoidAsync("stopRecording");
+        if (DebugMode)
+            Log.LogInformation("StopRecording: Invoked");
     }
 
     // JS backend callback handlers
