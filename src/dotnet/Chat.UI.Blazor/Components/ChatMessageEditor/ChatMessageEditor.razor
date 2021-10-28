@@ -13,7 +13,7 @@
         <AuthorizeView>
             <Authorized>
                 @if (RealtimePlayer != null) {
-                    <MediaPlayerToggle Player="RealtimePlayer"/>
+                    <ChatMediaPlayerToggle Player="RealtimePlayer"/>
                 }
                 <div @ref="_ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
             </Authorized>

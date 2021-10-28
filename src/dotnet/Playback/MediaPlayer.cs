@@ -11,11 +11,12 @@ public sealed class MediaPlayer : IDisposable
     public Task PlayingTask { get; private set; } = null!;
     public bool IsPlaying => PlayingTask is { IsCompleted: false };
     public CancellationToken StopToken { get; private set; }
+    public event Action<MediaPlayer>? StateChanged;
 
     public MediaPlayer(IMediaPlayerService mediaPlayerService)
     {
         MediaPlayerService = mediaPlayerService;
-        Reset();
+        Reset(false);
     }
 
     public void Dispose()
@@ -42,7 +43,10 @@ public sealed class MediaPlayer : IDisposable
         if (!PlayingTask.IsCompleted)
             return PlayingTask;
 
-        return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
+        PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
+        StateChanged?.Invoke(this);
+        PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
+        return PlayingTask;
     }
 
     public Task Stop()
@@ -55,11 +59,10 @@ public sealed class MediaPlayer : IDisposable
 
     // Private methods
 
-    private void Reset()
+    private void Reset(bool invokeStateChanged = true)
     {
         _stopPlayingCts = new CancellationTokenSource();
         StopToken = _stopPlayingCts.Token;
-        PlayingTask = Task.CompletedTask;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
             new BoundedChannelOptions(256) {
                 SingleReader = false,
@@ -67,5 +70,7 @@ public sealed class MediaPlayer : IDisposable
                 AllowSynchronousContinuations = true,
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
+        PlayingTask = Task.CompletedTask;
+        StateChanged?.Invoke(this);
     }
 }
