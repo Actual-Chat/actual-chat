@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@implements IDisposable
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Playback
+@implements IDisposable
 @inject MomentClockSet _clocks
 
 <button @onclick="Toggle" class="block px-2 py-2 @(Player.IsPlaying ? "text-blue-500" : "text-gray-500")">
@@ -14,7 +14,7 @@
     private ChatMediaPlayer? _lastPlayer;
 
     [Parameter]
-    public ChatMediaPlayer Player { get; set; } = null!;
+    public RealtimeChatMediaPlayer Player { get; set; } = null!;
 
     protected override void OnParametersSet() {
         if (_lastPlayer != null)
@@ -32,13 +32,16 @@
         this.StateHasChangedAsync(); // This method runs SHC in the UI thread
     }
 
-    private Task Toggle()
-        => Player.IsPlaying ? Stop() : Play();
+    private Task Toggle() {
+        return Player.IsPlaying ? Stop() : Play();
+    }
 
-    private Task Play()
-        => Player.Play(_clocks.SystemClock.Now);
+    private Task Play() {
+        return Player.Play();
+    }
 
-    private Task Stop()
-        => Player.Stop();
+    private Task Stop() {
+        return Player.Stop();
+    }
 
 }

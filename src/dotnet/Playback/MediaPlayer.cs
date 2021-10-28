@@ -30,7 +30,10 @@ public sealed class MediaPlayer : IDisposable
         IMediaSource source,
         Moment recordingStartedAt,
         CancellationToken cancellationToken = default)
-        => AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
+    {
+        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt));
+        return AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
+    }
 
     public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
         => AddCommand(new SetVolumeCommand(volume), cancellationToken);
