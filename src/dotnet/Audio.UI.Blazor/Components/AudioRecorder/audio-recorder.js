@@ -1,3 +1,4 @@
+const LogScope = 'AudioRecorder'
 const sampleRate = 16000;
 
 export class AudioRecorder {
@@ -13,9 +14,7 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
 
         if (backendRef === undefined || backendRef === null) {
-            if (this.debugMode) {
-                console.error("Audio Recorder backend is undefined");
-            }
+            console.error(`${LogScope}.constructor.error: backendRef undefined` );
         }
 
         // Temporarily
@@ -42,9 +41,7 @@ export class AudioRecorder {
         if (this.isRecording())
             return null;
         if (!this.isMicrophoneAvailable) {
-            if (this.debugMode) {
-                console.error("Microphone is unavailable");
-            }
+            console.error(`${LogScope}.startRecording: microphone is unavailable.`);
             return null;
         }
 
@@ -80,17 +77,17 @@ export class AudioRecorder {
                 // as soon as the stream is available
                 ondataavailable: async (blob) => {
                     if (this.debugMode) {
-                        console.log("audio blob is ready, Blob size: %d", blob.size);
+                        // console.log("audio blob is ready, Blob size: %d", blob.size);
+                        console.log(`${LogScope}.startRecording: awaiting blob.arrayBuffer(), Blob size: ${blob.size}`);
                     }
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
 
                         await this.backendRef.invokeMethodAsync('OnAudioData', chunk);
-                    } catch (err) {
-                        if (this.debugMode) {
-                            console.error(err);
-                        }
+                    } catch (e) {
+                        // console.error(e);
+                        console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
                     }
                 }
             });
