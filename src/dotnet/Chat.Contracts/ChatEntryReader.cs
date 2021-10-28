@@ -35,7 +35,6 @@ public sealed class ChatEntryReader
                 .Capture(ct => Chats.GetEntries(Session, ChatId, tile, ct), cancellationToken)
                 .ConfigureAwait(false);
 
-            afterInvalidation:
             var entries = entriesComputed.Value;
             foreach (var entry in entries) {
                 if (entry.Id <= lastReadEntryId)
@@ -73,7 +72,6 @@ public sealed class ChatEntryReader
                 await entriesComputed.WhenInvalidated(cancellationToken)
                     .WithTimeout(Clocks.CpuClock, InvalidationWaitTimeout, cancellationToken)
                     .ConfigureAwait(false);
-                goto afterInvalidation; // sorry, but this is much more readable
             }
         }
     }
@@ -83,7 +81,7 @@ public sealed class ChatEntryReader
         // Let's bisect (minId, maxId) range to find the right entry
         var entryId = 0L;
         var (minId, maxId) = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
-        while (minId <= maxId) {
+        while (minId < maxId) {
             entryId = minId + ((maxId - minId) >> 1);
             var entry = await TryGet(entryId, maxId, cancellationToken).ConfigureAwait(false);
             if (entry == null)
@@ -97,13 +95,13 @@ public sealed class ChatEntryReader
                     return entryId;
                 }
 
-                if (minBeginsAt > entry.BeginsAt)
+                if (minBeginsAt > entry.BeginsAt && !entry.IsStreaming)
                     minId = entryId + 1;
                 else
-                    maxId = entryId - 1;
+                    maxId = entryId;
             }
         }
-        return entryId;
+        return minId;
     }
 
     public async Task<ChatEntry?> TryGet(long entryId, CancellationToken cancellationToken)
