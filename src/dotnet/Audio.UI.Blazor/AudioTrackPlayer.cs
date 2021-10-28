@@ -1,3 +1,4 @@
+using System.Reflection;
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Media;
 using ActualChat.Playback;
@@ -35,12 +36,15 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     [JSInvokable]
     public void OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
-        if (errorMessage != null)
-            Log.LogError("Playback stopped with error. ErrorCode = {ErrorCode}, ErrorMessage = {ErrorMessage}",
-                errorCode,
-                errorMessage);
+        Exception? error = null;
+        if (errorMessage != null) {
+            error = new TargetInvocationException(
+                $"Playback stopped with an error, code = {errorCode}, message = '{errorMessage}'.",
+                null);
+            Log.LogError(error, "Playback stopped with an error");
+        }
 
-        OnStopped(errorMessage != null);
+        OnStopped(error);
     }
 
     [JSInvokable]
