@@ -5,14 +5,12 @@ namespace ActualChat.Playback;
 public abstract class MediaTrackPlayer : AsyncProcessBase
 {
     private MediaTrackPlaybackState _state;
-    protected ILogger<MediaTrackPlayer> Log { get; }
 
+    protected ILogger<MediaTrackPlayer> Log { get; }
     protected IMediaSource Source { get; }
 
     public MediaTrackPlaybackState State => Volatile.Read(ref _state);
-
     public event Action<MediaTrackPlaybackState>? PlaybackStateChanged;
-
 
     protected MediaTrackPlayer(PlayMediaTrackCommand command, ILogger<MediaTrackPlayer> log)
     {
