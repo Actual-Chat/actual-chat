@@ -127,7 +127,7 @@ export class AudioPlayer {
             let e = this._audio.error;
             if (this._debugMode)
                 console.error(`Error during append audio. Code: ${e.code}. Message: ${e.message}`);
-            return;
+            return 0;
         }
 
         try {
