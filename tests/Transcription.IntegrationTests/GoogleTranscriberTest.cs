@@ -13,21 +13,20 @@ public class GoogleTranscriberTest : TestBase
 
     [Theory]
     [InlineData("file.webm")]
-    [InlineData("pauses.webm")]
+    // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
         var transcriber = new GoogleTranscriber(_logger);
         var request = new TranscriptionRequest(
             "123",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            new TranscriptionOptions {
+            new () { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
+            new () {
                 Language = "ru-RU",
                 IsDiarizationEnabled = false,
                 IsPunctuationEnabled = true,
                 MaxSpeakerCount = 1,
             });
-        var channel = Channel.CreateUnbounded<BlobPart>(new UnboundedChannelOptions
-            { SingleReader = true, SingleWriter = true });
+        var channel = Channel.CreateUnbounded<BlobPart>(new () { SingleReader = true, SingleWriter = true });
 
         _ = ReadAudioFileSimulatingSpeech(fileName, channel.Writer);
         var audioSourceProvider = new AudioSourceProvider();
@@ -55,7 +54,7 @@ public class GoogleTranscriberTest : TestBase
         while (bytesRead > 0) {
             await Task.Delay(320);
 
-            yield return new Base64Encoded(buffer[..bytesRead].ToArray());
+            yield return new (buffer[..bytesRead].ToArray());
 
             bytesRead = await inputStream.ReadAsync(buffer);
         }
@@ -67,7 +66,7 @@ public class GoogleTranscriberTest : TestBase
         Exception? error = null;
         try {
             await foreach (var base64Encoded in ReadAudioFileSimulatingSpeech(file))
-                writer.TryWrite(new BlobPart(index++, base64Encoded.Data));
+                writer.TryWrite(new (index++, base64Encoded.Data));
         }
         catch (Exception e) {
             error = e;
