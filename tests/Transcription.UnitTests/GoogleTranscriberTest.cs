@@ -25,7 +25,11 @@ public class GoogleTranscriberTest
             transcript = transcript.WithUpdate(transcriptUpdate);
 
         transcript.Text.Should().Be("проверка связи");
-        transcript.TextToTimeMap.ToString().Should().Be("LinearMap({0, 9, 14} -> {0, 1,3, 3,47})");
+        transcript.TextToTimeMap.SourcePoints.Should()
+            .Equal(new[] { 0d, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
+        transcript.TextToTimeMap.TargetPoints.Should()
+            .Equal(new[] { 0d, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
+
         _logger.LogInformation("Transcript: {Transcript}", transcript);
 
         async IAsyncEnumerable<StreamingRecognizeResponse> GenerateResponses()
