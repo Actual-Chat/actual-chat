@@ -64,7 +64,7 @@ public class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
             return default;
         }
         var defaultAuthor = await _defaultAuthorService.Get(userId, cancellationToken).ConfigureAwait(false);
-        var dbContext = CreateDbContext(readWrite: true);
+        var dbContext = await CreateCommandDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var dbAuthor = new DbAuthor(defaultAuthor) {
             Id = Ulid.NewUlid().ToString(),

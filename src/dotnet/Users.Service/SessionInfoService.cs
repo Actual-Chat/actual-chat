@@ -9,10 +9,12 @@ public class SessionInfoService : DbServiceBase<UsersDbContext>, ISessionInfoSer
     public SessionInfoService(IServiceProvider services) : base(services) { }
 
     /// <inheritdoc />
-    [CommandHandler]
+    [CommandHandler, Internal]
     public virtual async Task Update(ISessionInfoService.UpsertData command, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext(readWrite: true);
+        if (Computed.IsInvalidating())
+            return;
+        var dbContext = await CreateCommandDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
             .ConfigureAwait(false);

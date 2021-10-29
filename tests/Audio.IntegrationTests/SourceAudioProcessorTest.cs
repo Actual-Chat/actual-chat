@@ -44,7 +44,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         record.Should()
             .Be(recordingSpec with {
                 Id = record!.Id,
-                UserId = record.UserId,
+                AuthorId = record!.AuthorId,
             });
     }
 
@@ -77,7 +77,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var transcriptStreamer = sourceAudioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChatServiceFacade>();
 
-        var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
+        var chat = await chatService.CreateChat(new(session, "Test"), default);
         using var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
@@ -110,7 +110,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var audioStreamer = sourceAudioProcessor.AudioSourceStreamer;
         var chatService = services.GetRequiredService<IChatServiceFacade>();
 
-        var chat = await chatService.CreateChat(new ChatCommands.CreateChat(session, "Test"), default);
+        var chat = await chatService.CreateChat(new(session, "Test"), default);
         using var cts = new CancellationTokenSource();
         var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
