@@ -20,6 +20,14 @@ public class GoogleTranscriberTest
         results.Max(tu => tu.UpdatedPart.Duration).Should().Be(3.47d);
         results.Max(tu => tu.UpdatedPart.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 
+        var transcript = results[0].UpdatedPart!;
+        foreach (var transcriptUpdate in results.Skip(1))
+            transcript = transcript.WithUpdate(transcriptUpdate);
+
+        transcript.Text.Should().Be("проверка связи");
+        transcript.TextToTimeMap.ToString().Should().Be("LinearMap({0, 9, 14} -> {0, 1,3, 3,47})");
+        _logger.LogInformation("Transcript: {Transcript}", transcript);
+
         async IAsyncEnumerable<StreamingRecognizeResponse> GenerateResponses()
         {
             yield return new StreamingRecognizeResponse {
