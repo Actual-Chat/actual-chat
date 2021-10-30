@@ -49,9 +49,8 @@
 
     [Parameter]
     public string ChatId { get; set; } = "";
-
     [Parameter]
-    public RealtimeChatMediaPlayer? RealtimePlayer { get; set; }
+    public ChatMediaPlayer? RealtimePlayer { get; set; }
 
     public async ValueTask DisposeAsync() {
         if (_jsRef != null)

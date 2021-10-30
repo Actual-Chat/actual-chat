@@ -15,8 +15,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
 
-    private HistoricalChatMediaPlayer? HistoricalPlayer { get; set; }
-    private RealtimeChatMediaPlayer? RealtimePlayer { get; set; }
+    private ChatMediaPlayer? HistoricalPlayer { get; set; }
+    private ChatMediaPlayer? RealtimePlayer { get; set; }
 
     public override async ValueTask DisposeAsync()
     {
@@ -48,6 +48,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         RealtimePlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
+            IsRealTimePlayer = true,
         };
         StateHasChanged();
     }

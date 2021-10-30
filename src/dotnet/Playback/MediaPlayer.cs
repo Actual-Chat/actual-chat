@@ -29,10 +29,12 @@ public sealed class MediaPlayer : IDisposable
         Symbol trackId,
         IMediaSource source,
         Moment recordingStartedAt,
+        Moment? playAt,
         CancellationToken cancellationToken = default)
     {
         MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt));
-        return AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
+        var command = new PlayMediaTrackCommand(trackId, source, recordingStartedAt, playAt);
+        return AddCommand(command, cancellationToken);
     }
 
     public void Complete()
