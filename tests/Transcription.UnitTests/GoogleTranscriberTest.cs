@@ -17,8 +17,8 @@ public class GoogleTranscriberTest
         await transcriber.ReadTranscript(GenerateResponses(), channel, CancellationToken.None);
 
         var results = await channel.Reader.ReadAllAsync().ToListAsync();
-        results.Max(tu => tu.UpdatedPart.Duration).Should().Be(3.47d);
-        results.Max(tu => tu.UpdatedPart.TextToTimeMap.TargetRange.Min).Should().Be(0d);
+        results.Max(update => update.UpdatedPart!.Duration).Should().Be(3.47d);
+        results.Max(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 
         var transcript = results[0].UpdatedPart!;
         foreach (var transcriptUpdate in results.Skip(1))
@@ -32,7 +32,9 @@ public class GoogleTranscriberTest
 
         _logger.LogInformation("Transcript: {Transcript}", transcript);
 
+#pragma warning disable CS1998
         async IAsyncEnumerable<StreamingRecognizeResponse> GenerateResponses()
+#pragma warning restore CS1998
         {
             yield return new StreamingRecognizeResponse {
                 Results = {

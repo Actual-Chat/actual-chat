@@ -45,7 +45,7 @@ public sealed class MediaPlayer : IDisposable
 
         PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
         StateChanged?.Invoke(this);
-        PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
+        _ = PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
         return PlayingTask;
     }
 

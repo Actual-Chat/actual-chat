@@ -5,7 +5,7 @@
     <AspNetCoreVersion>6.0.0-rc.2*</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>$(AspNetCoreVersion)</MicrosoftExtensionsVersion>
     <EntityFrameworkCoreVersion>$(AspNetCoreVersion)</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>6.0.0-rc.1*</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreNpgsqlVersion>$(AspNetCoreVersion)</EntityFrameworkCoreNpgsqlVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
-    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.16" />
+    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="5.0.18" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*" />
     <PackageReference Update="MessagePack" Version="2.3.*" />
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*" />
@@ -63,7 +63,7 @@
     <PackageReference Update="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageReference Update="Storage.Net" Version="9.3.*" />
-    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.2.2" />
+    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.2.3" />
     <PackageReference Update="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
     <PackageReference Update="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
     <PackageReference Update="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
@@ -89,13 +89,13 @@
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="Xunit.DependencyInjection" Version="7.6.0" />
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="7.5.1" />
-    <PackageReference Update="FluentAssertions" Version="6.1.*" />
-    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="16.11.0" />
+    <PackageReference Update="FluentAssertions" Version="6.2.*" />
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.0.0" />
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.0-beta-20204-02" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
-    <PackageReference Update="Microsoft.Playwright" Version="1.15.4" />
+    <PackageReference Update="Microsoft.Playwright" Version="1.16.1" />
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.240" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="bunit" Version="1.2.49" />
@@ -105,7 +105,7 @@
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.0.63" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageReference Update="Roslynator.Analyzers" Version="3.2.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Meziantou.Analyzer" Version="1.0.672" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Meziantou.Analyzer" Version="1.0.675" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
   </ItemGroup>
 
 </Project>
