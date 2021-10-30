@@ -18,6 +18,7 @@ public sealed class ChatMediaPlayer : IDisposable
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public bool IsRealTimePlayer { get; set; }
+    public Option<UserId> SilencedAuthorIds { get; set; }
     public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public MediaPlayer MediaPlayer { get; }
@@ -72,6 +73,8 @@ public sealed class ChatMediaPlayer : IDisposable
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
                 }
+                if (SilencedAuthorIds.IsSome(out var silencedAuthorId) && entry.AuthorId == silencedAuthorId)
+                    continue;
 
                 now = clock.Now;
                 var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);

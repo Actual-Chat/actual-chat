@@ -12,6 +12,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     [Inject] private UICommandRunner Cmd { get; set; } = default!;
     [Inject] private ChatPageService Service { get; set; } = default!;
     [Inject] private IChatService Chats { get; set; } = default!;
+    [Inject] private IAuthService Auth { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
 
@@ -37,6 +38,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chat = State.ValueOrDefault?.Chat;
         if (chat == null || HistoricalPlayer?.ChatId == chat.Id)
             return;
+        var user = await Auth.GetUser(Session);
 
         // ChatId changed, so we must recreate players
         HistoricalPlayer?.Dispose();
@@ -44,12 +46,16 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             Session = Session,
             ChatId = chat.Id,
         };
+        var wasPlaying = RealtimePlayer?.IsPlaying ?? true;
         RealtimePlayer?.Dispose();
         RealtimePlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
             IsRealTimePlayer = true,
+            SilencedAuthorIds = user.IsAuthenticated ? Option.Some((UserId) user.Id) : Option<UserId>.None,
         };
+        if (wasPlaying)
+            _ = RealtimePlayer.Play();
         StateHasChanged();
     }
 
