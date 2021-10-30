@@ -68,7 +68,8 @@
             .ConfigureAwait(false);
         if (audioEntry == null)
             return;
-        _ = HistoricalPlayer.PlaySequentially(audioEntry, TimeSpan.FromSeconds(skipTo));
+        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(skipTo);
+        _ = HistoricalPlayer.Play(startAt);
     }
 
 }

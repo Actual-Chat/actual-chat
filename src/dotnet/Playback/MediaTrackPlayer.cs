@@ -7,8 +7,11 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     private volatile MediaTrackPlaybackState _state;
     private readonly object _stateLock = new();
 
+    protected MomentClockSet Clocks { get; }
     protected ILogger<MediaTrackPlayer> Log { get; }
-    protected IMediaSource Source { get; }
+
+    public PlayMediaTrackCommand Command { get; }
+    public IMediaSource Source => Command.Source;
 
     public MediaTrackPlaybackState State {
         // ReSharper disable once InconsistentlySynchronizedField
@@ -24,10 +27,14 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
 
     public event Action<MediaTrackPlaybackState, MediaTrackPlaybackState>? StateChanged;
 
-    protected MediaTrackPlayer(PlayMediaTrackCommand command, ILogger<MediaTrackPlayer> log)
+    protected MediaTrackPlayer(
+        PlayMediaTrackCommand command,
+        MomentClockSet clocks,
+        ILogger<MediaTrackPlayer> log)
     {
         Log = log;
-        Source = command.Source;
+        Clocks = clocks;
+        Command = command;
         _state = new MediaTrackPlaybackState(command.TrackId, command.RecordingStartedAt);
         _ = Run();
     }
@@ -39,6 +46,13 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     {
         Exception? error = null;
         try {
+            // Start delay
+            if (Command.PlayAt.HasValue) {
+                var playAt = Command.PlayAt.GetValueOrDefault();
+                await Clocks.CpuClock.Delay(playAt, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Actual playback
             await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
             await foreach (var frame in Source.Frames.WithCancellation(cancellationToken).ConfigureAwait(false))
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
@@ -72,8 +86,11 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
+    protected virtual void OnStarted()
+        => UpdateState(s => s with { IsStarted = true });
+
     protected virtual void OnPlayedTo(TimeSpan offset)
-        => UpdateState(offset, (o, s) => s with { PlayingAt = o });
+        => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = o });
 
     protected virtual void OnStopped(Exception? error = null)
         => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });

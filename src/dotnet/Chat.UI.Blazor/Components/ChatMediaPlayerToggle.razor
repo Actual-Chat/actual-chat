@@ -14,7 +14,7 @@
     private ChatMediaPlayer? _lastPlayer;
 
     [Parameter]
-    public RealtimeChatMediaPlayer Player { get; set; } = null!;
+    public ChatMediaPlayer Player { get; set; } = null!;
 
     protected override void OnParametersSet() {
         if (_lastPlayer != null)

@@ -23,8 +23,9 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         PlayMediaTrackCommand command,
         BlazorCircuitContext circuitContext,
         IJSRuntime js,
+        MomentClockSet clocks,
         ILogger<AudioTrackPlayer> log)
-        : base(command, log)
+        : base(command, clocks, log)
     {
         _circuitContext = circuitContext;
         _js = js;
