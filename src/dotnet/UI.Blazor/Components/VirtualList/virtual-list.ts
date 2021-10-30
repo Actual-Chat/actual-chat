@@ -95,12 +95,14 @@ export class VirtualList {
         this._renderState = renderState; // At this point this.isFullyRendered() returns true
 
         if (renderState.renderIndex < this._blazorRenderIndex) {
+            // This is an outdated update already
             if (this._debugMode)
                 console.log("afterRender skips updateClientSideStateDebounced:",
                     renderState.renderIndex, "<", this._blazorRenderIndex);
-            return; // such an update will be ignored anyway
+            return;
         }
-        let immediately = renderState.mustMeasure || this._blazorRenderIndex == renderState.renderIndex
+        let isRenderIndexMatching = Math.abs(this._blazorRenderIndex - renderState.renderIndex) < 0.1;
+        let immediately = renderState.mustMeasure || isRenderIndexMatching;
         this.updateClientSideStateDebounced(immediately);
     }
 
@@ -144,10 +146,11 @@ export class VirtualList {
         }
 
         let rs = this._renderState;
-        if (rs.renderIndex <= this._blazorRenderIndex) {
+        if (rs.renderIndex < this._blazorRenderIndex) {
+            // This update will be dropped by server
             if (this._debugMode)
                 console.log('updateClientSideStateImpl: skipped for #', rs.renderIndex, "<", this._blazorRenderIndex);
-            return; // This update was already pushed
+            return;
         }
 
         if (this._debugMode)
@@ -240,8 +243,8 @@ export class VirtualList {
         }
 
         if (this._debugMode)
-            console.log("updateClientSideStateImpl: server call", state)
-        let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state)
+            console.log("updateClientSideStateImpl: server call", state);
+        let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
         if (result > this._blazorRenderIndex)
             this._blazorRenderIndex = result;
     }
