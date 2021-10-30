@@ -18,7 +18,7 @@ public sealed class ChatMediaPlayer : IDisposable
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public bool IsRealTimePlayer { get; set; }
-    public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public MediaPlayer MediaPlayer { get; }
     public bool IsPlaying => MediaPlayer.IsPlaying;
@@ -60,7 +60,7 @@ public sealed class ChatMediaPlayer : IDisposable
                 .ConfigureAwait(false);
             var now = clock.Now;
             var realtimeOffset = now - startAt;
-            var realtimeBlockEnd = now - infDuration; // Should be far away in past
+            var realtimeBlockEnd = now;
 
             var entries = entryReader
                 .GetAllAfter(startEntryId, IsRealTimePlayer, cancellationToken)
@@ -83,6 +83,7 @@ public sealed class ChatMediaPlayer : IDisposable
                     // This means we're still playing the "historical" block, and the new entry
                     // starts with some gap after it; we're going to nullify this gap here by
                     // adjusting realtimeOffset.
+                    realtimeBlockEnd = Moment.Max(now, realtimeBlockEnd);
                     realtimeOffset = realtimeBlockEnd - entryBeginsAt;
                 }
 
