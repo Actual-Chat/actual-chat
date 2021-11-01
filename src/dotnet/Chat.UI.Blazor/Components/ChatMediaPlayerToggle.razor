@@ -1,5 +1,8 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Playback
-@namespace ActualChat.Audio.UI.Blazor.Components
+@implements IDisposable
+@inject MomentClockSet _clocks
 
 <button @onclick="Toggle" class="block px-2 py-2 @(Player.IsPlaying ? "text-blue-500" : "text-gray-500")">
     <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
@@ -8,27 +11,37 @@
 </button>
 
 @code {
+    private ChatMediaPlayer? _lastPlayer;
 
     [Parameter]
-    public MediaPlayer Player { get; set; } = null!;
+    public ChatMediaPlayer Player { get; set; } = null!;
 
-    private Task Toggle()
-    {
+    protected override void OnParametersSet() {
+        if (_lastPlayer != null)
+            _lastPlayer.MediaPlayer.StateChanged -= PlayerStateChanged;
+        _lastPlayer = Player;
+        _lastPlayer.MediaPlayer.StateChanged += PlayerStateChanged;
+    }
+
+    public void Dispose() {
+        if (_lastPlayer != null)
+            _lastPlayer.MediaPlayer.StateChanged -= PlayerStateChanged;
+    }
+
+    private void PlayerStateChanged(MediaPlayer mediaPlayer) {
+        this.StateHasChangedAsync(); // This method runs SHC in the UI thread
+    }
+
+    private Task Toggle() {
         return Player.IsPlaying ? Stop() : Play();
     }
 
-    private Task Play()
-    {
-        Player.Play();
-        StateHasChanged();
-        return Task.CompletedTask;
+    private Task Play() {
+        return Player.Play();
     }
 
-    private Task Stop()
-    {
-        Player.Stop();
-        StateHasChanged();
-        return Task.CompletedTask;
+    private Task Stop() {
+        return Player.Stop();
     }
 
 }

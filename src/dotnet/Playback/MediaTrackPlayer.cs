@@ -4,20 +4,37 @@ namespace ActualChat.Playback;
 
 public abstract class MediaTrackPlayer : AsyncProcessBase
 {
-    private MediaTrackPlaybackState _state;
+    private volatile MediaTrackPlaybackState _state;
+    private readonly object _stateLock = new();
+
+    protected MomentClockSet Clocks { get; }
     protected ILogger<MediaTrackPlayer> Log { get; }
 
-    protected IMediaSource Source { get; }
+    public PlayMediaTrackCommand Command { get; }
+    public IMediaSource Source => Command.Source;
 
-    public MediaTrackPlaybackState State => Volatile.Read(ref _state);
+    public MediaTrackPlaybackState State {
+        // ReSharper disable once InconsistentlySynchronizedField
+        get => _state;
+        protected set {
+            lock (_stateLock) {
+                var lastState = _state;
+                _state = value;
+                StateChanged?.Invoke(lastState, value);
+            }
+        }
+    }
 
-    public event Action<MediaTrackPlaybackState>? PlaybackStateChanged;
+    public event Action<MediaTrackPlaybackState, MediaTrackPlaybackState>? StateChanged;
 
-
-    protected MediaTrackPlayer(PlayMediaTrackCommand command, ILogger<MediaTrackPlayer> log)
+    protected MediaTrackPlayer(
+        PlayMediaTrackCommand command,
+        MomentClockSet clocks,
+        ILogger<MediaTrackPlayer> log)
     {
         Log = log;
-        Source = command.Source;
+        Clocks = clocks;
+        Command = command;
         _state = new MediaTrackPlaybackState(command.TrackId, command.RecordingStartedAt);
         _ = Run();
     }
@@ -29,6 +46,13 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     {
         Exception? error = null;
         try {
+            // Start delay
+            if (Command.PlayAt.HasValue) {
+                var playAt = Command.PlayAt.GetValueOrDefault();
+                await Clocks.CpuClock.Delay(playAt, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Actual playback
             await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
             await foreach (var frame in Source.Frames.WithCancellation(cancellationToken).ConfigureAwait(false))
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
@@ -47,13 +71,10 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
                 await ProcessCommand(stopCommand).ConfigureAwait(false);
             }
             finally {
-                var state = Volatile.Read(ref _state);
-                if (!state.IsCompleted) {
-                    var stopped = state with { IsCompleted = true };
-                    Volatile.Write(ref _state, stopped);
-                    PlaybackStateChanged?.Invoke(stopped);
+                lock (_stateLock) {
+                    if (!_state.IsCompleted)
+                        OnStopped();
                 }
-
                 // AY: Sorry, but it's a self-disposing thing
                 _ = DisposeAsync();
             }
@@ -65,27 +86,35 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
-    protected void OnPlayedTo(TimeSpan offset)
-    {
-        var state = Volatile.Read(ref _state) with { PlayingAt = offset };
-        Volatile.Write(ref _state, state);
+    protected virtual void OnStarted()
+        => UpdateState(s => s with { IsStarted = true });
 
-        PlaybackStateChanged?.Invoke(state);
+    protected virtual void OnPlayedTo(TimeSpan offset)
+        => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = o });
+
+    protected virtual void OnStopped(Exception? error = null)
+        => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
+
+    protected virtual void OnVolumeSet(double volume)
+        => UpdateState(volume, (v, s) => s with { Volume = v });
+
+    protected void UpdateState(Func<MediaTrackPlaybackState, MediaTrackPlaybackState> updater)
+    {
+        lock (_stateLock) {
+            var lastState = _state;
+            var state = updater.Invoke(lastState);
+            _state = state;
+            StateChanged?.Invoke(lastState, state);
+        }
     }
 
-    protected void OnStopped(bool withError)
+    protected void UpdateState<TArg>(TArg arg, Func<TArg, MediaTrackPlaybackState, MediaTrackPlaybackState> updater)
     {
-        var state = Volatile.Read(ref _state) with { IsCompleted = true };
-        Volatile.Write(ref _state, state);
-
-        PlaybackStateChanged?.Invoke(state);
-    }
-
-    protected void OnVolumeSet(double volume)
-    {
-        var state = Volatile.Read(ref _state) with { Volume = volume };
-        Volatile.Write(ref _state, state);
-
-        PlaybackStateChanged?.Invoke(state);
+        lock (_stateLock) {
+            var lastState = _state;
+            var state = updater.Invoke(arg, lastState);
+            _state = state;
+            StateChanged?.Invoke(lastState, state);
+        }
     }
 }

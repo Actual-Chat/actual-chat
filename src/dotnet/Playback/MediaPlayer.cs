@@ -10,11 +10,13 @@ public sealed class MediaPlayer : IDisposable
     public Channel<MediaPlayerCommand> Queue { get; private set; } = null!;
     public Task PlayingTask { get; private set; } = null!;
     public bool IsPlaying => PlayingTask is { IsCompleted: false };
+    public CancellationToken StopToken { get; private set; }
+    public event Action<MediaPlayer>? StateChanged;
 
     public MediaPlayer(IMediaPlayerService mediaPlayerService)
     {
         MediaPlayerService = mediaPlayerService;
-        Reset();
+        Reset(false);
     }
 
     public void Dispose()
@@ -27,8 +29,13 @@ public sealed class MediaPlayer : IDisposable
         Symbol trackId,
         IMediaSource source,
         Moment recordingStartedAt,
+        Moment? playAt,
         CancellationToken cancellationToken = default)
-        => AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
+    {
+        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt));
+        var command = new PlayMediaTrackCommand(trackId, source, recordingStartedAt, playAt);
+        return AddCommand(command, cancellationToken);
+    }
 
     public void Complete()
         => Queue.Writer.Complete();
@@ -38,8 +45,10 @@ public sealed class MediaPlayer : IDisposable
         if (!PlayingTask.IsCompleted)
             return PlayingTask;
 
-        var cancellationToken = _stopPlayingCts.Token;
-        return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+        PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
+        StateChanged?.Invoke(this);
+        _ = PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
+        return PlayingTask;
     }
 
     public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
@@ -55,10 +64,10 @@ public sealed class MediaPlayer : IDisposable
 
     // Private methods
 
-    private void Reset()
+    private void Reset(bool invokeStateChanged = true)
     {
-        _stopPlayingCts = new CancellationTokenSource();
-        PlayingTask = Task.CompletedTask;
+        _stopPlayingCts = new ();
+        StopToken = _stopPlayingCts.Token;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
             new BoundedChannelOptions(256) {
                 SingleReader = false,
@@ -66,5 +75,7 @@ public sealed class MediaPlayer : IDisposable
                 AllowSynchronousContinuations = true,
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
+        PlayingTask = Task.CompletedTask;
+        StateChanged?.Invoke(this);
     }
 }

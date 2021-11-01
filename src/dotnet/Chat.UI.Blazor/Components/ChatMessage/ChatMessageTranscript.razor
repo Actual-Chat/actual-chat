@@ -1,13 +1,10 @@
-@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Transcription
+@namespace ActualChat.Chat.UI.Blazor.Components
 @inject ITranscriptStreamer _transcriptStreamer
 @inject BlazorCircuitContext _circuitContext
 @inject ILogger<ChatMessageTranscript> _log
 
 <div>
-    <span @onclick="OnPlay" class="cursor-pointer select-none opacity-75 hover:opacity-100">
-        <i class="fa fa-play text-green-600" aria-hidden="true"></i>
-    </span>
     <span class="ml-2">@_transcript.Text</span>
 </div>
 
@@ -17,19 +14,18 @@
 
     [Parameter]
     public string StreamId { get; set; } = null!;
-    [Parameter]
-    public EventCallback<string> OnListen { get; set; }
 
-    protected override async Task OnParametersSetAsync()
-    {
+    [Parameter]
+    public EventCallback<string> PlayClick { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
         if (_cancellationTokenSource != null) {
-            // We should never call those statements
+    // We should never call those statements
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
         }
-        if (!_circuitContext.IsPrerendering)
-        {
-            _cancellationTokenSource = new CancellationTokenSource();
+        if (!_circuitContext.IsPrerendering) {
+            _cancellationTokenSource = new();
             var transcriptReader = await _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadTranscript(transcriptReader, _cancellationTokenSource.Token);
         }
@@ -37,25 +33,23 @@
         await base.OnParametersSetAsync();
     }
 
-    private void OnPlay()
-    {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync(StreamId);
+    private void OnPlay() {
+        if (PlayClick.HasDelegate)
+            PlayClick.InvokeAsync(StreamId);
     }
 
-    private async Task ReadTranscript(ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken)
-    {
+    private async Task ReadTranscript(ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken) {
         try {
             while (await transcriptUpdates.WaitToReadAsync(cancellationToken))
             while (transcriptUpdates.TryRead(out var update)) {
                 _transcript = _transcript.WithUpdate(update);
                 StateHasChanged();
             }
-
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             _log.LogError(e, "Error while reading the transcript");
             throw;
         }
     }
+
 }

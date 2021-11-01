@@ -1,8 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IChatMessageEditorBackend
-@implements IAsyncDisposable
+@using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
-@using ActualChat.Playback
+@implements IAsyncDisposable
 @inject IChatServiceFacade _chats
 @inject Session _session
 @inject UICommandRunner _cmd
@@ -10,15 +10,17 @@
 
 <div class="sticky bottom-0 self-end bg-white w-full">
     <div class="flex flex-row justify-between mx-3 my-2" @onkeydown="OnKeyDown">
-        <MediaPlayerToggle Player="RealtimePlayer" />
+        @if (RealtimePlayer != null) {
+            <ChatMediaPlayerToggle Player="RealtimePlayer"/>
+        }
         <div @ref="_ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
         <div class="flex flex-row h-full px-1 justify-center justify-items-center">
             <button @onclick="Post" class="message-submit block px-3 py-2 text-green-500">
                 <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-                    <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z" />
+                    <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
-            <AudioRecorder ChatId="@ChatId" />
+            <AudioRecorder ChatId="@ChatId"/>
         </div>
     </div>
 </div>
@@ -34,17 +36,15 @@
     [Parameter]
     public string ChatId { get; set; } = "";
     [Parameter]
-    public MediaPlayer RealtimePlayer { get; set; } = null!;
+    public ChatMediaPlayer? RealtimePlayer { get; set; }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         if (_jsRef != null)
             await _jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
         _blazorRef?.Dispose();
     }
 
-    private async Task Post()
-    {
+    private async Task Post() {
         if (ChatId.IsNullOrEmpty() || Message.IsNullOrEmpty())
             return;
         var (_, ce) = await _cmd.Run(new IChatServiceFacade.CreateEntryCommand(_session, ChatId, Message));
@@ -55,16 +55,14 @@
             await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
     }
 
-    private Task OnKeyDown(KeyboardEventArgs args)
-    {
+    private Task OnKeyDown(KeyboardEventArgs args) {
         if (args.Key == "Enter" && args.ShiftKey == false) {
             return Post();
         }
         return Task.CompletedTask;
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
         }
@@ -75,8 +73,7 @@
     }
 
     [JSInvokable]
-    public void SetMessage(string message)
-    {
+    public void SetMessage(string message) {
         if (message.IsNullOrEmpty() || message == Message) return;
 
         Message = message;

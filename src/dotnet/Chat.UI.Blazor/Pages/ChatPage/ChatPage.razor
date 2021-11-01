@@ -29,7 +29,7 @@
             DataSource="GetMessages"
             KeyComparer="LongAsStringKeyComparer.Default">
             <Item>
-                <ChatMessage Entry="@context.Value" OnListen="@ListenCallback"/>
+                <ChatMessage Entry="@context.Value" PlayClick="@OnMessagePlayClick"/>
             </Item>
             <Skeleton>
                 <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
@@ -55,11 +55,21 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    private void ListenCallback((ChatEntry entry, double offset) startAt)
-    {
-        var (entry, offset) = startAt;
-        _ = PlayHistoricalMediaTrack(entry, TimeSpan.FromSeconds(offset), _watchRealtimeMediaCts.Token);
-        StateHasChanged();
+    private async Task OnMessagePlayClick((ChatEntry Entry, double SkipTo) what) {
+        var (entry, skipTo) = what;
+        if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue)
+            return; // We can't do much in this case
+
+        await HistoricalPlayer.Stop();
+        var audioEntryId = entry.AudioEntryId.GetValueOrDefault();
+        var audioEntry = await Chats
+            .CreateEntryReader(Session, HistoricalPlayer.ChatId)
+            .TryGet(audioEntryId, default)
+            .ConfigureAwait(false);
+        if (audioEntry == null)
+            return;
+        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(skipTo);
+        _ = HistoricalPlayer.Play(startAt);
     }
 
 }

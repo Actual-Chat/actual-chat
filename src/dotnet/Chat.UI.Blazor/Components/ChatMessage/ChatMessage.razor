@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using TaskExt = Stl.Async.TaskExt
+@using ActualChat.Users
 @inherits ComputedStateComponent<ChatMessageModel>
 
 @{
@@ -14,15 +15,12 @@
                 <div class="font-bold bg-gray-200 rounded-md border-white border-2 w-32 h-4"></div>
                 <div class="bg-gray-200 w-10 h-4 rounded-md border-white border-2"></div>
             </div>
-            @for (var i = 0; i < _seed % 3 + 2; ++i)
-            {
+            @for (var i = 0; i < _seed % 3 + 2; ++i) {
                 <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: @(Math.Abs(_seed << i) % 36 + 5)%;"></div>
             }
         </div>
     </div>
-}
-else
-{
+} else {
     var picture = string.IsNullOrWhiteSpace(model.AuthorInfo.Picture)
         ? "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + model.AuthorInfo.Name
         : model.AuthorInfo.Picture;
@@ -36,19 +34,10 @@ else
                 </span>
                 <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
             </div>
-            @if (Entry.TextToTimeMap != null)
-            {
-                <span @onclick="PlayCallback" class="mr-2 cursor-pointer select-none opacity-75 hover:opacity-100">
-                    <i class="fa fa-play text-green-600" aria-hidden="true"></i>
-                </span>
-            }
-            @if (Entry.IsStreaming)
-            {
-                <ChatMessageTranscript StreamId="@Entry.StreamId" OnListen="ListenCallback"/>
-            }
-            else
-            {
-                <ChatMessageText Text="@Entry.Content" TextToTimeMap="@Entry.TextToTimeMap" OnWordClick="WordClickCallback"/>
+            @if (Entry.IsStreaming) {
+                <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
+            } else {
+                <ChatMessageText Text="@Entry.Content" TextToTimeMap="@Entry.TextToTimeMap" OnWordClick="OnTextWordClick"/>
             }
         </div>
     </div>
@@ -63,14 +52,14 @@ else
     [Inject]
     protected Session Session { get; set; } = null!;
 
-    [Parameter, EditorRequired]
+    [Parameter]
+    [EditorRequired]
     public ChatEntry Entry { get; set; } = null!;
 
     [Parameter]
-    public EventCallback<(ChatEntry, double)> OnListen { get; set; }
+    public EventCallback<(ChatEntry Entry, double SkipTo)> PlayClick { get; set; }
 
-    protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken)
-    {
+    protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken) {
         if (Entry == null! || Entry.AuthorId.IsNone)
             return new(null);
 
@@ -78,21 +67,18 @@ else
         return new(author);
     }
 
-    private void PlayCallback()
-    {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync((Entry, 0));
+    private void OnPlay() {
+        if (PlayClick.HasDelegate)
+            PlayClick.InvokeAsync((Entry, 0));
     }
 
-    private void ListenCallback(string _)
-    {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync((Entry, 0));
+    private void OnTranscriptPlayClick(string _) {
+        if (PlayClick.HasDelegate)
+            PlayClick.InvokeAsync((Entry, 0));
     }
 
-    private void WordClickCallback(double offset)
-    {
-        if (OnListen.HasDelegate)
-            OnListen.InvokeAsync((Entry, offset));
+    private void OnTextWordClick(double offset) {
+        if (PlayClick.HasDelegate)
+            PlayClick.InvokeAsync((Entry, offset));
     }
 }

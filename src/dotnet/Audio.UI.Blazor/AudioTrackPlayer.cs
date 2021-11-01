@@ -1,3 +1,4 @@
+using System.Reflection;
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Media;
 using ActualChat.Playback;
@@ -13,17 +14,18 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private CancellationTokenSource _delayTokenSource;
     private IJSObjectReference? _jsRef;
+    private bool DebugMode { get; } = false;
 
     public AudioSource AudioSource => (AudioSource)Source;
     public byte[] Header { get; }
-
 
     public AudioTrackPlayer(
         PlayMediaTrackCommand command,
         BlazorCircuitContext circuitContext,
         IJSRuntime js,
+        MomentClockSet clocks,
         ILogger<AudioTrackPlayer> log)
-        : base(command, log)
+        : base(command, clocks, log)
     {
         _circuitContext = circuitContext;
         _js = js;
@@ -35,12 +37,15 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     [JSInvokable]
     public void OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
-        if (errorMessage != null)
-            Log.LogError("Playback stopped with error. ErrorCode = {ErrorCode}, ErrorMessage = {ErrorMessage}",
-                errorCode,
-                errorMessage);
+        Exception? error = null;
+        if (errorMessage != null) {
+            error = new TargetInvocationException(
+                $"Playback stopped with an error, code = {errorCode}, message = '{errorMessage}'.",
+                null);
+            Log.LogError(error, "Playback stopped with an error");
+        }
 
-        OnStopped(errorMessage != null);
+        OnStopped(error);
     }
 
     [JSInvokable]

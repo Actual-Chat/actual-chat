@@ -13,7 +13,7 @@ public class AudioDownloader
 
     public virtual async Task<AudioSource> DownloadAsAudioSource(
         Uri audioUri,
-        TimeSpan offset,
+        TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var httpClient = _httpClientFactory.CreateClient();
@@ -33,7 +33,7 @@ public class AudioDownloader
         _ = Task.Run(ReadBlobPartsFromStream, cancellationToken);
 
         return await audioSourceProvider
-            .CreateMediaSource(audioBlobs, offset, cancellationToken)
+            .CreateMediaSource(audioBlobs, skipTo, cancellationToken)
             .ConfigureAwait(false);
 
         async Task ReadBlobPartsFromStream()

@@ -20,7 +20,7 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
     {
         Log = log;
         Services = services;
-        StopTokenSource = new CancellationTokenSource();
+        StopTokenSource = new ();
         StopToken = StopTokenSource.Token;
     }
 
@@ -39,11 +39,14 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
                         continue;
 
                     var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
-                    trackPlayer.PlaybackStateChanged += OnPlaybackStateChanged;
+                    trackPlayer.StateChanged += OnStateChanged;
                     _ = trackPlayer.Run(linkedToken);
                     _ = trackPlayer.RunningTask!.ContinueWith(
                         // We want to remove players once they finish, otherwise it may cause mem leak
-                        _ => trackPlayers.TryRemove(commandRef, trackPlayer),
+                        _ => {
+                            _playbackStates.TryRemove(trackPlayer.State.TrackId, trackPlayer.State);
+                            return trackPlayers.TryRemove(commandRef, trackPlayer);
+                        },
                         TaskScheduler.Default);
                     trackPlayers[commandRef] = trackPlayer;
                     break;
@@ -69,12 +72,20 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
         }
     }
 
-    public virtual Task<MediaTrackPlaybackState?> GetPlayingMediaFrame(
+    public virtual Task<bool> IsPlaybackCompleted(
+        Symbol trackId,
+        CancellationToken cancellationToken)
+    {
+        var state = _playbackStates.GetValueOrDefault(trackId);
+        return Task.FromResult(state == null || state.IsCompleted);
+    }
+
+    public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
         Symbol trackId,
         CancellationToken cancellationToken)
         => Task.FromResult(_playbackStates.GetValueOrDefault(trackId));
 
-    public virtual Task<MediaTrackPlaybackState?> GetPlayingMediaFrame(
+    public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
         Symbol trackId,
         Range<Moment> timestampRange,
         CancellationToken cancellationToken)
@@ -89,11 +100,14 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
         return Task.FromResult(result);
     }
 
+    public void RegisterDefaultMediaTrackState(MediaTrackPlaybackState state)
+        => _playbackStates[state.TrackId] = state;
+
     // Protected methods
 
     protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
-    protected void OnPlaybackStateChanged(MediaTrackPlaybackState state)
+    protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
         var trackId = state.TrackId;
         var timestampLogCover = PlaybackConstants.TimestampTiles;
@@ -101,12 +115,22 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             _playbackStates.TryRemove(trackId, out _);
         else
             _playbackStates[trackId] = state;
-        using (Computed.Invalidate()) {
-            _ = GetPlayingMediaFrame(trackId, default);
 
+        using (Computed.Invalidate()) {
+            if (state.IsCompleted != lastState.IsCompleted)
+                _ = IsPlaybackCompleted(trackId, default);
+
+            _ = GetMediaTrackPlaybackState(trackId, default);
+
+            // Invalidating GetPlayingMediaFrame for tiles associated with lastState.PlayingAt
+            var lastTimestamp = lastState.RecordingStartedAt + lastState.PlayingAt;
+            foreach (var tile in timestampLogCover.GetCoveringTiles(lastTimestamp))
+                _ = GetMediaTrackPlaybackState(trackId, tile, default);
+
+            // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
             foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
-                _ = GetPlayingMediaFrame(trackId, tile, default);
+                _ = GetMediaTrackPlaybackState(trackId, tile, default);
         }
     }
 

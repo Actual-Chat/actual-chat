@@ -47,6 +47,7 @@ public class RedisStreamer<T>
     {
         Exception? error = null;
         var position = (RedisValue) "0-0";
+        var attemptCount = 0;
         try {
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested(); // Redis doesn't support cancellation
@@ -62,9 +63,13 @@ public class RedisStreamer<T>
                         position = entry.Id;
                     }
                 else {
+                    attemptCount++;
                     var appendOpt = await AppendPubSub.Fetch(cancellationToken)
                         .WithTimeout(Settings.ReadItemTimeout, cancellationToken)
                         .ConfigureAwait(false);
+                    if (attemptCount > 10 && position == "0-0")
+                        throw new TimeoutException($"RedisStreamer<T>.Read() exceeds the wait limit for empty stream with Key = {Key}.");
+
                     var (hasValue, fetch) = appendOpt;
                     if (hasValue && fetch.IsNull)
                         return;

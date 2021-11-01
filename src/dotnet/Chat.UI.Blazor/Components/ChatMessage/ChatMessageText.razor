@@ -1,15 +1,13 @@
 @using ActualChat.Mathematics
 @namespace ActualChat.Chat.UI.Blazor.Components
-@if (Words == null)
-{
-    <span class="content">@Text</span>
-}
-else
-{
-    foreach (var (word, offset) in Words!)
-    {
-        <span class="content word" @onclick="() => HandleWordClick(offset)">@word</span>
-    }
+@if (Words == null) {
+    <p class="text">@Text</p>
+} else {
+    <p>
+        @foreach (var (word, offset) in Words!) {
+            <span class="word" @onclick="() => HandleWordClick(offset)">@word</span>
+        }
+    </p>
 }
 
 @code {
@@ -27,22 +25,18 @@ else
     private IReadOnlyCollection<(string,double)>? Words { get; set; }
 
 
-    protected override Task OnParametersSetAsync()
-    {
-        if (TextToTimeMap != null && !Text.IsNullOrEmpty())
-        {
+    protected override Task OnParametersSetAsync() {
+        if (TextToTimeMap != null && !Text.IsNullOrEmpty()) {
             var map = TextToTimeMap.Value;
             var words = new List<(string, double)>();
             var previousBoundary = 0;
-            for (var i = 1; i < map.SourcePoints.Length - 1; i++)
-            {
+            for (var i = 1; i < map.SourcePoints.Length - 1; i++) {
                 var boundary = map.SourcePoints[i];
                 var currentBoundary = (int)boundary;
                 words.Add((Text[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0));
                 previousBoundary = currentBoundary;
             }
-            if (words.Count != 0)
-            {
+            if (words.Count != 0) {
                 words.Add((Text[previousBoundary..], map.Map(previousBoundary) ?? 0));
                 Words = words;
             }
@@ -51,8 +45,7 @@ else
         return base.OnParametersSetAsync();
     }
 
-    private void HandleWordClick(double offset)
-    {
+    private void HandleWordClick(double offset) {
         if (OnWordClick.HasDelegate)
             OnWordClick.InvokeAsync(offset);
     }

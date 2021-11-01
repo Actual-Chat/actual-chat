@@ -1,6 +1,4 @@
-using System.Globalization;
 using ActualChat.Audio;
-using ActualChat.Mathematics;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 
@@ -22,22 +20,22 @@ public class GoogleTranscriber : ITranscriber
         _log.LogInformation("Start transcription of StreamId = {StreamId}", (string)streamId);
 
         var builder = new SpeechClientBuilder();
-        var speechClient = await builder.BuildAsync(cancellationToken);
+        var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
         var config = new RecognitionConfig {
             Encoding = MapEncoding(format.CodecKind),
             AudioChannelCount = format.ChannelCount,
             SampleRateHertz = format.SampleRate,
             LanguageCode = options.Language,
             EnableAutomaticPunctuation = options.IsPunctuationEnabled,
-            DiarizationConfig = new SpeakerDiarizationConfig {
+            DiarizationConfig = new () {
                 EnableSpeakerDiarization = true,
                 MaxSpeakerCount = options.MaxSpeakerCount ?? 5,
             },
         };
 
         var streamingRecognizeStream = speechClient.StreamingRecognize();
-        await streamingRecognizeStream.WriteAsync(new StreamingRecognizeRequest {
-                StreamingConfig = new StreamingRecognitionConfig {
+        await streamingRecognizeStream.WriteAsync(new () {
+                StreamingConfig = new () {
                     Config = config,
                     InterimResults = true,
                     SingleUtterance = false,
@@ -46,7 +44,7 @@ public class GoogleTranscriber : ITranscriber
             .ConfigureAwait(false);
         var responseStream = (IAsyncEnumerable<StreamingRecognizeResponse>)streamingRecognizeStream.GetResponseStream();
         var transcriptChannel = Channel.CreateUnbounded<TranscriptUpdate>(
-            new UnboundedChannelOptions { SingleWriter = true });
+            new () { SingleWriter = true });
 
         _ = Task.Run(()
                 => PushAudioForTranscription(streamingRecognizeStream,
@@ -69,13 +67,13 @@ public class GoogleTranscriber : ITranscriber
     {
         try {
             var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
-            await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
+            await recognizeStream.WriteAsync(new () {
                     AudioContent = ByteString.CopyFrom(header),
                 })
                 .ConfigureAwait(false);
 
             await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
-                await recognizeStream.WriteAsync(new StreamingRecognizeRequest {
+                await recognizeStream.WriteAsync(new () {
                         AudioContent = ByteString.CopyFrom(audioFrame.Data),
                     })
                     .ConfigureAwait(false);
@@ -89,7 +87,7 @@ public class GoogleTranscriber : ITranscriber
         }
     }
 
-    private async Task ReadTranscript(
+    internal async Task ReadTranscript(
         IAsyncEnumerable<StreamingRecognizeResponse> transcriptResponseStream,
         ChannelWriter<TranscriptUpdate> writer,
         CancellationToken cancellationToken)
@@ -136,19 +134,23 @@ public class GoogleTranscriber : ITranscriber
             }
 
             foreach (var result in response.Results) {
+                _log.LogTrace("Google transcript: {Result}", result);
                 var alternative = result.Alternatives.First();
-                var endTime = result.ResultEndTime;
+                var endTime = result.ResultEndTime.ToTimeSpan().TotalSeconds;
                 var text = alternative.Transcript;
                 var finalizedPart = updateExtractor.FinalizedPart;
                 var finalizedTextLength = finalizedPart.Text.Length;
                 var finalizedSpeechDuration = finalizedPart.Duration;
                 var currentPart = new Transcript {
                     Text = text,
-                    TextToTimeMap = new LinearMap(
+                    TextToTimeMap = new (
                         new[] { (double)finalizedTextLength, finalizedTextLength + text.Length },
-                        new[] { finalizedSpeechDuration, finalizedSpeechDuration + endTime.ToTimeSpan().TotalSeconds }),
+                        new[] { finalizedSpeechDuration, finalizedSpeechDuration + endTime }),
                 };
                 if (result.IsFinal) {
+                    if (Math.Abs(finalizedSpeechDuration - endTime) < 0.00001d)
+                        break; // we have already processed final results up to endTime
+
                     var sourcePoints = new List<double> { finalizedTextLength };
                     var targetPoints = new List<double> { finalizedSpeechDuration };
                     var textIndex = 0;
@@ -165,11 +167,11 @@ public class GoogleTranscriber : ITranscriber
                         targetPoints.Add(finalizedSpeechDuration + word.StartTime.ToTimeSpan().TotalSeconds);
                     }
                     sourcePoints.Add(finalizedTextLength + text.Length);
-                    targetPoints.Add(finalizedSpeechDuration + endTime.ToTimeSpan().TotalSeconds);
+                    targetPoints.Add(finalizedSpeechDuration + endTime);
                     if (sourcePoints.Count > 2)
-                        currentPart = new Transcript {
+                        currentPart = new () {
                             Text = text,
-                            TextToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray()),
+                            TextToTimeMap = new (sourcePoints.ToArray(), targetPoints.ToArray()),
                         };
 
                     updateExtractor.UpdateCurrentPart(currentPart);
