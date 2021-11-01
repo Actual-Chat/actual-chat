@@ -92,6 +92,7 @@ public class AppHost : IDisposable
                     { WebHostDefaults.ServerUrlsKey, ServerUrls },
                 },
             });
+        cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
         HostConfigurationBuilder?.Invoke(cfg);
     }
 

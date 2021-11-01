@@ -41,7 +41,7 @@ public class DbModule : HostModule<DbSettings>
             ("context", typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant()));
 
         // Creating DbInfo<TDbContext>
-        var dbKind = connectionString.StartsWith("memory://", StringComparison.Ordinal)
+        var dbKind = connectionString.StartsWith("memory://", StringComparison.OrdinalIgnoreCase)
             ? DbKind.InMemory
             : DbKind.Default;
         var dbInfo = new DbInfo<TDbContext> {

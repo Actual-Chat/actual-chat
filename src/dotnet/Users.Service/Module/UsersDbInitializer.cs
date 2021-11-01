@@ -14,9 +14,9 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
     public override async Task Initialize(CancellationToken cancellationToken)
     {
-        await base.Initialize(cancellationToken);
+        await base.Initialize(cancellationToken).ConfigureAwait(false);
         var dbContextFactory = Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         if (ShouldRecreateDb) {
             var auth = Services.GetRequiredService<IServerSideAuthService>();
@@ -24,27 +24,33 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Creating admin user
             var adminIdentity = new UserIdentity("internal", "admin");
-            dbContext.Users.Add(new DbUser() {
-                Id = UserConstants.AdminUserId,
+            await dbContext.Users.AddAsync(new DbUser() {
+                Id = UserConstants.Admin.UserId,
                 Name = "Admin",
                 Identities = {
                     new DbUserIdentity<string>() {
-                        DbUserId = UserConstants.AdminUserId,
+                        DbUserId = UserConstants.Admin.UserId,
                         Id = adminIdentity.Id,
                         Secret = "",
                     },
-                }
-            });
-            await dbContext.SaveChangesAsync(cancellationToken);
+                },
+                DefaultAuthor = new DbDefaultAuthor() {
+                    UserId = UserConstants.Admin.AuthorId,
+                    Name = UserConstants.Admin.Name,
+                    Nickname = UserConstants.Admin.Nickname,
+                    Picture = UserConstants.Admin.Picture,
+                },
+            }, cancellationToken).ConfigureAwait(false);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
-            var user = await auth.TryGetUser(UserConstants.AdminUserId, cancellationToken)
+            var user = await auth.TryGetUser(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("Failed to create 'admin' user.");
             await auth.SignIn(
                 new SignInCommand(session, user, user.Identities.Keys.Single()).MarkServerSide(),
-                cancellationToken);
-            UserConstants.AdminSession = session;
+                cancellationToken).ConfigureAwait(false);
+            UserConstants.Admin.Session = session;
         }
     }
 }

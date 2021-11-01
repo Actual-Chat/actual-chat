@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+    <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
     <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
   </ItemGroup>
 

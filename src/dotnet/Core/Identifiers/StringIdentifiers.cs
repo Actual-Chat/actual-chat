@@ -1,3 +1,8 @@
+
+
+
+
+
 using System;
 using System.ComponentModel;
 using System.Globalization;
@@ -6,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
+
 
 
 namespace ActualChat
@@ -91,6 +97,7 @@ namespace ActualChat.Internal
     }
 }
 
+
 namespace ActualChat
 {
     [DataContract]
@@ -173,6 +180,7 @@ namespace ActualChat.Internal
             => new((string?) reader.Value!);
     }
 }
+
 
 namespace ActualChat
 {
@@ -257,6 +265,7 @@ namespace ActualChat.Internal
     }
 }
 
+
 namespace ActualChat
 {
     [DataContract]
@@ -340,6 +349,7 @@ namespace ActualChat.Internal
     }
 }
 
+
 namespace ActualChat
 {
     [DataContract]
@@ -422,3 +432,88 @@ namespace ActualChat.Internal
             => new((string?) reader.Value!);
     }
 }
+
+
+namespace ActualChat
+{
+    [DataContract]
+    [JsonConverter(typeof(Internal.AuthorIdJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(Internal.AuthorIdNewtonsoftJsonConverter))]
+    [TypeConverter(typeof(Internal.AuthorIdTypeConverter))]
+    public readonly partial struct AuthorId : IEquatable<AuthorId>, IIdentifier<string>
+    {
+        public static readonly AuthorId None = default;
+
+        private readonly string? _value;
+
+        [DataMember(Order = 0)]
+        public string Value => _value ?? "";
+        [IgnoreDataMember]
+        public bool IsNone => Value.Length == 0;
+
+        public AuthorId(string value) => _value = value ?? "";
+
+        public override string ToString() => Value;
+
+        public static implicit operator AuthorId(string value) => new(value);
+        public static implicit operator string(AuthorId id) => id.Value;
+
+        // Equality
+        public bool Equals(AuthorId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
+        public override bool Equals(object? obj) => obj is AuthorId other && Equals(other);
+        public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
+        public static bool operator ==(AuthorId left, AuthorId right) => left.Equals(right);
+        public static bool operator !=(AuthorId left, AuthorId right) => !left.Equals(right);
+    }
+}
+
+namespace ActualChat.Internal
+{
+    public class AuthorIdJsonConverter : JsonConverter<AuthorId>
+    {
+        public override AuthorId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            => new(reader.GetString()!);
+
+        public override void Write(Utf8JsonWriter writer, AuthorId value, JsonSerializerOptions options)
+            => writer.WriteStringValue(value.Value);
+    }
+
+    public class AuthorIdTypeConverter : TypeConverter
+    {
+        public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+            => sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+
+        public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
+        {
+            if (destinationType == typeof(string))
+                return ((IIdentifier<string>) value!).Value;
+            return base.ConvertTo(context, culture, value, destinationType)!;
+        }
+
+        public override object ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+        {
+            if (value is string s)
+                // ReSharper disable once HeapView.BoxingAllocation
+                return new AuthorId(s);
+            return base.ConvertFrom(context, culture, value)!;
+        }
+    }
+}
+
+namespace ActualChat.Internal
+{
+    using Newtonsoft.Json;
+
+    public class AuthorIdNewtonsoftJsonConverter : JsonConverter<AuthorId>
+    {
+        public override void WriteJson(JsonWriter writer, AuthorId value, JsonSerializer serializer)
+            => writer.WriteValue(value.Value);
+
+        public override AuthorId ReadJson(
+            JsonReader reader, Type objectType,
+            AuthorId existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
+            => new((string?) reader.Value!);
+    }
+}
+

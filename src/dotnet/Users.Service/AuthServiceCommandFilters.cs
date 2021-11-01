@@ -26,13 +26,38 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
-    // Takes care of invalidation of IsOnlineAsync once user signs in
+    /// <summary> The filter which clears Sessions.OptionsJson field in the database </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
-    public virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
+    public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        try {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            await ResetSessionOptions().ConfigureAwait(false);
+        }
+
+        async Task ResetSessionOptions()
+        {
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+            var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbSession != null) {
+                dbSession.Options = new ImmutableOptionSet();
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary> Takes care of invalidation of IsOnlineAsync once user signs in. </summary>
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task OnSignInMarkOnline(SignInCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
-        // Invoke command handler(s) with lower priority
+        // Invoke command handlers with lower priority
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
@@ -42,13 +67,18 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             return;
         }
 
-        // Let's try to fix auto-generated user name here
-        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        await ResetSessionOptions().ConfigureAwait(false);
+
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         var userId = sessionInfo.UserId;
         var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
+
+
+        // Let's try to fix auto-generated user name here
         var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken).ConfigureAwait(false);
         if (!string.Equals(newName, dbUser.Name, StringComparison.Ordinal)) {
             dbUser.Name = newName;
@@ -56,11 +86,21 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         }
         var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
         context.Operation().Items.Set(userInfo);
-
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
+
+        async Task ResetSessionOptions()
+        {
+            var dbSession = await dbContext.Sessions
+                .FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken).ConfigureAwait(false);
+
+            if (dbSession != null) {
+                dbSession.Options = new ImmutableOptionSet();
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
-    // Validates user name on edit
+    /// <summary> Validates user name on edit </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
     protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
     {

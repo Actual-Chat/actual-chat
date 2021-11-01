@@ -4,7 +4,7 @@ using Stl.DependencyInjection;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
-namespace ActualChat.Chat.Client.Module;
+namespace ActualChat.Chat.Client;
 
 public class ChatClientModule : HostModule
 {
@@ -19,7 +19,8 @@ public class ChatClientModule : HostModule
             return; // Client-side only module
 
         var fusionClient = services.AddFusion().AddRestEaseClient();
-        fusionClient.AddReplicaService<IChatService, IChatClientDef>();
+        fusionClient.AddReplicaService<IChatServiceFacade, IChatServiceFacadeDef>();
+        fusionClient.AddReplicaService<IAuthorServiceFacade, IAuthorServiceFacadeDef>();
 
         services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
     }

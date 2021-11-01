@@ -11,9 +11,9 @@ public static class TaskExt
         return WrapToSuppress(task);
 #pragma warning restore VSTHRD003
 
-        static async Task WrapToSuppress(Task task1) {
+        static async Task WrapToSuppress(Task task) {
             try {
-                await task1.ConfigureAwait(false);
+                await task.ConfigureAwait(false);
             }
             catch (TException) { }
         }
@@ -28,9 +28,9 @@ public static class TaskExt
         return WrapToSuppress(task);
 #pragma warning restore VSTHRD003
 
-        static async Task<T> WrapToSuppress(Task<T> task1) {
+        static async Task<T> WrapToSuppress(Task<T> task) {
             try {
-                return await task1.ConfigureAwait(false);
+                return await task.ConfigureAwait(false);
             }
             catch (TException) {
                 return default!;
@@ -45,9 +45,9 @@ public static class TaskExt
             return task;
         return WrapToSuppress(task);
 
-        static async ValueTask WrapToSuppress(ValueTask task1) {
+        static async ValueTask WrapToSuppress(ValueTask task) {
             try {
-                await task1.ConfigureAwait(false);
+                await task.ConfigureAwait(false);
             }
             catch (TException) { }
         }
@@ -60,9 +60,9 @@ public static class TaskExt
             return task;
         return WrapToSuppress(task);
 
-        static async ValueTask<T> WrapToSuppress(ValueTask<T> task1) {
+        static async ValueTask<T> WrapToSuppress(ValueTask<T> task) {
             try {
-                return await task1.ConfigureAwait(false);
+                return await task.ConfigureAwait(false);
             }
             catch (TException) {
                 return default!;

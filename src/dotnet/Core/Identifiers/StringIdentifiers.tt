@@ -8,7 +8,8 @@
         "AudioRecord",
         "VideoRecord",
         "Stream",
-        "User"
+        "User",
+        "Author"
     };
 
     List<(string,string)> slaveEntityTypeNames = new () {

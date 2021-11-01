@@ -15,6 +15,7 @@ namespace ActualChat.Audio.Db
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // ToDo: move this to type-own IEntityTypeConfiguration
             var audioRecording = modelBuilder.Entity<DbAudioRecord>();
             audioRecording
                 .Property(ar => ar.AudioCodecKind)
