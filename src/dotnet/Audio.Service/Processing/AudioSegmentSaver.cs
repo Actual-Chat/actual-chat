@@ -46,7 +46,7 @@ public sealed class AudioSegmentSaver : DbServiceBase<AudioDbContext>
                 _log.LogInformation("Entity = Record, RecordId = {RecordId}", p.AudioRecord.Id);
                 dbContext.AudioRecords.Add(new DbAudioRecord {
                     Id = p.AudioRecord.Id,
-                    UserId = p.AudioRecord.UserId,
+                    AuthorId = p.AudioRecord.AuthorId,
                     ChatId = p.AudioRecord.ChatId,
                     // TODO(AK): fill record entity attributes
                     BeginsAt = default,

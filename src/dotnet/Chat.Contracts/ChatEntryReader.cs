@@ -4,14 +4,14 @@ namespace ActualChat.Chat;
 
 public sealed class ChatEntryReader
 {
-    private IChatService Chats { get; }
+    private IChatServiceFacade Chats { get; }
     private MomentClockSet Clocks { get; }
 
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public TimeSpan InvalidationWaitTimeout { get; init; } = TimeSpan.FromMilliseconds(50);
 
-    public ChatEntryReader(IChatService chats)
+    public ChatEntryReader(IChatServiceFacade chats)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         var services = ((IComputeService)chats).GetServiceProvider();

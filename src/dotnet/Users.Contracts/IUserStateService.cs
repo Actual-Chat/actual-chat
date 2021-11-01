@@ -1,12 +1,7 @@
-using System.Threading;
-using System.Threading.Tasks;
-using Stl.Fusion;
+namespace ActualChat.Users;
 
-namespace ActualChat.Users
+public interface IUserStateService
 {
-    public interface IUserStateService
-    {
-        [ComputeMethod(KeepAliveTime = 30)]
-        Task<bool> IsOnline(UserId userId, CancellationToken cancellationToken);
-    }
+    [ComputeMethod(KeepAliveTime = 30)]
+    Task<bool> IsOnline(UserId userId, CancellationToken cancellationToken);
 }

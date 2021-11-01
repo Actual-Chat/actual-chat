@@ -1,20 +1,16 @@
-using System.Data;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
-using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.Operations.Internal;
 using Stl.Fusion.Server;
 using Stl.Plugins;
 
@@ -54,6 +50,8 @@ public class UsersModule : HostModule<UsersSettings>
             options.Scope.Add("user:email");
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         });
+
+        services.AddSingleton<INicknameGenerator, NicknameGenerator>();
 
         // DB-related
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
@@ -108,7 +106,11 @@ public class UsersModule : HostModule<UsersSettings>
         services.AddSingleton<IUserNameService, UserNameService>();
         fusion.AddComputeService<IUserInfoService, UserInfoService>();
         fusion.AddComputeService<IUserStateService, UserStateService>();
-        var commander = services.AddCommander();
-        commander.AddCommandService<AuthServiceCommandFilters>();
+        fusion.AddComputeService<IDefaultAuthorService, DefaultAuthorService>();
+        fusion.AddComputeService<ISessionInfoService, SessionInfoService>();
+        services.AddCommander()
+            .AddCommandService<AuthServiceCommandFilters>();
+        services.AddSingleton<IClaimsToAuthorMapper, ClaimsToAuthorMapper>();
+        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepository>());
     }
 }

@@ -12,7 +12,7 @@ public class DbAudioRecord : IHasId<string>
     // TODO(AY): Add CompositeId
     [Key]
     public string Id { get; set; } = string.Empty;
-    public string UserId { get; set; } = string.Empty;
+    public string AuthorId { get; set; } = string.Empty;
     public string ChatId { get; set; } = string.Empty;
 
     public DateTime BeginsAt {

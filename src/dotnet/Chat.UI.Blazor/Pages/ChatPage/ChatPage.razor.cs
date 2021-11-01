@@ -11,7 +11,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     [Inject] private Session Session { get; set; } = default!;
     [Inject] private UICommandRunner Cmd { get; set; } = default!;
     [Inject] private ChatPageService Service { get; set; } = default!;
-    [Inject] private IChatService Chats { get; set; } = default!;
+    [Inject] private IChatServiceFacade Chats { get; set; } = default!;
     [Inject] private IAuthService Auth { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatPage> Log { get; set; } = default!;

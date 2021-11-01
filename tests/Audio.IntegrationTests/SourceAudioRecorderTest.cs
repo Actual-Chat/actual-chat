@@ -35,10 +35,10 @@ public class SourceAudioRecorderTest : AppHostTestBase
         _ = sourceAudioRecorder.RecordSourceAudio(session, recordSpec, channel.Reader, CancellationToken.None);
         channel.Writer.Complete();
 
-        var record = await recordTask;
+        var record = await recordTask.ConfigureAwait(false);
         record.Should().Be(recordSpec with {
             Id = record!.Id,
-            UserId = record.UserId
+            AuthorId = record!.AuthorId
         });
 
         var stream = sourceAudioRecorder.GetSourceAudioStream(record.Id, CancellationToken.None);

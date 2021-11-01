@@ -1,34 +1,58 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
 
-namespace ActualChat.Chat.Db
+namespace ActualChat.Chat.Db;
+
+[Table("Chats")]
+public class DbChat : IHasId<string>, IHasVersion<long>
 {
-    [Table("Chats")]
-    public class DbChat : IHasId<string>, IHasVersion<long>
+    private DateTime _createdAt;
+
+    public DbChat() { }
+    public DbChat(Chat chat)
     {
-        private DateTime _createdAt;
+        Title = chat.Title;
+        CreatedAt = chat.CreatedAt;
+        IsPublic = chat.IsPublic;
+        Id = chat.Id;
+        Owners = chat.OwnerIds.Select(x => new DbChatOwner() {
+            ChatId = chat.Id,
+            UserId = x.Value,
+        }).ToList();
+    }
 
-        [Key] public string Id { get; set; } = "";
-        [ConcurrencyCheck] public long Version { get; set; }
-        public string Title { get; set; } = "";
-        public string AuthorId { get; set; } = "";
-        public bool IsPublic { get; set; }
+    [Key] public string Id { get; set; } = null!;
+    [ConcurrencyCheck] public long Version { get; set; }
+    public string Title { get; set; } = "";
+    public bool IsPublic { get; set; }
 
-        public DateTime CreatedAt {
-            get => _createdAt.DefaultKind(DateTimeKind.Utc);
-            set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+    public DateTime CreatedAt {
+        get => _createdAt.DefaultKind(DateTimeKind.Utc);
+        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    public List<DbChatOwner> Owners { get; set; } = new();
+    public List<DbChatUser> Users { get; set; } = new();
+
+    public Chat ToModel()
+        => new() {
+            Id = Id,
+            Title = Title,
+            CreatedAt = CreatedAt,
+            IsPublic = IsPublic,
+            OwnerIds = Owners.Select(o => (UserId)o.UserId).ToImmutableArray(),
+        };
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbChat>
+    {
+        public void Configure(EntityTypeBuilder<DbChat> builder)
+        {
+            builder.Property(a => a.Id).ValueGeneratedOnAdd().HasValueGenerator<UlidValueGenerator>();
+            builder.HasMany(c => c.Users).WithOne().HasForeignKey(u => u.ChatId);
         }
-
-        public List<DbChatOwner> Owners { get; set; } = new();
-
-        public Chat ToModel()
-            => new(Id) {
-                Title = Title,
-                CreatedAt = CreatedAt,
-                AuthorId = AuthorId,
-                IsPublic = IsPublic,
-                OwnerIds = Owners.Select(o => (UserId)o.UserId).ToImmutableArray(),
-            };
     }
 }
+
