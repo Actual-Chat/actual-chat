@@ -35,6 +35,11 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
         }
         finally {
+            await ResetSessionOptions().ConfigureAwait(false);
+        }
+
+        async Task ResetSessionOptions()
+        {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
             var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
@@ -64,11 +69,14 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+        await ResetSessionOptions().ConfigureAwait(false);
+
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         var userId = sessionInfo.UserId;
         var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
+
 
         // Let's try to fix auto-generated user name here
         var newName = await NormalizeName(dbContext, dbUser!.Name, userId, cancellationToken).ConfigureAwait(false);
@@ -79,6 +87,17 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
         context.Operation().Items.Set(userInfo);
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
+
+        async Task ResetSessionOptions()
+        {
+            var dbSession = await dbContext.Sessions
+                .FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken).ConfigureAwait(false);
+
+            if (dbSession != null) {
+                dbSession.Options = new ImmutableOptionSet();
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary> Validates user name on edit </summary>
