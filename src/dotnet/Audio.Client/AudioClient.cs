@@ -18,7 +18,7 @@ public class AudioClient : HubClientBase,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        await EnsureConnected(cancellationToken).ConfigureAwait(false);
+        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         var parts = await HubConnection.StreamAsChannelAsync<AudioSourcePart>("GetAudioSourceParts",
                 streamId,
                 skipTo,
@@ -29,7 +29,7 @@ public class AudioClient : HubClientBase,
 
     public async Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
     {
-        await EnsureConnected(cancellationToken).ConfigureAwait(false);
+        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         return await HubConnection.StreamAsChannelAsync<BlobPart>("GetAudioStream",
                 streamId,
                 cancellationToken)
@@ -42,7 +42,7 @@ public class AudioClient : HubClientBase,
         ChannelReader<BlobPart> content,
         CancellationToken cancellationToken)
     {
-        await EnsureConnected(cancellationToken).ConfigureAwait(false);
+        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         await HubConnection.SendAsync("RecordSourceAudio",
                 session,
                 audioRecord,
@@ -55,7 +55,7 @@ public class AudioClient : HubClientBase,
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        await EnsureConnected(cancellationToken).ConfigureAwait(false);
+        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         return await HubConnection.StreamAsChannelAsync<TranscriptUpdate>("GetTranscriptStream",
                 streamId,
                 cancellationToken)
