@@ -38,6 +38,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chat = State.ValueOrDefault?.Chat;
         if (chat == null || HistoricalPlayer?.ChatId == chat.Id)
             return;
+
         var user = await Auth.GetUser(Session);
 
         // ChatId changed, so we must recreate players
@@ -46,13 +47,13 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             Session = Session,
             ChatId = chat.Id,
         };
-        var wasPlaying = RealtimePlayer?.IsPlaying ?? true;
+        var wasPlaying = RealtimePlayer?.IsPlaying ?? false;
         RealtimePlayer?.Dispose();
         RealtimePlayer = new (Services) {
             Session = Session,
             ChatId = chat.Id,
             IsRealTimePlayer = true,
-            SilencedAuthorIds = user.IsAuthenticated ? Option.Some((UserId) user.Id) : Option<UserId>.None,
+            SilencedAuthorIds = user.IsAuthenticated ? Option.Some((UserId)user.Id) : Option<UserId>.None,
         };
         if (wasPlaying)
             _ = RealtimePlayer.Play();

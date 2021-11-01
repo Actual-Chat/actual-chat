@@ -17,7 +17,7 @@ public abstract class HubClientBase
         Services = services;
         Log = Services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
-        _hubConnectionLazy = new Lazy<HubConnection>(CreateHubConnection);
+        _hubConnectionLazy = new (CreateHubConnection);
     }
 
     protected HubConnection CreateHubConnection()
@@ -32,26 +32,27 @@ public abstract class HubClientBase
 
     protected async ValueTask EnsureConnected(CancellationToken cancellationToken)
     {
-        if  (HubConnection.State != HubConnectionState.Disconnected)
+        if (HubConnection.State == HubConnectionState.Connected)
             return;
 
         var delayInterval = 500;
         var attempt = 0;
-        while (attempt < 10)
+        while (HubConnection.State != HubConnectionState.Connected || attempt < 10)
             try {
                 attempt++;
                 if (HubConnection.State == HubConnectionState.Disconnected)
                     await HubConnection.StartAsync(cancellationToken).ConfigureAwait(false);
                 else
-                    return;
+                    await Task.Delay(500, cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException e) {
+                Log.LogError(e, "HubClientBase.EnsureConnected - Operation cancelled");
                 throw;
             }
-            catch(Exception e) {
-                Log.LogError(e, "Failed to reconnect SignalR Hub");
+            catch (Exception e) {
+                Log.LogError(e, "HubClientBase.EnsureConnected - Failed to reconnect SignalR Hub");
                 await Task.Delay(delayInterval, cancellationToken).ConfigureAwait(false);
-                if (delayInterval < 5000)
+                if (delayInterval < 10000)
                     delayInterval += Random.Shared.Next(1000);
             }
     }
