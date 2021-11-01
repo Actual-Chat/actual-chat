@@ -29,11 +29,6 @@
                 </span>
                 <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
             </div>
-            @if (Entry.TextToTimeMap != null) {
-                <span @onclick="OnPlay" class="mr-2 cursor-pointer select-none opacity-75 hover:opacity-100">
-                    <i class="fa fa-play text-green-600" aria-hidden="true"></i>
-                </span>
-            }
             @if (Entry.IsStreaming) {
                 <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
             } else {
