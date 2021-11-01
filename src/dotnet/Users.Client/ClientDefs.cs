@@ -6,14 +6,7 @@ namespace ActualChat.Users.Client;
 public interface ISessionInfoServiceDef
 {
     [Post(nameof(Update))]
-    Task Update([Body] ISessionInfoService.UpsertData command, CancellationToken cancellationToken);
-}
-
-[BasePath("users/author")]
-public interface IDefaultAuthorDef
-{
-    [Get(nameof(Get))]
-    Task<DefaultAuthor> Get(UserId userId, CancellationToken cancellationToken);
+    Task Update([Body] ISessionInfoService.UpsertCommand command, CancellationToken cancellationToken);
 }
 
 // unused for now

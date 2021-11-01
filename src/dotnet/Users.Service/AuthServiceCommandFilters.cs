@@ -26,6 +26,26 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
+    /// <summary> The filter which clears Sessions.OptionsJson field in the database </summary>
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        try {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+            var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbSession != null) {
+                dbSession.Options = new ImmutableOptionSet();
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
     /// <summary> Takes care of invalidation of IsOnlineAsync once user signs in. </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
     public virtual async Task OnSignInMarkOnline(SignInCommand command, CancellationToken cancellationToken)

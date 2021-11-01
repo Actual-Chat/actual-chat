@@ -7,8 +7,8 @@ namespace ActualChat.Chat.Client;
 public interface IAuthorServiceFacadeDef
 {
     /// <inheritdoc cref="IAuthorServiceFacade.GetByUserId(Session, UserId, CancellationToken)"/>
-    [Get(nameof(GetByUserId))]
-    Task<Author> GetByUserId(Session session, UserId userId, CancellationToken cancellationToken);
+    [Get(nameof(GetByUserIdAndChatId))]
+    Task<Author?> GetByUserIdAndChatId(Session session, UserId userId, ChatId chatId, CancellationToken cancellationToken);
 
     /// <inheritdoc cref="IAuthorServiceFacade.Get(AuthorId, CancellationToken)"/>
     [Get(nameof(GetByAuthorId))]

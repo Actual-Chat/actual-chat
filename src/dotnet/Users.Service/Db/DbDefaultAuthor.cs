@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,7 +14,7 @@ public class DbDefaultAuthor : IAuthorInfo
     public string UserId { get; set; } = "";
 
     /// <summary> The url of the author avatar. </summary>
-    public string Picture { get; set; } = "";
+    public string? Picture { get; set; }
 
     /// <summary> @{Nickame}, e.g. @ivan </summary>
     public string Nickname { get; set; } = "";

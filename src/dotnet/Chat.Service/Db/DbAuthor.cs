@@ -12,11 +12,8 @@ namespace ActualChat.Chat.Db;
 /// </summary>
 public class DbAuthor : IAuthorInfo, IHasId<string>, IHasVersion<long>
 {
-    [Key]
-    public string Id { get; set; } = "";
-    [ConcurrencyCheck]
+    public string Id { get; set; } = null!;
     public long Version { get; set; }
-    public string? UserId { get; set; }
     /// <inheritdoc />
     public string? Picture { get; set; }
     /// <inheritdoc />
@@ -24,6 +21,7 @@ public class DbAuthor : IAuthorInfo, IHasId<string>, IHasVersion<long>
     /// <inheritdoc />
     public string? Name { get; set; }
     /// <inheritdoc />
+    /// TODO: move this to the <see cref="DbChatUser"/> (?)
     public bool IsAnonymous { get; set; }
 
     public DbAuthor() { }
@@ -41,8 +39,9 @@ public class DbAuthor : IAuthorInfo, IHasId<string>, IHasVersion<long>
         public void Configure(EntityTypeBuilder<DbAuthor> builder)
         {
             builder.ToTable("Authors");
-            builder.HasIndex(a => a.UserId);
-            builder.Property(a => a.Id).ValueGeneratedOnAdd();
+            builder.HasKey(a => a.Id);
+            builder.Property(a => a.Version).IsConcurrencyToken();
+            builder.Property(a => a.Id).ValueGeneratedOnAdd().HasValueGenerator<UlidValueGenerator>();
             builder.HasMany<DbChatEntry>().WithOne(x => x.Author).HasForeignKey(x => x.AuthorId);
         }
     }

@@ -111,7 +111,7 @@ public class ChatService : DbServiceBase<ChatDbContext>, IChatService
                 _ = GetEntryCount(chatId, idRange, default);
         }
     }
-    // TODO: move code inside commands (?)
+    // TODO: move the code inside commands (?)
     private async Task<DbChatEntry> DbAddOrUpdate(
         ChatDbContext dbContext,
         ChatEntry chatEntry,

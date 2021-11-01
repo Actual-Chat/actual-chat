@@ -13,10 +13,11 @@ public class AuthorController : ControllerBase, IAuthorServiceFacade
         => _service = service;
 
     [HttpGet, Publish]
-    public Task<Author> GetByUserId(Session session, UserId userId, CancellationToken cancellationToken)
-        => _service.GetByUserId(session, userId, cancellationToken);
+    public Task<Author?> GetByUserIdAndChatId(Session session, UserId userId, ChatId chatId, CancellationToken cancellationToken)
+        => _service.GetByUserIdAndChatId(session, userId, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<AuthorInfo> GetByAuthorId(Session session, AuthorId authorId, CancellationToken cancellationToken)
+    public Task<AuthorInfo?> GetByAuthorId(Session session, AuthorId authorId, CancellationToken cancellationToken)
         => _service.GetByAuthorId(session, authorId, cancellationToken);
+
 }

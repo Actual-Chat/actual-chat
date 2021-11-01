@@ -21,7 +21,8 @@ namespace ActualChat.Chat.Module
             await Task.WhenAll(dependencies).ConfigureAwait(false);
 
             var dbContextFactory = Services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
-            await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+            await using var _ = dbContext.ConfigureAwait(false);
 
             if (ShouldRecreateDb) {
                 // Creating "The Actual One" chat
@@ -42,12 +43,17 @@ namespace ActualChat.Chat.Module
                 };
                 var dbAuthor = new DbAuthor() {
                     Id = UserConstants.Admin.AuthorId,
-                    UserId = UserConstants.Admin.UserId,
                     Name = UserConstants.Admin.Name,
                     Picture = UserConstants.Admin.Picture,
                     IsAnonymous = true,
                 };
+                var dbChatUser = new DbChatUser() {
+                    AuthorId = dbAuthor.Id,
+                    ChatId = dbChat.Id,
+                    UserId = adminUserId,
+                };
                 await dbContext.Authors.AddAsync(dbAuthor, cancellationToken).ConfigureAwait(false);
+                await dbContext.ChatUsers.AddAsync(dbChatUser, cancellationToken).ConfigureAwait(false);
                 await dbContext.Chats.AddAsync(dbChat, cancellationToken).ConfigureAwait(false);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

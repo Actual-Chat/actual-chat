@@ -19,17 +19,23 @@ public class AuthorServiceFacade : IAuthorServiceFacade
     }
 
     /// <inheritdoc />
-    public virtual async Task<Author> GetByUserId(Session session, UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<Author?> GetByUserIdAndChatId(
+        Session session,
+        UserId userId,
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         await AssertHasPermissions(session, userId, cancellationToken).ConfigureAwait(false);
-        return await _authorService.GetByUserId(userId, cancellationToken).ConfigureAwait(false);
+        return await _authorService.GetByUserIdAndChatId(userId, chatId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public virtual async Task<AuthorInfo> GetByAuthorId(Session session, AuthorId authorId, CancellationToken cancellationToken)
+    public virtual async Task<AuthorInfo?> GetByAuthorId(Session session, AuthorId authorId, CancellationToken cancellationToken)
     {
         // today we don't have "invisible" status and anyone can read the real author status (but not userId)
         var author = await _authorService.GetByAuthorId(authorId, cancellationToken).ConfigureAwait(false);
+        if(author == null)
+            return null;
         return new(author);
     }
 

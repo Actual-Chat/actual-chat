@@ -83,8 +83,8 @@ public class ChatServiceFacade : IChatServiceFacade
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
-        var authorId = await GetAuthorId(session, chatId, cancellationToken).ConfigureAwait(false)
-            ?? await CreateNewAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var authorId = await GetAuthorIdFromSession(session, chatId, cancellationToken).ConfigureAwait(false)
+            ?? await GetOrAddAuthorIdFromDatabase(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var chatEntry = new ChatEntry() {
             ChatId = chatId,
@@ -128,18 +128,26 @@ public class ChatServiceFacade : IChatServiceFacade
     }
 
     // TODO: move this under an abstraction like IAuthorIdAccessor
-    private async Task<string?> GetAuthorId(Session session, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<string?> GetAuthorIdFromSession(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
         var sessionInfo = await _auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         return sessionInfo.Options[$"{chatId}::authorId"] as string;
     }
 
-    private async Task<string> CreateNewAuthor(Session session, ChatId chatId, CancellationToken cancellationToken)
+    private async Task<string> GetOrAddAuthorIdFromDatabase(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var authorId = await _authorService.CreateAuthor(new(user.Id), cancellationToken).ConfigureAwait(false);
-        var ctx = await _commander.Call(
-            new ISessionInfoService.UpsertData(session, new($"{chatId}::authorId", authorId)),
+        var author = await _authorService.GetByUserIdAndChatId(user.Id, chatId, cancellationToken).ConfigureAwait(false);
+        var authorId = author?.AuthorId ?? AuthorId.None;
+        var userId = user.IsAuthenticated ? user.Id : UserId.None;
+        if (authorId.IsNone) {
+            authorId = await _authorService.CreateAuthor(new(userId, chatId), cancellationToken).ConfigureAwait(false);
+        }
+        await _commander.Call(
+            new ISessionInfoService.UpsertCommand(session, new($"{chatId}::authorId", authorId)),
             isolate: true,
             cancellationToken
         ).ConfigureAwait(false);

@@ -5,7 +5,8 @@ namespace ActualChat.Chat;
 /// <inheritdoc cref="IAuthorInfo"/>
 public record class Author : AuthorInfo
 {
-    public UserId UserId { get; init; } = UserId.None;
+    public AuthorId AuthorId { get; init; }
+    public UserId UserId { get; init; }
     public Author() { }
     public Author(IAuthorInfo info) : base(info) { }
 }

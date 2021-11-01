@@ -18,7 +18,7 @@ public class SessionController : ControllerBase, ISessionInfoService
     }
 
     [HttpPost]
-    public Task Update([FromBody] ISessionInfoService.UpsertData command, CancellationToken cancellationToken)
+    public Task Update([FromBody] ISessionInfoService.UpsertCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _sessionService.Update(command, cancellationToken);

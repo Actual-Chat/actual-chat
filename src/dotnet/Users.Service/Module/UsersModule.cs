@@ -51,6 +51,8 @@ public class UsersModule : HostModule<UsersSettings>
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         });
 
+        services.AddSingleton<INicknameGenerator, NicknameGenerator>();
+
         // DB-related
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db);
@@ -105,11 +107,10 @@ public class UsersModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserInfoService, UserInfoService>();
         fusion.AddComputeService<IUserStateService, UserStateService>();
         fusion.AddComputeService<IDefaultAuthorService, DefaultAuthorService>();
+        fusion.AddComputeService<ISessionInfoService, SessionInfoService>();
         services.AddCommander()
-            .AddCommandService<AuthServiceCommandFilters>()
-            .AddCommandService<SessionInfoService>();
+            .AddCommandService<AuthServiceCommandFilters>();
         services.AddSingleton<IClaimsToAuthorMapper, ClaimsToAuthorMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepository>());
-        services.AddSingleton<ISessionInfoService>(sp => sp.GetRequiredService<SessionInfoService>());
     }
 }
