@@ -77,7 +77,7 @@ export class AudioRecorder {
                 // as soon as the stream is available
                 ondataavailable: async (blob) => {
                     if (this.debugMode) {
-                        console.log(`${LogScope}.startRecording: awaiting blob.arrayBuffer(), Blob size: ${blob.size}`);
+                        console.log(`${LogScope}.startRecording: awaiting blob.arrayBuffer(), blob.size = ${blob.size}`);
                     }
                     try {
                         let buffer = await blob.arrayBuffer();
