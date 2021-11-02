@@ -4,8 +4,9 @@ namespace ActualChat.Playback;
 
 public abstract class MediaTrackPlayer : AsyncProcessBase
 {
+    private readonly TaskCompletionSource _playbackCompleted;
+    private readonly object _stateLock = new ();
     private volatile MediaTrackPlaybackState _state;
-    private readonly object _stateLock = new();
 
     protected MomentClockSet Clocks { get; }
     protected ILogger<MediaTrackPlayer> Log { get; }
@@ -35,7 +36,8 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         Log = log;
         Clocks = clocks;
         Command = command;
-        _state = new MediaTrackPlaybackState(command.TrackId, command.RecordingStartedAt);
+        _playbackCompleted = new ();
+        _state = new (command.TrackId, command.RecordingStartedAt);
         _ = Run();
     }
 
@@ -71,14 +73,14 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
                 await ProcessCommand(stopCommand).ConfigureAwait(false);
             }
             finally {
-                lock (_stateLock) {
-                    if (!_state.IsCompleted)
-                        OnStopped();
-                }
+                // lock (_stateLock)
+                //     if (!_state.IsCompleted)
+                //         OnStopped();
                 // AY: Sorry, but it's a self-disposing thing
                 _ = DisposeAsync();
             }
         }
+        await _playbackCompleted.Task.ConfigureAwait(false);
     }
 
     // Protected methods
@@ -86,14 +88,15 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
-    protected virtual void OnStarted()
-        => UpdateState(s => s with { IsStarted = true });
-
     protected virtual void OnPlayedTo(TimeSpan offset)
         => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = o });
 
     protected virtual void OnStopped(Exception? error = null)
-        => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
+    {
+        _playbackCompleted.TrySetResult();
+
+        UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
+    }
 
     protected virtual void OnVolumeSet(double volume)
         => UpdateState(volume, (v, s) => s with { Volume = v });

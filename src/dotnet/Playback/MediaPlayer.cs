@@ -4,6 +4,7 @@ namespace ActualChat.Playback;
 
 public sealed class MediaPlayer : IDisposable
 {
+    private readonly ILogger<MediaPlayer> _log;
     private CancellationTokenSource _stopPlayingCts = null!;
 
     public IMediaPlayerService MediaPlayerService { get; }
@@ -13,8 +14,9 @@ public sealed class MediaPlayer : IDisposable
     public CancellationToken StopToken { get; private set; }
     public event Action<MediaPlayer>? StateChanged;
 
-    public MediaPlayer(IMediaPlayerService mediaPlayerService)
+    public MediaPlayer(IMediaPlayerService mediaPlayerService, ILogger<MediaPlayer> log)
     {
+        _log = log;
         MediaPlayerService = mediaPlayerService;
         Reset(false);
     }
@@ -54,12 +56,20 @@ public sealed class MediaPlayer : IDisposable
     public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
         => AddCommand(new SetVolumeCommand(volume), cancellationToken);
 
-    public Task Stop()
+    public async Task Stop()
     {
         var playingTask = PlayingTask;
+
+        if (!playingTask.IsCompleted) {
+            var stopCompletion = new TaskCompletionSource();
+            var stopCommand = new StopCommand(stopCompletion);
+            await AddCommand(stopCommand, CancellationToken.None).ConfigureAwait(false);
+            await stopCommand.CommandProcessed.ConfigureAwait(false);
+        }
+
         _stopPlayingCts.CancelAndDisposeSilently();
         Reset();
-        return playingTask.SuppressExceptions();
+        await playingTask.SuppressExceptions();
     }
 
     // Private methods
