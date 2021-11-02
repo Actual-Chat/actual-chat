@@ -14,7 +14,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private CancellationTokenSource _delayTokenSource;
     private IJSObjectReference? _jsRef;
-    private bool DebugMode { get; } = false;
+    private bool DebugMode { get; } = true;
 
     public AudioSource AudioSource => (AudioSource)Source;
     public byte[] Header { get; }
@@ -29,13 +29,13 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _circuitContext = circuitContext;
         _js = js;
-        _delayTokenSource = new CancellationTokenSource();
+        _delayTokenSource = new ();
 
         Header = Convert.FromBase64String(AudioSource.Format.CodecSettings);
     }
 
     [JSInvokable]
-    public void OnPlaybackEnded(int? errorCode, string? errorMessage)
+    public async Task OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
         Exception? error = null;
         if (errorMessage != null) {
@@ -46,23 +46,33 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         }
 
         OnStopped(error);
+
+        var jsRef = _jsRef;
+        _jsRef = null;
+
+        if (jsRef != null)
+            await jsRef.DisposeAsync().ConfigureAwait(true);
     }
 
     [JSInvokable]
-    public void OnPlaybackTimeChanged(double? offset)
+    public Task OnPlaybackTimeChanged(double? offset)
     {
         if (offset != null)
             OnPlayedTo(TimeSpan.FromSeconds(offset.Value));
+
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public void OnDataWaiting(double? offset, int? readyState)
+    public Task OnDataWaiting(double? offset, int? readyState)
     {
         _delayTokenSource.Cancel();
         _delayTokenSource.Dispose();
-        _delayTokenSource = new CancellationTokenSource();
+        _delayTokenSource = new ();
 
         Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {readyState}", offset, readyState);
+
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
@@ -79,7 +89,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                         _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                         _jsRef = await _js.InvokeAsync<IJSObjectReference>(
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                            _blazorRef);
+                            _blazorRef,
+                            DebugMode);
                         await _jsRef!.InvokeVoidAsync("initialize", Header);
                         break;
                     case StopPlaybackCommand stop:
@@ -90,7 +101,6 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                             await _jsRef.InvokeVoidAsync("stop", null);
                         else
                             await _jsRef.InvokeVoidAsync("endOfStream");
-                        await _jsRef.DisposeAsync();
                         break;
                     case SetTrackVolumeCommand setVolume:
                         // TODO: Implement this
@@ -103,11 +113,14 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
     protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
         => await CircuitInvoke(async () => {
+                if (_jsRef == null)
+                    return;
+
                 using var cts = cancellationToken.LinkWith(_delayTokenSource.Token);
                 var token = cts.Token;
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
-                var buffered = await _jsRef!.InvokeAsync<double>("appendAudio", token, chunk, offset);
+                var buffered = await _jsRef.InvokeAsync<double>("appendAudio", token, chunk, offset);
 
                 if (buffered > 10)
                     await Task.Delay(TimeSpan.FromSeconds(5), token);
@@ -115,7 +128,15 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
             .ConfigureAwait(false);
 
     private Task CircuitInvoke(Func<Task> workItem)
-        => _circuitContext.IsDisposing
-            ? Task.CompletedTask
-            : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
+    {
+        try {
+            return _circuitContext.IsDisposing
+                ? Task.CompletedTask
+                : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
+        }
+        catch (Exception e) {
+            Log.LogError(e, $"{nameof(CircuitInvoke)}: error processing audio command");
+        }
+        return Task.CompletedTask;
+    }
 }

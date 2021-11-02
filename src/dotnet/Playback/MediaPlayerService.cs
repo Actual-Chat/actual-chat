@@ -51,10 +51,21 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
                     trackPlayers[commandRef] = trackPlayer;
                     break;
                 case SetVolumeCommand setVolume:
-                    var tasks = trackPlayers.Values
+                    var volumeTasks = trackPlayers.Values
                         .Select(p => p.EnqueueCommand(new SetTrackVolumeCommand(p, setVolume.Volume)).AsTask())
                         .ToArray();
-                    await Task.WhenAll(tasks).ConfigureAwait(false);
+                    await Task.WhenAll(volumeTasks).ConfigureAwait(false);
+                    break;
+                case StopCommand stopCommand:
+                    try {
+                        var stopTasks = trackPlayers.Values
+                            .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, true)).AsTask())
+                            .ToArray();
+                        await Task.WhenAll(stopTasks).ConfigureAwait(false);
+                    }
+                    finally {
+                        stopCommand.CommandProcessedSource.SetResult();
+                    }
                     break;
                 default:
                     throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
