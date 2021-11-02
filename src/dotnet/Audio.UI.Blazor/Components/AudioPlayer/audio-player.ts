@@ -60,6 +60,12 @@ export class AudioPlayer {
         });
         this._audio.addEventListener('timeupdate', e => {
             let time = this._audio.currentTime;
+            if (this._audio.readyState !== this._lastReadyState) {
+                if (this._debugMode)
+                    console.log(`${LogScope}.timeupdate: new _audio.readyState = ${this.getReadyState()}`);
+            }
+            this._lastReadyState = this._audio.readyState;
+
             let _ = this.invokeOnPlaybackTimeChanged(time);
         });
         this._audio.addEventListener('canplay', _ => {
