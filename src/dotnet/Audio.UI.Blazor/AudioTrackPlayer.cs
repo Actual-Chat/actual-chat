@@ -130,7 +130,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private Task CircuitInvoke(Func<Task> workItem)
     {
         try {
-            return _circuitContext.IsDisposing
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            return _circuitContext.IsDisposing || _circuitContext.RootComponent == null
                 ? Task.CompletedTask
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }
