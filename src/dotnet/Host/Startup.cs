@@ -1,6 +1,5 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.Module;
-using ActualChat.Chat.Client;
 using ActualChat.Chat.Module;
 using ActualChat.Db.Module;
 using ActualChat.Host.Module;

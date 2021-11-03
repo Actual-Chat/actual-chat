@@ -1,4 +1,4 @@
-namespace ActualChat.Chat;
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public interface IChatMediaResolver
 {

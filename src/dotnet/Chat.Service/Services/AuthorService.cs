@@ -6,7 +6,7 @@ using Stl.Fusion.EntityFramework;
 namespace ActualChat.Chat;
 
 /// <inheritdoc cref="IAuthorService"/>
-public class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
+internal class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
 {
     private readonly IDefaultAuthorService _defaultAuthorService;
     private readonly INicknameGenerator _nicknameGenerator;
@@ -92,7 +92,7 @@ public class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
     }
 
     /// <inheritdoc />
-    [CommandHandler, Internal]
+    [CommandHandler]
     public virtual async Task<AuthorId> CreateAuthor(IAuthorService.CreateAuthorCommand command, CancellationToken cancellationToken)
     {
         var (userId, chatId) = command;

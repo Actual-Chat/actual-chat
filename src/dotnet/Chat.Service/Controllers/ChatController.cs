@@ -5,12 +5,12 @@ namespace ActualChat.Chat.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors]
-public class ChatController : ControllerBase, IChatServiceFacade
+public class ChatController : ControllerBase, IChatServiceFrontend
 {
-    private readonly IChatServiceFacade _chats;
+    private readonly IChatServiceFrontend _chats;
     private readonly ISessionResolver _sessionResolver;
 
-    public ChatController(IChatServiceFacade chats, ISessionResolver sessionResolver)
+    public ChatController(IChatServiceFrontend chats, ISessionResolver sessionResolver)
     {
         _chats = chats;
         _sessionResolver = sessionResolver;
@@ -19,14 +19,14 @@ public class ChatController : ControllerBase, IChatServiceFacade
     // Commands
 
     [HttpPost]
-    public Task<Chat> CreateChat([FromBody] IChatServiceFacade.CreateChatCommand command, CancellationToken cancellationToken)
+    public Task<Chat> CreateChat([FromBody] IChatServiceFrontend.CreateChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _chats.CreateChat(command, cancellationToken);
     }
 
     [HttpPost]
-    public Task<ChatEntry> CreateEntry([FromBody] IChatServiceFacade.CreateEntryCommand command, CancellationToken cancellationToken)
+    public Task<ChatEntry> CreateEntry([FromBody] IChatServiceFrontend.CreateEntryCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _chats.CreateEntry(command, cancellationToken);

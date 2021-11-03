@@ -2,6 +2,7 @@
 @page "/chat/{ChatId}"
 @namespace ActualChat.Chat.UI.Blazor.Pages
 @using ActualChat.Comparison
+@using ActualChat.Chat.UI.Blazor.Services
 @inherits ComputedStateComponent<ChatPageModel>
 @inject NavigationManager _nav
 
@@ -51,10 +52,6 @@
 </div>
 
 @code {
-
-    [Parameter]
-    public string ChatId { get; set; } = "";
-
     private async Task OnMessagePlayClick((ChatEntry Entry, double SkipTo) what) {
         var (entry, skipTo) = what;
         if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue)
@@ -71,5 +68,4 @@
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(skipTo);
         _ = HistoricalPlayer.Play(startAt);
     }
-
 }
