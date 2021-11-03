@@ -80,8 +80,6 @@ public class Startup
         Plugins = new PluginHostBuilder(pluginServices).Build();
         HostModules = Plugins
             .GetPlugins<HostModule>()
-            // We don't use microservices for now, so no backend clients
-            .Where(x => !x.Name.Contains("Backend.Client", StringComparison.Ordinal))
             .OrderBy(m => m is not AppHostModule) // MainHostModule should be the first one
             .ToImmutableArray();
 
