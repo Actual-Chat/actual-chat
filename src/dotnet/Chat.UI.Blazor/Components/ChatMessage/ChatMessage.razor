@@ -1,6 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using TaskExt = Stl.Async.TaskExt
-@using ActualChat.Users
 @inherits ComputedStateComponent<ChatMessageModel>
 
 @{
@@ -37,7 +35,7 @@
             @if (Entry.IsStreaming) {
                 <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
             } else {
-                <ChatMessageText Text="@Entry.Content" TextToTimeMap="@Entry.TextToTimeMap" OnWordClick="OnTextWordClick"/>
+                <ChatMessageText Entry="@Entry" OnWordClick="OnTextWordClick"/>
             }
         </div>
     </div>
@@ -81,4 +79,5 @@
         if (PlayClick.HasDelegate)
             PlayClick.InvokeAsync((Entry, offset));
     }
+
 }

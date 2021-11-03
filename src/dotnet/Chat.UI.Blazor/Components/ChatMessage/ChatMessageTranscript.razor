@@ -4,9 +4,9 @@
 @inject BlazorCircuitContext _circuitContext
 @inject ILogger<ChatMessageTranscript> _log
 
-<div>
-    <span class="ml-2">@_transcript.Text</span>
-</div>
+<p>
+    <span>@_transcript.Text</span>
+</p>
 
 @code {
     private CancellationTokenSource? _cancellationTokenSource;
@@ -41,10 +41,10 @@
     private async Task ReadTranscript(ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken) {
         try {
             while (await transcriptUpdates.WaitToReadAsync(cancellationToken))
-            while (transcriptUpdates.TryRead(out var update)) {
-                _transcript = _transcript.WithUpdate(update);
-                StateHasChanged();
-            }
+                while (transcriptUpdates.TryRead(out var update)) {
+                    _transcript = _transcript.WithUpdate(update);
+                    StateHasChanged();
+                }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             _log.LogError(e, "Error while reading the transcript");
