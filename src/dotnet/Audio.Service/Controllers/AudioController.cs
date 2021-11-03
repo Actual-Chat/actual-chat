@@ -12,6 +12,7 @@ public class AudioController : ControllerBase
         => _blobStorageProvider = blobStorageProvider;
 
     [HttpGet("{**blobId}")]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
     public async Task<FileStreamResult> Download(string blobId, CancellationToken cancellationToken)
     {
         var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecord);
