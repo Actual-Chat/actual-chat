@@ -1,11 +1,19 @@
-@using ActualChat.Mathematics
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Playback
+@using ActualChat.Chat.UI.Blazor.Services
+@implements IAsyncDisposable
+@inject IMediaPlayerService _mediaPlayerService
+
 @if (Words == null) {
-    <p class="text">@Text</p>
+    <p class="text">@Entry.Content</p>
 } else {
     <p>
         @foreach (var (word, offset) in Words!) {
-            <span class="word" @onclick="() => HandleWordClick(offset)">@word</span>
+            var cls = "word text-current";
+            if (PlaybackState != null) {
+                cls = "word text-red-600";
+            }
+            <span class="@cls" @onclick="() => HandleWordClick(offset)">@word</span>
         }
     </p>
 }
@@ -14,32 +22,38 @@
 
     [Parameter]
     [EditorRequired]
-    public string Text { get; set; } = null!;
-
-    [Parameter]
-    public LinearMap? TextToTimeMap { get; set; }
+    public ChatEntry Entry { get; set; } = null!;
 
     [Parameter]
     public EventCallback<double> OnWordClick { get; set; }
 
+    private MediaTrackPlaybackState? PlaybackState { get; set; }
+
     private IReadOnlyCollection<(string,double)>? Words { get; set; }
+
+    private CancellationTokenSource? WaitForPlaybackTokenSource { get; set; }
 
 
     protected override Task OnParametersSetAsync() {
-        if (TextToTimeMap != null && !Text.IsNullOrEmpty()) {
-            var map = TextToTimeMap.Value;
+        if (Entry.TextToTimeMap != null && !Entry.Content.IsNullOrEmpty()) {
+            var map = Entry.TextToTimeMap.Value;
             var words = new List<(string, double)>();
             var previousBoundary = 0;
             for (var i = 1; i < map.SourcePoints.Length - 1; i++) {
                 var boundary = map.SourcePoints[i];
                 var currentBoundary = (int)boundary;
-                words.Add((Text[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0));
+                words.Add((Entry.Content[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0));
                 previousBoundary = currentBoundary;
             }
             if (words.Count != 0) {
-                words.Add((Text[previousBoundary..], map.Map(previousBoundary) ?? 0));
+                words.Add((Entry.Content[previousBoundary..], map.Map(previousBoundary) ?? 0));
                 Words = words;
             }
+
+            var trackId = MediaTrackId.GetAudioTrackId(Entry);
+            WaitForPlaybackTokenSource = new();
+            var ct = WaitForPlaybackTokenSource.Token;
+            _ = Task.Run(() => WaitForPlayback(trackId, ct), ct);
         }
 
         return base.OnParametersSetAsync();
@@ -48,6 +62,33 @@
     private void HandleWordClick(double offset) {
         if (OnWordClick.HasDelegate)
             OnWordClick.InvokeAsync(offset);
+    }
+
+    private async Task WaitForPlayback(Symbol trackId, CancellationToken cancellationToken) {
+        var playbackStateComputed = await Computed
+            .Capture(ct => _mediaPlayerService.GetMediaTrackPlaybackState(trackId, ct), cancellationToken)
+            .ConfigureAwait(false);
+
+        var playbackState = playbackStateComputed.Value;
+        if (playbackState != null) {
+            PlaybackState = playbackState;
+            StateHasChanged();
+        }
+        while (true) {
+            await playbackStateComputed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
+            playbackStateComputed = await playbackStateComputed.Update(cancellationToken).ConfigureAwait(true);
+            playbackState = playbackStateComputed.Value;
+            if (playbackState != null) {
+                PlaybackState = playbackState;
+                StateHasChanged();
+            }
+        }
+    }
+
+    public ValueTask DisposeAsync() {
+        WaitForPlaybackTokenSource?.Cancel();
+        WaitForPlaybackTokenSource?.Dispose();
+        return ValueTask.CompletedTask;
     }
 
 }
