@@ -51,7 +51,9 @@ public class ChatServiceModule : HostModule<ChatSettings>
 
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
-                return commandAssembly == typeof(Chat).Assembly;
+                return commandAssembly == typeof(Chat).Assembly
+                    || commandAssembly == typeof(IAuthorService.CreateAuthorCommand).Assembly
+                    || commandAssembly == typeof(IChatService.CreateChatCommand).Assembly;
             });
 
         services.AddMvc().AddApplicationPart(GetType().Assembly);

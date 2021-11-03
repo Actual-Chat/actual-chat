@@ -7,15 +7,18 @@ internal class ChatServiceFrontend : IChatServiceFrontend
     private readonly IChatService _chatService;
     private readonly IAuthService _auth;
     private readonly IAuthorServiceBackend _authorService;
+    private readonly ICommander _commander;
 
     public ChatServiceFrontend(
         IAuthService auth,
         IChatService chatService,
-        IAuthorServiceBackend authorService)
+        IAuthorServiceBackend authorService,
+        ICommander commander)
     {
         _auth = auth;
         _chatService = chatService;
         _authorService = authorService;
+        _commander = commander;
     }
 
     public virtual async Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -75,6 +78,7 @@ internal class ChatServiceFrontend : IChatServiceFrontend
             return default!;
 
         var (session, chatId, text) = command;
+        var context = CommandContext.GetCurrent();
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
@@ -88,7 +92,11 @@ internal class ChatServiceFrontend : IChatServiceFrontend
             Type = ChatEntryType.Text,
         };
 
-        return await _chatService.CreateEntry(new(chatEntry), cancellationToken).ConfigureAwait(false);
+        return await _commander.Call(
+            new IChatService.CreateEntryCommand(chatEntry),
+            isolate: true,
+            cancellationToken
+            ).ConfigureAwait(false);
     }
 
     [CommandHandler]

@@ -18,6 +18,6 @@ public class ChatBackendClientModule : HostModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        // NOOP for now, because we don't use several microservices and calls between them.
+        // We don't use several microservices, so no backend clients for now.
     }
 }
