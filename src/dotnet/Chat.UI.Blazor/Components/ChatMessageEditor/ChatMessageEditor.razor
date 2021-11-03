@@ -3,7 +3,7 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
 @implements IAsyncDisposable
-@inject IChatServiceFacade _chats
+@inject IChatServiceFrontend _chatService
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
@@ -47,7 +47,7 @@
     private async Task Post() {
         if (ChatId.IsNullOrEmpty() || Message.IsNullOrEmpty())
             return;
-        var (_, ce) = await _cmd.Run(new IChatServiceFacade.CreateEntryCommand(_session, ChatId, Message));
+        var (_, ce) = await _cmd.Run(new IChatServiceFrontend.CreateEntryCommand(_session, ChatId, Message));
         if (ce.IsFailed)
             return;
         Message = "";

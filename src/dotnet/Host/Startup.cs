@@ -1,6 +1,5 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.Module;
-using ActualChat.Chat.Client;
 using ActualChat.Chat.Module;
 using ActualChat.Db.Module;
 using ActualChat.Host.Module;
@@ -81,6 +80,8 @@ public class Startup
         Plugins = new PluginHostBuilder(pluginServices).Build();
         HostModules = Plugins
             .GetPlugins<HostModule>()
+            // we don't use microservices for now
+            .Where(x => !x.Name.Contains("Backend.Client", StringComparison.Ordinal))
             .OrderBy(m => m is not AppHostModule) // MainHostModule should be the first one
             .ToImmutableArray();
 

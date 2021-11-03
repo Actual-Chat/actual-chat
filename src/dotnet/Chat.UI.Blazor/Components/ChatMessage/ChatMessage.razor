@@ -47,7 +47,7 @@
     private readonly int _seed = Random.Shared.Next();
 
     [Inject]
-    protected IAuthorServiceFacade Authors { get; set; } = null!;
+    protected IAuthorServiceFrontend Authors { get; set; } = null!;
 
     [Inject]
     protected Session Session { get; set; } = null!;

@@ -1,22 +1,22 @@
 using Stl.Fusion.Interception;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryReader
 {
-    private IChatServiceFacade Chats { get; }
-    private MomentClockSet Clocks { get; }
+    private readonly IChatServiceFrontend _chats;
+    private readonly MomentClockSet _clocks;
 
     public Session Session { get; init; } = Session.Null;
-    public ChatId ChatId { get; init; } = default;
+    public ChatId ChatId { get; init; }
     public TimeSpan InvalidationWaitTimeout { get; init; } = TimeSpan.FromMilliseconds(50);
 
-    public ChatEntryReader(IChatServiceFacade chats)
+    public ChatEntryReader(IChatServiceFrontend chats)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         var services = ((IComputeService)chats).GetServiceProvider();
-        Chats = chats;
-        Clocks = services.Clocks();
+        _chats = chats;
+        _clocks = services.Clocks();
     }
 
     public async IAsyncEnumerable<ChatEntry> GetAllAfter(
@@ -26,13 +26,13 @@ public sealed class ChatEntryReader
         CancellationToken cancellationToken)
     {
         var idRangeComputed = await Computed
-            .Capture(ct => Chats.GetIdRange(Session, ChatId, ct), cancellationToken)
+            .Capture(ct => _chats.GetIdRange(Session, ChatId, ct), cancellationToken)
             .ConfigureAwait(false);
         var lastReadEntryId = minEntryId - 1;
         while (true) {
             var tile = ChatConstants.IdTiles.GetMinCoveringTile(lastReadEntryId + 1);
             var entriesComputed = await Computed
-                .Capture(ct => Chats.GetEntries(Session, ChatId, tile, ct), cancellationToken)
+                .Capture(ct => _chats.GetEntries(Session, ChatId, tile, ct), cancellationToken)
                 .ConfigureAwait(false);
 
             var entries = entriesComputed.Value;
@@ -70,7 +70,7 @@ public sealed class ChatEntryReader
                 //    In this case we want to probably adjust the tile by re-entering this block
                 //    after timeout.
                 await entriesComputed.WhenInvalidated(cancellationToken)
-                    .WithTimeout(Clocks.CpuClock, InvalidationWaitTimeout, cancellationToken)
+                    .WithTimeout(_clocks.CpuClock, InvalidationWaitTimeout, cancellationToken)
                     .ConfigureAwait(false);
             }
         }
@@ -80,7 +80,7 @@ public sealed class ChatEntryReader
     {
         // Let's bisect (minId, maxId) range to find the right entry
         var entryId = 0L;
-        var (minId, maxId) = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
+        var (minId, maxId) = await _chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
         while (minId < maxId) {
             entryId = minId + ((maxId - minId) >> 1);
             var entry = await TryGet(entryId, maxId, cancellationToken).ConfigureAwait(false);
@@ -107,7 +107,7 @@ public sealed class ChatEntryReader
     public async Task<ChatEntry?> TryGet(long entryId, CancellationToken cancellationToken)
     {
         var tile = ChatConstants.IdTiles.GetMinCoveringTile(entryId);
-        var entries = await Chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
+        var entries = await _chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
         return entries.SingleOrDefault(e => e.Id == entryId);
     }
 
@@ -116,7 +116,7 @@ public sealed class ChatEntryReader
         var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
         while (true) {
             var tile = ChatConstants.IdTiles.GetMinCoveringTile(minEntryId);
-            var entries = await Chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
+            var entries = await _chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
             if (entries.Length == 0) {
                 if (tile.Start >= lastTile.Start) // We're at the very last tile
                     return null;

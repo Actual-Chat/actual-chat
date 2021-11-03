@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\Chat.Service\Chat.Service.csproj" />
+    <ProjectReference Include="..\Chat\Chat.csproj" />
     <ProjectReference Include="..\Transcription.Service\Transcription.Service.csproj" />
     <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
     <ProjectReference Include="..\UI.Blazor.Host\UI.Blazor.Host.csproj" />

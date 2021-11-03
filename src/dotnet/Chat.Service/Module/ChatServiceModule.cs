@@ -1,5 +1,4 @@
-﻿using ActualChat.Chat.Client;
-using ActualChat.Chat.Db;
+﻿using ActualChat.Chat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis;
@@ -7,19 +6,18 @@ using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion.Client;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 
 namespace ActualChat.Chat.Module;
 
-public class ChatModule : HostModule<ChatSettings>
+public class ChatServiceModule : HostModule<ChatSettings>
 {
-    public ChatModule(IPluginInfoProvider.Query _) : base(_) { }
+    public ChatServiceModule(IPluginInfoProvider.Query _) : base(_) { }
 
     [ServiceConstructor]
-    public ChatModule(IPluginHost plugins) : base(plugins) { }
+    public ChatServiceModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
     {
@@ -57,18 +55,21 @@ public class ChatModule : HostModule<ChatSettings>
             });
 
         services.AddMvc().AddApplicationPart(GetType().Assembly);
-        services.AddSingleton<IMarkupParser, MarkupParser>();
 
         // IChatService
         services.AddSingleton(c => {
             var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
             return chatRedisDb.GetSequenceSet<ChatService>("chat.seq");
         });
-        services.AddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
+        services.AddSingleton<IAuthorServiceFrontend, AuthorServiceFrontend>();
+        services.AddSingleton<IAuthorServiceBackend, AuthorServiceBackend>();
+
 
         fusion.AddComputeService<IAuthorService, AuthorService>();
-        fusion.AddComputeService<IAuthorServiceFacade, AuthorServiceFacade>();
+        //fusion.AddComputeService<IAuthorServiceFrontend, AuthorServiceFrontend>();
+        //fusion.AddComputeService<IAuthorServiceBackend, AuthorServiceBackend>();
         fusion.AddComputeService<IChatService, ChatService>();
-        fusion.AddComputeService<IChatServiceFacade, ChatServiceFacade>();
+        fusion.AddComputeService<IChatServiceFrontend, ChatServiceFrontend>();
+        fusion.AddComputeService<IChatServiceBackend, ChatServiceBackend>();
     }
 }

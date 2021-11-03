@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat;
 
-public interface IChatServiceFacade
+public interface IChatServiceFrontend
 {
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);

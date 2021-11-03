@@ -5,19 +5,14 @@ namespace ActualChat.Chat.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors]
-public class AuthorController : ControllerBase, IAuthorServiceFacade
+public class AuthorController : ControllerBase, IAuthorServiceFrontend
 {
-    private readonly IAuthorServiceFacade _service;
+    private readonly IAuthorServiceFrontend _service;
 
-    public AuthorController(IAuthorServiceFacade service)
+    public AuthorController(IAuthorServiceFrontend service)
         => _service = service;
-
-    [HttpGet, Publish]
-    public Task<Author?> GetByUserIdAndChatId(Session session, UserId userId, ChatId chatId, CancellationToken cancellationToken)
-        => _service.GetByUserIdAndChatId(session, userId, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<AuthorInfo?> GetByAuthorId(Session session, AuthorId authorId, CancellationToken cancellationToken)
         => _service.GetByAuthorId(session, authorId, cancellationToken);
-
 }
