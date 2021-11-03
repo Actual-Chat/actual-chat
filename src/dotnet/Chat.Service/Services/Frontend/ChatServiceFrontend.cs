@@ -78,7 +78,6 @@ internal class ChatServiceFrontend : IChatServiceFrontend
             return default!;
 
         var (session, chatId, text) = command;
-        var context = CommandContext.GetCurrent();
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
