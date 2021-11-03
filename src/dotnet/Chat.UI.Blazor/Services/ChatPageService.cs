@@ -5,9 +5,9 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ChatPageService
 {
     private readonly IAuthService _auth;
-    private readonly IChatServiceFacade _chats;
+    private readonly IChatServiceFrontend _chats;
 
-    public ChatPageService(IChatServiceFacade chats, IAuthService auth)
+    public ChatPageService(IChatServiceFrontend chats, IAuthService auth)
     {
         _chats = chats;
         _auth = auth;

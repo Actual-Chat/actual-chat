@@ -8,10 +8,11 @@ namespace ActualChat.Chat.UI.Blazor.Pages;
 
 public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 {
+    [Parameter] public string ChatId { get; set; } = "";
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private UICommandRunner Cmd { get; set; } = default!;
     [Inject] private ChatPageService Service { get; set; } = default!;
-    [Inject] private IChatServiceFacade Chats { get; set; } = default!;
+    [Inject] private IChatServiceFrontend Chats { get; set; } = default!;
+    [Inject] private IAuthorIdAccessor AuthorIdAccessor { get; set; } = default!;
     [Inject] private IAuthService Auth { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
@@ -43,17 +44,20 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 
         // ChatId changed, so we must recreate players
         HistoricalPlayer?.Dispose();
-        HistoricalPlayer = new (Services) {
+        HistoricalPlayer = new(Services) {
             Session = Session,
             ChatId = chat.Id,
         };
         var wasPlaying = RealtimePlayer?.IsPlaying ?? false;
         RealtimePlayer?.Dispose();
-        RealtimePlayer = new (Services) {
+
+        var authorId = await AuthorIdAccessor.Get(Session, ChatId, default).ConfigureAwait(true);
+
+        RealtimePlayer = new(Services) {
             Session = Session,
             ChatId = chat.Id,
             IsRealTimePlayer = true,
-            SilencedAuthorIds = user.IsAuthenticated ? Option.Some((UserId)user.Id) : Option<UserId>.None,
+            SilencedAuthorIds = authorId.IsNone ? Option<AuthorId>.None : Option.Some(authorId),
         };
         if (wasPlaying)
             _ = RealtimePlayer.Play();
@@ -83,7 +87,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
-                InclusiveRange = new (
+                InclusiveRange = new(
                     (chatIdRange.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
                     chatIdRange.End.ToString(CultureInfo.InvariantCulture)),
             };

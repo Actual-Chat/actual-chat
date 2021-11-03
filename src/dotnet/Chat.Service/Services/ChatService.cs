@@ -7,7 +7,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatService : DbServiceBase<ChatDbContext>, IChatService
+internal class ChatService : DbServiceBase<ChatDbContext>, IChatService
 {
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
     private readonly RedisSequenceSet<ChatService> _idSequences;
@@ -157,7 +157,7 @@ public class ChatService : DbServiceBase<ChatDbContext>, IChatService
         return dbChatEntry;
     }
 
-    [CommandHandler, Internal]
+    [CommandHandler]
     public virtual async Task<ChatEntry> CreateEntry(
         IChatService.CreateEntryCommand command,
         CancellationToken cancellationToken)
@@ -185,7 +185,7 @@ public class ChatService : DbServiceBase<ChatDbContext>, IChatService
     }
 
     // TODO: combine these two commands to upsert (?)
-    [CommandHandler, Internal]
+    [CommandHandler]
     public virtual async Task<ChatEntry> UpdateEntry(
         IChatService.UpdateEntryCommand command,
         CancellationToken cancellationToken)
@@ -211,7 +211,7 @@ public class ChatService : DbServiceBase<ChatDbContext>, IChatService
         return chatEntry;
     }
 
-    [CommandHandler, Internal]
+    [CommandHandler]
     public virtual async Task<Chat> CreateChat(IChatService.CreateChatCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();

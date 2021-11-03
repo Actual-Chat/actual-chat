@@ -7,8 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatMediaPlayer : IDisposable
 {
-    private IChatServiceFacade Chats { get; }
-    private IMediaPlayerService MediaPlayerService { get; }
+    private IChatServiceFrontend Chats { get; }
     private IChatMediaResolver MediaResolver { get; }
     private AudioDownloader AudioDownloader { get; }
     private IAudioSourceStreamer AudioSourceStreamer { get; }
@@ -18,7 +17,7 @@ public sealed class ChatMediaPlayer : IDisposable
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public bool IsRealTimePlayer { get; set; }
-    public Option<UserId> SilencedAuthorIds { get; set; }
+    public Option<AuthorId> SilencedAuthorIds { get; set; }
     public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public MediaPlayer MediaPlayer { get; }
@@ -28,12 +27,11 @@ public sealed class ChatMediaPlayer : IDisposable
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         Log = services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
-        Chats = services.GetRequiredService<IChatServiceFacade>();
+        Chats = services.GetRequiredService<IChatServiceFrontend>();
         MediaPlayer = services.GetRequiredService<MediaPlayer>();
         MediaResolver = services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
         AudioSourceStreamer = services.GetRequiredService<IAudioSourceStreamer>();
-        MediaPlayerService = services.GetRequiredService<IMediaPlayerService>();
         Clocks = services.Clocks();
     }
 

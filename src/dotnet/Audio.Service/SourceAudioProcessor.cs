@@ -16,7 +16,7 @@ public class SourceAudioProcessor : BackgroundService
     public AudioActivityExtractor AudioActivityExtractor { get; }
     public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
-    public IChatService Chat { get; }
+    public IChatServiceBackend Chat { get; }
     public MomentClockSet ClockSet { get; }
 
     public SourceAudioProcessor(
@@ -26,7 +26,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioActivityExtractor audioActivityExtractor,
         AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
-        IChatService chat,
+        IChatServiceBackend chat,
         MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
@@ -184,7 +184,7 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = openAudioSegment.StreamId,
             BeginsAt = beginsAt,
         };
-        return await Chat.CreateEntry(new(chatEntry), cancellationToken).ConfigureAwait(false);
+        return await Chat.CreateEntry(chatEntry, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ChatEntry> CreateTextChatEntry(
@@ -201,7 +201,7 @@ public class SourceAudioProcessor : BackgroundService
             AudioEntryId = audioChatEntry.Id,
             BeginsAt = audioChatEntry.BeginsAt,
         };
-        return await Chat.CreateEntry(new(chatEntry), cancellationToken).ConfigureAwait(false);
+        return await Chat.CreateEntry(chatEntry, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task FinalizeAudioChatEntry(
@@ -216,7 +216,7 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = StreamId.None,
             EndsAt = audioChatEntry.BeginsAt.ToDateTime().Add(duration),
         };
-        await Chat.UpdateEntry(new(updated), cancellationToken).ConfigureAwait(false);
+        await Chat.UpdateEntry(updated, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task FinalizeTextChatEntry(
@@ -235,7 +235,7 @@ public class SourceAudioProcessor : BackgroundService
                 StreamId = StreamId.None,
                 EndsAt = ClockSet.CpuClock.Now,
             };
-        await Chat.UpdateEntry(new(updated), cancellationToken).ConfigureAwait(false);
+        await Chat.UpdateEntry(updated, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task PublishAudioStream(OpenAudioSegment segment, CancellationToken cancellationToken)
