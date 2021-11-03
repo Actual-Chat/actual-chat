@@ -156,10 +156,17 @@
       &lt;/Entry.Match&gt;
       &lt;Entry.SortBy&gt;
         &lt;Static /&gt;
+        &lt;Override /&gt;
+        &lt;Virtual /&gt;
         &lt;Name /&gt;
       &lt;/Entry.SortBy&gt;
     &lt;/Entry&gt;
-    &lt;Entry DisplayName="All other members" /&gt;
+    &lt;Entry DisplayName="All other members"&gt;
+      &lt;Entry.SortBy&gt;
+        &lt;Access /&gt;
+        &lt;Name /&gt;
+      &lt;/Entry.SortBy&gt;
+    &lt;/Entry&gt;
     &lt;Entry DisplayName="Nested Types"&gt;
       &lt;Entry.Match&gt;
         &lt;Kind Is="Type" /&gt;

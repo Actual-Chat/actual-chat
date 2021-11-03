@@ -57,6 +57,9 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
                 return false;
             });
 
+
+        services.AddResponseCaching();
+
         // Module's own services
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioActivityExtractor>();
