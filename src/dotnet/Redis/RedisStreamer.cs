@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using Stl.Redis;
 
 namespace ActualChat.Redis;
 
@@ -48,6 +49,7 @@ public class RedisStreamer<T>
         Exception? error = null;
         var position = (RedisValue) "0-0";
         var attemptCount = 0;
+        var serializer = Settings.Serializer;
         try {
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested(); // Redis doesn't support cancellation
@@ -58,23 +60,22 @@ public class RedisStreamer<T>
                             return;
 
                         var data = (ReadOnlyMemory<byte>) entry[Settings.ItemKey];
-                        var item = Settings.Serializer.Reader.Read(data);
+                        var item = serializer.Reader.Read(data);
                         await target.WriteAsync(item, cancellationToken).ConfigureAwait(false);
                         position = entry.Id;
                     }
                 else {
                     attemptCount++;
-                    var appendOpt = await AppendPubSub.Fetch(cancellationToken)
-                        .WithTimeout(Settings.ReadItemTimeout, cancellationToken)
+                    await AppendPubSub.Read(cancellationToken)
+                        .AsTask().WithTimeout(Settings.ReadItemTimeout, cancellationToken)
                         .ConfigureAwait(false);
                     if (attemptCount > 10 && position == "0-0")
                         throw new TimeoutException($"RedisStreamer<T>.Read() exceeds the wait limit for empty stream with Key = {Key}.");
-
-                    var (hasValue, fetch) = appendOpt;
-                    if (hasValue && fetch.IsNull)
-                        return;
                 }
             }
+        }
+        catch (ChannelClosedException) {
+            // Not an error: AppendPubSub.Read is done reading (pub/sub is closed)
         }
         catch (Exception e) {
             error = e;
@@ -125,7 +126,7 @@ public class RedisStreamer<T>
         => AppendItem(item, true, cancellationToken);
     public async Task AppendItem(T item, bool notify, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested(); // Redis doesn't support cancellation
+        cancellationToken.ThrowIfCancellationRequested(); // StackExchange.Redis doesn't support cancellation
         using var bufferWriter = Settings.Serializer.Writer.Write(item);
         await RedisDb.Database.StreamAddAsync(
                 Key, Settings.ItemKey, bufferWriter.WrittenMemory,

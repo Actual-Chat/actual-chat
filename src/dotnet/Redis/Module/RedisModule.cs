@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
 using Stl.Plugins;
+using Stl.Redis;
 
 namespace ActualChat.Redis.Module;
 
@@ -37,12 +38,8 @@ public class RedisModule : HostModule<RedisSettings>
         var configuration = parts.FirstOrDefault() ?? "";
         var keyPrefix = parts.Skip(1).SingleOrDefault() ?? "";
 
-        services.TryAddSingleton<RedisHub>();
-        services.AddSingleton(c => {
-            Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
-                typeof(TContext).Name, configuration, keyPrefix);
-            var redisHub = c.GetRequiredService<RedisHub>();
-            return new RedisDb<TContext>(redisHub.GetMultiplexer(configuration), keyPrefix);
-        });
+        Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
+            typeof(TContext).Name, configuration, keyPrefix);
+        services.AddRedisDb<TContext>(configuration, keyPrefix);
     }
 }

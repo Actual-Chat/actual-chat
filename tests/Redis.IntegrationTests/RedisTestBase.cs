@@ -1,7 +1,7 @@
-using ActualChat.Testing.Collections;
 using StackExchange.Redis;
+using Stl.Redis;
 
-namespace ActualChat.Redis.IntergationTests;
+namespace ActualChat.Redis.IntegrationTests;
 
 public class RedisTestBase
 {
