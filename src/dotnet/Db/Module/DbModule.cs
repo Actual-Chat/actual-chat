@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
+using Stl.Fusion.EntityFramework.Redis;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
 
@@ -76,8 +77,7 @@ public class DbModule : HostModule<DbSettings>
             dbContext.AddOperations((_, o) => {
                 o.UnconditionalWakeUpPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5);
             });
-            if (dbKind == DbKind.Default)
-                dbContext.AddNpgsqlOperationLogChangeTracking();
+            dbContext.AddRedisOperationLogChangeTracking();
         });
     }
 
