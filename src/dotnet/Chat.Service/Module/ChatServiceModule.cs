@@ -9,6 +9,7 @@ using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
+using Stl.Redis;
 
 namespace ActualChat.Chat.Module;
 

@@ -1,9 +1,8 @@
-using System.Data;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
-using ActualChat.Redis;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
+using Stl.Redis;
 
 namespace ActualChat.Chat;
 

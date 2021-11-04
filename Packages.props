@@ -55,12 +55,14 @@
     <PackageReference Update="Stl" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.CommandR" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Plugins" Version="$(StlFusionVersion)" />
+    <PackageReference Update="Stl.Redis" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.Server" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.Client" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.Blazor" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
+    <PackageReference Update="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)" />
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)" />
     <PackageReference Update="Storage.Net" Version="9.3.*" />
     <PackageReference Update="Swashbuckle.AspNetCore" Version="6.2.3" />

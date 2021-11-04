@@ -86,7 +86,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio", "src\dotnet\Audio\A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playback", "src\dotnet\Playback\Playback.csproj", "{43E54532-23A6-4BFE-AE54-777D865BC954}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.IntergationTests", "tests\Redis.IntergationTests\Redis.IntergationTests.csproj", "{C5FD17CE-66A9-4CDF-A3E1-793668707583}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.IntegrationTests", "tests\Redis.IntegrationTests\Redis.IntegrationTests.csproj", "{C5FD17CE-66A9-4CDF-A3E1-793668707583}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.UnitTests", "tests\UI.Blazor.UnitTests\UI.Blazor.UnitTests.csproj", "{B253C7E1-0E79-46A1-AAB6-5017D06405D2}"
 EndProject

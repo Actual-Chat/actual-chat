@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Redis.IntergationTests;
+﻿using Stl.Redis;
+
+namespace ActualChat.Redis.IntegrationTests;
 
 public class RedisHashTest : RedisTestBase
 {
