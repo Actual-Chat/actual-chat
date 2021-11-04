@@ -4,6 +4,7 @@ namespace ActualChat.Playback;
 
 public sealed class MediaPlayer : IDisposable
 {
+    private readonly ILogger<MediaPlayer> _log;
     private CancellationTokenSource _stopPlayingCts = null!;
 
     public IMediaPlayerService MediaPlayerService { get; }
@@ -11,11 +12,13 @@ public sealed class MediaPlayer : IDisposable
     public Task PlayingTask { get; private set; } = null!;
     public bool IsPlaying => PlayingTask is { IsCompleted: false };
     public CancellationToken StopToken { get; private set; }
+    public event Action<MediaPlayer>? StateChanged;
 
-    public MediaPlayer(IMediaPlayerService mediaPlayerService)
+    public MediaPlayer(IMediaPlayerService mediaPlayerService, ILogger<MediaPlayer> log)
     {
+        _log = log;
         MediaPlayerService = mediaPlayerService;
-        Reset();
+        Reset(false);
     }
 
     public void Dispose()
@@ -28,11 +31,13 @@ public sealed class MediaPlayer : IDisposable
         Symbol trackId,
         IMediaSource source,
         Moment recordingStartedAt,
+        Moment? playAt,
         CancellationToken cancellationToken = default)
-        => AddCommand(new PlayMediaTrackCommand(trackId, source, recordingStartedAt), cancellationToken);
-
-    public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
-        => AddCommand(new SetVolumeCommand(volume), cancellationToken);
+    {
+        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt));
+        var command = new PlayMediaTrackCommand(trackId, source, recordingStartedAt, playAt);
+        return AddCommand(command, cancellationToken);
+    }
 
     public void Complete()
         => Queue.Writer.Complete();
@@ -42,24 +47,37 @@ public sealed class MediaPlayer : IDisposable
         if (!PlayingTask.IsCompleted)
             return PlayingTask;
 
-        return PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
+        PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
+        StateChanged?.Invoke(this);
+        _ = PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
+        return PlayingTask;
     }
 
-    public Task Stop()
+    public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
+        => AddCommand(new SetVolumeCommand(volume), cancellationToken);
+
+    public async Task Stop()
     {
         var playingTask = PlayingTask;
+
+        if (!playingTask.IsCompleted) {
+            var stopCompletion = new TaskCompletionSource();
+            var stopCommand = new StopCommand(stopCompletion);
+            await AddCommand(stopCommand, CancellationToken.None).ConfigureAwait(false);
+            await stopCommand.CommandProcessed.ConfigureAwait(false);
+        }
+
         _stopPlayingCts.CancelAndDisposeSilently();
         Reset();
-        return playingTask.SuppressExceptions();
+        await playingTask.SuppressExceptions();
     }
 
     // Private methods
 
-    private void Reset()
+    private void Reset(bool invokeStateChanged = true)
     {
-        _stopPlayingCts = new CancellationTokenSource();
+        _stopPlayingCts = new ();
         StopToken = _stopPlayingCts.Token;
-        PlayingTask = Task.CompletedTask;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
             new BoundedChannelOptions(256) {
                 SingleReader = false,
@@ -67,5 +85,7 @@ public sealed class MediaPlayer : IDisposable
                 AllowSynchronousContinuations = true,
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
+        PlayingTask = Task.CompletedTask;
+        StateChanged?.Invoke(this);
     }
 }

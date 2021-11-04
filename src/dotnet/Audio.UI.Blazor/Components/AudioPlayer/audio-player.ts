@@ -36,40 +36,43 @@ export class AudioPlayer {
         this._lastReadyState = -1;
         this._lastOffset = -1;
         this._mediaSource.addEventListener('error', _ => {
-            if (debugMode)
-                console.log(`${LogScope}._mediaSource.error: ` + this._mediaSource.readyState);
+            console.error(`${LogScope}._mediaSource.error: ` + this._mediaSource.readyState);
         });
 
-        this._audio.addEventListener('ended', (e) => {
+        this._audio.addEventListener('ended', e => {
             let _ = this.invokeOnPlaybackEnded();
             if (debugMode)
-                console.log(`${LogScope}._audio.ended.` + JSON.stringify(e));
+                console.log(`${LogScope}._audio.ended.`);
         });
-        this._audio.addEventListener('error', (e) => {
+        this._audio.addEventListener('error', e => {
             let err = this._audio.error;
             let _ = this.invokeOnPlaybackEnded(err.code, err.message);
             console.error(`${LogScope}._audio.error: code: ${err.code}, message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', _ => {
-            if (debugMode)
-                console.log(`${LogScope}._audio.stalled.`);
+            console.warn(`${LogScope}._audio.stalled.`);
         });
-        this._audio.addEventListener('waiting', (e) => {
-            if (debugMode)
-                console.log(`${LogScope}._audio.waiting, _audio.readyState = ${this.getReadyState()}`);
+        this._audio.addEventListener('waiting', e => {
+            console.warn(`${LogScope}._audio.waiting, _audio.readyState = ${this.getReadyState()}`);
             let time = this._audio.currentTime;
             let readyState = this._audio.readyState;
             let _ = this.invokeOnDataWaiting(time, readyState);
         });
-        this._audio.addEventListener('timeupdate', (e) => {
+        this._audio.addEventListener('timeupdate', e => {
             let time = this._audio.currentTime;
+            if (this._audio.readyState !== this._lastReadyState) {
+                if (this._debugMode)
+                    console.log(`${LogScope}.timeupdate: new _audio.readyState = ${this.getReadyState()}`);
+            }
+            this._lastReadyState = this._audio.readyState;
+
             let _ = this.invokeOnPlaybackTimeChanged(time);
         });
-        this._audio.addEventListener('canplay', (e) => {
+        this._audio.addEventListener('canplay', _ => {
         });
-        this._audio.addEventListener('loadeddata', async (e) => {
+        this._audio.addEventListener('loadeddata', async _ => {
             let audio = this._audio;
-            if (audio.readyState >= 1) {
+            if (audio.readyState >= 2) {
                 await audio.play();
             }
         });
@@ -77,11 +80,14 @@ export class AudioPlayer {
         this._bufferCreated = new Promise<SourceBuffer>(resolve => {
             this._mediaSource.addEventListener('sourceopen', _ => {
                 URL.revokeObjectURL(this._audio.src);
-                let mime = 'audio/webm; codecs=opus';
-                this._sourceBuffer = this._mediaSource.addSourceBuffer(mime);
-                this._sourceBuffer.addEventListener('updateend', _ => this.onUpdateEnd());
 
-                resolve(this._sourceBuffer);
+                if (this._mediaSource.sourceBuffers.length == 0) {
+                    let mime = 'audio/webm; codecs=opus';
+                    this._sourceBuffer = this._mediaSource.addSourceBuffer(mime);
+                    this._sourceBuffer.addEventListener('updateend', _ => this.onUpdateEnd());
+
+                    resolve(this._sourceBuffer);
+                }
             });
         });
 
@@ -172,7 +178,9 @@ export class AudioPlayer {
                 this.onUpdateEnd();
                 this._bufferQueue.push(new AudioEnd());
             } else {
-                this._mediaSource.endOfStream();
+                if (this._mediaSource.readyState === "open") {
+                    this._mediaSource.endOfStream();
+                }
             }
         }
     }
@@ -188,7 +196,9 @@ export class AudioPlayer {
                     this._mediaSource.endOfStream(error);
             }
         } else {
-            this._mediaSource.endOfStream(error);
+            if (this._mediaSource.readyState === "open") {
+                this._mediaSource.endOfStream(error);
+            }
         }
     }
 
@@ -221,7 +231,9 @@ export class AudioPlayer {
                     console.error(`${LogScope}.onUpdateEnd: offset < _lastOffset!`);
                 this._lastOffset = offset;
             } else {
-                this._mediaSource.endOfStream();
+                if (this._mediaSource.readyState === "open") {
+                    this._mediaSource.endOfStream();
+                }
             }
 
             return true;

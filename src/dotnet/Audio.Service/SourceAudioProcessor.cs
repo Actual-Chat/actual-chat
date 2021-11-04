@@ -16,7 +16,7 @@ public class SourceAudioProcessor : BackgroundService
     public AudioActivityExtractor AudioActivityExtractor { get; }
     public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
-    public IServerSideChatService Chat { get; }
+    public IChatServiceBackend Chat { get; }
     public MomentClockSet ClockSet { get; }
 
     public SourceAudioProcessor(
@@ -26,7 +26,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioActivityExtractor audioActivityExtractor,
         AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
-        IServerSideChatService chat,
+        IChatServiceBackend chat,
         MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
@@ -64,16 +64,44 @@ public class SourceAudioProcessor : BackgroundService
             var publishTranscriptTask = PublishTranscriptStream(segment, cancellationToken);
             var saveAudioSegmentTask = SaveAudioSegment(segment, cancellationToken);
             var audioChatEntry = await CreateAudioChatEntry(segment, beginsAt, cancellationToken).ConfigureAwait(false);
-            var textChatEntry = await CreateTextChatEntry(segment, audioChatEntry, cancellationToken).ConfigureAwait(false);
+            var textChatEntry =
+                await CreateTextChatEntry(segment, audioChatEntry, cancellationToken).ConfigureAwait(false);
 
             _ = Task.Run(async () => {
-                // TODO(AY): We should make sure finalization happens no matter what (later)!
-                await publishAudioTask.ConfigureAwait(false);
-                var audioBlobId = await saveAudioSegmentTask.ConfigureAwait(false);
-                await FinalizeAudioChatEntry(audioChatEntry, audioBlobId, segment, cancellationToken).ConfigureAwait(false);
-                var transcript = await publishTranscriptTask.ConfigureAwait(false);
-                await FinalizeTextChatEntry(textChatEntry, transcript, cancellationToken).ConfigureAwait(false);
-            }, cancellationToken);
+                    // TODO(AY): We should make sure finalization happens no matter what (later)!
+                    try { await publishAudioTask.ConfigureAwait(false); }
+                    catch (Exception e) {
+                        _log.LogError(e, "SourceAudioProcessor.PublishAudioStream(...) failed");
+                    }
+
+                    string? audioBlobId = null;
+                    try { audioBlobId = await saveAudioSegmentTask.ConfigureAwait(false); }
+                    catch (Exception e) {
+                        _log.LogError(e, "SourceAudioProcessor.SaveAudioSegment(...) failed");
+                    }
+
+                    try {
+                        await FinalizeAudioChatEntry(audioChatEntry, audioBlobId, segment, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        _log.LogError(e, "SourceAudioProcessor.FinalizeAudioChatEntry(...) failed");
+                    }
+
+                    Transcript? transcript = null;
+                    try { transcript = await publishTranscriptTask.ConfigureAwait(false); }
+                    catch (Exception e) {
+                        _log.LogError(e, "SourceAudioProcessor.PublishTranscriptStream(...) failed");
+                    }
+
+                    try {
+                        await FinalizeTextChatEntry(textChatEntry, transcript, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        _log.LogError(e, "SourceAudioProcessor.FinalizeTextChatEntry(...) failed");
+                    }
+                },
+                cancellationToken);
         }
     }
 
@@ -111,12 +139,12 @@ public class SourceAudioProcessor : BackgroundService
         // TODO(AK): read actual config
         var request = new TranscriptionRequest(
             segment.StreamId,
-            new AudioFormat {
+            new () {
                 CodecKind = AudioCodecKind.Opus,
                 ChannelCount = 1,
                 SampleRate = 48_000,
             },
-            new TranscriptionOptions {
+            new () {
                 Language = "ru-RU",
                 IsDiarizationEnabled = false,
                 IsPunctuationEnabled = true,
@@ -128,10 +156,10 @@ public class SourceAudioProcessor : BackgroundService
         Exception? error = null;
         try {
             while (await updates.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-            while (updates.TryRead(out var update)) {
-                transcript = transcript.WithUpdate(update);
-                await transcriptUpdatesWriter.WriteAsync(update, cancellationToken).ConfigureAwait(false);
-            }
+                while (updates.TryRead(out var update)) {
+                    transcript = transcript.WithUpdate(update);
+                    await transcriptUpdatesWriter.WriteAsync(update, cancellationToken).ConfigureAwait(false);
+                }
         }
         catch (ChannelClosedException) { }
         catch (Exception e) {
@@ -148,15 +176,15 @@ public class SourceAudioProcessor : BackgroundService
         Moment beginsAt,
         CancellationToken cancellationToken)
     {
-        var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
-            AuthorId = openAudioSegment.AudioRecord.UserId,
+        var chatEntry = new ChatEntry() {
+            ChatId = openAudioSegment.AudioRecord.ChatId,
+            AuthorId = openAudioSegment.AudioRecord.AuthorId,
             Content = "",
             Type = ChatEntryType.Audio,
             StreamId = openAudioSegment.StreamId,
             BeginsAt = beginsAt,
         };
-        return await Chat.CreateEntry(new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken)
-            .ConfigureAwait(false);
+        return await Chat.CreateEntry(chatEntry, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ChatEntry> CreateTextChatEntry(
@@ -164,47 +192,50 @@ public class SourceAudioProcessor : BackgroundService
         ChatEntry audioChatEntry,
         CancellationToken cancellationToken)
     {
-        var chatEntry = new ChatEntry(openAudioSegment.AudioRecord.ChatId, 0) {
-            AuthorId = openAudioSegment.AudioRecord.UserId,
+        var chatEntry = new ChatEntry() {
+            ChatId = openAudioSegment.AudioRecord.ChatId,
+            AuthorId = openAudioSegment.AudioRecord.AuthorId,
             Content = "...",
             Type = ChatEntryType.Text,
             StreamId = openAudioSegment.StreamId,
             AudioEntryId = audioChatEntry.Id,
             BeginsAt = audioChatEntry.BeginsAt,
         };
-        return await Chat.CreateEntry(new ChatCommands.CreateEntry(chatEntry).MarkServerSide(), cancellationToken)
-            .ConfigureAwait(false);
+        return await Chat.CreateEntry(chatEntry, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task FinalizeAudioChatEntry(
         ChatEntry audioChatEntry,
-        string audioBlobId,
+        string? audioBlobId,
         OpenAudioSegment segment,
         CancellationToken cancellationToken)
     {
-        var duration = await segment.DurationTask;
+        var duration = await segment.DurationTask.ConfigureAwait(false);
         var updated = audioChatEntry with {
-            Content = audioBlobId,
+            Content = audioBlobId ?? "",
             StreamId = StreamId.None,
             EndsAt = audioChatEntry.BeginsAt.ToDateTime().Add(duration),
         };
-        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken)
-            .ConfigureAwait(false);
+        await Chat.UpdateEntry(updated, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task FinalizeTextChatEntry(
         ChatEntry textChatEntry,
-        Transcript transcript,
+        Transcript? transcript,
         CancellationToken cancellationToken)
     {
-        var updated = textChatEntry with {
-            Content = transcript.Text,
-            StreamId = StreamId.None,
-            EndsAt = textChatEntry.BeginsAt.ToDateTime().AddSeconds(transcript.Duration),
-            TextToTimeMap = transcript.TextToTimeMap,
-        };
-        await Chat.UpdateEntry(new ChatCommands.UpdateEntry(updated).MarkServerSide(), cancellationToken)
-            .ConfigureAwait(false);
+        var updated = transcript != null
+            ? textChatEntry with {
+                Content = transcript.Text,
+                StreamId = StreamId.None,
+                EndsAt = textChatEntry.BeginsAt.ToDateTime().AddSeconds(transcript.Duration),
+                TextToTimeMap = transcript.TextToTimeMap,
+            }
+            : textChatEntry with {
+                StreamId = StreamId.None,
+                EndsAt = ClockSet.CpuClock.Now,
+            };
+        await Chat.UpdateEntry(updated, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task PublishAudioStream(OpenAudioSegment segment, CancellationToken cancellationToken)

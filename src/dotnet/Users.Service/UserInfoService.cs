@@ -24,7 +24,7 @@ public class UserInfoService : DbServiceBase<UsersDbContext>, IUserInfoService
 
     public virtual async Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken)
     {
-        var dbUser = await DbUserResolver.TryGet(userId, cancellationToken);
+        var dbUser = await DbUserResolver.TryGet(userId, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return null;
         return new UserInfo(dbUser.Id, dbUser.Name);
@@ -32,7 +32,7 @@ public class UserInfoService : DbServiceBase<UsersDbContext>, IUserInfoService
 
     public virtual async Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken)
     {
-        var dbUser = await DbUserByNameResolver.TryGet(name, cancellationToken);
+        var dbUser = await DbUserByNameResolver.TryGet(name, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return null;
         return new UserInfo(dbUser.Id, dbUser.Name);

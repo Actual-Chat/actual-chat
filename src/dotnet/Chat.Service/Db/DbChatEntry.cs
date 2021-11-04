@@ -1,15 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 using ActualChat.Mathematics;
 using Cysharp.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
-[IndexAttribute(nameof(ChatId), nameof(Id))]
-[IndexAttribute(
+[Index(nameof(ChatId), nameof(Id))]
+[Index(
     nameof(ChatId),
     nameof(BeginsAt),
     nameof(EndsAt),
@@ -55,12 +56,15 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
+    public DbAuthor? Author { get; set; }
 
     public static string GetCompositeId(string chatId, long id)
         => ZString.Format("{0}:{1}", chatId, id);
 
     public ChatEntry ToModel()
-        => new (ChatId, Id) {
+        => new() {
+            Id = Id,
+            ChatId = ChatId,
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             EndsAt = EndsAt,
@@ -93,5 +97,14 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         TextToTimeMap = model.TextToTimeMap != null
             ? JsonSerializer.Serialize(model.TextToTimeMap)
             : null;
+    }
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>
+    {
+        public void Configure(EntityTypeBuilder<DbChatEntry> builder)
+        {
+            builder.Property(x => x.AuthorId).IsRequired();
+            builder.HasOne(x => x.Author).WithMany().HasForeignKey(x => x.AuthorId);
+        }
     }
 }

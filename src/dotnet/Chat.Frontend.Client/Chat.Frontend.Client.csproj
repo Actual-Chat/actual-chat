@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chat.Frontend.Contracts\Chat.Frontend.Contracts.csproj" />
+    <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

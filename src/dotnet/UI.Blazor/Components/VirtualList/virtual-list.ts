@@ -96,12 +96,14 @@ export class VirtualList {
         this._renderState = renderState; // At this point this.isFullyRendered() returns true
 
         if (renderState.renderIndex < this._blazorRenderIndex) {
+            // This is an outdated update already
             if (this._debugMode)
                 console.log(`${LogScope}.afterRender skips updateClientSideStateDebounced:
                 ${renderState.renderIndex} < ${this._blazorRenderIndex}`);
             return; // such an update will be ignored anyway
         }
-        let immediately = renderState.mustMeasure || this._blazorRenderIndex == renderState.renderIndex
+        let isRenderIndexMatching = Math.abs(this._blazorRenderIndex - renderState.renderIndex) < 0.1;
+        let immediately = renderState.mustMeasure || isRenderIndexMatching;
         this.updateClientSideStateDebounced(immediately);
     }
 
@@ -145,7 +147,8 @@ export class VirtualList {
         }
 
         let rs = this._renderState;
-        if (rs.renderIndex <= this._blazorRenderIndex) {
+        if (rs.renderIndex < this._blazorRenderIndex) {
+            // This update will be dropped by server
             if (this._debugMode)
                 console.log(`${LogScope}.updateClientSideStateImpl: skipped for #${rs.renderIndex} < ${this._blazorRenderIndex}`);
             return; // This update was already pushed
