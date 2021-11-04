@@ -15,7 +15,7 @@ public class UserStateService : DbServiceBase<UsersDbContext>, IUserStateService
     public virtual async Task<bool> IsOnline(UserId userId, CancellationToken cancellationToken)
     {
         var cutoffTime = Clocks.SystemClock.Now - TimeSpan.FromMinutes(1);
-        var userState = await DbUserStateResolver.TryGet(userId, cancellationToken).ConfigureAwait(false);
+        var userState = await DbUserStateResolver.Get(userId, cancellationToken).ConfigureAwait(false);
         return userState?.OnlineCheckInAt > cutoffTime;
     }
 }

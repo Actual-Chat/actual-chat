@@ -23,10 +23,8 @@ internal class ChatService : DbServiceBase<ChatDbContext>, IChatService
 
     public virtual async Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbChat = await _dbChatResolver.TryGet(chatId, cancellationToken).ConfigureAwait(false);
-        if (dbChat == null)
-            return null;
-        return dbChat.ToModel();
+        var dbChat = await _dbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
+        return dbChat?.ToModel();
     }
 
     public virtual async Task<ChatPermissions> GetPermissions(
@@ -166,15 +164,18 @@ internal class ChatService : DbServiceBase<ChatDbContext>, IChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, isUpdate: false);
+            if (invChatEntry != null)
+                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, isUpdate: false);
             _ = GetIdRange(chatEntry.ChatId, default); // We invalidate min-max Id range at last
             return null!;
         }
+
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
         // TODO: use entity resolver or remove this check (?)
         var dbAuthor = await dbContext.Authors
-            .FirstOrDefaultAsync(a => a.Id == (string)chatEntry.AuthorId, cancellationToken)
+            .FirstOrDefaultAsync(a => a.Id == (string) chatEntry.AuthorId, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new Exception(Invariant($"Can't find author with id: {chatEntry.AuthorId}"));
 
@@ -194,12 +195,15 @@ internal class ChatService : DbServiceBase<ChatDbContext>, IChatService
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, isUpdate: true);
+            if (invChatEntry != null)
+                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, isUpdate: true);
             // No need to invalidate GetIdRange here
             return null!;
         }
+
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
         // TODO: use entity resolver or remove this check (?)
         var dbAuthor = await dbContext.Authors
             .FirstOrDefaultAsync(a => a.Id == (string)chatEntry.AuthorId, cancellationToken)
