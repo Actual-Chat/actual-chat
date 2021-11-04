@@ -9,7 +9,7 @@
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.43-rc2</StlFusionVersion>
+    <StlFusionVersion>2.0.48-rc2</StlFusionVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -87,8 +87,8 @@
     <PackageReference Update="Moq" Version="4.16.1" />
     <PackageReference Update="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit" Version="2.4.1" />
-    <PackageReference Update="Xunit.DependencyInjection" Version="7.6.0" />
-    <PackageReference Update="Xunit.DependencyInjection.Logging" Version="7.5.1" />
+    <PackageReference Update="Xunit.DependencyInjection" Version="8.1.0" />
+    <PackageReference Update="Xunit.DependencyInjection.Logging" Version="8.0.0" />
     <PackageReference Update="FluentAssertions" Version="6.2.*" />
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.0.0" />
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
+using Stl.Internal;
 
 namespace ActualChat.Users;
 
@@ -61,7 +62,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
-            var invUserInfo = context.Operation().Items.TryGet<UserInfo>();
+            var invUserInfo = context.Operation().Items.Get<UserInfo>();
             if (invUserInfo != null)
                 _ = UserStates.IsOnline(invUserInfo.Id, default);
             return;
@@ -72,8 +73,10 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         await ResetSessionOptions().ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
+        if (sessionInfo == null)
+            throw Errors.InternalError("No SessionInfo in operation's items.");
         var userId = sessionInfo.UserId;
-        var dbUser = await DbUsers.TryGet(dbContext, userId, cancellationToken).ConfigureAwait(false);
+        var dbUser = await DbUsers.Get(dbContext, userId, true, cancellationToken).ConfigureAwait(false);
         if (dbUser == null)
             return; // Should never happen, but if it somehow does, there is no extra to do in this case
 
