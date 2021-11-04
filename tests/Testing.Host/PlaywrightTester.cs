@@ -12,7 +12,8 @@ namespace ActualChat.Testing.Host
         public AppHost AppHost { get; }
         public IServiceProvider AppServices => AppHost.Services;
         public UriMapper UriMapper => AppServices.UriMapper();
-        public IServerSideAuthService Auth => AppServices.GetRequiredService<IServerSideAuthService>();
+        public IAuth Auth => AppServices.GetRequiredService<IAuth>();
+        public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
         public Session Session { get; }
 
         public PlaywrightTester(AppHost appHost)

@@ -6,12 +6,10 @@ namespace ActualChat.Users;
 
 public class SessionInfoService : DbServiceBase<UsersDbContext>, ISessionInfoService
 {
-    private readonly IAuthService _auth;
+    private readonly IAuth _auth;
 
-    public SessionInfoService(IAuthService auth, IServiceProvider services) : base(services)
-    {
-        _auth = auth;
-    }
+    public SessionInfoService(IAuth auth, IServiceProvider services) : base(services)
+        => _auth = auth;
 
     /// <inheritdoc />
     [CommandHandler, Internal]
@@ -23,7 +21,10 @@ public class SessionInfoService : DbServiceBase<UsersDbContext>, ISessionInfoSer
         }
         var dbContext = await CreateCommandDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
+
+        var dbSession = await dbContext.Sessions
+            .ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
             .ConfigureAwait(false);
         if (dbSession == null)
             throw new ArgumentOutOfRangeException(nameof(command), "Session is not found");
@@ -31,7 +32,6 @@ public class SessionInfoService : DbServiceBase<UsersDbContext>, ISessionInfoSer
         dbSession.Options = new ImmutableOptionSet(
             dbSession.Options.Items.SetItem(command.KeyValue.Key, command.KeyValue.Value)
         );
-
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

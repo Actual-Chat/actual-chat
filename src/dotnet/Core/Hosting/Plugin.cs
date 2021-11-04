@@ -12,8 +12,8 @@ public abstract class Plugin : IHasCapabilities, IHasDependencies
     protected IPluginHost Plugins { get; } = null!;
     protected ILogger Log => _log ??= Plugins.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
 
-    public string Name => Capabilities.Get<string>();
-    public Version Version => Capabilities.Get<Version>();
+    public string Name => Capabilities.Get<string>() ?? throw new KeyNotFoundException();
+    public Version Version => Capabilities.Get<Version>() ?? throw new KeyNotFoundException();
 
     public ImmutableOptionSet Capabilities => _capabilities ?? ComputeCapabilities();
     public virtual IEnumerable<Type> Dependencies => Array.Empty<Type>();

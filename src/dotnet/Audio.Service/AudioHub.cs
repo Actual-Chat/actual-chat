@@ -1,11 +1,9 @@
 using ActualChat.Blobs;
 using ActualChat.Transcription;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ActualChat.Audio;
 
-[Authorize]
 public class AudioHub : Hub
 {
     private readonly AudioSourceStreamer _audioSourceStreamer;

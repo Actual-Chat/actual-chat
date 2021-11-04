@@ -35,8 +35,8 @@ public class ChatController : ControllerBase, IChatServiceFrontend
     // Queries
 
     [HttpGet, Publish]
-    public Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken)
-        => _chats.TryGet(session, chatId, cancellationToken);
+    public Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
+        => _chats.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<long> GetEntryCount(

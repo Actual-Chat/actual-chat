@@ -7,7 +7,8 @@ namespace ActualChat.Testing.Host
         public AppHost AppHost { get; }
         public IServiceProvider AppServices { get; }
         public UriMapper UriMapper { get; }
-        public IServerSideAuthService Auth { get; }
+        public IAuth Auth { get; }
+        public IAuthBackend AuthBackend { get; }
         public Session Session { get; }
     }
 }

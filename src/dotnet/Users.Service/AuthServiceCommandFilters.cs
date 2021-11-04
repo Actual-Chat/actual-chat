@@ -11,7 +11,8 @@ namespace ActualChat.Users;
 
 public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
 {
-    protected IServerSideAuthService Auth { get; }
+    protected IAuth Auth { get; }
+    protected IAuthBackend AuthBackend { get; }
     protected IUserInfoService UserInfos { get; }
     protected IUserNameService UserNames { get; }
     protected IUserStateService UserStates { get; }
@@ -20,7 +21,8 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     public AuthServiceCommandFilters(IServiceProvider services)
         : base(services)
     {
-        Auth = services.GetRequiredService<IServerSideAuthService>();
+        Auth = services.GetRequiredService<IAuth>();
+        AuthBackend = services.GetRequiredService<IAuthBackend>();
         UserInfos = services.GetRequiredService<IUserInfoService>();
         UserNames = services.GetRequiredService<IUserNameService>();
         UserStates = services.GetRequiredService<IUserStateService>();
@@ -111,7 +113,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         if (Computed.IsInvalidating()) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
             if (command.Name != null)
-                _ = UserInfos.TryGetByName(command.Name, default);
+                _ = UserInfos.GetByName(command.Name, default);
             return;
         }
         if (command.Name != null) {
@@ -119,7 +121,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             if (error != null)
                 throw error;
 
-            var user = await Auth.GetUser(command.Session, cancellationToken).ConfigureAwait(false);
+            var user = await Auth.GetSessionUser(command.Session, cancellationToken).ConfigureAwait(false);
             user = user.MustBeAuthenticated();
             var userId = user.Id;
 
@@ -155,7 +157,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     private async Task MarkOnline(string userId, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
-            var c = Computed.TryGetExisting(() => UserStates.IsOnline(userId, default));
+            var c = Computed.GetExisting(() => UserStates.IsOnline(userId, default));
             if (c?.IsConsistent() != true)
                 return;
             if (c.IsValue(out var v) && v)

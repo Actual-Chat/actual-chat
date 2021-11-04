@@ -7,30 +7,24 @@ namespace ActualChat.Users;
 
 public class UserInfoService : DbServiceBase<UsersDbContext>, IUserInfoService
 {
-    protected IServerSideAuthService Auth { get; }
-    protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
-    protected IDbEntityResolver<string, DbUser> DbUserResolver { get; }
-    protected DbUserByNameResolver DbUserByNameResolver { get; }
-    protected IUserNameService UserNames { get; }
+    private readonly IDbEntityResolver<string, DbUser> _dbUserResolver;
+    private readonly DbUserByNameResolver _dbUserByNameResolver;
 
     public UserInfoService(IServiceProvider services) : base(services)
     {
-        Auth = services.GetRequiredService<IServerSideAuthService>();
-        DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-        DbUserResolver = services.DbEntityResolver<string, DbUser>();
-        DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
-        UserNames = services.GetRequiredService<IUserNameService>();
+        _dbUserResolver = services.DbEntityResolver<string, DbUser>();
+        _dbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
     }
 
-    public virtual async Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken)
     {
-        var dbUser = await DbUserResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        var dbUser = await _dbUserResolver.Get(userId, cancellationToken).ConfigureAwait(false);
         return dbUser == null ? null : new UserInfo(dbUser.Id, dbUser.Name);
     }
 
-    public virtual async Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken)
+    public virtual async Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken)
     {
-        var dbUser = await DbUserByNameResolver.Get(name, cancellationToken).ConfigureAwait(false);
+        var dbUser = await _dbUserByNameResolver.Get(name, cancellationToken).ConfigureAwait(false);
         return dbUser == null ? null : new UserInfo(dbUser.Id, dbUser.Name);
     }
 }

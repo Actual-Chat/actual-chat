@@ -19,7 +19,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         if (ShouldRecreateDb) {
-            var auth = Services.GetRequiredService<IServerSideAuthService>();
+            var authBackend = Services.GetRequiredService<IAuthBackend>();
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
 
             // Creating admin user
@@ -45,10 +45,10 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
-            var user = await auth.TryGetUser(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
+            var user = await authBackend.GetUser(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("Failed to create 'admin' user.");
-            await auth.SignIn(
-                new SignInCommand(session, user, user.Identities.Keys.Single()).MarkServerSide(),
+            await authBackend.SignIn(
+                new SignInCommand(session, user, user.Identities.Keys.Single()).MarkValid(),
                 cancellationToken).ConfigureAwait(false);
             UserConstants.Admin.Session = session;
         }

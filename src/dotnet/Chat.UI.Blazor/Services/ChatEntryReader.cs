@@ -83,12 +83,12 @@ public sealed class ChatEntryReader
         var (minId, maxId) = await _chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
         while (minId < maxId) {
             entryId = minId + ((maxId - minId) >> 1);
-            var entry = await TryGet(entryId, maxId, cancellationToken).ConfigureAwait(false);
+            var entry = await Get(entryId, maxId, cancellationToken).ConfigureAwait(false);
             if (entry == null)
                 minId = entryId + 1;
             else {
                 if (minBeginsAt == entry.BeginsAt) {
-                    var prevEntry = await TryGet(entryId - 1, maxId, cancellationToken).ConfigureAwait(false);
+                    var prevEntry = await Get(entryId - 1, maxId, cancellationToken).ConfigureAwait(false);
                     if (prevEntry != null && minBeginsAt == prevEntry.BeginsAt)
                         return entryId - 1;
 
@@ -104,14 +104,14 @@ public sealed class ChatEntryReader
         return minId;
     }
 
-    public async Task<ChatEntry?> TryGet(long entryId, CancellationToken cancellationToken)
+    public async Task<ChatEntry?> Get(long entryId, CancellationToken cancellationToken)
     {
         var tile = ChatConstants.IdTiles.GetMinCoveringTile(entryId);
         var entries = await _chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
         return entries.SingleOrDefault(e => e.Id == entryId);
     }
 
-    public async Task<ChatEntry?> TryGet(long minEntryId, long maxEntryId, CancellationToken cancellationToken)
+    public async Task<ChatEntry?> Get(long minEntryId, long maxEntryId, CancellationToken cancellationToken)
     {
         var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
         while (true) {

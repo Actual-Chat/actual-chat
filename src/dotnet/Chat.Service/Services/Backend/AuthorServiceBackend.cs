@@ -6,19 +6,19 @@ internal class AuthorServiceBackend : IAuthorServiceBackend
 {
     private readonly IAuthorIdAccessor _authorIdAccessor;
     private readonly IAuthorService _service;
+    private readonly IAuth _auth;
     private readonly ICommander _commander;
-    private readonly IAuthService _authService;
 
     public AuthorServiceBackend(
         IAuthorIdAccessor authorIdAccessor,
         IAuthorService service,
         ICommander commander,
-        IAuthService authService)
+        IAuth auth)
     {
         _authorIdAccessor = authorIdAccessor;
         _service = service;
+        _auth = auth;
         _commander = commander;
-        _authService = authService;
     }
 
     /// <inheritdoc />
@@ -40,7 +40,7 @@ internal class AuthorServiceBackend : IAuthorServiceBackend
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var user = await _authService.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         var author = await _service.GetByUserIdAndChatId(user.Id, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.AuthorId ?? AuthorId.None;
         // the author service doesn't expect the userId like @guest/{Ulid}

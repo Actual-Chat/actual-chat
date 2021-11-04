@@ -3,7 +3,7 @@ namespace ActualChat.Chat;
 internal interface IChatService
 {
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken);
+    Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<long> GetEntryCount(ChatId chatId, Range<long>? idRange, CancellationToken cancellationToken);

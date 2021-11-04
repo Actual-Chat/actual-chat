@@ -6,8 +6,8 @@ namespace ActualChat.Chat.Frontend.Client;
 [BasePath("chat")]
 public interface IChatServiceFrontendDef
 {
-    [Get(nameof(TryGet))]
-    Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
