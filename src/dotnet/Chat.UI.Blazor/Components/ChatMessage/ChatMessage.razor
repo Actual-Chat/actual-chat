@@ -1,12 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using TaskExt = Stl.Async.TaskExt
 @using ActualChat.Users
 @inherits ComputedStateComponent<ChatMessageModel>
 
 @{
-    var model = State.LatestNonErrorValue ?? new(null, null);
+    var model = State.LatestNonErrorValue ?? new(null);
 }
 
-@if (model.UserInfo == null) {
+@if (model?.AuthorInfo == null) {
     <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
         <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
         <div class="flex-1 overflow-hidden">
@@ -20,20 +21,19 @@
         </div>
     </div>
 } else {
+    var picture = string.IsNullOrWhiteSpace(model.AuthorInfo.Picture)
+        ? "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + model.AuthorInfo.Name
+        : model.AuthorInfo.Picture;
+
     <div class="flex items-start mb-4 text-sm">
-        <img src="//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=@model.UserInfo.Name" class="w-10 h-10 rounded-full mr-3 select-none">
+        <img src="@picture" class="w-10 h-10 rounded-full mr-3 select-none">
         <div class="flex-1 overflow-hidden">
             <div>
-                <span class="font-bold text-gray-900 @(model.IsOnline != true ? "opacity-75" : "")">
-                    @model.UserInfo.Name
+                <span class="font-bold text-gray-900 @(model.AuthorInfo.IsOnline != true ? "opacity-75" : "")">
+                    @model.AuthorInfo.Nickname
                 </span>
                 <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
             </div>
-            @if (Entry.TextToTimeMap != null) {
-                <span @onclick="OnPlay" class="mr-2 cursor-pointer select-none opacity-75 hover:opacity-100">
-                    <i class="fa fa-play text-green-600" aria-hidden="true"></i>
-                </span>
-            }
             @if (Entry.IsStreaming) {
                 <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
             } else {
@@ -47,10 +47,7 @@
     private readonly int _seed = Random.Shared.Next();
 
     [Inject]
-    protected IUserInfoService UserInfos { get; set; } = null!;
-
-    [Inject]
-    protected IUserStateService UserStates { get; set; } = null!;
+    protected IAuthorServiceFrontend Authors { get; set; } = null!;
 
     [Inject]
     protected Session Session { get; set; } = null!;
@@ -64,13 +61,10 @@
 
     protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken) {
         if (Entry == null! || Entry.AuthorId.IsNone)
-            return new(null, null);
+            return new(null);
 
-        var (userInfo, isOnline) = await
-            UserInfos.TryGet(Entry.AuthorId, cancellationToken)
-                .Join(UserStates.IsOnline(Entry.AuthorId, cancellationToken))
-                .ConfigureAwait(false);
-        return new(userInfo, isOnline);
+        var author = await Authors.GetByAuthorId(Session, Entry.AuthorId, cancellationToken).ConfigureAwait(false);
+        return new(author);
     }
 
     private void OnPlay() {
@@ -87,5 +81,4 @@
         if (PlayClick.HasDelegate)
             PlayClick.InvokeAsync((Entry, offset));
     }
-
 }

@@ -3,6 +3,7 @@ using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
@@ -22,6 +23,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
     {
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
+
+        services.TryAddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
 
         var fusion = services.AddFusion();
         fusion.AddComputeService<TestListService>();

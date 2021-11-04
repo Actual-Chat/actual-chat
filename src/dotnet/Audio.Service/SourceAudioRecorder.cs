@@ -1,25 +1,26 @@
 using ActualChat.Audio.Db;
 using ActualChat.Blobs;
+using ActualChat.Chat;
 using ActualChat.Redis;
 
 namespace ActualChat.Audio;
 
 public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 {
-    private readonly IAuthService _auth;
+    private readonly IAuthorServiceBackend _authorService;
     private readonly RedisDb _redisDb;
     private readonly RedisQueue<AudioRecord> _newRecordQueue;
     private readonly ILogger<SourceAudioRecorder> _log;
 
     public SourceAudioRecorder(
-        IAuthService auth,
+        ILogger<SourceAudioRecorder> log,
         RedisDb<AudioDbContext> audioRedisDb,
-        ILogger<SourceAudioRecorder> log)
+        IAuthorServiceBackend authorService)
     {
         _log = log;
-        _auth = auth;
         _redisDb = audioRedisDb.WithKeyPrefix("source-audio");
         _newRecordQueue = _redisDb.GetQueue<AudioRecord>("new-records");
+        _authorService = authorService;
     }
 
     public ValueTask DisposeAsync()
@@ -31,19 +32,18 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         ChannelReader<BlobPart> content,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken);
-        user.MustBeAuthenticated();
+        var authorId = await _authorService.GetOrCreate(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false);
 
         audioRecord = audioRecord with {
             Id = new AudioRecordId(Ulid.NewUlid().ToString()),
-            UserId = user.Id,
+            AuthorId = authorId,
         };
         _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", audioRecord);
 
         var streamer = _redisDb.GetStreamer<BlobPart>(audioRecord.Id);
         await streamer.Write(content,
-            async _ => await _newRecordQueue.Enqueue(audioRecord),
-            cancellationToken);
+            async _ => await _newRecordQueue.Enqueue(audioRecord).ConfigureAwait(false),
+            cancellationToken).ConfigureAwait(false);
         _ = Task.Delay(TimeSpan.FromMinutes(1), default)
             .ContinueWith(_ => streamer.Remove(), TaskScheduler.Default);
     }

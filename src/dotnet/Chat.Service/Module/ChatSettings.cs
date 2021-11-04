@@ -1,8 +1,7 @@
-﻿namespace ActualChat.Chat.Module
+﻿namespace ActualChat.Chat.Module;
+
+public class ChatSettings
 {
-    public class ChatSettings
-    {
-        public string Db { get; set; } = "";
-        public string Redis { get; set; } = "";
-    }
+    public string Db { get; set; } = "";
+    public string Redis { get; set; } = "";
 }

@@ -29,3 +29,14 @@ We use:
       any other code inside method body
     - If you have to wrap a method body expression,
       wrap it before `=>` rather than after 
+
+
+## Our project/services conventions
+
+* The contracts and implementations of the services which should be accessible from frontend (wasm) and backend (separate microservice) should be placed in `{Module}.csproj`. 
+* `{Module}.Service.csproj` - might be ran by the host as a separate microservice (later). Should contain the general implementations of the services. For example: `AuthorService : IAuthorService`, shouldn't contain any `Session` and other frontend stuff. `IAuthorService` should be internal, because this service mustn't be accessed by the code of another module (microservice).
+* For calling we create 2 separate public facades for the `IAuthorService` one of them placed in
+    * `{Module}.Backend.Contracts.csproj` - for the `IAuthorServiceBackend` facade. (is used in internal network calls between microservices)
+    * `{Module}.Frontend.Contracts.csproj` - for the `IAuthorServiceFronend` facade. (is used between client and service (wasm -> public controller which visible from the internet))
+* `{Module}.Backend.Client.csproj` contains rest client to the internal part of service (controllers under `/internal/` url) (`IAuthorServiceBackendDef` files)
+* `{Module}.Frontend.Client.csproj` contains rest client to the external part of service (public visible controllers) (`IAuthorServiceFrontendDef` files)

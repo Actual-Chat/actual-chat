@@ -1,6 +1,5 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.Module;
-using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Db.Module;
 using ActualChat.Host.Module;
@@ -11,8 +10,8 @@ using ActualChat.UI.Blazor.Host;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.Module;
 using ActualChat.Web.Module;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Stl.Plugins;
 
 namespace ActualChat.Host;
@@ -37,7 +36,7 @@ public class Startup
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.AddConsole();
-            logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information :LogLevel.Warning);
+            logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
             // use appsettings*.json to configure logging filters
         });
 
