@@ -1,5 +1,6 @@
 import './virtual-list.css';
 
+const LogScope: string = 'VirtualList'
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
 const SizeEpsilon: number = 0.6;
@@ -70,10 +71,10 @@ export class VirtualList {
 
     public afterRender(renderState: Required<IRenderState>) {
         if (this._debugMode)
-            console.log("<- afterRender: #" + renderState.renderIndex, renderState);
+            console.log(`${LogScope}.afterRender, renderIndex = #${renderState.renderIndex}, renderState = ${renderState}`);
         if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon) {
             if (this._debugMode)
-                console.log("Scrolling to:", renderState.scrollTop)
+                console.log(`${LogScope}.afterRender: scrolling to ${renderState.scrollTop}`)
             this._elementRef.scrollTop = renderState.scrollTop;
         }
 
@@ -84,10 +85,10 @@ export class VirtualList {
             let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
             let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
             if (Math.abs(renderState.scrollHeight - scrollHeight) > SizeEpsilon) {
-                console.warn("afterRender: scrollHeight doesn't match the expected one! ",
-                    "[spacerSize: " + renderState.spacerSize + " -> " + spacerSize + "]",
-                    "[endSpacerSize: " + renderState.endSpacerSize + " -> " + endSpacerSize + "]",
-                    "[scrollHeight: " + renderState.scrollHeight + " -> " + scrollHeight + "]");
+                console.warn(`${LogScope}.afterRender: scrollHeight doesn't match the expected one! \n
+                    [spacerSize: ${renderState.spacerSize} -> spacerSize] \n
+                    [endSpacerSize: ${renderState.endSpacerSize} -> endSpacerSize] \n
+                    [scrollHeight: ${renderState.scrollHeight} -> scrollHeight]`);
             }
         }
 
@@ -97,9 +98,9 @@ export class VirtualList {
         if (renderState.renderIndex < this._blazorRenderIndex) {
             // This is an outdated update already
             if (this._debugMode)
-                console.log("afterRender skips updateClientSideStateDebounced:",
-                    renderState.renderIndex, "<", this._blazorRenderIndex);
-            return;
+                console.log(`${LogScope}.afterRender skips updateClientSideStateDebounced:
+                ${renderState.renderIndex} < ${this._blazorRenderIndex}`);
+            return; // such an update will be ignored anyway
         }
         let isRenderIndexMatching = Math.abs(this._blazorRenderIndex - renderState.renderIndex) < 0.1;
         let immediately = renderState.mustMeasure || isRenderIndexMatching;
@@ -109,7 +110,7 @@ export class VirtualList {
     protected updateClientSideStateDebounced(immediately: boolean = false)
     {
         if (this._debugMode)
-            console.log("updateClientSideStateDebounced", immediately ? "immediately": "");
+            console.log(`${LogScope}.updateClientSideStateDebounced ${immediately ? " immediately" : ""}`);
         if (immediately) {
             if (this._updateClientSideStateTimeout != null) {
                 clearTimeout(this._updateClientSideStateTimeout);
@@ -141,7 +142,7 @@ export class VirtualList {
     protected async updateClientSideStateImpl() {
         if (!this.isFullyRendered()) {
             if (this._debugMode)
-                console.log('updateClientSideStateImpl: skipped (not fully rendered)');
+                console.log(`${LogScope}.updateClientSideStateImpl: skipped (not fully rendered)`);
             return; // Rendering is in progress, so the update will follow up anyway
         }
 
@@ -149,12 +150,12 @@ export class VirtualList {
         if (rs.renderIndex < this._blazorRenderIndex) {
             // This update will be dropped by server
             if (this._debugMode)
-                console.log('updateClientSideStateImpl: skipped for #', rs.renderIndex, "<", this._blazorRenderIndex);
-            return;
+                console.log(`${LogScope}.updateClientSideStateImpl: skipped for #${rs.renderIndex} < ${this._blazorRenderIndex}`);
+            return; // This update was already pushed
         }
 
         if (this._debugMode)
-            console.log('updateClientSideStateImpl: #' + rs.renderIndex);
+            console.log(`${LogScope}.updateClientSideStateImpl: #${rs.renderIndex}`);
 
         let spacerSize = this._spacerRef.getBoundingClientRect().height;
         let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
@@ -188,7 +189,7 @@ export class VirtualList {
                 gotNewlyMeasuredItems = true;
             }
             if (this._debugMode)
-                console.log("updateClientSideStateImpl: measured items:", state.itemSizes)
+                console.log(`${LogScope}.updateClientSideStateImpl: measured items: ${state.itemSizes}`);
         }
 
         let gotResizedItems = false;
@@ -213,22 +214,23 @@ export class VirtualList {
         let stillAtTheEnd = wasAtTheEnd && isAtTheEnd;
         state.isUserScrollDetected = isScrollTopChanged && !stillAtTheEnd && !state.isListResized;
         if (this._debugMode) {
-            console.log("updateClientSideStateImpl: changes:",
-                Object.keys(state.itemSizes).length > 0 ? "[items sizes]" : "",
-                state.isUserScrollDetected ? "[user scroll]" : "",
-                state.isViewportChanged ? "[viewport]" : "",
-                state.isListResized ? "[body resized]" : "");
+            console.log(`${LogScope}.updateClientSideStateImpl: changes:
+                ${Object.keys(state.itemSizes).length > 0 ? " [items sizes]" : ""}
+                ${state.isUserScrollDetected ? " [user scroll]" : ""}
+                ${state.isViewportChanged} ? " [viewport]" : ""
+                ${state.isListResized} ? " [body resized]" : ""`);
             if (state.isViewportChanged)
-                console.log("updateClientSideStateImpl: viewport change:",
-                    isScrollTopChanged ? "[scrollTop " + rs.scrollTop + " -> " + state.scrollTop + "]" : "",
-                    isScrollHeightChanged ? "[scrollHeight " + rs.scrollHeight + " -> " + state.scrollHeight + "]" : "",
-                    isClientHeightChanged ? "[clientHeight " + rs.clientHeight + " -> " + state.clientHeight + "]" : "");
+                console.log(`${LogScope}.updateClientSideStateImpl: viewport change:
+                    ${isScrollTopChanged ? " [scrollTop " + rs.scrollTop + " -> " + state.scrollTop + "]" : ""}
+                    ${isScrollHeightChanged ? " [scrollHeight " + rs.scrollHeight + " -> " + state.scrollHeight + "]" : ""}
+                    ${isClientHeightChanged ? " [clientHeight " + rs.clientHeight + " -> " + state.clientHeight + "]" : ""}`);
             if (wasAtTheEnd != isAtTheEnd)
-                console.log("updateClientSideStateImpl: location change:",
-                    wasAtTheEnd ? "[was @ end]" : "[wasn't @ end]",
-                    rs.scrollTop, " + ", rs.clientHeight, " == ", rs.scrollHeight,
-                    isAtTheEnd ? "[is @ end]" : "[isn't @ end]",
-                    state.scrollTop, " + ", state.clientHeight, " == ", state.scrollHeight, "(", trueScrollHeight, ")",
+                console.log(`${LogScope}.updateClientSideStateImpl: location change:
+                    ${wasAtTheEnd ? " [was @ end]" : " [wasn't @ end]"}
+                    ${ rs.scrollTop} + ${rs.clientHeight} == ${rs.scrollHeight}
+                    ${isAtTheEnd ? " [is @ end]" : " [isn't @ end]"}
+                    ${ state.scrollTop} + ${state.clientHeight} == ${state.scrollHeight}
+                    ${ (trueScrollHeight)}`
                     );
         }
 
@@ -238,13 +240,13 @@ export class VirtualList {
             || (rs.notifyWhenSafeToScroll && state.isSafeToScroll);
         if (!mustUpdateClientSideState) {
             if (this._debugMode)
-                console.log('updateClientSideStateImpl: server call skipped');
+                console.log(`${LogScope}.updateClientSideStateImpl: server call skipped`);
             return;
         }
 
         if (this._debugMode)
-            console.log("updateClientSideStateImpl: server call", state);
-        let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state);
+            console.log(`${LogScope}.updateClientSideStateImpl: server call ${state}`);
+        let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state)
         if (result > this._blazorRenderIndex)
             this._blazorRenderIndex = result;
     }
