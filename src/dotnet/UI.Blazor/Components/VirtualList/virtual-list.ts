@@ -242,7 +242,7 @@ export class VirtualList {
         }
 
         if (this._debugMode)
-            console.log(`${LogScope}.updateClientSideStateImpl: server call`, state)
+            console.log(`${LogScope}.updateClientSideStateImpl: server call ${state}`);
         let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state)
         if (result > this._blazorRenderIndex)
             this._blazorRenderIndex = result;
