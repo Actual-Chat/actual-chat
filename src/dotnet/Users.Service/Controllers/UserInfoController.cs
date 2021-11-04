@@ -17,10 +17,10 @@ public class UserInfoController : ControllerBase, IUserInfoService
     }
 
     [HttpGet, Publish]
-    public Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken)
-        => _userInfos.TryGet(userId, cancellationToken);
+    public Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken)
+        => _userInfos.Get(userId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<UserInfo?> TryGetByName(string name, CancellationToken cancellationToken)
-        => _userInfos.TryGetByName(name, cancellationToken);
+    public Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken)
+        => _userInfos.GetByName(name, cancellationToken);
 }

@@ -61,7 +61,7 @@
         var audioEntryId = entry.AudioEntryId.GetValueOrDefault();
         var audioEntry = await Chats
             .CreateEntryReader(Session, HistoricalPlayer.ChatId)
-            .TryGet(audioEntryId, default)
+            .Get(audioEntryId, default)
             .ConfigureAwait(false);
         if (audioEntry == null)
             return;

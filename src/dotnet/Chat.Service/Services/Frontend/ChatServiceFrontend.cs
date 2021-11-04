@@ -4,28 +4,28 @@ namespace ActualChat.Chat;
 
 internal class ChatServiceFrontend : IChatServiceFrontend
 {
-    private readonly IChatService _chatService;
-    private readonly IAuthService _auth;
+    private readonly IChatService _service;
+    private readonly IAuth _auth;
     private readonly IAuthorServiceBackend _authorService;
     private readonly ICommander _commander;
 
     public ChatServiceFrontend(
-        IAuthService auth,
-        IChatService chatService,
+        IAuth auth,
+        IChatService service,
         IAuthorServiceBackend authorService,
         ICommander commander)
     {
         _auth = auth;
-        _chatService = chatService;
+        _service = service;
         _authorService = authorService;
         _commander = commander;
     }
 
-    public virtual async Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await _chatService.TryGet(chatId, cancellationToken).ConfigureAwait(false);
+        return await _service.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(
@@ -34,9 +34,9 @@ internal class ChatServiceFrontend : IChatServiceFrontend
         Range<long> idRange,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await _chatService.GetEntries(chatId, idRange, cancellationToken).ConfigureAwait(false);
+        return await _service.GetEntries(chatId, idRange, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<long> GetEntryCount(
@@ -45,9 +45,9 @@ internal class ChatServiceFrontend : IChatServiceFrontend
         Range<long>? idRange,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await _chatService.GetEntryCount(chatId, idRange, cancellationToken).ConfigureAwait(false);
+        return await _service.GetEntryCount(chatId, idRange, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<Range<long>> GetIdRange(
@@ -55,9 +55,9 @@ internal class ChatServiceFrontend : IChatServiceFrontend
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await _chatService.GetIdRange(chatId, cancellationToken).ConfigureAwait(false);
+        return await _service.GetIdRange(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<ChatPermissions> GetPermissions(
@@ -65,8 +65,8 @@ internal class ChatServiceFrontend : IChatServiceFrontend
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return await _chatService.GetPermissions(chatId, user.Id, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        return await _service.GetPermissions(chatId, user.Id, cancellationToken).ConfigureAwait(false);
     }
 
     [CommandHandler]
@@ -79,7 +79,7 @@ internal class ChatServiceFrontend : IChatServiceFrontend
 
         var (session, chatId, text) = command;
 
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, user.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
         var authorId = await _authorService.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -105,7 +105,7 @@ internal class ChatServiceFrontend : IChatServiceFrontend
             return default!;
 
         var (session, title) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         user.MustBeAuthenticated();
 
         var chat = new Chat() {
@@ -113,7 +113,7 @@ internal class ChatServiceFrontend : IChatServiceFrontend
             OwnerIds = ImmutableArray.Create((UserId)user.Id),
         };
 
-        return await _chatService.CreateChat(new(chat), cancellationToken).ConfigureAwait(false);
+        return await _service.CreateChat(new(chat), cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -123,7 +123,7 @@ internal class ChatServiceFrontend : IChatServiceFrontend
         ChatPermissions permissions,
         CancellationToken cancellationToken)
     {
-        var chatPermissions = await _chatService.GetPermissions(chatId, userId, cancellationToken).ConfigureAwait(false);
+        var chatPermissions = await _service.GetPermissions(chatId, userId, cancellationToken).ConfigureAwait(false);
         if ((chatPermissions & permissions) != permissions)
             throw new SecurityException("Not enough permissions.");
         return default;

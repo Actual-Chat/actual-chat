@@ -3,7 +3,7 @@
 public interface IChatServiceFrontend
 {
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Chat?> TryGet(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<long> GetEntryCount(

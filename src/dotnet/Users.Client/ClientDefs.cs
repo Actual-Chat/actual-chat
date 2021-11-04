@@ -13,10 +13,10 @@ public interface ISessionInfoServiceDef
 [BasePath("userInfo")]
 public interface IUserInfoClientDef
 {
-    [Get(nameof(TryGet))]
-    Task<UserInfo?> TryGet(UserId userId, CancellationToken cancellationToken);
-    [Get(nameof(TryGetByName))]
-    Task<UserInfo?> TryGetByName(UserId name, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken);
+    [Get(nameof(GetByName))]
+    Task<UserInfo?> GetByName(UserId name, CancellationToken cancellationToken);
 }
 
 [BasePath("userState")]

@@ -20,7 +20,7 @@ internal class ChatService : DbServiceBase<ChatDbContext>, IChatService
         _idSequences = idSequences;
     }
 
-    public virtual async Task<Chat?> TryGet(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
         var dbChat = await _dbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
@@ -31,7 +31,7 @@ internal class ChatService : DbServiceBase<ChatDbContext>, IChatService
         UserId userId,
         CancellationToken cancellationToken)
     {
-        var chat = await TryGet(chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return 0;
         if (chat.OwnerIds.Contains(userId))

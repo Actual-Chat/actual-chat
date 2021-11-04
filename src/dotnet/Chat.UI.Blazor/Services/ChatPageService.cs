@@ -4,10 +4,10 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatPageService
 {
-    private readonly IAuthService _auth;
+    private readonly IAuth _auth;
     private readonly IChatServiceFrontend _chats;
 
-    public ChatPageService(IChatServiceFrontend chats, IAuthService auth)
+    public ChatPageService(IChatServiceFrontend chats, IAuth auth)
     {
         _chats = chats;
         _auth = auth;
@@ -19,8 +19,8 @@ public class ChatPageService
         string chatId,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var chat = await _chats.TryGet(session, chatId, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        var chat = await _chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return new () { IsUnavailable = true };
 

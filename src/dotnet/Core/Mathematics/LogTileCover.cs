@@ -93,7 +93,7 @@ public abstract class LogTileCover<TPoint, TSize>
         }
     }
 
-    public virtual Option<Range<TPoint>> TryGetMinCoveringTile(Range<TPoint> range)
+    public virtual bool TryGetMinCoveringTile(Range<TPoint> range, out Range<TPoint> tile)
     {
         var sizeMeasure = Measure;
         var comparer = Comparer<TSize>.Default;
@@ -108,16 +108,19 @@ public abstract class LogTileCover<TPoint, TSize>
             if (comparer.Compare(size, minSize) >= 0) {
                 var start = GetTileStart(range.Start, i);
                 // ~ if (start + size >= innerRange.End) ...
-                if (comparer.Compare(size, sizeMeasure.GetDistance(start, range.End)) >= 0)
-                    return Option.Some<Range<TPoint>>((start, sizeMeasure.AddOffset(start, size)));
+                if (comparer.Compare(size, sizeMeasure.GetDistance(start, range.End)) >= 0) {
+                    tile = (start, sizeMeasure.AddOffset(start, size));
+                    return true;
+                }
             }
         }
-        return default;
+        tile = default;
+        return false;
     }
 
     public Range<TPoint> GetMinCoveringTile(Range<TPoint> range)
-        => TryGetMinCoveringTile(range).IsSome(out var value)
-            ? value
+        => TryGetMinCoveringTile(range, out var tile)
+            ? tile
             : throw new ArgumentOutOfRangeException(nameof(range));
 
     // Protected methods
