@@ -37,9 +37,9 @@ public class RedisModule : HostModule<RedisSettings>
         var parts = connectionString.Split('|', 2);
         var configuration = parts.FirstOrDefault() ?? "";
         var keyPrefix = parts.Skip(1).SingleOrDefault() ?? "";
-
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
             typeof(TContext).Name, configuration, keyPrefix);
+
         services.AddRedisDb<TContext>(configuration, keyPrefix);
     }
 }

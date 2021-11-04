@@ -1,5 +1,6 @@
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
@@ -51,9 +52,11 @@ public class UsersModule : HostModule<UsersSettings>
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         });
 
-        services.AddSingleton<INicknameGenerator, NicknameGenerator>();
+        // Redis
+        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        redisModule.AddRedisDb<UsersDbContext>(services, Settings.Redis);
 
-        // DB-related
+        // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, UsersDbInitializer>();
@@ -91,6 +94,7 @@ public class UsersModule : HostModule<UsersSettings>
             return false;
         });
 
+
         // Auth services
         var fusionAuth = fusion.AddAuthentication();
         fusionAuth.AddServer(
@@ -103,6 +107,7 @@ public class UsersModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddMvc().AddApplicationPart(GetType().Assembly);
+        services.AddSingleton<INicknameGenerator, NicknameGenerator>();
         services.AddSingleton<IUserNameService, UserNameService>();
         fusion.AddComputeService<IUserInfoService, UserInfoService>();
         fusion.AddComputeService<IUserStateService, UserStateService>();

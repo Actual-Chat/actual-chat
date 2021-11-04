@@ -4,6 +4,7 @@ public class UsersSettings
 {
     // DBs
     public string Db { get; set; } = "";
+    public string Redis { get; set; } = "";
 
     // Auth provider settings
     public string MicrosoftAccountClientId { get; set; } = "";

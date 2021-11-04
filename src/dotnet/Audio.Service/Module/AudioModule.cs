@@ -31,7 +31,11 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        // DB-related
+        // Redis
+        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
+        redisModule.AddRedisDb<AudioDbContext>(services, Settings.Redis);
+
+        // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         dbModule.AddDbContextServices<AudioDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, AudioDbInitializer>();
@@ -52,10 +56,6 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
 
                 return false;
             });
-
-        // Redis
-        var redisModule = Plugins.GetPlugins<RedisModule>().Single();
-        redisModule.AddRedisDb<AudioDbContext>(services, Settings.Redis);
 
         // Module's own services
         services.AddSingleton<AudioSegmentSaver>();

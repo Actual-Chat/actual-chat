@@ -26,11 +26,11 @@ public class ChatServiceModule : HostModule<ChatSettings>
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        // Redis-related
+        // Redis
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();
         redisModule.AddRedisDb<ChatDbContext>(services, Settings.Redis);
 
-        // DB-related
+        // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         dbModule.AddDbContextServices<ChatDbContext>(services, Settings.Db);
         services.AddSingleton<IDbInitializer, ChatDbInitializer>();
