@@ -1,16 +1,15 @@
 using ActualChat.Users.Db;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users;
 
-public class UserInfoService : DbServiceBase<UsersDbContext>, IUserInfoService
+public class UserInfosService : DbServiceBase<UsersDbContext>, IUserInfos
 {
     private readonly IDbEntityResolver<string, DbUser> _dbUserResolver;
     private readonly DbUserByNameResolver _dbUserByNameResolver;
 
-    public UserInfoService(IServiceProvider services) : base(services)
+    public UserInfosService(IServiceProvider services) : base(services)
     {
         _dbUserResolver = services.DbEntityResolver<string, DbUser>();
         _dbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();

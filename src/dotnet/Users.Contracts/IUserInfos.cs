@@ -1,6 +1,6 @@
 namespace ActualChat.Users;
 
-public interface IUserInfoService
+public interface IUserInfos
 {
     [ComputeMethod(KeepAliveTime = 10)]
     Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken);

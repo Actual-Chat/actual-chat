@@ -107,15 +107,15 @@ public class UsersModule : HostModule<UsersSettings>
 
         // Module's own services
         services.AddMvc().AddApplicationPart(GetType().Assembly);
-        services.AddSingleton<INicknameGenerator, NicknameGenerator>();
-        services.AddSingleton<IUserNameService, UserNameService>();
-        fusion.AddComputeService<IUserInfoService, UserInfoService>();
-        fusion.AddComputeService<IUserStateService, UserStateService>();
-        fusion.AddComputeService<IDefaultAuthorService, DefaultAuthorService>();
-        fusion.AddComputeService<ISessionInfoService, SessionInfoService>();
+        services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
+        services.AddSingleton<UserNamer>();
+        fusion.AddComputeService<IUserInfos, UserInfosService>();
+        fusion.AddComputeService<IUserStates, UserStatesService>();
+        fusion.AddComputeService<IUserAuthors, UserAuthorsService>();
+        fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsService>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();
-        services.AddSingleton<IClaimsToAuthorMapper, ClaimsToAuthorMapper>();
+        services.AddSingleton<ClaimMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepository>());
     }
 }

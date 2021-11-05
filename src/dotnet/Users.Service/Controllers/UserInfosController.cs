@@ -5,12 +5,12 @@ namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors]
-public class UserInfoController : ControllerBase, IUserInfoService
+public class UserInfosController : ControllerBase, IUserInfos
 {
-    private readonly IUserInfoService _userInfos;
+    private readonly IUserInfos _userInfos;
     private readonly ISessionResolver _sessionResolver;
 
-    public UserInfoController(IUserInfoService userInfos, ISessionResolver sessionResolver)
+    public UserInfosController(IUserInfos userInfos, ISessionResolver sessionResolver)
     {
         _userInfos = userInfos;
         _sessionResolver = sessionResolver;

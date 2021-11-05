@@ -1,11 +1,9 @@
 namespace ActualChat.Users;
 
 /// <summary>
-/// It will be used as contact info in a contact list.
+/// Used as contact info in contacts list, etc.
 /// </summary>
 public record UserInfo(Symbol Id, string Name = "(unknown)")
 {
-    public static UserInfo None { get; } = new();
-
-    public UserInfo() : this(Symbol.Empty, "(none)") { }
+    public static UserInfo None { get; } = new(Symbol.Empty, "(none)");
 }

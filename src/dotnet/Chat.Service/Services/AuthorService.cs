@@ -8,29 +8,26 @@ namespace ActualChat.Chat;
 /// <inheritdoc cref="IAuthorService"/>
 internal class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
 {
-    private readonly IDefaultAuthorService _defaultAuthorService;
-    private readonly INicknameGenerator _nicknameGenerator;
-    private readonly IUserStateService _userStateService;
-    private readonly ILogger<AuthorService> _log;
+    private readonly IUserAuthors _userAuthors;
+    private readonly IUserStates _userStates;
+    private readonly IRandomNameGenerator _randomNameGenerator;
 
     public AuthorService(
-        IDefaultAuthorService defaultAuthorService,
-        INicknameGenerator nicknameGenerator,
-        IUserStateService userStateService,
-        ILogger<AuthorService> log,
+        IUserAuthors userAuthors,
+        IUserStates userStates,
+        IRandomNameGenerator randomNameGenerator,
         IServiceProvider serviceProvider
     ) : base(serviceProvider)
     {
-        _defaultAuthorService = defaultAuthorService;
-        _nicknameGenerator = nicknameGenerator;
-        _userStateService = userStateService;
-        _log = log;
+        _userAuthors = userAuthors;
+        _userStates = userStates;
+        _randomNameGenerator = randomNameGenerator;
     }
 
     /// <inheritdoc />
     public virtual async Task<Author?> GetByAuthorId(AuthorId authorId, CancellationToken cancellationToken)
     {
-        var dbContext = CreateDbContext(readWrite: false);
+        var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbUser = await dbContext.ChatUsers
@@ -48,13 +45,12 @@ internal class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
 
         UserId userId = dbUser.UserId;
 
-        defaultAuthor = await _defaultAuthorService.Get(userId, cancellationToken)
+        defaultAuthor = await _userAuthors.Get(userId, cancellationToken)
            .ConfigureAwait(false);
-        isOnline = await _userStateService.IsOnline(userId, cancellationToken).ConfigureAwait(false);
+        isOnline = await _userStates.IsOnline(userId, cancellationToken).ConfigureAwait(false);
 
         if (defaultAuthor == null) {
-            _log.LogError("The default author service returned <null>. " +
-                "The userId: {UserId} should have a default author.", userId);
+            Log.LogError("No UserAuthor for User.Id = {UserId}", userId);
             return new(dbUser.Author) { UserId = userId, AuthorId = authorId };
         }
         return ToModel(dbUser, defaultAuthor, isOnline);
@@ -80,15 +76,14 @@ internal class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
         if (dbUser?.Author == null)
             return null;
 
-        var defaultAuthor = await _defaultAuthorService.Get(userId, cancellationToken).ConfigureAwait(false);
-        if (defaultAuthor == null) {
-            _log.LogError("The default author service returned <null>. " +
-                "The userId: {UserId} should have a default author.", userId);
+        var userAuthor = await _userAuthors.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (userAuthor == null) {
+            Log.LogError("No UserAuthor for User.Id = {UserId}", userId);
             return null;
         }
 
-        var isOnline = await _userStateService.IsOnline(userId, cancellationToken).ConfigureAwait(false);
-        return ToModel(dbUser, defaultAuthor, isOnline);
+        var isOnline = await _userStates.IsOnline(userId, cancellationToken).ConfigureAwait(false);
+        return ToModel(dbUser, userAuthor, isOnline);
     }
 
     /// <inheritdoc />
@@ -102,13 +97,13 @@ internal class AuthorService : DbServiceBase<ChatDbContext>, IAuthorService
         }
         DbAuthor? dbAuthor;
         if (!userId.IsNone) {
-            var defaultAuthor = await _defaultAuthorService.Get(userId, cancellationToken).ConfigureAwait(false)
+            var defaultAuthor = await _userAuthors.Get(userId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("The default author service returned <null>. " +
                     $"The userId: {userId} should have a default author.");
             dbAuthor = new DbAuthor(defaultAuthor);
         }
         else {
-            var nickname = await _nicknameGenerator.Generate(cancellationToken).ConfigureAwait(false);
+            var nickname = _randomNameGenerator.Generate('_', true);
             dbAuthor = new DbAuthor() {
                 IsAnonymous = true,
                 Name = "Anonymous",

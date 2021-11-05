@@ -11,7 +11,7 @@ public class UsersDbContext : DbContextBase
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbUser> Users { get; protected set; } = null!;
-    public DbSet<DbDefaultAuthor> DefaultAuthors { get; protected set; } = null!;
+    public DbSet<DbUserAuthor> UserAuthors { get; protected set; } = null!;
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;

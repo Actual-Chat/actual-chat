@@ -53,7 +53,10 @@ internal class AuthorServiceBackend : IAuthorServiceBackend
             ).ConfigureAwait(false);
         }
         await _commander.Call(
-            new ISessionInfoService.UpsertCommand(session, new($"{chatId}::authorId", authorId)),
+            new ISessionOptionsBackend.UpdateCommand(
+                session,
+                new($"{chatId}::authorId", authorId)
+                ).MarkValid(),
             isolate: true,
             cancellationToken
         ).ConfigureAwait(false);

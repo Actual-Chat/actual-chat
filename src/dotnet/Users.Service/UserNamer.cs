@@ -2,9 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ActualChat.Users;
 
-public class UserNameService : IUserNameService
+public class UserNamer
 {
-    public ValidationException? ValidateName(in ReadOnlySpan<char> name)
+    public virtual ValidationException? ValidateName(in ReadOnlySpan<char> name)
     {
         if (name.Length == 0)
             return new ValidationException("Name is empty.");
@@ -19,7 +19,7 @@ public class UserNameService : IUserNameService
         return null;
     }
 
-    public ReadOnlySpan<char> ParseName(ReadOnlySpan<char> text)
+    public virtual ReadOnlySpan<char> ParseName(ReadOnlySpan<char> text)
     {
         if (text.Length < 4)
             return ReadOnlySpan<char>.Empty;

@@ -13,9 +13,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
 {
     protected IAuth Auth { get; }
     protected IAuthBackend AuthBackend { get; }
-    protected IUserInfoService UserInfos { get; }
-    protected IUserNameService UserNames { get; }
-    protected IUserStateService UserStates { get; }
+    protected IUserInfos UserInfos { get; }
+    protected UserNamer UserNamer { get; }
+    protected IUserStates UserStates { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
     public AuthServiceCommandFilters(IServiceProvider services)
@@ -23,9 +23,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
         Auth = services.GetRequiredService<IAuth>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
-        UserInfos = services.GetRequiredService<IUserInfoService>();
-        UserNames = services.GetRequiredService<IUserNameService>();
-        UserStates = services.GetRequiredService<IUserStateService>();
+        UserInfos = services.GetRequiredService<IUserInfos>();
+        UserNamer = services.GetRequiredService<UserNamer>();
+        UserStates = services.GetRequiredService<IUserStates>();
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
@@ -117,7 +117,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             return;
         }
         if (command.Name != null) {
-            var error = UserNames.ValidateName(command.Name);
+            var error = UserNamer.ValidateName(command.Name);
             if (error != null)
                 throw error;
 
