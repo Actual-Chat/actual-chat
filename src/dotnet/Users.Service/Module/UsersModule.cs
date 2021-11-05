@@ -111,7 +111,7 @@ public class UsersModule : HostModule<UsersSettings>
         services.AddSingleton<UserNamer>();
         fusion.AddComputeService<IUserInfos, UserInfosService>();
         fusion.AddComputeService<IUserStates, UserStatesService>();
-        fusion.AddComputeService<IUserAuthors, UserAuthorsService>();
+        fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsService>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsService>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();

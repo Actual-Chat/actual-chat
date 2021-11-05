@@ -1,6 +1,6 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor;
-using ActualChat.Chat.Frontend.Client;
+using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor;
 using ActualChat.Hosting;
@@ -53,7 +53,7 @@ public static class Program
             typeof(AudioClientModule),
             typeof(AudioBlazorUIModule),
             typeof(ChatModule),
-            typeof(ChatFrontendClientModule),
+            typeof(ChatClientModule),
             typeof(ChatBlazorUIModule),
             typeof(UsersClientModule),
             typeof(UsersBlazorUIModule)

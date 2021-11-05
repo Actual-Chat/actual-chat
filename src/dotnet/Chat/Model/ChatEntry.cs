@@ -3,7 +3,7 @@ using ActualChat.Mathematics;
 
 namespace ActualChat.Chat;
 
-public record class ChatEntry
+public record ChatEntry
 {
     public ChatId ChatId { get; init; } = "";
     public long Id { get; init; }

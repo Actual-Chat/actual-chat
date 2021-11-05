@@ -36,9 +36,8 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 },
             }, cancellationToken).ConfigureAwait(false);
             await dbContext.UserAuthors.AddAsync(new DbUserAuthor() {
-                UserId = UserConstants.Admin.AuthorId,
+                UserId = UserConstants.Admin.UserId,
                 Name = UserConstants.Admin.Name,
-                Nickname = UserConstants.Admin.Nickname,
                 Picture = UserConstants.Admin.Picture,
             }, cancellationToken).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

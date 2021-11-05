@@ -4,14 +4,14 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryReader
 {
-    private readonly IChatServiceFrontend _chats;
+    private readonly IChats _chats;
     private readonly MomentClockSet _clocks;
 
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; }
     public TimeSpan InvalidationWaitTimeout { get; init; } = TimeSpan.FromMilliseconds(50);
 
-    public ChatEntryReader(IChatServiceFrontend chats)
+    public ChatEntryReader(IChats chats)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         var services = ((IComputeService)chats).GetServiceProvider();

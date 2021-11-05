@@ -40,33 +40,33 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         },
                     },
             };
-            var dbAuthor = new DbAuthor() {
-                Id = UserConstants.Admin.AuthorId,
+            await dbContext.Chats.AddAsync(dbChat, cancellationToken).ConfigureAwait(false);
+
+            var dbAuthor = new DbChatAuthor() {
+                Id = DbChatAuthor.ComposeId(defaultChatId, 1),
+                ChatId = defaultChatId,
+                LocalId = 1,
+                Version = VersionGenerator.NextVersion(),
                 Name = UserConstants.Admin.Name,
                 Picture = UserConstants.Admin.Picture,
-                IsAnonymous = true,
-            };
-            var dbChatUser = new DbChatUser() {
-                AuthorId = dbAuthor.Id,
-                ChatId = dbChat.Id,
+                IsAnonymous = false,
                 UserId = adminUserId,
             };
-            await dbContext.Authors.AddAsync(dbAuthor, cancellationToken).ConfigureAwait(false);
-            await dbContext.ChatUsers.AddAsync(dbChatUser, cancellationToken).ConfigureAwait(false);
-            await dbContext.Chats.AddAsync(dbChat, cancellationToken).ConfigureAwait(false);
+            await dbContext.ChatAuthors.AddAsync(dbAuthor, cancellationToken).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             var words = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely" };
             for (var id = 0; id < 96; id++) {
                 var dbChatEntry = new DbChatEntry() {
+                    CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
                     ChatId = dbChat.Id,
                     Id = id,
-                    CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
+                    Version = VersionGenerator.NextVersion(),
                     BeginsAt = Clocks.SystemClock.Now,
                     EndsAt = Clocks.SystemClock.Now,
                     Type = ChatEntryType.Text,
                     Content = GetRandomSentence(30),
-                    AuthorId = UserConstants.Admin.AuthorId,
+                    AuthorId = dbAuthor.Id,
                 };
                 if (id == 0)
                     dbChatEntry.Content = "First";

@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatMediaPlayer : IDisposable
 {
-    private IChatServiceFrontend Chats { get; }
+    private IChats Chats { get; }
     private IChatMediaResolver MediaResolver { get; }
     private AudioDownloader AudioDownloader { get; }
     private IAudioSourceStreamer AudioSourceStreamer { get; }
@@ -27,7 +27,7 @@ public sealed class ChatMediaPlayer : IDisposable
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         Log = services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
-        Chats = services.GetRequiredService<IChatServiceFrontend>();
+        Chats = services.GetRequiredService<IChats>();
         MediaPlayer = services.GetRequiredService<MediaPlayer>();
         MediaResolver = services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();

@@ -20,32 +20,28 @@ public class ClaimMapper
         const string nameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nickname";
         const string githubNameClaim = "urn:github:name";
         const string surnameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname";
-        const string firstnameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname";
+        const string givenNameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname";
 
-        if (string.IsNullOrEmpty(dbUserAuthor.Nickname)
+        if (string.IsNullOrEmpty(dbUserAuthor.Name)
             && claims.TryGetValue(nameClaim, out var nickname)
             && !string.IsNullOrWhiteSpace(nickname)) {
-            dbUserAuthor.Nickname = nickname;
+            dbUserAuthor.Name = nickname;
         }
 
         claims.TryGetValue(surnameClaim, out var surname);
-        claims.TryGetValue(firstnameClaim, out var firstname);
+        claims.TryGetValue(givenNameClaim, out var givenName);
+        var fullName = (Capitalize(givenName) ?? "") + " " + (Capitalize(surname) ?? "").Trim();
 
-        var name = (Capitalize(firstname) ?? "") + " " + (Capitalize(surname) ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(fullName))
+            claims.TryGetValue(githubNameClaim, out fullName);
 
-        if (string.IsNullOrWhiteSpace(name))
-            claims.TryGetValue(githubNameClaim, out name);
-
-        if (string.IsNullOrWhiteSpace(name)) {
+        if (string.IsNullOrWhiteSpace(fullName)) {
             // ToDo: generate better unique names
-            name = Invariant($"unnamed_{Guid.NewGuid():n}");
+            fullName = Invariant($"unnamed_{Guid.NewGuid():n}");
         }
-
-        if (string.IsNullOrEmpty(dbUserAuthor.Nickname))
-            dbUserAuthor.Nickname = name.Replace(" ", "", StringComparison.Ordinal);
-
+        var loginName = fullName.Replace(" ", "", StringComparison.Ordinal);
         if (string.IsNullOrEmpty(dbUserAuthor.Name))
-            dbUserAuthor.Name = name;
+            dbUserAuthor.Name = fullName;
 
         static string? Capitalize(string? s)
         {
