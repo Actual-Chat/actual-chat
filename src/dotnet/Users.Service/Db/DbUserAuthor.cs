@@ -9,26 +9,31 @@ namespace ActualChat.Users.Db;
 /// Primary author of an user. <br />
 /// </summary>
 [Table("UserAuthors")]
-public class DbUserAuthor : IAuthorInfo
+public class DbUserAuthor : IAuthorLike
 {
     [Key] public string UserId { get; set; } = null!;
+    AuthorId IHasId<AuthorId>.Id => UserId;
 
-    /// <summary> The url of the author avatar. </summary>
-    public string? Picture { get; set; }
-
-    /// <summary> @{Nickame}, e.g. @ivan </summary>
-    public string Nickname { get; set; } = "";
-
-    /// <summary> e.g. Ivan Ivanov </summary>
+    public long Version { get; set; }
     public string Name { get; set; } = "";
-
-    /// <summary> Is user want to be anonymous in chats by default. </summary>
+    public string Picture { get; set; } = "";
     public bool IsAnonymous { get; set; }
 
-    public UserAuthor ToModel() => new() {
-        Name = Name,
-        Nickname = Nickname,
-        Picture = Picture,
-        IsAnonymous = IsAnonymous,
-    };
+    public UserAuthor ToModel()
+        => new() {
+            Id = UserId,
+            Version = Version,
+            Name = Name,
+            Picture = Picture,
+            IsAnonymous = IsAnonymous,
+        };
+
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbUserAuthor>
+    {
+        public void Configure(EntityTypeBuilder<DbUserAuthor> builder)
+        {
+            builder.Property(a => a.UserId).IsRequired();
+            builder.Property(a => a.Version).IsConcurrencyToken();
+        }
+    }
 }

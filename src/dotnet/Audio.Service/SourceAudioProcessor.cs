@@ -16,7 +16,7 @@ public class SourceAudioProcessor : BackgroundService
     public AudioActivityExtractor AudioActivityExtractor { get; }
     public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
-    public IChatServiceBackend Chat { get; }
+    public IChatsBackend ChatsBackend { get; }
     public MomentClockSet ClockSet { get; }
 
     public SourceAudioProcessor(
@@ -26,7 +26,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioActivityExtractor audioActivityExtractor,
         AudioSourceStreamer audioSourceStreamer,
         TranscriptStreamer transcriptStreamer,
-        IChatServiceBackend chat,
+        IChatsBackend chatsBackend,
         MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
@@ -37,7 +37,7 @@ public class SourceAudioProcessor : BackgroundService
         AudioActivityExtractor = audioActivityExtractor;
         AudioSourceStreamer = audioSourceStreamer;
         TranscriptStreamer = transcriptStreamer;
-        Chat = chat;
+        ChatsBackend = chatsBackend;
         ClockSet = clockSet;
     }
 
@@ -184,7 +184,8 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = openAudioSegment.StreamId,
             BeginsAt = beginsAt,
         };
-        return await Chat.CreateEntry(chatEntry, cancellationToken).ConfigureAwait(false);
+        var command = new IChatsBackend.UpsertEntryCommand(chatEntry).MarkValid();
+        return await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ChatEntry> CreateTextChatEntry(
@@ -201,7 +202,8 @@ public class SourceAudioProcessor : BackgroundService
             AudioEntryId = audioChatEntry.Id,
             BeginsAt = audioChatEntry.BeginsAt,
         };
-        return await Chat.CreateEntry(chatEntry, cancellationToken).ConfigureAwait(false);
+        var command = new IChatsBackend.UpsertEntryCommand(chatEntry).MarkValid();
+        return await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task FinalizeAudioChatEntry(
@@ -211,12 +213,13 @@ public class SourceAudioProcessor : BackgroundService
         CancellationToken cancellationToken)
     {
         var duration = await segment.DurationTask.ConfigureAwait(false);
-        var updated = audioChatEntry with {
+        audioChatEntry = audioChatEntry with {
             Content = audioBlobId ?? "",
             StreamId = StreamId.None,
             EndsAt = audioChatEntry.BeginsAt.ToDateTime().Add(duration),
         };
-        await Chat.UpdateEntry(updated, cancellationToken).ConfigureAwait(false);
+        var command = new IChatsBackend.UpsertEntryCommand(audioChatEntry).MarkValid();
+        await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task FinalizeTextChatEntry(
@@ -224,7 +227,7 @@ public class SourceAudioProcessor : BackgroundService
         Transcript? transcript,
         CancellationToken cancellationToken)
     {
-        var updated = transcript != null
+        textChatEntry = transcript != null
             ? textChatEntry with {
                 Content = transcript.Text,
                 StreamId = StreamId.None,
@@ -235,7 +238,8 @@ public class SourceAudioProcessor : BackgroundService
                 StreamId = StreamId.None,
                 EndsAt = ClockSet.CpuClock.Now,
             };
-        await Chat.UpdateEntry(updated, cancellationToken).ConfigureAwait(false);
+        var command = new IChatsBackend.UpsertEntryCommand(textChatEntry);
+        await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task PublishAudioStream(OpenAudioSegment segment, CancellationToken cancellationToken)

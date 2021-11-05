@@ -35,7 +35,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public long Id { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
 
-    public string AuthorId { get; set; } = "";
+    public string AuthorId { get; set; } = null!;
 
     public DateTime BeginsAt {
         get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -56,10 +56,9 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
-    public DbAuthor? Author { get; set; }
 
     public static string GetCompositeId(string chatId, long id)
-        => ZString.Format("{0}:{1}", chatId, id);
+        => $"{chatId}:{id.ToString(CultureInfo.InvariantCulture)}";
 
     public ChatEntry ToModel()
         => new() {
@@ -104,7 +103,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         public void Configure(EntityTypeBuilder<DbChatEntry> builder)
         {
             builder.Property(x => x.AuthorId).IsRequired();
-            builder.HasOne(x => x.Author).WithMany().HasForeignKey(x => x.AuthorId);
         }
     }
 }

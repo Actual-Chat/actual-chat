@@ -1,12 +1,12 @@
 namespace ActualChat.UI.Blazor.Host;
 
-public record class NavbarLinkModel(
+public record NavbarLinkModel(
     string Name,
     string Href,
     NavbarLinkModelStatus Status = NavbarLinkModelStatus.None
 );
 
-public record class NavbarLinksGroupModel(
+public record NavbarLinksGroupModel(
     string Name,
     NavbarLinkModel[] Links
 );

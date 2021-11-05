@@ -7,7 +7,7 @@
     var model = State.LatestNonErrorValue ?? new(null);
 }
 
-@if (model?.AuthorInfo == null) {
+@if (model?.Author == null) {
     <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
         <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
         <div class="flex-1 overflow-hidden">
@@ -21,16 +21,16 @@
         </div>
     </div>
 } else {
-    var picture = string.IsNullOrWhiteSpace(model.AuthorInfo.Picture)
-        ? "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + model.AuthorInfo.Name
-        : model.AuthorInfo.Picture;
+    var picture = string.IsNullOrWhiteSpace(model.Author.Picture)
+        ? "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + model.Author.Name
+        : model.Author.Picture;
 
     <div class="flex items-start mb-4 text-sm">
         <img src="@picture" class="w-10 h-10 rounded-full mr-3 select-none">
         <div class="flex-1 overflow-hidden">
             <div>
-                <span class="font-bold text-gray-900 @(model.AuthorInfo.IsOnline != true ? "opacity-75" : "")">
-                    @model.AuthorInfo.Nickname
+                <span class="font-bold text-gray-900">
+                    @model.Author.Name
                 </span>
                 <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
             </div>
@@ -47,7 +47,7 @@
     private readonly int _seed = Random.Shared.Next();
 
     [Inject]
-    protected IAuthorServiceFrontend Authors { get; set; } = null!;
+    protected IChatAuthors ChatAuthors { get; set; } = null!;
 
     [Inject]
     protected Session Session { get; set; } = null!;
@@ -63,7 +63,7 @@
         if (Entry == null! || Entry.AuthorId.IsNone)
             return new(null);
 
-        var author = await Authors.GetByAuthorId(Session, Entry.AuthorId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthors.GetAuthor(Entry.ChatId, Entry.AuthorId, true, cancellationToken).ConfigureAwait(false);
         return new(author);
     }
 

@@ -4,9 +4,10 @@ namespace ActualChat.Users.Client;
 
 // All backend clients & controllers are unused for now
 
-[BasePath("session")]
+[BasePath("sessionOptionsBackend")]
 public interface ISessionOptionsBackendClientDef
 {
     [Post(nameof(Update))]
     Task Update([Body] ISessionOptionsBackend.UpdateCommand command, CancellationToken cancellationToken);
 }
+

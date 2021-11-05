@@ -53,25 +53,27 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
                 return commandAssembly == typeof(Chat).Assembly
-                    || commandAssembly == typeof(IAuthorService.CreateAuthorCommand).Assembly;
+                    || commandAssembly == typeof(IChatAuthorsBackend.CreateAuthorCommand).Assembly;
             });
 
         services.AddMvc().AddApplicationPart(GetType().Assembly);
 
-        // IChatService
+        // ChatService
         services.AddSingleton(c => {
             var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
-            return chatRedisDb.GetSequenceSet<ChatService>("chat.seq");
+            return chatRedisDb.GetSequenceSet<ChatEntry>("seq." + nameof(ChatEntry));
         });
-        services.AddSingleton<IAuthorServiceFrontend, AuthorServiceFrontend>();
-        services.AddSingleton<IAuthorServiceBackend, AuthorServiceBackend>();
+        fusion.AddComputeService<ChatService>();
+        services.AddSingleton<IChats>(c => c.GetRequiredService<ChatService>());
+        services.AddSingleton<IChatsBackend>(c => c.GetRequiredService<ChatService>());
 
-
-        fusion.AddComputeService<IAuthorService, AuthorService>();
-        //fusion.AddComputeService<IAuthorServiceFrontend, AuthorServiceFrontend>();
-        //fusion.AddComputeService<IAuthorServiceBackend, AuthorServiceBackend>();
-        fusion.AddComputeService<IChatService, ChatService>();
-        fusion.AddComputeService<IChatServiceFrontend, ChatServiceFrontend>();
-        fusion.AddComputeService<IChatServiceBackend, ChatServiceBackend>();
+        // ChatAuthorsService
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
+            return chatRedisDb.GetSequenceSet<ChatAuthor>("seq." + nameof(ChatAuthor));
+        });
+        fusion.AddComputeService<ChatAuthorsService>();
+        services.AddSingleton<IChatAuthors>(c => c.GetRequiredService<ChatAuthorsService>());
+        services.AddSingleton<IChatAuthorsBackend>(c => c.GetRequiredService<ChatAuthorsService>());
     }
 }

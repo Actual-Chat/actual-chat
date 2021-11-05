@@ -35,7 +35,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>
     }
 
     public List<DbChatOwner> Owners { get; set; } = new();
-    public List<DbChatUser> Users { get; set; } = new();
 
     public Chat ToModel()
         => new() {
@@ -51,7 +50,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>
         public void Configure(EntityTypeBuilder<DbChat> builder)
         {
             builder.Property(a => a.Id).ValueGeneratedOnAdd().HasValueGenerator<UlidValueGenerator>();
-            builder.HasMany(c => c.Users).WithOne().HasForeignKey(u => u.ChatId);
         }
     }
 }

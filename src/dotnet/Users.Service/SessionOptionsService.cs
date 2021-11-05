@@ -11,15 +11,17 @@ public class SessionOptionsService : DbServiceBase<UsersDbContext>, ISessionOpti
     public SessionOptionsService(IAuth auth, IServiceProvider services) : base(services)
         => _auth = auth;
 
-    /// <inheritdoc />
-    [CommandHandler, Internal]
+    // Backend
+
+    // [CommandHandler]
     public virtual async Task Update(ISessionOptionsBackend.UpdateCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             _ = _auth.GetSessionInfo(command.Session, default);
             return;
         }
-        var dbContext = await CreateCommandDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbSession = await dbContext.Sessions

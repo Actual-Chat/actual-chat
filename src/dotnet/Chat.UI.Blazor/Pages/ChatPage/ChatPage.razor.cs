@@ -11,8 +11,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     [Parameter] public string ChatId { get; set; } = "";
     [Inject] private Session Session { get; set; } = default!;
     [Inject] private ChatPageService Service { get; set; } = default!;
-    [Inject] private IChatServiceFrontend Chats { get; set; } = default!;
-    [Inject] private IAuthorIdAccessor AuthorIdAccessor { get; set; } = default!;
+    [Inject] private IChats Chats { get; set; } = default!;
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
@@ -49,12 +49,12 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var wasPlaying = RealtimePlayer?.IsPlaying ?? false;
         RealtimePlayer?.Dispose();
 
-        var authorId = await AuthorIdAccessor.Get(Session, ChatId, default).ConfigureAwait(true);
+        var author = await ChatAuthors.GetSessionChatAuthor(Session, ChatId, default).ConfigureAwait(true);
         RealtimePlayer = new(Services) {
             Session = Session,
             ChatId = chat.Id,
             IsRealTimePlayer = true,
-            SilencedAuthorIds = authorId.IsNone ? Option<AuthorId>.None : Option.Some(authorId),
+            SilencedAuthorIds = author == null ? Option<AuthorId>.None : Option.Some(author.Id),
         };
         if (wasPlaying)
             _ = RealtimePlayer.Play();

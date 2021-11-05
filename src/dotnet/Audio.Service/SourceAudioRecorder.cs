@@ -8,7 +8,7 @@ namespace ActualChat.Audio;
 
 public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 {
-    private readonly IAuthorServiceBackend _authorService;
+    private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly RedisDb _redisDb;
     private readonly RedisQueue<AudioRecord> _newRecordQueue;
     private readonly ILogger<SourceAudioRecorder> _log;
@@ -16,12 +16,12 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     public SourceAudioRecorder(
         ILogger<SourceAudioRecorder> log,
         RedisDb<AudioDbContext> audioRedisDb,
-        IAuthorServiceBackend authorService)
+        IChatAuthorsBackend chatAuthorsBackend)
     {
         _log = log;
         _redisDb = audioRedisDb.WithKeyPrefix("source-audio");
         _newRecordQueue = _redisDb.GetQueue<AudioRecord>("new-records");
-        _authorService = authorService;
+        _chatAuthorsBackend = chatAuthorsBackend;
     }
 
     public ValueTask DisposeAsync()
@@ -33,11 +33,10 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         ChannelReader<BlobPart> content,
         CancellationToken cancellationToken)
     {
-        var authorId = await _authorService.GetOrCreate(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false);
-
+        var author = await _chatAuthorsBackend.GetOrCreate(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false);
         audioRecord = audioRecord with {
             Id = new AudioRecordId(Ulid.NewUlid().ToString()),
-            AuthorId = authorId,
+            AuthorId = author.Id,
         };
         _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", audioRecord);
 
