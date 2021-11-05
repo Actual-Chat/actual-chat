@@ -61,43 +61,46 @@ public partial class ChatAuthorsService
         var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         var userId = user.IsAuthenticated ? user.Id : UserId.None;
 
-        var createAuthorCommand = new IChatAuthorsBackend.CreateAuthorCommand(chatId, userId);
+        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
         chatAuthor = await _commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
-        var updateOptionCommand = new ISessionOptionsBackend.UpdateCommand(
-            session,
-            new($"{chatId}::authorId", chatAuthor.Id)
-            ).MarkValid();
-        await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated) {
+            var updateOptionCommand = new ISessionOptionsBackend.UpdateCommand(
+                session,
+                new($"{chatId}::authorId", chatAuthor.Id));
+            await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
+        }
         return chatAuthor;
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateAuthorCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
         var (chatId, userId) = command;
         if (Computed.IsInvalidating()) {
-            _ = GetByUserId(chatId, userId, true, default);
-            _ = GetByUserId(chatId, userId, false, default);
+            if (!userId.IsNone) {
+                _ = GetByUserId(chatId, userId, true, default);
+                _ = GetByUserId(chatId, userId, false, default);
+            }
             return default!;
         }
 
         DbChatAuthor? dbChatAuthor;
-        if (!userId.IsNone) {
+        if (userId.IsNone) {
+            var name = _randomNameGenerator.Generate('_', true);
+            dbChatAuthor = new DbChatAuthor() {
+                Name = name,
+                Picture = "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + name,
+                IsAnonymous = true,
+            };
+        }
+        else {
             var userAuthor = await _userAuthorsBackend.Get(userId, true, cancellationToken).ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             dbChatAuthor = new DbChatAuthor() {
                 Name = userAuthor.Name, // Wrong: it should either generate anon
                 Picture = userAuthor.Picture,
                 IsAnonymous = userAuthor.IsAnonymous,
-            };
-        }
-        else {
-            var name = _randomNameGenerator.Generate('_', true);
-            dbChatAuthor = new DbChatAuthor() {
-                Name = name,
-                Picture = "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + name,
-                IsAnonymous = true,
             };
         }
 

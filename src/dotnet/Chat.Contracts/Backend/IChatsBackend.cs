@@ -20,6 +20,6 @@ public interface IChatsBackend
     [CommandHandler]
     Task<ChatEntry> UpsertEntry(UpsertEntryCommand command, CancellationToken cancellationToken);
 
-    public record CreateChatCommand(Chat Chat) : BackendCommand<Chat>;
-    public record UpsertEntryCommand(ChatEntry Entry) : BackendCommand<ChatEntry>;
+    public record CreateChatCommand(Chat Chat) : ICommand<Chat>, IBackendCommand;
+    public record UpsertEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>, IBackendCommand;
 }
