@@ -97,6 +97,7 @@ public class UsersModule : HostModule<UsersSettings>
 
         // Auth services
         var fusionAuth = fusion.AddAuthentication();
+        services.TryAddScoped<ServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
             signInControllerOptionsBuilder: (_, options) => {
                 options.DefaultScheme = MicrosoftAccountDefaults.AuthenticationScheme;

@@ -47,7 +47,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             var user = await authBackend.GetUser(UserConstants.Admin.UserId, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("Failed to create 'admin' user.");
             await authBackend.SignIn(
-                new SignInCommand(session, user, user.Identities.Keys.Single()).MarkValid(),
+                new SignInCommand(session, user, user.Identities.Keys.Single()),
                 cancellationToken).ConfigureAwait(false);
             UserConstants.Admin.Session = session;
         }

@@ -184,7 +184,7 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = openAudioSegment.StreamId,
             BeginsAt = beginsAt,
         };
-        var command = new IChatsBackend.UpsertEntryCommand(chatEntry).MarkValid();
+        var command = new IChatsBackend.UpsertEntryCommand(chatEntry);
         return await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
@@ -202,7 +202,7 @@ public class SourceAudioProcessor : BackgroundService
             AudioEntryId = audioChatEntry.Id,
             BeginsAt = audioChatEntry.BeginsAt,
         };
-        var command = new IChatsBackend.UpsertEntryCommand(chatEntry).MarkValid();
+        var command = new IChatsBackend.UpsertEntryCommand(chatEntry);
         return await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
@@ -218,7 +218,7 @@ public class SourceAudioProcessor : BackgroundService
             StreamId = StreamId.None,
             EndsAt = audioChatEntry.BeginsAt.ToDateTime().Add(duration),
         };
-        var command = new IChatsBackend.UpsertEntryCommand(audioChatEntry).MarkValid();
+        var command = new IChatsBackend.UpsertEntryCommand(audioChatEntry);
         await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 

@@ -10,5 +10,5 @@ public interface ISessionOptionsBackend
     public record UpdateCommand(
             Session Session,
             KeyValuePair<string, string> Option
-        ) : BackendCommand<Unit>, ISessionCommand<Unit>;
+        ) : ISessionCommand<Unit>, IBackendCommand;
 }

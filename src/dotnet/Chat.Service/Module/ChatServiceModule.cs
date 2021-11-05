@@ -53,7 +53,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 // 2. Make sure it's intact only for local commands
                 var commandAssembly = commandType.Assembly;
                 return commandAssembly == typeof(Chat).Assembly
-                    || commandAssembly == typeof(IChatAuthorsBackend.CreateAuthorCommand).Assembly
+                    || commandAssembly == typeof(IChatAuthorsBackend.CreateCommand).Assembly
                     || commandAssembly == typeof(ChatServiceModule).Assembly;
             });
 

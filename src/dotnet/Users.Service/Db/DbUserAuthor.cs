@@ -28,6 +28,17 @@ public class DbUserAuthor : IAuthorLike
             IsAnonymous = IsAnonymous,
         };
 
+    public void UpdateFrom(UserAuthor model)
+    {
+        if (model.Id.IsNone)
+            throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
+        UserId = model.Id;
+        Version = model.Version;
+        Name = model.Name;
+        Picture = model.Picture;
+        IsAnonymous = model.IsAnonymous;
+    }
+
     internal class EntityConfiguration : IEntityTypeConfiguration<DbUserAuthor>
     {
         public void Configure(EntityTypeBuilder<DbUserAuthor> builder)

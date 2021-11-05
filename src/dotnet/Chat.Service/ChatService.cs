@@ -106,7 +106,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsB
             Content = text,
             Type = ChatEntryType.Text,
         };
-        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry).MarkValid();
+        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         return await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -124,7 +124,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsB
             Title = title,
             OwnerIds = ImmutableArray.Create((UserId)user.Id),
         };
-        var createChatCommand = new IChatsBackend.CreateChatCommand(chat).MarkValid();
+        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
         return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }
