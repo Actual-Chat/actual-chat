@@ -7,13 +7,13 @@ namespace ActualChat.Users.Controllers;
 [Route("api/users/[controller]/[action]")]
 [ApiController, JsonifyErrors]
 [Internal]
-public class AuthorController : ControllerBase, IDefaultAuthorService
+public class UserAuthorsController : ControllerBase, IUserAuthors
 {
-    private readonly IDefaultAuthorService _service;
+    private readonly IUserAuthors _service;
 
-    public AuthorController(IDefaultAuthorService service) => _service = service;
+    public UserAuthorsController(IUserAuthors service) => _service = service;
 
     [HttpGet, Publish]
-    public Task<IAuthorInfo?> Get(UserId userId, CancellationToken cancellationToken)
+    public Task<UserAuthor?> Get(UserId userId, CancellationToken cancellationToken)
         => _service.Get(userId, cancellationToken);
 }

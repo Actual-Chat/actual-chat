@@ -3,10 +3,10 @@ using ActualChat.Users;
 namespace ActualChat.Chat;
 
 /// <summary>
-/// View object that can be transfered to the client. <br />
+/// View object that can be transferred to the client. <br />
 /// This type doesn't contain UserId and other privacy-related fields.
 /// </summary>
-public record class AuthorInfo : IAuthorInfo
+public record AuthorInfo : IAuthorInfo
 {
     /// <inheritdoc />
     public string? Picture { get; init; }

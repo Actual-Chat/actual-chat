@@ -10,9 +10,4 @@ public class DbUser : DbUser<string>
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
-
-    /// <summary>
-    /// Contains default properties for an new author object.
-    /// </summary>
-    public DbDefaultAuthor DefaultAuthor { get; set; } = null!;
 }

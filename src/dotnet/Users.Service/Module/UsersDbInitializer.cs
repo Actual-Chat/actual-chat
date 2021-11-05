@@ -34,12 +34,12 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                         Secret = "",
                     },
                 },
-                DefaultAuthor = new DbDefaultAuthor() {
-                    UserId = UserConstants.Admin.AuthorId,
-                    Name = UserConstants.Admin.Name,
-                    Nickname = UserConstants.Admin.Nickname,
-                    Picture = UserConstants.Admin.Picture,
-                },
+            }, cancellationToken).ConfigureAwait(false);
+            await dbContext.UserAuthors.AddAsync(new DbUserAuthor() {
+                UserId = UserConstants.Admin.AuthorId,
+                Name = UserConstants.Admin.Name,
+                Nickname = UserConstants.Admin.Nickname,
+                Picture = UserConstants.Admin.Picture,
             }, cancellationToken).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

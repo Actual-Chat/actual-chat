@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users.Db;
 
@@ -7,27 +8,24 @@ namespace ActualChat.Users.Db;
 /// Default claim types can be found here
 /// <seealso href="https://docs.microsoft.com/en-us/dotnet/api/system.security.claims.claimtypes" />
 /// </summary>
-public interface IClaimsToAuthorMapper
+public class ClaimMapper
 {
-    /// <inheritdoc cref="IClaimsToAuthorMapper"/>
-    ValueTask Populate(DbDefaultAuthor author, IReadOnlyDictionary<string, string> claims);
-}
-
-/// <inheritdoc cref="IClaimsToAuthorMapper"/>
-public class ClaimsToAuthorMapper : IClaimsToAuthorMapper
-{
-    /// <inheritdoc />
-    public ValueTask Populate(DbDefaultAuthor author, IReadOnlyDictionary<string, string> claims)
+    public virtual ValueTask Apply(
+        UsersDbContext dbContext,
+        DbUser dbUser,
+        DbUserAuthor dbUserAuthor,
+        IReadOnlyDictionary<string, string> claims,
+        CancellationToken cancellationToken)
     {
         const string nameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nickname";
         const string githubNameClaim = "urn:github:name";
         const string surnameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname";
         const string firstnameClaim = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname";
 
-        if (string.IsNullOrEmpty(author.Nickname)
+        if (string.IsNullOrEmpty(dbUserAuthor.Nickname)
             && claims.TryGetValue(nameClaim, out var nickname)
             && !string.IsNullOrWhiteSpace(nickname)) {
-            author.Nickname = nickname;
+            dbUserAuthor.Nickname = nickname;
         }
 
         claims.TryGetValue(surnameClaim, out var surname);
@@ -43,11 +41,11 @@ public class ClaimsToAuthorMapper : IClaimsToAuthorMapper
             name = Invariant($"unnamed_{Guid.NewGuid():n}");
         }
 
-        if (string.IsNullOrEmpty(author.Nickname))
-            author.Nickname = name.Replace(" ", "", StringComparison.Ordinal);
+        if (string.IsNullOrEmpty(dbUserAuthor.Nickname))
+            dbUserAuthor.Nickname = name.Replace(" ", "", StringComparison.Ordinal);
 
-        if (string.IsNullOrEmpty(author.Name))
-            author.Name = name;
+        if (string.IsNullOrEmpty(dbUserAuthor.Name))
+            dbUserAuthor.Name = name;
 
         static string? Capitalize(string? s)
         {

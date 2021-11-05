@@ -4,16 +4,16 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class SessionInfoService : DbServiceBase<UsersDbContext>, ISessionInfoService
+public class SessionOptionsService : DbServiceBase<UsersDbContext>, ISessionOptionsBackend
 {
     private readonly IAuth _auth;
 
-    public SessionInfoService(IAuth auth, IServiceProvider services) : base(services)
+    public SessionOptionsService(IAuth auth, IServiceProvider services) : base(services)
         => _auth = auth;
 
     /// <inheritdoc />
     [CommandHandler, Internal]
-    public virtual async Task Update(ISessionInfoService.UpsertCommand command, CancellationToken cancellationToken)
+    public virtual async Task Update(ISessionOptionsBackend.UpdateCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             _ = _auth.GetSessionInfo(command.Session, default);
@@ -24,14 +24,10 @@ public class SessionInfoService : DbServiceBase<UsersDbContext>, ISessionInfoSer
 
         var dbSession = await dbContext.Sessions
             .ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
+            .SingleAsync(s => s.Id == (string)command.Session.Id, cancellationToken)
             .ConfigureAwait(false);
-        if (dbSession == null)
-            throw new ArgumentOutOfRangeException(nameof(command), "Session is not found");
-
-        dbSession.Options = new ImmutableOptionSet(
-            dbSession.Options.Items.SetItem(command.KeyValue.Key, command.KeyValue.Value)
-        );
+        dbSession.Options = dbSession.Options
+            .Set(command.Option.Key, command.Option.Value);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

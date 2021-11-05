@@ -3,11 +3,11 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class UserStateService : DbServiceBase<UsersDbContext>, IUserStateService
+public class UserStatesService : DbServiceBase<UsersDbContext>, IUserStates
 {
     protected IDbEntityResolver<string, DbUserState> DbUserStateResolver { get; }
 
-    public UserStateService(IServiceProvider services)
+    public UserStatesService(IServiceProvider services)
         : base(services)
         => DbUserStateResolver = services.DbEntityResolver<string, DbUserState>();
 
