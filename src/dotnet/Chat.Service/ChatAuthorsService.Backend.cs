@@ -61,7 +61,7 @@ public partial class ChatAuthorsService
         var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
         var userId = user.IsAuthenticated ? user.Id : UserId.None;
 
-        var createAuthorCommand = new IChatAuthorsBackend.CreateAuthorCommand(chatId, userId).MarkValid();
+        var createAuthorCommand = new IChatAuthorsBackend.CreateAuthorCommand(chatId, userId);
         chatAuthor = await _commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
         var updateOptionCommand = new ISessionOptionsBackend.UpdateCommand(
