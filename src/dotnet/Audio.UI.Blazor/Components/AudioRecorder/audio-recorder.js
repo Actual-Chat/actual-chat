@@ -1,11 +1,7 @@
 const LogScope = 'AudioRecorder'
-const sampleRate = 16000;
+const sampleRate = 24000;
 
 export class AudioRecorder {
-
-    static create(backendRef, debugMode) {
-        return new AudioRecorder(backendRef, debugMode);
-    }
 
     constructor(backendRef, debugMode) {
         this.backendRef = backendRef;
@@ -14,7 +10,7 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
 
         if (backendRef === undefined || backendRef === null) {
-            console.error(`${LogScope}.constructor.error: backendRef undefined` );
+            console.error(`${LogScope}.constructor.error: backendRef undefined`);
         }
 
         // Temporarily
@@ -27,6 +23,10 @@ export class AudioRecorder {
         } else {
             this.isMicrophoneAvailable = true;
         }
+    }
+
+    static create(backendRef, debugMode) {
+        return new AudioRecorder(backendRef, debugMode);
     }
 
     dispose() {
@@ -65,15 +65,19 @@ export class AudioRecorder {
             let recorder = RecordRTC(stream, {
                 type: 'audio',
                 mimeType: 'audio/webm; codecs=opus',
+                recorderType: MediaStreamRecorder,
+                disableLogs: false,
+                timeSlice: 80,
+                checkForInactiveTracks: true,
+                bitsPerSecond: 24000,
+                audioBitsPerSecond: 24000,
                 sampleRate: sampleRate,
                 desiredSampleRate: sampleRate,
-                audioBitsPerSecond: 32 * 1024,
-                checkForInactiveTracks: true,
-                audioBitrateMode: "variable",
-                bufferSize: 4096,
+                bufferSize: 16384,
+                audioBitrateMode: "constant",
                 numberOfAudioChannels: 1,
-                timeSlice: 320,
-                disableLogs: false,
+
+
                 // as soon as the stream is available
                 ondataavailable: async (blob) => {
                     if (this.debugMode) {
