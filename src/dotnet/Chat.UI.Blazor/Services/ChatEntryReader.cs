@@ -29,8 +29,11 @@ public sealed class ChatEntryReader
             .Capture(ct => _chats.GetIdRange(Session, ChatId, ct), cancellationToken)
             .ConfigureAwait(false);
         var lastReadEntryId = minEntryId - 1;
+        var lastTileEnd = lastReadEntryId;
         while (true) {
-            var tile = ChatConstants.IdTiles.GetMinCoveringTile(lastReadEntryId + 1);
+            var tile = ChatConstants.IdTiles.GetMinCoveringTile(lastTileEnd + 1);
+            lastTileEnd = tile.End;
+
             var entriesComputed = await Computed
                 .Capture(ct => _chats.GetEntries(Session, ChatId, tile, ct), cancellationToken)
                 .ConfigureAwait(false);
@@ -46,6 +49,8 @@ public sealed class ChatEntryReader
             var idRange = idRangeComputed.Value;
             var isLastTile = entries.Length == 0 || entries.Last().Id >= idRange.End;
             if (isLastTile) {
+                lastTileEnd = tile.Start - 1;
+
                 // Update is ~ free when the computed is consistent
                 idRangeComputed = await idRangeComputed.Update(cancellationToken).ConfigureAwait(false);
                 var maxEntryId = idRangeComputed.Value.End;
