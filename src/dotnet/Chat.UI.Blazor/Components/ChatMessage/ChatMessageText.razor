@@ -1,17 +1,20 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Playback
 @using ActualChat.Chat.UI.Blazor.Services
-@implements IAsyncDisposable
+@inherits ComputedStateComponent<ActualChat.Playback.MediaTrackPlaybackState?>
 @inject IMediaPlayerService _mediaPlayerService
 
 @if (Words == null) {
     <p class="text">@Entry.Content</p>
 } else {
     <p>
-        @foreach (var (word, offset) in Words!) {
+        @foreach (var (word, offset, nextOffset) in Words!) {
             var cls = "word text-current";
-            if (PlaybackState != null) {
-                cls = "word text-red-600";
+            var playbackState = State.LatestNonErrorValue;
+            if (playbackState != null) {
+                var playingAt = playbackState.PlayingAt.TotalSeconds;
+                if (playingAt >= offset && playingAt < nextOffset)
+                    cls = "word text-blue-500";
             }
             <span class="@cls" @onclick="() => HandleWordClick(offset)">@word</span>
         }
@@ -27,68 +30,37 @@
     [Parameter]
     public EventCallback<double> OnWordClick { get; set; }
 
-    private MediaTrackPlaybackState? PlaybackState { get; set; }
 
-    private IReadOnlyCollection<(string,double)>? Words { get; set; }
-
-    private CancellationTokenSource? WaitForPlaybackTokenSource { get; set; }
-
+    private IReadOnlyCollection<(string,double,double)>? Words { get; set; }
 
     protected override Task OnParametersSetAsync() {
         if (Entry.TextToTimeMap != null && !Entry.Content.IsNullOrEmpty()) {
             var map = Entry.TextToTimeMap.Value;
-            var words = new List<(string, double)>();
+            var words = new List<(string, double, double)>();
             var previousBoundary = 0;
             for (var i = 1; i < map.SourcePoints.Length - 1; i++) {
                 var boundary = map.SourcePoints[i];
                 var currentBoundary = (int)boundary;
-                words.Add((Entry.Content[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0));
+                words.Add((Entry.Content[previousBoundary..currentBoundary], map.Map(previousBoundary) ?? 0, map.Map(currentBoundary) ?? map.TargetRange.Max));
                 previousBoundary = currentBoundary;
             }
             if (words.Count != 0) {
-                words.Add((Entry.Content[previousBoundary..], map.Map(previousBoundary) ?? 0));
+                words.Add((Entry.Content[previousBoundary..], map.Map(previousBoundary) ?? 0, map.TargetRange.Max));
                 Words = words;
             }
-
-            var trackId = MediaTrackId.GetAudioTrackId(Entry);
-            WaitForPlaybackTokenSource = new();
-            var ct = WaitForPlaybackTokenSource.Token;
-            _ = Task.Run(() => WaitForPlayback(trackId, ct), ct);
         }
 
         return base.OnParametersSetAsync();
     }
 
+    protected override async Task<MediaTrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+        var trackId = MediaTrackId.GetAudioTrackId(Entry);
+        return await _mediaPlayerService.GetMediaTrackPlaybackState(trackId, cancellationToken);
+    }
+
     private void HandleWordClick(double offset) {
         if (OnWordClick.HasDelegate)
             OnWordClick.InvokeAsync(offset);
-    }
-
-    private async Task WaitForPlayback(Symbol trackId, CancellationToken cancellationToken) {
-        var playbackStateComputed = await Computed
-            .Capture(ct => _mediaPlayerService.GetMediaTrackPlaybackState(trackId, ct), cancellationToken)
-            .ConfigureAwait(false);
-
-        var playbackState = playbackStateComputed.Value;
-        if (playbackState != null) {
-            PlaybackState = playbackState;
-            StateHasChanged();
-        }
-        while (true) {
-            await playbackStateComputed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
-            playbackStateComputed = await playbackStateComputed.Update(cancellationToken).ConfigureAwait(true);
-            playbackState = playbackStateComputed.Value;
-            if (playbackState != null) {
-                PlaybackState = playbackState;
-                StateHasChanged();
-            }
-        }
-    }
-
-    public ValueTask DisposeAsync() {
-        WaitForPlaybackTokenSource?.Cancel();
-        WaitForPlaybackTokenSource?.Dispose();
-        return ValueTask.CompletedTask;
     }
 
 }
