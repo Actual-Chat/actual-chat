@@ -7,7 +7,6 @@ on:
     branches: [master]
 env:
   DOCKER_BUILDKIT: 1
-  CACHE_IMAGE: verysimplenick/docker-cache
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,15 +18,5 @@ jobs:
           lfs: true
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
-      # # In this step, this action saves a list of existing images,
-      # # the cache is created without them in the post run.
-      # # It also restores the cache if it exists.
-      # - uses: satackey/action-docker-layer-caching@master
-      #   continue-on-error: true
-      #   with:
-      #     skip-save: false
-      #     key: docker-cache-base-{hash}
-      #     restore-keys: |
-      #       docker-cache-base-
       - name: Run unit tests
         run: docker-compose -f docker-compose.unit-tests.yml up --build --abort-on-container-exit --exit-code-from tests
