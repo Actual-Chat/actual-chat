@@ -46,9 +46,12 @@ jobs:
         run: docker build . -t actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} -t us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} --compress
       - name: Publish docker image
         run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
-      - name: Changelog
-        uses: glennawatson/ChangeLog@main
+      - name: Create changelog text
         id: changelog
+        uses: loopwerk/tag-changelog@v1.0.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          exclude_types: other,doc,chore,build,style
       - name: Create Release
         uses: actions/create-release@v1.1.4
         env:
@@ -57,5 +60,4 @@ jobs:
           prerelease: ${{ steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen != '' }}
           tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
           release_name: ${{ steps.nbgv.outputs.SemVer2 }}
-          body: |
-            ${{ steps.changelog.outputs.commitLog }}
+          body: ${{ steps.changelog.outputs.changes }}
