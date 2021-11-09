@@ -90,7 +90,7 @@ public sealed class ChatEntryReader
             entryId = minId + ((maxId - minId) >> 1);
             var entry = await Get(entryId, maxId, cancellationToken).ConfigureAwait(false);
             if (entry == null)
-                minId = entryId + 1;
+                maxId = entryId;
             else {
                 if (minBeginsAt == entry.BeginsAt) {
                     var prevEntry = await Get(entryId - 1, maxId, cancellationToken).ConfigureAwait(false);
