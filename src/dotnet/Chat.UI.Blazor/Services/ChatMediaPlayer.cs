@@ -89,7 +89,6 @@ public sealed class ChatMediaPlayer : IDisposable
                 await EnqueuePlayback(entry, entrySkipTo, realtimeBeginsAt, cancellationToken).ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
-            MediaPlayer.Complete();
             await playTask.ConfigureAwait(false);
         }
         catch {

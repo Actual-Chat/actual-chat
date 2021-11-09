@@ -59,14 +59,15 @@ public sealed class MediaPlayer : IDisposable
     public async Task Stop()
     {
         var playingTask = PlayingTask;
-
         if (!playingTask.IsCompleted) {
             var stopCompletion = new TaskCompletionSource();
             var stopCommand = new StopCommand(stopCompletion);
-            await AddCommand(stopCommand, CancellationToken.None).ConfigureAwait(false);
-            await stopCommand.CommandProcessed.ConfigureAwait(false);
+            if (!Queue.Reader.Completion.IsCompleted) {
+                await AddCommand(stopCommand, CancellationToken.None).ConfigureAwait(false);
+                await stopCommand.CommandProcessed.ConfigureAwait(false);
+                Complete();
+            }
         }
-
         _stopPlayingCts.CancelAndDisposeSilently();
         Reset();
         await playingTask.SuppressExceptions();
