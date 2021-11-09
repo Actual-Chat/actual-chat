@@ -2,7 +2,6 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Components;
 using Microsoft.AspNetCore.Components;
 using Stl.Fusion.Blazor;
-using Stl.Fusion.UI;
 
 namespace ActualChat.Chat.UI.Blazor.Pages;
 
