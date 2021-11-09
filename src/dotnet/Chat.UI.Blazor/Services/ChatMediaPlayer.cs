@@ -15,8 +15,8 @@ public sealed class ChatMediaPlayer : IDisposable
 
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
-    public bool IsRealTimePlayer { get; set; }
-    public Option<AuthorId> SilencedAuthorIds { get; set; }
+    public bool IsRealTimePlayer { get; init; }
+    public Option<AuthorId> SilencedAuthorIds { get; init; }
     public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public MediaPlayer MediaPlayer { get; }
@@ -117,22 +117,23 @@ public sealed class ChatMediaPlayer : IDisposable
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
 
-            if (audioEntry.IsStreaming) {
-                if (IsRealTimePlayer)
-                    return await EnqueueStreamingPlayback(audioEntry, skipTo, playAt, cancellationToken)
-                        .ConfigureAwait(false);
-
-                return null;
-            }
+            if (audioEntry.IsStreaming)
+                return IsRealTimePlayer
+                    ? await EnqueueStreamingPlayback(audioEntry, skipTo, playAt, cancellationToken)
+                        .ConfigureAwait(false)
+                    : null;
 
             var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
-            var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, skipTo, cancellationToken);
+            var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, skipTo, cancellationToken)
+                .ConfigureAwait(false);
             var trackId = MediaTrackId.GetAudioTrackId(audioEntry);
             await MediaPlayer.AddMediaTrack(trackId,
-                audioSource,
-                audioEntry.BeginsAt + skipTo,
-                playAt,
-                cancellationToken);
+                    audioSource,
+                    audioEntry.BeginsAt,
+                    playAt,
+                    skipTo,
+                    cancellationToken)
+                .ConfigureAwait(false);
             return trackId;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -156,14 +157,16 @@ public sealed class ChatMediaPlayer : IDisposable
             if (!audioEntry.IsStreaming)
                 throw new NotSupportedException("The entry must be a streaming entry.");
 
-            var beginsAt = audioEntry.BeginsAt;
             var trackId = MediaTrackId.GetAudioTrackId(audioEntry);
-            var audioSource = await AudioSourceStreamer.GetAudioSource(audioEntry.StreamId, skipTo, cancellationToken);
+            var audioSource = await AudioSourceStreamer.GetAudioSource(audioEntry.StreamId, skipTo, cancellationToken)
+                .ConfigureAwait(false);
             await MediaPlayer.AddMediaTrack(trackId,
-                audioSource,
-                beginsAt,
-                playAt,
-                cancellationToken);
+                    audioSource,
+                    audioEntry.BeginsAt,
+                    playAt,
+                    skipTo,
+                    cancellationToken)
+                .ConfigureAwait(false);
             return trackId;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
