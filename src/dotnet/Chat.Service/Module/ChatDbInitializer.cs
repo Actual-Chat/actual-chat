@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IO;
 using Stl.IO;
-using Stl.Versioning;
 
 namespace ActualChat.Chat.Module;
 
@@ -93,7 +92,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             Type = ChatEntryType.Audio,
             Version = 16359216898269180,
         };
-        await dbContext.AddAsync(audioEntry, cancellationToken).ConfigureAwait(false);
+        dbContext.Add(audioEntry);
 
         var textToTimeMap =
             "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}";
@@ -113,7 +112,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             Type = ChatEntryType.Text,
             Version = 16359216898897618,
         };
-        await dbContext.AddAsync(textEntry, cancellationToken).ConfigureAwait(false);
+        dbContext.Add(textEntry);
 
         audioEntry = new DbChatEntry {
             CompositeId = "the-actual-one:141",
@@ -129,7 +128,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             Type = ChatEntryType.Audio,
             Version = 16361331765465404,
         };
-        await dbContext.AddAsync(audioEntry, cancellationToken).ConfigureAwait(false);
+        dbContext.Add(audioEntry);
 
         textToTimeMap =
             "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}";
@@ -150,7 +149,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             Type = ChatEntryType.Text,
             Version = 16361331767501582,
         };
-        await dbContext.AddAsync(textEntry, cancellationToken).ConfigureAwait(false);
+        dbContext.Add(textEntry);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
@@ -164,43 +163,32 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         string blobId,
         CancellationToken cancellationToken)
     {
-        var blobParts = Channel.CreateUnbounded<BlobPart>();
-        _ = ReadBlobParts(fileName, blobParts);
-
+        var blobParts = ReadBlobParts(fileName, cancellationToken);
         var audioSourceProvider = new AudioSourceProvider();
-        var audioSource = await audioSourceProvider.CreateMediaSource(blobParts, TimeSpan.Zero, CancellationToken.None).ConfigureAwait(false);
+        var audioSource = await audioSourceProvider
+            .CreateMediaSource(blobParts, TimeSpan.Zero, CancellationToken.None)
+            .ConfigureAwait(false);
         await SaveBlob(audioSource, blobId, CancellationToken.None).ConfigureAwait(false);
     }
 
-    private async Task<int> ReadBlobParts(FilePath fileName, ChannelWriter<BlobPart> target)
+    private async IAsyncEnumerable<BlobPart> ReadBlobParts(
+        FilePath fileName,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var size = 0;
-        try {
-            var audioDataPath = GetTestAudioDataPath();
-            await using var inputStream = new FileStream(audioDataPath & fileName, FileMode.Open, FileAccess.Read);
+        var audioDataPath = GetTestAudioDataPath();
+        await using var inputStream = new FileStream(audioDataPath & fileName, FileMode.Open, FileAccess.Read);
 
-            using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
-            var readBuffer = readBufferLease.Memory;
-            var index = 0;
-            var bytesRead = await inputStream.ReadAsync(readBuffer);
-            while (bytesRead < 1 * 1024)
-                bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..]);
-            size += bytesRead;
-            while (bytesRead > 0) {
-                var command = new BlobPart(
-                    index++,
-                    readBuffer[..bytesRead].ToArray());
-                await target.WriteAsync(command, CancellationToken.None);
+        using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
+        var readBuffer = readBufferLease.Memory;
+        var index = 0;
+        var bytesRead = await inputStream.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
+        while (bytesRead < 1 * 1024)
+            bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..], cancellationToken).ConfigureAwait(false);
+        while (bytesRead > 0) {
+            var blobPart = new BlobPart(index++, readBuffer[..bytesRead].ToArray());
+            yield return blobPart;
 
-                bytesRead = await inputStream.ReadAsync(readBuffer);
-                size += bytesRead;
-            }
-            target.Complete();
-            return size;
-        }
-        catch (Exception e) {
-            target.TryComplete(e);
-            throw;
+            bytesRead = await inputStream.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
         }
     }
 

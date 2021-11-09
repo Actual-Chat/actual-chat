@@ -12,7 +12,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
     where TMediaFrame : MediaFrame, new()
 {
     public ValueTask<TMediaSource> CreateMediaSource(
-        ChannelReader<BlobPart> blobParts,
+        IAsyncEnumerable<BlobPart> blobParts,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -50,7 +50,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         ChannelWriter<TMediaFrame> target,
         TaskSource<TMediaFormat> formatTaskSource,
         TaskSource<TimeSpan> durationTaskSource,
-        ChannelReader<BlobPart> blobParts,
+        IAsyncEnumerable<BlobPart> blobParts,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -60,8 +60,7 @@ public abstract class MediaSourceProvider<TMediaSource, TMediaFormat, TMediaFram
         var lastState = new WebMReader.State();
         using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
         try {
-            while (await blobParts.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
-            while (blobParts.TryRead(out var blobPart)) {
+            await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 var (_, data) = blobPart;
                 var remainingLength = lastState.Remaining;
                 var buffer = bufferLease.Memory;
