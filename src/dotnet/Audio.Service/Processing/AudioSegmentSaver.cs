@@ -6,7 +6,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Audio.Processing;
 
-public sealed class AudioSegmentSaver : DbServiceBase<AudioDbContext>
+public sealed class AudioSegmentSaver
 {
     private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
 
@@ -17,7 +17,6 @@ public sealed class AudioSegmentSaver : DbServiceBase<AudioDbContext>
         IServiceProvider services,
         IBlobStorageProvider blobStorageProvider,
         ILogger<AudioSegmentSaver>? log = null)
-        : base(services)
     {
         _blobStorageProvider = blobStorageProvider;
         _log = log ?? NullLogger<AudioSegmentSaver>.Instance;
@@ -31,43 +30,8 @@ public sealed class AudioSegmentSaver : DbServiceBase<AudioDbContext>
         var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "", StringComparison.Ordinal);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, p.AudioRecord.Id, streamIndex + ".webm");
 
-        var saveBlobTask = SaveBlob(blobId, audioSegment.AudioSource, cancellationToken);
-        var saveSegmentTask = SaveSegment();
-        await Task.WhenAll(saveBlobTask, saveSegmentTask);
+        await SaveBlob(blobId, audioSegment.AudioSource, cancellationToken).ConfigureAwait(false);
         return blobId;
-
-        async Task SaveSegment() {
-            await using var dbContext = CreateDbContext(true);
-            var existingRecord = await dbContext.AudioRecords.FindAsync(
-                ComposeKey(p.AudioRecord.Id.Value),
-                cancellationToken);
-
-            if (existingRecord == null) {
-                _log.LogInformation("Entity = Record, RecordId = {RecordId}", p.AudioRecord.Id);
-                dbContext.AudioRecords.Add(new DbAudioRecord {
-                    Id = p.AudioRecord.Id,
-                    AuthorId = p.AudioRecord.AuthorId,
-                    ChatId = p.AudioRecord.ChatId,
-                    // TODO(AK): fill record entity attributes
-                    BeginsAt = default,
-                    Duration = 0,
-                    AudioCodecKind = p.AudioRecord.Format.CodecKind,
-                    ChannelCount = p.AudioRecord.Format.ChannelCount,
-                    SampleRate = p.AudioRecord.Format.SampleRate,
-                    Language = p.AudioRecord.Language
-                });
-            }
-
-            _log.LogInformation("Entity = AudioSegment, RecordId = {RecordId}, Index = {Index}", p.AudioRecord.Id, p.Index);
-            dbContext.AudioSegments.Add(new DbAudioSegment {
-                RecordId = p.AudioRecord.Id,
-                Index = p.Index,
-                Offset = p.Offset,
-                Duration = p.Duration,
-                BlobId = blobId,
-            });
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     public async Task<string> Save(
