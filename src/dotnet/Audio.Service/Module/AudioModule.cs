@@ -36,19 +36,6 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         redisModule.AddRedisDb<AudioContext>(services, Settings.Redis);
 
         var fusion = services.AddFusion();
-        services.AddCommander()
-            .AddHandlerFilter((handler, commandType) => {
-                // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
-                if (handler is not InterfaceCommandHandler<ICommand> ich)
-                    return true;
-
-                // 2. Make sure it's intact only for local commands
-                var commandAssembly = commandType.Assembly;
-                if (commandAssembly == typeof(AudioRecord).Assembly)
-                    return true;
-
-                return false;
-            });
 
 
         services.AddResponseCaching();
