@@ -1,0 +1,59 @@
+name: Deploy dev
+concurrency:
+  group: development-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  push:
+    branches:
+      - "release/v*"
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+env:
+  DOCKER_BUILDKIT: 1
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+      - name: Generate version variables
+        id: nbgv
+        uses: dotnet/nbgv@master
+        with:
+          setAllVars: true
+      - name: Verify tag matches version.json
+        if: endsWith(github.ref, steps.nbgv.outputs.SimpleVersion) != true
+        run: |
+          echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.SimpleVersion }}"
+          exit 1
+      - name: Generate Nerdbank.GitVersioning files
+        run: dotnet run --project build -- generate-version
+      - name: Run unit tests
+        run: docker-compose -f docker-compose.unit-tests.yml up --build --abort-on-container-exit --exit-code-from tests
+      - name: Login to Google Artifact Registry
+        uses: docker/login-action@v1
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.DEV_GAR_JSON_KEY }}
+      - name: Build docker image
+        run: docker build . -t actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} -t us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} --compress
+      - name: Publish docker image
+        run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
+      - name: Changelog
+        uses: glennawatson/ChangeLog@main
+        id: changelog
+      - name: Create Release
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prerelease: ${{ steps.nbgv.outputs.PrereleaseVersionNoLeadingHyphen != '' }}
+          tag_name: ${{ steps.nbgv.outputs.SemVer2 }}
+          release_name: ${{ steps.nbgv.outputs.SemVer2 }}
+          body: |
+            ${{ steps.changelog.outputs.commitLog }}
