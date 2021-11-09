@@ -47,7 +47,7 @@ public sealed class ChatEntryReader
                 yield return entry; // Note that this "yield" can take arbitrary long time
             }
             var idRange = idRangeComputed.Value;
-            var isLastTile = entries.Length == 0 || entries.Last().Id >= idRange.End;
+            var isLastTile = entries.LastOrDefault()?.Id >= idRange.End;
             if (isLastTile) {
                 lastTileEnd = tile.Start - 1;
 
