@@ -118,6 +118,19 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
 
     protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
+    protected override void Dispose(bool disposing)
+    {
+        if (!disposing) return;
+
+        Stop();
+    }
+
+    protected override ValueTask DisposeAsyncCore()
+    {
+        Stop();
+        return ValueTask.CompletedTask;
+    }
+
     protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
         var trackId = state.TrackId;
@@ -143,19 +156,6 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile, default);
         }
-    }
-
-    protected override ValueTask DisposeAsyncCore()
-    {
-        Stop();
-        return ValueTask.CompletedTask;
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (!disposing) return;
-
-        Stop();
     }
 
     protected void Stop()

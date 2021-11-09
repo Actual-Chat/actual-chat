@@ -32,10 +32,15 @@ public sealed class MediaPlayer : IDisposable
         IMediaSource source,
         Moment recordingStartedAt,
         Moment? playAt,
+        TimeSpan skipTo,
         CancellationToken cancellationToken = default)
     {
-        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt));
-        var command = new PlayMediaTrackCommand(trackId, source, recordingStartedAt, playAt);
+        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt, skipTo));
+        var command = new PlayMediaTrackCommand(trackId,
+            source,
+            recordingStartedAt,
+            playAt,
+            skipTo);
         return AddCommand(command, cancellationToken);
     }
 
