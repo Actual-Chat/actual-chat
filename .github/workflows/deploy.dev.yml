@@ -25,10 +25,12 @@ jobs:
         uses: dotnet/nbgv@master
         with:
           setAllVars: true
+      - name: Print version
+        run: echo "SemVer2 ${{ steps.nbgv.outputs.SemVer2 }}"
       - name: Verify tag matches version.json
-        if: endsWith(github.ref, steps.nbgv.outputs.SimpleVersion) != true
+        if: endsWith(github.ref, steps.nbgv.outputs.MajorMinorVersion) != true
         run: |
-          echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.SimpleVersion }}"
+          echo "The tag ${{ github.ref }} does not match version.json: ${{ steps.nbgv.outputs.MajorMinorVersion }}"
           exit 1
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
