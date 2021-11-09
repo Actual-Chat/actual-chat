@@ -10,15 +10,15 @@ public sealed class AudioSegmentSaver
 {
     private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
 
-    private readonly IBlobStorageProvider _blobStorageProvider;
+    private readonly IBlobStorageProvider _blobs;
     private readonly ILogger<AudioSegmentSaver> _log;
 
     public AudioSegmentSaver(
         IServiceProvider services,
-        IBlobStorageProvider blobStorageProvider,
+        IBlobStorageProvider blobs,
         ILogger<AudioSegmentSaver>? log = null)
     {
-        _blobStorageProvider = blobStorageProvider;
+        _blobs = blobs;
         _log = log ?? NullLogger<AudioSegmentSaver>.Instance;
     }
 
@@ -51,7 +51,7 @@ public sealed class AudioSegmentSaver
         AudioSource source,
         CancellationToken cancellationToken)
     {
-        var blobStorage = _blobStorageProvider.GetBlobStorage(BlobScope.AudioRecord);
+        var blobStorage = _blobs.GetBlobStorage(BlobScope.AudioRecord);
         await using var stream = MemoryStreamManager.GetStream(nameof(AudioSegmentSaver));
         var header = Convert.FromBase64String(source.Format.CodecSettings);
         await stream.WriteAsync(header, cancellationToken).ConfigureAwait(false);
