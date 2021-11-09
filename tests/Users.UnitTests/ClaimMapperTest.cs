@@ -5,7 +5,7 @@ namespace ActualChat.Users.UnitTests;
 public class ClaimMapperTest
 {
     [Fact]
-    public async Task Populate_Should_Transform_Default_GitHubClaims()
+    public void Populate_Should_Transform_Default_GitHubClaims()
     {
         var claimMapper = new ClaimMapper();
         var user = new User(Symbol.Empty, "");
@@ -19,7 +19,7 @@ public class ClaimMapperTest
     }
 
     [Fact]
-    public async Task Populate_Should_Transform_Default_MicrosoftClaims()
+    public void Populate_Should_Transform_Default_MicrosoftClaims()
     {
         var claimMapper = new ClaimMapper();
         var user = new User(Symbol.Empty, "");
