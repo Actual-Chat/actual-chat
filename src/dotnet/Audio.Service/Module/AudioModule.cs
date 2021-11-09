@@ -33,20 +33,13 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
 
         // Redis
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();
-        redisModule.AddRedisDb<AudioDbContext>(services, Settings.Redis);
-
-        // DB
-        var dbModule = Plugins.GetPlugins<DbModule>().Single();
-        dbModule.AddDbContextServices<AudioDbContext>(services, Settings.Db);
-        services.AddSingleton<IDbInitializer, AudioDbInitializer>();
+        redisModule.AddRedisDb<AudioContext>(services, Settings.Redis);
 
         var fusion = services.AddFusion();
         services.AddCommander()
             .AddHandlerFilter((handler, commandType) => {
                 // 1. Check if this is DbOperationScopeProvider<AudioDbContext> handler
                 if (handler is not InterfaceCommandHandler<ICommand> ich)
-                    return true;
-                if (ich.ServiceType != typeof(DbOperationScopeProvider<AudioDbContext>))
                     return true;
 
                 // 2. Make sure it's intact only for local commands

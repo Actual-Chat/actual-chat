@@ -15,7 +15,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 
     public SourceAudioRecorder(
         ILogger<SourceAudioRecorder> log,
-        RedisDb<AudioDbContext> audioRedisDb,
+        RedisDb<AudioContext> audioRedisDb,
         IChatAuthorsBackend chatAuthorsBackend)
     {
         _log = log;
