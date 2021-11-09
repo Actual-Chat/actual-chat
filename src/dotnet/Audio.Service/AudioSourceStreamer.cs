@@ -9,7 +9,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 {
     private readonly RedisDb _redisDb;
 
-    public AudioSourceStreamer(RedisDb<AudioDbContext> audioRedisDb)
+    public AudioSourceStreamer(RedisDb<AudioContext> audioRedisDb)
         => _redisDb = audioRedisDb.WithKeyPrefix("audio-sources");
 
     public async Task<AudioSource> GetAudioSource(

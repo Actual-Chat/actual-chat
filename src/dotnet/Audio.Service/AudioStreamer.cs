@@ -11,7 +11,7 @@ public class AudioStreamer : IAudioStreamer
     private readonly RedisDb _redisDb;
 
     public AudioStreamer(
-        RedisDb<AudioDbContext> audioRedisDb,
+        RedisDb<AudioContext> audioRedisDb,
         ILogger<AudioStreamer> log)
     {
         _log = log;
