@@ -26,9 +26,7 @@
         }
         if (!_circuitContext.IsPrerendering) {
             _cancellationTokenSource = new();
-            var transcriptStream = _transcriptStreamer
-                .GetTranscriptStream(StreamId, _cancellationTokenSource.Token)
-                .Buffer(64);
+            var transcriptStream = _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
             _ = ReadTranscript(transcriptStream, _cancellationTokenSource.Token);
         }
 
