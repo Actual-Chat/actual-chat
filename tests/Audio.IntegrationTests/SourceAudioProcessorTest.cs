@@ -1,9 +1,9 @@
-using System.Buffers;
 using ActualChat.Blobs;
 using ActualChat.Chat;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using Microsoft.Extensions.DependencyInjection;
+using Stl.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
 
@@ -25,20 +25,12 @@ public class SourceAudioProcessorTest : AppHostTestBase
         using var cts = new CancellationTokenSource();
         var dequeueTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
-        var channel = Channel.CreateBounded<BlobPart>(
-            new BoundedChannelOptions(100) {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
-                SingleWriter = true,
-                AllowSynchronousContinuations = true,
-            });
         var recordingSpec = new AudioRecord(
             "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = sourceAudioRecorder.RecordSourceAudio(session, recordingSpec, channel.Reader, CancellationToken.None);
-        channel.Writer.Complete();
+        _ = sourceAudioRecorder.RecordSourceAudio(session, recordingSpec, AsyncEnumerable.Empty<BlobPart>(), CancellationToken.None);
 
         var record = await dequeueTask;
         record.Should()
@@ -135,8 +127,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var size = 0;
         // TODO(AK): we need to figure out how to notify consumers about new streamID - with new ChatEntry?
         var streamId = new StreamId(audioRecordId, 0);
-        var updates = await transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
-        await foreach (var update in updates.ReadAllAsync()) {
+        var transcriptStream = transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
+        await foreach (var update in transcriptStream) {
             if (update.UpdatedPart == null)
                 continue;
 
@@ -151,11 +143,11 @@ public class SourceAudioProcessorTest : AppHostTestBase
         IAudioSourceStreamer audioStreamer)
     {
         var streamId = new StreamId(audioRecordId, 0);
-        var audioSource = await audioStreamer.GetAudioSource(streamId, default, CancellationToken.None);
-        var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
+        var audio = await audioStreamer.GetAudio(streamId, default, CancellationToken.None);
+        var header = audio.Format.ToBlobPart().Data;
 
         var sum = header.Length;
-        await foreach (var audioFrame in audioSource)
+        await foreach (var audioFrame in audio.GetFrames(default))
             sum += audioFrame.Data.Length;
 
         return sum;
@@ -171,37 +163,22 @@ public class SourceAudioProcessorTest : AppHostTestBase
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        var channel = Channel.CreateBounded<BlobPart>(
-            new BoundedChannelOptions(100) {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
-                SingleWriter = true,
-                AllowSynchronousContinuations = true,
-            });
 
-        _ = sourceAudioRecorder.RecordSourceAudio(session, record, channel.Reader, CancellationToken.None);
-
-        var size = 0;
-        await using var inputStream = new FileStream(Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
-            FileMode.Open,
-            FileAccess.Read);
-        using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
-        var readBuffer = readBufferLease.Memory;
-        var index = 0;
-        var bytesRead = await inputStream.ReadAsync(readBuffer);
-        size += bytesRead;
-        while (bytesRead > 0) {
-            var command = new BlobPart(
-                index++,
-                readBuffer[..bytesRead].ToArray());
-            await channel.Writer.WriteAsync(command, CancellationToken.None);
-
-            // await Task.Delay(300); //emulate real-time speech delay
-            bytesRead = await inputStream.ReadAsync(readBuffer);
-            size += bytesRead;
-        }
-
-        channel.Writer.Complete();
-        return size;
+        var filePath = GetAudioFilePath("file.webm");
+        var fileSize = (int) filePath.GetFileInfo().Length;
+        var blobStream = filePath.ReadBlobStream();
+        await sourceAudioRecorder.RecordSourceAudio(session, record, blobStream, CancellationToken.None);
+        return fileSize;
     }
+
+    private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
+    {
+        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(cancellationToken);
+        var audio = new AudioSource(blobStream, default, cancellationToken);
+        await audio.WhenFormatAvailable.ConfigureAwait(false);
+        return audio;
+    }
+
+    private static FilePath GetAudioFilePath(FilePath fileName)
+        => new FilePath(Environment.CurrentDirectory) & "data" & fileName;
 }

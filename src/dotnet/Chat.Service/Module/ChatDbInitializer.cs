@@ -13,8 +13,8 @@ namespace ActualChat.Chat.Module;
 
 public class ChatDbInitializer : DbInitializer<ChatDbContext>
 {
+    private FilePath? _testAudioDataPath;
     private IBlobStorageProvider Blobs { get; }
-    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
 
     public ChatDbInitializer(IServiceProvider services, IBlobStorageProvider blobs) : base(services)
         => Blobs = blobs;
@@ -163,46 +163,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         string blobId,
         CancellationToken cancellationToken)
     {
-        var blobParts = ReadBlobParts(fileName, cancellationToken);
-        var audioSourceProvider = new AudioSourceProvider();
-        var audioSource = await audioSourceProvider
-            .CreateMediaSource(blobParts, TimeSpan.Zero, CancellationToken.None)
-            .ConfigureAwait(false);
-        await SaveBlob(audioSource, blobId, CancellationToken.None).ConfigureAwait(false);
-    }
-
-    private async IAsyncEnumerable<BlobPart> ReadBlobParts(
-        FilePath fileName,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        var audioDataPath = GetTestAudioDataPath();
-        await using var inputStream = new FileStream(audioDataPath & fileName, FileMode.Open, FileAccess.Read);
-
-        using var readBufferLease = MemoryPool<byte>.Shared.Rent(1 * 1024);
-        var readBuffer = readBufferLease.Memory;
-        var index = 0;
-        var bytesRead = await inputStream.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
-        while (bytesRead < 1 * 1024)
-            bytesRead += await inputStream.ReadAsync(readBuffer[bytesRead..], cancellationToken).ConfigureAwait(false);
-        while (bytesRead > 0) {
-            var blobPart = new BlobPart(index++, readBuffer[..bytesRead].ToArray());
-            yield return blobPart;
-
-            bytesRead = await inputStream.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task SaveBlob(AudioSource source, string blobId, CancellationToken cancellationToken)
-    {
-        var audioRecords = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        await using var stream = MemoryStreamManager.GetStream(nameof(ChatDbInitializer));
-        var header = Convert.FromBase64String(source.Format.CodecSettings);
-        await stream.WriteAsync(header, cancellationToken).ConfigureAwait(false);
-        await foreach (var audioFrame in source.Frames.WithCancellation(cancellationToken))
-            await stream.WriteAsync(audioFrame.Data, cancellationToken).ConfigureAwait(false);
-
-        stream.Position = 0;
-        await audioRecords.WriteAsync(blobId, stream, false, cancellationToken).ConfigureAwait(false);
+        var filePath = GetAudioDataDir() & fileName;
+        var sourceBlobStream = filePath.ReadBlobStream(cancellationToken);
+        var audio = new AudioSource(sourceBlobStream, TimeSpan.Zero, CancellationToken.None);
+        var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
+        var audioBlobStream = audio.GetBlobStream(cancellationToken);
+        // NOTE(AY): Shouldn't we simply write source blob stream here?
+        await blobs.UploadBlobStream(blobId, audioBlobStream, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task AddRandomTextMessages(
@@ -237,15 +204,19 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ToDelimitedString(" ");
     }
 
-    private FilePath GetTestAudioDataPath()
+    private FilePath GetAudioDataDir()
     {
-        var basePath = FilePath.GetApplicationDirectory().FullPath;
+        if (_testAudioDataPath.HasValue)
+            return _testAudioDataPath.GetValueOrDefault();
+        var basePath = new FilePath(Directory.GetCurrentDirectory()).FullPath;
         while (true) {
-            var path = basePath & @"artifacts";
+            var path = basePath & "artifacts";
             if (Directory.Exists(path)) {
                 path = basePath & @"tests\Audio.IntegrationTests\data";
-                if (Directory.Exists(path))
+                if (Directory.Exists(path)) {
+                    _testAudioDataPath = path;
                     return path;
+                }
             }
 
             var newBasePath = (basePath & "..").FullPath;

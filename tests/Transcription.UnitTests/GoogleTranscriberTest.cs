@@ -13,10 +13,9 @@ public class GoogleTranscriberTest
     public async Task DuplicateFinalResponsesTest()
     {
         var transcriber = new GoogleTranscriber(_logger);
-        var channel = Channel.CreateUnbounded<TranscriptUpdate>();
-        await transcriber.ReadTranscript(GenerateResponses(), channel, CancellationToken.None);
+        var transcriptStream = transcriber.ReadTranscript(GenerateResponses(), CancellationToken.None);
 
-        var results = await channel.Reader.ReadAllAsync().ToListAsync();
+        var results = await transcriptStream.ToListAsync();
         results.Max(update => update.UpdatedPart!.Duration).Should().Be(3.47d);
         results.Max(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 

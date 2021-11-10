@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Media;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 
@@ -11,10 +12,10 @@ public class GoogleTranscriber : ITranscriber
     public GoogleTranscriber(ILogger<GoogleTranscriber> log)
         => _log = log;
 
-    public async Task<ChannelReader<TranscriptUpdate>> Transcribe(
+    public async IAsyncEnumerable<TranscriptUpdate> Transcribe(
         TranscriptionRequest request,
-        AudioSource audioSource,
-        CancellationToken cancellationToken)
+        IAsyncEnumerable<AudioStreamPart> audioStream,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var (streamId, format, options) = request;
         _log.LogInformation("Start transcription of StreamId = {StreamId}", (string)streamId);
@@ -33,94 +34,73 @@ public class GoogleTranscriber : ITranscriber
             },
         };
 
-        var streamingRecognizeStream = speechClient.StreamingRecognize();
-        await streamingRecognizeStream.WriteAsync(new () {
+        var recognizeRequests = speechClient.StreamingRecognize();
+        await recognizeRequests.WriteAsync(new () {
                 StreamingConfig = new () {
                     Config = config,
                     InterimResults = true,
                     SingleUtterance = false,
                 },
-            })
-            .ConfigureAwait(false);
-        var responseStream = (IAsyncEnumerable<StreamingRecognizeResponse>)streamingRecognizeStream.GetResponseStream();
-        var transcriptChannel = Channel.CreateUnbounded<TranscriptUpdate>(
-            new () { SingleWriter = true });
+            }).ConfigureAwait(false);
+        var recognizeResponses = recognizeRequests.GetResponseStream();
 
-        _ = Task.Run(()
-                => PushAudioForTranscription(streamingRecognizeStream,
-                    audioSource,
-                    transcriptChannel.Writer,
-                    cancellationToken),
-            cancellationToken);
-        _ = Task.Run(()
-                => ReadTranscript(responseStream, transcriptChannel.Writer, cancellationToken),
-            cancellationToken);
+        var failureCts = new CancellationTokenSource();
 
-        return transcriptChannel.Reader;
-    }
+        var sendAudioTask = Task.Run(async () => {
+            try {
+                await SendAudio(audioStream, recognizeRequests, cancellationToken).ConfigureAwait(false);
+            }
+            catch {
+                failureCts.Cancel();
+                throw;
+            }
+        }, CancellationToken.None);
 
-    private async Task PushAudioForTranscription(
-        SpeechClient.StreamingRecognizeStream recognizeStream,
-        AudioSource audioSource,
-        ChannelWriter<TranscriptUpdate> writer,
-        CancellationToken cancellationToken)
-    {
         try {
-            var header = Convert.FromBase64String(audioSource.Format.CodecSettings);
-            await recognizeStream.WriteAsync(new () {
-                    AudioContent = ByteString.CopyFrom(header),
-                })
-                .ConfigureAwait(false);
-
-            await foreach (var audioFrame in audioSource.Frames.WithCancellation(cancellationToken))
-                await recognizeStream.WriteAsync(new () {
-                        AudioContent = ByteString.CopyFrom(audioFrame.Data),
-                    })
-                    .ConfigureAwait(false);
-        }
-        catch (ChannelClosedException) { }
-        catch (Exception e) {
-            writer.TryComplete(e);
+            using var mutualCts = failureCts.Token.LinkWith(cancellationToken);
+            var mutualToken = mutualCts.Token;
+            var transcriptStream = ReadTranscript(recognizeResponses, mutualToken);
+            await foreach (var update in transcriptStream.WithCancellation(mutualToken).ConfigureAwait(false))
+                yield return update;
         }
         finally {
-            await recognizeStream.WriteCompleteAsync().ConfigureAwait(false);
+            if (failureCts.IsCancellationRequested)
+                await sendAudioTask.ConfigureAwait(false);
+            failureCts.CancelAndDisposeSilently();
         }
     }
 
-    internal async Task ReadTranscript(
-        IAsyncEnumerable<StreamingRecognizeResponse> transcriptResponseStream,
-        ChannelWriter<TranscriptUpdate> writer,
+    private async Task SendAudio(
+        IAsyncEnumerable<AudioStreamPart> audioStream,
+        SpeechClient.StreamingRecognizeStream recognizeRequests,
         CancellationToken cancellationToken)
     {
-        var updateExtractor = new TranscriptUpdateExtractor();
-
-        Exception? error = null;
         try {
-            await foreach (var response in transcriptResponseStream.WithCancellation(cancellationToken)) {
-                ProcessResponse(response);
-                while (updateExtractor.Updates.TryDequeue(out var update))
-                    await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
+            await foreach (var part in audioStream.WithCancellation(cancellationToken)) {
+                var request = new StreamingRecognizeRequest {
+                    AudioContent = ByteString.CopyFrom(part.ToBlobPart().Data),
+                };
+                await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }
         }
-        catch (Exception e) {
-            error = e;
-        }
         finally {
-            if (error != null)
-                writer.Complete(error);
-            else
-                try {
-                    updateExtractor.FinalizeCurrentPart();
-                    while (updateExtractor.Updates.TryDequeue(out var update))
-                        await writer.WriteAsync(update, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception e) {
-                    error = e;
-                }
-                finally {
-                    writer.Complete(error);
-                }
+            await recognizeRequests.WriteCompleteAsync().ConfigureAwait(false);
         }
+    }
+
+    internal async IAsyncEnumerable<TranscriptUpdate> ReadTranscript(
+        IAsyncEnumerable<StreamingRecognizeResponse> recognizeResponses,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var updateExtractor = new TranscriptUpdateExtractor();
+        await foreach (var response in recognizeResponses.WithCancellation(cancellationToken)) {
+            ProcessResponse(response);
+            while (updateExtractor.Updates.TryDequeue(out var update))
+                yield return update;
+        }
+        updateExtractor.FinalizeCurrentPart();
+        while (updateExtractor.Updates.TryDequeue(out var update))
+            yield return update;
 
         void ProcessResponse(StreamingRecognizeResponse response)
         {

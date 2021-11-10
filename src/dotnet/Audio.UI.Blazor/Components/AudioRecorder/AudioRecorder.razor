@@ -97,7 +97,8 @@
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
         var audioRecord = new AudioRecord(ChatId, audioFormat, "RU-ru", clientStartOffset);
-        _ = _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, AudioChannel.Reader, default);
+        var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
+        _ = _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None);
     }
 
     [JSInvokable]
