@@ -7,6 +7,7 @@ namespace ActualChat.Audio;
 
 public class AudioStreamer : IAudioStreamer
 {
+    private const int StreamBufferSize = 64;
     private readonly ILogger<AudioStreamer> _log;
     private readonly RedisDb _redisDb;
 
@@ -18,7 +19,7 @@ public class AudioStreamer : IAudioStreamer
         _redisDb = audioRedisDb.WithKeyPrefix("audio-streams");
     }
 
-    public Task PublishAudioStream(StreamId streamId, IAsyncEnumerable<BlobPart> blobParts, CancellationToken cancellationToken)
+    public Task Publish(StreamId streamId, IAsyncEnumerable<BlobPart> blobParts, CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<BlobPart>(streamId);
         return streamer.Write(blobParts, cancellationToken);
@@ -27,6 +28,6 @@ public class AudioStreamer : IAudioStreamer
     public IAsyncEnumerable<BlobPart> GetAudioBlobStream(StreamId streamId, CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<BlobPart>(streamId);
-        return streamer.Read(cancellationToken);
+        return streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
     }
 }

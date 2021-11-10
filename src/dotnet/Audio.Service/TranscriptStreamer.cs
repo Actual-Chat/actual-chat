@@ -7,6 +7,7 @@ namespace ActualChat.Audio;
 
 public class TranscriptStreamer : ITranscriptStreamer
 {
+    private const int StreamBufferSize = 64;
     private readonly ILogger<TranscriptStreamer> _log;
     private readonly RedisDb _redisDb;
 
@@ -32,6 +33,6 @@ public class TranscriptStreamer : ITranscriptStreamer
         CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<TranscriptUpdate>(streamId);
-        return streamer.Read(cancellationToken);
+        return streamer.Read(cancellationToken).Buffer(64, cancellationToken);
     }
 }

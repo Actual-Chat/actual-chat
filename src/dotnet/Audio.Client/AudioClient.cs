@@ -11,6 +11,8 @@ public class AudioClient : HubClientBase,
     IAudioSourceStreamer,
     ITranscriptStreamer
 {
+    private const int StreamBufferSize = 64;
+
     public AudioClient(IServiceProvider services) : base(services, "api/hub/audio") { }
 
     public async Task<AudioSource> GetAudio(
@@ -19,8 +21,9 @@ public class AudioClient : HubClientBase,
         CancellationToken cancellationToken)
     {
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var audioStream = HubConnection.StreamAsync<AudioStreamPart>(
-            "GetAudioStream", streamId, skipTo, cancellationToken);
+        var audioStream = HubConnection
+            .StreamAsync<AudioStreamPart>("GetAudioStream", streamId, skipTo, cancellationToken)
+            .Buffer(StreamBufferSize, cancellationToken);
         var audio = new AudioSource(audioStream, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
@@ -31,7 +34,9 @@ public class AudioClient : HubClientBase,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var blobParts = HubConnection.StreamAsync<BlobPart>("GetAudioBlobStream", streamId, cancellationToken);
+        var blobParts = HubConnection
+            .StreamAsync<BlobPart>("GetAudioBlobStream", streamId, cancellationToken)
+            .Buffer(StreamBufferSize, cancellationToken);
         await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false))
             yield return blobPart;
     }
@@ -46,7 +51,7 @@ public class AudioClient : HubClientBase,
         await HubConnection.SendAsync("RecordSourceAudio",
                 session,
                 audioRecord,
-                blobStream,
+                blobStream.Buffer(StreamBufferSize, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
     }
@@ -56,7 +61,9 @@ public class AudioClient : HubClientBase,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var updates = HubConnection.StreamAsync<TranscriptUpdate>("GetTranscriptStream", streamId, cancellationToken);
+        var updates = HubConnection
+            .StreamAsync<TranscriptUpdate>("GetTranscriptStream", streamId, cancellationToken)
+            .Buffer(StreamBufferSize, cancellationToken);
         await foreach (var update in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
             yield return update;
     }

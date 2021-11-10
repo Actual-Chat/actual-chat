@@ -69,7 +69,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var filePath = GetAudioFilePath();
 
         var blobStream = filePath.ReadBlobStream();
-        var publishTask =  audioStreamer.PublishAudioStream(streamId, blobStream, CancellationToken.None);
+        var publishTask =  audioStreamer.Publish(streamId, blobStream, CancellationToken.None);
         var readTask = ReadAudioStream(streamId, audioStreamer);
 
         await readTask;
