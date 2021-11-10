@@ -1,5 +1,6 @@
 using ActualChat.Audio.Db;
 using ActualChat.Blobs;
+using ActualChat.Media;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IO;
 using Stl.Fusion.EntityFramework;
@@ -23,42 +24,17 @@ public sealed class AudioSegmentSaver
     }
 
     public async Task<string> Save(
-        AudioSegment audioSegment,
+        ClosedAudioSegment closedAudioSegment,
         CancellationToken cancellationToken)
     {
-        var p = audioSegment ?? throw new ArgumentNullException(nameof(audioSegment));
-        var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "", StringComparison.Ordinal);
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, p.AudioRecord.Id, streamIndex + ".webm");
+        var streamIndex = ((string)closedAudioSegment.StreamId).Replace(
+            $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
+        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".webm");
 
-        await SaveBlob(blobId, audioSegment.AudioSource, cancellationToken).ConfigureAwait(false);
-        return blobId;
-    }
-
-    public async Task<string> Save(
-        OpenAudioSegment openAudioSegment,
-        CancellationToken cancellationToken)
-    {
-        var p = openAudioSegment ?? throw new ArgumentNullException(nameof(openAudioSegment));
-        var streamIndex = ((string) p.StreamId).Replace($"{p.AudioRecord.Id}-", "", StringComparison.Ordinal);
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, p.AudioRecord.Id, streamIndex + ".webm");
-
-        await SaveBlob(blobId, openAudioSegment.Source, cancellationToken).ConfigureAwait(false);
-        return blobId;
-    }
-
-    private async Task SaveBlob(
-        string blobId,
-        AudioSource source,
-        CancellationToken cancellationToken)
-    {
+        var audioStream = closedAudioSegment.GetSegmentStream(cancellationToken);
+        var blobStream = audioStream.ToBlobStream(cancellationToken);
         var blobStorage = _blobs.GetBlobStorage(BlobScope.AudioRecord);
-        await using var stream = MemoryStreamManager.GetStream(nameof(AudioSegmentSaver));
-        var header = Convert.FromBase64String(source.Format.CodecSettings);
-        await stream.WriteAsync(header, cancellationToken).ConfigureAwait(false);
-        await foreach (var audioFrame in source.Frames.WithCancellation(cancellationToken))
-            await stream.WriteAsync(audioFrame.Data, cancellationToken).ConfigureAwait(false);
-
-        stream.Position = 0;
-        await blobStorage.WriteAsync(blobId, stream, append: false, cancellationToken).ConfigureAwait(false);
+        await blobStorage.UploadBlobStream(blobId, blobStream, cancellationToken).ConfigureAwait(false);
+        return blobId;
     }
 }

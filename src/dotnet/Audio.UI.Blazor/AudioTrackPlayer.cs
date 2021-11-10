@@ -9,15 +9,15 @@ namespace ActualChat.Audio.UI.Blazor;
 
 public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 {
+    private bool DebugMode { get; } = true;
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private CancellationTokenSource _delayTokenSource;
     private IJSObjectReference? _jsRef;
-    private bool DebugMode { get; } = true;
+    private CancellationTokenSource _delayTokenSource;
+    private readonly byte[] _header;
 
     public AudioSource AudioSource => (AudioSource)Source;
-    public byte[] Header { get; }
 
     public AudioTrackPlayer(
         PlayMediaTrackCommand command,
@@ -29,9 +29,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _circuitContext = circuitContext;
         _js = js;
-        _delayTokenSource = new ();
-
-        Header = Convert.FromBase64String(AudioSource.Format.CodecSettings);
+        _delayTokenSource = new();
+        _header = AudioSource.Format.ToBlobPart().Data;
     }
 
     [JSInvokable]
@@ -91,7 +90,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                             _blazorRef,
                             DebugMode);
-                        await _jsRef!.InvokeVoidAsync("initialize", Header);
+                        await _jsRef!.InvokeVoidAsync("initialize", _header);
                         break;
                     case StopPlaybackCommand stop:
                         if (_jsRef == null)

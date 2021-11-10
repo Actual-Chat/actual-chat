@@ -33,4 +33,14 @@ public record Transcript
             TextToTimeMap = TextToTimeMap.AppendOrUpdateTail(updatedPartMap).Simplify(0.1),
         };
     }
+
+    public async Task<Transcript> WithUpdates(
+        IAsyncEnumerable<TranscriptUpdate> transcriptStream,
+        CancellationToken cancellationToken)
+    {
+        var transcript = this;
+        await foreach (var update in transcriptStream.WithCancellation(cancellationToken).ConfigureAwait(false))
+            transcript = transcript.WithUpdate(update);
+        return transcript;
+    }
 }

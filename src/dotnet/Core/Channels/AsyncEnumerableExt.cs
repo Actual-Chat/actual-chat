@@ -2,6 +2,20 @@ namespace ActualChat.Channels;
 
 public static class AsyncEnumerableExt
 {
+    public static IAsyncEnumerable<T> Buffer<T>(
+        this IAsyncEnumerable<T> source,
+        int bufferSize,
+        CancellationToken cancellationToken = default)
+    {
+        var buffer = Channel.CreateBounded<T>(new BoundedChannelOptions(bufferSize) {
+            SingleReader = true,
+            SingleWriter = true,
+            AllowSynchronousContinuations = true,
+        });
+        _ = source.CopyTo(buffer, ChannelCompletionMode.CompleteAndPropagateError, cancellationToken);
+        return buffer.Reader.ReadAllAsync(cancellationToken);
+    }
+
     public static AsyncMemoizer<T> Memoize<T>(
         this IAsyncEnumerable<T> source,
         CancellationToken cancellationToken = default)

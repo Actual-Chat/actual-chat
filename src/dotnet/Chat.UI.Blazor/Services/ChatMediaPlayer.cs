@@ -124,11 +124,13 @@ public sealed class ChatMediaPlayer : IDisposable
                     : null;
 
             var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
-            var audioSource = await AudioDownloader.DownloadAsAudioSource(audioBlobUri, skipTo, cancellationToken)
+            var audio = await AudioDownloader
+                .Download(audioBlobUri, skipTo, cancellationToken)
                 .ConfigureAwait(false);
             var trackId = MediaTrackId.GetAudioTrackId(audioEntry);
-            await MediaPlayer.AddMediaTrack(trackId,
-                    audioSource,
+            await MediaPlayer.AddMediaTrack(
+                    trackId,
+                    audio,
                     audioEntry.BeginsAt,
                     playAt,
                     skipTo,
@@ -158,10 +160,11 @@ public sealed class ChatMediaPlayer : IDisposable
                 throw new NotSupportedException("The entry must be a streaming entry.");
 
             var trackId = MediaTrackId.GetAudioTrackId(audioEntry);
-            var audioSource = await AudioSourceStreamer.GetAudioSource(audioEntry.StreamId, skipTo, cancellationToken)
+            var audio = await AudioSourceStreamer
+                .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
                 .ConfigureAwait(false);
             await MediaPlayer.AddMediaTrack(trackId,
-                    audioSource,
+                    audio,
                     audioEntry.BeginsAt,
                     playAt,
                     skipTo,
