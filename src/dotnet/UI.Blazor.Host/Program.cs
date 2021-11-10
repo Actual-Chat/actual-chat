@@ -20,29 +20,35 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        await ConfigureServices(builder.Services, builder).ConfigureAwait(false);
+        var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
+        var uriMapper = new UriMapper(baseUri);
+        await ConfigureServices(builder.Services, builder.Configuration, uriMapper).ConfigureAwait(false);
+
         var host = builder.Build();
         await host.Services.HostedServices().Start().ConfigureAwait(false);
         await host.RunAsync().ConfigureAwait(false);
     }
 
-    public static async Task ConfigureServices(IServiceCollection services, WebAssemblyHostBuilder builder)
+    public static async Task ConfigureServices(
+        IServiceCollection services,
+        IConfiguration configuration,
+        UriMapper uriMapper)
     {
         // Logging
-        var logging = builder.Logging;
-        logging.SetMinimumLevel(LogLevel.Information);
+        services.AddLogging(logging => {
+            logging.SetMinimumLevel(LogLevel.Information);
+        });
 
         // Other services shared with plugins
-        services.AddSingleton(new HostInfo() {
+        services.TryAddSingleton(configuration);
+        services.AddSingleton(c => new HostInfo() {
             HostKind = HostKind.Blazor,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)
                 .Add(ServiceScope.BlazorUI),
-            Environment = builder.HostEnvironment.Environment,
-            Configuration = builder.Configuration,
+            Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
+            Configuration = c.GetRequiredService<IConfiguration>(),
         });
-
-        services.TryAddSingleton<IConfiguration>(builder.Configuration);
 
         // Creating plugins
         var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
@@ -61,7 +67,7 @@ public static class Program
         var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
         services.AddSingleton(plugins);
 
-        var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
+        var baseUri = uriMapper.BaseUri;
         var apiBaseUri = new Uri($"{baseUri}api/");
 
         // Fusion services
