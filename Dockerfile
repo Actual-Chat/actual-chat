@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:6.0.0-rc.2-alpine3.14-amd64 as runtime
+FROM mcr.microsoft.com/dotnet/aspnet:6.0.0-alpine3.14-amd64 as runtime
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
@@ -12,7 +12,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 WORKDIR /app
 RUN apk add icu-libs --no-cache
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0.100-rc.2-alpine3.14-amd64 as dotnet-restore
+FROM mcr.microsoft.com/dotnet/sdk:6.0.100-alpine3.14-amd64 as dotnet-restore
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_CLI_UI_LANGUAGE=en-US \
     DOTNET_SVCUTIL_TELEMETRY_OPTOUT=1 \
