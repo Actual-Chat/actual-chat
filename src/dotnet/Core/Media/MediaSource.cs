@@ -25,17 +25,20 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     protected Task<TimeSpan> DurationTask { get; }
 
     MediaFormat IMediaSource.Format => Format;
+#pragma warning disable VSTHRD002
     public TFormat Format => FormatTask.IsCompleted
         ? FormatTask.Result
         : throw new InvalidOperationException("Format isn't parsed yet.");
     public TimeSpan Duration => DurationTask.IsCompleted
         ? DurationTask.Result
         : throw new InvalidOperationException("Duration isn't parsed yet.");
+#pragma warning restore VSTHRD002
     public Task WhenFormatAvailable => FormatTask;
     public Task WhenDurationAvailable => DurationTask;
 
     // Constructors
 
+#pragma warning disable MA0056
     protected MediaSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, CancellationToken cancellationToken)
     {
         FormatTask = TaskSource.New<TFormat>(true).Task;
@@ -62,6 +65,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         var parsedFrames = Parse(mediaStream, cancellationToken);
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
     }
+#pragma warning restore MA0056
 
     // Public methods
 
