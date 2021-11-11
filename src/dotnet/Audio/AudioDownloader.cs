@@ -1,4 +1,3 @@
-using System.Buffers;
 using ActualChat.Blobs;
 
 namespace ActualChat.Audio;
@@ -11,58 +10,19 @@ public class AudioDownloader
     public AudioDownloader(IHttpClientFactory httpClientFactory)
         => _httpClientFactory = httpClientFactory;
 
-    public virtual async Task<AudioSource> DownloadAsAudioSource(
+    public virtual async Task<AudioSource> Download(
         Uri audioUri,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var httpClient = _httpClientFactory.CreateClient();
-        var response = await httpClient
-            .GetAsync(audioUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var audioBlobs = Channel.CreateUnbounded<BlobPart>(
-            new UnboundedChannelOptions {
-                SingleReader = true,
-                SingleWriter = true,
-                AllowSynchronousContinuations = true,
-            });
-        var audioSourceProvider = new AudioSourceProvider();
-
-        _ = Task.Run(ReadBlobPartsFromStream, cancellationToken);
-
-        return await audioSourceProvider
-            .CreateMediaSource(audioBlobs, skipTo, cancellationToken)
-            .ConfigureAwait(false);
-
-        async Task ReadBlobPartsFromStream()
-        {
-            Exception? error = null;
-            try {
-                var index = 0;
-                await using var stream = await response.Content
-                    .ReadAsStreamAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
-                var buffer = bufferLease.Memory;
-
-                var bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                while (bytesRead != 0) {
-                    await audioBlobs.Writer
-                        .WriteAsync(new BlobPart(index++, buffer[..bytesRead].ToArray()), cancellationToken)
-                        .ConfigureAwait(false);
-
-                    bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception e) {
-                error = e;
-            }
-            finally {
-                audioBlobs.Writer.TryComplete(error);
-                httpClient.Dispose();
-            }
-        }
+        var blobStream = DownloadBlobStream(audioUri, cancellationToken);
+        var audio = new AudioSource(blobStream, skipTo, cancellationToken);
+        await audio.WhenFormatAvailable.ConfigureAwait(false);
+        return audio;
     }
+
+    public IAsyncEnumerable<BlobPart> DownloadBlobStream(
+        Uri audioUri,
+        CancellationToken cancellationToken = default)
+        => _httpClientFactory.DownloadBlobStream(audioUri, cancellationToken);
 }

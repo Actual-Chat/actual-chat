@@ -23,16 +23,16 @@ public class AudioHub : Hub
         _transcriptStreamer = transcriptStreamer;
     }
 
-    public Task<ChannelReader<AudioSourcePart>> GetAudioSourceParts(
+    public IAsyncEnumerable<AudioStreamPart> GetAudioStream(
         StreamId streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
-        => _audioSourceStreamer.GetAudioSourceParts(streamId, skipTo, cancellationToken);
+        => _audioSourceStreamer.GetAudioStream(streamId, skipTo, cancellationToken);
 
-    public Task<ChannelReader<BlobPart>> GetAudioStream(StreamId streamId, CancellationToken cancellationToken)
-        => _audioStreamer.GetAudioStream(streamId, cancellationToken);
+    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(StreamId streamId, CancellationToken cancellationToken)
+        => _audioStreamer.GetAudioBlobStream(streamId, cancellationToken);
 
-    public Task<ChannelReader<TranscriptUpdate>> GetTranscriptStream(
+    public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
         StreamId streamId,
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptStream(streamId, cancellationToken);
@@ -40,7 +40,7 @@ public class AudioHub : Hub
     public Task RecordSourceAudio(
             Session session,
             AudioRecord audioRecord,
-            ChannelReader<BlobPart> content)
+            IAsyncEnumerable<BlobPart> blobStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, content, default);
+        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, blobStream, default);
 }

@@ -8,7 +8,7 @@
 ## Prerequisites
 
 - [Git](https://git-scm.com/downloads)
-- [.NET 6 RC2](https://dotnet.microsoft.com/download/dotnet/6.0)
+- [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
 - `dotnet workload install wasm-tools`  
 - [Docker](https://www.docker.com/get-started)
 - [NodeJS 16+](https://nodejs.org/en/) and the latest `npm`;

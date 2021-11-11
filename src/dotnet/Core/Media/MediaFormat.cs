@@ -1,3 +1,5 @@
+using ActualChat.Blobs;
+
 namespace ActualChat.Media;
 
 [DataContract]
@@ -7,4 +9,6 @@ public abstract record MediaFormat
 
     [DataMember(Order = 0)]
     public int ChannelCount { get; init; } = 1;
+
+    public abstract BlobPart ToBlobPart(int index = 0);
 }

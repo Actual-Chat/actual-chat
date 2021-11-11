@@ -37,12 +37,30 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         Clocks = clocks;
         Command = command;
         _playbackCompleted = new ();
-        _state = new (command.TrackId, command.RecordingStartedAt);
+        _state = new (command.TrackId, command.RecordingStartedAt, command.SkipTo);
         _ = Run();
     }
 
     public ValueTask EnqueueCommand(MediaTrackPlayerCommand command)
         => ProcessCommand(command);
+
+    protected virtual void OnPlayedTo(TimeSpan offset)
+        => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = s.SkipTo + o });
+
+    protected virtual void OnStopped(Exception? error = null)
+    {
+        _playbackCompleted.TrySetResult();
+
+        UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
+    }
+
+    protected virtual void OnVolumeSet(double volume)
+        => UpdateState(volume, (v, s) => s with { Volume = v });
+
+    // Protected methods
+
+    protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
+    protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
@@ -56,7 +74,8 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
 
             // Actual playback
             await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
-            await foreach (var frame in Source.Frames.WithCancellation(cancellationToken).ConfigureAwait(false))
+            var frames = Source.GetFramesUntyped(cancellationToken);
+            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
@@ -82,24 +101,6 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         }
         await _playbackCompleted.Task.ConfigureAwait(false);
     }
-
-    // Protected methods
-
-    protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
-    protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
-
-    protected virtual void OnPlayedTo(TimeSpan offset)
-        => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = o });
-
-    protected virtual void OnStopped(Exception? error = null)
-    {
-        _playbackCompleted.TrySetResult();
-
-        UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
-    }
-
-    protected virtual void OnVolumeSet(double volume)
-        => UpdateState(volume, (v, s) => s with { Volume = v });
 
     protected void UpdateState(Func<MediaTrackPlaybackState, MediaTrackPlaybackState> updater)
     {

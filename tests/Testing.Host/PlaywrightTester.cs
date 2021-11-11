@@ -1,32 +1,21 @@
 using ActualChat.Host;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
 
 namespace ActualChat.Testing.Host
 {
-    public sealed class PlaywrightTester : IWebTester
+    public sealed class PlaywrightTester : WebClientTester
     {
         private IPlaywright? _playwright;
         private IBrowser? _browser;
 
-        public AppHost AppHost { get; }
-        public IServiceProvider AppServices => AppHost.Services;
-        public UriMapper UriMapper => AppServices.UriMapper();
-        public IAuth Auth => AppServices.GetRequiredService<IAuth>();
-        public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
-        public Session Session { get; }
+        public PlaywrightTester(AppHost appHost, IServiceProvider? clientServices = null)
+            : base(appHost, clientServices)
+        { }
 
-        public PlaywrightTester(AppHost appHost)
-        {
-            AppHost = appHost;
-            var sessionFactory = AppServices.GetRequiredService<ISessionFactory>();
-            Session = sessionFactory.CreateSession();
-        }
-
-        public void Dispose()
+        public override void Dispose()
         {
             _playwright?.Dispose();
-            GC.SuppressFinalize(this);
+            base.Dispose();
         }
 
         public async ValueTask<IPlaywright> GetPlaywright()

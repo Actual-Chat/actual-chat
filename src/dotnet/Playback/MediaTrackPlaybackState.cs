@@ -1,6 +1,6 @@
 namespace ActualChat.Playback;
 
-public record MediaTrackPlaybackState(Symbol TrackId, Moment RecordingStartedAt)
+public record MediaTrackPlaybackState(Symbol TrackId, Moment RecordingStartedAt, TimeSpan SkipTo)
 {
     public double Volume { get; init; } = 1;
     public double PlaybackRate { get; init; } = 1;

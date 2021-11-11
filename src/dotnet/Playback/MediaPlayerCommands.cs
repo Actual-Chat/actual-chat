@@ -15,6 +15,7 @@ public record PlayMediaTrackCommand(
     Symbol TrackId,
     IMediaSource Source,
     Moment RecordingStartedAt,
-    Moment? PlayAt
+    Moment? PlayAt,
+    TimeSpan SkipTo
 ) : MediaPlayerCommand(Task.CompletedTask)
 { }
