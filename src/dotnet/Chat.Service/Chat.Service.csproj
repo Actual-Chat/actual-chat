@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\..\tests\Audio.UnitTests\data\**" Link="data\%(RecursiveDir)%(Filename)%(Extension)" Visible="false" CopyToOutputDirectory="PreserveNewest" />
+
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Audio\Audio.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
