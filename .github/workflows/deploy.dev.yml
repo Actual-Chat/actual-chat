@@ -46,12 +46,12 @@ jobs:
         run: docker build . -t actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} -t us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} --compress
       - name: Publish docker image
         run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
-      - name: Create changelog text
-        id: changelog
-        uses: loopwerk/tag-changelog@v1.0.4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          exclude_types: other,doc,chore,build,style
+      # - name: Create changelog text
+      #   id: changelog
+      #   uses: loopwerk/tag-changelog@v1.0.4
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     exclude_types: other,doc,chore,build,style
       - name: Create tag
         uses: actions/github-script@v5
         with:
@@ -63,8 +63,8 @@ jobs:
               ref: "refs/tags/${{ steps.nbgv.outputs.SemVer2 }}",
               sha: context.sha
             })
-      - name: Print changelog
-        run: echo ${{ steps.changelog.outputs.changes }}
+      # - name: Print changelog
+      #   run: echo ${{ steps.changelog.outputs.changes }}
       # - name: Create Release
       #   uses: actions/create-release@v1.1.4
       #   env:
