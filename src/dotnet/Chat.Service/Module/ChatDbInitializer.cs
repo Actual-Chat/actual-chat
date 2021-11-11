@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Reflection;
 using ActualChat.Audio;
 using ActualChat.Blobs;
 using ActualChat.Chat.Db;
@@ -7,7 +6,6 @@ using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IO;
 using Stl.IO;
 
 namespace ActualChat.Chat.Module;
@@ -164,6 +162,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         CancellationToken cancellationToken)
     {
         var filePath = GetAudioDataDir() & fileName;
+        if (!File.Exists(filePath)) {
+            throw new FileNotFoundException($"Path for {fileName} data not found", filePath.ToString());
+        }
         var sourceBlobStream = filePath.ReadBlobStream(cancellationToken);
         var audio = new AudioSource(sourceBlobStream, TimeSpan.Zero, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
