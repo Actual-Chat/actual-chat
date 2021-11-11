@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatAuthorsTest
 {
     [Fact]
-    public async Task BasicTest()
+    public async Task NullAuthorResult()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
@@ -14,5 +14,6 @@ public class ChatAuthorsTest
 
         var chatAuthors = tester.ClientServices.GetRequiredService<IChatAuthors>();
         var author = await chatAuthors.GetSessionChatAuthor(session, ChatConstants.DefaultChatId, default);
+        author.Should().BeNull();
     }
 }

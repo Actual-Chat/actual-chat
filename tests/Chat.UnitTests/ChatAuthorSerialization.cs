@@ -5,7 +5,6 @@ public class ChatAuthorSerialization
     [Fact]
     public void BasicTest()
     {
-        SerializationTestExt.SystemJsonOptions = SystemJsonSerializer.DefaultOptions;
         var ca = new ChatAuthor() {
             Name = "Alex",
         };
