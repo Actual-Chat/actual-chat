@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Reflection;
 using ActualChat.Audio;
 using ActualChat.Blobs;
 using ActualChat.Chat.Db;
@@ -13,7 +14,6 @@ namespace ActualChat.Chat.Module;
 
 public class ChatDbInitializer : DbInitializer<ChatDbContext>
 {
-    private FilePath? _testAudioDataPath;
     private IBlobStorageProvider Blobs { get; }
 
     public ChatDbInitializer(IServiceProvider services, IBlobStorageProvider blobs) : base(services)
@@ -170,6 +170,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var audioBlobStream = audio.GetBlobStream(cancellationToken);
         // NOTE(AY): Shouldn't we simply write source blob stream here?
         await blobs.UploadBlobStream(blobId, audioBlobStream, cancellationToken).ConfigureAwait(false);
+
+        static FilePath GetAudioDataDir()
+            => new FilePath(Path.GetDirectoryName(typeof(ChatDbInitializer).Assembly.Location)) & "data";
     }
 
     private async Task AddRandomTextMessages(
@@ -202,27 +205,5 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .Range(0, Random.Shared.Next(maxLength))
                 .Select(_ => words![Random.Shared.Next(words.Length)])
                 .ToDelimitedString(" ");
-    }
-
-    private FilePath GetAudioDataDir()
-    {
-        if (_testAudioDataPath.HasValue)
-            return _testAudioDataPath.GetValueOrDefault();
-        var basePath = new FilePath(Directory.GetCurrentDirectory()).FullPath;
-        while (true) {
-            var path = basePath & "artifacts";
-            if (Directory.Exists(path)) {
-                path = basePath & @"tests\Audio.IntegrationTests\data";
-                if (Directory.Exists(path)) {
-                    _testAudioDataPath = path;
-                    return path;
-                }
-            }
-
-            var newBasePath = (basePath & "..").FullPath;
-            if (newBasePath == basePath)
-                throw new InvalidOperationException("Can't find test audio data.");
-            basePath = newBasePath;
-        }
     }
 }
