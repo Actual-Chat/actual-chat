@@ -32,10 +32,15 @@ public sealed class MediaPlayer : IDisposable
         IMediaSource source,
         Moment recordingStartedAt,
         Moment? playAt,
+        TimeSpan skipTo,
         CancellationToken cancellationToken = default)
     {
-        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt));
-        var command = new PlayMediaTrackCommand(trackId, source, recordingStartedAt, playAt);
+        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt, skipTo));
+        var command = new PlayMediaTrackCommand(trackId,
+            source,
+            recordingStartedAt,
+            playAt,
+            skipTo);
         return AddCommand(command, cancellationToken);
     }
 
@@ -59,14 +64,15 @@ public sealed class MediaPlayer : IDisposable
     public async Task Stop()
     {
         var playingTask = PlayingTask;
-
         if (!playingTask.IsCompleted) {
             var stopCompletion = new TaskCompletionSource();
             var stopCommand = new StopCommand(stopCompletion);
-            await AddCommand(stopCommand, CancellationToken.None).ConfigureAwait(false);
-            await stopCommand.CommandProcessed.ConfigureAwait(false);
+            if (!Queue.Reader.Completion.IsCompleted) {
+                await AddCommand(stopCommand, CancellationToken.None).ConfigureAwait(false);
+                await stopCommand.CommandProcessed.ConfigureAwait(false);
+                Complete();
+            }
         }
-
         _stopPlayingCts.CancelAndDisposeSilently();
         Reset();
         await playingTask.SuppressExceptions();

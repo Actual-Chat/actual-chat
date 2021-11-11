@@ -47,7 +47,7 @@ public sealed class ChatEntryReader
                 yield return entry; // Note that this "yield" can take arbitrary long time
             }
             var idRange = idRangeComputed.Value;
-            var isLastTile = entries.Length == 0 || entries.Last().Id >= idRange.End;
+            var isLastTile = entries.LastOrDefault()?.Id >= idRange.End;
             if (isLastTile) {
                 lastTileEnd = tile.Start - 1;
 
@@ -90,7 +90,7 @@ public sealed class ChatEntryReader
             entryId = minId + ((maxId - minId) >> 1);
             var entry = await Get(entryId, maxId, cancellationToken).ConfigureAwait(false);
             if (entry == null)
-                minId = entryId + 1;
+                maxId = entryId;
             else {
                 if (minBeginsAt == entry.BeginsAt) {
                     var prevEntry = await Get(entryId - 1, maxId, cancellationToken).ConfigureAwait(false);

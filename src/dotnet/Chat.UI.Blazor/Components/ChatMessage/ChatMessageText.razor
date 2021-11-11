@@ -8,7 +8,7 @@
     <p class="text">@Entry.Content</p>
 } else {
     <p>
-        @foreach (var (word, offset, nextOffset) in Words!) {
+        @foreach (var (word, offset, nextOffset) in Words) {
             var cls = "word text-current";
             var playbackState = State.LatestNonErrorValue;
             if (playbackState != null) {

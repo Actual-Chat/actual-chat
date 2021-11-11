@@ -44,8 +44,22 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
                     _ = trackPlayer.RunningTask!.ContinueWith(
                         // We want to remove players once they finish, otherwise it may cause mem leak
                         _ => {
-                            _playbackStates.TryRemove(trackPlayer.State.TrackId, trackPlayer.State);
-                            return trackPlayers.TryRemove(commandRef, trackPlayer);
+                            var state = trackPlayer.State;
+                            var trackId = state.TrackId;
+                            var timestampLogCover = PlaybackConstants.TimestampTiles;
+                            _playbackStates.TryRemove(trackId, state);
+                            trackPlayers.TryRemove(commandRef, trackPlayer);
+
+                            using (Computed.Invalidate()) {
+                                _ = IsPlaybackCompleted(trackId, default);
+
+                                _ = GetMediaTrackPlaybackState(trackId, default);
+
+                                // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
+                                var timestamp = state.RecordingStartedAt + state.PlayingAt;
+                                foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
+                                    _ = GetMediaTrackPlaybackState(trackId, tile, default);
+                            }
                         },
                         TaskScheduler.Default);
                     trackPlayers[commandRef] = trackPlayer;
@@ -118,6 +132,19 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
 
     protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
+    protected override void Dispose(bool disposing)
+    {
+        if (!disposing) return;
+
+        Stop();
+    }
+
+    protected override ValueTask DisposeAsyncCore()
+    {
+        Stop();
+        return ValueTask.CompletedTask;
+    }
+
     protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
         var trackId = state.TrackId;
@@ -143,19 +170,6 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile, default);
         }
-    }
-
-    protected override ValueTask DisposeAsyncCore()
-    {
-        Stop();
-        return ValueTask.CompletedTask;
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (!disposing) return;
-
-        Stop();
     }
 
     protected void Stop()

@@ -15,7 +15,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 
     public SourceAudioRecorder(
         ILogger<SourceAudioRecorder> log,
-        RedisDb<AudioDbContext> audioRedisDb,
+        RedisDb<AudioContext> audioRedisDb,
         IChatAuthorsBackend chatAuthorsBackend)
     {
         _log = log;
@@ -30,7 +30,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     public async Task RecordSourceAudio(
         Session session,
         AudioRecord audioRecord,
-        ChannelReader<BlobPart> content,
+        IAsyncEnumerable<BlobPart> blobStream,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthorsBackend.GetOrCreate(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false);
@@ -41,9 +41,11 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", audioRecord);
 
         var streamer = _redisDb.GetStreamer<BlobPart>(audioRecord.Id);
-        await streamer.Write(content,
-            async _ => await _newRecordQueue.Enqueue(audioRecord).ConfigureAwait(false),
-            cancellationToken).ConfigureAwait(false);
+        await streamer.Write(
+                blobStream,
+                async _ => await _newRecordQueue.Enqueue(audioRecord).ConfigureAwait(false),
+                cancellationToken)
+            .ConfigureAwait(false);
         _ = Task.Delay(TimeSpan.FromMinutes(1), default)
             .ContinueWith(_ => streamer.Remove(), TaskScheduler.Default);
     }
@@ -51,7 +53,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     public Task<AudioRecord> DequeueSourceAudio(CancellationToken cancellationToken)
         => _newRecordQueue.Dequeue(cancellationToken);
 
-    public ChannelReader<BlobPart> GetSourceAudioStream(AudioRecordId audioRecordId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<BlobPart> GetSourceAudioBlobStream(AudioRecordId audioRecordId, CancellationToken cancellationToken)
     {
         var streamer = _redisDb.GetStreamer<BlobPart>(audioRecordId);
         return streamer.Read(cancellationToken);

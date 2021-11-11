@@ -1,7 +1,6 @@
-using System.Security.Claims;
 using Cysharp.Text;
 
-namespace ActualChat.Users.Db;
+namespace ActualChat.Users;
 
 public class ClaimMapper
 {
@@ -23,7 +22,7 @@ public class ClaimMapper
 
         var name = (httpClaims.GetValueOrDefault(NicknameClaim) ?? "").Trim();
         if (name.IsNullOrEmpty())
-            name = fullName.Replace(" ", "_").ToLowerInvariant();
+            name = fullName.Replace(" ", "_", StringComparison.Ordinal).ToLowerInvariant();
 
         var userClaims = user.Claims;
         if (!name.IsNullOrEmpty()) {

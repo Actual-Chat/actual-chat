@@ -20,14 +20,14 @@
 
     protected override async Task OnParametersSetAsync() {
         if (_cancellationTokenSource != null) {
-    // We should never call those statements
+            // We should never call those statements
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.Dispose();
         }
         if (!_circuitContext.IsPrerendering) {
             _cancellationTokenSource = new();
-            var transcriptReader = await _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
-            _ = ReadTranscript(transcriptReader, _cancellationTokenSource.Token);
+            var transcriptStream = _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
+            _ = ReadTranscript(transcriptStream, _cancellationTokenSource.Token);
         }
 
         await base.OnParametersSetAsync();
@@ -38,13 +38,15 @@
             PlayClick.InvokeAsync(StreamId);
     }
 
-    private async Task ReadTranscript(ChannelReader<TranscriptUpdate> transcriptUpdates, CancellationToken cancellationToken) {
+    private async Task ReadTranscript(
+        IAsyncEnumerable<TranscriptUpdate> transcriptStream,
+        CancellationToken cancellationToken)
+    {
         try {
-            while (await transcriptUpdates.WaitToReadAsync(cancellationToken))
-                while (transcriptUpdates.TryRead(out var update)) {
-                    _transcript = _transcript.WithUpdate(update);
-                    StateHasChanged();
-                }
+            await foreach (var update in transcriptStream.WithCancellation(cancellationToken)) {
+                _transcript = _transcript.WithUpdate(update);
+                StateHasChanged();
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             _log.LogError(e, "Error while reading the transcript");
