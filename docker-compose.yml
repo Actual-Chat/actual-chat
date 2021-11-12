@@ -7,8 +7,7 @@ services:
   postgres:
     image: "postgres:14.0-alpine3.14"
     environment:
-      #POSTGRES_PASSWORD: "z7@bAZ!hFq6"
-      POSTGRES_PASSWORD: "ActualChat.Dev.2021.07"
+      POSTGRES_PASSWORD: "postgres"
       POSTGRES_USER: "postgres"
       POSTGRES_HOST_AUTH_METHOD: "password"
     ports:
