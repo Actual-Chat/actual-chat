@@ -47,7 +47,11 @@ public abstract class MediaPlayerService : IMediaPlayerService
                     var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
                     trackPlayers[commandRef] = trackPlayer;
                     trackPlayer.StateChanged += OnStateChanged;
-                    _ = trackPlayer.Run(linkedToken);
+                    _ = trackPlayer.Run(linkedToken).ContinueWith(
+                        _ => {
+                            trackPlayers.TryRemove(commandRef, out var _);
+                        },
+                        TaskScheduler.Default);
                     break;
                 case SetVolumeCommand setVolume:
                     var volumeTasks = trackPlayers.Values
