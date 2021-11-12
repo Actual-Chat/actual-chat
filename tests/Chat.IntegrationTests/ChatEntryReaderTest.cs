@@ -20,8 +20,6 @@ public class ChatEntryReaderTest
     [Fact]
     public async Task ReaderTest()
     {
-        var defaultChatId = ChatConstants.DefaultChatId;
-        var adminUserId = UserConstants.Admin.UserId;
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var session = tester.Session;
@@ -40,29 +38,13 @@ public class ChatEntryReaderTest
         var dbContext = await dbContextFactory.CreateDbContextAsync();
 
         var dbChat = await dbContext.Chats.FirstOrDefaultAsync(c => c.Id == ChatId);
-        // dbChat?.Owners.Add(new DbChatOwner() {
-        //     ChatId = defaultChatId,
-        //     UserId = adminUserId,
-        // });
-        // await dbContext.SaveChangesAsync(CancellationToken.None);
 
-        var dbAuthor = new DbChatAuthor() {
-            Id = DbChatAuthor.ComposeId(defaultChatId, 2),
-            ChatId = defaultChatId,
-            LocalId = 1,
-            Version = VersionGenerator.NextVersion(),
-            Name = UserConstants.Admin.Name,
-            Picture = UserConstants.Admin.Picture,
-            IsAnonymous = false,
-            UserId = adminUserId,
-        };
-
-        await dbContext.ChatAuthors.AddAsync(dbAuthor, CancellationToken.None).ConfigureAwait(false);
-        await dbContext.SaveChangesAsync(CancellationToken.None);
+        var dbAuthor = await dbContext.ChatAuthors.FirstOrDefaultAsync(CancellationToken.None);
+        await AddTextMessages(dbContext, dbChat, dbAuthor, CancellationToken.None);
 
         var reader = new ChatEntryReader(chats) {
             ChatId = ChatId,
-            InvalidationWaitTimeout = TimeSpan.Zero,
+            InvalidationWaitTimeout = TimeSpan.FromSeconds(1),
             Session = session,
         };
 
@@ -83,13 +65,17 @@ public class ChatEntryReaderTest
         var nextEntryId = await reader.GetNextEntryId(entryPoint, CancellationToken.None);
         nextEntryId.Should().Be(133);
 
-        await AddTextMessages(dbContext, dbChat, dbAuthor, CancellationToken.None);
-
         entry = await reader.Get(145, CancellationToken.None);
         entry.Should().NotBeNull();
         entry?.Content.Should().Be("back in black i hit the sack");
-        entry?.EndsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:29.0043140Z")));
-        entry?.Duration.Should().Be(10.5);
+
+        entry = await reader.Get(146, CancellationToken.None);
+        entry.Should().NotBeNull();
+        entry?.Content.Should().Be("rape me rape me my friend");
+
+        entry = await reader.Get(147, CancellationToken.None);
+        entry.Should().NotBeNull();
+        entry?.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
     private async Task AddTextMessages(
