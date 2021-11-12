@@ -111,9 +111,9 @@ public abstract class MediaPlayerService : IMediaPlayerService
 
     protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
-        Debug.WriteLine($"StateChanged: " +
-            $"({lastState.PlayingAt}, {lastState.IsStarted}, {lastState.IsCompleted}) ->" +
-            $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
+        // Debug.WriteLine($"StateChanged: " +
+        //     $"({lastState.PlayingAt}, {lastState.IsStarted}, {lastState.IsCompleted}) ->" +
+        //     $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
         var trackId = state.TrackId;
         var timestampLogCover = PlaybackConstants.TimestampTiles;
         if (state.IsCompleted)
