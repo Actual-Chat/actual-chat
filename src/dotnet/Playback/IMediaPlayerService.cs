@@ -13,11 +13,6 @@ public interface IMediaPlayerService : IAsyncDisposable
         Range<Moment> timestampRange,
         CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<bool> IsPlaybackCompleted(
-        Symbol trackId,
-        CancellationToken cancellationToken);
-
     /// <summary>
     ///     Plays the specified media tracks.<br />
     ///     This method shouldn't throw <see cref="OperationCanceledException" /> on cancellation.

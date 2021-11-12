@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using ActualChat.Mathematics;
 using Stl.Comparison;
 using Stl.Concurrency;
 
 namespace ActualChat.Playback;
 
-public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerService
+public abstract class MediaPlayerService : IMediaPlayerService
 {
     private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _playbackStates = new ();
 
@@ -24,6 +25,12 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
         StopToken = StopTokenSource.Token;
     }
 
+    public ValueTask DisposeAsync()
+    {
+        StopTokenSource.CancelAndDisposeSilently();
+        return ValueTask.CompletedTask;
+    }
+
     /// <inheritdoc />
     public async Task Play(IAsyncEnumerable<MediaPlayerCommand> commands, CancellationToken cancellationToken)
     {
@@ -37,32 +44,10 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
                     var commandRef = Ref.New(playTrackCommand); // Reference-based comparison works faster for records
                     if (trackPlayers.ContainsKey(commandRef))
                         continue;
-
                     var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
+                    trackPlayers[commandRef] = trackPlayer;
                     trackPlayer.StateChanged += OnStateChanged;
                     _ = trackPlayer.Run(linkedToken);
-                    _ = trackPlayer.RunningTask!.ContinueWith(
-                        // We want to remove players once they finish, otherwise it may cause mem leak
-                        _ => {
-                            var state = trackPlayer.State;
-                            var trackId = state.TrackId;
-                            var timestampLogCover = PlaybackConstants.TimestampTiles;
-                            _playbackStates.TryRemove(trackId, state);
-                            trackPlayers.TryRemove(commandRef, trackPlayer);
-
-                            using (Computed.Invalidate()) {
-                                _ = IsPlaybackCompleted(trackId, default);
-
-                                _ = GetMediaTrackPlaybackState(trackId, default);
-
-                                // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
-                                var timestamp = state.RecordingStartedAt + state.PlayingAt;
-                                foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
-                                    _ = GetMediaTrackPlaybackState(trackId, tile, default);
-                            }
-                        },
-                        TaskScheduler.Default);
-                    trackPlayers[commandRef] = trackPlayer;
                     break;
                 case SetVolumeCommand setVolume:
                     var volumeTasks = trackPlayers.Values
@@ -97,14 +82,6 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
         }
     }
 
-    public virtual Task<bool> IsPlaybackCompleted(
-        Symbol trackId,
-        CancellationToken cancellationToken)
-    {
-        var state = _playbackStates.GetValueOrDefault(trackId);
-        return Task.FromResult(state == null || state.IsCompleted);
-    }
-
     public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
         Symbol trackId,
         CancellationToken cancellationToken)
@@ -132,21 +109,11 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
 
     protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
 
-    protected override void Dispose(bool disposing)
-    {
-        if (!disposing) return;
-
-        Stop();
-    }
-
-    protected override ValueTask DisposeAsyncCore()
-    {
-        Stop();
-        return ValueTask.CompletedTask;
-    }
-
     protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
+        Debug.WriteLine($"StateChanged: " +
+            $"({lastState.PlayingAt}, {lastState.IsStarted}, {lastState.IsCompleted}) ->" +
+            $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
         var trackId = state.TrackId;
         var timestampLogCover = PlaybackConstants.TimestampTiles;
         if (state.IsCompleted)
@@ -155,9 +122,6 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             _playbackStates[trackId] = state;
 
         using (Computed.Invalidate()) {
-            if (state.IsCompleted != lastState.IsCompleted)
-                _ = IsPlaybackCompleted(trackId, default);
-
             _ = GetMediaTrackPlaybackState(trackId, default);
 
             // Invalidating GetPlayingMediaFrame for tiles associated with lastState.PlayingAt
@@ -169,19 +133,6 @@ public abstract class MediaPlayerService : AsyncDisposableBase, IMediaPlayerServ
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
             foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile, default);
-        }
-    }
-
-    protected void Stop()
-    {
-        if (StopTokenSource.IsCancellationRequested)
-            return;
-
-        try {
-            StopTokenSource.Cancel();
-        }
-        catch {
-            // Intended
         }
     }
 }
