@@ -65,7 +65,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             // Uncomment this if you need just random text messages
-            // await GetChatWithRandomMessages(dbContext, dbChat, dbAuthor, VersionGenerator, Clocks, cancellationToken).ConfigureAwait(false);
+            // await AddRandomTextMessages(dbContext, dbChat, dbAuthor, cancellationToken).ConfigureAwait(false);
 
             // Uncomment this if you need initial audio and text data
             await AddAudioRecords(dbContext, dbChat, dbAuthor, cancellationToken).ConfigureAwait(false);
