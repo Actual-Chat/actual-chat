@@ -1,25 +1,20 @@
 {
   "RedisConfiguration": "localhost",
   "DbSettings": {
-    "DefaultDb": "Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "DefaultDb": "Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
     "OverrideDb": "",
     // Try "memory://ac_{instance_}{context}"
     "ShouldRecreateDb": true
   },
   "UsersSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=postgres",
     "MicrosoftAccountClientId": "6839dbf7-d1d3-4eb2-a7e1-ce8d48f34d00",
     "MicrosoftAccountClientSecret": "REFYeH4yNTNfcVNWX2h0WkVoc1V6NHIueDN+LWRxUTA2Zw==",
     "GitHubClientId": "7a38bc415f7e1200fee2",
     "GitHubClientSecret": "OGNkMTAzM2JmZjljOTk3ODc5MjhjNTNmMmE3Y2Q1NWU0ZmNlNjU0OA=="
   },
-  "AudioSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
-    "Redis": "localhost",
-    "UseMessagePackWithSignalR": false
-  },
   "ChatSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=ActualChat.Dev.2021.07",
+    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=postgres",
     "DefaultChatId": ""
   },
   "Logging": {
