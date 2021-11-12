@@ -70,7 +70,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
                 var stopCommand = new StopPlaybackCommand(this, immediately);
                 try {
                     await ProcessCommand(stopCommand).AsTask()
-                        .WithTimeout(TimeSpan.FromSeconds(1), default)
+                        .WithTimeout(TimeSpan.FromSeconds(3), default)
                         .ConfigureAwait(false);
                     OnStopped();
                 }
