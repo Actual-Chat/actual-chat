@@ -21,7 +21,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     // ReSharper disable once StaticMemberInGenericType
-    protected internal bool DebugMode { get; } = false;
+    protected internal bool DebugMode { get; } = Constants.DebugMode.VirtualList;
     protected internal long NextRenderIndex { get; set; }
     protected long LastAfterRenderRenderIndex { get; set; } = -1;
     protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
