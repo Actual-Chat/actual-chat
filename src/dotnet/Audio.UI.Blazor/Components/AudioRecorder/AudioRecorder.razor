@@ -22,7 +22,7 @@
     private bool IsRecording => AudioChannel != null;
     //private Color ToggleColor => IsRecording ? Color.Secondary : Color.Primary;
 
-    private bool DebugMode { get; } = false;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioRecorder;
 
     [Parameter]
     public string ChatId { get; set; } = "";

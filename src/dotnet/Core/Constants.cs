@@ -1,6 +1,6 @@
 namespace ActualChat;
 
-public static class Constants
+public static partial class Constants
 {
     public static class Time
     {

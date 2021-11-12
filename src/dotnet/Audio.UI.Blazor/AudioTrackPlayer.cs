@@ -9,7 +9,7 @@ namespace ActualChat.Audio.UI.Blazor;
 
 public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 {
-    private bool DebugMode { get; } = true;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioTrackPlayer;
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
