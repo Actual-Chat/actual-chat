@@ -32,17 +32,17 @@ public static partial class RangeExt
 
     public static Range<double> FitInto(this Range<double> range, Range<double> fitRange)
     {
-        var fitRangeSize = fitRange.Size();
-        var size = range.Size();
-        if (size > fitRangeSize) {
-            size = fitRangeSize;
-            range = range.Resize(size);
-        }
+        var maxSize = Math.Min(range.Size(), fitRange.Size());
+        return range.Resize(maxSize).SlideInto(fitRange);
+    }
 
-        if (range.Start < fitRange.Start)
-            range = (fitRange.Start, size);
+    public static Range<double> SlideInto(this Range<double> range, Range<double> fitRange)
+    {
+        var size = range.Size();
         if (range.End > fitRange.End)
             range = (fitRange.End - size, fitRange.End);
+        if (range.Start < fitRange.Start)
+            range = (fitRange.Start, size);
         return range;
     }
 }

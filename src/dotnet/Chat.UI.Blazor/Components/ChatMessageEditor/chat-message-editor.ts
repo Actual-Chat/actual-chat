@@ -16,15 +16,29 @@ export class ChatMessageEditor {
         }
         this._input = input;
         this._blazorRef = backendRef;
-    }
 
-    public addEventListener(): void {
+        // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
-            this._blazorRef.invokeMethodAsync("SetMessage", event.target.innerText);
+            let _ = this.updateClientSideState();
+        });
+        this._input.addEventListener('keydown', (event: KeyboardEvent & { target: HTMLDivElement; }) => {
+            if (event.key != 'Enter' || event.shiftKey)
+                return;
+            event.preventDefault();
+            this._blazorRef.invokeMethodAsync("Post", this.getText());
         });
     }
 
-    public clearMessage(): void {
-        this._input.innerHTML = "";
+    public getText(): string {
+        return this._input.innerText;
+    }
+
+    public setText(text: string) {
+        this._input.innerText = text;
+        let _ = this.updateClientSideState();
+    }
+
+    public updateClientSideState() : Promise<void> {
+        return this._blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
     }
 }

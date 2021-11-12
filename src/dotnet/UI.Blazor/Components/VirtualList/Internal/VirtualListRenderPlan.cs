@@ -211,7 +211,7 @@ public class VirtualListRenderPlan<TItem>
         // Remember, we maybe removed & added some items + applied size changes,
         // so there is no warranty the viewport will actually be fully inside
         // the new FullRange.
-        Viewport = Viewport.FitInto(FullRange);
+        Viewport = Viewport.SlideInto(FullRange);
 
         if (!MustScroll) {
             // 3. We aren't scrolling, but maybe we still want to adjust the spacer...
