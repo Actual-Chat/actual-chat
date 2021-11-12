@@ -94,7 +94,12 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             if (lastState == state)
                 return;
             _state = state;
-            StateChanged?.Invoke(lastState, state);
+            try {
+                StateChanged?.Invoke(lastState, state);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Error on StateChanged handler(s) invocation");
+            }
         }
         if (state.IsCompleted)
             _whenCompletedSource.TrySetResult(default);
