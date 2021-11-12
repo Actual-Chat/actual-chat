@@ -85,18 +85,19 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
 
     protected void UpdateState<TArg>(TArg arg, Func<TArg, MediaTrackPlaybackState, MediaTrackPlaybackState> updater)
     {
+        MediaTrackPlaybackState state;
         lock (_stateLock) {
             var lastState = _state;
             if (lastState.IsCompleted)
                 return; // No need to update it further
-            var state = updater.Invoke(arg, lastState);
+            state = updater.Invoke(arg, lastState);
             if (lastState == state)
                 return;
             _state = state;
             StateChanged?.Invoke(lastState, state);
-            if (state.IsCompleted)
-                _whenCompletedSource.TrySetResult(default);
         }
+        if (state.IsCompleted)
+            _whenCompletedSource.TrySetResult(default);
     }
 
     protected virtual void OnPlayedTo(TimeSpan offset)
