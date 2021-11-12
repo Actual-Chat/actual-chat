@@ -110,7 +110,7 @@ export class VirtualList {
     protected updateClientSideStateDebounced(immediately: boolean = false)
     {
         if (this._debugMode)
-            console.log(`${LogScope}.updateClientSideStateDebounced ${immediately ? " immediately" : ""}`);
+            console.log(`${LogScope}.updateClientSideStateDebounced: immediately = ${immediately}`);
         if (immediately) {
             if (this._updateClientSideStateTimeout != null) {
                 clearTimeout(this._updateClientSideStateTimeout);
@@ -245,7 +245,7 @@ export class VirtualList {
         }
 
         if (this._debugMode)
-            console.log(`${LogScope}.updateClientSideStateImpl: server call ${state}`);
+            console.log(`${LogScope}.updateClientSideStateImpl: server call, state = `, state);
         let result : number = await this._blazorRef.invokeMethodAsync("UpdateClientSideState", state)
         if (result > this._blazorRenderIndex)
             this._blazorRenderIndex = result;

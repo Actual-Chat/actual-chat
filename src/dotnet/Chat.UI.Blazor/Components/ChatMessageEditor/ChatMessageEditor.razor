@@ -9,13 +9,14 @@
 @inject IJSRuntime _js
 
 <div class="sticky bottom-0 self-end bg-white w-full">
-    <div class="flex flex-row justify-between mx-3 my-2" @onkeydown="OnKeyDown">
+    <div class="flex flex-row justify-between mx-3 my-2">
         @if (RealtimePlayer != null) {
             <ChatMediaPlayerToggle Player="RealtimePlayer"/>
         }
-        <div @ref="_ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox"></div>
+        <div @ref="_ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">
+        </div>
         <div class="flex flex-row h-full px-1 justify-center justify-items-center">
-            <button @onclick="Post" class="message-submit block px-3 py-2 text-green-500">
+            <button @onclick="_ => Post()" class="message-submit block px-3 py-2 text-green-500">
                 <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
@@ -27,10 +28,10 @@
 
 @code {
     // TODO(AY): Add some store that remembers typed messages
-    private string Message { get; set; } = "";
+    private string Text { get; set; } = "";
 
     private ElementReference _ref;
-    private IJSObjectReference? _jsRef = null;
+    private IJSObjectReference _jsRef = null;
     private DotNetObjectReference<IChatMessageEditorBackend> _blazorRef = null!;
 
     [Parameter]
@@ -38,45 +39,41 @@
     [Parameter]
     public ChatMediaPlayer? RealtimePlayer { get; set; }
 
-    public async ValueTask DisposeAsync() {
-        if (_jsRef != null)
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsRef != null!)
             await _jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
         _blazorRef?.Dispose();
     }
 
-    private async Task Post() {
-        if (ChatId.IsNullOrEmpty() || Message.IsNullOrEmpty())
-            return;
-        var (_, ce) = await _cmd.Run(new IChats.CreateEntryCommand(_session, ChatId, Message));
-        if (ce.IsFailed)
-            return;
-        Message = "";
-        if (_jsRef != null)
-            await _jsRef.InvokeVoidAsync("clearMessage", Array.Empty<object?>());
-    }
-
-    private Task OnKeyDown(KeyboardEventArgs args) {
-        if (args.Key == "Enter" && args.ShiftKey == false) {
-            return Post();
-        }
-        return Task.CompletedTask;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
-        }
-        if (!_ref.Id.IsNullOrEmpty() && _jsRef == null) {
-            _jsRef = await _js.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create", _ref, _blazorRef);
-            await _jsRef.InvokeVoidAsync("addEventListener", Array.Empty<object?>());
+            _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
+                _ref, _blazorRef
+                ).ConfigureAwait(true);
+            await _jsRef.InvokeVoidAsync("setText", Text).ConfigureAwait(true);
         }
     }
 
     [JSInvokable]
-    public void SetMessage(string message) {
-        if (message.IsNullOrEmpty() || message == Message) return;
+    public void UpdateClientSideState(string text)
+    {
+        Text = text ?? "";
+    }
 
-        Message = message;
-        StateHasChanged();
+    [JSInvokable]
+    public async Task Post(string? text = null)
+    {
+        if (text != null)
+            Text = text;
+        if (ChatId.IsNullOrEmpty() || Text.IsNullOrEmpty())
+            return;
+
+        var (_, ce) = await _cmd.Run(new IChats.CreateEntryCommand(_session, ChatId, Text)).ConfigureAwait(true);
+        if (!ce.IsFailed)
+            await _jsRef.InvokeVoidAsync("setText", "").ConfigureAwait(true);
     }
 }
