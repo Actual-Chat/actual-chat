@@ -1,8 +1,10 @@
-﻿{
+{
   "profiles": {
     "Blazor Debug": {
       "commandName": "Project",
       "launchBrowser": true,
+      "use64Bit": true,
+      "workingDirectory": "..\\..\\..\\artifacts\\bin\\",
       "applicationUrl": "http://localhost:7080",
       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
       "environmentVariables": {
