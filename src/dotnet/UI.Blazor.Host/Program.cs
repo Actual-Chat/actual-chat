@@ -37,6 +37,8 @@ public static class Program
         // Logging
         services.AddLogging(logging => {
             logging.SetMinimumLevel(LogLevel.Information);
+            logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+            logging.AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning);
         });
 
         // Other services shared with plugins

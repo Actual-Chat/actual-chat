@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using ActualChat.Mathematics;
+using Stl.Reflection;
 
 namespace ActualChat.UI.Blazor.Components.Internal;
 
@@ -127,6 +128,7 @@ public class VirtualListRenderPlan<TItem>
 
         UpdateViewportAndSpacer(lastPlan);
         UpdateScrollRelated(lastPlan);
+        UpdateClientSideState(lastPlan);
     }
 
     protected void UpdateViewportAndSpacer(VirtualListRenderPlan<TItem>? lastPlan)
@@ -225,6 +227,19 @@ public class VirtualListRenderPlan<TItem>
             else
                 NotifyWhenSafeToScroll = true;
         }
+    }
+
+    protected void UpdateClientSideState(VirtualListRenderPlan<TItem>? lastPlan)
+    {
+        if (!MustScroll || ClientSideState == null)
+            return;
+        var newClientSideState = MemberwiseCloner.Invoke(ClientSideState);
+        newClientSideState.SpacerSize = SpacerSize;
+        newClientSideState.EndSpacerSize = EndSpacerSize;
+        newClientSideState.ScrollHeight = FullRange.Size();
+        newClientSideState.ScrollTop = Viewport.Start + SpacerSize;
+        newClientSideState.ClientHeight = Viewport.Size();
+        ClientSideState = newClientSideState;
     }
 
     protected void ApplyMustScroll()
