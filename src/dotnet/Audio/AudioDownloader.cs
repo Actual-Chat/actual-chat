@@ -6,9 +6,13 @@ namespace ActualChat.Audio;
 public class AudioDownloader
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILoggerFactory _loggerFactory;
 
-    public AudioDownloader(IHttpClientFactory httpClientFactory)
-        => _httpClientFactory = httpClientFactory;
+    public AudioDownloader(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory)
+    {
+        _loggerFactory = loggerFactory;
+        _httpClientFactory = httpClientFactory;
+    }
 
     public virtual async Task<AudioSource> Download(
         Uri audioUri,
@@ -16,7 +20,8 @@ public class AudioDownloader
         CancellationToken cancellationToken)
     {
         var blobStream = DownloadBlobStream(audioUri, cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, cancellationToken);
+        var audioLog = _loggerFactory.CreateLogger<AudioSource>();
+        var audio = new AudioSource(blobStream, skipTo, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

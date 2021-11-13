@@ -8,9 +8,15 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 {
     private const int StreamBufferSize = 64;
     private readonly RedisDb _redisDb;
+    private readonly ILoggerFactory _loggerFactory;
 
-    public AudioSourceStreamer(RedisDb<AudioContext> audioRedisDb)
-        => _redisDb = audioRedisDb.WithKeyPrefix("audio-sources");
+    public AudioSourceStreamer(
+        RedisDb<AudioContext> audioRedisDb,
+        ILoggerFactory loggerFactory)
+    {
+        _loggerFactory = loggerFactory;
+        _redisDb = audioRedisDb.WithKeyPrefix("audio-sources");
+    }
 
     public Task Publish(StreamId streamId, AudioSource audio, CancellationToken cancellationToken)
     {
@@ -26,7 +32,8 @@ public class AudioSourceStreamer : IAudioSourceStreamer
     {
         var streamer = _redisDb.GetStreamer<AudioStreamPart>(streamId);
         var audioStream = streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
-        var audio = new AudioSource(audioStream, cancellationToken);
+        var audioLog = _loggerFactory.CreateLogger<AudioSource>();
+        var audio = new AudioSource(audioStream, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

@@ -1,5 +1,5 @@
 using ActualChat.Blobs;
-using Stl.Reflection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Media;
 
@@ -23,6 +23,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     protected AsyncMemoizer<TFrame> MemoizedFrames { get; }
     protected Task<TFormat> FormatTask { get; }
     protected Task<TimeSpan> DurationTask { get; }
+    protected ILogger Log { get; }
 
     MediaFormat IMediaSource.Format => Format;
 #pragma warning disable VSTHRD002
@@ -39,8 +40,13 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     // Constructors
 
 #pragma warning disable MA0056
-    protected MediaSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, CancellationToken cancellationToken)
+    protected MediaSource(
+        IAsyncEnumerable<BlobPart> blobStream,
+        TimeSpan skipTo,
+        ILogger log,
+        CancellationToken cancellationToken)
     {
+        Log = log;
         FormatTask = TaskSource.New<TFormat>(true).Task;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor
@@ -48,8 +54,13 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
     }
 
-    protected MediaSource(Task<TFormat> formatTask, IAsyncEnumerable<TFrame> frames, CancellationToken cancellationToken)
+    protected MediaSource(
+        Task<TFormat> formatTask,
+        IAsyncEnumerable<TFrame> frames,
+        ILogger log,
+        CancellationToken cancellationToken)
     {
+        Log = log;
         FormatTask = TaskSource.New<TFormat>(true).Task;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor
@@ -57,8 +68,12 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
     }
 
-    protected MediaSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, CancellationToken cancellationToken)
+    protected MediaSource(
+        IAsyncEnumerable<IMediaStreamPart> mediaStream,
+        ILogger log,
+        CancellationToken cancellationToken)
     {
+        Log = log;
         FormatTask = TaskSource.New<TFormat>(true).Task;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor

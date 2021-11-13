@@ -1,5 +1,6 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Blobs;
+using Microsoft.Extensions.Logging.Abstractions;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
@@ -20,7 +21,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var blobStream = GetAudioFilePath("file.webm").ReadBlobStream();
 
-        var audioActivityExtractor = new AudioActivityExtractor();
+        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
         var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream, default);
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -46,7 +47,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var fileSize = audioFilePath.GetFileInfo().Length;
         var blobStream = audioFilePath.ReadBlobStream();
 
-        var audioActivityExtractor = new AudioActivityExtractor();
+        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
         var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream, default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
@@ -78,7 +79,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var fileSize = audioFilePath.GetFileInfo().Length;
         var blobStream = audioFilePath.ReadBlobStream();
 
-        var audioActivityExtractor = new AudioActivityExtractor();
+        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
         var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream, default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
@@ -99,7 +100,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
     private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
     {
         var blobStream = GetAudioFilePath(fileName).ReadBlobStream(cancellationToken);
-        var audio = new AudioSource(blobStream, default, cancellationToken);
+        var audio = new AudioSource(blobStream, default, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
