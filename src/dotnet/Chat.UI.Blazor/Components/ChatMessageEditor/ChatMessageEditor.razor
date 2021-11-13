@@ -31,7 +31,7 @@
     private string Text { get; set; } = "";
 
     private ElementReference _ref;
-    private IJSObjectReference _jsRef = null;
+    private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> _blazorRef = null!;
 
     [Parameter]
