@@ -3,17 +3,18 @@ using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Blobs;
 using ActualChat.Media;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio;
 
 public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 {
-    public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, CancellationToken cancellationToken)
-        : base(blobStream, skipTo, cancellationToken) { }
-    public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frames, CancellationToken cancellationToken)
-        : base(formatTask, frames, cancellationToken) { }
-    public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, CancellationToken cancellationToken)
-        : base(mediaStream, cancellationToken) { }
+    public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
+        : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
+    public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frames, ILogger? log, CancellationToken cancellationToken)
+        : base(formatTask, frames, log ?? NullLogger.Instance, cancellationToken) { }
+    public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
+        : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -22,7 +23,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         if (skipTo == TimeSpan.Zero)
             return this;
         var blobStream = GetBlobStream(cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, cancellationToken);
+        var audio = new AudioSource(blobStream, skipTo, Log, cancellationToken);
         return audio;
     }
 
@@ -65,6 +66,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         ref blockOffsetMs);
                 }
                 catch (Exception ex) {
+                    if (ex is not OperationCanceledException)
+                        Log.LogError(ex, "FillFrameBuffer failed");
                     formatTaskSource.TrySetException(ex);
                     durationTaskSource.TrySetException(ex);
                     throw;

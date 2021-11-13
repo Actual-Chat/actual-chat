@@ -100,7 +100,7 @@ public class AudioSourceTest
     private async Task<AudioSource> GetAudio(FilePath fileName, TimeSpan skipTo = default, CancellationToken cancellationToken = default)
     {
         var blobStream = GetAudioFilePath(fileName).ReadBlobStream(cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, cancellationToken);
+        var audio = new AudioSource(blobStream, skipTo, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

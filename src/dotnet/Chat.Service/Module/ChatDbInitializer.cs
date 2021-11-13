@@ -166,7 +166,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             throw new FileNotFoundException($"Path for {fileName} data not found", filePath.ToString());
         }
         var sourceBlobStream = filePath.ReadBlobStream(cancellationToken);
-        var audio = new AudioSource(sourceBlobStream, TimeSpan.Zero, CancellationToken.None);
+        var audioLog = Services.LogFor<AudioSource>();
+        var audio = new AudioSource(sourceBlobStream, TimeSpan.Zero, audioLog, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
         var audioBlobStream = audio.GetBlobStream(cancellationToken);
         // NOTE(AY): Shouldn't we simply write source blob stream here?
