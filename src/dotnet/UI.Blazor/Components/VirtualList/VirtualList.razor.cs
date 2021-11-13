@@ -113,6 +113,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             //     JsonFormatter.Format(debugRenderState),
             //     plan.ClientSideState == null ? "null" : JsonFormatter.Format(plan.ClientSideState));
         }
+        ClientSideState = plan.ClientSideState ?? ClientSideState;
         await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
 
