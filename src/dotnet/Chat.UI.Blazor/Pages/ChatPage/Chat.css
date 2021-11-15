@@ -3,6 +3,7 @@
 }
 
 .content .text {
+    overflow-wrap: break-word;
 }
 
 .content .word {
