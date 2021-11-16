@@ -65,9 +65,6 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             // Uncomment this if you need just random text messages
             // await AddRandomTextMessages(dbContext, dbChat, dbAuthor, cancellationToken).ConfigureAwait(false);
 
-            // Uncomment this if you need very long words without whitespaces to check word wrap
-            // await AddVeryLongWords(dbContext, dbChat, dbAuthor, cancellationToken).ConfigureAwait(false);
-
             // Uncomment this if you need initial audio and text data
             await AddAudioRecords(dbContext, dbChat, dbAuthor, cancellationToken).ConfigureAwait(false);
         }
@@ -210,34 +207,5 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .Range(0, Random.Shared.Next(maxLength))
                 .Select(_ => words![Random.Shared.Next(words.Length)])
                 .ToDelimitedString(" ");
-    }
-
-    private async Task AddVeryLongWords(
-        DbContext dbContext,
-        DbChat dbChat,
-        DbChatAuthor dbAuthor,
-        CancellationToken cancellationToken)
-    {
-        var words = new[] {
-            "verylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespaceverylongwordwithoutwhitespace",
-            "anotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongwordanotherverylongword",
-        };
-        var id = 100;
-        foreach (var word in words) {
-            var dbChatEntry = new DbChatEntry() {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
-                ChatId = dbChat.Id,
-                Id = id,
-                Version = VersionGenerator.NextVersion(),
-                BeginsAt = Clocks.SystemClock.Now,
-                EndsAt = Clocks.SystemClock.Now,
-                Type = ChatEntryType.Text,
-                Content = word,
-                AuthorId = dbAuthor.Id,
-            };
-            dbContext.Add(dbChatEntry);
-            id++;
-        }
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
