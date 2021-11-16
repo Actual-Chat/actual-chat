@@ -12,6 +12,7 @@ using ActualChat.Users.Module;
 using ActualChat.Web.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Console;
 using Stl.Plugins;
 
 namespace ActualChat.Host;
@@ -36,6 +37,7 @@ public class Startup
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.AddConsole();
+            logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
             logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
             // use appsettings*.json to configure logging filters
         });
