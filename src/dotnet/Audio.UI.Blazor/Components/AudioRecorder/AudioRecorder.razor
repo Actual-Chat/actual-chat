@@ -12,6 +12,8 @@
 </button>
 
 @code {
+    private static byte[] _brokenHeader = { 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86 };
+
     [Inject]
     protected internal ILogger<AudioRecorder> Log { get; init; } = null!;
     private IJSObjectReference? JSComponentRef { get; set; }
@@ -106,6 +108,15 @@
     {
         if (AudioChannel == null)
             return;
+
+        // broken stream check
+        if (chunk.Take(6).SequenceEqual(_brokenHeader)) {
+            Log.LogWarning("Recorded broken header");
+            var fixedChunk = new byte[chunk.Length + 1];
+            fixedChunk[0] = 0x1A;
+            Buffer.BlockCopy(chunk, 0, fixedChunk, 1, chunk.Length);
+            chunk = fixedChunk;
+        }
         _ = AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
 
