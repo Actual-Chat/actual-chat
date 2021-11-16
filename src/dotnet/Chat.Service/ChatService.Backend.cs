@@ -37,6 +37,7 @@ public partial class ChatService
             return ChatPermissions.All;
         if (chat.IsPublic)
             return ChatPermissions.Read;
+
         return 0;
     }
 
@@ -71,11 +72,17 @@ public partial class ChatService
         await using var __ = tx.ConfigureAwait(false);
 
         var firstId = await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value).OrderBy(e => e.Id).Select(e => e.Id)
-            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            .Where(e => e.ChatId == chatId.Value)
+            .OrderBy(e => e.Id)
+            .Select(e => e.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
         var lastId = await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value).OrderByDescending(e => e.Id).Select(e => e.Id)
-            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            .Where(e => e.ChatId == chatId.Value)
+            .OrderByDescending(e => e.Id)
+            .Select(e => e.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
 
         return (firstId, lastId);
     }
@@ -129,7 +136,8 @@ public partial class ChatService
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateChat(IChatsBackend.CreateChatCommand command,
+    public virtual async Task<Chat> CreateChat(
+        IChatsBackend.CreateChatCommand command,
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
@@ -163,6 +171,7 @@ public partial class ChatService
         var chatPermissions = await GetPermissions(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if ((chatPermissions & permissions) != permissions)
             throw new SecurityException("Not enough permissions.");
+
         return default;
     }
 
@@ -200,9 +209,8 @@ public partial class ChatService
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = Clocks.SystemClock.Now,
-                EndsAt = Clocks.SystemClock.Now,
             };
-            dbChatEntry = new DbChatEntry(chatEntry);
+            dbChatEntry = new (chatEntry);
             dbContext.Add(dbChatEntry);
         }
         else {
