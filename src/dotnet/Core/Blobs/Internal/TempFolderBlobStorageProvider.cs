@@ -1,6 +1,6 @@
 using Stl.IO;
-using Storage.Net;
-using Storage.Net.Blobs;
+using Storage.NetCore;
+using Storage.NetCore.Blobs;
 
 namespace ActualChat.Blobs.Internal;
 

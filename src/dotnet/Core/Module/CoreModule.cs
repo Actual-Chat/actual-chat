@@ -11,6 +11,7 @@ namespace ActualChat.Module;
 public class CoreModule : HostModule<CoreSettings>
 {
     public CoreModule(IPluginInfoProvider.Query _) : base(_) { }
+
     [ServiceConstructor]
     public CoreModule(IPluginHost plugins) : base(plugins) { }
 
@@ -26,6 +27,11 @@ public class CoreModule : HostModule<CoreSettings>
 
     private void InjectServerServices(IServiceCollection services)
     {
-        services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
+        var storageBucket = Settings.GoogleStorageBucket;
+        var dontUseGoogleStorage = storageBucket == CoreSettings.DisabledGoogleStorageBucket;
+        if (dontUseGoogleStorage)
+            services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
+        else
+            services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
     }
 }
