@@ -90,7 +90,7 @@ public partial class ChatAuthorsService
             var name = _randomNameGenerator.Generate('_', true);
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
-                Picture = "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + name,
+                Picture = "",
                 IsAnonymous = true,
             };
         }

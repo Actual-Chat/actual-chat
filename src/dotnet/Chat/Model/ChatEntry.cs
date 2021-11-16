@@ -1,9 +1,10 @@
 ﻿using System.Text.Json.Serialization;
 using ActualChat.Mathematics;
+using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
-public record ChatEntry
+public record ChatEntry : IHasId<long>, IHasVersion<long>
 {
     public ChatId ChatId { get; init; } = "";
     public long Id { get; init; }

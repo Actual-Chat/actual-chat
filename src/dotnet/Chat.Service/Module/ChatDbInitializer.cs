@@ -184,7 +184,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         CancellationToken cancellationToken)
     {
         var words = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely" };
-        for (var id = 0; id < 96; id++) {
+        for (var id = 0; id < 200; id++) {
             var dbChatEntry = new DbChatEntry() {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
                 ChatId = dbChat.Id,
