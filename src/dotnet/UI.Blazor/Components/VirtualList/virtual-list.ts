@@ -85,10 +85,19 @@ export class VirtualList {
             let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
             let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
             if (Math.abs(renderState.scrollHeight - scrollHeight) > SizeEpsilon) {
-                console.warn(`${LogScope}.afterRender: scrollHeight doesn't match the expected one!` +
-                    ` [spacerSize: ${spacerSize} == ${renderState.spacerSize}]` +
-                    ` [endSpacerSize: ${endSpacerSize} == ${renderState.endSpacerSize}]` +
-                    ` [scrollHeight: ${scrollHeight} == ${renderState.scrollHeight}]`);
+                console.warn(`${LogScope}.afterRender: scrollHeight doesn't match the expected one!`);
+                if (Math.abs(renderState.spacerSize - spacerSize) > SizeEpsilon)
+                    console.log(`! spacerSize: actual ${spacerSize} != ${renderState.spacerSize}`);
+                if (Math.abs(renderState.endSpacerSize - endSpacerSize) > SizeEpsilon)
+                    console.log(`! endSpacerSize: actual ${endSpacerSize} != ${renderState.endSpacerSize}`);
+                let items = this._elementRef.querySelectorAll(".items-displayed .item").values() as IterableIterator<HTMLElement>;
+                for (let item of items) {
+                    let key = item.dataset["key"];
+                    let knownSize = renderState.itemSizes[key];
+                    let size = item.getBoundingClientRect().height;
+                    if (Math.abs(size - knownSize) > SizeEpsilon)
+                        console.log(`! item key = ${key} size: actual ${size} != ${knownSize}`);
+                }
             }
         }
 

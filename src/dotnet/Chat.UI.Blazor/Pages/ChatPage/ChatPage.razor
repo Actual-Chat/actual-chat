@@ -26,11 +26,11 @@
     </div>
     <div class="content flex-1 flex flex-col overflow-y-auto bg-white p-3">
         <VirtualList
-            SpacerSize="6000" LoadZoneSize="2000" BufferZoneSize="4000"
+            SpacerSize="6000" LoadZoneSize="6000" BufferZoneSize="12000"
             DataSource="GetMessages"
             KeyComparer="LongAsStringKeyComparer.Default">
             <Item>
-                <ChatMessage Entry="@context.Value" PlayClick="@OnMessagePlayClick"/>
+                <ChatMessage Entry="@context.Value.Entry" Author="context.Value.Author" PlayClick="@OnMessagePlayClick"/>
             </Item>
             <Skeleton>
                 <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">

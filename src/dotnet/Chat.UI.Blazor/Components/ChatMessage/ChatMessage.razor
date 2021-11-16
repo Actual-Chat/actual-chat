@@ -1,69 +1,49 @@
+@using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatMessageModel>
 
 @{
-    var model = State.LatestNonErrorValue ?? new(null);
+    Log.LogInformation("Rendering, Entry.Id = {Id}", Entry.Id);
+    var picture = string.IsNullOrWhiteSpace(Author.Picture)
+        ? $"https://avatars.dicebear.com/api/avataaars/{Author.Name}.svg"
+        : Author.Picture;
 }
 
-@if (model?.Author == null) {
-    <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
-        <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
-        <div class="flex-1 overflow-hidden">
-            <div class="flex flex-row">
-                <div class="font-bold bg-gray-200 rounded-md border-white border-2 w-32 h-4"></div>
-                <div class="bg-gray-200 w-10 h-4 rounded-md border-white border-2"></div>
-            </div>
-            @for (var i = 0; i < _seed % 3 + 2; ++i) {
-                <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: @(Math.Abs(_seed << i) % 36 + 5)%;"></div>
-            }
+<div class="flex items-start mb-4 text-sm">
+    <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-gray-50" alt="@Author.Name"/>
+    <div class="flex-1 overflow-hidden">
+        <div>
+            <span class="font-bold text-gray-900">
+                @Author.Name
+            </span>
+            <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
+            &nbsp;
+            <span class="text-gray-100 text-xs">id=@Entry.Id</span>
         </div>
+        @if (Entry.IsStreaming) {
+            <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
+        } else {
+            <ChatMessageText Entry="@Entry" OnPlayClick="OnTextWordClick"/>
+        }
     </div>
-} else {
-    var picture = string.IsNullOrWhiteSpace(model.Author.Picture)
-        ? "//eu.ui-avatars.com/api/?background=random&bold=true&length=1&name=" + model.Author.Name
-        : model.Author.Picture;
-
-    <div class="flex items-start mb-4 text-sm">
-        <img src="@picture" class="w-10 h-10 rounded-full mr-3 select-none">
-        <div class="flex-1 overflow-hidden">
-            <div>
-                <span class="font-bold text-gray-900">
-                    @model.Author.Name
-                </span>
-                <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
-            </div>
-            @if (Entry.IsStreaming) {
-                <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
-            } else {
-                <ChatMessageText Entry="@Entry" OnWordClick="OnTextWordClick"/>
-            }
-        </div>
-    </div>
-}
+</div>
 
 @code {
-    private readonly int _seed = Random.Shared.Next();
-
     [Inject]
-    protected IChatAuthors ChatAuthors { get; set; } = null!;
-
+    protected IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject]
-    protected Session Session { get; set; } = null!;
+    protected Session Session { get; init; } = null!;
+    [Inject]
+    protected ILogger<ChatMessage> Log { get; init; } = null!;
 
-    [Parameter]
-    [EditorRequired]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByIdAndVersionParameterComparer<long, long>))]
     public ChatEntry Entry { get; set; } = null!;
-
-    [Parameter]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByIdAndVersionParameterComparer<AuthorId, long>))]
+    public Author Author { get; set; } = null!;
+    [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
     public EventCallback<(ChatEntry Entry, double SkipTo)> PlayClick { get; set; }
 
-    protected override async Task<ChatMessageModel> ComputeState(CancellationToken cancellationToken) {
-        if (Entry == null! || Entry.AuthorId.IsNone)
-            return new(null);
-
-        var author = await ChatAuthors.GetAuthor(Entry.ChatId, Entry.AuthorId, true, cancellationToken).ConfigureAwait(false);
-        return new(author);
-    }
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private void OnPlay() {
         if (PlayClick.HasDelegate)

@@ -102,7 +102,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             MustScroll = plan.MustScroll,
             NotifyWhenSafeToScroll = plan.NotifyWhenSafeToScroll,
         };
-        if (!plan.IsFullyLoaded(plan.Viewport))
+        if (!plan.IsFullyLoaded(plan.GetLoadZoneRange()))
             UpdateData();
         if (DebugMode) {
             Log.LogInformation("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
@@ -204,6 +204,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             }
         }
         if (startIndex < 0) {
+            if (DebugMode)
+                Log.LogWarning("GetDataQuery: reset");
             // No items inside the bufferZone, so we'll take the first or the last item
             startIndex = endIndex = displayedItems[0].Range.End < bufferZone.Start ? 0 : displayedItems.Count - 1;
         }
@@ -213,8 +215,13 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         var firstItem = displayedItems[startIndex];
         var lastItem = displayedItems[endIndex];
+        if (DebugMode)
+            Log.LogInformation("GetDataQuery: bufferZone fits {FirstItemId} ... {LastItemId} keys",
+                firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
         var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
+        if (DebugMode)
+            Log.LogInformation("GetDataQuery: startGap: {StartGap}, endGap: {EndGap}", startGap, endGap);
 
         var expectedStartExpansion = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxExpectedExpansion);
         var expectedEndExpansion = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxExpectedExpansion);
@@ -222,7 +229,6 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             expectedStartExpansion = MaxExpectedExpansion;
         else if (plan.TrackingEdge == VirtualListEdge.End)
             expectedEndExpansion = MaxExpectedExpansion;
-
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var query = new VirtualListDataQuery(keyRange) {
             ExpectedStartExpansion = expectedStartExpansion,
@@ -231,11 +237,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ExpandEndBy = expectedEndExpansion / responseFulfillmentRatio,
         };
 
-        if (DebugMode) {
-            Log.LogInformation("GetDataQuery: {Query}", query);
-            // Log.LogInformation("GetDataQuery: {Viewport} < {LoaderZone} < {BufferZone} | {DisplayedRange}",
-            //     plan.Viewport, loaderZone, bufferZone, plan.DisplayedRange);
-        }
+        if (DebugMode)
+            Log.LogInformation("GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {RFR}, query = {Query}",
+                itemSize, responseFulfillmentRatio, query);
         return query;
     }
 }

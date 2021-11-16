@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Components;
 using Microsoft.AspNetCore.Components;
@@ -63,7 +64,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected override Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
         => Service.GetChatPageModel(Session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
 
-    private async Task<VirtualListData<ChatEntry>> GetMessages(
+    private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
@@ -74,10 +75,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chatId = model.Chat?.Id ?? default;
         if (chatId.IsNone)
             return VirtualListData.New(
-                Enumerable.Empty<ChatEntry>(),
-                entry => entry.Id.ToString(CultureInfo.InvariantCulture),
-                true,
-                true);
+                Enumerable.Empty<ChatMessageModel>(),
+                _ => "", // Unused anyway in this case
+                true, true);
 
         var idLogCover = ChatConstants.IdTiles;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
@@ -103,10 +103,23 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             .WhenAll(ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)))
             .ConfigureAwait(false);
 
-        var chatEntries = entryLists.SelectMany(entries => entries);
+        var chatEntries = entryLists
+            .SelectMany(entries => entries)
+            .Where(e => e.Type == ChatEntryType.Text)
+            .ToList();
+
+        var authorIds = chatEntries.Select(e => e.AuthorId).Distinct();
+        var authors = (await Task
+            .WhenAll(authorIds.Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
+            .ConfigureAwait(false)
+            )
+            .Where(a => a != null)
+            .ToDictionary(a => a!.Id);
+
+        var chatMessageModels = chatEntries.Select(e => new ChatMessageModel(e, authors[e.AuthorId]!));
         var result = VirtualListData.New(
-            chatEntries.Where(ce => ce.Type == ChatEntryType.Text),
-            entry => entry.Id.ToString(CultureInfo.InvariantCulture),
+            chatMessageModels,
+            m => m.Entry.Id.ToString(CultureInfo.InvariantCulture),
             startId == chatIdRange.Start,
             endId == chatIdRange.End);
         return result;

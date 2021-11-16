@@ -71,6 +71,10 @@ public class VirtualListRenderPlan<TItem>
     public Range<double> GetStartViewport() => new(0, Viewport.Size());
     public Range<double> GetEndViewport() => new(DisplayedRange.End - Viewport.Size(), DisplayedRange.End);
     public double GetPerfectSpacerSize() => Data.HasVeryFirstItem ? 0 : VirtualList.SpacerSize;
+    public Range<double> GetLoadZoneRange()
+        => new(
+            Viewport.Start - (Data.HasVeryFirstItem ? 0 : VirtualList.LoadZoneSize),
+            Viewport.End + (Data.HasVeryLastItem ? 0 : VirtualList.LoadZoneSize));
 
     public virtual VirtualListRenderPlan<TItem> Next()
     {
@@ -91,8 +95,8 @@ public class VirtualListRenderPlan<TItem>
         }
     }
 
-    public bool IsFullyLoaded(Range<double> viewport)
-        => Data.HasAllItems || DisplayedRange.Contains(viewport);
+    public bool IsFullyLoaded(Range<double> viewRange)
+        => Data.HasAllItems || DisplayedRange.Contains(viewRange);
 
     public void Update(VirtualListRenderPlan<TItem>? lastPlan)
     {
