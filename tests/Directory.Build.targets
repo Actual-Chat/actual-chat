@@ -9,4 +9,6 @@
     <XunitStartupAssembly>$(AssemblyName)</XunitStartupAssembly>
     <XunitStartupFullName>$(RootNamespace).Startup</XunitStartupFullName>
   </PropertyGroup>
+  <!-- Empty target to make msbuild happy where nbgv is not presented -->
+  <Target Name="GenerateAssemblyVersionInfo" />
 </Project>
