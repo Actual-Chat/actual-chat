@@ -284,6 +284,7 @@ namespace Build
                     $"--results-directory {resultsDirectory} " +
                     "--logger:console;verbosity=detailed " +
                     $"--logger:trx;LogFileName=\"{Path.Combine(resultsDirectory, "unit.trx").Replace("\"", "\\\"")}\" " +
+                    (IsGitHubActions() ? "--logger GitHubActions " : "") +
                     $"-c {configuration} "
                     )
                     .ToConsole()
@@ -377,6 +378,7 @@ namespace Build
                     $"--results-directory {resultsDirectory} " +
                     "--logger:console;verbosity=detailed " +
                     $"--logger:trx;LogFileName=\"{Path.Combine(resultsDirectory, "integration.trx").Replace("\"", "\\\"")}\" " +
+                    (IsGitHubActions() ? "--logger GitHubActions " : "") +
                     $"-c {configuration} "
                     )
                     .ToConsole()
@@ -604,6 +606,9 @@ namespace Build
 
             }
         }
+
+        private static bool IsGitHubActions()
+            => bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), out bool isGitHubActions) && isGitHubActions;
     }
 
     internal class WithoutStackException : Exception
