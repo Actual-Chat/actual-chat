@@ -35,9 +35,9 @@
     [Inject]
     protected ILogger<ChatMessage> Log { get; init; } = null!;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByIdAndVersionParameterComparer<long, long>))]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatEntry Entry { get; set; } = null!;
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByIdAndVersionParameterComparer<AuthorId, long>))]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public Author Author { get; set; } = null!;
     [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
     public EventCallback<(ChatEntry Entry, double SkipTo)> PlayClick { get; set; }
