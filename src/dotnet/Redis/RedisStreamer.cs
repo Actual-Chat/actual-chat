@@ -21,7 +21,7 @@ public class RedisStreamer<T>
 
     public RedisStreamer(RedisDb redisDb, string key, Options? settings = null)
     {
-        Settings = settings ?? new();
+        Settings = settings ?? new ();
         RedisDb = redisDb;
         Key = key;
     }
@@ -31,7 +31,7 @@ public class RedisStreamer<T>
         var appendPubSub = GetPubSub();
         await using var _ = appendPubSub.ConfigureAwait(false);
 
-        var position = (RedisValue) "0-0";
+        var position = (RedisValue)"0-0";
         var attemptCount = 0;
         var serializer = Settings.Serializer;
         while (true) {
@@ -42,16 +42,18 @@ public class RedisStreamer<T>
                     if (entry[Settings.StatusKey] == Settings.CompletedStatus)
                         yield break;
 
-                    var data = (ReadOnlyMemory<byte>) entry[Settings.ItemKey];
+                    var data = (ReadOnlyMemory<byte>)entry[Settings.ItemKey];
                     var item = serializer.Reader.Read(data);
                     yield return item;
+
                     position = entry.Id;
                 }
             else {
                 attemptCount++;
                 try {
                     await appendPubSub.Read(cancellationToken)
-                        .AsTask().WithTimeout(Settings.ReadItemTimeout, cancellationToken)
+                        .AsTask()
+                        .WithTimeout(Settings.ReadItemTimeout, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (ChannelClosedException) {
@@ -89,8 +91,12 @@ public class RedisStreamer<T>
             await newStreamNotifier.Invoke(this).ConfigureAwait(false);
 
         await RedisDb.Database.StreamAddAsync(
-            Key, Settings.StatusKey, Settings.CompletedStatus,
-            maxLength: 1000, useApproximateMaxLength: true).ConfigureAwait(false);
+                Key,
+                Settings.StatusKey,
+                Settings.CompletedStatus,
+                maxLength: 1000,
+                useApproximateMaxLength: true)
+            .ConfigureAwait(false);
     }
 
     public async Task AppendItem(T item, RedisPubSub? appendPubSub, CancellationToken cancellationToken = default)
@@ -98,8 +104,11 @@ public class RedisStreamer<T>
         cancellationToken.ThrowIfCancellationRequested(); // StackExchange.Redis doesn't support cancellation
         using var bufferWriter = Settings.Serializer.Writer.Write(item);
         await RedisDb.Database.StreamAddAsync(
-                Key, Settings.ItemKey, bufferWriter.WrittenMemory,
-                maxLength: 1000, useApproximateMaxLength: true)
+                Key,
+                Settings.ItemKey,
+                bufferWriter.WrittenMemory,
+                maxLength: 1000,
+                useApproximateMaxLength: true)
             .ConfigureAwait(false);
         if (appendPubSub != null)
             await appendPubSub.Publish(RedisValue.EmptyString).ConfigureAwait(false);
