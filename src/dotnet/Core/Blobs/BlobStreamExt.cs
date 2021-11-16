@@ -1,21 +1,22 @@
 using System.Buffers;
 using Microsoft.IO;
 using Stl.IO;
-using Storage.Net.Blobs;
+using Storage.NetCore.Blobs;
 
 namespace ActualChat.Blobs;
 
 public static class BlobStreamExt
 {
     private const int BufferSize = 4 * 1024;
-    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
+    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
     // Download
 
     public static async IAsyncEnumerable<BlobPart> DownloadBlobStream(
         this IHttpClientFactory httpClientFactory,
         Uri audioUri,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken = default)
     {
         using var httpClient = httpClientFactory.CreateClient();
         var response = await httpClient
@@ -59,7 +60,8 @@ public static class BlobStreamExt
     public static async IAsyncEnumerable<BlobPart> ReadBlobStream(
         this Stream source,
         bool mustDisposeSource,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken = default)
     {
         try {
             using var bufferLease = MemoryPool<byte>.Shared.Rent(BufferSize);
@@ -70,6 +72,7 @@ public static class BlobStreamExt
             while (bytesRead != 0) {
                 var blobPart = new BlobPart(blobIndex++, buffer[..bytesRead].ToArray());
                 yield return blobPart;
+
                 bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
             }
         }

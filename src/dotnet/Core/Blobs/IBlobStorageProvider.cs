@@ -1,4 +1,4 @@
-using Storage.Net.Blobs;
+using Storage.NetCore.Blobs;
 
 namespace ActualChat.Blobs;
 
