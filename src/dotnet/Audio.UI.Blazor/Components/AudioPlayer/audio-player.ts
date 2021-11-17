@@ -72,7 +72,7 @@ export class AudioPlayer {
         });
         this._audio.addEventListener('loadeddata', async _ => {
             let audio = this._audio;
-            if (audio.readyState >= 2) {
+            if (audio.readyState >= 3) {
                 await audio.play();
             }
         });

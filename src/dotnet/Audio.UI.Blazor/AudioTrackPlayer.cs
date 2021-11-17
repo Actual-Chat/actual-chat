@@ -9,13 +9,13 @@ namespace ActualChat.Audio.UI.Blazor;
 
 public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 {
-    private bool DebugMode { get; } = Constants.DebugMode.AudioTrackPlayer;
     private readonly BlazorCircuitContext _circuitContext;
+    private readonly byte[] _header;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private IJSObjectReference? _jsRef;
     private CancellationTokenSource _delayTokenSource;
-    private readonly byte[] _header;
+    private IJSObjectReference? _jsRef;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioTrackPlayer;
 
     public AudioSource AudioSource => (AudioSource)Source;
 
@@ -29,7 +29,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _circuitContext = circuitContext;
         _js = js;
-        _delayTokenSource = new();
+        _delayTokenSource = new CancellationTokenSource();
         _header = AudioSource.Format.ToBlobPart().Data;
     }
 
@@ -67,7 +67,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _delayTokenSource.Cancel();
         _delayTokenSource.Dispose();
-        _delayTokenSource = new ();
+        _delayTokenSource = new CancellationTokenSource();
 
         Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {readyState}", offset, readyState);
 
@@ -115,14 +115,14 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 if (_jsRef == null)
                     return;
 
-                using var cts = cancellationToken.LinkWith(_delayTokenSource.Token);
-                var token = cts.Token;
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
-                var buffered = await _jsRef.InvokeAsync<double>("appendAudio", token, chunk, offset);
+                var buffered = await _jsRef.InvokeAsync<double>("appendAudio", cancellationToken, chunk, offset);
 
-                if (buffered > 10)
-                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                if (buffered > 10) {
+                    await using var _ = cancellationToken.Register(() => _delayTokenSource.Cancel());
+                    await Task.Delay(TimeSpan.FromSeconds(5), _delayTokenSource.Token);
+                }
             })
             .ConfigureAwait(false);
 
