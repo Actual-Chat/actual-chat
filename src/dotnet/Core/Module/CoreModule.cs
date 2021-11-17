@@ -28,10 +28,9 @@ public class CoreModule : HostModule<CoreSettings>
     private void InjectServerServices(IServiceCollection services)
     {
         var storageBucket = Settings.GoogleStorageBucket;
-        var dontUseGoogleStorage = storageBucket.IsNullOrEmpty();
-        if (dontUseGoogleStorage)
+        if (storageBucket.IsNullOrEmpty())
             services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
         else
-            services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket!));
+            services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
     }
 }

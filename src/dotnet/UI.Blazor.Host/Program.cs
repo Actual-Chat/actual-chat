@@ -50,6 +50,7 @@ public static class Program
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
         });
+        services.AddSingleton(_ => new UriMapper(baseUri));
 
         // Creating plugins
         var pluginHostBuilder = new PluginHostBuilder(new ServiceCollection().Add(services));
@@ -68,8 +69,6 @@ public static class Program
         var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
         services.AddSingleton(plugins);
 
-        var apiBaseUri = new Uri($"{baseUri}api/");
-
         // Fusion services
         var fusion = services.AddFusion();
         var fusionClient = fusion.AddRestEaseClient((_, o) => {
@@ -77,7 +76,9 @@ public static class Program
             o.IsLoggingEnabled = true;
             o.IsMessageLoggingEnabled = false;
         });
-        fusionClient.ConfigureHttpClientFactory((_, name, o) => {
+        fusionClient.ConfigureHttpClientFactory((c, name, o) => {
+            var uriMapper = c.GetRequiredService<UriMapper>();
+            var apiBaseUri = uriMapper.ToAbsolute("api/");
             var isFusionClient = (name ?? "").StartsWith("Stl.Fusion", StringComparison.Ordinal);
             var clientBaseUri = isFusionClient ? baseUri : apiBaseUri;
             o.HttpClientActions.Add(client => client.BaseAddress = clientBaseUri);
@@ -85,8 +86,5 @@ public static class Program
 
         // Injecting plugin services
         plugins.GetPlugins<HostModule>().Apply(m => m.InjectServices(services));
-
-        // UriMapper
-        services.AddSingleton(_ => new UriMapper(baseUri));
     }
 }

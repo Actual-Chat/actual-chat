@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reflection;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
@@ -6,6 +7,10 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
+using Npgsql;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Stl.DependencyInjection;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
@@ -83,11 +88,25 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // UriMapper
+        services.AddSingleton(c => {
+            var baseUri = Settings.BaseUri;
+            if (!baseUri.IsNullOrEmpty())
+                return new UriMapper(baseUri);
+
+            var server = c.GetRequiredService<IServer>();
+            var serverAddressesFeature =
+                server.Features.Get<IServerAddressesFeature>() ?? throw new Exception("Can't get server address");
+            baseUri = serverAddressesFeature.Addresses.First();
+            return new UriMapper(baseUri);
+        });
+
         // Plugins (IPluginHost)
         services.AddSingleton(Plugins);
 
         // Fusion services
-        services.AddSingleton(new Publisher.Options { Id = Settings.PublisherId });
+        var hostName = Dns.GetHostName().ToLowerInvariant();
+        services.AddSingleton(new Publisher.Options { Id = hostName });
         var fusion = services.AddFusion();
         var fusionServer = fusion.AddWebServer();
         var fusionClient = fusion.AddRestEaseClient();
@@ -110,17 +129,46 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 });
         });
 
-        // UriMapper
-        services.AddSingleton(c => {
-            var publicUrl = Settings.PublicUrl;
-            if (!publicUrl.IsNullOrEmpty())
-                return new UriMapper(new Uri(publicUrl));
-
-            var server = c.GetRequiredService<IServer>();
-            var serverAddressesFeature =
-                server.Features.Get<IServerAddressesFeature>() ?? throw new Exception("Can't get server address");
-            var baseUri = new Uri(serverAddressesFeature.Addresses.First());
-            return new UriMapper(baseUri);
-        });
+        // OpenTelemetry
+        var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
+        if (!openTelemetryEndpoint.IsNullOrEmpty()) {
+            var version = typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "n/a";
+            services.AddOpenTelemetryTracing(builder => builder
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .SetSampler(new AlwaysOnSampler())
+                .AddAspNetCoreInstrumentation(opt => {
+                    var excludedPaths = new PathString[] {
+                        "/favicon.ico",
+                        "/metrics",
+                        "/status",
+                        "/_blazor",
+                        "/_framework",
+                    };
+                    opt.Filter = httpContext =>
+                        !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
+                    opt.EnableGrpcAspNetCoreSupport = true;
+                    opt.RecordException = true;
+                })
+                .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
+                .AddGrpcClientInstrumentation()
+                .AddNpgsql()
+                .AddRedisInstrumentation()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.Endpoint = new Uri(openTelemetryEndpoint);
+                })
+            );
+            services.AddOpenTelemetryMetrics(builder => builder
+                .AddAspNetCoreInstrumentation()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.MetricExportIntervalMilliseconds = 5000;
+                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.Endpoint = new Uri(openTelemetryEndpoint);
+                })
+            );
+        }
     }
 }
