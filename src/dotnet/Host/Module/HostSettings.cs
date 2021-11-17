@@ -2,6 +2,6 @@ namespace ActualChat.Host.Module;
 
 public class HostSettings
 {
-    public string? PublicUrl { get; set; }
-    public string PublisherId { get; set; } = "p";
+    public string BaseUri { get; set; } = "";
+    public string OpenTelemetryEndpoint { get; set; } = "";
 }
