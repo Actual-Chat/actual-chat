@@ -56,7 +56,7 @@ public class WebClientTester : IWebClientTester
     {
         var services = new ServiceCollection();
         var configuration = AppServices.GetRequiredService<IConfiguration>();
-        Program.ConfigureServices(services, configuration, UriMapper).Wait();
+        Program.ConfigureServices(services, configuration, UriMapper.BaseUri).Wait();
 
         var serviceProvider = services.BuildServiceProvider();
         serviceProvider.HostedServices().Start().Wait();

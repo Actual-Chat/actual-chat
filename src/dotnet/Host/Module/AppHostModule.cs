@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.OpenApi.Models;
 using Stl.DependencyInjection;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
@@ -50,7 +51,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         }
         app.UseHttpsRedirection();
 
-        app.UseWebSockets(new () {
+        app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
         });
         app.UseFusionSession();
@@ -104,16 +105,20 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // Swagger & debug tools
         services.AddSwaggerGen(c => {
             c.SwaggerDoc("v1",
-                new () {
+                new OpenApiInfo {
                     Title = "ActualChat API", Version = "v1",
                 });
         });
 
         // UriMapper
         services.AddSingleton(c => {
+            var publicUrl = Settings.PublicUrl;
+            if (!publicUrl.IsNullOrEmpty())
+                return new UriMapper(new Uri(publicUrl));
+
             var server = c.GetRequiredService<IServer>();
             var serverAddressesFeature =
-                server.Features.Get<IServerAddressesFeature>() ?? throw new ("Can't get server address");
+                server.Features.Get<IServerAddressesFeature>() ?? throw new Exception("Can't get server address");
             var baseUri = new Uri(serverAddressesFeature.Addresses.First());
             return new UriMapper(baseUri);
         });

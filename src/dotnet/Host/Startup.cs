@@ -13,6 +13,10 @@ using ActualChat.Web.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
+using Npgsql;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Stl.Plugins;
 
 namespace ActualChat.Host;
@@ -51,6 +55,51 @@ public class Startup
             Environment = Env.EnvironmentName,
             Configuration = Cfg,
         });
+
+        var coreSettings = Cfg.GetSection("CoreSettings").Get<CoreSettings?>();
+        if (!string.IsNullOrWhiteSpace(coreSettings?.OtlpEndpoint)) {
+            var (host, port) = coreSettings.ParseOtlpEndpoint()
+                ?? throw new InvalidOperationException($"Wrong format of {nameof(CoreSettings)}." +
+                    $"{nameof(CoreSettings.OtlpEndpoint)}. Must be in 'host:port' format.");
+
+            const string version = ThisAssembly.AssemblyInformationalVersion;
+            services.AddOpenTelemetryTracing(builder => builder
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .SetSampler(new AlwaysOnSampler())
+                .AddAspNetCoreInstrumentation(opt => {
+                    var excludedPaths = new PathString[] {
+                        "/favicon.ico",
+                        "/metrics",
+                        "/status",
+                        "/_blazor",
+                        "/_framework",
+                    };
+                    opt.Filter = httpContext =>
+                        !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
+                    opt.EnableGrpcAspNetCoreSupport = true;
+                    opt.RecordException = true;
+                })
+                .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
+                .AddGrpcClientInstrumentation()
+                .AddNpgsql()
+                .AddRedisInstrumentation()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.Endpoint = new Uri(Invariant($"http://{host}:{port}"));
+                })
+            );
+            services.AddOpenTelemetryMetrics(builder => builder
+                .AddAspNetCoreInstrumentation()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.MetricExportIntervalMilliseconds = 5000;
+                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.Endpoint = new Uri(Invariant($"http://{host}:{port}"));
+                })
+            );
+        }
 
         // Creating plugins & host modules
         var pluginServices = new ServiceCollection()

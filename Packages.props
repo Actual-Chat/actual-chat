@@ -10,6 +10,8 @@
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <StlFusionVersion>2.0.94</StlFusionVersion>
+    <OpenTelemetryVersion>1.2.0-beta1</OpenTelemetryVersion>
+    <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -79,6 +81,17 @@
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*"/>
     <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*"/>
     <PackageReference Update="System.Reactive" Version="5.0.*"/>
+
+    <!-- OpenTelemetry -->
+    <PackageReference Update="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
+    <PackageReference Update="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />
+    <PackageReference Update="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
+    <PackageReference Update="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageReference Update="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageReference Update="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageReference Update="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageReference Update="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageReference Update="Npgsql.OpenTelemetry" Version="$(NpgsqlVersion)" />
 
     <!-- For the build project -->
     <PackageReference Update="CliWrap" Version="3.3.3"/>
