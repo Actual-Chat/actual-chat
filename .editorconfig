@@ -48,7 +48,7 @@ insert_final_newline = true
 # ReSharper properties
 resharper_csharp_can_use_global_alias = false
 resharper_csharp_object_creation_when_type_evident = target_typed
-resharper_csharp_object_creation_when_type_not_evident = target_typed
+resharper_csharp_object_creation_when_type_not_evident = explicitly_typed
 resharper_csharp_max_attribute_length_for_same_line = 8
 resharper_csharp_place_accessorholder_attribute_on_same_line = if_owner_is_single_line
 resharper_csharp_place_accessor_attribute_on_same_line = if_owner_is_single_line
@@ -168,7 +168,7 @@ csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
 csharp_new_line_before_else = true
 csharp_new_line_before_members_in_object_initializers = false
-csharp_new_line_before_open_brace = types,methods,local_functions
+csharp_new_line_before_open_brace = types, methods, local_functions
 csharp_new_line_between_query_expression_clauses = true
 
 # Organize usings
@@ -267,8 +267,8 @@ dotnet_style_qualification_for_event = false:suggestion
 # Modifier preferences
 # https://docs.microsoft.com/en-us/visualstudio/ide/editorconfig-code-style-settings-reference#normalize_modifiers
 dotnet_style_require_accessibility_modifiers = always:warning
-csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async
-visual_basic_preferred_modifier_order = Partial,Default,Private,Protected,Public,Friend,NotOverridable,Overridable,MustOverride,Overloads,Overrides,MustInherit,NotInheritable,Static,Shared,Shadows,ReadOnly,WriteOnly,Dim,Const,WithEvents,Widening,Narrowing,Custom,Async
+csharp_preferred_modifier_order = public, private, protected, internal, static, extern, new, virtual, abstract, sealed, override, readonly, unsafe, volatile, async
+visual_basic_preferred_modifier_order = Partial, Default, Private, Protected, Public, Friend, NotOverridable, Overridable, MustOverride, Overloads, Overrides, MustInherit, NotInheritable, Static, Shared, Shadows, ReadOnly, WriteOnly, Dim, Const, WithEvents, Widening, Narrowing, Custom, Async
 dotnet_style_readonly_field = true:warning
 
 
@@ -337,7 +337,7 @@ dotnet_naming_symbols.any_interface.applicable_kinds = interface
 dotnet_naming_rule.general_naming.severity = warning
 dotnet_naming_rule.general_naming.symbols = general
 dotnet_naming_rule.general_naming.style = pascal_case_style
-dotnet_naming_symbols.general.applicable_kinds = class,struct,enum,property,method,event,namespace,delegate
+dotnet_naming_symbols.general.applicable_kinds = class, struct, enum, property, method, event, namespace, delegate
 dotnet_naming_symbols.general.applicable_accessibilities = *
 
 # Allow underscore for private fields
