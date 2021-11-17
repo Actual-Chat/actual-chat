@@ -21,8 +21,7 @@ public static class Program
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         var baseUri = new Uri(builder.HostEnvironment.BaseAddress);
-        var uriMapper = new UriMapper(baseUri);
-        await ConfigureServices(builder.Services, builder.Configuration, uriMapper).ConfigureAwait(false);
+        await ConfigureServices(builder.Services, builder.Configuration, baseUri).ConfigureAwait(false);
 
         var host = builder.Build();
         await host.Services.HostedServices().Start().ConfigureAwait(false);
@@ -32,7 +31,7 @@ public static class Program
     public static async Task ConfigureServices(
         IServiceCollection services,
         IConfiguration configuration,
-        UriMapper uriMapper)
+        Uri baseUri)
     {
         // Logging
         services.AddLogging(logging => {
@@ -43,7 +42,7 @@ public static class Program
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
-        services.AddSingleton(c => new HostInfo() {
+        services.AddSingleton(c => new HostInfo {
             HostKind = HostKind.Blazor,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)
@@ -69,7 +68,6 @@ public static class Program
         var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
         services.AddSingleton(plugins);
 
-        var baseUri = uriMapper.BaseUri;
         var apiBaseUri = new Uri($"{baseUri}api/");
 
         // Fusion services
