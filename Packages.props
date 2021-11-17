@@ -90,6 +90,7 @@
     <PackageReference Update="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageReference Update="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="Npgsql.OpenTelemetry" Version="$(NpgsqlVersion)" />
 
     <!-- For the build project -->
