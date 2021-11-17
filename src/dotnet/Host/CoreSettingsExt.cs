@@ -11,7 +11,7 @@ internal static class CoreSettingsExt
 
         var idx = settings.OtlpEndpoint.IndexOf(":", StringComparison.Ordinal);
         if (idx <= 0 || idx == settings.OtlpEndpoint.Length - 1) {
-            return null;
+            return (settings.OtlpEndpoint, 4317);
         }
         var (host, portStr) = (settings.OtlpEndpoint[..idx], settings.OtlpEndpoint[++idx..]);
 

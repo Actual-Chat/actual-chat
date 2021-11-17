@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Npgsql;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Stl.Plugins;
@@ -64,17 +65,37 @@ public class Startup
             const string version = ThisAssembly.AssemblyInformationalVersion;
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .SetSampler(new AlwaysOnSampler())
                 .AddAspNetCoreInstrumentation(opt => {
-                    var excludedPaths = new PathString[] { "/favicon.ico", "/metrics", "/status" };
+                    var excludedPaths = new PathString[] {
+                        "/favicon.ico",
+                        "/metrics",
+                        "/status",
+                        "/_blazor",
+                        "/_framework",
+                    };
                     opt.Filter = httpContext =>
                         !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
+                    opt.EnableGrpcAspNetCoreSupport = true;
+                    opt.RecordException = true;
                 })
                 .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
                 .AddGrpcClientInstrumentation()
                 .AddNpgsql()
+                .AddRedisInstrumentation()
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
                     cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.Endpoint = new Uri(Invariant($"http://{host}:{port}"));
+                })
+            );
+            services.AddOpenTelemetryMetrics(builder => builder
+                .AddAspNetCoreInstrumentation()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.MetricExportIntervalMilliseconds = 5000;
+                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
                     cfg.Endpoint = new Uri(Invariant($"http://{host}:{port}"));
                 })
             );
