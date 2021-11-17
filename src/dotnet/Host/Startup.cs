@@ -13,6 +13,9 @@ using ActualChat.Web.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
+using Npgsql;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Stl.Plugins;
 
 namespace ActualChat.Host;
@@ -51,6 +54,31 @@ public class Startup
             Environment = Env.EnvironmentName,
             Configuration = Cfg,
         });
+
+        var coreSettings = Cfg.GetSection("CoreSettings").Get<CoreSettings?>();
+        if (!string.IsNullOrWhiteSpace(coreSettings?.OtlpEndpoint)) {
+            var (host, port) = coreSettings.ParseOtlpEndpoint()
+                ?? throw new InvalidOperationException($"Wrong format of {nameof(CoreSettings)}." +
+                    $"{nameof(CoreSettings.OtlpEndpoint)}. Must be in 'host:port' format.");
+
+            const string version = ThisAssembly.AssemblyInformationalVersion;
+            services.AddOpenTelemetryTracing(builder => builder
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .AddAspNetCoreInstrumentation(opt => {
+                    var excludedPaths = new PathString[] { "/favicon.ico", "/metrics", "/status" };
+                    opt.Filter = httpContext =>
+                        !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
+                })
+                .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
+                .AddGrpcClientInstrumentation()
+                .AddNpgsql()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.Endpoint = new Uri(Invariant($"http://{host}:{port}"));
+                })
+            );
+        }
 
         // Creating plugins & host modules
         var pluginServices = new ServiceCollection()
