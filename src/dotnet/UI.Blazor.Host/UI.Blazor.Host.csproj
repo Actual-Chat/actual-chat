@@ -1,5 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
+  <!-- Publish & runtime properties -->
+  <PropertyGroup>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TrimMode>link</TrimMode>
+  </PropertyGroup>
+
+  <!-- Extra trimming roots -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
+    <TrimmerRootAssembly Include="System.Text.Json" />
+    <TrimmerRootAssembly Include="System.Collections.Immutable" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <!-- <workaround of https://github.com/dotnet/aspnetcore/issues/37141> -->
