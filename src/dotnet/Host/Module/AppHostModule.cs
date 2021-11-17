@@ -132,6 +132,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // OpenTelemetry
         var openTelemetryEndpoint = Settings.OpenTelemetryEndpoint;
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
+            var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
+            var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
             var version = typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "n/a";
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
@@ -156,7 +158,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
                     cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = new Uri(openTelemetryEndpoint);
+                    cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
             services.AddOpenTelemetryMetrics(builder => builder
@@ -166,7 +168,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
                     cfg.MetricExportIntervalMilliseconds = 5000;
                     cfg.AggregationTemporality = AggregationTemporality.Cumulative;
-                    cfg.Endpoint = new Uri(openTelemetryEndpoint);
+                    cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
         }
