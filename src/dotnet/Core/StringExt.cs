@@ -2,7 +2,13 @@ namespace ActualChat;
 
 public static class StringExt
 {
-    // NOTE(AY): Remove if stays unused
+    public static (string Host, ushort Port) ParseHostPort(this string hostPort, ushort defaultPort)
+    {
+        var (host, port) = hostPort.ParseHostPort();
+        port ??= defaultPort;
+        return (host, port.GetValueOrDefault());
+    }
+
     public static (string Host, ushort? Port) ParseHostPort(this string hostPort)
     {
         if (!hostPort.TryParseHostPort(out var host, out var port))
@@ -11,7 +17,6 @@ public static class StringExt
         return (host, port);
     }
 
-    // NOTE(AY): Remove if stays unused
     public static bool TryParseHostPort(
         this string hostPort,
         out string host,
