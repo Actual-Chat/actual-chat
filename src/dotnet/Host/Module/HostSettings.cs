@@ -1,9 +1,7 @@
-namespace ActualChat.Host.Module
-{
-    public class HostSettings
-    {
-        public string PublisherId { get; set; } = "p";
+namespace ActualChat.Host.Module;
 
-        public bool IsTestServer { get; set; } = false;
-    }
+public class HostSettings
+{
+    public string? PublicUrl { get; set; }
+    public string PublisherId { get; set; } = "p";
 }
