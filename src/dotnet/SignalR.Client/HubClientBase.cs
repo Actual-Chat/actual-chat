@@ -45,7 +45,7 @@ public abstract class HubClientBase
                 if (HubConnection.State == HubConnectionState.Disconnected)
                     await HubConnection.StartAsync(cancellationToken).ConfigureAwait(false);
                 else
-                    await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                    await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e,
