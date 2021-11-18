@@ -34,6 +34,31 @@ public class WebMReaderTest : TestBase
         entries[3].Should().BeOfType<SimpleBlock>();
     }
 
+    [Fact(Skip = "Not yet fixed")]
+    public async Task BrokenWasmReaderTest()
+    {
+        await using var inputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
+            FileMode.Open,
+            FileAccess.Read);
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        var buffer = bufferLease.Memory;
+        var bytesRead = await inputStream.ReadAsync(buffer);
+        while (bytesRead < 4 * 1024)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
+        bytesRead.Should().BeGreaterThanOrEqualTo(4 * 1024);
+
+        var entries = Parse(buffer[..25], buffer[25..bytesRead]).ToList();
+        entries.Should().HaveCount(13);
+        entries.Should().NotContainNulls();
+        entries[0].Should().BeOfType<EBML>();
+        entries[1].Should().BeOfType<Segment>();
+        entries[2].Should().BeOfType<Cluster>();
+        entries[2].As<Cluster>().SimpleBlocks.Should().HaveCount(10);
+        entries[2].As<Cluster>().SimpleBlocks.Should().NotContainNulls();
+        entries[3].Should().BeOfType<SimpleBlock>();
+    }
+
     [Fact]
     public async Task ReadHeaderAndOneBlockTest()
     {
@@ -142,7 +167,7 @@ public class WebMReaderTest : TestBase
         bytesRead1.Should().BeGreaterThan(3 * 1024);
         bytesRead2.Should().BeGreaterThan(3 * 1024);
 
-        var entries = Parse(buffer1.Span[..bytesRead1], buffer2.Span[..bytesRead2]).ToList();
+        var entries = Parse(buffer1[..bytesRead1], buffer2[..bytesRead2]).ToList();
         entries.Should().HaveCount(23);
         entries.Should().NotContainNulls();
         entries[0].Should().BeOfType<EBML>();
@@ -161,36 +186,34 @@ public class WebMReaderTest : TestBase
         return result;
     }
 
-    private List<BaseModel> Parse(Span<byte> span1, Span<byte> span2)
+    private List<BaseModel> Parse(params Memory<byte>[] dataElements)
     {
         var result = new List<BaseModel>();
-        var reader = new WebMReader(span1);
-        while (reader.Read())
-            result.Add(reader.ReadResult);
+        var state = new WebMReader.State();
+        var readBufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024); // Disposed in the last "finally"
+        var readBuffer = readBufferLease.Memory;
 
-        // using var bufferLease1 = MemoryPool<byte>.Shared.Rent(3 * 1024);
-        var tailLength = reader.Tail.Length;
-        var thereIsNoTail = reader.Tail.IsEmpty;
-        var bufferLength = span2.Length;
-        if (thereIsNoTail)
-            reader = reader.WithNewSource(span2);
-        else {
-            var dataSize = span2.Length + tailLength;
-            using var bufferLease = MemoryPool<byte>.Shared.Rent(dataSize);
-            var span = bufferLease.Memory.Span;
-            bufferLength = span.Length;
-            Console.Out.WriteLine("Combined buffer has length = " + span.Length);
-            reader.Tail.CopyTo(span);
-            span2.CopyTo(span[tailLength..]);
-            reader = reader.WithNewSource(span[..dataSize]);
+        foreach (var data in dataElements) {
+            var remainingLength = state.Remaining;
+            readBuffer.Span.Slice(state.Position, remainingLength)
+                .CopyTo(readBuffer.Span[..remainingLength]);
+            data.CopyTo(readBuffer[state.Remaining..]);
+            var dataLength = state.Remaining + data.Length;
+
+            var webMReader = state.IsEmpty
+                ? new WebMReader(readBuffer.Span[..dataLength])
+                : WebMReader.FromState(state).WithNewSource(readBufferLease.Memory.Span[..dataLength]);
+
+            try {
+                while (webMReader.Read())
+                    result.Add(webMReader.ReadResult);
+            }
+            catch (Exception e) {
+                throw new InvalidOperationException("Error reading WebM. DataLength: " + dataLength, e);
+            }
+            state = webMReader.GetState();
         }
-        try {
-            while (reader.Read())
-                result.Add(reader.ReadResult);
-        }
-        catch (Exception e) {
-            throw new InvalidOperationException("Error reading WebM. Current buffer has length: " + bufferLength, e);
-        }
+
         return result;
     }
 }

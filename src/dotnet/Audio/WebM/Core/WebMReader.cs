@@ -6,10 +6,10 @@ namespace ActualChat.Audio.WebM;
 public ref struct WebMReader
 {
     private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
-    private readonly Stack<EbmlElement> _containers;
+    private readonly Stack<EbmlElement> _containerElements;
 
     private SpanReader _spanReader;
-    private EbmlElement _container;
+    private EbmlElement _containerElement;
     private EbmlElement _element;
     private BaseModel _entry;
     private BaseModel _containerEntry;
@@ -38,26 +38,27 @@ public ref struct WebMReader
 
     public WebMReader(ReadOnlySpan<byte> span, uint maxBytesToRead)
     {
-        _container = new EbmlElement(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.UnknownDescriptor);
-        _element = EbmlElement.Empty;
         _spanReader = new SpanReader(span);
-        ReadResultKind = WebMReadResultKind.None;
-        _containers = new Stack<EbmlElement>(16);
+        _element = EbmlElement.Empty;
+        _containerElement =
+            new EbmlElement(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.UnknownDescriptor);
+        _containerElements = new Stack<EbmlElement>(16);
         _entry = BaseModel.Empty;
         _containerEntry = BaseModel.Empty;
         _resume = false;
+        ReadResultKind = WebMReadResultKind.None;
     }
 
     private WebMReader(State state, ReadOnlySpan<byte> span)
     {
-        _container = state.ContainerElement;
-        _element = EbmlElement.Empty;
         _spanReader = new SpanReader(span);
-        ReadResultKind = WebMReadResultKind.None;
-        _containers = new Stack<EbmlElement>(16);
+        _element = EbmlElement.Empty;
+        _containerElement = state.ContainerElement;
+        _containerElements = state.ContainerElements;
         _entry = state.Container;
         _containerEntry = state.Container;
         _resume = state.NotCompleted;
+        ReadResultKind = WebMReadResultKind.None;
     }
 
     public static WebMReader FromState(State state) => new (state, ReadOnlySpan<byte>.Empty);
@@ -69,7 +70,8 @@ public ref struct WebMReader
             _resume,
             _spanReader.Position,
             remaining,
-            _container,
+            _containerElement,
+            _containerElements,
             _containerEntry);
     }
 
@@ -105,16 +107,16 @@ public ref struct WebMReader
                 container = _containerEntry;
             else {
                 EnterContainer();
-                container = _container.Descriptor.CreateInstance();
+                container = _containerElement.Descriptor.CreateInstance();
             }
         }
         else
             container = _containerEntry;
 
         var beginPosition = _spanReader.Position;
-        var endPosition = _container.Size == UnknownSize
+        var endPosition = _containerElement.Size == UnknownSize
             ? int.MaxValue
-            : beginPosition + (int)_container.Size;
+            : beginPosition + (int)_containerElement.Size;
         while (true) {
             if (endPosition <= _spanReader.Position)
                 break;
@@ -122,7 +124,7 @@ public ref struct WebMReader
             var canRead = ReadElement(endPosition);
             if (!canRead) {
                 _entry = container;
-                _element = _container;
+                _element = _containerElement;
                 _spanReader.Position = beginPosition;
                 if (_spanReader.Position < _spanReader.Length)
                     _resume = true;
@@ -132,11 +134,11 @@ public ref struct WebMReader
             }
 
             if (_element.Identifier.EncodedValue == MatroskaSpecification.Cluster) {
-                if (_container.Identifier.EncodedValue != MatroskaSpecification.Cluster)
+                if (_containerElement.Identifier.EncodedValue != MatroskaSpecification.Cluster)
                     LeaveContainer();
 
                 _entry = container;
-                _element = _container;
+                _element = _containerElement;
                 _spanReader.Position = beginPosition;
                 ReadResultKind = container.Descriptor.Identifier.EncodedValue switch {
                     MatroskaSpecification.Segment => WebMReadResultKind.Segment,
@@ -149,9 +151,9 @@ public ref struct WebMReader
                 var complex = _element.Descriptor;
                 if (ReadInternal()) {
                     if (CurrentDescriptor.ListEntry)
-                        container.FillListEntry(_container.Descriptor, complex, _entry!);
+                        container.FillListEntry(_containerElement.Descriptor, complex, _entry!);
                     else
-                        container.FillComplex(_container.Descriptor, complex, _entry!);
+                        container.FillComplex(_containerElement.Descriptor, complex, _entry!);
                 }
                 else {
                     if (_spanReader.Position < _spanReader.Length)
@@ -178,7 +180,7 @@ public ref struct WebMReader
                             }
 
                             _entry = container;
-                            _element = _container;
+                            _element = _containerElement;
                             _spanReader.Position = beginPosition;
                             ReadResultKind = WebMReadResultKind.BeginCluster;
                             _resume = true;
@@ -190,31 +192,31 @@ public ref struct WebMReader
                             var block = new Block();
                             _entry = block;
                             block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, block);
+                            container.FillListEntry(_containerElement.Descriptor, CurrentDescriptor, block);
                             break;
                         case MatroskaSpecification.BlockAdditional:
                             var blockAdditional = new BlockAdditional();
                             _entry = blockAdditional;
                             blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockAdditional);
+                            container.FillListEntry(_containerElement.Descriptor, CurrentDescriptor, blockAdditional);
                             break;
                         case MatroskaSpecification.BlockVirtual:
                             var blockVirtual = new BlockVirtual();
                             _entry = blockVirtual;
                             blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockVirtual);
+                            container.FillListEntry(_containerElement.Descriptor, CurrentDescriptor, blockVirtual);
                             break;
                         case MatroskaSpecification.EncryptedBlock:
                             var encryptedBlock = new EncryptedBlock();
                             _entry = encryptedBlock;
                             encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, encryptedBlock);
+                            container.FillListEntry(_containerElement.Descriptor, CurrentDescriptor, encryptedBlock);
                             break;
                         case MatroskaSpecification.SimpleBlock:
                             var simpleBlock = new SimpleBlock();
                             _entry = simpleBlock;
                             simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, simpleBlock);
+                            container.FillListEntry(_containerElement.Descriptor, CurrentDescriptor, simpleBlock);
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -228,7 +230,10 @@ public ref struct WebMReader
                 if (CurrentDescriptor.Identifier.EncodedValue == MatroskaSpecification.Void)
                     _spanReader.Position += (int)_element.Size;
                 else
-                    container.FillScalar(_container.Descriptor, CurrentDescriptor, (int)_element.Size, ref _spanReader);
+                    container.FillScalar(_containerElement.Descriptor,
+                        CurrentDescriptor,
+                        (int)_element.Size,
+                        ref _spanReader);
             }
 
             beginPosition = _spanReader.Position;
@@ -313,17 +318,17 @@ public ref struct WebMReader
         if (_element.Type == EbmlElementType.MasterElement && _element.HasInvalidIdentifier)
             throw new InvalidOperationException();
 
-        _containers.Push(_container);
-        _container = _element;
+        _containerElements.Push(_containerElement);
+        _containerElement = _element;
         _element = EbmlElement.Empty;
     }
 
     private bool LeaveContainer()
     {
-        if (_containers.Count == 0) throw new InvalidOperationException();
+        if (_containerElements.Count == 0) throw new InvalidOperationException();
 
-        _element = _container;
-        _container = _containers.Pop();
+        _element = _containerElement;
+        _containerElement = _containerElements.Pop();
         return true;
     }
 
@@ -332,7 +337,8 @@ public ref struct WebMReader
         public readonly bool NotCompleted;
         public readonly int Position;
         public readonly int Remaining;
-        internal readonly EbmlElement ContainerElement;
+        public readonly EbmlElement ContainerElement;
+        public readonly Stack<EbmlElement> ContainerElements;
         public readonly BaseModel Container;
 
         public State(
@@ -340,12 +346,14 @@ public ref struct WebMReader
             int position,
             int remaining,
             EbmlElement containerElement,
+            Stack<EbmlElement> containerElements,
             BaseModel container)
         {
             NotCompleted = resume;
             Position = position;
             Remaining = remaining;
             ContainerElement = containerElement;
+            ContainerElements = containerElements;
             Container = container;
         }
 
