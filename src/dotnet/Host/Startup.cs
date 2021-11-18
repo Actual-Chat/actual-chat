@@ -37,7 +37,9 @@ public class Startup
         services.AddLogging(logging => {
             logging.ClearProviders();
             logging.AddConsole();
+#pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
+#pragma warning restore IL2026
             logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
             // use appsettings*.json to configure logging filters
         });

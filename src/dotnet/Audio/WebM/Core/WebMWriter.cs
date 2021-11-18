@@ -7,7 +7,6 @@ public ref struct WebMWriter
 {
     private SpanWriter _spanWriter;
 
-
     public WebMWriter(Span<byte> span, bool segmentHasUnknownSize = true, bool clusterHasUnknownSize = true)
     {
         _spanWriter = new SpanWriter(span);
@@ -34,6 +33,5 @@ public ref struct WebMWriter
 
         _spanWriter.Position = beforePosition;
         return false;
-
     }
 }

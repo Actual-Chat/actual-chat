@@ -11,10 +11,12 @@ public class RangeModelBinder : IModelBinder
 
         try {
             var sValue = bindingContext.ValueProvider.GetValue(bindingContext.ModelName).FirstValue ?? "";
+#pragma warning disable IL2026
             var result = typeof(Range<>)
                 .MakeGenericType(bindingContext.ModelType.GetGenericArguments()[0])
                 .GetMethod(nameof(Range<long>.Parse))!
                 .Invoke(null, new object[] { sValue });
+#pragma warning restore IL2026
             bindingContext.Result = ModelBindingResult.Success(result);
         }
         catch (Exception) {
