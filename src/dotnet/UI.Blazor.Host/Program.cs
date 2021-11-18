@@ -26,10 +26,7 @@ public static class Program
 
         var host = builder.Build();
         await host.Services.HostedServices().Start().ConfigureAwait(false);
-
-        var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-        var webMLogger = loggerFactory.CreateLogger("WebMReader");
-        WebMReader.Log = webMLogger;
+        // WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
         await host.RunAsync().ConfigureAwait(false);
     }

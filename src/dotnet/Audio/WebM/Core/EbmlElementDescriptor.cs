@@ -6,13 +6,11 @@ public class EbmlElementDescriptor
 {
     public EbmlElementDescriptor(ulong identifier, string name, EbmlElementType type, string? defaultvalue, bool listEntry)
         : this(VInt.FromEncoded(identifier), name, type, defaultvalue, listEntry)
-    {
-    }
+    { }
 
     public EbmlElementDescriptor(long identifier, string name, EbmlElementType type, string? defaultValue, bool listEntry)
         : this(VInt.FromEncoded((ulong)identifier), name, type, defaultValue, listEntry)
-    {
-    }
+    { }
 
     private EbmlElementDescriptor(VInt identifier, string name, EbmlElementType type,string? defaultValue, bool listEntry)
     {
@@ -38,7 +36,7 @@ public class EbmlElementDescriptor
 
     public override int GetHashCode()
     {
-        int result = 17;
+        var result = 17;
         result = 37*result + Identifier.GetHashCode();
         result = 37*result + (Name == null ? 0 : Name.GetHashCode(StringComparison.Ordinal));
         result = 37*result + (Type == EbmlElementType.None ? 0 : Type.GetHashCode());
@@ -58,12 +56,8 @@ public class EbmlElementDescriptor
 
     [SuppressMessage("ReSharper", "HeapView.BoxingAllocation")]
     public override string ToString()
-    {
-        return $"{Name}:{Type} - id:{Identifier}";
-    }
+        => $"{Name}:{Type} - id:{Identifier}";
 
     public EbmlElementDescriptor Named(string name)
-    {
-        return new EbmlElementDescriptor(Identifier, name, Type, DefaultValue, ListEntry);
-    }
+        => new(Identifier, name, Type, DefaultValue, ListEntry);
 }
