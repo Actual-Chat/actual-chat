@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2011-2020 Oleg Zee
+/* Copyright (c) 2011-2020 Oleg Zee
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -133,8 +133,8 @@ public readonly struct VInt : IEquatable<VInt>
         return new VInt(encodedValue, extraBytes + 1);
     }
 
-    public static VInt FromValue(ulong value)
-        => new VInt(value, (int)EbmlHelper.GetSize(value));
+    public static VInt FromValue(ulong value) 
+        => new (value, (int)EbmlHelper.GetSize(value));
 
     public static VInt FromValue(long value)
     {

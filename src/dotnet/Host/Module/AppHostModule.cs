@@ -67,7 +67,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             app.UseForwardedHeaders();
             app.UseHsts();
         }
-        app.UseHttpsRedirection();
+        // app.UseCors("Default");
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),

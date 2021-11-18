@@ -10,13 +10,11 @@ public static class EbmlHelper
     public static ulong GetSize(ulong value)
     {
         ulong length = 1;
-        if ((value & 0xFFFFFFFF00000000) != 0)
-        {
+        if ((value & 0xFFFFFFFF00000000) != 0) {
             length += 4;
             value >>= 32;
         }
-        if ((value & 0xFFFF0000) != 0)
-        {
+        if ((value & 0xFFFF0000) != 0) {
             length += 2;
             value >>= 16;
         }
@@ -26,22 +24,19 @@ public static class EbmlHelper
 
     public static ulong GetSize(long value)
     {
-        ulong v = (ulong)value;
+        var v = (ulong)value;
         if (value < 0)
             v = ~v;
         ulong length = 1;
-        if ((v & 0xFFFFFFFF00000000) != 0)
-        {
+        if ((v & 0xFFFFFFFF00000000) != 0) {
             length += 4;
             v >>= 32;
         }
-        if ((v & 0xFFFF0000) != 0)
-        {
+        if ((v & 0xFFFF0000) != 0) {
             length += 2;
             v >>= 16;
         }
-        if ((v & 0xFF00) != 0)
-        {
+        if ((v & 0xFF00) != 0) {
             length += 1;
             v >>= 8;
         }
@@ -84,48 +79,63 @@ public static class EbmlHelper
             return 6;
         if (value < 0x0001FFFFFFFFFFFF)
             return 7;
+
         return 8;
     }
 
     public static ulong GetElementSize(ulong identifier, ulong value) => GetSize(identifier) + GetSize(value) + 1;
 
-    public static ulong GetElementSize(ulong identifier, ulong? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+    public static ulong GetElementSize(ulong identifier, ulong? value)
+        => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-    public static ulong GetElementSize(ulong identifier, long? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+    public static ulong GetElementSize(ulong identifier, long? value)
+        => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
     public static ulong GetElementSize(ulong identifier, long value) => GetSize(identifier) + GetSize(value) + 1;
 
     public static ulong GetElementSize(ulong identifier, double value) => GetSize(identifier) + GetSize(value) + 1;
 
-    public static ulong GetElementSize(ulong identifier, double? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+    public static ulong GetElementSize(ulong identifier, double? value)
+        => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
     public static ulong GetElementSize(ulong identifier, float value) => GetSize(identifier) + GetSize(value) + 1;
 
-    public static ulong GetElementSize(ulong identifier, float? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+    public static ulong GetElementSize(ulong identifier, float? value)
+        => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
     public static ulong GetElementSize(ulong identifier, DateTime value) => GetSize(identifier) + GetSize(value) + 1;
 
-    public static ulong GetElementSize(ulong identifier, DateTime? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
+    public static ulong GetElementSize(ulong identifier, DateTime? value)
+        => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-    public static ulong GetElementSize(ulong identifier, byte[]? value) => value == null ? 0UL : GetSize(identifier) + (ulong)value.Length + 1;
+    public static ulong GetElementSize(ulong identifier, byte[]? value)
+        => value == null ? 0UL : GetSize(identifier) + (ulong)value.Length + 1;
 
-    public static ulong GetElementSize(ulong identifier, string? value, bool isAscii) => value == null ? 0UL : GetSize(identifier) + GetSize(value, isAscii) + 1;
+    public static ulong GetElementSize(ulong identifier, string? value, bool isAscii)
+        => value == null ? 0UL : GetSize(identifier) + GetSize(value, isAscii) + 1;
 
     public static ulong GetMasterElementSize(ulong identifier, ulong size) => GetSize(identifier) + GetCodedSize(size);
 
-    public static ulong GetElementSize(ulong identifier, BaseModel? value) => value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
+    public static ulong GetElementSize(ulong identifier, BaseModel? value)
+        => value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
 
-    public static ulong GetElementSize(ulong identifier, IReadOnlyList<BaseModel>? value) => value?.Aggregate(0UL, (size, m) => size + GetElementSize(identifier, m)) ?? 0UL;
+    public static ulong GetElementSize(ulong identifier, IReadOnlyList<BaseModel>? value)
+        => value?.Aggregate(0UL, (size, m) => size + GetElementSize(identifier, m)) ?? 0UL;
 
-    public static ulong GetElementSize(ulong identifier, IReadOnlyList<Block>? value) => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+    public static ulong GetElementSize(ulong identifier, IReadOnlyList<Block>? value)
+        => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
-    public static ulong GetElementSize(ulong identifier, IReadOnlyList<SimpleTag>? value) => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+    public static ulong GetElementSize(ulong identifier, IReadOnlyList<SimpleTag>? value)
+        => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
-    public static ulong GetSize(this IReadOnlyList<BaseModel>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+    public static ulong GetSize(this IReadOnlyList<BaseModel>? list)
+        => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
-    public static ulong GetSize(this IReadOnlyList<Block>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+    public static ulong GetSize(this IReadOnlyList<Block>? list)
+        => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
-    public static ulong GetSize(this IReadOnlyList<SimpleTag>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
+    public static ulong GetSize(this IReadOnlyList<SimpleTag>? list)
+        => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
     public static bool WriteEbmlMasterElement(ulong identifier, ulong size, ref SpanWriter writer)
     {
@@ -154,7 +164,8 @@ public static class EbmlHelper
         return true;
     }
 
-    public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+    public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer)
+        => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
     public static bool WriteEbmlElement(ulong identifier, long value, ref SpanWriter writer)
     {
@@ -169,7 +180,8 @@ public static class EbmlHelper
         return true;
     }
 
-    public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+    public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer)
+        => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
     public static bool WriteEbmlElement(ulong identifier, DateTime value, ref SpanWriter writer)
     {
@@ -180,7 +192,8 @@ public static class EbmlHelper
         return WriteEbmlElement(identifier, value.Ticks, ref writer);
     }
 
-    public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+    public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer)
+        => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
     public static bool WriteEbmlElement(ulong identifier, double value, ref SpanWriter writer)
     {
@@ -195,7 +208,8 @@ public static class EbmlHelper
         return true;
     }
 
-    public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+    public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer)
+        => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
     public static bool WriteEbmlElement(ulong identifier, float value, ref SpanWriter writer)
     {
@@ -208,7 +222,7 @@ public static class EbmlHelper
         writer.Write(VInt.EncodeSize(size));
         if (size == 4) {
             var uInt = new Union { Float = value }.UInt;
-            for (int i = 1; i <= 4; i++) {
+            for (var i = 1; i <= 4; i++) {
                 var bytes = 4 - i;
                 var bits = bytes * 8;
                 var bElement = (byte)((uInt >> bits) & 0xFFU);
@@ -221,7 +235,8 @@ public static class EbmlHelper
         return true;
     }
 
-    public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
+    public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer)
+        => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
     public static bool WriteEbmlElement(ulong identifier, string? value, bool isAscii, ref SpanWriter writer)
     {
@@ -229,7 +244,7 @@ public static class EbmlHelper
             return true;
 
         var size = GetSize(value, isAscii);
-        var totalSize =  GetSize(identifier) + size + 1;
+        var totalSize = GetSize(identifier) + size + 1;
         if (writer.Position + (int)totalSize > writer.Length)
             return false;
 
@@ -248,7 +263,7 @@ public static class EbmlHelper
             return true;
 
         var size = (ulong)value.Length;
-        var totalSize =  GetSize(identifier) + size + 1;
+        var totalSize = GetSize(identifier) + size + 1;
         if (writer.Position + (int)totalSize > writer.Length)
             return false;
 
