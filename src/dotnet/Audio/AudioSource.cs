@@ -9,8 +9,6 @@ namespace ActualChat.Audio;
 
 public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 {
-    private static readonly byte[] BrokenHeader = { 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86 };
-
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
@@ -57,15 +55,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
             async blobPart => {
                 var (_, data) = blobPart;
-
-                // AK: broken stream check
-                if (data.Take(6).SequenceEqual(BrokenHeader)) {
-                    Log.LogWarning("Fixing broken header!");
-                    var fixedChunk = new byte[data.Length + 1];
-                    fixedChunk[0] = 0x1A;
-                    Buffer.BlockCopy(data, 0, fixedChunk, 1, data.Length);
-                    data = fixedChunk;
-                }
 
                 AppendData(ref readBuffer, ref state, data);
                 frameBuffer.Clear();

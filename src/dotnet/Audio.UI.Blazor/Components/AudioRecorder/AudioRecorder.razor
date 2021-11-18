@@ -12,7 +12,8 @@
 </button>
 
 @code {
-    private static byte[] _brokenHeader = { 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86 };
+    private static byte[] _brokenHeader1 = { 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86 };
+    private static byte[] _brokenHeader2 = { 0x1A, 0x1A, 0x45, 0xDF, 0xA3, 0x9F };
 
     [Inject]
     protected internal ILogger<AudioRecorder> Log { get; init; } = null!;
@@ -43,10 +44,7 @@
             JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef, DebugMode);
         }
         if (DebugMode)
-        {
-            var logMessage = $"OnAfterRender: ChatId = {ChatId}, AudioRecorder loaded.";
-            Log.LogInformation(logMessage);
-        }
+            Log.LogInformation("OnAfterRender: ChatId = {ChatId}, AudioRecorder loaded", ChatId);
     }
 
     private Task ToggleRecording()
@@ -58,9 +56,9 @@
             return;
 
         AudioChannel = Channel.CreateBounded<BlobPart>(
-            new BoundedChannelOptions(100) {
-                FullMode = BoundedChannelFullMode.Wait,
+            new BoundedChannelOptions(128) {
                 SingleWriter = true,
+                SingleReader = true,
                 AllowSynchronousContinuations = true,
             });
         StateHasChanged();
@@ -112,12 +110,13 @@
             return;
 
         // Broken stream check
-        if (chunk.Take(6).SequenceEqual(_brokenHeader)) {
-            Log.LogWarning("Fixing broken header!");
-            var fixedChunk = new byte[chunk.Length + 1];
-            fixedChunk[0] = 0x1A;
-            Buffer.BlockCopy(chunk, 0, fixedChunk, 1, chunk.Length);
-            chunk = fixedChunk;
+        if (chunk.Take(6).SequenceEqual(_brokenHeader1)) {
+            Log.LogWarning("Fixing broken header, type 1!");
+            chunk = new byte[] { 0x1A}.Concat(chunk).ToArray();
+        }
+        else if (chunk.Take(6).SequenceEqual(_brokenHeader2)) {
+            Log.LogWarning("Fixing broken header, type 2!");
+            chunk = chunk.AsSpan()[1..].ToArray();
         }
         await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
