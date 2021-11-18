@@ -57,10 +57,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             await WhenCompleted.WithFakeCancellation(cancellationToken);
         }
-        catch (OperationCanceledException) {
-            throw; // "Stop" is called, nothing to log here
-        }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             error = ex;
             Log.LogError(ex, "Failed to play media track");
         }

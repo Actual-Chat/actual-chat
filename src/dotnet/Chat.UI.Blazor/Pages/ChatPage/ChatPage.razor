@@ -4,15 +4,14 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Comparison
 @inherits ComputedStateComponent<ChatPageModel>
-@inject NavigationManager _nav
 
 @{
     var error = State.Error;
     var model = State.LatestNonErrorValue;
     if (model.IsUnavailable)
-        _nav.Unavailable("chat");
+        Nav.Unavailable("chat");
     if (model.MustLogin)
-        _nav.Login("to view this chat");
+        Nav.Login("to view this chat");
     var chat = model.Chat ?? new Chat();
 }
 <div class="chat-page h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
@@ -66,7 +65,9 @@
         if (audioEntry == null)
             return;
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(skipTo);
-        _ = HistoricalPlayer.Play(startAt);
+        _ = BackgroundTask.Run(
+            () => HistoricalPlayer.Play(startAt),
+            Log, "Historical playback failed");
     }
 
 }

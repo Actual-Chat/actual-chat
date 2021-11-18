@@ -32,10 +32,7 @@ public static class AsyncEnumerableExt
                 return ChannelExt.GetChannelClosedResult<T>();
             return source.Current;
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             return Result.New<T>(default!, e);
         }
     }
@@ -49,10 +46,7 @@ public static class AsyncEnumerableExt
                 return value;
             return ChannelExt.GetChannelClosedResult<T>();
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             return Result.New<T>(default!, e);
         }
     }

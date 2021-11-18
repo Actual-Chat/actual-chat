@@ -33,10 +33,10 @@
     </nav>
     <div class="flex-1 overflow-y-auto flex flex-col relative">
         <div class="bg-white flex-1 overflow-y-auto">
-            @foreach (var failure in failures)
-            {
-                <WhenCommandError Error="failure.Result?.Error"
-                            Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))" />
+            @foreach (var failure in failures) {
+                <WhenCommandError
+                    Error="failure.Result?.Error"
+                    Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))" />
             }
             @Body
         </div>
@@ -45,14 +45,12 @@
 
 @code {
 
-    protected override void OnInitialized()
-    {
+    protected override void OnInitialized() {
         _navigator.LocationChanged += OnLocationChanged;
         _commandFailureList.Changed += OnCommandFailureListChanged;
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _navigator.LocationChanged -= OnLocationChanged;
         _commandFailureList.Changed -= OnCommandFailureListChanged;
     }
