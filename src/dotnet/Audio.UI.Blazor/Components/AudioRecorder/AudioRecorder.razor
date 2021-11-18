@@ -95,21 +95,23 @@
         var audioFormat = new AudioFormat {
             CodecKind = AudioCodecKind.Opus,
             ChannelCount = 1,
-            SampleRate = 48_000
+            SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
         var audioRecord = new AudioRecord(ChatId, audioFormat, "RU-ru", clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
-        _ = _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None);
+        _ = BackgroundTask.Run(
+            () => _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None),
+            Log, $"{nameof(_sourceAudioRecorder.RecordSourceAudio)} failed");
     }
 
     [JSInvokable]
-    public void OnAudioData(byte[] chunk)
+    public async Task OnAudioData(byte[] chunk)
     {
         if (AudioChannel == null)
             return;
 
-        // broken stream check
+        // Broken stream check
         if (chunk.Take(6).SequenceEqual(_brokenHeader)) {
             Log.LogWarning("Recorded broken header");
             var fixedChunk = new byte[chunk.Length + 1];
@@ -117,7 +119,7 @@
             Buffer.BlockCopy(chunk, 0, fixedChunk, 1, chunk.Length);
             chunk = fixedChunk;
         }
-        _ = AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
+        await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
 
     [JSInvokable]

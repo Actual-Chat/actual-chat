@@ -77,10 +77,7 @@ public static class TaskExt
         try {
             await task.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             errorHandler(e);
             throw;
         }
@@ -91,10 +88,7 @@ public static class TaskExt
         try {
             return await task.ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             errorHandler(e);
             throw;
         }

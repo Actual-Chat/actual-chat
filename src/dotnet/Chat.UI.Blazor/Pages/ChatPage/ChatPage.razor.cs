@@ -14,6 +14,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
 
@@ -31,7 +32,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
     protected override async Task OnParametersSetAsync()
     {
         if (ChatId.IsNullOrEmpty()) {
-            _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
+            Nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
             return;
         }
 
@@ -56,8 +57,11 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             IsRealTimePlayer = true,
             SilencedAuthorIds = author == null ? Option<AuthorId>.None : Option.Some(author.Id),
         };
-        if (wasPlaying)
-            _ = RealtimePlayer.Play();
+        if (wasPlaying) {
+            _ = BackgroundTask.Run(
+                () => RealtimePlayer.Play(),
+                Log, "Realtime playback failed");
+        }
         StateHasChanged();
     }
 

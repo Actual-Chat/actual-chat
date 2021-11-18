@@ -27,7 +27,7 @@
         if (!_circuitContext.IsPrerendering) {
             _cancellationTokenSource = new();
             var transcriptStream = _transcriptStreamer.GetTranscriptStream(StreamId, _cancellationTokenSource.Token);
-            _ = ReadTranscript(transcriptStream, _cancellationTokenSource.Token);
+            _ = ReadTranscript(transcriptStream, _cancellationTokenSource.Token).ConfigureAwait(false);
         }
 
         await base.OnParametersSetAsync();
@@ -49,7 +49,7 @@
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            _log.LogError(e, "Error while reading the transcript");
+            _log.LogError(e, "ReadTranscript failed");
             throw;
         }
     }

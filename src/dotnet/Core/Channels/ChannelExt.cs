@@ -28,18 +28,14 @@ public static class ChannelExt
         out Result<T> result)
     {
         try {
-            if (channel.TryRead(out var value)) {
-                result = value;
-                return true;
-            } else {
+            if (!channel.TryRead(out var value)) {
                 result = default;
                 return false;
             }
+            result = value;
+            return true;
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
+        catch (Exception e)  when (e is not OperationCanceledException) {
             result = Result.New<T>(default!, e);
             return true;
         }
@@ -56,10 +52,7 @@ public static class ChannelExt
             }
             return GetChannelClosedResult<T>();
         }
-        catch (OperationCanceledException) {
-            throw;
-        }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             return Result.New<T>(default!, e);
         }
     }

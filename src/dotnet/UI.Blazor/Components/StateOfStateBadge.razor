@@ -53,8 +53,7 @@
     public bool IsUpdatePending => State == null! || State.Snapshot.Computed.IsInvalidated();
 
     public StateOfStateBadge()
-        => _stateChangedHandler = (_, _) =>
-        {
+        => _stateChangedHandler = (_, _) => {
             _ = this.StateHasChangedAsync();
         };
 
