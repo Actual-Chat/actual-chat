@@ -85,7 +85,7 @@ public sealed class MediaPlayer : IDisposable
         _stopPlayingCts = new ();
         StopToken = _stopPlayingCts.Token;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
-            new BoundedChannelOptions(256) {
+            new BoundedChannelOptions(128) {
                 SingleReader = false,
                 SingleWriter = false,
                 AllowSynchronousContinuations = true,
