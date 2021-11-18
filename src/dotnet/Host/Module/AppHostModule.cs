@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Stl.DependencyInjection;
@@ -162,8 +163,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 // .AddAspNetCoreInstrumentation()
                 .AddMeter(Tracer.Metric.Name)
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
-                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.MetricExportIntervalMilliseconds = 5000;
                     cfg.AggregationTemporality = AggregationTemporality.Cumulative;
                     cfg.Endpoint = openTelemetryEndpointUri;
