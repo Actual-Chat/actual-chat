@@ -38,7 +38,7 @@ namespace ActualChat.Testing
             InitializeSettings(settings);
 
             services.TryAddSingleton(settings);
-            services.TryAddSingleton<ILogger>(sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger(categoryName: ""));
+            services.TryAddSingleton(c => c.LogFor("")); // Default ILogger w/o a category
         }
 
         private void InitializeSettingsCore(TestSettings settings)

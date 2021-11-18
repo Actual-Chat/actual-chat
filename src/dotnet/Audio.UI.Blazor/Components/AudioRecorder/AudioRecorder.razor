@@ -110,6 +110,7 @@
             return;
 
         // Broken stream check
+        /*
         if (chunk.Take(6).SequenceEqual(_brokenHeader1)) {
             Log.LogWarning("Fixing broken header, type 1!");
             chunk = new byte[] { 0x1A}.Concat(chunk).ToArray();
@@ -118,6 +119,7 @@
             Log.LogWarning("Fixing broken header, type 2!");
             chunk = chunk.AsSpan()[1..].ToArray();
         }
+        */
         await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
 

@@ -16,7 +16,7 @@ public abstract class HubClientBase
     protected HubClientBase(IServiceProvider services, string hubUrl)
     {
         Services = services;
-        Log = Services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
+        Log = Services.LogFor(GetType());
         Clocks = Services.Clocks();
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
         _hubConnectionLazy = new(CreateHubConnection);

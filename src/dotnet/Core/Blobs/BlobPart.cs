@@ -17,4 +17,10 @@ public record BlobPart(
         Index = index;
         Data = buffer;
     }
+
+    public override string ToString()
+    {
+        var startBlock = BitConverter.ToString(Data.Take(8).ToArray());
+        return $"{GetType().Name}(#{Index}, Data = 0x{startBlock}..., {Data.Length} byte(s))";
+    }
 }

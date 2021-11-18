@@ -25,7 +25,7 @@ public sealed class ChatMediaPlayer : IDisposable
     public ChatMediaPlayer(IServiceProvider services)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
-        Log = services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
+        Log = services.LogFor(GetType());
         Chats = services.GetRequiredService<IChats>();
         MediaPlayer = services.GetRequiredService<MediaPlayer>();
         MediaResolver = services.GetRequiredService<IChatMediaResolver>();

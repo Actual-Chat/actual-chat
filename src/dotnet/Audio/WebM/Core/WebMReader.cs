@@ -87,7 +87,7 @@ public ref struct WebMReader
         if (!hasElement) {
             if (_spanReader.Position != _spanReader.Length - 1)
                 _resume = true;
-            DebugLog?.LogInformation("Read: return false where !hasElement. Resume: {Resume}", _resume);
+            DebugLog?.LogInformation("Read: !hasElement, resume: {Resume} -> return false", _resume);
             return false;
         }
 
@@ -297,7 +297,7 @@ public ref struct WebMReader
                 : _spanReader.Length - 1;
             var errorBlock = BitConverter.ToString(_spanReader.Span[start..end].ToArray());
             throw new EbmlDataFormatException(
-                "Invalid element identifier value - not white-listed. Id: "
+                "Invalid element identifier value: not white-listed. Id: "
                 + idValue
                 + "; Position: "
                 + _spanReader.Position

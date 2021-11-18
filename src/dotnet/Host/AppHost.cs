@@ -38,7 +38,7 @@ public class AppHost : IDisposable
 
     public virtual async Task Initialize(CancellationToken cancellationToken = default)
     {
-        var log = Host.Services.GetRequiredService<ILogger<AppHost>>();
+        var log = Host.Services.LogFor(GetType());
 
         async Task InitializeOne(IDbInitializer dbInitializer, TaskSource<bool> taskSource)
         {
