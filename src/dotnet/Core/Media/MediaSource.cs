@@ -1,5 +1,4 @@
 using ActualChat.Blobs;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Media;
 
@@ -55,20 +54,6 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     }
 
     protected MediaSource(
-        Task<TFormat> formatTask,
-        IAsyncEnumerable<TFrame> frames,
-        ILogger log,
-        CancellationToken cancellationToken)
-    {
-        Log = log;
-        FormatTask = TaskSource.New<TFormat>(true).Task;
-        DurationTask = TaskSource.New<TimeSpan>(true).Task;
-        // ReSharper disable once VirtualMemberCallInConstructor
-        var parsedFrames = Parse(formatTask, frames, cancellationToken);
-        MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
-    }
-
-    protected MediaSource(
         IAsyncEnumerable<IMediaStreamPart> mediaStream,
         ILogger log,
         CancellationToken cancellationToken)
@@ -112,38 +97,6 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         CancellationToken cancellationToken);
 
     protected virtual async IAsyncEnumerable<TFrame> Parse(
-        Task<TFormat> formatTask,
-        IAsyncEnumerable<TFrame> frames,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var duration = TimeSpan.Zero;
-        var formatTaskSource = TaskSource.For(FormatTask);
-        var durationTaskSource = TaskSource.For(DurationTask);
-
-        try {
-            var format = await formatTask.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
-            formatTaskSource.SetResult(format);
-            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                duration = frame.Offset + frame.Duration;
-                yield return frame;
-            }
-            durationTaskSource.SetResult(duration);
-        }
-        finally {
-            if (cancellationToken.IsCancellationRequested) {
-                formatTaskSource.TrySetCanceled(cancellationToken);
-                durationTaskSource.TrySetCanceled(cancellationToken);
-            }
-            else {
-                if (!FormatTask.IsCompleted)
-                    formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
-                if (!DurationTask.IsCompleted)
-                    durationTaskSource.TrySetException(new InvalidOperationException("Duration wasn't parsed."));
-            }
-        }
-    }
-
-    protected virtual async IAsyncEnumerable<TFrame> Parse(
         IAsyncEnumerable<IMediaStreamPart> mediaStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -180,9 +133,9 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
             }
             else {
                 if (!FormatTask.IsCompleted)
-                    formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
+                    formatTaskSource.TrySetException(new InvalidOperationException("MediaSource.Parse: Format wasn't parsed."));
                 if (!DurationTask.IsCompleted)
-                    durationTaskSource.TrySetException(new InvalidOperationException("Duration wasn't parsed."));
+                    durationTaskSource.TrySetException(new InvalidOperationException("MediaSource.Parse: Duration wasn't parsed."));
             }
         }
     }
