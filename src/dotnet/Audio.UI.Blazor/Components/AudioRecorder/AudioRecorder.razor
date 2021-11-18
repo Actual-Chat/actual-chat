@@ -113,7 +113,7 @@
 
         // Broken stream check
         if (chunk.Take(6).SequenceEqual(_brokenHeader)) {
-            Log.LogWarning("Recorded broken header");
+            Log.LogWarning("Fixing broken header!");
             var fixedChunk = new byte[chunk.Length + 1];
             fixedChunk[0] = 0x1A;
             Buffer.BlockCopy(chunk, 0, fixedChunk, 1, chunk.Length);

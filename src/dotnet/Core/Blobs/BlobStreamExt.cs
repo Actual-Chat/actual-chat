@@ -10,7 +10,7 @@ namespace ActualChat.Blobs;
 public static class BlobStreamExt
 {
     private const int BufferSize = 128 * 1024;
-    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
+    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
     // Download
 
@@ -21,7 +21,6 @@ public static class BlobStreamExt
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
-
         HttpResponseMessage response;
         using (var httpClient = httpClientFactory.CreateClient())
         using (var request = new HttpRequestMessage(HttpMethod.Get, blobUri)) {
@@ -35,19 +34,10 @@ public static class BlobStreamExt
             response.EnsureSuccessStatusCode();
         }
         try {
-            if (OSInfo.IsWebAssembly) {
-                var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-                log.LogInformation("Downloaded bytes");
-                var blobIndex = 0;
-                foreach (var chunk in bytes.Chunk(4096))
-                    yield return new BlobPart(blobIndex++, chunk);
-            }
-            else {
-                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-                var blobStream = stream.ReadBlobStream(false, log, cancellationToken);
-                await foreach (var blobPart in blobStream.ConfigureAwait(false))
-                    yield return blobPart;
-            }
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var blobStream = stream.ReadBlobStream(false, log, cancellationToken);
+            await foreach (var blobPart in blobStream.ConfigureAwait(false))
+                yield return blobPart;
         }
         finally {
             response.Dispose();
