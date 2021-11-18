@@ -72,9 +72,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
+#pragma warning disable IL2026
             TextToTimeMap = TextToTimeMap != null
                 ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
                 : null,
+#pragma warning restore IL2026
         };
 
     public void UpdateFrom(ChatEntry model)
@@ -93,9 +95,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
+#pragma warning disable IL2026
         TextToTimeMap = model.TextToTimeMap != null
             ? JsonSerializer.Serialize(model.TextToTimeMap)
             : null;
+#pragma warning restore IL2026
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>

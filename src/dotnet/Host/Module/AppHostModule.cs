@@ -5,6 +5,7 @@ using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Npgsql;
@@ -36,6 +37,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
     public void ConfigureApp(IApplicationBuilder app)
     {
+        if (Settings.BaseUri.ToLowerInvariant().StartsWith("https://", StringComparison.Ordinal)) {
+            Log.LogInformation("Overriding request scheme to https://");
+            app.Use((context, next) => {
+                context.Request.Scheme = "https";
+                return next();
+            });
+        }
+
         // This server serves static content from Blazor Client,
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
@@ -54,7 +63,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
-        app.UseHttpsRedirection();
+        // app.UseCors("Default");
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
@@ -113,6 +122,15 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
+        services.AddCors(options => {
+            options.AddPolicy("Default",
+                builder => builder.AllowAnyOrigin().WithFusionHeaders());
+        });
+        services.Configure<ForwardedHeadersOptions>(options => {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+            options.KnownNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
         services.AddRouting();
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
