@@ -1,6 +1,8 @@
 using System.Buffers;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.IO;
 using Stl.IO;
+using Stl.OS;
 using Storage.NetCore.Blobs;
 
 namespace ActualChat.Blobs;
@@ -14,13 +16,18 @@ public static class BlobStreamExt
 
     public static async IAsyncEnumerable<BlobPart> DownloadBlobStream(
         this IHttpClientFactory httpClientFactory,
-        Uri audioUri,
+        Uri blobUri,
         [EnumeratorCancellation]
         CancellationToken cancellationToken = default)
     {
         using var httpClient = httpClientFactory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
+        if (OSInfo.IsWebAssembly) {
+            request.SetBrowserResponseStreamingEnabled(true);
+            request.SetBrowserRequestMode(BrowserRequestMode.Cors);
+        }
         var response = await httpClient
-            .GetAsync(audioUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
