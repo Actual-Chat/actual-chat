@@ -34,7 +34,7 @@ public class WebMReaderTest : TestBase
         entries[3].Should().BeOfType<SimpleBlock>();
     }
 
-    [Fact(Skip = "Not yet fixed")]
+    [Fact]
     public async Task BrokenWasmReaderTest()
     {
         await using var inputStream = new FileStream(
