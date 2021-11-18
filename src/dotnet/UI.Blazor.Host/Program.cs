@@ -26,7 +26,8 @@ public static class Program
 
         var host = builder.Build();
         await host.Services.HostedServices().Start().ConfigureAwait(false);
-        // WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
+        if (Constants.DebugMode.WebMReader)
+            WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
         await host.RunAsync().ConfigureAwait(false);
     }

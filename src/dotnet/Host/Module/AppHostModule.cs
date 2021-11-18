@@ -1,5 +1,6 @@
 using System.Net;
 using System.Reflection;
+using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -100,6 +101,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         base.InjectServices(services);
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
+
+        // Debug mode
+        if (Constants.DebugMode.WebMReader)
+            WebMReader.DebugLog = Plugins.LogFor(typeof(WebMReader));
 
         // UriMapper
         services.AddSingleton(c => {

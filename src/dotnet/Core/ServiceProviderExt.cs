@@ -15,4 +15,6 @@ public static class ServiceProviderExt
         => services.LogFor(typeof(T));
     public static ILogger LogFor(this IServiceProvider services, Type type)
         => services.Logs().CreateLogger(type);
+    public static ILogger LogFor(this IServiceProvider services, string category)
+        => services.Logs().CreateLogger(category);
 }

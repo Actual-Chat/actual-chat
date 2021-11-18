@@ -44,6 +44,8 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", audioRecord);
 
         var streamer = _redisDb.GetStreamer<BlobPart>(audioRecord.Id);
+        if (Constants.DebugMode.SourceAudio.DumpBlobParts)
+            blobStream = blobStream.WithLog(_log, "RecordSourceAudio", cancellationToken);
         await streamer.Write(
                 blobStream,
                 _ => _newRecordQueue.Enqueue(audioRecord).ToValueTask(),
