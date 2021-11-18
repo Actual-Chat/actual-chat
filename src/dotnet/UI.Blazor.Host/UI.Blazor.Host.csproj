@@ -4,14 +4,14 @@
   <PropertyGroup>
     <RunAOTCompilation>false</RunAOTCompilation>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <TrimMode>link</TrimMode>
+    <TrimMode>copyused</TrimMode>
   </PropertyGroup>
 
   <!-- Extra trimming roots -->
   <ItemGroup>
+    <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
-    <TrimmerRootAssembly Include="System.Collections.Immutable" />
   </ItemGroup>
 
   <ItemGroup>
