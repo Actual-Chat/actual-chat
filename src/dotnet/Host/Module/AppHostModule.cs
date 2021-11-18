@@ -154,13 +154,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
-            const string version = ThisAssembly.AssemblyInformationalVersion;
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-#if ENABLE_OTEL_METRICS
+            const string version = ThisAssembly.AssemblyInformationalVersion;
             services.AddOpenTelemetryMetrics(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 // gcloud exporter doesn't support some of metrics yet https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 // .AddAspNetCoreInstrumentation()
+                .AddMeter(Tracer.Metric.Name)
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
                     cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
@@ -169,9 +169,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
-#endif
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .SetErrorStatusOnException()
+                .AddSource(Tracer.Span.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
@@ -187,7 +188,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
                 .AddGrpcClientInstrumentation()
                 .AddNpgsql()
-                .AddRedisInstrumentation()
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Simple;
                     cfg.Protocol = OtlpExportProtocol.Grpc;
