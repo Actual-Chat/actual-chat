@@ -135,9 +135,20 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
             const string version = ThisAssembly.AssemblyInformationalVersion;
+            services.AddOpenTelemetryMetrics(builder => builder
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                // gcloud exporter doesn't support some of metrics yet https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+                // .AddAspNetCoreInstrumentation()
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
+                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
+                    cfg.MetricExportIntervalMilliseconds = 5000;
+                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.Endpoint = openTelemetryEndpointUri;
+                })
+            );
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
-                .SetSampler(new AlwaysOnSampler())
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
@@ -158,17 +169,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
                     cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = openTelemetryEndpointUri;
-                })
-            );
-            services.AddOpenTelemetryMetrics(builder => builder
-                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
-                .AddAspNetCoreInstrumentation()
-                .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
-                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.MetricExportIntervalMilliseconds = 5000;
-                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
