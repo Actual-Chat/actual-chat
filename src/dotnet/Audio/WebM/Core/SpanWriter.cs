@@ -176,7 +176,6 @@ namespace ActualChat.Audio.WebM
             return UpdatePosition(numSize, position);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private byte[] DecimalToBytes(decimal number)
         {
             var decimalBits = decimal.GetBits(number);
@@ -262,7 +261,6 @@ namespace ActualChat.Audio.WebM
             return UpdatePosition((int)vint.Length, position);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int WriteVInt(ulong value, int? position = null)
         {
             var vint = VInt.EncodeSize(value);
@@ -270,7 +268,6 @@ namespace ActualChat.Audio.WebM
         }
         #endregion
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int UpdatePosition(int length, int? position)
         {
             // Only update the Position during a "normal" Write, else keep it the same.

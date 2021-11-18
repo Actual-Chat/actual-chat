@@ -7,7 +7,6 @@ namespace ActualChat.Audio.WebM
     {
         private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(ulong value)
         {
             ulong length = 1;
@@ -25,7 +24,6 @@ namespace ActualChat.Audio.WebM
             return length;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(long value)
         {
             ulong v = (ulong)value;
@@ -56,16 +54,12 @@ namespace ActualChat.Audio.WebM
             return length;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(double value) => 8;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(float value) => 4;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(DateTime value) => 8;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetSize(string value, bool isAscii)
         {
             var encoding = isAscii
@@ -74,7 +68,6 @@ namespace ActualChat.Audio.WebM
             return (ulong)encoding.GetByteCount(value);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetCodedSize(ulong value)
         {
             if (value < 0x000000000000007F)
@@ -94,55 +87,38 @@ namespace ActualChat.Audio.WebM
             return 8;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, ulong value) => GetSize(identifier) + GetSize(value) + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, ulong? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, long? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, long value) => GetSize(identifier) + GetSize(value) + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, double value) => GetSize(identifier) + GetSize(value) + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, double? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, float value) => GetSize(identifier) + GetSize(value) + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, float? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, DateTime value) => GetSize(identifier) + GetSize(value) + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, DateTime? value) => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, byte[]? value) => value == null ? 0UL : GetSize(identifier) + (ulong)value.Length + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, string? value, bool isAscii) => value == null ? 0UL : GetSize(identifier) + GetSize(value, isAscii) + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetMasterElementSize(ulong identifier, ulong size) => GetSize(identifier) + GetCodedSize(size);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, BaseModel? value) => value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, IReadOnlyList<BaseModel>? value) => value?.Aggregate(0UL, (size, m) => size + GetElementSize(identifier, m)) ?? 0UL;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, IReadOnlyList<Block>? value) => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetElementSize(ulong identifier, IReadOnlyList<SimpleTag>? value) => value?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
         public static ulong GetSize(this IReadOnlyList<BaseModel>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
@@ -151,7 +127,6 @@ namespace ActualChat.Audio.WebM
 
         public static ulong GetSize(this IReadOnlyList<SimpleTag>? list) => list?.Aggregate(0UL, (size, m) => size + m.GetSize()) ?? 0UL;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlMasterElement(ulong identifier, ulong size, ref SpanWriter writer)
         {
             if (size != UnknownSize) {
@@ -166,7 +141,6 @@ namespace ActualChat.Audio.WebM
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, ulong value, ref SpanWriter writer)
         {
             var totalSize = GetElementSize(identifier, value);
@@ -180,10 +154,8 @@ namespace ActualChat.Audio.WebM
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, ulong? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, long value, ref SpanWriter writer)
         {
             var totalSize = GetElementSize(identifier, value);
@@ -197,10 +169,8 @@ namespace ActualChat.Audio.WebM
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, long? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, DateTime value, ref SpanWriter writer)
         {
             var totalSize = GetElementSize(identifier, value);
@@ -210,10 +180,8 @@ namespace ActualChat.Audio.WebM
             return WriteEbmlElement(identifier, value.Ticks, ref writer);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, DateTime? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, double value, ref SpanWriter writer)
         {
             var totalSize = GetElementSize(identifier, value);
@@ -227,10 +195,8 @@ namespace ActualChat.Audio.WebM
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, double? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, float value, ref SpanWriter writer)
         {
             var totalSize = GetElementSize(identifier, value);
@@ -255,10 +221,8 @@ namespace ActualChat.Audio.WebM
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, float? value, ref SpanWriter writer) => value == null || WriteEbmlElement(identifier, value.Value, ref writer);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, string? value, bool isAscii, ref SpanWriter writer)
         {
             if (value == null)
@@ -278,7 +242,6 @@ namespace ActualChat.Audio.WebM
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool WriteEbmlElement(ulong identifier, byte[]? value, ref SpanWriter writer)
         {
             if (value == null)
