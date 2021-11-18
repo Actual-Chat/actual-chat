@@ -2,9 +2,10 @@
 
   <!-- Publish & runtime properties -->
   <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>copyused</TrimMode>
     <RunAOTCompilation>false</RunAOTCompilation>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <TrimMode>copyused</TrimMode>
   </PropertyGroup>
 
   <!-- Extra trimming roots -->
