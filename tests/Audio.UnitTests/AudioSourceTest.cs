@@ -57,7 +57,7 @@ public class AudioSourceTest
         await WriteToFile(audio, default, "file-with-offset.webm");
     }
 
-    [Fact]
+    [Fact(Skip = "It was caused by something else / wrong assumptions")]
     public async Task ExtractFromFileWithWrongByteOffset()
     {
         var audio = await GetAudio("file.webm", TimeSpan.Zero, 1);
