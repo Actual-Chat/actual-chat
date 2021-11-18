@@ -151,7 +151,7 @@ public class WebMWriterTest : TestBase
 
             bytesRead = await inputStream.ReadAsync(readBuffer[currentState.Remaining..]);
         }
-        endPosition = Write(new WebMWriter(writeBuffer.Span), new[] { (RootEntry)currentState.Container! });
+        endPosition = Write(new WebMWriter(writeBuffer.Span), new[] { (RootEntry)currentState.Entry! });
         await outputStream.WriteAsync(writeBuffer[..endPosition]);
 
         outputStream.Flush();
