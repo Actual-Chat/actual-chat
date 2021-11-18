@@ -1,5 +1,5 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props" />
+  <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -90,7 +90,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(DeterministicSourcePaths)' =='true'">
-    <SourceRoot Include="$(RepoRoot)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)" />
+    <SourceRoot Include="$(RepoRoot)" RepositoryUrl="$(RepositoryUrl)" SourceControl="git" RevisionId="$(GitCommitId)"/>
   </ItemGroup>
 
 </Project>

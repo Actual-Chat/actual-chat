@@ -1,27 +1,18 @@
-using System;
-using System.IO;
+namespace ActualChat.Audio.WebM;
 
-namespace ActualChat.Audio.WebM
+public class EbmlDataFormatException : IOException
 {
-    public class EbmlDataFormatException : IOException
-    {
-        public EbmlDataFormatException()
-        {
-        }
+    public EbmlDataFormatException() { }
 
-        public EbmlDataFormatException(string message)
-            : base(message)
-        {
-        }
+    public EbmlDataFormatException(string message)
+        : base(message)
+    { }
 
-        public EbmlDataFormatException(string message, Exception cause)
-            : base(message, cause)
-        {
-        }
+    public EbmlDataFormatException(string message, Exception cause)
+        : base(message, cause)
+    { }
 
-        public EbmlDataFormatException(string? message, int hresult)
-            : base(message, hresult)
-        {
-        }
-    }
+    public EbmlDataFormatException(string? message, int hresult)
+        : base(message, hresult)
+    { }
 }

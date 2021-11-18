@@ -1,0 +1,30 @@
+# this file is used only for the local development
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+processors:
+  batch:
+exporters:
+  logging:
+    loglevel: debug
+    # number of messages initially logged each second.
+    sampling_initial: 2
+    # sampling rate after the initial messages are logged (every Mth message is logged)
+    sampling_thereafter: 300
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+service:
+  telemetry:
+    logs:
+      # valid values are "DEBUG", "INFO", "WARN", "ERROR", "DPANIC", "PANIC", "FATAL"
+      level: "INFO"
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, jaeger]

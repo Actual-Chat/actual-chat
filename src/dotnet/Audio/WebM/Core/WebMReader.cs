@@ -3,18 +3,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio.WebM;
 
-// TODO(AK): implement reading of Blocks (now the smallest entry is Cluster which has ~30 sec duration)!!!
 [StructLayout(LayoutKind.Sequential)]
 public ref struct WebMReader
 {
     private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
-    private readonly Stack<EbmlElement> _containers;
+    private readonly Stack<(BaseModel Container, EbmlElement ContainerElement)> _containers;
 
     private SpanReader _spanReader;
-    private EbmlElement _container;
     private EbmlElement _element;
     private BaseModel _entry;
-    private BaseModel _containerEntry;
     private bool _resume;
 
     public static ILogger Log { get; set; } = NullLogger.Instance;
@@ -37,44 +34,47 @@ public ref struct WebMReader
 
     public ReadOnlySpan<byte> Tail => _spanReader.Tail;
 
-    public WebMReader(ReadOnlySpan<byte> span) : this(span, (uint)span.Length)
-    { }
-
-    public WebMReader(ReadOnlySpan<byte> span, uint maxBytesToRead)
+    public WebMReader(ReadOnlySpan<byte> span)
     {
-        _container = new EbmlElement(VInt.UnknownSize(2), maxBytesToRead, MatroskaSpecification.UnknownDescriptor);
-        _element = EbmlElement.Empty;
         _spanReader = new SpanReader(span);
-        ReadResultKind = WebMReadResultKind.None;
-        _containers = new Stack<EbmlElement>(16);
+        _element = EbmlElement.Empty;
+        _containers = new Stack<(BaseModel Container, EbmlElement ContainerElement)>(16);
         _entry = BaseModel.Empty;
-        _containerEntry = BaseModel.Empty;
         _resume = false;
+        ReadResultKind = WebMReadResultKind.None;
     }
 
     private WebMReader(State state, ReadOnlySpan<byte> span)
     {
-        _container = state.ContainerElement;
-        _element = EbmlElement.Empty;
         _spanReader = new SpanReader(span);
-        ReadResultKind = WebMReadResultKind.None;
-        _containers = new Stack<EbmlElement>(16);
-        _entry = state.Container;
-        _containerEntry = state.Container;
+        _element = EbmlElement.Empty;
+        _containers = state.Containers ?? new Stack<(BaseModel Container, EbmlElement ContainerElement)>(16);
+        _entry = state.Entry;
         _resume = state.NotCompleted;
+        ReadResultKind = WebMReadResultKind.None;
     }
 
     public static WebMReader FromState(State state) => new (state, ReadOnlySpan<byte>.Empty);
 
+    public WebMReader WithNewSource(ReadOnlySpan<byte> span) => new (GetState(), span);
+
     public State GetState()
-        => new (
+    {
+        if (_containers.Count == 0)
+            return new State(
+                _resume,
+                0,
+                _spanReader.Length,
+                _entry,
+                _containers);
+
+        return new State(
             _resume,
             _spanReader.Position,
             _spanReader.Length - _spanReader.Position,
-            _container,
-            _containerEntry);
-
-    public WebMReader WithNewSource(ReadOnlySpan<byte> span) => new (GetState(), span);
+            _entry,
+            _containers);
+    }
 
     public bool Read()
     {
@@ -98,29 +98,21 @@ public ref struct WebMReader
 
         Log.LogInformation("Read: ReadInternal()");
         var result = ReadInternal();
-        _containerEntry = _entry;
         return result;
     }
 
     private bool ReadInternal(bool resume = false)
     {
         Log.LogInformation("ReadInternal()...");
-        BaseModel container;
-        if (_element.Type == EbmlElementType.MasterElement) {
-            if (resume)
-                container = _containerEntry;
-            else {
-                EnterContainer();
-                container = _container.Descriptor.CreateInstance();
-            }
-        }
-        else
-            container = _containerEntry;
+        var (container, containerElement) = _element.Type switch {
+            EbmlElementType.MasterElement when !resume => EnterContainer(_element),
+            _ => _containers.Peek(),
+        };
 
         var beginPosition = _spanReader.Position;
-        var endPosition = _container.Size == UnknownSize
+        var endPosition = containerElement.Size == UnknownSize
             ? int.MaxValue
-            : beginPosition + (int)_container.Size;
+            : beginPosition + (int)containerElement.Size;
         while (true) {
             if (endPosition <= _spanReader.Position)
                 break;
@@ -130,7 +122,7 @@ public ref struct WebMReader
             Log.LogInformation("ReadInternal: after ReadElement()");
             if (!canRead) {
                 _entry = container;
-                _element = _container;
+                _element = containerElement;
                 _spanReader.Position = beginPosition;
                 if (_spanReader.Position < _spanReader.Length)
                     _resume = true;
@@ -142,11 +134,11 @@ public ref struct WebMReader
             Log.LogInformation("ReadInternal: element Descriptor: {Descriptor}", _element.Descriptor);
 
             if (_element.Identifier.EncodedValue == MatroskaSpecification.Cluster) {
-                if (_container.Identifier.EncodedValue != MatroskaSpecification.Cluster)
+                if (containerElement.Identifier.EncodedValue != MatroskaSpecification.Cluster)
                     LeaveContainer();
 
                 _entry = container;
-                _element = _container;
+                _element = containerElement;
                 _spanReader.Position = beginPosition;
                 ReadResultKind = container.Descriptor.Identifier.EncodedValue switch {
                     MatroskaSpecification.Segment => WebMReadResultKind.Segment,
@@ -161,9 +153,9 @@ public ref struct WebMReader
                 Log.LogInformation("ReadInternal: before recursive ReadInternal()");
                 if (ReadInternal()) {
                     if (CurrentDescriptor.ListEntry)
-                        container.FillListEntry(_container.Descriptor, complex, _entry!);
+                        container.FillListEntry(containerElement.Descriptor, complex, _entry!);
                     else
-                        container.FillComplex(_container.Descriptor, complex, _entry!);
+                        container.FillComplex(containerElement.Descriptor, complex, _entry!);
                 }
                 else {
                     if (_spanReader.Position < _spanReader.Length)
@@ -192,7 +184,7 @@ public ref struct WebMReader
                             }
 
                             _entry = container;
-                            _element = _container;
+                            _element = containerElement;
                             _spanReader.Position = beginPosition;
                             ReadResultKind = WebMReadResultKind.BeginCluster;
                             _resume = true;
@@ -206,31 +198,31 @@ public ref struct WebMReader
                             var block = new Block();
                             _entry = block;
                             block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, block);
+                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, block);
                             break;
                         case MatroskaSpecification.BlockAdditional:
                             var blockAdditional = new BlockAdditional();
                             _entry = blockAdditional;
                             blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockAdditional);
+                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, blockAdditional);
                             break;
                         case MatroskaSpecification.BlockVirtual:
                             var blockVirtual = new BlockVirtual();
                             _entry = blockVirtual;
                             blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, blockVirtual);
+                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, blockVirtual);
                             break;
                         case MatroskaSpecification.EncryptedBlock:
                             var encryptedBlock = new EncryptedBlock();
                             _entry = encryptedBlock;
                             encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, encryptedBlock);
+                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, encryptedBlock);
                             break;
                         case MatroskaSpecification.SimpleBlock:
                             var simpleBlock = new SimpleBlock();
                             _entry = simpleBlock;
                             simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(_container.Descriptor, CurrentDescriptor, simpleBlock);
+                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, simpleBlock);
                             break;
                         default:
                             throw new InvalidOperationException();
@@ -245,14 +237,15 @@ public ref struct WebMReader
                 Log.LogInformation("ReadInternal: not ListEntry");
                 if (CurrentDescriptor.Identifier.EncodedValue == MatroskaSpecification.Void)
                     _spanReader.Position += (int)_element.Size;
-                else {
+                else
                     Log.LogInformation(
                         "ReadInternal: before container.FillScalar(), Container: {Container}, CurrentDescriptor: {CurrentDescriptor}",
                         _container.Descriptor,
                         CurrentDescriptor);
-                    container.FillScalar(_container.Descriptor, CurrentDescriptor, (int)_element.Size, ref _spanReader);
-                    Log.LogInformation("ReadInternal: after container.FillScalar()");
-                }
+                    container.FillScalar(containerElement.Descriptor,
+                        CurrentDescriptor,
+                        (int)_element.Size,
+                        ref _spanReader);
             }
 
             beginPosition = _spanReader.Position;
@@ -340,25 +333,26 @@ public ref struct WebMReader
         return true;
     }
 
-    private void EnterContainer()
+    private (BaseModel Container, EbmlElement ContainerElement) EnterContainer(EbmlElement containerElement)
     {
         if (_element.Type != EbmlElementType.None && _element.Type != EbmlElementType.MasterElement)
             throw new InvalidOperationException();
         if (_element.Type == EbmlElementType.MasterElement && _element.HasInvalidIdentifier)
             throw new InvalidOperationException();
 
-        _containers.Push(_container);
-        _container = _element;
+        var result = (containerElement.Descriptor.CreateInstance(), containerElement);
+        _containers.Push(result);
         _element = EbmlElement.Empty;
+
+        return result;
     }
 
-    private bool LeaveContainer()
+    private void LeaveContainer()
     {
         if (_containers.Count == 0) throw new InvalidOperationException();
 
-        _element = _container;
-        _container = _containers.Pop();
-        return true;
+        var (_, containerElement) = _containers.Pop();
+        _element = containerElement;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -367,24 +361,24 @@ public ref struct WebMReader
         public readonly bool NotCompleted;
         public readonly int Position;
         public readonly int Remaining;
-        internal readonly EbmlElement ContainerElement;
-        public readonly BaseModel Container;
+        public readonly BaseModel Entry;
+        public readonly Stack<(BaseModel Container, EbmlElement ContainerElement)>? Containers;
 
         public State(
             bool resume,
             int position,
             int remaining,
-            EbmlElement containerElement,
-            BaseModel container)
+            BaseModel entry,
+            Stack<(BaseModel Container, EbmlElement ContainerElement)> containers)
         {
             NotCompleted = resume;
             Position = position;
             Remaining = remaining;
-            ContainerElement = containerElement;
-            Container = container;
+            Entry = entry;
+            Containers = containers;
         }
 
         // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-        public bool IsEmpty => Container == null;
+        public bool IsEmpty => Containers == null || Containers.Count == 0;
     }
 }

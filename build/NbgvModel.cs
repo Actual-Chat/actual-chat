@@ -1,15 +1,13 @@
 // this file contains model to parse `nbgv get-version -f json`
 using System;
-
 namespace Build
 {
-
     public class NbgvModel
     {
         public string? CloudBuildNumber { get; set; }
         public bool CloudBuildNumberEnabled { get; set; }
         public string[]? BuildMetadataWithCommitId { get; set; }
-        public bool VersionFileFound { get; set; }
+        public bool? VersionFileFound { get; set; }
         public VersionOptions? VersionOptions { get; set; }
         public string? AssemblyVersion { get; set; }
         public string? AssemblyFileVersion { get; set; }
@@ -50,6 +48,7 @@ namespace Build
         public VersionInfo? Version { get; set; }
         public string[]? PublicReleaseRefSpec { get; set; }
         public CloudBuild? CloudBuild { get; set; }
+        public Release Release { get; set; }
     }
 
     public class VersionInfo
@@ -61,15 +60,20 @@ namespace Build
 
     public class CloudBuild
     {
-        public bool SetAllVariables { get; set; }
-        public bool SetVersionVariables { get; set; }
+        public bool? SetAllVariables { get; set; }
+        public bool? SetVersionVariables { get; set; }
         public BuildNumber? BuildNumber { get; set; }
     }
 
     public class BuildNumber
     {
         public bool Enabled { get; set; }
-        public object? IncludeCommitId { get; set; }
+        public object IncludeCommitId { get; set; }
+    }
+
+    public class Release
+    {
+        public string? BranchName { get; set; }
     }
 
     public class CloudBuildAllVars
