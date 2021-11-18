@@ -135,6 +135,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
             const string version = ThisAssembly.AssemblyInformationalVersion;
+            Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
+#if ENABLE_OTEL_METRICS
             services.AddOpenTelemetryMetrics(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 // gcloud exporter doesn't support some of metrics yet https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
@@ -147,6 +149,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
+#endif
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 .AddAspNetCoreInstrumentation(opt => {
@@ -159,8 +162,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     };
                     opt.Filter = httpContext =>
                         !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
-                    opt.EnableGrpcAspNetCoreSupport = true;
-                    opt.RecordException = true;
                 })
                 .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
                 .AddGrpcClientInstrumentation()
