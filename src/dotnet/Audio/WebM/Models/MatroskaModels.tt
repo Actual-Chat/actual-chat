@@ -270,7 +270,6 @@ namespace ActualChat.Audio.WebM.Models
     public static class ModelExt
     {
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Write(this BaseModel? model, ref SpanWriter writer)
         {
             if (model == null)
@@ -321,7 +320,6 @@ namespace ActualChat.Audio.WebM.Models
         }
 #>
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Write(this <#= className#>? model, ref SpanWriter writer)
         {
             if (model == null)
@@ -386,7 +384,6 @@ namespace ActualChat.Audio.WebM.Models
 #>
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BaseModel CreateInstance(this EbmlElementDescriptor descriptor)
         {
             if (descriptor.Type != EbmlElementType.MasterElement)
@@ -417,7 +414,6 @@ namespace ActualChat.Audio.WebM.Models
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillScalar(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
@@ -447,7 +443,6 @@ namespace ActualChat.Audio.WebM.Models
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillComplex(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
@@ -477,7 +472,6 @@ namespace ActualChat.Audio.WebM.Models
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillListEntry(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, object listEntry)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
@@ -524,7 +518,6 @@ namespace ActualChat.Audio.WebM.Models
         if (subs.Count > 0)
         {
 #>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FillScalar(this <#= className #> model, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             if (descriptor.Type == EbmlElementType.MasterElement)
@@ -578,7 +571,6 @@ namespace ActualChat.Audio.WebM.Models
         if (complexSubs.Count > 0 && !master.IsBlock)
         {
 #>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FillComplex(this <#= className #> model, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
             if (descriptor.Type != EbmlElementType.MasterElement)
@@ -621,7 +613,6 @@ namespace ActualChat.Audio.WebM.Models
         if (listSubs.Count > 0)
         {
 #>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FillListEntry(this <#= className #> model, EbmlElementDescriptor descriptor, object listItem)
         {
             if (descriptor.Type != EbmlElementType.MasterElement && descriptor.Type != EbmlElementType.Binary)

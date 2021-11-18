@@ -133,11 +133,9 @@ public readonly struct VInt : IEquatable<VInt>
         return new VInt(encodedValue, extraBytes + 1);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static VInt FromValue(ulong value)
         => new VInt(value, (int)EbmlHelper.GetSize(value));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static VInt FromValue(long value)
     {
         var size = (int)EbmlHelper.GetSize(value);
