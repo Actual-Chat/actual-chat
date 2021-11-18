@@ -125,7 +125,7 @@ public ref struct WebMReader
                     _resume = true;
                 else if (resume)
                     _resume = true;
-                DebugLog?.LogInformation("ReadInternal: return false when !canRead");
+                DebugLog?.LogInformation("ReadInternal: !canRead -> returning false");
                 return false;
             }
             DebugLog?.LogInformation("ReadInternal: element Descriptor: {Descriptor}", _element.Descriptor);
@@ -185,7 +185,7 @@ public ref struct WebMReader
                             _spanReader.Position = beginPosition;
                             ReadResultKind = WebMReadResultKind.BeginCluster;
                             _resume = true;
-                            DebugLog?.LogInformation("ReadInternal: return true when Cluster starts");
+                            DebugLog?.LogInformation("ReadInternal: Cluster start -> returning true");
                             return true;
                         }
 
@@ -227,7 +227,7 @@ public ref struct WebMReader
 
                     ReadResultKind = WebMReadResultKind.Block;
                     _resume = true;
-                    DebugLog?.LogInformation("ReadInternal: return true after block was filled");
+                    DebugLog?.LogInformation("ReadInternal: block is filled -> returning true");
                     return true;
                 }
 
@@ -244,7 +244,7 @@ public ref struct WebMReader
             }
 
             beginPosition = _spanReader.Position;
-            DebugLog?.LogInformation("ReadInternal: before end of while(true) cycle");
+            DebugLog?.LogInformation("ReadInternal: before the end of while(true) cycle");
         }
 
         LeaveContainer();
@@ -256,7 +256,7 @@ public ref struct WebMReader
             _ => WebMReadResultKind.None,
         };
 
-        DebugLog?.LogInformation("ReadInternal: exit");
+        DebugLog?.LogInformation("ReadInternal: returning true");
         return true;
     }
 
@@ -317,14 +317,14 @@ public ref struct WebMReader
             if (idValue.EncodedValue != MatroskaSpecification.Cluster
                 && idValue.EncodedValue != MatroskaSpecification.Segment) {
                 _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
-                DebugLog?.LogInformation("ReadElement: position > EOF - OK for cluster, returning false");
+                DebugLog?.LogInformation("ReadElement: position > EOF - OK for cluster -> returning false");
                 return false;
             }
         }
 
         _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
 
-        DebugLog?.LogInformation("ReadElement: completed");
+        DebugLog?.LogInformation("ReadElement: returning true");
         return true;
     }
 

@@ -21,7 +21,6 @@ public static class BlobStreamExt
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
-
         using var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
         if (OSInfo.IsWebAssembly) {
             request.SetBrowserResponseStreamingEnabled(true);
@@ -34,20 +33,10 @@ public static class BlobStreamExt
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        if (OSInfo.IsWebAssembly) {
-            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            log.LogInformation("Downloaded bytes");
-            var blobIndex = 0;
-            foreach (var chunk in bytes.Chunk(4096))
-                yield return new BlobPart(blobIndex++, chunk);
-        }
-        else {
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            var blobStream = stream.ReadBlobStream(false, log, cancellationToken);
-            await foreach (var blobPart in blobStream.ConfigureAwait(false))
-                yield return blobPart;
-        }
-
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var blobStream = stream.ReadBlobStream(false, log, cancellationToken);
+        await foreach (var blobPart in blobStream.ConfigureAwait(false))
+            yield return blobPart;
         log.LogInformation("Downloaded: {Uri}", blobUri.ToString());
     }
 
