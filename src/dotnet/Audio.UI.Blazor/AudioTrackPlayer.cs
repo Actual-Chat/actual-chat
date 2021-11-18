@@ -69,7 +69,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         _delayTokenSource.Dispose();
         _delayTokenSource = new CancellationTokenSource();
 
-        Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {readyState}", offset, readyState);
+        Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {ReadyState}", offset, readyState);
 
         return Task.CompletedTask;
     }
