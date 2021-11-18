@@ -51,13 +51,9 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
         writer.WriteStartObject();
         writer.WriteString("message", message);
+        writer.WriteString("version", ThisAssembly.AssemblyInformationalVersion);
         if (logEntry.Exception != null) {
-            string exceptionMessage = logEntry.Exception.ToString();
-            // TODO: check how google's fluentbit works with EOLs
-            // if (!_options.JsonWriterOptions.Indented) {
-            //     exceptionMessage = exceptionMessage.Replace(Environment.NewLine, " ", StringComparison.Ordinal);
-            // }
-            writer.WriteString("exception", exceptionMessage);
+            writer.WriteString("exception", logEntry.Exception.ToString());
         }
         writer.WriteString("severity", GetSeverity(logEntry.LogLevel));
         writer.WriteString("category", logEntry.Category);
