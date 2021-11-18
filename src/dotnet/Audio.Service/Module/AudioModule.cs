@@ -7,6 +7,7 @@ using ActualChat.Transcription;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
@@ -43,6 +44,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         // Module's own services
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioActivityExtractor>();
+        services.TryAddSingleton<SourceAudioProcessor.Options>();
         services.AddSingleton<SourceAudioProcessor>();
         services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());
 

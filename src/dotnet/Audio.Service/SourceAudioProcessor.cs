@@ -1,15 +1,17 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Transcription;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Audio;
 
-public class SourceAudioProcessor : BackgroundService
+public class SourceAudioProcessor : AsyncProcessBase
 {
-    private readonly ILogger<SourceAudioProcessor> _log;
+    public record Options
+    {
+        public bool IsEnabled { get; init; } = true;
+    }
 
-    public static bool SkipAutoStart { get; set; } = true;
+    public Options Settings { get; }
     public ITranscriber Transcriber { get; }
     public AudioSegmentSaver AudioSegmentSaver { get; }
     public SourceAudioRecorder SourceAudioRecorder { get; }
@@ -18,8 +20,10 @@ public class SourceAudioProcessor : BackgroundService
     public TranscriptStreamer TranscriptStreamer { get; }
     public IChatsBackend ChatsBackend { get; }
     public MomentClockSet ClockSet { get; }
+    protected ILogger<SourceAudioProcessor> Log { get; }
 
     public SourceAudioProcessor(
+        Options settings,
         ITranscriber transcriber,
         AudioSegmentSaver audioSegmentSaver,
         SourceAudioRecorder sourceAudioRecorder,
@@ -30,7 +34,8 @@ public class SourceAudioProcessor : BackgroundService
         MomentClockSet clockSet,
         ILogger<SourceAudioProcessor> log)
     {
-        _log = log;
+        Log = log;
+        Settings = settings;
         Transcriber = transcriber;
         AudioSegmentSaver = audioSegmentSaver;
         SourceAudioRecorder = sourceAudioRecorder;
@@ -41,15 +46,26 @@ public class SourceAudioProcessor : BackgroundService
         ClockSet = clockSet;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        if (SkipAutoStart)
+        if (!Settings.IsEnabled)
             return;
 
         // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
         while (true) {
-            var record = await SourceAudioRecorder.DequeueSourceAudio(stoppingToken).ConfigureAwait(false);
-            _ = ProcessSourceAudio(record, stoppingToken);
+            try {
+                var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
+                _ = BackgroundTask.Run(
+                    () => ProcessSourceAudio(record, cancellationToken),
+                    e => Log.LogError(e, "Failed to process AudioRecord: {Record}", record),
+                    cancellationToken);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "DequeueSourceAudio failed");
+            }
         }
     }
 
@@ -62,45 +78,26 @@ public class SourceAudioProcessor : BackgroundService
             var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
             var publishTranscriptTask = PublishTranscriptStream(openSegment, cancellationToken);
             var saveAudioSegmentTask = SaveAudioSegment(openSegment, cancellationToken);
-            var audioChatEntry = await CreateAudioChatEntry(openSegment, beginsAt, cancellationToken).ConfigureAwait(false);
-            var textChatEntry =
-                await CreateTextChatEntry(openSegment, audioChatEntry, cancellationToken).ConfigureAwait(false);
+            var audioChatEntry = await CreateAudioChatEntry(openSegment, beginsAt, cancellationToken)
+                .ConfigureAwait(false);
+            var textChatEntry = await CreateTextChatEntry(openSegment, audioChatEntry, cancellationToken)
+                .ConfigureAwait(false);
 
-            _ = Task.Run(async () => {
-                    // TODO(AY): We should make sure finalization happens no matter what (later)!
-                    try { await publishAudioTask.ConfigureAwait(false); }
-                    catch (Exception e) {
-                        _log.LogError(e, "SourceAudioProcessor.PublishAudioStream(...) failed");
-                    }
+            _ = BackgroundTask.Run(FinalizeAudioProcessing,
+                Log, $"{nameof(FinalizeAudioProcessing)} failed",
+                CancellationToken.None);
 
-                    string? audioBlobId = null;
-                    try { audioBlobId = await saveAudioSegmentTask.ConfigureAwait(false); }
-                    catch (Exception e) {
-                        _log.LogError(e, "SourceAudioProcessor.SaveAudioSegment(...) failed");
-                    }
-
-                    try {
-                        await FinalizeAudioChatEntry(audioChatEntry, audioBlobId, openSegment, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception e) {
-                        _log.LogError(e, "SourceAudioProcessor.FinalizeAudioChatEntry(...) failed");
-                    }
-
-                    Transcript? transcript = null;
-                    try { transcript = await publishTranscriptTask.ConfigureAwait(false); }
-                    catch (Exception e) {
-                        _log.LogError(e, "SourceAudioProcessor.PublishTranscriptStream(...) failed");
-                    }
-
-                    try {
-                        await FinalizeTextChatEntry(textChatEntry, transcript, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (Exception e) {
-                        _log.LogError(e, "SourceAudioProcessor.FinalizeTextChatEntry(...) failed");
-                    }
-                },
-                cancellationToken);
+            async Task FinalizeAudioProcessing()
+            {
+                // TODO(AY): We should make sure finalization happens no matter what (later)!
+                await publishAudioTask.ConfigureAwait(false);
+                var audioBlobId = await saveAudioSegmentTask.ConfigureAwait(false);
+                await FinalizeAudioChatEntry(audioChatEntry, audioBlobId, openSegment, cancellationToken)
+                    .ConfigureAwait(false);
+                var transcript = await publishTranscriptTask.ConfigureAwait(false);
+                await FinalizeTextChatEntry(textChatEntry, transcript, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
     }
 
