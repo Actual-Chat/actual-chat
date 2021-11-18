@@ -1,41 +1,39 @@
-using System;
 using ActualChat.Audio.WebM.Models;
 
-namespace ActualChat.Audio.WebM
+namespace ActualChat.Audio.WebM;
+
+[StructLayout(LayoutKind.Sequential)]
+public ref struct WebMWriter
 {
-    [StructLayout(LayoutKind.Auto)]
-    public ref struct WebMWriter
+    private SpanWriter _spanWriter;
+
+
+    public WebMWriter(Span<byte> span, bool segmentHasUnknownSize = true, bool clusterHasUnknownSize = true)
     {
-        private SpanWriter _spanWriter;
+        _spanWriter = new SpanWriter(span);
 
+        SegmentHasUnknownSize = segmentHasUnknownSize;
+        ClusterHasUnknownSize = clusterHasUnknownSize;
+    }
 
-        public WebMWriter(Span<byte> span, bool segmentHasUnknownSize = true, bool clusterHasUnknownSize = true)
-        {
-            _spanWriter = new SpanWriter(span);
+    public bool SegmentHasUnknownSize { get; }
+    public bool ClusterHasUnknownSize { get; }
 
-            SegmentHasUnknownSize = segmentHasUnknownSize;
-            ClusterHasUnknownSize = clusterHasUnknownSize;
-        }
+    public ReadOnlySpan<byte> Written => _spanWriter.Span[.._spanWriter.Position];
 
-        public bool SegmentHasUnknownSize { get; }
-        public bool ClusterHasUnknownSize { get; }
+    public int Position => _spanWriter.Position;
 
-        public ReadOnlySpan<byte> Written => _spanWriter.Span[.._spanWriter.Position];
+    public bool Write(BaseModel entry)
+    {
+        if (entry == null)
+            throw new ArgumentNullException(nameof(entry));
 
-        public int Position => _spanWriter.Position;
+        var beforePosition = _spanWriter.Position;
+        var success = entry.Write(ref _spanWriter);
+        if (success) return true;
 
-        public bool Write(BaseModel entry)
-        {
-            if (entry == null)
-                throw new ArgumentNullException(nameof(entry));
+        _spanWriter.Position = beforePosition;
+        return false;
 
-            var beforePosition = _spanWriter.Position;
-            var success = entry.Write(ref _spanWriter);
-            if (success) return true;
-
-            _spanWriter.Position = beforePosition;
-            return false;
-
-        }
     }
 }
