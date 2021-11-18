@@ -255,7 +255,6 @@ public ref struct SpanReader
         return new Guid(bytes);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T? Read<T>() where T : unmanaged
     {
         var sizeOf = Unsafe.SizeOf<T>();
