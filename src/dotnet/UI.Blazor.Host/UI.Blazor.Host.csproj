@@ -13,9 +13,6 @@
     <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
-    <TrimmerRootAssembly Include="System.Threading.Channels" />
-    <TrimmerRootAssembly Include="Stl.Fusion" />
-    <TrimmerRootAssembly Include="Stl.Fusion.Client" />
   </ItemGroup>
 
   <ItemGroup>

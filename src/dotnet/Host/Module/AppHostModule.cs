@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -58,9 +60,11 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (Env.IsDevelopment()) {
             app.UseDeveloperExceptionPage();
             app.UseWebAssemblyDebugging();
+            app.UseForwardedHeaders();
         }
         else {
             app.UseExceptionHandler("/Error");
+            app.UseForwardedHeaders();
             app.UseHsts();
         }
         // app.UseCors("Default");
@@ -123,8 +127,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Web
         services.AddCors(options => {
-            options.AddPolicy("Default",
-                builder => builder.AllowAnyOrigin().WithFusionHeaders());
+            options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
         });
         services.Configure<ForwardedHeadersOptions>(options => {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
@@ -152,10 +155,25 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
-            var version = typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "n/a";
+            Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
+            const string version = ThisAssembly.AssemblyInformationalVersion;
+            services.AddOpenTelemetryMetrics(builder => builder
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                // gcloud exporter doesn't support some of metrics yet https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+                // .AddAspNetCoreInstrumentation()
+                .AddMeter(Tracer.Metric.Name)
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
+                    cfg.MetricExportIntervalMilliseconds = 5000;
+                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.Endpoint = openTelemetryEndpointUri;
+                })
+            );
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
-                .SetSampler(new AlwaysOnSampler())
+                .SetErrorStatusOnException()
+                .AddSource(Tracer.Span.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
@@ -165,27 +183,15 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                         "/_framework",
                     };
                     opt.Filter = httpContext =>
-                        !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
-                    opt.EnableGrpcAspNetCoreSupport = true;
-                    opt.RecordException = true;
+                        !excludedPaths.Any(x
+                            => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
                 })
                 .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
                 .AddGrpcClientInstrumentation()
                 .AddNpgsql()
-                .AddRedisInstrumentation()
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
-                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = openTelemetryEndpointUri;
-                })
-            );
-            services.AddOpenTelemetryMetrics(builder => builder
-                .AddAspNetCoreInstrumentation()
-                .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
-                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.MetricExportIntervalMilliseconds = 5000;
-                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );

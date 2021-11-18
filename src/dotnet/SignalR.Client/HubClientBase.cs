@@ -19,7 +19,7 @@ public abstract class HubClientBase
         Log = Services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
         Clocks = Services.Clocks();
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
-        _hubConnectionLazy = new (CreateHubConnection);
+        _hubConnectionLazy = new(CreateHubConnection);
     }
 
     protected HubConnection CreateHubConnection()

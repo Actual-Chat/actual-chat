@@ -33,6 +33,5 @@ public ref struct WebMWriter
 
         _spanWriter.Position = beforePosition;
         return false;
-
     }
 }

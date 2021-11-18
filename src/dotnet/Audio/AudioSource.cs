@@ -13,8 +13,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
-    public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frames, ILogger? log, CancellationToken cancellationToken)
-        : base(formatTask, frames, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
         : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
 
@@ -109,7 +107,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 throw;
             }
             catch (Exception e) {
-                Log.LogError(e, "Parse failed");
+                Log.LogError(e, "BlobPart Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
                 durationTaskSource.TrySetException(e);

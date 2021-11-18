@@ -30,7 +30,12 @@ public static class BlobStreamExt
         }
 
         using var httpClient = httpClientFactory.CreateClient();
-        using var response = await httpClient
+        using var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
+        if (OSInfo.IsWebAssembly) {
+            request.SetBrowserResponseStreamingEnabled(true);
+            request.SetBrowserRequestMode(BrowserRequestMode.Cors);
+        }
+        var response = await httpClient
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
