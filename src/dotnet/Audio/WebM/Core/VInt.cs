@@ -50,7 +50,6 @@ public readonly struct VInt : IEquatable<VInt>
 
     private readonly byte _length;
 
-
     private VInt(ulong encodedValue, int length)
     {
         if (length < 1 || (length > 8 && encodedValue != UnknownSizeValue))
@@ -75,7 +74,8 @@ public readonly struct VInt : IEquatable<VInt>
 
     public uint Length => _length;
 
-    public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
+    public static implicit operator ulong?(VInt value)
+        => !value.IsReserved ? value.Value : null;
 
     public static readonly VInt Unknown = UnknownSize(2);
 
@@ -133,7 +133,7 @@ public readonly struct VInt : IEquatable<VInt>
         return new VInt(encodedValue, extraBytes + 1);
     }
 
-    public static VInt FromValue(ulong value) 
+    public static VInt FromValue(ulong value)
         => new (value, (int)EbmlHelper.GetSize(value));
 
     public static VInt FromValue(long value)

@@ -1,5 +1,4 @@
 using ActualChat.Audio.WebM.Models;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio.WebM;
 
@@ -7,14 +6,13 @@ namespace ActualChat.Audio.WebM;
 public ref struct WebMReader
 {
     private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
-    private readonly Stack<(BaseModel Container, EbmlElement ContainerElement)> _containers;
+    public static ILogger? DebugLog { get; set; }
 
+    private readonly Stack<(BaseModel Container, EbmlElement ContainerElement)> _containers;
     private SpanReader _spanReader;
     private EbmlElement _element;
     private BaseModel _entry;
     private bool _resume;
-
-    public static ILogger Log { get; set; } = NullLogger.Instance;
 
     public WebMReadResultKind ReadResultKind { get; private set; }
 
@@ -78,32 +76,31 @@ public ref struct WebMReader
 
     public bool Read()
     {
-        Log.LogInformation("Read()...");
+        DebugLog?.LogInformation("Read()...");
         ReadResultKind = WebMReadResultKind.None;
         if (_resume) {
             _resume = false;
-            Log.LogInformation("Read: Resume with ReadInternal()");
+            DebugLog?.LogInformation("Read: resuming with ReadInternal()");
             return ReadInternal(true);
         }
         var hasElement = ReadElement(_spanReader.Length);
         if (!hasElement) {
             if (_spanReader.Position != _spanReader.Length - 1)
                 _resume = true;
-            Log.LogInformation("Read: return false where !hasElement. Resume: {Resume}", _resume);
+            DebugLog?.LogInformation("Read: return false where !hasElement. Resume: {Resume}", _resume);
             return false;
         }
 
         if (_element.Type is not (EbmlElementType.Binary or EbmlElementType.MasterElement))
             return false;
 
-        Log.LogInformation("Read: ReadInternal()");
         var result = ReadInternal();
         return result;
     }
 
     private bool ReadInternal(bool resume = false)
     {
-        Log.LogInformation("ReadInternal()...");
+        DebugLog?.LogInformation("ReadInternal()...");
         var (container, containerElement) = _element.Type switch {
             EbmlElementType.MasterElement when !resume => EnterContainer(_element),
             _ => _containers.Peek(),
@@ -117,9 +114,9 @@ public ref struct WebMReader
             if (endPosition <= _spanReader.Position)
                 break;
 
-            Log.LogInformation("ReadInternal: before ReadElement()");
+            DebugLog?.LogInformation("ReadInternal: before ReadElement()");
             var canRead = ReadElement(endPosition);
-            Log.LogInformation("ReadInternal: after ReadElement()");
+            DebugLog?.LogInformation("ReadInternal: after ReadElement()");
             if (!canRead) {
                 _entry = container;
                 _element = containerElement;
@@ -128,10 +125,10 @@ public ref struct WebMReader
                     _resume = true;
                 else if (resume)
                     _resume = true;
-                Log.LogInformation("ReadInternal: return false when !canRead");
+                DebugLog?.LogInformation("ReadInternal: return false when !canRead");
                 return false;
             }
-            Log.LogInformation("ReadInternal: element Descriptor: {Descriptor}", _element.Descriptor);
+            DebugLog?.LogInformation("ReadInternal: element Descriptor: {Descriptor}", _element.Descriptor);
 
             if (_element.Identifier.EncodedValue == MatroskaSpecification.Cluster) {
                 if (containerElement.Identifier.EncodedValue != MatroskaSpecification.Cluster)
@@ -148,14 +145,14 @@ public ref struct WebMReader
                 return true;
             }
             if (_element.Descriptor.Type == EbmlElementType.MasterElement) {
-                Log.LogInformation("ReadInternal: MasterElement");
+                DebugLog?.LogInformation("ReadInternal: MasterElement");
                 var complex = _element.Descriptor;
-                Log.LogInformation("ReadInternal: before recursive ReadInternal()");
+                DebugLog?.LogInformation("ReadInternal: before recursive ReadInternal()");
                 if (ReadInternal()) {
                     if (CurrentDescriptor.ListEntry)
-                        container.FillListEntry(containerElement.Descriptor, complex, _entry!);
+                        container.FillListEntry(containerElement.Descriptor, complex, _entry);
                     else
-                        container.FillComplex(containerElement.Descriptor, complex, _entry!);
+                        container.FillComplex(containerElement.Descriptor, complex, _entry);
                 }
                 else {
                     if (_spanReader.Position < _spanReader.Length)
@@ -164,9 +161,9 @@ public ref struct WebMReader
                 }
             }
             else {
-                Log.LogInformation("ReadInternal: not MasterElement");
+                DebugLog?.LogInformation("ReadInternal: not MasterElement");
                 if (CurrentDescriptor.ListEntry) {
-                    Log.LogInformation("ReadInternal: ListEntry");
+                    DebugLog?.LogInformation("ReadInternal: ListEntry");
                     if (container is Cluster cluster)
                         if (cluster.BlockGroups == null
                             && cluster.SimpleBlocks == null
@@ -188,11 +185,11 @@ public ref struct WebMReader
                             _spanReader.Position = beginPosition;
                             ReadResultKind = WebMReadResultKind.BeginCluster;
                             _resume = true;
-                            Log.LogInformation("ReadInternal: return true when Cluster starts");
+                            DebugLog?.LogInformation("ReadInternal: return true when Cluster starts");
                             return true;
                         }
 
-                    Log.LogInformation("ReadInternal: before fill block");
+                    DebugLog?.LogInformation("ReadInternal: before CurrentDescriptor.Identifier.EncodedValue switch");
                     switch (CurrentDescriptor.Identifier.EncodedValue) {
                         case MatroskaSpecification.Block:
                             var block = new Block();
@@ -230,26 +227,24 @@ public ref struct WebMReader
 
                     ReadResultKind = WebMReadResultKind.Block;
                     _resume = true;
-                    Log.LogInformation("ReadInternal: return true after block was filled");
+                    DebugLog?.LogInformation("ReadInternal: return true after block was filled");
                     return true;
                 }
 
-                Log.LogInformation("ReadInternal: not ListEntry");
+                DebugLog?.LogInformation("ReadInternal: not ListEntry");
                 if (CurrentDescriptor.Identifier.EncodedValue == MatroskaSpecification.Void)
                     _spanReader.Position += (int)_element.Size;
-                else
-                    Log.LogInformation(
-                        "ReadInternal: before container.FillScalar(), Container: {Container}, CurrentDescriptor: {CurrentDescriptor}",
-                        _container.Descriptor,
-                        CurrentDescriptor);
+                else {
+                    DebugLog?.LogInformation("ReadInternal: before container.FillScalar()");
                     container.FillScalar(containerElement.Descriptor,
                         CurrentDescriptor,
                         (int)_element.Size,
                         ref _spanReader);
+                }
             }
 
             beginPosition = _spanReader.Position;
-            Log.LogInformation("ReadInternal: before end of while(true) cycle");
+            DebugLog?.LogInformation("ReadInternal: before end of while(true) cycle");
         }
 
         LeaveContainer();
@@ -261,18 +256,18 @@ public ref struct WebMReader
             _ => WebMReadResultKind.None,
         };
 
-        Log.LogInformation("ReadInternal: complete");
+        DebugLog?.LogInformation("ReadInternal: exit");
         return true;
     }
 
     private bool ReadElement(int readUntil)
     {
-        Log.LogInformation("ReadElement()...");
+        DebugLog?.LogInformation("ReadElement()...");
         var identifier = _spanReader.ReadVInt();
         if (!identifier.HasValue)
             return false;
 
-        Log.LogInformation("ReadElement: identifier has value");
+        DebugLog?.LogInformation("ReadElement: identifier has value");
         var idValue = identifier.Value;
         if (idValue.IsReserved) {
             var start = _spanReader.Position > 8
@@ -293,7 +288,7 @@ public ref struct WebMReader
 
         var isValid = MatroskaSpecification.ElementDescriptors.TryGetValue(idValue, out var elementDescriptor);
         if (!isValid) {
-            Log.LogInformation("ReadElement: identifier is invalid");
+            DebugLog?.LogInformation("ReadElement: identifier is invalid");
             var start = _spanReader.Position > 8
                 ? _spanReader.Position - 8
                 : 0;
@@ -310,7 +305,7 @@ public ref struct WebMReader
                 + errorBlock);
         }
 
-        Log.LogInformation("ReadElement: before read size ReadVInt()");
+        DebugLog?.LogInformation("ReadElement: before read size ReadVInt()");
         var size = _spanReader.ReadVInt(8);
         if (!size.HasValue)
             return false;
@@ -318,18 +313,18 @@ public ref struct WebMReader
         var eof = Math.Min(readUntil, _spanReader.Length);
         var sizeValue = size.Value.Value;
         if (_spanReader.Position + (int)sizeValue > eof) {
-            Log.LogInformation("ReadElement: position > eof");
+            DebugLog?.LogInformation("ReadElement: position > EOF");
             if (idValue.EncodedValue != MatroskaSpecification.Cluster
                 && idValue.EncodedValue != MatroskaSpecification.Segment) {
                 _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
-                Log.LogInformation("ReadElement: position > eof - OK for cluster and return false");
+                DebugLog?.LogInformation("ReadElement: position > EOF - OK for cluster, returning false");
                 return false;
             }
         }
 
         _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
 
-        Log.LogInformation("ReadElement: completed");
+        DebugLog?.LogInformation("ReadElement: completed");
         return true;
     }
 

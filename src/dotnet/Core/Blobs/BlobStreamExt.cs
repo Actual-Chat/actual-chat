@@ -24,17 +24,11 @@ public static class BlobStreamExt
 
         using var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
         if (OSInfo.IsWebAssembly) {
-            log.LogInformation("WASM mode");
             request.SetBrowserResponseStreamingEnabled(true);
             request.SetBrowserRequestMode(BrowserRequestMode.Cors);
         }
 
         using var httpClient = httpClientFactory.CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
-        if (OSInfo.IsWebAssembly) {
-            request.SetBrowserResponseStreamingEnabled(true);
-            request.SetBrowserRequestMode(BrowserRequestMode.Cors);
-        }
         var response = await httpClient
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);

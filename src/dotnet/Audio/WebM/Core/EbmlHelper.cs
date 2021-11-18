@@ -83,7 +83,8 @@ public static class EbmlHelper
         return 8;
     }
 
-    public static ulong GetElementSize(ulong identifier, ulong value) => GetSize(identifier) + GetSize(value) + 1;
+    public static ulong GetElementSize(ulong identifier, ulong value)
+        => GetSize(identifier) + GetSize(value) + 1;
 
     public static ulong GetElementSize(ulong identifier, ulong? value)
         => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
@@ -91,19 +92,23 @@ public static class EbmlHelper
     public static ulong GetElementSize(ulong identifier, long? value)
         => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-    public static ulong GetElementSize(ulong identifier, long value) => GetSize(identifier) + GetSize(value) + 1;
+    public static ulong GetElementSize(ulong identifier, long value)
+        => GetSize(identifier) + GetSize(value) + 1;
 
-    public static ulong GetElementSize(ulong identifier, double value) => GetSize(identifier) + GetSize(value) + 1;
+    public static ulong GetElementSize(ulong identifier, double value)
+        => GetSize(identifier) + GetSize(value) + 1;
 
     public static ulong GetElementSize(ulong identifier, double? value)
         => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-    public static ulong GetElementSize(ulong identifier, float value) => GetSize(identifier) + GetSize(value) + 1;
+    public static ulong GetElementSize(ulong identifier, float value)
+        => GetSize(identifier) + GetSize(value) + 1;
 
     public static ulong GetElementSize(ulong identifier, float? value)
         => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
 
-    public static ulong GetElementSize(ulong identifier, DateTime value) => GetSize(identifier) + GetSize(value) + 1;
+    public static ulong GetElementSize(ulong identifier, DateTime value)
+        => GetSize(identifier) + GetSize(value) + 1;
 
     public static ulong GetElementSize(ulong identifier, DateTime? value)
         => value.HasValue ? GetElementSize(identifier, value.Value) : 0;
@@ -114,7 +119,8 @@ public static class EbmlHelper
     public static ulong GetElementSize(ulong identifier, string? value, bool isAscii)
         => value == null ? 0UL : GetSize(identifier) + GetSize(value, isAscii) + 1;
 
-    public static ulong GetMasterElementSize(ulong identifier, ulong size) => GetSize(identifier) + GetCodedSize(size);
+    public static ulong GetMasterElementSize(ulong identifier, ulong size)
+        => GetSize(identifier) + GetCodedSize(size);
 
     public static ulong GetElementSize(ulong identifier, BaseModel? value)
         => value == null ? 0 : GetSize(identifier) + value.GetSize() + 1;
