@@ -60,17 +60,15 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
                 // AK: broken stream check
                 if (data.Take(6).SequenceEqual(BrokenHeader)) {
-                    Log.LogWarning("Recorded broken header");
+                    Log.LogWarning("Fixing broken header!");
                     var fixedChunk = new byte[data.Length + 1];
                     fixedChunk[0] = 0x1A;
                     Buffer.BlockCopy(data, 0, fixedChunk, 1, data.Length);
                     data = fixedChunk;
                 }
 
-                Log.LogInformation("Before AppendData");
                 AppendData(ref readBuffer, ref state, data);
                 frameBuffer.Clear();
-                Log.LogInformation("Before FillFrameBuffer");
                 state = FillFrameBuffer(
                     frameBuffer,
                     state.IsEmpty
@@ -82,7 +80,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
                 foreach (var frame in frameBuffer) {
                     duration = frame.Offset + frame.Duration;
-                    Log.LogInformation("Before WriteAsync");
                     await target.Writer.WriteAsync(frame, cancellationToken);
                 }
 
@@ -91,7 +88,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var _ = BackgroundTask.Run(async () => {
             try {
                 await parseTask.ConfigureAwait(false);
-                Log.LogInformation("After await parseTask");
                 durationTaskSource.SetResult(duration);
             }
             catch (OperationCanceledException e) {
@@ -107,7 +103,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 throw;
             }
             catch (Exception e) {
-                Log.LogError(e, "BlobPart Parse failed");
+                Log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
                 durationTaskSource.TrySetException(e);
@@ -153,10 +149,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         using var writeBufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
         var writeBuffer = writeBufferLease.Memory;
 
-        Log.LogInformation("Before webMReader.Read()");
         while (webMReader.Read()) {
             var state = webMReader.GetState();
-            Log.LogInformation("After webMReader.GetState()");
             switch (webMReader.ReadResultKind) {
             case WebMReadResultKind.None:
                 // AY: Suspicious - any chance this result means "can't parse anything yet, read further"?
@@ -227,16 +221,17 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             throw new InvalidOperationException("Unexpected WebM structure.");
 
         blockOffsetMs = currentBlockOffsetMs;
-        Log.LogInformation("Before final webMReader.GetState");
         return webMReader.GetState();
     }
 
     private AudioFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader)
     {
-        var trackEntry = segment.Tracks?.TrackEntries.Single(t => t.TrackType == TrackType.Audio)
-                         ?? throw new InvalidOperationException("Stream doesn't contain Audio track.");
-        var audio = trackEntry.Audio
-                    ?? throw new InvalidOperationException("Track doesn't contain Audio entry.");
+        var trackEntry =
+            segment.Tracks?.TrackEntries.Single(t => t.TrackType == TrackType.Audio)
+            ?? throw new InvalidOperationException("Stream doesn't contain Audio track.");
+        var audio =
+            trackEntry.Audio
+            ?? throw new InvalidOperationException("Track doesn't contain Audio entry.");
 
         return new AudioFormat {
             ChannelCount = (int) audio.Channels,
