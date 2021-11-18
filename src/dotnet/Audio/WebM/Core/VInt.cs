@@ -25,7 +25,7 @@ namespace ActualChat.Audio.WebM;
 /// <summary>
 ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
 /// </summary>
-[StructLayout(LayoutKind.Auto)]
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct VInt : IEquatable<VInt>
 {
     private const ulong MaxValue = (1L << 56) - 1;

@@ -2,9 +2,10 @@
 
   <!-- Publish & runtime properties -->
   <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>copyused</TrimMode>
     <RunAOTCompilation>false</RunAOTCompilation>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <TrimMode>copyused</TrimMode>
   </PropertyGroup>
 
   <!-- Extra trimming roots -->
@@ -12,6 +13,9 @@
     <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
+    <TrimmerRootAssembly Include="System.Threading.Channels" />
+    <TrimmerRootAssembly Include="Stl.Fusion" />
+    <TrimmerRootAssembly Include="Stl.Fusion.Client" />
   </ItemGroup>
 
   <ItemGroup>

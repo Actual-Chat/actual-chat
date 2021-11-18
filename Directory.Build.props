@@ -26,6 +26,7 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <AnalysisLevel>preview</AnalysisLevel>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
     <!-- Resources -->
     <DefaultLanguage>en-US</DefaultLanguage>

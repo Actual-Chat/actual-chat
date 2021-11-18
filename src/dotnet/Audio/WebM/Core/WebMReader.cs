@@ -63,15 +63,12 @@ public ref struct WebMReader
     public static WebMReader FromState(State state) => new (state, ReadOnlySpan<byte>.Empty);
 
     public State GetState()
-    {
-        var remaining = _spanReader.Length - _spanReader.Position;
-        return new State(
+        => new(
             _resume,
             _spanReader.Position,
-            remaining,
+            _spanReader.Length - _spanReader.Position,
             _container,
             _containerEntry);
-    }
 
     public WebMReader WithNewSource(ReadOnlySpan<byte> span) => new (GetState(), span);
 

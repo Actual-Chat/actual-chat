@@ -31,7 +31,9 @@ namespace ActualChat.Testing
         {
             var settings = new TestSettings();
 
+#pragma warning disable IL2026
             ctx.Configuration.Bind(settings);
+#pragma warning restore IL2026
             InitializeSettingsCore(settings);
             InitializeSettings(settings);
 
