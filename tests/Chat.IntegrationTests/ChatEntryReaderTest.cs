@@ -1,22 +1,12 @@
-using ActualChat.Chat.Db;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework;
-using Stl.Time.Testing;
-using Stl.Versioning;
-using Stl.Versioning.Providers;
 
 namespace ActualChat.Chat.IntegrationTests;
 
 public class ChatEntryReaderTest
 {
-    private readonly VersionGenerator<long> VersionGenerator = new ClockBasedVersionGenerator(SystemClock.Instance);
     private const string ChatId = "the-actual-one";
-    private readonly MomentClockSet Clocks = new MomentClockSet();
 
     [Fact]
     public async Task ReaderTest()
@@ -26,7 +16,7 @@ public class ChatEntryReaderTest
         var user = tester.SignIn(new User("", "reader-test-user")).ConfigureAwait(false);
         var session = tester.Session;
 
-        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var chats = tester.ClientServices.GetRequiredService<IChats>();
 
         var chat = await chats.Get(session, ChatId, CancellationToken.None);
         chat.Should().NotBeNull();
