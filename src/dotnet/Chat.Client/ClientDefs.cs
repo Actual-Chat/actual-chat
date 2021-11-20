@@ -19,14 +19,14 @@ public interface IChatsClientDef
     Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
-        Range<long>? idRange,
+        Range<long>? idTile,
         CancellationToken cancellationToken);
 
-    [Get(nameof(GetEntries))]
-    Task<ImmutableArray<ChatEntry>> GetEntries(
+    [Get(nameof(GetTile))]
+    Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idRange,
+        Range<long> idTile,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetPermissions))]
