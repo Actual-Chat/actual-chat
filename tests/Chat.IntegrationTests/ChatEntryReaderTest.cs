@@ -9,7 +9,7 @@ public class ChatEntryReaderTest
     private const string ChatId = "the-actual-one";
 
     [Fact]
-    public async Task ReaderTest()
+    public async Task BasicTest()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
@@ -48,8 +48,6 @@ public class ChatEntryReaderTest
         entry?.Content.Should().Be("Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал открыв мне чудо на Земле");
         entry?.EndsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:29.0043140Z")));
         entry?.Duration.Should().Be(10.5);
-
-        var entryPoint = new Moment(DateTime.Parse("2021-11-05T16:41:30.0043140Z"));
 
         entry = await reader.Get(acDcId, CancellationToken.None);
         entry.Should().NotBeNull();
