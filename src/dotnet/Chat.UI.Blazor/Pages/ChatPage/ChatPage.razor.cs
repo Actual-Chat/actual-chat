@@ -102,13 +102,13 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             endId += (long)query.ExpandEndBy;
         endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
 
-        var ranges = idLogCover.GetTileCover((startId, endId + 1));
-        var entryLists = await Task
-            .WhenAll(ranges.Select(r => Chats.GetEntries(Session, chatId.Value, r, cancellationToken)))
+        var idTiles = idLogCover.GetTileCover((startId, endId + 1));
+        var chatTiles = await Task
+            .WhenAll(idTiles.Select(r => Chats.GetTile(Session, chatId.Value, r, cancellationToken)))
             .ConfigureAwait(false);
 
-        var chatEntries = entryLists
-            .SelectMany(entries => entries)
+        var chatEntries = chatTiles
+            .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
 

@@ -1,9 +1,12 @@
+using ActualChat.Mathematics;
 using Stl.Fusion.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryReader
 {
+    private static readonly LogTileCover<long, long> IdTiles = ChatConstants.IdTiles;
+
     private readonly IChats _chats;
     private readonly MomentClockSet _clocks;
 
@@ -29,17 +32,17 @@ public sealed class ChatEntryReader
             .Capture(ct => _chats.GetIdRange(Session, ChatId, ct), cancellationToken)
             .ConfigureAwait(false);
         var lastReadEntryId = minEntryId - 1;
-        var lastTileEnd = lastReadEntryId;
+        var lastIdTileEnd = lastReadEntryId;
         while (true) {
-            var tile = ChatConstants.IdTiles.GetMinCoveringTile(lastTileEnd + 1);
-            lastTileEnd = tile.End;
+            var idTile = IdTiles.GetMinCoveringTile(lastIdTileEnd + 1);
+            lastIdTileEnd = idTile.End;
 
-            var entriesComputed = await Computed
-                .Capture(ct => _chats.GetEntries(Session, ChatId, tile, ct), cancellationToken)
+            var chatTileComputed = await Computed
+                .Capture(ct => _chats.GetTile(Session, ChatId, idTile, ct), cancellationToken)
                 .ConfigureAwait(false);
 
-            var entries = entriesComputed.Value;
-            foreach (var entry in entries) {
+            var chatTile = chatTileComputed.Value;
+            foreach (var entry in chatTile.Entries) {
                 if (entry.Id <= lastReadEntryId)
                     continue;
 
@@ -47,17 +50,17 @@ public sealed class ChatEntryReader
                 yield return entry; // Note that this "yield" can take arbitrary long time
             }
             var idRange = idRangeComputed.Value;
-            var isLastTile = entries.LastOrDefault()?.Id >= idRange.End;
+            var isLastTile = !chatTile.IsEmpty && chatTile.IdRange.End >= idRange.End;
             if (isLastTile) {
-                lastTileEnd = tile.Start - 1;
+                lastIdTileEnd = idTile.Start - 1;
 
                 // Update is ~ free when the computed is consistent
                 idRangeComputed = await idRangeComputed.Update(cancellationToken).ConfigureAwait(false);
                 var maxEntryId = idRangeComputed.Value.End;
-                var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
-                if (tile.Start < lastTile.Start) {
+                var lastTile = IdTiles.GetMinCoveringTile(maxEntryId);
+                if (idTile.Start < lastTile.Start) {
                     // not the one that includes the very last chat entry
-                    lastReadEntryId = tile.End;
+                    lastReadEntryId = idTile.End;
                     continue;
                 }
                 // We're either at the very last tile or maybe even on the next one
@@ -74,7 +77,7 @@ public sealed class ChatEntryReader
                 //    on the next tile (i.e. it was either N-times-rollback scenario or something similar).
                 //    In this case we want to probably adjust the tile by re-entering this block
                 //    after timeout.
-                await entriesComputed.WhenInvalidated(cancellationToken)
+                await chatTileComputed.WhenInvalidated(cancellationToken)
                     .WithTimeout(_clocks.CpuClock, InvalidationWaitTimeout, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -111,29 +114,29 @@ public sealed class ChatEntryReader
 
     public async Task<ChatEntry?> Get(long entryId, CancellationToken cancellationToken)
     {
-        var tile = ChatConstants.IdTiles.GetMinCoveringTile(entryId);
-        var entries = await _chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
-        return entries.SingleOrDefault(e => e.Id == entryId);
+        var idTile = IdTiles.GetMinCoveringTile(entryId);
+        var chatTile = await _chats.GetTile(Session, ChatId, idTile, cancellationToken).ConfigureAwait(false);
+        return chatTile.Entries.SingleOrDefault(e => e.Id == entryId);
     }
 
     public async Task<ChatEntry?> Get(long minEntryId, long maxEntryId, CancellationToken cancellationToken)
     {
-        var lastTile = ChatConstants.IdTiles.GetMinCoveringTile(maxEntryId);
+        var lastIdTile = IdTiles.GetMinCoveringTile(maxEntryId);
         while (true) {
-            var tile = ChatConstants.IdTiles.GetMinCoveringTile(minEntryId);
-            var entries = await _chats.GetEntries(Session, ChatId, tile, cancellationToken).ConfigureAwait(false);
-            if (entries.Length == 0) {
-                if (tile.Start >= lastTile.Start) // We're at the very last tile
+            var idTile = IdTiles.GetMinCoveringTile(minEntryId);
+            var chatTile = await _chats.GetTile(Session, ChatId, idTile, cancellationToken).ConfigureAwait(false);
+            if (chatTile.IsEmpty) {
+                if (idTile.Start >= lastIdTile.Start) // We're at the very last tile
                     return null;
 
-                minEntryId = tile.End + 1;
+                minEntryId = idTile.End + 1;
                 continue;
             }
-            foreach (var entry in entries)
+            foreach (var entry in chatTile.Entries)
                 if (entry.Id >= minEntryId && entry.Id <= maxEntryId)
                     return entry;
 
-            minEntryId = tile.End + 1;
+            minEntryId = idTile.End + 1;
         }
     }
 }

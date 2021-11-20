@@ -20,6 +20,11 @@ public static partial class RangeExt
     public static bool Overlaps(this Range<long> range, Range<long> otherRange)
         => range.IntersectWith(otherRange).Size() > 0;
 
+    public static Range<long> MinMaxWith(this Range<long> range, Range<long> other)
+        => (Math.Min(range.Start, other.Start), Math.Max(range.End, other.End));
+    public static Range<long> MinMaxWith(this Range<long> range, long point)
+        => (Math.Min(range.Start, point), Math.Max(range.End, point));
+
     public static Range<long> IntersectWith(this Range<long> range, Range<long> other)
     {
         var result = new Range<long>(Math.Max(range.Start, other.Start), Math.Min(range.End, other.End));

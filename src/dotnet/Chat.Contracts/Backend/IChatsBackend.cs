@@ -5,9 +5,9 @@ public interface IChatsBackend
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<long> GetEntryCount(ChatId chatId, Range<long>? idRange, CancellationToken cancellationToken);
+    Task<long> GetEntryCount(ChatId chatId, Range<long>? idTile, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ImmutableArray<ChatEntry>> GetEntries(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken);
+    Task<ChatTile> GetTile(ChatId chatId, Range<long> idTile, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]

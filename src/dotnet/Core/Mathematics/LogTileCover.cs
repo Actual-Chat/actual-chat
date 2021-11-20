@@ -13,38 +13,62 @@ public abstract class LogTileCover<TPoint, TSize>
     public SizeMeasure<TPoint, TSize> Measure { get; init; } = null!;
     public TSize[] TileSizes => _rangeSizes ??= GetTileSizes();
 
-    public void AssertIsTile(Range<TPoint> range)
+    public void AssertIsTile(Range<TPoint> tile)
     {
-        if (!IsTile(range))
-            throw new NotSupportedException("Invalid range boundaries.");
+        if (!IsTile(tile))
+            throw new InvalidOperationException("Invalid tile boundaries.");
     }
 
-    public virtual bool IsTile(Range<TPoint> range)
+    public virtual bool IsTile(Range<TPoint> tile)
+        => GetTileSizeIndex(tile) >= 0;
+
+    public virtual int GetTileSizeIndex(Range<TPoint> tile)
     {
         var sizeMeasure = Measure;
-        var size = sizeMeasure.GetSize(range);
+        var size = sizeMeasure.GetSize(tile);
         for (var i = 0; i < TileSizes.Length; i++) {
             var rangeSize = TileSizes[i];
             if (EqualityComparer<TSize>.Default.Equals(rangeSize, size)) {
-                var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, range.Start), size);
-                return EqualityComparer<TSize>.Default.Equals(offset, default);
+                var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, tile.Start), size);
+                if (EqualityComparer<TSize>.Default.Equals(offset, default))
+                    return i;
             }
         }
-        return false;
+        return -1;
     }
 
-    public virtual TPoint GetTileStart(TPoint innerPoint, int rangeSizeIndex)
+    public virtual Range<TPoint>[] GetSmallerTiles(Range<TPoint> tile)
+    {
+        var sizeIndex = GetTileSizeIndex(tile);
+        if (sizeIndex < 0)
+            throw new InvalidOperationException("Invalid tile boundaries.");
+        if (sizeIndex == 0)
+            return Array.Empty<Range<TPoint>>();
+
+        var sizeMeasure = Measure;
+        var smallerSize = TileSizes[sizeIndex - 1];
+        var result = new Range<TPoint>[TileSizeFactor];
+        var start = tile.Start;
+        for (var i = 0; i < TileSizeFactor; i++) {
+            var end = sizeMeasure.AddOffset(tile.Start, smallerSize);
+            result[i] = (start, end);
+            start = end;
+        }
+        return result;
+    }
+
+    public virtual TPoint GetTileStart(TPoint innerPoint, int tileSizeIndex)
     {
         var sizeMeasure = Measure;
-        var size = TileSizes[rangeSizeIndex];
+        var size = TileSizes[tileSizeIndex];
         var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, innerPoint), size);
         return sizeMeasure.SubtractOffset(innerPoint, offset);
     }
 
-    public virtual TPoint GetTileEnd(TPoint innerPoint, int rangeSizeIndex)
+    public virtual TPoint GetTileEnd(TPoint innerPoint, int tileSizeIndex)
     {
         var sizeMeasure = Measure;
-        var size = TileSizes[rangeSizeIndex];
+        var size = TileSizes[tileSizeIndex];
         var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, innerPoint), size);
         if (EqualityComparer<TSize>.Default.Equals(offset, default))
             return innerPoint;

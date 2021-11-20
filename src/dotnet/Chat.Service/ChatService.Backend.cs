@@ -1,5 +1,6 @@
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Mathematics;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -44,7 +45,7 @@ public partial class ChatService
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
         ChatId chatId,
-        Range<long>? idRange,
+        Range<long>? idTile,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
@@ -53,9 +54,9 @@ public partial class ChatService
         var dbMessages = dbContext.ChatEntries.AsQueryable()
             .Where(m => m.ChatId == (string)chatId);
 
-        if (idRange.HasValue) {
-            var idRangeValue = idRange.GetValueOrDefault();
-            ChatConstants.IdTiles.AssertIsTile(idRangeValue);
+        if (idTile.HasValue) {
+            var idRangeValue = idTile.GetValueOrDefault();
+            IdTiles.AssertIsTile(idRangeValue);
             dbMessages = dbMessages.Where(m =>
                 m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
         }
@@ -88,21 +89,30 @@ public partial class ChatService
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(
+    public virtual async Task<ChatTile> GetTile(
         ChatId chatId,
-        Range<long> idRange,
+        Range<long> idTile,
         CancellationToken cancellationToken)
     {
-        ChatConstants.IdTiles.AssertIsTile(idRange);
+        var smallerIdTiles = IdTiles.GetSmallerTiles(idTile);
+        if (smallerIdTiles.Length != 0) {
+            var smallerChatTiles = new List<ChatTile>();
+            foreach (var smallerIdTile in smallerIdTiles) {
+                var smallerChatTile = await GetTile(chatId, smallerIdTile, cancellationToken).ConfigureAwait(false);
+                smallerChatTiles.Add(smallerChatTile);
+            }
+            return new ChatTile(smallerChatTiles);
+        }
+
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbEntries = await dbContext.ChatEntries
-            .Where(m => m.ChatId == (string)chatId && m.Id >= idRange.Start && m.Id < idRange.End)
+            .Where(m => m.ChatId == (string)chatId && m.Id >= idTile.Start && m.Id < idTile.End)
             .OrderBy(m => m.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var entries = dbEntries.Select(m => m.ToModel()).ToImmutableArray();
-        return entries;
+        return new ChatTile(idTile, entries);
     }
 
     // [CommandHandler]
@@ -179,8 +189,8 @@ public partial class ChatService
     {
         if (!isUpdate)
             _ = GetEntryCount(chatId, null, default);
-        foreach (var idRange in ChatConstants.IdTiles.GetCoveringTiles(chatEntryId)) {
-            _ = GetEntries(chatId, idRange, default);
+        foreach (var idRange in IdTiles.GetCoveringTiles(chatEntryId)) {
+            _ = GetTile(chatId, idRange, default);
             if (!isUpdate)
                 _ = GetEntryCount(chatId, idRange, default);
         }
