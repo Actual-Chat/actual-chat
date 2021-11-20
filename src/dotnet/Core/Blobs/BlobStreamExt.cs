@@ -35,7 +35,7 @@ public static class BlobStreamExt
         }
         try {
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            var blobStream = stream.ReadBlobStream(false, log, cancellationToken);
+            var blobStream = stream.ReadBlobStream(false, cancellationToken);
             await foreach (var blobPart in blobStream.ConfigureAwait(false))
                 yield return blobPart;
         }
@@ -69,44 +69,31 @@ public static class BlobStreamExt
         CancellationToken cancellationToken = default)
     {
         var inputStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read);
-        return inputStream.ReadBlobStream(true, null, cancellationToken);
+        return inputStream.ReadBlobStream(true, cancellationToken);
     }
 
     public static async IAsyncEnumerable<BlobPart> ReadBlobStream(
         this Stream source,
         bool mustDisposeSource,
-        ILogger? log,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         try {
-            if (OSInfo.IsWebAssembly) {
-                var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
-                try {
-                    var blobIndex = 0;
-                    log.LogInformation("Blob index: {BlobIndex}", blobIndex);
-                    var bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                    while (bytesRead != 0) {
-                        var blobPart = new BlobPart(blobIndex++, buffer[..bytesRead]);
-                        yield return blobPart;
-                        log.LogInformation("Blob index: {BlobIndex}", blobIndex);
-                        bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                    }
-                }
-                finally {
-                    ArrayPool<byte>.Shared.Return(buffer);
-                }
-            }
-            else {
-                using var bufferLease = MemoryPool<byte>.Shared.Rent(BufferSize);
-                var buffer = bufferLease.Memory;
+            // ArrayPool is used instead of MemoryPool here because
+            // the low-level stream reading method in WASM is implemented
+            // only for arrays:
+            // - https://github.com/zwcloud/MonoWasm/blob/master/WasmHttpMessageHandler.cs#L349
+            var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            try {
                 var blobIndex = 0;
                 var bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
                 while (bytesRead != 0) {
-                    var blobPart = new BlobPart(blobIndex++, buffer.Span[..bytesRead].ToArray());
+                    var blobPart = new BlobPart(blobIndex++, buffer[..bytesRead]);
                     yield return blobPart;
                     bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
                 }
+            }
+            finally {
+                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
         finally {
