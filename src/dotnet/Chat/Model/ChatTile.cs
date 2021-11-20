@@ -1,14 +1,18 @@
+using System.Text.Json.Serialization;
 using ActualChat.Mathematics;
 
 namespace ActualChat.Chat;
 
-public record ChatTile
+public class ChatTile
 {
     public Range<long> IdTile { get; init; }
     public Range<long> IdRange { get; init; }
     public Range<Moment> BeginsAtRange { get; init; }
     public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsEmpty => Entries.Length == 0;
+
+    public ChatTile() { }
 
     public ChatTile(Range<long> idTile, ImmutableArray<ChatEntry> entries)
     {
