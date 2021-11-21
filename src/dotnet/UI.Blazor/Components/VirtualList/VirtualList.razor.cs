@@ -15,13 +15,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject]
     protected internal ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected internal bool DebugMode { get; } = Constants.DebugMode.VirtualList;
 
     protected ElementReference Ref { get; set; }
     protected IJSObjectReference JSRef { get; set; } = null!;
     protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     // ReSharper disable once StaticMemberInGenericType
-    protected internal bool DebugMode { get; } = Constants.DebugMode.VirtualList;
     protected internal long NextRenderIndex { get; set; }
     protected long LastAfterRenderRenderIndex { get; set; } = -1;
     protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
@@ -104,15 +105,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         };
         if (!plan.IsFullyLoaded(plan.GetLoadZoneRange()))
             UpdateData();
-        if (DebugMode) {
-            Log.LogInformation("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
-            // var debugRenderState = MemberwiseCloner.Invoke(renderState);
-            // debugRenderState.ItemSizes = new() {{"n/a", 0}};
-            // Log.LogInformation("OnAfterRender: #{RenderIndex}, RenderState = {RenderState}, ClientSideState = {ClientSideState}",
-            //     renderState.RenderIndex,
-            //     JsonFormatter.Format(debugRenderState),
-            //     plan.ClientSideState == null ? "null" : JsonFormatter.Format(plan.ClientSideState));
-        }
+        DebugLog?.LogInformation("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
         ClientSideState = plan.ClientSideState ?? ClientSideState;
         await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
@@ -122,16 +115,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     {
         var lastPlan = LastPlan;
         if (lastPlan == null! || clientSideState.RenderIndex != lastPlan.RenderIndex) {
-            if (DebugMode)
-                Log.LogInformation("UpdateClientSideState: outdated RenderIndex = {RenderIndex} < {ExpectedRenderIndex}",
-                    clientSideState.RenderIndex, lastPlan?.RenderIndex);
+            DebugLog?.LogInformation(
+                "UpdateClientSideState: outdated RenderIndex = {RenderIndex} < {ExpectedRenderIndex}",
+                clientSideState.RenderIndex, lastPlan?.RenderIndex);
             return Task.FromResult(lastPlan?.RenderIndex ?? -1);
         }
 
         // await Task.Delay(1000); // Debug only!
-        if (DebugMode)
-            Log.LogInformation("UpdateClientSideState: RenderIndex = {RenderIndex}",
-                clientSideState.RenderIndex);
+        DebugLog?.LogInformation("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
         ClientSideState = clientSideState;
         _ = this.StateHasChangedAsync();
         return Task.FromResult(lastPlan.RenderIndex);
@@ -153,12 +144,11 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         VirtualListData<TItem> response;
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
-            if (DebugMode)
-                Log.LogInformation("ComputeState: {Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
-                    query,
-                    response.Items.FirstOrDefault().Key,
-                    response.Items.LastOrDefault().Key,
-                    response.HasAllItems ? "all" : response.HasVeryFirstItem ? "start" : "end");
+            DebugLog?.LogInformation("ComputeState: {Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
+                query,
+                response.Items.FirstOrDefault().Key,
+                response.Items.LastOrDefault().Key,
+                response.HasAllItems ? "all" : response.HasVeryFirstItem ? "start" : "end");
         }
         catch (Exception e) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
@@ -204,8 +194,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             }
         }
         if (startIndex < 0) {
-            if (DebugMode)
-                Log.LogWarning("GetDataQuery: reset");
+            DebugLog?.LogWarning("GetDataQuery: reset");
             // No items inside the bufferZone, so we'll take the first or the last item
             startIndex = endIndex = displayedItems[0].Range.End < bufferZone.Start ? 0 : displayedItems.Count - 1;
         }
@@ -215,13 +204,11 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         var firstItem = displayedItems[startIndex];
         var lastItem = displayedItems[endIndex];
-        if (DebugMode)
-            Log.LogInformation("GetDataQuery: bufferZone fits {FirstItemId} ... {LastItemId} keys",
-                firstItem.Key, lastItem.Key);
+        DebugLog?.LogInformation("GetDataQuery: bufferZone fits {FirstItemId} ... {LastItemId} keys",
+            firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
         var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
-        if (DebugMode)
-            Log.LogInformation("GetDataQuery: startGap: {StartGap}, endGap: {EndGap}", startGap, endGap);
+        DebugLog?.LogInformation("GetDataQuery: startGap: {StartGap}, endGap: {EndGap}", startGap, endGap);
 
         var expectedStartExpansion = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxExpectedExpansion);
         var expectedEndExpansion = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxExpectedExpansion);
@@ -237,9 +224,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ExpandEndBy = expectedEndExpansion / responseFulfillmentRatio,
         };
 
-        if (DebugMode)
-            Log.LogInformation("GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {RFR}, query = {Query}",
-                itemSize, responseFulfillmentRatio, query);
+        DebugLog?.LogInformation(
+            "GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {RFR}, query = {Query}",
+            itemSize, responseFulfillmentRatio, query);
         return query;
     }
 }
