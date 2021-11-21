@@ -54,8 +54,10 @@
 
     private async Task OnMessagePlayClick((ChatEntry Entry, double SkipTo) what) {
         var (entry, skipTo) = what;
-        if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue)
+        if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue) {
+
             return; // We can't do much in this case
+        }
 
         var audioEntryId = entry.AudioEntryId.GetValueOrDefault();
         var audioEntry = await Chats

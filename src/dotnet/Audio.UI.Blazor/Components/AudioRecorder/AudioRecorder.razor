@@ -16,7 +16,10 @@
     private static byte[] _brokenHeader2 = { 0x1A, 0x1A, 0x45, 0xDF, 0xA3, 0x9F };
 
     [Inject]
-    protected internal ILogger<AudioRecorder> Log { get; init; } = null!;
+    protected ILogger<AudioRecorder> Log { get; init; } = null!;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioRecording;
+
     private IJSObjectReference? JSComponentRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
@@ -25,7 +28,6 @@
     private bool IsRecording => AudioChannel != null;
     //private Color ToggleColor => IsRecording ? Color.Secondary : Color.Primary;
 
-    private bool DebugMode { get; } = Constants.DebugMode.AudioRecorder;
 
     [Parameter]
     public string ChatId { get; set; } = "";
@@ -43,8 +45,7 @@
             ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef, DebugMode);
         }
-        if (DebugMode)
-            Log.LogInformation("OnAfterRender: ChatId = {ChatId}, AudioRecorder loaded", ChatId);
+        DebugLog?.LogInformation("OnAfterRender: ChatId = {ChatId}, AudioRecorder loaded", ChatId);
     }
 
     private Task ToggleRecording()
@@ -64,8 +65,7 @@
         StateHasChanged();
         if (JSComponentRef != null)
             await JSComponentRef.InvokeVoidAsync("startRecording");
-        if (DebugMode)
-            Log.LogInformation("StartRecording: Invoked");
+        DebugLog?.LogInformation("StartRecording: Invoked");
     }
 
     private async Task StopRecording()
@@ -78,8 +78,7 @@
         StateHasChanged();
         if (JSComponentRef != null)
           await JSComponentRef.InvokeVoidAsync("stopRecording");
-        if (DebugMode)
-            Log.LogInformation("StopRecording: Invoked");
+        DebugLog?.LogInformation("StopRecording: Invoked");
     }
 
     // JS backend callback handlers
