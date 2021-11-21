@@ -37,7 +37,7 @@ public abstract class LogTileCover<TPoint, TSize>
         return -1;
     }
 
-    public virtual Range<TPoint>[] GetSmallerTiles(Range<TPoint> tile)
+    public virtual Range<TPoint>[] GetSmallerTileCover(Range<TPoint> tile)
     {
         var sizeIndex = GetTileSizeIndex(tile);
         if (sizeIndex < 0)
@@ -50,7 +50,7 @@ public abstract class LogTileCover<TPoint, TSize>
         var result = new Range<TPoint>[TileSizeFactor];
         var start = tile.Start;
         for (var i = 0; i < TileSizeFactor; i++) {
-            var end = sizeMeasure.AddOffset(tile.Start, smallerSize);
+            var end = sizeMeasure.AddOffset(start, smallerSize);
             result[i] = (start, end);
             start = end;
         }

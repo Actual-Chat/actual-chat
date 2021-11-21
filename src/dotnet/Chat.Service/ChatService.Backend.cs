@@ -94,7 +94,7 @@ public partial class ChatService
         Range<long> idTile,
         CancellationToken cancellationToken)
     {
-        var smallerIdTiles = IdTiles.GetSmallerTiles(idTile);
+        var smallerIdTiles = IdTiles.GetSmallerTileCover(idTile);
         if (smallerIdTiles.Length != 0) {
             var smallerChatTiles = new List<ChatTile>();
             foreach (var smallerIdTile in smallerIdTiles) {
