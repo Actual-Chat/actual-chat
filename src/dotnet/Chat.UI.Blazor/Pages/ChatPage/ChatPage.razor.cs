@@ -55,7 +55,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             Session = Session,
             ChatId = chat.Id,
             IsRealTimePlayer = true,
-            SilencedAuthorIds = author == null ? Option<AuthorId>.None : Option.Some(author.Id),
+            SilencedAuthorId = author == null ? Option<AuthorId>.None : Option.Some(author.Id),
         };
         if (wasPlaying) {
             _ = BackgroundTask.Run(

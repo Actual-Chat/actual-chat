@@ -54,8 +54,12 @@
 
     private async Task OnMessagePlayClick((ChatEntry Entry, double SkipTo) what) {
         var (entry, skipTo) = what;
-        if (HistoricalPlayer == null || !entry.AudioEntryId.HasValue) {
-
+        if (HistoricalPlayer == null) {
+            Log.LogWarning("Can't play: no historical player!");
+            return; // We can't do much in this case
+        }
+        if (!entry.AudioEntryId.HasValue) {
+            Log.LogWarning("Can't play: no audio entry Id!");
             return; // We can't do much in this case
         }
 
@@ -64,8 +68,11 @@
             .CreateEntryReader(Session, HistoricalPlayer.ChatId)
             .Get(audioEntryId, default)
             .ConfigureAwait(false);
-        if (audioEntry == null)
-            return;
+        if (audioEntry == null) {
+            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            return; // We can't do much in this case
+        }
+
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(skipTo);
         _ = BackgroundTask.Run(
             () => HistoricalPlayer.Play(startAt),

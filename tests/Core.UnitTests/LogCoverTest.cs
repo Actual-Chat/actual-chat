@@ -34,10 +34,10 @@ public class LogCoverTest : TestBase
             .Should()
             .Be(256);
 
-        c.GetMinCoveringTile((-16, 0))
+        c.GetSmallestCoveringTile((-16, 0))
             .Should()
             .Be((Range<long>)(-16, 0));
-        c.GetMinCoveringTile((-17, 0))
+        c.GetSmallestCoveringTile((-17, 0))
             .Should()
             .Be((Range<long>)(-64, 0));
 
@@ -64,7 +64,7 @@ public class LogCoverTest : TestBase
     public void MomentLogCoverGetCoveringTilesTest()
     {
         var c = LogCover.Default.Moment;
-        var coveringTiles = c.GetCoveringTiles(new Moment(16348332675742660));
+        var coveringTiles = c.GetAllTiles(new Moment(16348332675742660));
         foreach (var tile in coveringTiles)
             c.AssertIsTile(tile);
     }
@@ -97,7 +97,7 @@ public class LogCoverTest : TestBase
             .Should()
             .Be(c.Zero + TimeSpan.FromMinutes(24));
 
-        c.GetMinCoveringTile((c.Zero - TimeSpan.FromMinutes(1), c.Zero))
+        c.GetSmallestCoveringTile((c.Zero - TimeSpan.FromMinutes(1), c.Zero))
             .Should()
             .Be((Range<Moment>)(c.Zero - TimeSpan.FromMinutes(3), c.Zero));
     }

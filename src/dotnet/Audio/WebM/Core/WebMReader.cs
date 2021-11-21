@@ -169,15 +169,15 @@ public ref struct WebMReader
                             && cluster.SimpleBlocks == null
                             && cluster.EncryptedBlocks == null) {
                             switch (_element.Descriptor.Identifier.EncodedValue) {
-                                case MatroskaSpecification.SimpleBlock:
-                                    cluster.SimpleBlocks = new List<SimpleBlock>();
-                                    break;
-                                case MatroskaSpecification.BlockGroup:
-                                    cluster.BlockGroups = new List<BlockGroup>();
-                                    break;
-                                case MatroskaSpecification.EncryptedBlock:
-                                    cluster.EncryptedBlocks = new List<EncryptedBlock>();
-                                    break;
+                            case MatroskaSpecification.SimpleBlock:
+                                cluster.SimpleBlocks = new List<SimpleBlock>();
+                                break;
+                            case MatroskaSpecification.BlockGroup:
+                                cluster.BlockGroups = new List<BlockGroup>();
+                                break;
+                            case MatroskaSpecification.EncryptedBlock:
+                                cluster.EncryptedBlocks = new List<EncryptedBlock>();
+                                break;
                             }
 
                             _entry = container;
@@ -191,38 +191,38 @@ public ref struct WebMReader
 
                     DebugLog?.LogInformation("ReadInternal: before CurrentDescriptor.Identifier.EncodedValue switch");
                     switch (CurrentDescriptor.Identifier.EncodedValue) {
-                        case MatroskaSpecification.Block:
-                            var block = new Block();
-                            _entry = block;
-                            block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, block);
-                            break;
-                        case MatroskaSpecification.BlockAdditional:
-                            var blockAdditional = new BlockAdditional();
-                            _entry = blockAdditional;
-                            blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, blockAdditional);
-                            break;
-                        case MatroskaSpecification.BlockVirtual:
-                            var blockVirtual = new BlockVirtual();
-                            _entry = blockVirtual;
-                            blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, blockVirtual);
-                            break;
-                        case MatroskaSpecification.EncryptedBlock:
-                            var encryptedBlock = new EncryptedBlock();
-                            _entry = encryptedBlock;
-                            encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, encryptedBlock);
-                            break;
-                        case MatroskaSpecification.SimpleBlock:
-                            var simpleBlock = new SimpleBlock();
-                            _entry = simpleBlock;
-                            simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
-                            container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, simpleBlock);
-                            break;
-                        default:
-                            throw new InvalidOperationException();
+                    case MatroskaSpecification.Block:
+                        var block = new Block();
+                        _entry = block;
+                        block.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                        container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, block);
+                        break;
+                    case MatroskaSpecification.BlockAdditional:
+                        var blockAdditional = new BlockAdditional();
+                        _entry = blockAdditional;
+                        blockAdditional.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                        container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, blockAdditional);
+                        break;
+                    case MatroskaSpecification.BlockVirtual:
+                        var blockVirtual = new BlockVirtual();
+                        _entry = blockVirtual;
+                        blockVirtual.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                        container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, blockVirtual);
+                        break;
+                    case MatroskaSpecification.EncryptedBlock:
+                        var encryptedBlock = new EncryptedBlock();
+                        _entry = encryptedBlock;
+                        encryptedBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                        container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, encryptedBlock);
+                        break;
+                    case MatroskaSpecification.SimpleBlock:
+                        var simpleBlock = new SimpleBlock();
+                        _entry = simpleBlock;
+                        simpleBlock.Parse(_spanReader.ReadSpan((int)_element.Size, out _));
+                        container.FillListEntry(containerElement.Descriptor, CurrentDescriptor, simpleBlock);
+                        break;
+                    default:
+                        throw new InvalidOperationException();
                     }
 
                     ReadResultKind = WebMReadResultKind.Block;

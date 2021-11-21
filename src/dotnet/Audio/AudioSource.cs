@@ -9,6 +9,9 @@ namespace ActualChat.Audio;
 
 public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 {
+    protected bool DebugMode { get; } = Constants.DebugMode.AudioSource;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
@@ -182,7 +185,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         // Complex case: we may need to skip this frame
                         var outputFrameOffset = frameOffset - skipTo;
                         if (outputFrameOffset >= TimeSpan.Zero) {
-                            Log.LogInformation("Before WebMWriter");
+                            DebugLog?.LogInformation(
+                                "Rewriting audio frame offset: {FrameOffset}s -> {OutputFrameOffset}s",
+                                frameOffset.TotalSeconds, outputFrameOffset.TotalSeconds);
                             simpleBlock.TimeCode -= (short)(skipToMs - clusterOffsetMs);
                             var webMWriter = new WebMWriter(writeBuffer.Span);
                             webMWriter.Write(simpleBlock);
