@@ -13,7 +13,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly byte[] _header;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private Task<Unit> _whenReadyToBufferMore;
+    private Task<Unit> _whenReadyToBufferMore = null!;
     private IJSObjectReference? _jsRef;
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
