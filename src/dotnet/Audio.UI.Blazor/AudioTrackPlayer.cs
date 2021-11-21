@@ -13,8 +13,9 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly byte[] _header;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private CancellationTokenSource _delayTokenSource;
+    private Task<Unit> _whenReadyToBufferMore;
     private IJSObjectReference? _jsRef;
+    private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
 
     public AudioSource AudioSource => (AudioSource)Source;
@@ -29,8 +30,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _circuitContext = circuitContext;
         _js = js;
-        _delayTokenSource = new CancellationTokenSource();
         _header = AudioSource.Format.ToBlobPart().Data;
+        ReadyToBufferMore();
     }
 
     [JSInvokable]
@@ -58,19 +59,16 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         if (offset != null)
             OnPlayedTo(TimeSpan.FromSeconds(offset.Value));
-
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnDataWaiting(double? offset, int? readyState)
+    public Task OnReadyToBufferMore(double? offset, int? readyState)
     {
-        _delayTokenSource.Cancel();
-        _delayTokenSource.Dispose();
-        _delayTokenSource = new CancellationTokenSource();
-
-        Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {ReadyState}", offset, readyState);
-
+        DebugLog?.LogWarning(
+            "Ready to buffer more audio data. Offset = {Offset}, readyState = {ReadyState}",
+            offset, readyState);
+        ReadyToBufferMore();
         return Task.CompletedTask;
     }
 
@@ -82,49 +80,53 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     }
 
     protected override async ValueTask ProcessCommand(MediaTrackPlayerCommand command)
-        => await CircuitInvoke(async () => {
+        => await CircuitInvoke(
+            async () => {
                 switch (command) {
-                    case StartPlaybackCommand:
-                        _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-                        _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                            $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                            _blazorRef,
-                            DebugMode);
-                        await _jsRef!.InvokeVoidAsync("initialize", _header);
+                case StartPlaybackCommand:
+                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                    _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                        $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                        _blazorRef,
+                        DebugMode);
+                    await _jsRef!.InvokeVoidAsync("initialize", _header);
+                    break;
+                case StopPlaybackCommand stop:
+                    if (_jsRef == null)
                         break;
-                    case StopPlaybackCommand stop:
-                        if (_jsRef == null)
-                            break;
 
-                        if (stop.Immediately)
-                            await _jsRef.InvokeVoidAsync("stop", null);
-                        else
-                            await _jsRef.InvokeVoidAsync("endOfStream");
-                        break;
-                    case SetTrackVolumeCommand setVolume:
-                        // TODO: Implement this
-                        break;
-                    default:
-                        throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+                    if (stop.Immediately)
+                        await _jsRef.InvokeVoidAsync("stop", null);
+                    else
+                        await _jsRef.InvokeVoidAsync("endOfStream");
+                    break;
+                case SetTrackVolumeCommand setVolume:
+                    // TODO: Implement this
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
                 }
-            })
-            .ConfigureAwait(false);
+            }).ConfigureAwait(false);
 
     protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
-        => await CircuitInvoke(async () => {
+        => await CircuitInvoke(
+            async () => {
                 if (_jsRef == null)
                     return;
 
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
-                var buffered = await _jsRef.InvokeAsync<double>("appendAudio", cancellationToken, chunk, offset);
+                var bufferedDuration = await _jsRef.InvokeAsync<double>("appendAudio", cancellationToken, chunk, offset);
+                if (bufferedDuration > 10) // > 10 seconds
+                    await _whenReadyToBufferMore.WithTimeout(TimeSpan.FromSeconds(5), cancellationToken);
+            }).ConfigureAwait(false);
 
-                if (buffered > 10) {
-                    await using var _ = cancellationToken.Register(() => _delayTokenSource.Cancel());
-                    await Task.Delay(TimeSpan.FromSeconds(5), _delayTokenSource.Token);
-                }
-            })
-            .ConfigureAwait(false);
+    private void ReadyToBufferMore()
+    {
+        if (_whenReadyToBufferMore != null!)
+            TaskSource.For(_whenReadyToBufferMore).TrySetResult(default);
+        _whenReadyToBufferMore = TaskSource.New<Unit>(true).Task;
+    }
 
     private Task CircuitInvoke(Func<Task> workItem)
     {
@@ -135,7 +137,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(CircuitInvoke)}: error processing audio command");
+            Log.LogError(e, $"{nameof(CircuitInvoke)} failed");
         }
         return Task.CompletedTask;
     }

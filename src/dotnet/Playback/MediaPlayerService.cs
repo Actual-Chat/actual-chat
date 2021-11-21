@@ -40,38 +40,38 @@ public abstract class MediaPlayerService : IMediaPlayerService
         var trackPlayers = new ConcurrentDictionary<Ref<PlayMediaTrackCommand>, MediaTrackPlayer>();
         await foreach (var command in commands.WithCancellation(linkedToken).ConfigureAwait(false))
             switch (command) {
-                case PlayMediaTrackCommand playTrackCommand:
-                    var commandRef = Ref.New(playTrackCommand); // Reference-based comparison works faster for records
-                    if (trackPlayers.ContainsKey(commandRef))
-                        continue;
-                    var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
-                    trackPlayers[commandRef] = trackPlayer;
-                    trackPlayer.StateChanged += OnStateChanged;
-                    _ = trackPlayer.Run(linkedToken).ContinueWith(
-                        _ => {
-                            trackPlayers.TryRemove(commandRef, out var _);
-                        },
-                        TaskScheduler.Default);
-                    break;
-                case SetVolumeCommand setVolume:
-                    var volumeTasks = trackPlayers.Values
-                        .Select(p => p.EnqueueCommand(new SetTrackVolumeCommand(p, setVolume.Volume)).AsTask())
+            case PlayMediaTrackCommand playTrackCommand:
+                var commandRef = Ref.New(playTrackCommand); // Reference-based comparison works faster for records
+                if (trackPlayers.ContainsKey(commandRef))
+                    continue;
+                var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
+                trackPlayers[commandRef] = trackPlayer;
+                trackPlayer.StateChanged += OnStateChanged;
+                _ = trackPlayer.Run(linkedToken).ContinueWith(
+                    _ => {
+                        trackPlayers.TryRemove(commandRef, out var _);
+                    },
+                    TaskScheduler.Default);
+                break;
+            case SetVolumeCommand setVolume:
+                var volumeTasks = trackPlayers.Values
+                    .Select(p => p.EnqueueCommand(new SetTrackVolumeCommand(p, setVolume.Volume)).AsTask())
+                    .ToArray();
+                await Task.WhenAll(volumeTasks).ConfigureAwait(false);
+                break;
+            case StopCommand stopCommand:
+                try {
+                    var stopTasks = trackPlayers.Values
+                        .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, true)).AsTask())
                         .ToArray();
-                    await Task.WhenAll(volumeTasks).ConfigureAwait(false);
-                    break;
-                case StopCommand stopCommand:
-                    try {
-                        var stopTasks = trackPlayers.Values
-                            .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, true)).AsTask())
-                            .ToArray();
-                        await Task.WhenAll(stopTasks).ConfigureAwait(false);
-                    }
-                    finally {
-                        stopCommand.CommandProcessedSource.SetResult();
-                    }
-                    break;
-                default:
-                    throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+                    await Task.WhenAll(stopTasks).ConfigureAwait(false);
+                }
+                finally {
+                    stopCommand.CommandProcessedSource.SetResult();
+                }
+                break;
+            default:
+                throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
             }
 
         // TODO(AK): to make this code reachable, the command sequence must have an end
@@ -130,12 +130,12 @@ public abstract class MediaPlayerService : IMediaPlayerService
 
             // Invalidating GetPlayingMediaFrame for tiles associated with lastState.PlayingAt
             var lastTimestamp = lastState.RecordingStartedAt + lastState.PlayingAt;
-            foreach (var tile in timestampLogCover.GetCoveringTiles(lastTimestamp))
+            foreach (var tile in timestampLogCover.GetAllTiles(lastTimestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile, default);
 
             // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
-            foreach (var tile in timestampLogCover.GetCoveringTiles(timestamp))
+            foreach (var tile in timestampLogCover.GetAllTiles(timestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile, default);
         }
     }

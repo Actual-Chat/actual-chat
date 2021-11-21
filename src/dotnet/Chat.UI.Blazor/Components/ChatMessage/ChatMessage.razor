@@ -12,17 +12,15 @@
     <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-gray-50" alt="@Author.Name"/>
     <div class="flex-1 overflow-hidden">
         <div>
-            <span class="font-bold text-gray-900">
-                @Author.Name
-            </span>
+            <span class="font-bold text-gray-900">@Author.Name</span>
             <span class="text-gray-500 text-xs">@Entry.BeginsAt.ToString("HH:mm")</span>
             &nbsp;
             <span class="text-gray-100 text-xs">id=@Entry.Id</span>
         </div>
         @if (Entry.IsStreaming) {
-            <ChatMessageTranscript StreamId="@Entry.StreamId" PlayClick="OnTranscriptPlayClick"/>
+            <ChatMessageTranscript StreamId="@Entry.StreamId"/>
         } else {
-            <ChatMessageText Entry="@Entry" OnPlayClick="OnTextWordClick"/>
+            <ChatMessageText Entry="@Entry" PlayClick="OnPlayClick"/>
         }
     </div>
 </div>
@@ -45,17 +43,7 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    private void OnPlay() {
-        if (PlayClick.HasDelegate)
-            PlayClick.InvokeAsync((Entry, 0));
-    }
-
-    private void OnTranscriptPlayClick(string _) {
-        if (PlayClick.HasDelegate)
-            PlayClick.InvokeAsync((Entry, 0));
-    }
-
-    private void OnTextWordClick(double offset) {
+    private void OnPlayClick(double offset) {
         if (PlayClick.HasDelegate)
             PlayClick.InvokeAsync((Entry, offset));
     }

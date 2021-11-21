@@ -56,7 +56,7 @@ export class AudioPlayer {
             console.warn(`${LogScope}._audio.waiting, _audio.readyState = ${this.getReadyState()}`);
             let time = this._audio.currentTime;
             let readyState = this._audio.readyState;
-            let _ = this.invokeOnDataWaiting(time, readyState);
+            let _ = this.invokeOnReadyToBufferMore(time, readyState);
         });
         this._audio.addEventListener('timeupdate', e => {
             let time = this._audio.currentTime;
@@ -250,24 +250,24 @@ export class AudioPlayer {
         return this._blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
     }
 
-    private invokeOnDataWaiting(time: number, readyState: number): Promise<void> {
-        return this._blazorRef.invokeMethodAsync("OnDataWaiting", time, readyState);
+    private invokeOnReadyToBufferMore(time: number, readyState: number): Promise<void> {
+        return this._blazorRef.invokeMethodAsync("OnReadyToBufferMore", time, readyState);
     }
 
     private getReadyState(): string {
         switch (this._audio.readyState) {
-            case this._audio.HAVE_CURRENT_DATA:
-                return 'HAVE_CURRENT_DATA';
-            case this._audio.HAVE_ENOUGH_DATA:
-                return 'HAVE_ENOUGH_DATA';
-            case this._audio.HAVE_FUTURE_DATA:
-                return 'HAVE_FUTURE_DATA';
-            case this._audio.HAVE_METADATA:
-                return 'HAVE_METADATA';
-            case this._audio.HAVE_NOTHING:
-                return 'HAVE_NOTHING';
-            default:
-                return 'UNKNOWN - ' + this._audio.readyState;
+        case this._audio.HAVE_CURRENT_DATA:
+            return 'HAVE_CURRENT_DATA';
+        case this._audio.HAVE_ENOUGH_DATA:
+            return 'HAVE_ENOUGH_DATA';
+        case this._audio.HAVE_FUTURE_DATA:
+            return 'HAVE_FUTURE_DATA';
+        case this._audio.HAVE_METADATA:
+            return 'HAVE_METADATA';
+        case this._audio.HAVE_NOTHING:
+            return 'HAVE_NOTHING';
+        default:
+            return 'UNKNOWN - ' + this._audio.readyState;
         }
     }
 }

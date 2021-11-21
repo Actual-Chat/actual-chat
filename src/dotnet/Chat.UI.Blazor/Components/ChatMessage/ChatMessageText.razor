@@ -26,7 +26,7 @@
     [Parameter, EditorRequired]
     public ChatEntry Entry { get; set; } = null!;
     [Parameter]
-    public EventCallback<double> OnPlayClick { get; set; }
+    public EventCallback<double> PlayClick { get; set; }
 
     private IReadOnlyCollection<(string,double,double)>? Words { get; set; }
 
@@ -56,8 +56,8 @@
     }
 
     private void HandleWordClick(double offset) {
-        if (OnPlayClick.HasDelegate)
-            OnPlayClick.InvokeAsync(offset);
+        if (PlayClick.HasDelegate)
+            PlayClick.InvokeAsync(offset);
     }
 
 }

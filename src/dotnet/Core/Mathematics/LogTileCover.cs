@@ -75,6 +75,15 @@ public abstract class LogTileCover<TPoint, TSize>
         return sizeMeasure.AddOffset(sizeMeasure.SubtractOffset(innerPoint, offset), size);
     }
 
+    public virtual Range<TPoint> GetTile(TPoint innerPoint)
+    {
+        var sizeMeasure = Measure;
+        var size = MinTileSize;
+        var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, innerPoint), size);
+        var start = sizeMeasure.SubtractOffset(innerPoint, offset);
+        return new Range<TPoint>(start, sizeMeasure.AddOffset(start, size));
+    }
+
     public virtual IEnumerable<Range<TPoint>> GetTileCover(Range<TPoint> range)
     {
         var equalityComparer = EqualityComparer<TSize>.Default;
@@ -98,16 +107,7 @@ public abstract class LogTileCover<TPoint, TSize>
         }
     }
 
-    public virtual Range<TPoint> GetMinCoveringTile(TPoint innerPoint)
-    {
-        var sizeMeasure = Measure;
-        var size = MinTileSize;
-        var offset = sizeMeasure.Modulo(sizeMeasure.GetDistance(Zero, innerPoint), size);
-        var start = sizeMeasure.SubtractOffset(innerPoint, offset);
-        return new Range<TPoint>(start, sizeMeasure.AddOffset(start, size));
-    }
-
-    public virtual IEnumerable<Range<TPoint>> GetCoveringTiles(TPoint innerPoint)
+    public virtual IEnumerable<Range<TPoint>> GetAllTiles(TPoint innerPoint)
     {
         var sizeMeasure = Measure;
         foreach (var size in TileSizes) {
@@ -117,7 +117,7 @@ public abstract class LogTileCover<TPoint, TSize>
         }
     }
 
-    public virtual bool TryGetMinCoveringTile(Range<TPoint> range, out Range<TPoint> tile)
+    public virtual bool TryGetSmallestCoveringTile(Range<TPoint> range, out Range<TPoint> tile)
     {
         var sizeMeasure = Measure;
         var comparer = Comparer<TSize>.Default;
@@ -142,8 +142,8 @@ public abstract class LogTileCover<TPoint, TSize>
         return false;
     }
 
-    public Range<TPoint> GetMinCoveringTile(Range<TPoint> range)
-        => TryGetMinCoveringTile(range, out var tile)
+    public Range<TPoint> GetSmallestCoveringTile(Range<TPoint> range)
+        => TryGetSmallestCoveringTile(range, out var tile)
             ? tile
             : throw new ArgumentOutOfRangeException(nameof(range));
 

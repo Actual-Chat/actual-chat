@@ -189,7 +189,7 @@ public partial class ChatService
     {
         if (!isUpdate)
             _ = GetEntryCount(chatId, null, default);
-        foreach (var idRange in IdTiles.GetCoveringTiles(chatEntryId)) {
+        foreach (var idRange in IdTiles.GetAllTiles(chatEntryId)) {
             _ = GetTile(chatId, idRange, default);
             if (!isUpdate)
                 _ = GetEntryCount(chatId, idRange, default);

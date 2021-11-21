@@ -55,6 +55,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             var frames = Source.GetFramesUntyped(cancellationToken);
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
+            await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
             await WhenCompleted.WithFakeCancellation(cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
