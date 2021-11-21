@@ -76,8 +76,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         DbChatAuthor dbAuthor,
         CancellationToken cancellationToken)
     {
+        var lastId = 0;
         var audioEntry = new DbChatEntry {
-            CompositeId = "the-actual-one:131",
+            CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
             AuthorId = dbAuthor.Id,
             AudioEntryId = null,
             BeginsAt = new Moment(DateTime.Parse("2021-11-05 16:41:18.504314 +00:00",
@@ -86,7 +87,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             Content = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
             EndsAt = new Moment(DateTime.Parse("2021-11-05 16:41:29.543314 +00:00",
                 NumberFormatInfo.InvariantInfo)),
-            Id = 131,
+            Id = lastId,
             Type = ChatEntryType.Audio,
             Version = 16359216898269180,
         };
@@ -95,9 +96,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var textToTimeMap =
             "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}";
         var textEntry = new DbChatEntry {
-            CompositeId = "the-actual-one:132",
+            CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
             AuthorId = dbAuthor.Id,
-            AudioEntryId = 131,
+            AudioEntryId = audioEntry.Id,
             BeginsAt = new Moment(DateTime.Parse("2021-11-05 16:41:18.504314 +00:00",
                 NumberFormatInfo.InvariantInfo)),
             ChatId = dbChat.Id,
@@ -105,7 +106,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал открыв мне чудо на Земле",
             EndsAt = new Moment(DateTime.Parse("2021-11-05 16:41:29.004314 +00:00",
                 NumberFormatInfo.InvariantInfo)),
-            Id = 132,
+            Id = lastId,
             TextToTimeMap = textToTimeMap,
             Type = ChatEntryType.Text,
             Version = 16359216898897618,
@@ -113,7 +114,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         dbContext.Add(textEntry);
 
         audioEntry = new DbChatEntry {
-            CompositeId = "the-actual-one:141",
+            CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
             AuthorId = dbAuthor.Id,
             AudioEntryId = null,
             BeginsAt = new Moment(DateTime.Parse("2021-11-05 17:26:05.671804 +00:00",
@@ -122,7 +123,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             Content = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
             EndsAt = new Moment(DateTime.Parse("2021-11-05 17:26:16.710804 +00:00",
                 NumberFormatInfo.InvariantInfo)),
-            Id = 141,
+            Id = lastId,
             Type = ChatEntryType.Audio,
             Version = 16361331765465404,
         };
@@ -131,9 +132,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         textToTimeMap =
             "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}";
         textEntry = new DbChatEntry {
-            CompositeId = "the-actual-one:142",
+            CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
             AuthorId = dbAuthor.Id,
-            AudioEntryId = 141,
+            AudioEntryId = audioEntry.Id,
             BeginsAt = new Moment(DateTime.Parse("2021-11-05 17:26:05.745700 +00:00",
                 NumberFormatInfo.InvariantInfo)),
             ChatId = dbChat.Id,
@@ -142,7 +143,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 "шаг и холоду лютому слишком просто сладить с тобой",
             EndsAt = new Moment(DateTime.Parse("2021-11-05 17:26:16.275700 +00:00",
                 NumberFormatInfo.InvariantInfo)),
-            Id = 142,
+            Id = lastId,
             TextToTimeMap = textToTimeMap,
             Type = ChatEntryType.Text,
             Version = 16361331767501582,
@@ -184,7 +185,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         CancellationToken cancellationToken)
     {
         var words = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely" };
-        for (var id = 0; id < 200; id++) {
+        for (var id = 10; id < 500; id++) {
             var dbChatEntry = new DbChatEntry() {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, id),
                 ChatId = dbChat.Id,
