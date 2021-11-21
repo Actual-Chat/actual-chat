@@ -7,7 +7,7 @@ public static class DebugExt
         ILogger log,
         string title,
         CancellationToken cancellationToken = default)
-        => sequence.WithLog(log, title, i => i.ToString(), cancellationToken);
+        => sequence.WithLog(log, title, i => i?.ToString() ?? "(null)", cancellationToken);
 
     public static async IAsyncEnumerable<T> WithLog<T>(
         this IAsyncEnumerable<T> sequence,
