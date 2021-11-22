@@ -9,16 +9,18 @@
   "devDependencies": {
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
-    "autoprefixer": "^10.3.7",
-    "css-loader": "^6.3.0",
-    "cssnano": "^5.0.8",
+    "@types/recordrtc": "^5.6.8",
+    "@typescript/lib-dom": "npm:@types/web@^0.0.47",
+    "autoprefixer": "^10.4.0",
+    "css-loader": "^6.5.1",
+    "cssnano": "^5.0.11",
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
-    "mini-css-extract-plugin": "^2.4.1",
-    "postcss-loader": "^6.1.1",
-    "tailwindcss": "^2.2.16",
+    "mini-css-extract-plugin": "^2.4.5",
+    "postcss-loader": "^6.2.0",
+    "tailwindcss": "^2.2.19",
     "ts-loader": "^9.2.6",
-    "typescript": "^4.4.3",
-    "webpack": "^5.57.1",
-    "webpack-cli": "^4.8.0"
+    "typescript": "^4.5.2",
+    "webpack": "^5.64.2",
+    "webpack-cli": "^4.9.1"
   }
 }

@@ -1,23 +1,29 @@
-const LogScope = 'AudioRecorder'
+import type * as RecordRTC from 'recordrtc';
+
+const LogScope = 'AudioRecorder';
 const sampleRate = 24000;
 
 export class AudioRecorder {
+    private readonly _debugMode: boolean;
+    private readonly isMicrophoneAvailable: boolean;
+    private readonly _blazorRef: DotNet.DotNetObject;
+    private recording: { recorder: RecordRTC, stream: MediaStream; };
 
-    constructor(backendRef, debugMode) {
-        this.backendRef = backendRef;
-        this.debugMode = debugMode;
+    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        this._blazorRef = blazorRef;
+        this._debugMode = debugMode;
         this.recording = null;
         this.isMicrophoneAvailable = false;
 
-        if (backendRef === undefined || backendRef === null) {
-            console.error(`${LogScope}.constructor.error: backendRef undefined`);
+        if (blazorRef === undefined || blazorRef === null) {
+            console.error(`${LogScope}.constructor.error: blazorRef is undefined`);
         }
 
         // Temporarily
         if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
             alert('Please allow to use microphone.');
 
-            if (!!navigator.getUserMedia) {
+            if (navigator["getUserMedia"] !== undefined) {
                 alert('This browser seems supporting deprecated getUserMedia API.');
             }
         } else {
@@ -25,19 +31,19 @@ export class AudioRecorder {
         }
     }
 
-    static create(backendRef, debugMode) {
-        return new AudioRecorder(backendRef, debugMode);
+    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        return new AudioRecorder(blazorRef, debugMode);
     }
 
-    dispose() {
+    public dispose() {
         this.recording = null;
     }
 
-    isRecording() {
+    private isRecording() {
         return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
     }
 
-    async startRecording() {
+    public async startRecording(): Promise<any> {
         if (this.isRecording())
             return null;
         if (!this.isMicrophoneAvailable) {
@@ -46,7 +52,7 @@ export class AudioRecorder {
         }
 
         if (this.recording === null) {
-            let stream = await navigator.mediaDevices.getUserMedia({
+            let stream: MediaStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
                     sampleRate: sampleRate,
@@ -62,9 +68,11 @@ export class AudioRecorder {
                 },
                 video: false
             });
-            let recorder = RecordRTC(stream, {
+            const options: RecordRTC.Options = {
                 type: 'audio',
+                //@ts-expect-error
                 mimeType: 'audio/webm; codecs=opus',
+                //@ts-expect-error
                 recorderType: MediaStreamRecorder,
                 disableLogs: false,
                 timeSlice: 80,
@@ -79,26 +87,25 @@ export class AudioRecorder {
 
 
                 // as soon as the stream is available
-                ondataavailable: async (blob) => {
-                    if (this.debugMode) {
+                ondataavailable: async (blob: Blob) => {
+                    if (this._debugMode) {
                         console.log(`${LogScope}.startRecording: awaiting blob.arrayBuffer(), blob.size = ${blob.size}`);
                     }
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
 
-                        await this.backendRef.invokeMethodAsync('OnAudioData', chunk);
+                        await this._blazorRef.invokeMethodAsync('OnAudioData', chunk);
                     } catch (e) {
                         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
                     }
                 }
-            });
-
-            recorder.stopRecordingAsync = () => {
-                return new Promise((resolve, _) => {
-                    recorder.stopRecording(resolve);
-                });
             };
+            // @ts-expect-error
+            let recorder: RecordRTC = RecordRTC(stream, options);
+
+            recorder["stopRecordingAsync"] = (): Promise<void> =>
+                new Promise((resolve, _) => recorder.stopRecording(() => resolve));
 
             this.recording = {
                 recorder: recorder,
@@ -107,10 +114,10 @@ export class AudioRecorder {
         }
 
         let _ = this.recording.recorder.startRecording();
-        await this.backendRef.invokeMethodAsync('OnStartRecording');
+        await this._blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
-    async stopRecording() {
+    public async stopRecording() {
         if (!this.isRecording())
             return null;
 
@@ -118,8 +125,8 @@ export class AudioRecorder {
         this.recording = null;
         r.stream.getAudioTracks().forEach(t => t.stop());
         r.stream.getVideoTracks().forEach(t => t.stop());
-        await r.recorder.stopRecordingAsync();
-        await this.backendRef.invokeMethodAsync('OnStopRecording');
+        await r.recorder["stopRecordingAsync"]();
+        await this._blazorRef.invokeMethodAsync('OnStopRecording');
     }
 }
 
