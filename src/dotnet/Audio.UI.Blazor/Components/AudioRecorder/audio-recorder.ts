@@ -1,5 +1,5 @@
 import RecordRTC, {MediaStreamRecorder, Options} from 'recordrtc';
-
+import { SendingQueue } from './sending-queue';
 
 const LogScope = 'AudioRecorder';
 const sampleRate = 48000;
@@ -9,12 +9,23 @@ export class AudioRecorder {
     private readonly isMicrophoneAvailable: boolean;
     private readonly _blazorRef: DotNet.DotNetObject;
     private recording: { recorder: RecordRTC, stream: MediaStream; };
+    private _queue: SendingQueue;
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._blazorRef = blazorRef;
         this._debugMode = debugMode;
         this.recording = null;
         this.isMicrophoneAvailable = false;
+        this._queue = new SendingQueue({
+            debugMode: debugMode,
+            maxChunkSize: 2048,
+            maxFillBufferTimeMs: 60,
+            sendAsync: async (packet: Uint8Array): Promise<void> => {
+
+                console.log(`[${new Date(Date.now()).toISOString()}] Send to blazor server data size: ${packet.length}`);
+                //this._blazorRef.invokeMethodAsync('OnAudioData', packet);
+            }
+        });
 
         if (blazorRef === undefined || blazorRef === null) {
             console.error(`${LogScope}.constructor.error: blazorRef is undefined`);
@@ -91,8 +102,7 @@ export class AudioRecorder {
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
-
-                        await this._blazorRef.invokeMethodAsync('OnAudioData', chunk);
+                        this._queue.enqueue(chunk);
                     } catch (e) {
                         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
                     }
