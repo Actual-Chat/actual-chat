@@ -1,7 +1,8 @@
-import type * as RecordRTC from 'recordrtc';
+import RecordRTC, {MediaStreamRecorder, Options} from 'recordrtc';
+
 
 const LogScope = 'AudioRecorder';
-const sampleRate = 24000;
+const sampleRate = 48000;
 
 export class AudioRecorder {
     private readonly _debugMode: boolean;
@@ -39,10 +40,6 @@ export class AudioRecorder {
         this.recording = null;
     }
 
-    private isRecording() {
-        return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
-    }
-
     public async startRecording(): Promise<any> {
         if (this.isRecording())
             return null;
@@ -56,6 +53,7 @@ export class AudioRecorder {
                 audio: {
                     channelCount: 1,
                     sampleRate: sampleRate,
+                    // @ts-ignore
                     autoGainControl: {
                         ideal: true
                     },
@@ -68,11 +66,10 @@ export class AudioRecorder {
                 },
                 video: false
             });
-            const options: RecordRTC.Options = {
+            const options: Options = {
                 type: 'audio',
-                //@ts-expect-error
+                // @ts-ignore
                 mimeType: 'audio/webm; codecs=opus',
-                //@ts-expect-error
                 recorderType: MediaStreamRecorder,
                 disableLogs: false,
                 timeSlice: 80,
@@ -101,8 +98,7 @@ export class AudioRecorder {
                     }
                 }
             };
-            // @ts-expect-error
-            let recorder: RecordRTC = RecordRTC(stream, options);
+            let recorder: RecordRTC = new RecordRTC(stream, options);
 
             recorder["stopRecordingAsync"] = (): Promise<void> =>
                 new Promise((resolve, _) => recorder.stopRecording(() => resolve));
@@ -113,7 +109,7 @@ export class AudioRecorder {
             };
         }
 
-        let _ = this.recording.recorder.startRecording();
+        this.recording.recorder.startRecording();
         await this._blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
@@ -127,6 +123,10 @@ export class AudioRecorder {
         r.stream.getVideoTracks().forEach(t => t.stop());
         await r.recorder["stopRecordingAsync"]();
         await this._blazorRef.invokeMethodAsync('OnStopRecording');
+    }
+
+    private isRecording() {
+        return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
     }
 }
 
