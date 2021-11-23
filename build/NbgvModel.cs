@@ -48,7 +48,7 @@ namespace Build
         public VersionInfo? Version { get; set; }
         public string[]? PublicReleaseRefSpec { get; set; }
         public CloudBuild? CloudBuild { get; set; }
-        public Release Release { get; set; }
+        public Release? Release { get; set; }
     }
 
     public class VersionInfo
@@ -68,7 +68,7 @@ namespace Build
     public class BuildNumber
     {
         public bool Enabled { get; set; }
-        public object IncludeCommitId { get; set; }
+        public object? IncludeCommitId { get; set; }
     }
 
     public class Release
