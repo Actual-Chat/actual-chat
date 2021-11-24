@@ -102,6 +102,8 @@
             Log, $"{nameof(_sourceAudioRecorder.RecordSourceAudio)} failed");
     }
 
+    private uint prevSeqNum = 0;
+
     [JSInvokable]
     public async Task OnAudioData(byte[] chunk)
     {
@@ -109,6 +111,12 @@
             return;
 
         var seqNum = Unsafe.As<byte, uint>(ref chunk[0]);
+
+        if(seqNum != 0 && (seqNum - 1) != prevSeqNum){
+            Log.LogError("Sequence number mistmatch. currentSeqNum: {SequenceNumber} prevSeqNum: {PrevSequenceNumber}", seqNum, prevSeqNum);
+        }
+
+        prevSeqNum = seqNum;
         chunk = chunk[4..];
         DebugLog?.LogInformation("Got the packet (seqNum: {SequenceNumber}, data bytes: {PacketDataBytes})", seqNum, chunk.Length);
         await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));

@@ -18,8 +18,8 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
         this._queue = new SendingQueue({
             debugMode: debugMode,
-            maxChunkSize: 2048,
-            maxFillBufferTimeMs: 3_000,
+            maxChunkSize: 1024,
+            maxFillBufferTimeMs: 400,
             cleaningStrategy: new TimeoutCleaningStrategy(60_000),
             sendAsync: async (packet: Uint8Array): Promise<void> => {
                 if (this._debugMode) {
@@ -85,7 +85,7 @@ export class AudioRecorder {
                 mimeType: 'audio/webm; codecs=opus',
                 recorderType: MediaStreamRecorder,
                 disableLogs: false,
-                timeSlice: 80,
+                timeSlice: 60,
                 checkForInactiveTracks: true,
                 bitsPerSecond: 24000,
                 audioBitsPerSecond: 24000,
