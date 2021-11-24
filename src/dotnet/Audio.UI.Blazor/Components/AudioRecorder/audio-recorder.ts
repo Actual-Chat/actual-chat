@@ -1,5 +1,5 @@
-import RecordRTC, {MediaStreamRecorder, Options} from 'recordrtc';
-import { SendingQueue } from './sending-queue';
+import RecordRTC, { MediaStreamRecorder, Options } from 'recordrtc';
+import { SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
 
 const LogScope = 'AudioRecorder';
 const sampleRate = 48000;
@@ -19,12 +19,14 @@ export class AudioRecorder {
         this._queue = new SendingQueue({
             debugMode: debugMode,
             maxChunkSize: 2048,
-            maxFillBufferTimeMs: 60,
+            maxFillBufferTimeMs: 3_000,
+            cleaningStrategy: new TimeoutCleaningStrategy(60_000),
             sendAsync: async (packet: Uint8Array): Promise<void> => {
-
-                console.log(`[${new Date(Date.now()).toISOString()}] Send to blazor server data size: ${packet.length}`);
-                //this._blazorRef.invokeMethodAsync('OnAudioData', packet);
-            }
+                if (this._debugMode) {
+                    console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Send to blazor side data size: ${packet.length}`);
+                }
+                this._blazorRef.invokeMethodAsync('OnAudioData', packet);
+            },
         });
 
         if (blazorRef === undefined || blazorRef === null) {
@@ -96,9 +98,6 @@ export class AudioRecorder {
 
                 // as soon as the stream is available
                 ondataavailable: async (blob: Blob) => {
-                    if (this._debugMode) {
-                        console.log(`${LogScope}.startRecording: awaiting blob.arrayBuffer(), blob.size = ${blob.size}`);
-                    }
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
@@ -139,4 +138,3 @@ export class AudioRecorder {
         return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
     }
 }
-

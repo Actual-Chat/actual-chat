@@ -108,17 +108,9 @@
         if (AudioChannel == null)
             return;
 
-        // Broken stream check
-        /*
-        if (chunk.Take(6).SequenceEqual(_brokenHeader1)) {
-            Log.LogWarning("Fixing broken header, type 1!");
-            chunk = new byte[] { 0x1A}.Concat(chunk).ToArray();
-        }
-        else if (chunk.Take(6).SequenceEqual(_brokenHeader2)) {
-            Log.LogWarning("Fixing broken header, type 2!");
-            chunk = chunk.AsSpan()[1..].ToArray();
-        }
-        */
+        var seqNum = Unsafe.As<byte, uint>(ref chunk[0]);
+        chunk = chunk[4..];
+        DebugLog?.LogInformation("Got the packet (seqNum: {SequenceNumber}, data bytes: {PacketDataBytes})", seqNum, chunk.Length);
         await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
     }
 
