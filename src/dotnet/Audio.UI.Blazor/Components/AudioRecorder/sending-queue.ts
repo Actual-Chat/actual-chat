@@ -4,10 +4,10 @@ export class SendingQueue {
     private _bufferCursor: number;
     private _currentSequenceNumber: number;
     private readonly _chunks: Map<number, Uint8Array>;
-    private readonly _options: SendingQueueOptions;
+    private readonly _options: ISendingQueueOptions;
     private _sendBufferTimeout?: ReturnType<typeof setTimeout>;
 
-    constructor(options: SendingQueueOptions) {
+    constructor(options: ISendingQueueOptions) {
         this._options = options;
         this._buffer = new Uint8Array(this._options.maxChunkSize);
         this._bufferCursor = 0;
@@ -124,6 +124,7 @@ export class SendingQueue {
             if (this._options.debugMode) {
                 this.log(`Sent ${buffLen} data bytes, seqNum: ${seqNum}`);
             }
+            this._options.cleaningStrategy.cleanAsync(this._chunks, seqNum);
         }, err => {
             if (this._options.debugMode) {
                 this.logError(`Couldn't send ${buffLen - 4} (${buffLen}) data bytes, seqNum: ${seqNum}, error: ${err}`);
@@ -132,11 +133,48 @@ export class SendingQueue {
     }
 }
 
-export interface SendingQueueOptions {
+export interface ISendingQueueOptions {
     maxChunkSize: number;
     maxFillBufferTimeMs: number;
     sendAsync: (data: Uint8Array) => Promise<void>;
     debugMode: boolean;
+    cleaningStrategy: ISendingQueueCleaningStrategy;
+}
+
+export interface ISendingQueueCleaningStrategy {
+    cleanAsync(chunks: Map<number, Uint8Array>, currentSequenceNumber: number): Promise<void>;
+}
+
+export class TimeoutCleaningStrategy implements ISendingQueueCleaningStrategy {
+
+    private _seqNums: Map<number, number>;
+    private _lastCleanRunTimeMs: number;
+    private _maxTimeInQueueMs: number;
+
+    constructor(maxTimeInQueueMs: number) {
+        this._seqNums = new Map<number, number>();
+        this._lastCleanRunTimeMs = Date.now();
+        this._maxTimeInQueueMs = maxTimeInQueueMs;
+    }
+
+    public cleanAsync(chunks: Map<number, Uint8Array>, currentSequenceNumber: number): Promise<void> {
+        const now = Date.now();
+        this._seqNums.set(currentSequenceNumber, now);
+        const elapsedMs = now - this._lastCleanRunTimeMs;
+        if (elapsedMs < this._maxTimeInQueueMs) {
+            return Promise.resolve();
+        }
+        this._lastCleanRunTimeMs = now;
+        return new Promise<void>((resolve, _reject) => {
+            this._seqNums.forEach((v, k) => {
+                if ((now - v) > this._maxTimeInQueueMs) {
+                    this._seqNums.delete(k);
+                    chunks.delete(k);
+                }
+            });
+            resolve();
+        });
+    }
 }
 
 export default SendingQueue;
