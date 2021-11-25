@@ -38,7 +38,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     // Protected methods
 
     protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
-    protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
+    protected abstract ValueTask<bool> ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
@@ -53,10 +53,13 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             // Actual playback
             await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
             var frames = Source.GetFramesUntyped(cancellationToken);
-            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
-                await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
+            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                if(!await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false)){
+                    break;
+                }
+            }
             await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
-            await WhenCompleted.WithFakeCancellation(cancellationToken);
+            await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             error = ex;
