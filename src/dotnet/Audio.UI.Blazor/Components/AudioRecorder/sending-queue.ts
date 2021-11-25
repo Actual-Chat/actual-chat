@@ -37,7 +37,7 @@ export class SendingQueue {
                 if (this._options.debugMode) {
                     this.log(`Sending packet with padding ${padding}, added data len was ${data.length}, new data len is ${data.subarray(paddingSlice.length).length}`);
                 }
-                this.sendBuffer();
+                this.sendBufferAsync();
                 data = data.subarray(paddingSlice.length);
             }
             const chunkNum = Math.floor(data.length / chunkSize);
@@ -49,7 +49,7 @@ export class SendingQueue {
                 if (this._options.debugMode) {
                     this.log(`Sending packet ${i} [${chunkSize * i}, ${chunkSize * (i + 1)}).`);
                 }
-                this.sendBuffer();
+                this.sendBufferAsync();
             }
             if (data.length % chunkSize !== 0) {
                 const remaining = data.subarray(chunkNum * chunkSize);
@@ -62,6 +62,13 @@ export class SendingQueue {
             }
         }
         this.ensureSendTimeout();
+    }
+
+    public async flushAsync(): Promise<void> {
+        if (this._options.debugMode) {
+            this.log(`flushAsync is called, seqNum: ${this._currentSequenceNumber}`);
+        }
+        await this.sendBufferAsync();
     }
 
     public async resendAsync(sequenceNumber: number): Promise<void> {
@@ -86,7 +93,7 @@ export class SendingQueue {
                 if (this._options.debugMode) {
                     this.log(`Send timeout is fired, sending buffer with ${this._bufferCursor} data bytes, seqNum: ${this._currentSequenceNumber}.`);
                 }
-                this.sendBuffer();
+                this.sendBufferAsync();
             }, this._options.maxFillBufferTimeMs);
         }
     }
@@ -98,7 +105,7 @@ export class SendingQueue {
         }
     }
 
-    private sendBuffer() {
+    private async sendBufferAsync(): Promise<void> {
         this.clearSendTimeout();
         const buffLen = this._bufferCursor;
         const seqNum = this._currentSequenceNumber;
@@ -119,17 +126,18 @@ export class SendingQueue {
         this._currentSequenceNumber = (seqNum + 1) >>> 0;
         this._buffer = new Uint8Array(this._options.maxChunkSize);
         this._bufferCursor = 0;
-
-        this._options.sendAsync(packetBytes).then(() => {
+        try {
+            await this._options.sendAsync(packetBytes);
             if (this._options.debugMode) {
                 this.log(`Sent ${buffLen} data bytes, seqNum: ${seqNum}`);
             }
             this._options.cleaningStrategy.cleanAsync(this._chunks, seqNum);
-        }, err => {
+        }
+        catch (error) {
             if (this._options.debugMode) {
-                this.logError(`Couldn't send ${buffLen - 4} (${buffLen}) data bytes, seqNum: ${seqNum}, error: ${err}`);
+                this.logError(`Couldn't send ${buffLen - 4} (${buffLen}) data bytes, seqNum: ${seqNum}, error: ${error}`);
             }
-        });
+        }
     }
 }
 
