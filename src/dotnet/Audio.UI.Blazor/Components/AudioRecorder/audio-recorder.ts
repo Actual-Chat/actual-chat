@@ -25,7 +25,7 @@ export class AudioRecorder {
                 if (this._debugMode) {
                     console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Send to blazor side data size: ${packet.length}`);
                 }
-                this._blazorRef.invokeMethodAsync('OnAudioData', packet);
+                await this._blazorRef.invokeMethodAsync('OnAudioData', packet);
             },
         });
 
@@ -110,7 +110,7 @@ export class AudioRecorder {
             let recorder: RecordRTC = new RecordRTC(stream, options);
 
             recorder["stopRecordingAsync"] = (): Promise<void> =>
-                new Promise((resolve, _) => recorder.stopRecording(() => resolve));
+                new Promise((resolve, _) => recorder.stopRecording(() => resolve()));
 
             this.recording = {
                 recorder: recorder,
@@ -122,16 +122,24 @@ export class AudioRecorder {
         await this._blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
-    public async stopRecording() {
+    public async stopRecording(): Promise<void> {
         if (!this.isRecording())
-            return null;
+            return;
+        if (this._debugMode) {
+            console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Received stop recording`);
+        }
 
         let r = this.recording;
         this.recording = null;
         r.stream.getAudioTracks().forEach(t => t.stop());
         r.stream.getVideoTracks().forEach(t => t.stop());
         await r.recorder["stopRecordingAsync"]();
-        await this._blazorRef.invokeMethodAsync('OnStopRecording');
+        await this._queue.flushAsync();
+        await this._blazorRef.invokeMethodAsync('OnRecordingStopped');
+        if (this._debugMode) {
+            console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: OnRecordingStopped interop call is done`);
+        }
+
     }
 
     private isRecording() {
