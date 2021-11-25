@@ -1,5 +1,3 @@
-const LogScope: string = 'AudioPlayer'
-
 class AudioUpdate {
     public played: () => void;
     public chunk: Uint8Array;
@@ -36,24 +34,24 @@ export class AudioPlayer {
         this._lastReadyState = -1;
         this._lastOffset = -1;
         this._mediaSource.addEventListener('error', _ => {
-            console.error(`${LogScope}._mediaSource.error: ` + this._mediaSource.readyState);
+            this.logError(`mediaSource.error: ${this._mediaSource.readyState}`);
         });
 
         this._audio.addEventListener('ended', e => {
             let _ = this.invokeOnPlaybackEnded();
             if (debugMode)
-                console.log(`${LogScope}._audio.ended.`);
+                this.log(`_audio.ended.`);
         });
         this._audio.addEventListener('error', e => {
             let err = this._audio.error;
             let _ = this.invokeOnPlaybackEnded(err.code, err.message);
-            console.error(`${LogScope}._audio.error: code: ${err.code}, message: ${err.message}`);
+            this.logError(`_audio.error: code: ${err.code}, message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', _ => {
-            console.warn(`${LogScope}._audio.stalled.`);
+            this.logWarn(`_audio.stalled.`);
         });
         this._audio.addEventListener('waiting', e => {
-            console.warn(`${LogScope}._audio.waiting, _audio.readyState = ${this.getReadyState()}`);
+            this.logWarn(`_audio.waiting, _audio.readyState = ${this.getReadyState()}`);
             let time = this._audio.currentTime;
             let readyState = this._audio.readyState;
             let _ = this.invokeOnReadyToBufferMore(time, readyState);
@@ -62,7 +60,7 @@ export class AudioPlayer {
             let time = this._audio.currentTime;
             if (this._audio.readyState !== this._lastReadyState) {
                 if (this._debugMode)
-                    console.log(`${LogScope}.timeupdate: new _audio.readyState = ${this.getReadyState()}`);
+                    this.log(`timeupdate: new _audio.readyState = ${this.getReadyState()}`);
             }
             this._lastReadyState = this._audio.readyState;
 
@@ -100,45 +98,45 @@ export class AudioPlayer {
 
     public async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
-            console.log(`${LogScope}.initialize()`);
+            this.log(`initialize()`);
 
         try {
             if (this._sourceBuffer !== null) {
                 this._sourceBuffer.appendBuffer(byteArray);
                 if (this._debugMode)
-                    console.log(`${LogScope}.initialize: header has been appended`);
+                    this.log(`initialize: header has been appended`);
             } else {
                 if (this._debugMode)
-                    console.log(`${LogScope}.initialize: awaiting this._bufferCreated`);
+                    this.log(`initialize: awaiting this._bufferCreated`);
                 let sourceBuffer = await this._bufferCreated;
                 sourceBuffer.appendBuffer(byteArray);
                 if (this._debugMode)
-                    console.log(`${LogScope}.initialize: header has been appended with a delay`);
+                    this.log(`initialize: header has been appended with a delay`);
             }
         } catch (e) {
-            console.error(`${LogScope}.initialize: error ${e}`, e.stack);
+            this.logError(`initialize: error ${e} ${e.stack}`);
         }
     }
 
     public dispose(): void {
         if (this._debugMode)
-            console.log(`${LogScope}.dispose()`);
+            this.log(`dispose()`);
         this.stop(null);
     }
 
     public appendAudio(byteArray: Uint8Array, offset: number): number {
         if (this._debugMode)
-            console.log(`${LogScope}.appendAudio(...)`);
+            this.log(`.appendAudio(size: ${byteArray.length}, offset: ${offset})`);
         if (this._audio.error !== null) {
             let e = this._audio.error;
-            console.error(`${LogScope}.appendAudio: error, code: ${e.code}, message: ${e.message}`);
+            this.logError(`appendAudio: error, code: ${e.code}, message: ${e.message}`);
             return 0;
         }
 
         try {
             if (this._audio.readyState !== this._lastReadyState) {
                 if (this._debugMode)
-                    console.log(`${LogScope}.appendAudio: new _audio.readyState = ${this.getReadyState()}`);
+                    this.log(`appendAudio: new _audio.readyState = ${this.getReadyState()}`);
             }
             this._lastReadyState = this._audio.readyState;
 
@@ -149,7 +147,7 @@ export class AudioPlayer {
                 if (!queueItemAppended) {
                     this._sourceBuffer.appendBuffer(byteArray);
                     if (offset < this._lastOffset)
-                        console.error(`${LogScope}.appendAudio: offset < _lastOffset!`);
+                        this.logError(`appendAudio: offset < _lastOffset!`);
                     this._lastOffset = offset;
                 } else {
                     this._bufferQueue.push(new AudioUpdate(byteArray, offset));
@@ -164,13 +162,13 @@ export class AudioPlayer {
             return 0;
 
         } catch (e) {
-            console.error(`${LogScope}.appendAudio: error ${e}`, e.stack);
+            this.logError(`appendAudio: error ${e} ${e.stack}`);
         }
     }
 
     public endOfStream(): void {
         if (this._debugMode)
-            console.log(`${LogScope}.endOfStream()`);
+            this.log(`endOfStream()`);
         if (this._sourceBuffer.updating) {
             this._bufferQueue.push(new AudioEnd());
         } else {
@@ -187,14 +185,14 @@ export class AudioPlayer {
 
     public stop(error: EndOfStreamError | null) {
         if (this._debugMode)
-            console.log(`${LogScope}.stop()`);
+            this.log(`stop()`);
         this._audio.pause();
 
         if (this._sourceBuffer.updating) {
             this._sourceBuffer.onupdateend = _ => {
                 if (!this._sourceBuffer.updating)
                     this._mediaSource.endOfStream(error);
-            }
+            };
         } else {
             if (this._mediaSource.readyState === "open") {
                 this._mediaSource.endOfStream(error);
@@ -228,7 +226,7 @@ export class AudioPlayer {
                 let offset = update.offset;
                 this._sourceBuffer.appendBuffer(update.chunk);
                 if (offset < this._lastOffset)
-                    console.error(`${LogScope}.onUpdateEnd: offset < _lastOffset!`);
+                    this.logError(`onUpdateEnd: offset < _lastOffset!`);
                 this._lastOffset = offset;
             } else {
                 if (this._mediaSource.readyState === "open") {
@@ -238,7 +236,7 @@ export class AudioPlayer {
 
             return true;
         } catch (e) {
-            console.error(`${LogScope}.onUpdateEnd: error ${e}`, e.stack);
+            this.logError(`onUpdateEnd: error ${e} ${e.stack}`);
         }
     }
 
@@ -256,18 +254,30 @@ export class AudioPlayer {
 
     private getReadyState(): string {
         switch (this._audio.readyState) {
-        case this._audio.HAVE_CURRENT_DATA:
-            return 'HAVE_CURRENT_DATA';
-        case this._audio.HAVE_ENOUGH_DATA:
-            return 'HAVE_ENOUGH_DATA';
-        case this._audio.HAVE_FUTURE_DATA:
-            return 'HAVE_FUTURE_DATA';
-        case this._audio.HAVE_METADATA:
-            return 'HAVE_METADATA';
-        case this._audio.HAVE_NOTHING:
-            return 'HAVE_NOTHING';
-        default:
-            return 'UNKNOWN - ' + this._audio.readyState;
+            case this._audio.HAVE_CURRENT_DATA:
+                return 'HAVE_CURRENT_DATA';
+            case this._audio.HAVE_ENOUGH_DATA:
+                return 'HAVE_ENOUGH_DATA';
+            case this._audio.HAVE_FUTURE_DATA:
+                return 'HAVE_FUTURE_DATA';
+            case this._audio.HAVE_METADATA:
+                return 'HAVE_METADATA';
+            case this._audio.HAVE_NOTHING:
+                return 'HAVE_NOTHING';
+            default:
+                return 'UNKNOWN - ' + this._audio.readyState;
         }
+    }
+
+    private log(message: string) {
+        console.debug(`[${new Date(Date.now()).toISOString()}] AudioPlayer: ${message}`);
+    }
+
+    private logWarn(message: string) {
+        console.warn(`[${new Date(Date.now()).toISOString()}] AudioPlayer: ${message}`);
+    }
+
+    private logError(message: string) {
+        console.error(`[${new Date(Date.now()).toISOString()}] AudioPlayer: ${message}`);
     }
 }
