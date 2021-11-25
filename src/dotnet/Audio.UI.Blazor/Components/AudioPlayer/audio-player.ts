@@ -23,6 +23,8 @@ export class AudioPlayer {
     private _lastOffset: number;
     private readonly _mediaSource: MediaSource;
     private readonly _bufferCreated: Promise<SourceBuffer>;
+    private readonly _maxBufferSizeSeconds = 5;
+    private _isBufferReady: boolean;
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._debugMode = debugMode;
@@ -30,6 +32,7 @@ export class AudioPlayer {
         this._blazorRef = blazorRef;
         this._sourceBuffer = null;
         this._bufferQueue = [];
+        this._isBufferReady = true;
         this._mediaSource = new MediaSource();
         this._lastReadyState = -1;
         this._lastOffset = -1;
@@ -38,13 +41,13 @@ export class AudioPlayer {
         });
 
         this._audio.addEventListener('ended', e => {
-            let _ = this.invokeOnPlaybackEnded();
+            const _ = this.invokeOnPlaybackEnded();
             if (debugMode)
                 this.log(`_audio.ended.`);
         });
         this._audio.addEventListener('error', e => {
-            let err = this._audio.error;
-            let _ = this.invokeOnPlaybackEnded(err.code, err.message);
+            const err = this._audio.error;
+            const _ = this.invokeOnPlaybackEnded(err.code, err.message);
             this.logError(`_audio.error: code: ${err.code}, message: ${err.message}`);
         });
         this._audio.addEventListener('stalled', _ => {
@@ -52,24 +55,33 @@ export class AudioPlayer {
         });
         this._audio.addEventListener('waiting', e => {
             this.logWarn(`_audio.waiting, _audio.readyState = ${this.getReadyState()}`);
-            let time = this._audio.currentTime;
-            let readyState = this._audio.readyState;
-            let _ = this.invokeOnReadyToBufferMore(time, readyState);
+            const time = this._audio.currentTime;
+            const readyState = this._audio.readyState;
+            if (this._isBufferReady === false) {
+                this.invokeOnChangeReadiness(true, time, readyState).then(() => this._isBufferReady = true);
+            }
         });
         this._audio.addEventListener('timeupdate', e => {
-            let time = this._audio.currentTime;
+            const time = this._audio.currentTime;
             if (this._audio.readyState !== this._lastReadyState) {
                 if (this._debugMode)
                     this.log(`timeupdate: new _audio.readyState = ${this.getReadyState()}`);
             }
             this._lastReadyState = this._audio.readyState;
-
-            let _ = this.invokeOnPlaybackTimeChanged(time);
+            const _ = this.invokeOnPlaybackTimeChanged(time);
+            const bufferedUpTo = this._sourceBuffer.buffered.end(this._sourceBuffer.buffered.length - 1);
+            if (bufferedUpTo - time <= this._maxBufferSizeSeconds && this._isBufferReady === false) {
+                if (this._debugMode) {
+                    this.log(`timeupdate: we're ready to receive data, bufferedUpTo: ${bufferedUpTo} - currentTime: ${time} <= ${this._maxBufferSizeSeconds} sec`);
+                }
+                this.invokeOnChangeReadiness(true, time, this._audio.readyState)
+                    .then(() => this._isBufferReady = true);
+            }
         });
         this._audio.addEventListener('canplay', _ => {
         });
         this._audio.addEventListener('loadeddata', async _ => {
-            let audio = this._audio;
+            const audio = this._audio;
             if (audio.readyState >= 3) {
                 await audio.play();
             }
@@ -113,8 +125,8 @@ export class AudioPlayer {
                 if (this._debugMode)
                     this.log(`initialize: header has been appended with a delay`);
             }
-        } catch (e) {
-            this.logError(`initialize: error ${e} ${e.stack}`);
+        } catch (error) {
+            this.logError(`initialize: error ${error} ${error.stack}`);
         }
     }
 
@@ -124,13 +136,15 @@ export class AudioPlayer {
         this.stop(null);
     }
 
-    public appendAudio(byteArray: Uint8Array, offset: number): number {
+    public async appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
+
         if (this._debugMode)
             this.log(`.appendAudio(size: ${byteArray.length}, offset: ${offset})`);
+
         if (this._audio.error !== null) {
             let e = this._audio.error;
             this.logError(`appendAudio: error, code: ${e.code}, message: ${e.message}`);
-            return 0;
+            throw new Error(`appendAudio: error, code: ${e.code}, message: ${e.message}`);
         }
 
         try {
@@ -155,14 +169,19 @@ export class AudioPlayer {
             }
 
             if (this._sourceBuffer.buffered.length > 0) {
+
                 let bufferedUpTo = this._sourceBuffer.buffered.end(this._sourceBuffer.buffered.length - 1);
-                return bufferedUpTo - this._audio.currentTime;
+                if (bufferedUpTo - this._audio.currentTime >= this._maxBufferSizeSeconds) {
+                    if (this._debugMode) {
+                        this.log(`appendAudio: the buffer is full, bufferedUpTo: ${bufferedUpTo}, currentTime: ${this._audio.currentTime}`);
+                    }
+                    await this.invokeOnChangeReadiness(false, this._audio.currentTime, this._audio.readyState);
+                    this._isBufferReady = false;
+                }
             }
-
-            return 0;
-
-        } catch (e) {
-            this.logError(`appendAudio: error ${e} ${e.stack}`);
+        } catch (error) {
+            this.logError(`appendAudio: error ${error} ${error.stack}`);
+            throw error;
         }
     }
 
@@ -240,16 +259,16 @@ export class AudioPlayer {
         }
     }
 
-    private async invokeOnPlaybackTimeChanged(time: number): Promise<void> {
-        await this._blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
+    private invokeOnPlaybackTimeChanged(time: number): Promise<void> {
+        return this._blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
     }
 
     private invokeOnPlaybackEnded(code: number | null = null, message: string | null = null): Promise<void> {
         return this._blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
     }
 
-    private invokeOnReadyToBufferMore(time: number, readyState: number): Promise<void> {
-        return this._blazorRef.invokeMethodAsync("OnReadyToBufferMore", time, readyState);
+    private invokeOnChangeReadiness(isBufferReady: boolean, time: number, readyState: number): Promise<void> {
+        return this._blazorRef.invokeMethodAsync("OnChangeReadiness", isBufferReady, time, readyState);
     }
 
     private getReadyState(): string {
@@ -265,7 +284,7 @@ export class AudioPlayer {
             case this._audio.HAVE_NOTHING:
                 return 'HAVE_NOTHING';
             default:
-                return 'UNKNOWN - ' + this._audio.readyState;
+                return 'UNKNOWN:' + this._audio.readyState;
         }
     }
 

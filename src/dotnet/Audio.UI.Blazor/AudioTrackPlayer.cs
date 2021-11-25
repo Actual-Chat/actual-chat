@@ -13,10 +13,10 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly byte[] _header;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private Task<Unit> _whenReadyToBufferMore = null!;
     private IJSObjectReference? _jsRef;
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+    private readonly ManualResetEventSlim _jsReadyToBuffer = new();
 
     public AudioSource AudioSource => (AudioSource)Source;
 
@@ -31,7 +31,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         _circuitContext = circuitContext;
         _js = js;
         _header = AudioSource.Format.ToBlobPart().Data;
-        ReadyToBufferMore();
+        _jsReadyToBuffer.Set();
     }
 
     [JSInvokable]
@@ -63,13 +63,30 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public Task OnReadyToBufferMore(double? offset, int? readyState)
+    public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
-        DebugLog?.LogWarning(
-            "Ready to buffer more audio data. Offset = {Offset}, readyState = {ReadyState}",
-            offset, readyState);
-        ReadyToBufferMore();
+        DebugLog?.LogInformation(
+            "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
+            isBufferReady,
+            offset,
+            ToMediaElementReadyState(readyState));
+
+        if (isBufferReady) {
+            _jsReadyToBuffer.Set();
+        }
+        else {
+            _jsReadyToBuffer.Reset();
+        }
         return Task.CompletedTask;
+
+        static string ToMediaElementReadyState(int? state) => state switch {
+            0 => "HAVE_NOTHING",
+            1 => "HAVE_METADATA",
+            2 => "HAVE_CURRENT_DATA",
+            3 => "HAVE_FUTURE_DATA",
+            4 => "HAVE_ENOUGH_DATA",
+            _ => $"UNKNOWN:{state?.ToString(CultureInfo.InvariantCulture) ?? "(null)"}",
+        };
     }
 
     [JSInvokable]
@@ -83,62 +100,86 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 switch (command) {
-                case StartPlaybackCommand:
-                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-                    _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                        $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                        _blazorRef,
-                        DebugMode);
-                    await _jsRef!.InvokeVoidAsync("initialize", _header);
-                    break;
-                case StopPlaybackCommand stop:
-                    if (_jsRef == null)
+                    case StartPlaybackCommand:
+                        _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                        _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                            $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                            _blazorRef,
+                            DebugMode);
+                        await _jsRef!.InvokeVoidAsync("initialize", _header);
                         break;
+                    case StopPlaybackCommand stop:
+                        if (_jsRef == null)
+                            break;
 
-                    if (stop.Immediately)
-                        await _jsRef.InvokeVoidAsync("stop", null);
-                    else
-                        await _jsRef.InvokeVoidAsync("endOfStream");
-                    break;
-                case SetTrackVolumeCommand setVolume:
-                    // TODO: Implement this
-                    break;
-                default:
-                    throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+                        if (stop.Immediately)
+                            await _jsRef.InvokeVoidAsync("stop", null);
+                        else
+                            await _jsRef.InvokeVoidAsync("endOfStream");
+                        break;
+                    case SetTrackVolumeCommand setVolume:
+                        // TODO: Implement this
+                        break;
+                    default:
+                        throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
                 }
             }).ConfigureAwait(false);
 
-    protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
+    protected override async ValueTask<bool> ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
         => await CircuitInvoke(
             async () => {
                 if (_jsRef == null)
-                    return;
+                    return false;
 
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
-                var bufferedDuration = await _jsRef.InvokeAsync<double>("appendAudio", cancellationToken, chunk, offset);
-                if (bufferedDuration > 10) // > 10 seconds
-                    await _whenReadyToBufferMore.WithTimeout(TimeSpan.FromSeconds(5), cancellationToken);
+                _ = _jsRef.InvokeVoidAsync("appendAudioAsync", cancellationToken, chunk, offset);
+                try {
+                    await _jsReadyToBuffer.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) {
+                    DebugLog?.LogInformation(
+                        "Playing was cancelled while waiting js buffer, was on frame: (offset: {FrameOffset})",
+                        frame.Offset);
+                    return false;
+                }
+                catch (TimeoutException) {
+                    DebugLog?.LogWarning(
+                        "Buffer waiting timeout, playing was cancelled on frame: (offset: {FrameOffset})",
+                        frame.Offset);
+                    return false;
+                }
+                return true;
             }).ConfigureAwait(false);
 
-    private void ReadyToBufferMore()
-    {
-        if (_whenReadyToBufferMore != null!)
-            TaskSource.For(_whenReadyToBufferMore).TrySetResult(default);
-        _whenReadyToBufferMore = TaskSource.New<Unit>(true).Task;
-    }
-
     private Task CircuitInvoke(Func<Task> workItem)
+        => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
+#pragma warning disable RCS1229
+    private Task<TResult?> CircuitInvoke<TResult>(Func<Task<TResult?>> workItem)
     {
         try {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             return _circuitContext.IsDisposing || _circuitContext.RootComponent == null
-                ? Task.CompletedTask
+                ? Task.FromResult(default(TResult?))
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }
         catch (Exception e) {
             Log.LogError(e, $"{nameof(CircuitInvoke)} failed");
         }
-        return Task.CompletedTask;
+        return Task.FromResult(default(TResult));
+    }
+
+    protected override ValueTask DisposeAsyncCore()
+    {
+        _jsReadyToBuffer.Dispose();
+        return base.DisposeAsyncCore();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) {
+            _jsReadyToBuffer.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }
