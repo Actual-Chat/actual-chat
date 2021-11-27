@@ -96,11 +96,13 @@ else
                 });
             });
         </script>
+        @* TODO: check https://github.com/dotnet/aspnetcore/issues/29991 *@
+        @* https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Platform/Circuits/DefaultReconnectionHandler.ts *@
+        @*
         <environment include="Development">
         <script>
             document.addEventListener('readystatechange', event => {
                 if (event.target.readyState === 'complete'){
-                    @* https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Platform/Circuits/DefaultReconnectionHandler.ts *@
                     Blazor.defaultReconnectionHandler.onConnectionDown = function () {
                         console.warn("[onConnectionDown]: Can't reconnect to restore state, force reload after 5 sec.");
                         setTimeout(function () {location.reload(); }, 5000);
@@ -109,6 +111,7 @@ else
             });
         </script>
         </environment>
+        *@
     }
     else
     {

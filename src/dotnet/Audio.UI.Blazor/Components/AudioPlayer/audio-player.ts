@@ -22,7 +22,7 @@ export class AudioPlayer {
     private _lastReadyState: number;
     private _lastOffset: number;
     private readonly _mediaSource: MediaSource;
-    private readonly _bufferCreated: Promise<SourceBuffer>;
+    private readonly _sourceBufferCreatingPromise: Promise<SourceBuffer>;
     private readonly _maxBufferSizeSeconds = 5;
     private _isBufferReady: boolean;
 
@@ -86,8 +86,7 @@ export class AudioPlayer {
                 await audio.play();
             }
         });
-
-        this._bufferCreated = new Promise<SourceBuffer>(resolve => {
+        this._sourceBufferCreatingPromise = new Promise<SourceBuffer>(resolve => {
             this._mediaSource.addEventListener('sourceopen', _ => {
                 URL.revokeObjectURL(this._audio.src);
 
@@ -95,7 +94,6 @@ export class AudioPlayer {
                     let mime = 'audio/webm; codecs=opus';
                     this._sourceBuffer = this._mediaSource.addSourceBuffer(mime);
                     this._sourceBuffer.addEventListener('updateend', _ => this.onUpdateEnd());
-
                     resolve(this._sourceBuffer);
                 }
             });
@@ -110,17 +108,15 @@ export class AudioPlayer {
 
     public async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
-            this.log(`initialize()`);
+            this.log(`initialize(header: ${byteArray.length} bytes)`);
 
         try {
             if (this._sourceBuffer !== null) {
                 this._sourceBuffer.appendBuffer(byteArray);
-                if (this._debugMode)
-                    this.log(`initialize: header has been appended`);
             } else {
                 if (this._debugMode)
-                    this.log(`initialize: awaiting this._bufferCreated`);
-                let sourceBuffer = await this._bufferCreated;
+                    this.log("initialize: awaiting creation of SourceBuffer");
+                const sourceBuffer = await this._sourceBufferCreatingPromise;
                 sourceBuffer.appendBuffer(byteArray);
                 if (this._debugMode)
                     this.log(`initialize: header has been appended with a delay`);
@@ -186,8 +182,14 @@ export class AudioPlayer {
     }
 
     public endOfStream(): void {
-        if (this._debugMode)
+        if (this._debugMode) {
             this.log(`endOfStream()`);
+        }
+        if (this._sourceBuffer === null
+            || this._sourceBuffer === undefined
+            || this._mediaSource === null
+            || this._mediaSource === undefined)
+            return;
         if (this._sourceBuffer.updating) {
             this._bufferQueue.push(new AudioEnd());
         } else {
@@ -254,8 +256,8 @@ export class AudioPlayer {
             }
 
             return true;
-        } catch (e) {
-            this.logError(`onUpdateEnd: error ${e} ${e.stack}`);
+        } catch (error) {
+            this.logError(`onUpdateEnd: error ${error} ${error.stack}`);
         }
     }
 

@@ -53,6 +53,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             SingleWriter = true,
             SingleReader = true,
             AllowSynchronousContinuations = true,
+            FullMode = BoundedChannelFullMode.Wait,
         });
 
         var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
@@ -72,9 +73,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
                 foreach (var frame in frameBuffer) {
                     duration = frame.Offset + frame.Duration;
-                    await target.Writer.WriteAsync(frame, cancellationToken);
+                    await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
                 }
-
             }, cancellationToken), cancellationToken);
 
         var _ = BackgroundTask.Run(async () => {
