@@ -107,7 +107,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
                 if (!DurationTask.IsCompleted)
                     durationTaskSource.TrySetException(new InvalidOperationException("Duration wasn't parsed."));
-                readBuffer.Dispose();
+                readBuffer.Release();
             }
         }, CancellationToken.None);
 
