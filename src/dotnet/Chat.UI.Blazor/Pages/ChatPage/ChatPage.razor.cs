@@ -113,6 +113,8 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
 
+        // AY: Uncomment if you see any issues w/ duplicate entries
+        /*
         var duplicateEntries = (
             from e in chatEntries
             let count = chatEntries.Count(e1 => e1.Id == e.Id)
@@ -127,6 +129,7 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                     e.Id, e.Version, e.Type, e.Content);
             chatEntries = chatEntries.DistinctBy(e => e.Id).ToList();
         }
+        */
 
         var authorIds = chatEntries.Select(e => e.AuthorId).Distinct();
         var authorTasks = await Task
