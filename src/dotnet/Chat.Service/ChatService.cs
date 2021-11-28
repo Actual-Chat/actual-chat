@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Mathematics;
 using Stl.Fusion.EntityFramework;
 using Stl.Redis;
 
@@ -7,7 +6,7 @@ namespace ActualChat.Chat;
 
 public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 {
-    private static readonly LogTileCover<long, long> IdTiles = ChatConstants.IdTiles;
+    private static readonly TileStack<long> IdTileStack = ChatConstants.IdTileStack;
 
     private readonly IAuth _auth;
     private readonly IAuthBackend _authBackend;
@@ -48,24 +47,24 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsB
     public virtual async Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idTile,
+        Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetTile(chatId, idTile, cancellationToken).ConfigureAwait(false);
+        return await GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
-        Range<long>? idTile,
+        Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntryCount(chatId, idTile, cancellationToken).ConfigureAwait(false);
+        return await GetEntryCount(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

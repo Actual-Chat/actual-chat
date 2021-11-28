@@ -8,6 +8,8 @@ namespace ActualChat.Chat.UI.Blazor.Pages;
 
 public partial class ChatPage : ComputedStateComponent<ChatPageModel>
 {
+    private static readonly TileStack<long> IdTileStack = ChatConstants.IdTileStack;
+
     [Parameter] public string ChatId { get; set; } = "";
     [Inject] private Session Session { get; set; } = default!;
     [Inject] private ChatPageService Service { get; set; } = default!;
@@ -83,12 +85,11 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
                 _ => "", // Unused anyway in this case
                 true, true);
 
-        var idLogCover = ChatConstants.IdTiles;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
                 InclusiveRange = new(
-                    (chatIdRange.End - idLogCover.MinTileSize).ToString(CultureInfo.InvariantCulture),
+                    (chatIdRange.End - IdTileStack.MinTileSize).ToString(CultureInfo.InvariantCulture),
                     chatIdRange.End.ToString(CultureInfo.InvariantCulture)),
             };
 
@@ -102,9 +103,9 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
             endId += (long)query.ExpandEndBy;
         endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
 
-        var idTiles = idLogCover.GetTileCover((startId, endId + 1));
+        var idTiles = IdTileStack.GetOptimalCoveringTiles((startId, endId + 1));
         var chatTiles = await Task
-            .WhenAll(idTiles.Select(r => Chats.GetTile(Session, chatId.Value, r, cancellationToken)))
+            .WhenAll(idTiles.Select(idTile => Chats.GetTile(Session, chatId.Value, idTile.Range, cancellationToken)))
             .ConfigureAwait(false);
 
         var chatEntries = chatTiles
