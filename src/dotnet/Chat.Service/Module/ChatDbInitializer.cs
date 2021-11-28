@@ -31,6 +31,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         await using var _ = dbContext.ConfigureAwait(false);
 
         if (DbInfo.ShouldRecreateDb) {
+            Log.LogInformation("Recreating DB...");
             // Creating "The Actual One" chat
             var defaultChatId = ChatConstants.DefaultChatId;
             var adminUserId = UserConstants.Admin.UserId;
@@ -70,6 +71,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
 
         if (DbInfo.ShouldVerifyDb) {
+            Log.LogInformation("Verifying DB...");
             var chatIds = await dbContext.Chats
                 .Select(c => c.Id)
                 .ToListAsync(cancellationToken)
