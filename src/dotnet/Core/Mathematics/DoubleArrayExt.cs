@@ -6,16 +6,16 @@ public static class DoubleArrayExt
     {
         var result = -1;
         var minIndex = 0;
-        var maxIndex1 = values.Length - 1;
-        while (minIndex <= maxIndex1) {
-            var index = minIndex + ((maxIndex1 - minIndex) >> 1);
+        var maxIndex = values.Length - 1;
+        while (minIndex <= maxIndex) {
+            var index = minIndex + ((maxIndex - minIndex) >> 1);
             var diff = values[index] - value;
             if (diff <= 0) {
                 result = index;
                 minIndex = index + 1;
             }
             else
-                maxIndex1 = index - 1;
+                maxIndex = index - 1;
         }
         return result;
     }
@@ -24,15 +24,15 @@ public static class DoubleArrayExt
     {
         var result = -1;
         var minIndex = 0;
-        var maxIndex1 = values.Length - 1;
-        while (minIndex <= maxIndex1) {
-            var index = minIndex + ((maxIndex1 - minIndex) >> 1);
+        var maxIndex = values.Length - 1;
+        while (minIndex <= maxIndex) {
+            var index = minIndex + ((maxIndex - minIndex) >> 1);
             var diff = values[index] - value;
             if (diff < 0)
                 minIndex = index + 1;
             else {
                 result = index;
-                maxIndex1 = index - 1;
+                maxIndex = index - 1;
             }
         }
         return result;

@@ -1,11 +1,10 @@
 using System.Text.Json.Serialization;
-using ActualChat.Mathematics;
 
 namespace ActualChat.Chat;
 
 public class ChatTile
 {
-    public Range<long> IdTile { get; init; }
+    public Range<long> IdTileRange { get; init; }
     public Range<long> IdRange { get; init; }
     public Range<Moment> BeginsAtRange { get; init; }
     public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty;
@@ -14,7 +13,7 @@ public class ChatTile
 
     public ChatTile() { }
 
-    public ChatTile(Range<long> idTile, ImmutableArray<ChatEntry> entries)
+    public ChatTile(Range<long> idTileRange, ImmutableArray<ChatEntry> entries)
     {
         var idRange = new Range<long>(long.MaxValue, long.MinValue);
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
@@ -23,7 +22,7 @@ public class ChatTile
             beginsAtRange = beginsAtRange.MinMaxWith(entry.BeginsAt);
         }
 
-        IdTile = idTile;
+        IdTileRange = idTileRange;
         Entries = entries;
         IdRange = idRange;
         BeginsAtRange = beginsAtRange;
@@ -36,14 +35,14 @@ public class ChatTile
         var idRange = new Range<long>(long.MaxValue, long.MinValue);
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
         foreach (var tile in tiles) {
-            idTile = idTile.MinMaxWith(tile.IdTile);
+            idTile = idTile.MinMaxWith(tile.IdTileRange);
             idRange = idRange.MinMaxWith(tile.IdRange);
             beginsAtRange = beginsAtRange.MinMaxWith(tile.BeginsAtRange);
             foreach (var entry in tile.Entries)
                 entries.Add(entry);
         }
 
-        IdTile = idTile;
+        IdTileRange = idTile;
         IdRange = idRange;
         BeginsAtRange = beginsAtRange;
         Entries = entries.ToImmutableArray();

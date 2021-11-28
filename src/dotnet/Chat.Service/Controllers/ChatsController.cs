@@ -24,17 +24,17 @@ public class ChatsController : ControllerBase, IChats
     public Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
-        Range<long>? idTile,
+        Range<long>? idTileRange,
         CancellationToken cancellationToken)
-        => _chats.GetEntryCount(session, chatId, idTile, cancellationToken);
+        => _chats.GetEntryCount(session, chatId, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idTile,
+        Range<long> idTileRange,
         CancellationToken cancellationToken)
-        => _chats.GetTile(session, chatId, idTile, cancellationToken);
+        => _chats.GetTile(session, chatId, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Range<long>> GetIdRange(

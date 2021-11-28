@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using ActualChat.Mathematics;
 using Stl.Comparison;
 using Stl.Concurrency;
 
@@ -96,7 +95,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
         Range<Moment> timestampRange,
         CancellationToken cancellationToken)
     {
-        PlaybackConstants.TimestampTiles.AssertIsTile(timestampRange);
+        _ = PlaybackConstants.TimeTileStack.GetTile(timestampRange);
         var state = _playbackStates.GetValueOrDefault(trackId);
         if (state == null)
             return Task.FromResult(state);
@@ -119,7 +118,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
         //     $"({lastState.PlayingAt}, {lastState.IsStarted}, {lastState.IsCompleted}) ->" +
         //     $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
         var trackId = state.TrackId;
-        var timestampLogCover = PlaybackConstants.TimestampTiles;
+        var timeTileStack = PlaybackConstants.TimeTileStack;
         if (state.IsCompleted)
             _playbackStates.TryRemove(trackId, out _);
         else
@@ -130,13 +129,13 @@ public abstract class MediaPlayerService : IMediaPlayerService
 
             // Invalidating GetPlayingMediaFrame for tiles associated with lastState.PlayingAt
             var lastTimestamp = lastState.RecordingStartedAt + lastState.PlayingAt;
-            foreach (var tile in timestampLogCover.GetAllTiles(lastTimestamp))
-                _ = GetMediaTrackPlaybackState(trackId, tile, default);
+            foreach (var tile in timeTileStack.GetAllTiles(lastTimestamp))
+                _ = GetMediaTrackPlaybackState(trackId, tile.Range, default);
 
             // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
-            foreach (var tile in timestampLogCover.GetAllTiles(timestamp))
-                _ = GetMediaTrackPlaybackState(trackId, tile, default);
+            foreach (var tile in timeTileStack.GetAllTiles(timestamp))
+                _ = GetMediaTrackPlaybackState(trackId, tile.Range, default);
         }
     }
 }
