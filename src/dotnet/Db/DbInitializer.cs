@@ -9,15 +9,10 @@ namespace ActualChat.Db;
 public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDbInitializer
     where TDbContext : DbContext
 {
-    private bool? _shouldRecreateDb;
+    protected DbInfo<TDbContext> DbInfo { get; }
 
-    protected DbInitializer(IServiceProvider services) : base(services) { }
-
-    public bool ShouldRecreateDb {
-        get => _shouldRecreateDb
-            ?? (bool)(_shouldRecreateDb = Services.GetRequiredService<DbInfo<TDbContext>>().ShouldRecreateDb);
-        set => _shouldRecreateDb = value;
-    }
+    protected DbInitializer(IServiceProvider services) : base(services)
+        => DbInfo = Services.GetRequiredService<DbInfo<TDbContext>>();
 
     public Dictionary<IDbInitializer, Task> InitializeTasks { get; set; } = null!;
 
@@ -28,7 +23,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
             .ConfigureAwait(false);
 
         var db = dbContext.Database;
-        if (ShouldRecreateDb)
+        if (DbInfo.ShouldRecreateDb)
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
         await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 

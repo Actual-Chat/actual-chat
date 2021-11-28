@@ -30,7 +30,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        if (ShouldRecreateDb) {
+        if (DbInfo.ShouldRecreateDb) {
             // Creating "The Actual One" chat
             var defaultChatId = ChatConstants.DefaultChatId;
             var adminUserId = UserConstants.Admin.UserId;
@@ -67,6 +67,31 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
             // Uncomment this if you need initial audio and text data
             await AddAudioRecords(dbContext, dbChat, dbAuthor, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (DbInfo.ShouldVerifyDb) {
+            var chatIds = await dbContext.Chats
+                .Select(c => c.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var chatId in chatIds) {
+                var thisChatEntries = dbContext.ChatEntries.Where(e => e.ChatId == chatId);
+                var duplicateEntries = await (
+                    from e in thisChatEntries
+                    let count = thisChatEntries.Count(e1 => e1.Id == e.Id)
+                    where count > 1
+                    select e
+                    ).ToListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (duplicateEntries.Count <= 0)
+                    continue;
+
+                Log.LogCritical("Duplicate entries in Chat #{ChatId}:", chatId);
+                foreach (var e in duplicateEntries)
+                    Log.LogCritical(
+                        "- Entry w/ CompositeId = {CompositeId}, Id = {Id}, Type = {Type}, '{Content}'",
+                        e.CompositeId, e.Id, e.Type, e.Content);
+            }
         }
     }
 
