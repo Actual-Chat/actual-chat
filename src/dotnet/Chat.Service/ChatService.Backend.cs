@@ -107,7 +107,9 @@ public partial class ChatService
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbEntries = await dbContext.ChatEntries
-            .Where(m => m.ChatId == (string)chatId && m.Id >= idTileRange.Start && m.Id < idTileRange.End)
+            .Where(m => m.ChatId == (string)chatId
+                && m.Id >= idTile.Range.Start
+                && m.Id < idTile.Range.End)
             .OrderBy(m => m.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

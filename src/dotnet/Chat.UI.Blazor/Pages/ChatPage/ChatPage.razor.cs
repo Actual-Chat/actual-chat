@@ -111,8 +111,22 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
-            .DistinctBy(e => e.Id) // Workaround for the current issue w/ duplicate Ids
             .ToList();
+
+        var duplicateEntries = (
+            from e in chatEntries
+            let count = chatEntries.Count(e1 => e1.Id == e.Id)
+            where count > 1
+            select e
+            ).ToList();
+        if (duplicateEntries.Count > 0) {
+            Log.LogCritical("Duplicate entries in Chat #{ChatId}:", chatId);
+            foreach (var e in duplicateEntries)
+                Log.LogCritical(
+                    "- Entry w/ Id = {Id}, Version = {Version}, Type = {Type}, '{Content}'",
+                    e.Id, e.Version, e.Type, e.Content);
+            chatEntries = chatEntries.DistinctBy(e => e.Id).ToList();
+        }
 
         var authorIds = chatEntries.Select(e => e.AuthorId).Distinct();
         var authorTasks = await Task
