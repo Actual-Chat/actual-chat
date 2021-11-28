@@ -55,7 +55,7 @@ public partial class ChatService
 
         if (idTileRange.HasValue) {
             var idRangeValue = idTileRange.GetValueOrDefault();
-            _ = IdTileStack.GetTile(idRangeValue);
+            IdTileStack.AssertIsTile(idRangeValue);
             dbMessages = dbMessages.Where(m =>
                 m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
         }

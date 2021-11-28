@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using Stl.Comparison;
 using Stl.Concurrency;
 
@@ -7,6 +6,7 @@ namespace ActualChat.Playback;
 
 public abstract class MediaPlayerService : IMediaPlayerService
 {
+    private static readonly TileStack<Moment> TimeTileStack = PlaybackConstants.TimeTileStack;
     private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _playbackStates = new ();
 
     protected IServiceProvider Services { get; }
@@ -95,7 +95,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
         Range<Moment> timestampRange,
         CancellationToken cancellationToken)
     {
-        _ = PlaybackConstants.TimeTileStack.GetTile(timestampRange);
+        TimeTileStack.AssertIsTile(timestampRange);
         var state = _playbackStates.GetValueOrDefault(trackId);
         if (state == null)
             return Task.FromResult(state);
@@ -118,7 +118,6 @@ public abstract class MediaPlayerService : IMediaPlayerService
         //     $"({lastState.PlayingAt}, {lastState.IsStarted}, {lastState.IsCompleted}) ->" +
         //     $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
         var trackId = state.TrackId;
-        var timeTileStack = PlaybackConstants.TimeTileStack;
         if (state.IsCompleted)
             _playbackStates.TryRemove(trackId, out _);
         else
@@ -129,12 +128,12 @@ public abstract class MediaPlayerService : IMediaPlayerService
 
             // Invalidating GetPlayingMediaFrame for tiles associated with lastState.PlayingAt
             var lastTimestamp = lastState.RecordingStartedAt + lastState.PlayingAt;
-            foreach (var tile in timeTileStack.GetAllTiles(lastTimestamp))
+            foreach (var tile in TimeTileStack.GetAllTiles(lastTimestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile.Range, default);
 
             // Invalidating GetPlayingMediaFrame for tiles associated with state.PlayingAt
             var timestamp = state.RecordingStartedAt + state.PlayingAt;
-            foreach (var tile in timeTileStack.GetAllTiles(timestamp))
+            foreach (var tile in TimeTileStack.GetAllTiles(timestamp))
                 _ = GetMediaTrackPlaybackState(trackId, tile.Range, default);
         }
     }
