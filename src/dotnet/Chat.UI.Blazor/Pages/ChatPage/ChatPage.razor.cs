@@ -111,17 +111,19 @@ public partial class ChatPage : ComputedStateComponent<ChatPageModel>
         var chatEntries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
+            .DistinctBy(e => e.Id) // Workaround for the current issue w/ duplicate Ids
             .ToList();
 
         var authorIds = chatEntries.Select(e => e.AuthorId).Distinct();
-        var authors = (await Task
+        var authorTasks = await Task
             .WhenAll(authorIds.Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
-            .ConfigureAwait(false)
-            )
+            .ConfigureAwait(false);
+        var authors = authorTasks
             .Where(a => a != null)
             .ToDictionary(a => a!.Id);
 
-        var chatMessageModels = chatEntries.Select(e => new ChatMessageModel(e, authors[e.AuthorId]!));
+        var chatMessageModels = chatEntries
+            .Select(e => new ChatMessageModel(e, authors[e.AuthorId]!));
         var result = VirtualListData.New(
             chatMessageModels,
             m => m.Entry.Id.ToString(CultureInfo.InvariantCulture),

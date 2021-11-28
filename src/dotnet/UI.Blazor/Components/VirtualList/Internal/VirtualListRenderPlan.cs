@@ -105,8 +105,8 @@ public class VirtualListRenderPlan<TItem>
         var newItemSizes = ClientSideState?.ItemSizes;
         var prevItemByKey = lastPlan?.ItemByKey;
 
-        LoadedItems = new List<ItemRenderPlan>();
         ItemByKey = new Dictionary<string, ItemRenderPlan>(StringComparer.Ordinal);
+        LoadedItems = new List<ItemRenderPlan>();
         DisplayedItems = new List<ItemRenderPlan>();
         UnmeasuredItems = new List<ItemRenderPlan>();
         var itemRange = default(Range<double>);
