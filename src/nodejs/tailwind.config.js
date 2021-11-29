@@ -35,6 +35,7 @@ module.exports = ctx => {
           yellow: colors.amber,
           green: colors.emerald,
           blue: colors.blue,
+          sky: colors.sky,
           indigo: colors.indigo,
           purple: colors.violet,
           pink: colors.pink,

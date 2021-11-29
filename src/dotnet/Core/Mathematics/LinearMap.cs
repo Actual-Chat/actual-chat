@@ -5,13 +5,18 @@ namespace ActualChat.Mathematics;
 [DataContract]
 public readonly struct LinearMap
 {
+    private readonly double[] _sourcePoints;
+    private readonly double[] _targetPoints;
+
     [DataMember(Order = 0)]
-    public double[] SourcePoints { get; }
+    public double[] SourcePoints => _sourcePoints ?? Array.Empty<double>();
     [DataMember(Order = 1)]
-    public double[] TargetPoints { get; }
+    public double[] TargetPoints => _targetPoints ?? Array.Empty<double>();
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public int Length => SourcePoints.Length;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsEmpty => SourcePoints.Length == 0;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public (double Min, double Max) SourceRange => (SourcePoints[0], SourcePoints[^1]);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -20,8 +25,8 @@ public readonly struct LinearMap
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public LinearMap(double[] sourcePoints, double[] targetPoints)
     {
-        SourcePoints = sourcePoints;
-        TargetPoints = targetPoints;
+        _sourcePoints = sourcePoints;
+        _targetPoints = targetPoints;
     }
 
     public override string ToString()

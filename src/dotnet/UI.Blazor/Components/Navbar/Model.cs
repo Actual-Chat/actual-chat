@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Host;
+namespace ActualChat.UI.Blazor.Components;
 
 public record NavbarLinkModel(
     string Name,

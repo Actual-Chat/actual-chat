@@ -24,10 +24,13 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        services.TryAddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
-
         var fusion = services.AddFusion();
+
+        // Singletons
+        services.TryAddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
         fusion.AddComputeService<TestListService>();
-        fusion.AddComputeService<ChatPageService>();
+
+        // Scoped / Blazor Circuit services
+        services.TryAddScoped<ChatMediaPlayers>();
     }
 }

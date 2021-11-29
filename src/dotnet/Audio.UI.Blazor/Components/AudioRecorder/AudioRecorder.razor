@@ -12,21 +12,15 @@
 </button>
 
 @code {
-    private static byte[] _brokenHeader1 = {0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86};
-    private static byte[] _brokenHeader2 = {0x1A, 0x1A, 0x45, 0xDF, 0xA3, 0x9F};
-
-    [Inject]
-    protected ILogger<AudioRecorder> Log { get; init; } = null!;
-
-    protected ILogger? DebugLog => DebugMode ? Log : null;
+    [Inject] private ILogger<AudioRecorder> Log { get; init; } = null!;
+    private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioRecording;
 
-    private IJSObjectReference? JSComponentRef { get; set; }
-    private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; }
+    private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
     private int Index { get; set; }
-    private uint _prevSeqNum = 0;
-
+    private uint LastSeqNum { get; set; } = 0;
     private bool IsRecording => AudioChannel != null;
 
     [Parameter]
@@ -34,14 +28,14 @@
 
     public async ValueTask DisposeAsync() {
         await StopRecording().ConfigureAwait(true);
-        await JSComponentRef.DisposeSilentlyAsync().ConfigureAwait(true);
-        ComponentRef?.Dispose();
+        await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+        BlazorRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef, DebugMode);
+            BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+            JSRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", BlazorRef, DebugMode);
         }
         DebugLog?.LogInformation("OnAfterRender(firstRender: {FirstRender}: ChatId = {ChatId}, AudioRecorder loaded", firstRender, ChatId);
     }
@@ -60,9 +54,9 @@
                 AllowSynchronousContinuations = true,
             });
         StateHasChanged();
-        if (JSComponentRef != null)
-            await JSComponentRef.InvokeVoidAsync("startRecording");
-        DebugLog?.LogInformation("StartRecording: Invoked");
+        if (JSRef != null)
+            await JSRef.InvokeVoidAsync("startRecording");
+        DebugLog?.LogInformation("StartRecording");
     }
 
     private async Task StopRecording() {
@@ -73,8 +67,8 @@
         if (AudioChannel == null)
             return;
         try {
-            if (JSComponentRef != null)
-                await JSComponentRef.InvokeVoidAsync("stopRecording");
+            if (JSRef != null)
+                await JSRef.InvokeVoidAsync("stopRecording");
         }
         finally {
             if (AudioChannel != null) {
@@ -112,14 +106,13 @@
 
         var seqNum = Unsafe.As<byte, uint>(ref chunk[0]);
 
-        if (seqNum != 0 && (seqNum - 1) != _prevSeqNum) {
-            Log.LogError("Sequence number mismatch. currentSeqNum: {SequenceNumber} prevSeqNum: {PrevSequenceNumber}", seqNum, _prevSeqNum);
-        }
+        if (seqNum != 0 && (seqNum - 1) != LastSeqNum)
+            Log.LogError("OnAudioData: SeqNum mismatch, current = {SeqNum}, last: {LastSeqNum}", seqNum, LastSeqNum);
 
-        _prevSeqNum = seqNum;
-        chunk = chunk[4..];
-        DebugLog?.LogInformation("Got the packet (seqNum: {SequenceNumber}, data bytes: {PacketDataBytes})", seqNum, chunk.Length);
-        await AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
+        LastSeqNum = seqNum;
+        var blobPart = new BlobPart(Index++, chunk[4..]);
+        DebugLog?.LogInformation("OnAudioData: got packet #{SeqNum}: {BlobPart}", seqNum, blobPart);
+        await AudioChannel.Writer.WriteAsync(blobPart);
     }
 
     [JSInvokable]
@@ -136,5 +129,4 @@
         AudioChannel = null;
         StateHasChanged();
     }
-
 }

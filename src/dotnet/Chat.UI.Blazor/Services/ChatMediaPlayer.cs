@@ -1,12 +1,14 @@
 using ActualChat.Audio;
 using ActualChat.Playback;
+using Cysharp.Text;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed class ChatMediaPlayer : IDisposable
+public sealed class ChatMediaPlayer : IAsyncDisposable
 {
     private IChats Chats { get; }
+    private IChatAuthors ChatAuthors { get; }
     private IChatMediaResolver MediaResolver { get; }
     private AudioDownloader AudioDownloader { get; }
     private IAudioSourceStreamer AudioSourceStreamer { get; }
@@ -18,17 +20,19 @@ public sealed class ChatMediaPlayer : IDisposable
     public Session Session { get; init; } = Session.Null;
     public ChatId ChatId { get; init; } = default;
     public bool IsRealTimePlayer { get; init; }
-    public Option<AuthorId> SilencedAuthorId { get; init; }
     public TimeSpan EnqueueToPlaybackDelay { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public MediaPlayer MediaPlayer { get; }
     public bool IsPlaying => MediaPlayer.IsPlaying;
+    public bool IsStopped => MediaPlayer.IsStopped;
+    public bool IsDisposed => MediaPlayer.IsDisposed;
 
     public ChatMediaPlayer(IServiceProvider services)
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         Log = services.LogFor(GetType());
         Chats = services.GetRequiredService<IChats>();
+        ChatAuthors = services.GetRequiredService<IChatAuthors>();
         MediaPlayer = services.GetRequiredService<MediaPlayer>();
         MediaResolver = services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
@@ -36,8 +40,8 @@ public sealed class ChatMediaPlayer : IDisposable
         Clocks = services.Clocks();
     }
 
-    public void Dispose()
-        => MediaPlayer.Dispose();
+    public ValueTask DisposeAsync()
+        => MediaPlayer.DisposeAsync();
 
     public Task Play()
         => Play(Clocks.SystemClock.Now);
@@ -49,6 +53,7 @@ public sealed class ChatMediaPlayer : IDisposable
         var cancellationToken = MediaPlayer.StopToken;
         var clock = Clocks.CpuClock;
         var infDuration = 2 * ChatConstants.MaxEntryDuration;
+        var chatAuthor = (ChatAuthor?) null;
 
         DebugLog?.LogInformation(
             "Play({StartAt}) started for chat #{ChatId} / {PlaybackKind}",
@@ -70,8 +75,14 @@ public sealed class ChatMediaPlayer : IDisposable
                     // so we need to skip a few entries.
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
-                if (SilencedAuthorId.IsSome(out var silencedAuthorId) && entry.AuthorId == silencedAuthorId)
-                    continue;
+                if (IsRealTimePlayer) {
+                    // It can't change once it's created, so we want to fetch it just once
+                    chatAuthor ??= await ChatAuthors
+                        .GetSessionChatAuthor(Session, ChatId, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (chatAuthor != null && entry.AuthorId == chatAuthor.Id)
+                        continue;
+                }
 
                 now = clock.Now;
                 var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
@@ -97,7 +108,7 @@ public sealed class ChatMediaPlayer : IDisposable
             MediaPlayer.Complete();
             await playTask.ConfigureAwait(false);
         }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e,
                 "Play({StartAt}) failed for chat #{ChatId} / {PlaybackKind}",
                 startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
@@ -118,6 +129,30 @@ public sealed class ChatMediaPlayer : IDisposable
 
     public Task Stop()
         => MediaPlayer.Stop();
+
+    public static Symbol GetAudioTrackId(ChatEntry chatEntry)
+    {
+        var entryId = chatEntry.Type switch {
+            ChatEntryType.Text => chatEntry.AudioEntryId ?? -1,
+            ChatEntryType.Audio => chatEntry.Id,
+            _ => -1,
+        };
+        return entryId >= 0
+            ? ZString.Concat("audio:", chatEntry.ChatId, ":", entryId)
+            : throw new InvalidOperationException("Provided chat entry has no associated audio track.");
+    }
+
+    public static Symbol GetVideoTrackId(ChatEntry chatEntry)
+    {
+        var entryId = chatEntry.Type switch {
+            ChatEntryType.Text => chatEntry.VideoEntryId ?? -1,
+            ChatEntryType.Video => chatEntry.Id,
+            _ => -1,
+        };
+        return entryId >= 0
+            ? ZString.Concat("video:", chatEntry.ChatId, ":", entryId)
+            : throw new InvalidOperationException("Provided chat entry has no associated video track.");
+    }
 
     // Private  methods
 
@@ -149,11 +184,11 @@ public sealed class ChatMediaPlayer : IDisposable
         CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation(
-            "Enqueuing streaming audio entry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}",
+            "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}",
             audioEntry.ChatId,
             audioEntry.Id,
             audioEntry.StreamId);
-        var trackId = MediaTrackId.GetAudioTrackId(audioEntry);
+        var trackId = GetAudioTrackId(audioEntry);
         var audio = await AudioSourceStreamer
             .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
             .ConfigureAwait(false);
@@ -172,14 +207,14 @@ public sealed class ChatMediaPlayer : IDisposable
         CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation(
-            "Enqueuing non-streaming audio entry: chat #{ChatId}, entry #{EntryId}",
+            "EEnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
             audioEntry.ChatId,
             audioEntry.Id);
         var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
         var audio = await AudioDownloader
             .Download(audioBlobUri, skipTo, cancellationToken)
             .ConfigureAwait(false);
-        var trackId = MediaTrackId.GetAudioTrackId(audioEntry);
+        var trackId = GetAudioTrackId(audioEntry);
         await MediaPlayer.AddMediaTrack(
                 trackId,
                 audio,

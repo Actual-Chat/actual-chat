@@ -1,6 +1,5 @@
 ﻿using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
@@ -14,5 +13,7 @@ public class ChatModule : HostModule
     public ChatModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
-    { }
+    {
+        services.AddSingleton<MarkupParser>();
+    }
 }

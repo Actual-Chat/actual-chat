@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.Host
+@namespace ActualChat.UI.Blazor.Components
 
 <div class="pt-6 pb-4 px-1 flex flex-col space-y-2">
     <div class="flex justify-between items-center">
@@ -12,9 +12,8 @@
 
 
 @code{
-    [Parameter]
+    [Parameter, EditorRequired]
     public NavbarLinksGroupModel Data { get; set;} = null!;
-
     [Parameter]
     public RenderFragment? Icons { get; set; }
 }

@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.Host
+@namespace ActualChat.UI.Blazor.Components
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager _navigator
@@ -44,7 +44,6 @@
 </div>
 
 @code {
-
     protected override void OnInitialized() {
         _navigator.LocationChanged += OnLocationChanged;
         _commandFailureList.Changed += OnCommandFailureListChanged;

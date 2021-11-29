@@ -1,90 +1,46 @@
-using ActualChat.Chat.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.UI.Blazor.Components;
 using Microsoft.AspNetCore.Components;
 using Stl.Fusion.Blazor;
 
-namespace ActualChat.Chat.UI.Blazor.Pages;
+namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatPage : ComputedStateComponent<ChatPageModel>
+public partial class ChatView : ComponentBase, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = ChatConstants.IdTileStack;
 
-    [Parameter] public string ChatId { get; set; } = "";
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private ChatPageService Service { get; set; } = default!;
+    [Inject] private ChatMediaPlayers ChatMediaPlayers { get; set; } = default!;
     [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
-    [Inject] private ILogger<ChatPage> Log { get; set; } = default!;
-
-    private ChatMediaPlayer? HistoricalPlayer { get; set; }
+    [Inject] private ILogger<ChatView> Log { get; set; } = default!;
     private ChatMediaPlayer? RealtimePlayer { get; set; }
 
-    public override async ValueTask DisposeAsync()
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
     {
-        RealtimePlayer?.Dispose();
-        HistoricalPlayer?.Dispose();
-        await base.DisposeAsync().ConfigureAwait(true);
-        GC.SuppressFinalize(this);
+        RealtimePlayer = await ChatMediaPlayers.GetRealtimePlayer(Chat.Id);
+        _ = BackgroundTask.Run(
+            () => RealtimePlayer.Play(),
+            Log, "Realtime playback failed");
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        if (ChatId.IsNullOrEmpty()) {
-            Nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
-            return;
-        }
+    public ValueTask DisposeAsync()
+        => ChatMediaPlayers.DisposePlayers(Chat.Id);
 
-        await State.Recompute(); // ~ The same happens in base method, so we don't call it
-        var chat = State.ValueOrDefault?.Chat;
-        if (chat == null || HistoricalPlayer?.ChatId == chat.Id)
-            return;
-
-        // ChatId changed, so we must recreate players
-        HistoricalPlayer?.Dispose();
-        HistoricalPlayer = new(Services) {
-            Session = Session,
-            ChatId = chat.Id,
-        };
-        var wasPlaying = RealtimePlayer?.IsPlaying ?? false;
-        RealtimePlayer?.Dispose();
-
-        var author = await ChatAuthors.GetSessionChatAuthor(Session, ChatId, default).ConfigureAwait(true);
-        RealtimePlayer = new(Services) {
-            Session = Session,
-            ChatId = chat.Id,
-            IsRealTimePlayer = true,
-            SilencedAuthorId = author == null ? Option<AuthorId>.None : Option.Some(author.Id),
-        };
-        if (wasPlaying) {
-            _ = BackgroundTask.Run(
-                () => RealtimePlayer.Play(),
-                Log, "Realtime playback failed");
-        }
-        StateHasChanged();
-    }
-
-    protected override Task<ChatPageModel> ComputeState(CancellationToken cancellationToken)
-        => Service.GetChatPageModel(Session, ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId, cancellationToken);
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
-        var model = await Service.GetChatPageModel(
-            Session,
-            ChatId.NullIfEmpty() ?? ChatConstants.DefaultChatId,
-            cancellationToken);
-        var chatId = model.Chat?.Id ?? default;
-        if (chatId.IsNone)
-            return VirtualListData.New(
-                Enumerable.Empty<ChatMessageModel>(),
-                _ => "", // Unused anyway in this case
-                true, true);
-
+        var chat = Chat;
+        var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {

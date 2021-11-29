@@ -1,0 +1,70 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Playback
+@using ActualChat.Chat.UI.Blazor.Services
+@using System.Text.RegularExpressions
+@using ActualChat.Chat.UI.Blazor.Components.MarkupParts
+@using Stl.Extensibility
+@inherits ComputedStateComponent<ActualChat.Playback.MediaTrackPlaybackState?>
+@inject IMediaPlayerService _mediaPlayerService
+
+@if (Markup != null) {
+    <p class="chat-markup">
+        @foreach (var part in Markup.Parts) {
+            @RenderPart(part)
+        }
+    </p>
+}
+
+@code {
+    [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; set; } = null!;
+    [Inject] private MarkupParser MarkupParser { get; set; } = null!;
+    private ChatEntry Entry => Model.Entry;
+    private Markup? Markup { get; set; } = null!;
+
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public ChatMessageModel Model { get; set; } = null!;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    protected override async Task OnParametersSetAsync() {
+        Markup = await MarkupParser.Parse(Entry.Content, Entry.TextToTimeMap).ConfigureAwait(true);
+        _ = State.Recompute();
+    }
+
+    protected override async Task<MediaTrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+        var trackId = ChatMediaPlayer.GetAudioTrackId(Entry);
+        return await _mediaPlayerService.GetMediaTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private RenderFragment RenderPart(MarkupPart part) {
+        if (part is PlainTextPart) {
+            var playbackState = State.ValueOrDefault;
+            var textToTimeMap = part.Markup.TextToTimeMap;
+            if (playbackState == null || playbackState.IsCompleted || textToTimeMap.IsEmpty)
+                return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
+
+            var playingAt = playbackState.PlayingAt.TotalSeconds;
+            var minPlayingAt = textToTimeMap.Map(part.TextRange.Start) - 1;
+            var maxPlayingAt = textToTimeMap.Map(part.TextRange.End) + 1;
+            if (playingAt < minPlayingAt || playingAt > maxPlayingAt)
+                return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
+
+            return @<PlainTextPartView Entry="@Model.Entry" Part="@part" PlayingAt="@playingAt"/>;
+        }
+
+        var componentType = MatchingTypeFinder.TryFind(part.GetType(), typeof(IMarkupPartView));
+        if (componentType == null)
+            return @<UnknownPartView Entry="@Model.Entry" Part="@part"/>;
+
+        return builder => {
+            var i = 0;
+            builder.OpenComponent(i++, componentType);
+            builder.AddAttribute(i++, nameof(IMarkupPartView.Entry), Entry);
+            builder.AddAttribute(i++, nameof(IMarkupPartView.Part), part);
+            builder.CloseComponent();
+        };
+    }
+}

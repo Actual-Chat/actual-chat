@@ -1,0 +1,59 @@
+@page "/chat"
+@page "/chat/{ChatId}"
+@inherits ComputedStateComponent<ChatPage.Model>
+@layout PageLayout
+@inject Session _session
+@inject IAuth _auth
+@inject IChats _chats
+@inject NavigationManager _nav
+
+@{
+    var error = State.Error;
+    var model = State.LatestNonErrorValue;
+    if (model.IsUnavailable)
+        _nav.Unavailable("chat");
+    if (model.MustLogin)
+        _nav.Login("to view this chat");
+    var chat = model.Chat;
+
+    if (error != null || chat == null) {
+        PageLayout.Header = @<span>Loading...</span>;
+        PageLayout.Footer = null;
+    } else {
+        PageLayout.Header = @<span>@chat.Title</span>;
+        PageLayout.Footer = @<ChatMessageEditor Chat="@chat" />;
+    }
+}
+
+@if (error != null) {
+    <WhenError Error="error"/>
+} else if (chat != null) {
+    @* @key=... ensures ChatView is recreated on navigation to another chat *@
+    <ChatView @key="@chat.Id.ToString()" Chat="@chat" />
+} else {
+    <div>Loading...</div>
+}
+
+@code {
+    public record Model {
+        public bool IsUnavailable { get; init; }
+        public bool MustLogin { get; init; }
+        public Chat? Chat { get; init; }
+    }
+
+    [Inject] private PageLayoutModel PageLayout { get; set; } = null!;
+
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = (ChatId) ChatId;
+        var user = await _auth.GetSessionUser(_session, cancellationToken).ConfigureAwait(false);
+        var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return new () { IsUnavailable = true };
+        if (!user.IsAuthenticated && !chat.IsPublic)
+            return new () { MustLogin = true };
+        return new () { Chat = chat };
+    }
+}
