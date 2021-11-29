@@ -35,4 +35,10 @@
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Shared\MainLayout.razor" />
+    <_ContentIncludedByDefault Remove="Shared\PageLayout.razor" />
+    <_ContentIncludedByDefault Remove="Components\AccountDropdown\AccountDropdown.razor" />
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,22 @@
+.chat-message {
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+}
+
+.chat-transcription {
+    overflow-wrap: break-word;
+    @apply text-current;
+}
+
+.chat-markup {
+    overflow-wrap: break-word;
+    @apply text-current;
+}
+
+.chat-markup .playable {
+    @apply hover:text-blue-800 hover:cursor-pointer;
+    @apply transition-colors ease-in-out duration-200
+}
+
+.chat-markup .playing {
+    @apply text-sky-500
+}

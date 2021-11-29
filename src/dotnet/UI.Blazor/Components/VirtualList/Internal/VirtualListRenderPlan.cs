@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using ActualChat.Mathematics;
 using Stl.Reflection;
 
 namespace ActualChat.UI.Blazor.Components.Internal;
@@ -216,7 +215,7 @@ public class VirtualListRenderPlan<TItem>
         // Remember, we maybe removed & added some items + applied size changes,
         // so there is no warranty the viewport will actually be fully inside
         // the new FullRange.
-        Viewport = Viewport.SlideInto(FullRange);
+        Viewport = Viewport.ScrollInto(FullRange);
 
         if (!MustScroll) {
             // 3. We aren't scrolling, but maybe we still want to adjust the spacer...

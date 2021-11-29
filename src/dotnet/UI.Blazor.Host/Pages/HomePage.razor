@@ -1,10 +1,8 @@
 @page "/"
-@namespace ActualChat.UI.Blazor.Host
 @using ActualChat.Chat
 @inject NavigationManager _nav
-@code {
 
+@code {
     protected override void OnInitialized()
         => _nav.NavigateTo($"/chat/{ChatConstants.DefaultChatId}");
-
 }

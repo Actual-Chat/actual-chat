@@ -1,3 +1,3 @@
 // @ts-ignore
-export * from './Pages/ChatPage/Chat.css';
+export * from './Components/ChatView/chat-view.css';
 export * from './Components/ChatMessageEditor/chat-message-editor';

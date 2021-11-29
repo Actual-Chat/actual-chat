@@ -1,4 +1,4 @@
-@namespace ActualChat.UI.Blazor.Host
+@namespace ActualChat.UI.Blazor.Components
 
 @{
     string additionalCssClass = Data.Status switch {
@@ -7,7 +7,6 @@
         NavbarLinkModelStatus.None => "",
         _ => "",
     };
-
 }
 
 <div class="flex flex-row items-center mb-2 px-1">
@@ -15,10 +14,8 @@
     <span class="text-white opacity-75 hover:opacity-100"><a href="@Data.Href">@Data.Name</a></span>
 </div>
 
-@code
-{
-    [Parameter]
-    [DisallowNull]
+@code {
+    [Parameter, EditorRequired]
     public NavbarLinkModel Data { get; set; } = null!;
 }
 

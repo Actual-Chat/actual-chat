@@ -3,6 +3,7 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
+using Stl.Extensibility;
 using Stl.Fusion.Extensions;
 using Stl.Plugins;
 
@@ -18,6 +19,7 @@ public class CoreModule : HostModule<CoreSettings>
     public override void InjectServices(IServiceCollection services)
     {
         // Common services
+        services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder());
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
 
