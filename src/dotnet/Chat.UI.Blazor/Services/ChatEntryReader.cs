@@ -4,7 +4,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryReader
 {
-    private static readonly TileStack<long> IdTileStack = ChatConstants.IdTileStack;
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     private readonly IChats _chats;
     private readonly MomentClockSet _clocks;

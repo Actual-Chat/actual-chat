@@ -6,7 +6,7 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public partial class ChatView : ComponentBase, IAsyncDisposable
 {
-    private static readonly TileStack<long> IdTileStack = ChatConstants.IdTileStack;
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     [Inject] private Session Session { get; set; } = default!;
     [Inject] private ChatMediaPlayers ChatMediaPlayers { get; set; } = default!;

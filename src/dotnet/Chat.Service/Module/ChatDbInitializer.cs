@@ -33,7 +33,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         if (DbInfo.ShouldRecreateDb) {
             Log.LogInformation("Recreating DB...");
             // Creating "The Actual One" chat
-            var defaultChatId = ChatConstants.DefaultChatId;
+            var defaultChatId = Constants.Chat.DefaultChatId;
             var adminUserId = UserConstants.Admin.UserId;
             var dbChat = new DbChat() {
                 Id = defaultChatId,

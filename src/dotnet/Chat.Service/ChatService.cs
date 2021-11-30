@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 
 public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 {
-    private static readonly TileStack<long> IdTileStack = ChatConstants.IdTileStack;
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     private readonly IAuth _auth;
     private readonly IAuthBackend _authBackend;

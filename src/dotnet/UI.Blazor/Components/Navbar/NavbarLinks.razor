@@ -1,12 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
-@using ActualChat.Chat
 @{
     var groups = new NavbarLinksGroupModel[]{
         new("Navigation", new NavbarLinkModel[] {
             new("Authentication", "/authentication", NavbarLinkModelStatus.None),
         }),
         new("Rooms", new NavbarLinkModel[] {
-            new("Chat", $"/chat/{ChatConstants.DefaultChatId}", NavbarLinkModelStatus.None),
+            new("Chat", $"/chat/{Constants.Chat.DefaultChatId}", NavbarLinkModelStatus.None),
         }),
         new("Contacts", new NavbarLinkModel[] {
             new("Online contact", "#",  NavbarLinkModelStatus.Online),

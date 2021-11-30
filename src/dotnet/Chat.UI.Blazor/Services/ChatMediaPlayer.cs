@@ -52,7 +52,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var playTask = MediaPlayer.Play();
         var cancellationToken = MediaPlayer.StopToken;
         var clock = Clocks.CpuClock;
-        var infDuration = 2 * ChatConstants.MaxEntryDuration;
+        var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var chatAuthor = (ChatAuthor?) null;
 
         DebugLog?.LogInformation(
@@ -61,7 +61,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         try {
             var entryReader = Chats.CreateEntryReader(Session, ChatId);
             var startEntryId = await entryReader
-                .GetNextEntryId(startAt - ChatConstants.MaxEntryDuration, cancellationToken)
+                .GetNextEntryId(startAt - Constants.Chat.MaxEntryDuration, cancellationToken)
                 .ConfigureAwait(false);
             var now = clock.Now;
             var realtimeOffset = now - startAt;
@@ -75,7 +75,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                     // so we need to skip a few entries.
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
-                if (IsRealTimePlayer) {
+                if (IsRealTimePlayer && !Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
                     // It can't change once it's created, so we want to fetch it just once
                     chatAuthor ??= await ChatAuthors
                         .GetSessionChatAuthor(Session, ChatId, cancellationToken)
