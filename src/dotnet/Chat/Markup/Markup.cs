@@ -22,22 +22,24 @@ public class Markup
 
 public abstract class MarkupPart
 {
-    private Option<Range<double>?> _cachedTimeRange;
+    private Option<Range<double>> _cachedTimeRange;
 
     public Markup Markup { get; init; } = null!;
     public Range<int> TextRange { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Range<double>? TimeRange {
+    public Range<double> TimeRange {
         get {
             if (_cachedTimeRange.HasValue)
                 return _cachedTimeRange.Value;
             var ttm = Markup.TextToTimeMap;
+            if (ttm.IsEmpty)
+                return default;
             var start = ttm.Map(TextRange.Start);
             if (!start.HasValue)
-                return null;
+                return default;
             var startValue = start.GetValueOrDefault();
-            _cachedTimeRange = new Range<double>(startValue, ttm.Map(TextRange.End) ?? startValue);
+            _cachedTimeRange = new Range<double>(startValue, ttm.Map(TextRange.End) ?? startValue).Normalize();
             return _cachedTimeRange.Value;
         }
     }
