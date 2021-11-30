@@ -43,7 +43,7 @@
 }
 
 .navbar-account-mode-blue {
-    @apply border-lightBlue;
+    @apply border-inputBackground;
 }
 
 .blazor-mode-toggle-common {

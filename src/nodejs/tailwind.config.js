@@ -1,4 +1,5 @@
 const colors = require('tailwindcss/colors');
+const blueTheme = require('./blueThemeColors');
 
 module.exports = ctx => {
   return (
@@ -27,7 +28,6 @@ module.exports = ctx => {
         colors: {
           transparent: 'transparent',
           current: 'currentColor',
-
           black: colors.black,
           white: colors.white,
           gray: colors.coolGray,
@@ -39,6 +39,17 @@ module.exports = ctx => {
           indigo: colors.indigo,
           purple: colors.violet,
           pink: colors.pink,
+
+          primary: blueTheme.primary,
+          secondary: blueTheme.secondary,
+          success: blueTheme.success,
+          warning: blueTheme.warning,
+          error: blueTheme.error,
+          info: blueTheme.info,
+          inputBackground: blueTheme.inputBackground,
+          chatBackground: blueTheme.chatBackground,
+          textLight: blueTheme.textLight,
+          textDark: blueTheme.textDark
         },
         spacing: {
           px: '1px',
@@ -281,6 +292,7 @@ module.exports = ctx => {
           ],
         },
         fontSize: {
+          xxs: ['0.6rem', { lineHeight: '0.75rem' }],
           xs: ['0.75rem', { lineHeight: '1rem' }],
           sm: ['0.875rem', { lineHeight: '1.25rem' }],
           base: ['1rem', { lineHeight: '1.5rem' }],
