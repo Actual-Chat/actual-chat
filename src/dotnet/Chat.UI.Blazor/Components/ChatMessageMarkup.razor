@@ -47,7 +47,7 @@
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 
             var playingAt = playbackState.PlayingAt.TotalSeconds;
-            var playingAtNearbyRange = new Range<double>(playingAt - 1, playingAt + 1);
+            var playingAtNearbyRange = new Range<double>(playingAt - 2, playingAt + 2);
             if (!playingAtNearbyRange.Overlaps(part.TimeRange))
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 

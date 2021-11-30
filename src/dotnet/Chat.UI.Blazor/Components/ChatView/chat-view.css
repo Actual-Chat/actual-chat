@@ -13,14 +13,15 @@
 }
 
 .chat-markup .playable {
-    @apply hover:text-blue-800 hover:cursor-pointer;
-    @apply transition-colors ease-in-out duration-200
+    transition: color 300ms ease-in, text-shadow 300ms ease-in;
 }
 
-.chat-markup .playing1 {
-    @apply text-sky-600
+.chat-markup .playable:hover {
+    @apply text-blue-800 cursor-pointer;
+    text-shadow: 0 0 2px #fff, 0 0 4px #BFDBFE, 0 0 8px #3B82F6;
 }
 
-.chat-markup .playing1 {
-    @apply text-sky-400
+.chat-markup .playing {
+    @apply text-sky-600;
+    text-shadow: 0 0 2px #fff, 0 0 4px #BAE6FD, 0 0 8px #0EA5E9;
 }
