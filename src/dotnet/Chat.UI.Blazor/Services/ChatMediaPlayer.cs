@@ -54,6 +54,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var clock = Clocks.CpuClock;
         var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var chatAuthor = (ChatAuthor?) null;
+        var stopReason = "";
 
         DebugLog?.LogInformation(
             "Play({StartAt}) started for chat #{ChatId} / {PlaybackKind}",
@@ -105,10 +106,16 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                 await EnqueueEntry(entry, entrySkipTo, realtimeBeginsAt, cancellationToken).ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
+            stopReason = "no more entries";
             MediaPlayer.Complete();
             await playTask.ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (OperationCanceledException) {
+            stopReason = "cancellation";
+            throw;
+        }
+        catch (Exception e) {
+            stopReason = "error";
             Log.LogError(e,
                 "Play({StartAt}) failed for chat #{ChatId} / {PlaybackKind}",
                 startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
@@ -122,8 +129,8 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         }
         finally {
             DebugLog?.LogInformation(
-                "Play({StartAt}) stopped for chat #{ChatId} / {PlaybackKind}",
-                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
+                "Play({StartAt}) stopped for chat #{ChatId} / {PlaybackKind}, reason: {StopReason}",
+                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical", stopReason);
         }
     }
 
