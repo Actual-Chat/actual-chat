@@ -13,11 +13,8 @@
         cls += " playable";
         if (PlayingAt != null) {
             var playingAt = PlayingAt.GetValueOrDefault();
-            var (firstHalf, secondHalf) = Part.TimeRange.SplitEvenly();
-            if (firstHalf.Move(-0.6, -0.3).Contains(playingAt))
-                cls += " playing1";
-            else if (secondHalf.Move(-0.3, 0.3).Contains(playingAt))
-                cls += " playing2";
+            if (Part.TimeRange.Move(-0.5, 0.3).Contains(playingAt))
+                cls += " playing";
         }
     }
 }

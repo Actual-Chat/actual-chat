@@ -107,7 +107,12 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     }
 
     protected virtual void OnPlayedTo(TimeSpan offset)
-        => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = s.SkipTo + o });
+        => UpdateState(offset, (o, s) => {
+            var playingAt = s.SkipTo + o;
+            if (s.IsStarted && s.PlayingAt >= playingAt)
+                return s; // Sometimes these events come in a wrong order
+            return s with { IsStarted = true, PlayingAt = playingAt };
+        });
 
     protected virtual void OnStopped(Exception? error = null)
         => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });

@@ -22,7 +22,8 @@ public class Markup
 
 public abstract class MarkupPart
 {
-    private Option<Range<double>> _cachedTimeRange;
+    private Range<double> _timeRange;
+    private volatile int _isTimeRangeCached;
 
     public Markup Markup { get; init; } = null!;
     public Range<int> TextRange { get; init; }
@@ -30,8 +31,8 @@ public abstract class MarkupPart
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<double> TimeRange {
         get {
-            if (_cachedTimeRange.HasValue)
-                return _cachedTimeRange.Value;
+            if (_isTimeRangeCached != 0)
+                return _timeRange;
             var ttm = Markup.TextToTimeMap;
             if (ttm.IsEmpty)
                 return default;
@@ -39,8 +40,9 @@ public abstract class MarkupPart
             if (!start.HasValue)
                 return default;
             var startValue = start.GetValueOrDefault();
-            _cachedTimeRange = new Range<double>(startValue, ttm.Map(TextRange.End) ?? startValue).Normalize();
-            return _cachedTimeRange.Value;
+            _timeRange = new Range<double>(startValue, ttm.Map(TextRange.End) ?? startValue).Normalize();
+            Interlocked.Increment(ref _isTimeRangeCached);
+            return _timeRange;
         }
     }
 
