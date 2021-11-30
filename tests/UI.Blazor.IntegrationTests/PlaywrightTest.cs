@@ -34,7 +34,7 @@ public class PlaywrightTest : AppHostTestBase
         chatPage.Should().NotBeNull();
         var input = await page.QuerySelectorAsync("[role='textbox']").ConfigureAwait(false);
         input.Should().NotBeNull();
-        var button = await page.QuerySelectorAsync("button.message-submit").ConfigureAwait(false);
+        var button = await page.QuerySelectorAsync("button.message-submit-common").ConfigureAwait(false);
         button.Should().NotBeNull();
 
         var messages = await GetMessages(page).ConfigureAwait(false);

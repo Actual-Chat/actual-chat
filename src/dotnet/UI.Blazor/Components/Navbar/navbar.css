@@ -1,3 +1,135 @@
 #navbar-toggle:checked~#navbar-links {
     @apply translate-x-0;
 }
+
+.navbar-common {
+    @apply md:hidden px-6 h-16 py-4 bg-textDark text-white flex flex-row flex-nowrap justify-between;
+}
+
+.navbar-logo-common {
+    @apply hidden md:flex flex-row flex-nowrap justify-center;
+}
+
+.navbar-logo-svg-blue {
+    @apply items-center stroke-current;
+}
+
+.navbar-links-common {
+    @apply flex-1 flex flex-col overflow-y-auto;
+}
+
+.navbar-version-common {
+    @apply flex flex-row justify-start items-center text-xxs text-textLight mb-1;
+}
+
+.main-layout-common {
+    @apply flex-1 flex flex-row justify-items-stretch h-full bg-textDark max-h-full overflow-y-hidden relative;
+}
+
+.main-layout-blue {
+    @apply bg-primary-dark;
+}
+
+.nav-common {
+    @apply z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-72 lg:w-96 transition duration-200 ease-in-out bg-textDark text-textLight p-3;
+}
+
+.nav-blue{
+    @apply bg-primary-dark text-textDark;
+}
+
+.navbar-account-mode-common {
+    @apply flex flex-row justify-between items-center w-full pt-3 border-t border-textDark;
+}
+
+.navbar-account-mode-blue {
+    @apply border-lightBlue;
+}
+
+.blazor-mode-toggle-common {
+    @apply cursor-pointer select-none text-textLight text-xxs;
+}
+
+.blazor-mode-toggle-blue {
+    @apply text-textLight;
+}
+
+.visible-blazor-mode-toggle,
+.hidden-blazor-mode-toggle {
+    @apply block overflow-hidden transition duration-500 ease-in-out
+}
+
+.visible-blazor-mode-toggle {
+    @apply opacity-100;
+}
+
+.hidden-blazor-mode-toggle {
+    @apply opacity-0 w-0 h-0;
+}
+
+.blazor-mode-toggle-common:hover .visible-blazor-mode-toggle {
+    @apply opacity-0 w-0 h-0;
+}
+
+.blazor-mode-toggle-blue:hover {
+    @apply text-textLight;
+}
+.blazor-mode-toggle-common:hover .hidden-blazor-mode-toggle {
+    @apply opacity-100 w-auto h-auto;
+}
+
+.navbar-links-group-common {
+    @apply text-sm font-bold uppercase text-textLight-light;
+}
+
+.navbar-link-blue {
+    @apply text-sm font-semibold text-textLight-light opacity-75 hover:opacity-100;
+}
+
+.account-dropdown-common {
+    @apply max-w-xs flex items-center text-sm rounded-full outline-none;
+}
+
+.account-dropdown-blue {
+    @apply text-textLight-light;
+}
+
+.account-dropdown-status-common {
+    @apply font-medium text-xs text-left leading-4;
+}
+
+.account-dropdown-status-blue {
+    @apply text-textLight-light opacity-50 hover:opacity-100
+}
+
+.account-dropdown-username-common {
+    @apply text-sm leading-5 font-medium;
+}
+
+.account-dropdown-username-blue {
+    @apply text-textLight-light opacity-75 hover:opacity-100;
+}
+
+.account-dropdown-signin-button-common {
+    @apply inline-flex justify-center w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 transition duration-150 ease-in-out rounded-md outline-none;
+}
+
+.account-dropdown-signin-button-blue {
+    @apply text-textDark bg-success border border-success hover:bg-success-light active:bg-success-light;
+}
+
+.account-dropdown-menu-visible-common {
+    @apply rounded-md py-1 shadow-lg mb-1 relative
+}
+
+.account-dropdown-menu-visible-blue {
+    @apply bg-chatBackground;
+}
+
+.account-dropdown-menu-visible-item-common {
+    @apply block px-4 py-2 text-sm;
+}
+
+.account-dropdown-menu-visible-item-blue {
+    @apply text-textDark hover:bg-chatBackground-dark;
+}

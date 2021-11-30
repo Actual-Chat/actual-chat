@@ -9,25 +9,26 @@
 }
 
 <Navbar />
-<div class="flex-1 flex flex-row justify-items-stretch bg-gray-800 h-full max-h-full overflow-y-hidden relative">
+<div class="main-layout-common main-layout-blue">
     <input id="navbar-toggle" class="hidden" type="checkbox" />
-    <nav id="navbar-links" class="z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-72 lg:w-96 transition duration-200 ease-in-out bg-gray-800 text-gray-200 p-3">
+    <nav id="navbar-links" class="nav-common nav-blue">
         <div class="flex-1 flex flex-col overflow-y-auto">
-            <div class="hidden md:flex flex-row flex-nowrap justify-center">
+            <div class="navbar-logo-common">
                 <NavbarLogo />
             </div>
-            <div class="flex-1 flex flex-col overflow-y-auto">
+            <div class="navbar-links-common">
                 <NavbarLinks />
             </div>
         </div>
         @* Bottom sticky panel *@
         <div class="flex flex-col sticky items-stretch">
-            <div class="text-xs font-semibold text-gray-500 opacity-75 hover:opacity-100 mb-1">
+            <div class="navbar-version-common">
                 @version
-            </div>
-            <div class="flex flex-row justify-between items-center w-full pt-3 border-t border-gray-700">
-                <AccountDropdown />
+                <span class="px-1">/</span>
                 <BlazorModeToggle />
+            </div>
+            <div class="navbar-account-mode-common navbar-account-mode-blue">
+                <AccountDropdown />
             </div>
         </div>
     </nav>
