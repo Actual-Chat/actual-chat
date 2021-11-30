@@ -13,8 +13,7 @@
         cls += " playable";
         if (PlayingAt != null) {
             var playingAt = PlayingAt.GetValueOrDefault();
-            var timeRange = Part.TimeRange.GetValueOrDefault();
-            if (timeRange.Expand(0.3, 0.3).Contains(playingAt))
+            if (Part.TimeRange.Move(-0.5, 0.3).Contains(playingAt))
                 cls += " playing";
         }
     }
@@ -59,7 +58,7 @@
             return; // We can't do much in this case
         }
 
-        var startOffset = Math.Max(0, part.TimeRange.GetValueOrDefault().Start - 0.25);
+        var startOffset = Math.Max(0, part.TimeRange.Start - 0.25);
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
         _ = BackgroundTask.Run(
             () => historicalPlayer.Play(startAt),

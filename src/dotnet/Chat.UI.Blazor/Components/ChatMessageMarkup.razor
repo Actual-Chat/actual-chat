@@ -42,14 +42,13 @@
     private RenderFragment RenderPart(MarkupPart part) {
         if (part is PlainTextPart) {
             var playbackState = State.ValueOrDefault;
-            var textToTimeMap = part.Markup.TextToTimeMap;
-            if (playbackState == null || playbackState.IsCompleted || textToTimeMap.IsEmpty)
+            var partTimeRange = part.TimeRange;
+            if (playbackState == null || playbackState.IsCompleted || partTimeRange.IsEmpty)
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 
             var playingAt = playbackState.PlayingAt.TotalSeconds;
-            var minPlayingAt = textToTimeMap.Map(part.TextRange.Start) - 1;
-            var maxPlayingAt = textToTimeMap.Map(part.TextRange.End) + 1;
-            if (playingAt < minPlayingAt || playingAt > maxPlayingAt)
+            var playingAtNearbyRange = new Range<double>(playingAt - 2, playingAt + 2);
+            if (!playingAtNearbyRange.Overlaps(part.TimeRange))
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 
             return @<PlainTextPartView Entry="@Model.Entry" Part="@part" PlayingAt="@playingAt"/>;

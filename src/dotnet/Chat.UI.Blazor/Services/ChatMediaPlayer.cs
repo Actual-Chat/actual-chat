@@ -52,8 +52,9 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var playTask = MediaPlayer.Play();
         var cancellationToken = MediaPlayer.StopToken;
         var clock = Clocks.CpuClock;
-        var infDuration = 2 * ChatConstants.MaxEntryDuration;
+        var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var chatAuthor = (ChatAuthor?) null;
+        var stopReason = "";
 
         DebugLog?.LogInformation(
             "Play({StartAt}) started for chat #{ChatId} / {PlaybackKind}",
@@ -61,7 +62,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         try {
             var entryReader = Chats.CreateEntryReader(Session, ChatId);
             var startEntryId = await entryReader
-                .GetNextEntryId(startAt - ChatConstants.MaxEntryDuration, cancellationToken)
+                .GetNextEntryId(startAt - Constants.Chat.MaxEntryDuration, cancellationToken)
                 .ConfigureAwait(false);
             var now = clock.Now;
             var realtimeOffset = now - startAt;
@@ -75,7 +76,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                     // so we need to skip a few entries.
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
-                if (IsRealTimePlayer) {
+                if (IsRealTimePlayer && !Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
                     // It can't change once it's created, so we want to fetch it just once
                     chatAuthor ??= await ChatAuthors
                         .GetSessionChatAuthor(Session, ChatId, cancellationToken)
@@ -105,10 +106,16 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                 await EnqueueEntry(entry, entrySkipTo, realtimeBeginsAt, cancellationToken).ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
+            stopReason = "no more entries";
             MediaPlayer.Complete();
             await playTask.ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (OperationCanceledException) {
+            stopReason = "cancellation";
+            throw;
+        }
+        catch (Exception e) {
+            stopReason = "error";
             Log.LogError(e,
                 "Play({StartAt}) failed for chat #{ChatId} / {PlaybackKind}",
                 startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
@@ -122,8 +129,8 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         }
         finally {
             DebugLog?.LogInformation(
-                "Play({StartAt}) stopped for chat #{ChatId} / {PlaybackKind}",
-                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
+                "Play({StartAt}) stopped for chat #{ChatId} / {PlaybackKind}, reason: {StopReason}",
+                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical", stopReason);
         }
     }
 
