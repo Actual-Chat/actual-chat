@@ -170,7 +170,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Simple;
                     cfg.Protocol = OtlpExportProtocol.Grpc;
-                    cfg.MetricExportIntervalMilliseconds = 5000;
                     cfg.AggregationTemporality = AggregationTemporality.Cumulative;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
