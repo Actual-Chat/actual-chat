@@ -20,10 +20,9 @@ namespace ActualChat.Web.Module
                 return; // Server-side only module
 
             services.AddMvcCore(options => {
-                options.ModelBinderProviders.Insert(0, new RangeModelBinderProvider());
                 options.ModelBinderProviders.Insert(1, new IdentifierModelBinderProvider());
             });
-            
+
         }
 
         public void ConfigureApp(IApplicationBuilder app)

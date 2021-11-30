@@ -1,32 +1,22 @@
-using ActualChat.Chat.Db;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework;
-using Stl.Time.Testing;
-using Stl.Versioning;
-using Stl.Versioning.Providers;
 
 namespace ActualChat.Chat.IntegrationTests;
 
 public class ChatEntryReaderTest
 {
-    private readonly VersionGenerator<long> VersionGenerator = new ClockBasedVersionGenerator(SystemClock.Instance);
     private const string ChatId = "the-actual-one";
-    private readonly MomentClockSet Clocks = new MomentClockSet();
 
     [Fact]
-    public async Task ReaderTest()
+    public async Task BasicTest()
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var user = tester.SignIn(new User("", "reader-test-user")).ConfigureAwait(false);
         var session = tester.Session;
 
-        var chats = tester.AppServices.GetRequiredService<IChats>();
+        var chats = tester.ClientServices.GetRequiredService<IChats>();
 
         var chat = await chats.Get(session, ChatId, CancellationToken.None);
         chat.Should().NotBeNull();
@@ -49,29 +39,27 @@ public class ChatEntryReaderTest
 
         var entry = await reader.Get(131, CancellationToken.None);
         entry.Should().NotBeNull();
-        entry?.Content.Should().Be("audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm");
-        entry?.BeginsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:18.5043140Z")));
-        entry?.Duration.Should().Be(11.039);
+        entry!.Content.Should().Be("audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm");
+        entry.BeginsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:18.5043140Z")));
+        entry.Duration.Should().Be(11.039);
 
         entry = await reader.Get(132, CancellationToken.None);
         entry.Should().NotBeNull();
-        entry?.Content.Should().Be("Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал открыв мне чудо на Земле");
-        entry?.EndsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:29.0043140Z")));
-        entry?.Duration.Should().Be(10.5);
-
-        var entryPoint = new Moment(DateTime.Parse("2021-11-05T16:41:30.0043140Z"));
+        entry!.Content.Should().Be("Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал открыв мне чудо на Земле");
+        entry.EndsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:29.0043140Z")));
+        entry.Duration.Should().Be(10.5);
 
         entry = await reader.Get(acDcId, CancellationToken.None);
         entry.Should().NotBeNull();
-        entry?.Content.Should().Be("back in black i hit the sack");
+        entry!.Content.Should().Be("back in black i hit the sack");
 
         entry = await reader.Get(nirvanaId, CancellationToken.None);
         entry.Should().NotBeNull();
-        entry?.Content.Should().Be("rape me rape me my friend");
+        entry!.Content.Should().Be("rape me rape me my friend");
 
         entry = await reader.Get(chuckBerryId, CancellationToken.None);
         entry.Should().NotBeNull();
-        entry?.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
+        entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
     private async Task AddChatEntries(IChats chats, Session session, ChatId chatId, CancellationToken cancellationToken)

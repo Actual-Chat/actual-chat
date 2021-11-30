@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2011-2020 Oleg Zee
+/* Copyright (c) 2011-2020 Oleg Zee
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -18,14 +18,14 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * */
+*/
 
 namespace ActualChat.Audio.WebM;
 
 /// <summary>
 ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
 /// </summary>
-[StructLayout(LayoutKind.Auto)]
+[StructLayout(LayoutKind.Sequential)]
 public readonly struct VInt : IEquatable<VInt>
 {
     private const ulong MaxValue = (1L << 56) - 1;
@@ -49,7 +49,6 @@ public readonly struct VInt : IEquatable<VInt>
     };
 
     private readonly byte _length;
-
 
     private VInt(ulong encodedValue, int length)
     {
@@ -75,7 +74,8 @@ public readonly struct VInt : IEquatable<VInt>
 
     public uint Length => _length;
 
-    public static implicit operator ulong?(VInt value) => !value.IsReserved ? value.Value : null;
+    public static implicit operator ulong?(VInt value)
+        => !value.IsReserved ? value.Value : null;
 
     public static readonly VInt Unknown = UnknownSize(2);
 
@@ -133,11 +133,9 @@ public readonly struct VInt : IEquatable<VInt>
         return new VInt(encodedValue, extraBytes + 1);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static VInt FromValue(ulong value)
-        => new VInt(value, (int)EbmlHelper.GetSize(value));
+        => new (value, (int)EbmlHelper.GetSize(value));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static VInt FromValue(long value)
     {
         var size = (int)EbmlHelper.GetSize(value);

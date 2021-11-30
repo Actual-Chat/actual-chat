@@ -7,122 +7,119 @@
 
 <button @onclick="ToggleRecording" class="block px-3 py-2 @(IsRecording ? "text-red-500" : "text-indigo-500")">
     <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-        <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z" />
+        <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z"/>
     </svg>
 </button>
 
 @code {
-    private static byte[] _brokenHeader = { 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86 };
+    [Inject] private ILogger<AudioRecorder> Log { get; init; } = null!;
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioRecording;
 
-    [Inject]
-    protected internal ILogger<AudioRecorder> Log { get; init; } = null!;
-    private IJSObjectReference? JSComponentRef { get; set; }
-    private DotNetObjectReference<IAudioRecorderBackend> ComponentRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; }
+    private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
     private Channel<BlobPart>? AudioChannel { get; set; }
     private int Index { get; set; }
-
+    private uint LastSeqNum { get; set; } = 0;
     private bool IsRecording => AudioChannel != null;
-    //private Color ToggleColor => IsRecording ? Color.Secondary : Color.Primary;
-
-    private bool DebugMode { get; } = Constants.DebugMode.AudioRecorder;
 
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         await StopRecording().ConfigureAwait(true);
-        await JSComponentRef.DisposeSilentlyAsync().ConfigureAwait(true);
-        ComponentRef?.Dispose();
+        await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+        BlazorRef?.Dispose();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            ComponentRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSComponentRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", ComponentRef, DebugMode);
+            BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
+            JSRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", BlazorRef, DebugMode);
         }
-        if (DebugMode)
-        {
-            var logMessage = $"OnAfterRender: ChatId = {ChatId}, AudioRecorder loaded.";
-            Log.LogInformation(logMessage);
-        }
+        DebugLog?.LogInformation("OnAfterRender(firstRender: {FirstRender}: ChatId = {ChatId}, AudioRecorder loaded", firstRender, ChatId);
     }
 
     private Task ToggleRecording()
         => IsRecording ? StopRecording() : StartRecording();
 
-    private async Task StartRecording()
-    {
+    private async Task StartRecording() {
         if (AudioChannel != null)
             return;
 
         AudioChannel = Channel.CreateBounded<BlobPart>(
-            new BoundedChannelOptions(100) {
-                FullMode = BoundedChannelFullMode.Wait,
+            new BoundedChannelOptions(128) {
                 SingleWriter = true,
+                SingleReader = true,
                 AllowSynchronousContinuations = true,
             });
         StateHasChanged();
-        if (JSComponentRef != null)
-            await JSComponentRef.InvokeVoidAsync("startRecording");
-        if (DebugMode)
-            Log.LogInformation("StartRecording: Invoked");
+        if (JSRef != null)
+            await JSRef.InvokeVoidAsync("startRecording");
+        DebugLog?.LogInformation("StartRecording");
     }
 
-    private async Task StopRecording()
-    {
+    private async Task StopRecording() {
+        DebugLog?.LogInformation("StopRecording, current AudioChannel status is {AudioChannelStatus}",
+            AudioChannel == null ? "closed" : "opened"
+        );
+
         if (AudioChannel == null)
             return;
-
-        AudioChannel.Writer.Complete();
-        AudioChannel = null;
-        StateHasChanged();
-        if (JSComponentRef != null)
-          await JSComponentRef.InvokeVoidAsync("stopRecording");
-        if (DebugMode)
-            Log.LogInformation("StopRecording: Invoked");
+        try {
+            if (JSRef != null)
+                await JSRef.InvokeVoidAsync("stopRecording");
+        }
+        finally {
+            if (AudioChannel != null) {
+                AudioChannel.Writer.Complete();
+                AudioChannel = null;
+                StateHasChanged();
+            }
+        }
     }
 
     // JS backend callback handlers
 
     [JSInvokable]
-    public void OnStartRecording()
-    {
+    public void OnStartRecording() {
         if (AudioChannel == null)
             return;
 
         var audioFormat = new AudioFormat {
             CodecKind = AudioCodecKind.Opus,
             ChannelCount = 1,
-            SampleRate = 48_000
+            SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
         var audioRecord = new AudioRecord(ChatId, audioFormat, "RU-ru", clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
-        _ = _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None);
+        _ = BackgroundTask.Run(
+            () => _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None),
+            Log, $"{nameof(_sourceAudioRecorder.RecordSourceAudio)} failed");
     }
 
     [JSInvokable]
-    public void OnAudioData(byte[] chunk)
-    {
+    public async Task OnAudioData(byte[] chunk) {
         if (AudioChannel == null)
             return;
 
-        // broken stream check
-        if (chunk.Take(6).SequenceEqual(_brokenHeader)) {
-            Log.LogWarning("Recorded broken header");
-            var fixedChunk = new byte[chunk.Length + 1];
-            fixedChunk[0] = 0x1A;
-            Buffer.BlockCopy(chunk, 0, fixedChunk, 1, chunk.Length);
-            chunk = fixedChunk;
-        }
-        _ = AudioChannel.Writer.WriteAsync(new BlobPart(Index++, chunk));
+        var seqNum = Unsafe.As<byte, uint>(ref chunk[0]);
+
+        if (seqNum != 0 && (seqNum - 1) != LastSeqNum)
+            Log.LogError("OnAudioData: SeqNum mismatch, current = {SeqNum}, last: {LastSeqNum}", seqNum, LastSeqNum);
+
+        LastSeqNum = seqNum;
+        var blobPart = new BlobPart(Index++, chunk[4..]);
+        DebugLog?.LogInformation("OnAudioData: got packet #{SeqNum}: {BlobPart}", seqNum, blobPart);
+        await AudioChannel.Writer.WriteAsync(blobPart);
     }
 
     [JSInvokable]
-    public void OnStopRecording()
-    {
+    public void OnRecordingStopped() {
+        DebugLog?.LogInformation("OnRecordingStopped: current AudioChannel status is {AudioChannelStatus}",
+            AudioChannel == null ? "closed" : "opened"
+        );
         // Does the same as StopRecording; we assume here that recording
         // might be recognized as stopped by JS backend as well
         if (AudioChannel == null)

@@ -13,9 +13,10 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private readonly byte[] _header;
     private readonly IJSRuntime _js;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
-    private CancellationTokenSource _delayTokenSource;
     private IJSObjectReference? _jsRef;
-    private bool DebugMode { get; } = Constants.DebugMode.AudioTrackPlayer;
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+    private readonly ManualResetEventSlim _jsReadyToBuffer = new();
 
     public AudioSource AudioSource => (AudioSource)Source;
 
@@ -29,8 +30,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         _circuitContext = circuitContext;
         _js = js;
-        _delayTokenSource = new CancellationTokenSource();
         _header = AudioSource.Format.ToBlobPart().Data;
+        _jsReadyToBuffer.Set();
     }
 
     [JSInvokable]
@@ -58,20 +59,34 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     {
         if (offset != null)
             OnPlayedTo(TimeSpan.FromSeconds(offset.Value));
-
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnDataWaiting(double? offset, int? readyState)
+    public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
-        _delayTokenSource.Cancel();
-        _delayTokenSource.Dispose();
-        _delayTokenSource = new CancellationTokenSource();
+        DebugLog?.LogInformation(
+            "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
+            isBufferReady,
+            offset,
+            ToMediaElementReadyState(readyState));
 
-        Log.LogWarning("Waiting for audio data. Offset = {Offset}, readyState = {readyState}", offset, readyState);
-
+        if (isBufferReady) {
+            _jsReadyToBuffer.Set();
+        }
+        else {
+            _jsReadyToBuffer.Reset();
+        }
         return Task.CompletedTask;
+
+        static string ToMediaElementReadyState(int? state) => state switch {
+            0 => "HAVE_NOTHING",
+            1 => "HAVE_METADATA",
+            2 => "HAVE_CURRENT_DATA",
+            3 => "HAVE_FUTURE_DATA",
+            4 => "HAVE_ENOUGH_DATA",
+            _ => $"UNKNOWN:{state?.ToString(CultureInfo.InvariantCulture) ?? "(null)"}",
+        };
     }
 
     [JSInvokable]
@@ -82,7 +97,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     }
 
     protected override async ValueTask ProcessCommand(MediaTrackPlayerCommand command)
-        => await CircuitInvoke(async () => {
+        => await CircuitInvoke(
+            async () => {
                 switch (command) {
                     case StartPlaybackCommand:
                         _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
@@ -107,36 +123,63 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                     default:
                         throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
                 }
-            })
-            .ConfigureAwait(false);
+            }).ConfigureAwait(false);
 
-    protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
-        => await CircuitInvoke(async () => {
+    protected override async ValueTask<bool> ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
+        => await CircuitInvoke(
+            async () => {
                 if (_jsRef == null)
-                    return;
+                    return false;
 
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
-                var buffered = await _jsRef.InvokeAsync<double>("appendAudio", cancellationToken, chunk, offset);
-
-                if (buffered > 10) {
-                    await using var _ = cancellationToken.Register(() => _delayTokenSource.Cancel());
-                    await Task.Delay(TimeSpan.FromSeconds(5), _delayTokenSource.Token);
+                _ = _jsRef.InvokeVoidAsync("appendAudioAsync", cancellationToken, chunk, offset);
+                try {
+                    await _jsReadyToBuffer.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
-            })
-            .ConfigureAwait(false);
+                catch (OperationCanceledException) {
+                    DebugLog?.LogInformation(
+                        "Playing was cancelled while waiting js buffer, was on frame: (offset: {FrameOffset})",
+                        frame.Offset);
+                    return false;
+                }
+                catch (TimeoutException) {
+                    DebugLog?.LogWarning(
+                        "Buffer waiting timeout, playing was cancelled on frame: (offset: {FrameOffset})",
+                        frame.Offset);
+                    return false;
+                }
+                return true;
+            }).ConfigureAwait(false);
 
     private Task CircuitInvoke(Func<Task> workItem)
+        => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
+#pragma warning disable RCS1229
+    private Task<TResult?> CircuitInvoke<TResult>(Func<Task<TResult?>> workItem)
     {
         try {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             return _circuitContext.IsDisposing || _circuitContext.RootComponent == null
-                ? Task.CompletedTask
+                ? Task.FromResult(default(TResult?))
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(CircuitInvoke)}: error processing audio command");
+            Log.LogError(e, $"{nameof(CircuitInvoke)} failed");
         }
-        return Task.CompletedTask;
+        return Task.FromResult(default(TResult));
+    }
+
+    protected override ValueTask DisposeAsyncCore()
+    {
+        _jsReadyToBuffer.Dispose();
+        return base.DisposeAsyncCore();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) {
+            _jsReadyToBuffer.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }

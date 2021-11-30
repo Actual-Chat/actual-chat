@@ -1,5 +1,6 @@
 using ActualChat.Blobs;
 using ActualChat.Chat;
+using ActualChat.Host;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,13 +10,12 @@ namespace ActualChat.Audio.IntegrationTests;
 
 public class SourceAudioProcessorTest : AppHostTestBase
 {
-    public SourceAudioProcessorTest(ITestOutputHelper @out) : base(@out)
-        => SourceAudioProcessor.SkipAutoStart = true;
+    public SourceAudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task EmptyRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -43,7 +43,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task NoRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sourceAudioProcessor = services.GetRequiredService<SourceAudioProcessor>();
         var cts = new CancellationTokenSource();
@@ -58,7 +58,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task PerformRecordingAndTranscriptionTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -92,7 +92,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task PerformRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -119,6 +119,15 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
         readSize.Should().Be(writtenSize);
     }
+
+    private static async Task<AppHost> NewAppHost()
+        => await TestHostFactory.NewAppHost(
+            null,
+            services => {
+                services.AddSingleton(new SourceAudioProcessor.Options {
+                    IsEnabled = false,
+                });
+            });
 
     private async Task<int> ReadTranscriptStream(
         AudioRecordId audioRecordId,

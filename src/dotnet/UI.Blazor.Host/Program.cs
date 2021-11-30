@@ -1,5 +1,6 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor;
+using ActualChat.Audio.WebM;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor;
@@ -25,6 +26,9 @@ public static class Program
 
         var host = builder.Build();
         await host.Services.HostedServices().Start().ConfigureAwait(false);
+        if (Constants.DebugMode.WebMReader)
+            WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
+
         await host.RunAsync().ConfigureAwait(false);
     }
 

@@ -151,13 +151,13 @@ public ref struct SpanReader
             return null;
 
         switch (size) {
-            case 4:
-                return new Union { UInt = (uint)num.Value }.Float;
-            case 8:
-                return (float?)new Union { ULong = num.Value }.Double;
-            // throw new NotSupportedException("Unable to read double (8-byte length)");
-            default:
-                throw new EbmlDataFormatException("Incorrect float length");
+        case 4:
+            return new Union { UInt = (uint)num.Value }.Float;
+        case 8:
+            return (float?)new Union { ULong = num.Value }.Double;
+        // throw new NotSupportedException("Unable to read double (8-byte length)");
+        default:
+            throw new EbmlDataFormatException("Incorrect float length");
         }
     }
 
@@ -255,7 +255,6 @@ public ref struct SpanReader
         return new Guid(bytes);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T? Read<T>() where T : unmanaged
     {
         var sizeOf = Unsafe.SizeOf<T>();

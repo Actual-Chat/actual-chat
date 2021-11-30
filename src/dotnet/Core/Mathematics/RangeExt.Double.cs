@@ -1,42 +1,23 @@
 namespace ActualChat.Mathematics;
 
-public static partial class RangeExt
+public static class RangeExt
 {
-    public static bool Equals(this Range<double> range, Range<double> otherRange, double epsilon)
-        => Math.Abs(range.Start - otherRange.Start) < epsilon
-            && Math.Abs(range.End - otherRange.End) < epsilon;
+    public static Range<double> Move(this Range<double> range, double startOffset, double endOffset)
+        => new(range.Start + startOffset, range.End + endOffset);
 
-    public static double Size(this Range<double> range)
-        => range.End - range.Start;
-
-    public static Range<double> Move(this Range<double> range, double offset)
-        => new(range.Start + offset, range.End + offset);
-    public static Range<double> Expand(this Range<double> range, double offset)
-        => new(range.Start - offset, range.End + offset);
-    public static Range<double> Resize(this Range<double> range, double size)
-        => new(range.Start, range.Start + size);
-
-    public static bool Contains(this Range<double> range, double value)
-        => range.Start <= value && value < range.End;
-    public static bool Contains(this Range<double> range, Range<double> containedRange)
-        => range.Start <= containedRange.Start && containedRange.End <= range.End;
-
-    public static bool Overlaps(this Range<double> range, Range<double> otherRange)
-        => range.IntersectWith(otherRange).Size() > 0;
-
-    public static Range<double> IntersectWith(this Range<double> range, Range<double> other)
+    public static (Range<double> FirstHalf, Range<double> SecondHalf) SplitEvenly(this Range<double> range)
     {
-        var result = new Range<double>(Math.Max(range.Start, other.Start), Math.Min(range.End, other.End));
-        return result.Size() < 0 ? default : result;
+        var splitBoundary = (range.End + range.Start) / 2;
+        return ((range.Start, splitBoundary), (splitBoundary, range.End));
     }
 
     public static Range<double> FitInto(this Range<double> range, Range<double> fitRange)
     {
         var maxSize = Math.Min(range.Size(), fitRange.Size());
-        return range.Resize(maxSize).SlideInto(fitRange);
+        return range.Resize(maxSize).ScrollInto(fitRange);
     }
 
-    public static Range<double> SlideInto(this Range<double> range, Range<double> fitRange)
+    public static Range<double> ScrollInto(this Range<double> range, Range<double> fitRange)
     {
         var size = range.Size();
         if (range.End > fitRange.End)

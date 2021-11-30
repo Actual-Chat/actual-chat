@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Fusion.Blazor;
@@ -29,6 +30,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
 
         // Other UI-related services
         services.AddScoped<AppBlazorCircuitContext>();
+        services.AddScoped<PageLayoutModel>();
         // Default update delay is 0.5s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
     }

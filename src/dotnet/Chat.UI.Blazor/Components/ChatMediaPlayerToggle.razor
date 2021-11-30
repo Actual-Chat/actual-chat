@@ -17,6 +17,8 @@
     public ChatMediaPlayer Player { get; set; } = null!;
 
     protected override void OnParametersSet() {
+        if (_lastPlayer == Player)
+            return;
         if (_lastPlayer != null)
             _lastPlayer.MediaPlayer.StateChanged -= PlayerStateChanged;
         _lastPlayer = Player;
@@ -43,5 +45,4 @@
     private Task Stop() {
         return Player.Stop();
     }
-
 }

@@ -31,12 +31,14 @@ namespace ActualChat.Testing
         {
             var settings = new TestSettings();
 
+#pragma warning disable IL2026
             ctx.Configuration.Bind(settings);
+#pragma warning restore IL2026
             InitializeSettingsCore(settings);
             InitializeSettings(settings);
 
             services.TryAddSingleton(settings);
-            services.TryAddSingleton<ILogger>(sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger(categoryName: ""));
+            services.TryAddSingleton(c => c.LogFor("")); // Default ILogger w/o a category
         }
 
         private void InitializeSettingsCore(TestSettings settings)

@@ -12,6 +12,10 @@
     <!-- ToDo: fix t4 generation without vs/rider or move to sourcegenerators, move generation results to a separate folder (?)  -->
     <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs" />
     <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs" />
+    <None Update="WebM\Models\MatroskaModels.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

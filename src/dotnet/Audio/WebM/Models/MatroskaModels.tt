@@ -3,18 +3,13 @@
 <#@ Assembly Name="System.Core.dll" #>
 <#@ Assembly Name="System.Xml.dll" #>
 <#@ Assembly Name="System.Xml.Linq.dll" #>
-<#@ import namespace="System" #>
-<#@ import namespace="System.IO" #>
-<#@ import namespace="System.Diagnostics" #>
-<#@ import namespace="System.Reflection" #>
-<#@ import namespace="System.Linq" #>
-<#@ import namespace="System.Collections" #>
 <#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Xml.Linq" #>
-<#@ import namespace="System.Text" #>
 <#
-    string XmlFile = "../ebml.xml";
-    string MatroskaXmlFile = "../ebml_matroska.xml";
+    var XmlFile = "../ebml.xml";
+    var MatroskaXmlFile = "../ebml_matroska.xml";
     XNamespace ns = "urn:ietf:rfc:8794";
 #>
 using System;
@@ -59,14 +54,14 @@ namespace ActualChat.Audio.WebM.Models
         "CueReference",
         "SignatureSlot",
         "SignatureElementList",
-        "SignedElement"
+        "SignedElement",
     };
 
     var isRoot = new List<string>
     {
         "EBML",
         "Segment",
-        "Cluster"
+        "Cluster",
     };
 
     var isBlock = new List<string>
@@ -75,10 +70,10 @@ namespace ActualChat.Audio.WebM.Models
         "BlockAdditional",
         "BlockVirtual",
         "EncryptedBlock",
-        "SimpleBlock"
+        "SimpleBlock",
     };
 
-    var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), XmlFile)).Elements()
+    var elementsEbml = XElement.Load(Path.Combine(Path.GetDirectoryName(Host.TemplateFile), XmlFile)).Elements()
         .Select(e => new Element
         {
             Name = e.Attribute("name").Value.Replace("CRC-32", "CRC32"),
@@ -92,10 +87,11 @@ namespace ActualChat.Audio.WebM.Models
             ElementType = e.Attribute("type").Value,
             DefaultValue = e.Attribute("default")?.Value,
             Required = (e.Attribute("minOccurs") != null ? int.Parse(e.Attribute("minOccurs").Value) : 0) > 0,
-            Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
+            Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : "",
         });
 
-    var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(this.Host.TemplateFile), MatroskaXmlFile)).Elements()
+    var elementsMatroska = XElement.Load(Path.Combine(Path.GetDirectoryName(Host.TemplateFile), MatroskaXmlFile))
+        .Elements()
         .Select(e => new Element
         {
             Name = e.Attribute("name").Value,
@@ -109,12 +105,13 @@ namespace ActualChat.Audio.WebM.Models
             ElementType = e.Attribute("type").Value,
             DefaultValue = e.Attribute("default")?.Value,
             Required = (e.Attribute("minOccurs") != null ? int.Parse(e.Attribute("minOccurs").Value) : 0) > 0,
-            Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : ""
+            Documentation = e.Element(ns + "documentation") != null ? e.Element(ns + "documentation").Value : "",
         });
 
     var elements = elementsEbml.Union(elementsMatroska).Concat(new[]
     {
-        new Element {
+        new Element
+        {
             Name = "Unknown",
             UseNameInsteadOfBinary = false,
             IsList = false,
@@ -124,10 +121,10 @@ namespace ActualChat.Audio.WebM.Models
             Level = 0,
             Id = "0x7FFF",
             ElementType = "None",
-            DefaultValue= null,
+            DefaultValue = null,
             Required = false,
-            Documentation = "Unknown element"
-        }
+            Documentation = "Unknown element",
+        },
     }).ToList();
 
     var deprecated = new List<string> { "TrackTimestampScale" };
@@ -140,7 +137,10 @@ namespace ActualChat.Audio.WebM.Models
 
     var skip = new List<string> { "Block", "SimpleBlock", "SimpleTag", "TrackTimestampScale" };
 
-    foreach (var master in elements.Where(e => (e.ElementType == "master" || e.ElementType == "None") && !skip.Contains(e.Name)).OrderBy(e => e.Path))
+    foreach (
+        var master in
+            elements.Where(e => (e.ElementType == "master" || e.ElementType == "None") && !skip.Contains(e.Name))
+                .OrderBy(e => e.Path))
     {
         var className = master.Name;
         if (className == "Tag")
@@ -153,16 +153,16 @@ namespace ActualChat.Audio.WebM.Models
         }
 #>
     [GeneratedCode("MatroskaModels.tt", "1.0.0.0")]
-    [MatroskaElementDescriptor(MatroskaSpecification.<#=master.Name#>)]
-    public sealed class <#=className#> : <#= master.IsRoot ? "RootEntry" : "BaseModel"#>
+    [MatroskaElementDescriptor(MatroskaSpecification.<#= master.Name #>)]
+    public sealed class <#= className #> : <#= master.IsRoot ? "RootEntry" : "BaseModel" #>
     {
-        public override EbmlElementDescriptor Descriptor => MatroskaSpecification.<#=master.Name#>Descriptor;
+        public override EbmlElementDescriptor Descriptor => MatroskaSpecification.<#= master.Name #>Descriptor;
 
 <#
         var subs = master.SubElements.Where(sub => !sub.IsRoot).ToList();
         foreach (var sub in subs)
         {
-            string field = sub.Name;
+            var field = sub.Name;
             if (sub.Name == "Tag")
             {
                 field = "TagItem";
@@ -175,11 +175,16 @@ namespace ActualChat.Audio.WebM.Models
             string a;
             if (sub.IsList && field != "SignedElement")
             {
-                a = string.Format(new string(' ', 8) + "[MatroskaElementDescriptor(MatroskaSpecification.{0}, typeof({1}))]", sub.Name, field);
+                a =
+                    string.Format(
+                        new string(' ', 8) + "[MatroskaElementDescriptor(MatroskaSpecification.{0}, typeof({1}))]",
+                        sub.Name,
+                        field);
             }
             else
             {
-                a = string.Format(new string(' ', 8) + "[MatroskaElementDescriptor(MatroskaSpecification.{0})]", sub.Name);
+                a = string.Format(new string(' ', 8) + "[MatroskaElementDescriptor(MatroskaSpecification.{0})]",
+                    sub.Name);
             }
             WriteLine(a);
             WriteLine(new string(' ', 8) + GetProperty(sub, field));
@@ -213,7 +218,7 @@ namespace ActualChat.Audio.WebM.Models
         if (master.Name != "Segment")
             foreach (var sub in subs)
             {
-                string field = sub.Name;
+                var field = sub.Name;
                 if (sub.Name == "Tag")
                 {
                     field = "TagItem";
@@ -238,7 +243,7 @@ namespace ActualChat.Audio.WebM.Models
 
                 if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
                 {
-                    string defaultOffset = "";
+                    var defaultOffset = "";
                     if (master.Name != "EBML" && sub.Name != "TimestampScale" && sub.Name != "Channels" &&
                         sub.DefaultValue != null && sub.ElementType != "string" && !sub.DefaultValue.Contains("p"))
                     {
@@ -249,7 +254,7 @@ namespace ActualChat.Audio.WebM.Models
                     }
 #>
             <#= defaultOffset #>size += EbmlHelper.GetElementSize(MatroskaSpecification.<#= sub.Name #>, <#=
-                            sub.Name == "TrackType" ? "(ulong?)" : "" #><#= name #><#= stringEncoding #>);
+                        sub.Name == "TrackType" ? "(ulong?)" : "" #><#= name #><#= stringEncoding #>);
 <#
                 }
                 else
@@ -259,18 +264,18 @@ namespace ActualChat.Audio.WebM.Models
 <#
                 }
             }
-
 #>
             return size;
         }
     }
 
-<#  } #>
+<#
+    }
+#>
 
     public static class ModelExt
     {
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Write(this BaseModel? model, ref SpanWriter writer)
         {
             if (model == null)
@@ -278,7 +283,6 @@ namespace ActualChat.Audio.WebM.Models
 
             switch (model.Descriptor.Identifier.EncodedValue) {
 <#
-
     var masters = elements.Where(e => e.ElementType == "master" || e.IsBlock).OrderBy(e => e.Path).ToList();
 
     foreach (var master in masters)
@@ -297,18 +301,19 @@ namespace ActualChat.Audio.WebM.Models
             className = "ContentEncodingItem";
         }
 #>
-                case MatroskaSpecification.<#=master.Name#>:
-                    return ((<#=className#>)model).Write(ref writer);
+            case MatroskaSpecification.<#= master.Name #>:
+                return ((<#= className #>)model).Write(ref writer);
 <#
     }
 #>
-                default:
-                    throw new EbmlDataFormatException($"Unexpected ebml element '{model.Descriptor.Identifier}'");
+            default:
+                throw new EbmlDataFormatException($"Unexpected ebml element '{model.Descriptor.Identifier}'");
             }
         }
 
 <#
-    foreach (var master in elements.Where(e => e.ElementType == "master"&& !skip.Contains(e.Name)).OrderBy(e => e.Path))
+    foreach (var master in elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path)
+        )
     {
         var className = master.Name;
         if (className == "Tag")
@@ -321,13 +326,12 @@ namespace ActualChat.Audio.WebM.Models
         }
 #>
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Write(this <#= className#>? model, ref SpanWriter writer)
+        public static bool Write(this <#= className #>? model, ref SpanWriter writer)
         {
             if (model == null)
                 return true;
 
-            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.<#=master.Name#>, model.GetSize(), ref writer))
+            if (!EbmlHelper.WriteEbmlMasterElement(MatroskaSpecification.<#= master.Name #>, model.GetSize(), ref writer))
                 return false;
 <#
         var subs = master.SubElements.Where(sub => !sub.IsRoot && !sub.IsBlock).ToList();
@@ -335,7 +339,7 @@ namespace ActualChat.Audio.WebM.Models
         {
             foreach (var sub in subs)
             {
-                string field = sub.Name;
+                var field = sub.Name;
                 if (sub.Name == "Tag")
                 {
                     field = "TagItem";
@@ -358,22 +362,24 @@ namespace ActualChat.Audio.WebM.Models
                 var name = Pluralize(sub, field);
                 if (sub.ElementType != "master" && !(sub.ElementType == "binary" && sub.UseNameInsteadOfBinary))
                 {
-                    string defaultOffset = "";
-                    if (master.Name != "EBML" && sub.Name != "TimestampScale" && sub.Name != "Channels" &&  sub.DefaultValue != null && sub.ElementType != "string" && !sub.DefaultValue.Contains("p"))
+                    var defaultOffset = "";
+                    if (master.Name != "EBML" && sub.Name != "TimestampScale" && sub.Name != "Channels" &&
+                        sub.DefaultValue != null && sub.ElementType != "string" && !sub.DefaultValue.Contains("p"))
                     {
                         defaultOffset = "    ";
 #>
-            if (model.<#= name #> != <#=sub.DefaultValue#>)
+            if (model.<#= name #> != <#= sub.DefaultValue #>)
 <#
                     }
 #>
-            <#=defaultOffset#>EbmlHelper.WriteEbmlElement(MatroskaSpecification.<#= sub.Name #>, <#= sub.Name == "TrackType" ? "(ulong?)" : ""#>model.<#= name #><#= stringEncoding #>, ref writer);
+            <#= defaultOffset #>EbmlHelper.WriteEbmlElement(MatroskaSpecification.<#= sub.Name #>, <#=
+                            sub.Name == "TrackType" ? "(ulong?)" : "" #>model.<#= name #><#= stringEncoding #>, ref writer);
 <#
                 }
                 else
                 {
 #>
-            model.<#= name #><#= sub.Required ? "" : "?"#>.Write(ref writer);
+            model.<#= name #><#= sub.Required ? "" : "?" #>.Write(ref writer);
 <#
                 }
             }
@@ -386,7 +392,6 @@ namespace ActualChat.Audio.WebM.Models
 #>
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static BaseModel CreateInstance(this EbmlElementDescriptor descriptor)
         {
             if (descriptor.Type != EbmlElementType.MasterElement)
@@ -398,26 +403,23 @@ namespace ActualChat.Audio.WebM.Models
         var master in elements.Where(e => e.ElementType == "master" && !skip.Contains(e.Name)).OrderBy(e => e.Path))
     {
         var className = master.Name;
-        if (className == "Tag")
-        {
+        if (className == "Tag") {
             className = "TagItem";
         }
-        if (className == "ContentEncoding")
-        {
+        if (className == "ContentEncoding") {
             className = "ContentEncodingItem";
         }
 #>
-                case MatroskaSpecification.<#=master.Name#>:
-                    return new <#=className#>();
+            case MatroskaSpecification.<#= master.Name #>:
+                return new <#= className #>();
 <#
     }
 #>
-                default:
-                    throw new InvalidOperationException("Unknown master element: " + descriptor.Identifier);
+            default:
+                throw new InvalidOperationException("Unknown master element: " + descriptor.Identifier);
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillScalar(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
@@ -429,25 +431,22 @@ namespace ActualChat.Audio.WebM.Models
             continue;
 
         var className = master.Name;
-        if (className == "Tag")
-        {
+        if (className == "Tag") {
             className = "TagItem";
         }
-        if (className == "ContentEncoding")
-        {
+        if (className == "ContentEncoding") {
             className = "ContentEncodingItem";
         }
 #>
-                case MatroskaSpecification.<#=master.Name#>:
-                    ((<#=className#>)model).FillScalar(descriptor, size, ref reader);
-                    break;
+            case MatroskaSpecification.<#= master.Name #>:
+                ((<#= className #>)model).FillScalar(descriptor, size, ref reader);
+                break;
 <#
     }
 #>
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillComplex(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
@@ -459,25 +458,22 @@ namespace ActualChat.Audio.WebM.Models
             continue;
 
         var className = master.Name;
-        if (className == "Tag")
-        {
+        if (className == "Tag") {
             className = "TagItem";
         }
-        if (className == "ContentEncoding")
-        {
+        if (className == "ContentEncoding") {
             className = "ContentEncodingItem";
         }
 #>
-                case MatroskaSpecification.<#=master.Name#>:
-                    ((<#=className#>)model).FillComplex(descriptor, propertyModel);
-                    break;
+            case MatroskaSpecification.<#= master.Name #>:
+                ((<#= className #>)model).FillComplex(descriptor, propertyModel);
+                break;
 <#
     }
 #>
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void FillListEntry(this BaseModel model, EbmlElementDescriptor containerDescriptor, EbmlElementDescriptor descriptor, object listEntry)
         {
             switch (containerDescriptor.Identifier.EncodedValue) {
@@ -489,18 +485,16 @@ namespace ActualChat.Audio.WebM.Models
             continue;
 
         var className = master.Name;
-        if (className == "Tag")
-        {
+        if (className == "Tag") {
             className = "TagItem";
         }
-        if (className == "ContentEncoding")
-        {
+        if (className == "ContentEncoding") {
             className = "ContentEncodingItem";
         }
 #>
-                case MatroskaSpecification.<#=master.Name#>:
-                    ((<#=className#>)model).FillListEntry(descriptor, listEntry);
-                    break;
+            case MatroskaSpecification.<#= master.Name #>:
+                ((<#= className #>)model).FillListEntry(descriptor, listEntry);
+                break;
 <#
     }
 #>
@@ -511,20 +505,16 @@ namespace ActualChat.Audio.WebM.Models
     foreach (var master in masters)
     {
         var className = master.Name;
-        if (className == "Tag")
-        {
+        if (className == "Tag") {
             className = "TagItem";
         }
-        if (className == "ContentEncoding")
-        {
+        if (className == "ContentEncoding") {
             className = "ContentEncodingItem";
         }
         var subs =
             master.SubElements.Where(sub => !sub.IsRoot && sub.ElementType != "master" && !sub.IsList).ToList();
-        if (subs.Count > 0)
-        {
+        if (subs.Count > 0) {
 #>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FillScalar(this <#= className #> model, EbmlElementDescriptor descriptor, int size, ref SpanReader reader)
         {
             if (descriptor.Type == EbmlElementType.MasterElement)
@@ -534,18 +524,15 @@ namespace ActualChat.Audio.WebM.Models
 <#
             foreach (var sub in subs)
             {
-                string field = sub.Name;
-                if (sub.Name == "Tag")
-                {
+                var field = sub.Name;
+                if (sub.Name == "Tag") {
                     field = "TagItem";
                 }
-                if (sub.Name == "ContentEncoding")
-                {
+                if (sub.Name == "ContentEncoding") {
                     field = "ContentEncodingItem";
                 }
                 var propertyName = Pluralize(sub, field);
-                var methodSuffix = sub.ElementType switch
-                {
+                var methodSuffix = sub.ElementType switch {
                     "utf-8" => "Utf8String(size)!",
                     "string" => "AsciiString(size)!",
                     "binary" => "Bytes(size)!",
@@ -553,20 +540,20 @@ namespace ActualChat.Audio.WebM.Models
                     "float" => "Float(size)!.Value",
                     "uinteger" => "ULong(size)!.Value",
                     "integer" => "Long(size)!.Value",
-                    _ => "???"
-                };
+                    _ => "???",
+                    };
                 var methodPrefix = sub.Name == "TrackType"
                     ? "(TrackType?)"
                     : string.Empty;
 #>
-                case MatroskaSpecification.<#= sub.Name #>:
-                    model.<#= propertyName #> = <#= methodPrefix #>reader.Read<#= methodSuffix #>;
-                    break;
+            case MatroskaSpecification.<#= sub.Name #>:
+                model.<#= propertyName #> = <#= methodPrefix #>reader.Read<#= methodSuffix #>;
+                break;
 <#
             }
 #>
-                default:
-                    throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
+            default:
+                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
             }
         }
 
@@ -578,7 +565,6 @@ namespace ActualChat.Audio.WebM.Models
         if (complexSubs.Count > 0 && !master.IsBlock)
         {
 #>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FillComplex(this <#= className #> model, EbmlElementDescriptor descriptor, BaseModel propertyModel)
         {
             if (descriptor.Type != EbmlElementType.MasterElement)
@@ -588,27 +574,25 @@ namespace ActualChat.Audio.WebM.Models
 <#
             foreach (var sub in complexSubs)
             {
-                string field = sub.Name;
-                if (sub.Name == "Tag")
-                {
+                var field = sub.Name;
+                if (sub.Name == "Tag") {
                     field = "TagItem";
                 }
-                if (sub.Name == "ContentEncoding")
-                {
+                if (sub.Name == "ContentEncoding") {
                     field = "ContentEncodingItem";
                 }
                 var propertyName = Pluralize(sub, field);
                 var optionalSuffix = sub.Required ? string.Empty : "?";
                 var cast = $"({field}{optionalSuffix})";
 #>
-                case MatroskaSpecification.<#= sub.Name #>:
-                    model.<#= propertyName #> = <#=cast#>propertyModel;
-                    break;
+            case MatroskaSpecification.<#= sub.Name #>:
+                model.<#= propertyName #> = <#= cast #>propertyModel;
+                break;
 <#
             }
 #>
-                default:
-                    throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
+            default:
+                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
             }
         }
 
@@ -618,10 +602,8 @@ namespace ActualChat.Audio.WebM.Models
         var listSubs =
             master.SubElements.Where(sub => !sub.IsRoot && sub.IsList)
                 .ToList();
-        if (listSubs.Count > 0)
-        {
+        if (listSubs.Count > 0) {
 #>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void FillListEntry(this <#= className #> model, EbmlElementDescriptor descriptor, object listItem)
         {
             if (descriptor.Type != EbmlElementType.MasterElement && descriptor.Type != EbmlElementType.Binary)
@@ -629,42 +611,35 @@ namespace ActualChat.Audio.WebM.Models
 
             switch (descriptor.Identifier.EncodedValue) {
 <#
-            foreach (var sub in listSubs)
-            {
-                string field = sub.Name;
-                if (sub.Name == "Tag")
-                {
+            foreach (var sub in listSubs) {
+                var field = sub.Name;
+                if (sub.Name == "Tag") {
                     field = "TagItem";
                 }
-                if (sub.Name == "ContentEncoding")
-                {
+                if (sub.Name == "ContentEncoding") {
                     field = "ContentEncodingItem";
                 }
                 var propertyName = Pluralize(sub, field);
                 var propertyType = GetPropertyType(sub, field);
                 var cast = $"({propertyType})";
 #>
-                case MatroskaSpecification.<#= sub.Name #>:
-                {
-                    var list = model.<#= propertyName #> as IList<<#=field#>> ?? new List<<#=field#>>(4);
-                    list.Add((<#=field#>)listItem);
-                    model.<#= propertyName #> = <#=cast#>list;
-                    break;
-                }
+            case MatroskaSpecification.<#= sub.Name #>: {
+                var list = model.<#= propertyName #> as IList<<#= field #>> ?? new List<<#= field #>>(4);
+                list.Add((<#= field #>)listItem);
+                model.<#= propertyName #> = <#= cast #>list;
+                break;
+            }
 <#
             }
 #>
-                default:
-                    throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
+            default:
+                throw new EbmlDataFormatException($"Unexpected ebml element '{descriptor.Identifier}'");
             }
         }
 
 <#
         }
-
     }
-
-
 #>
     }
 }
@@ -681,8 +656,7 @@ namespace ActualChat.Audio.WebM.Models
             .Where(e => e.Path.StartsWith(parentPath + "\\" + current.Name) && e.Level == current.Level + 1)
             .Where(s => !skip.Contains(s.Name))
             .ToList();
-        foreach (var sub in current.SubElements)
-        {
+        foreach (var sub in current.SubElements) {
             Loop(all, sub, current.Path, skip);
         }
     }
@@ -692,15 +666,14 @@ namespace ActualChat.Audio.WebM.Models
         var propertyType = GetPropertyType(property, field);
         var name = Pluralize(property, field);
 
-        string fixRequired = "";
-        if (property.Required && !propertyType.Contains("long") && !propertyType.Contains("float") && !propertyType.Contains("TrackType"))
-        {
+        var fixRequired = "";
+        if (property.Required && !propertyType.Contains("long") && !propertyType.Contains("float") &&
+            !propertyType.Contains("TrackType")) {
             fixRequired = " = null!;";
         }
 
-        string defaultAssignment = "";
-        if (property.DefaultValue != null && propertyType != "string" && !property.DefaultValue.Contains("p"))
-        {
+        var defaultAssignment = "";
+        if (property.DefaultValue != null && propertyType != "string" && !property.DefaultValue.Contains("p")) {
             defaultAssignment = " = " + property.DefaultValue + ";";
         }
 
@@ -710,47 +683,45 @@ namespace ActualChat.Audio.WebM.Models
     public string GetPropertyType(Element property, string field)
     {
         string propertyType;
-        switch (property.ElementType)
-        {
-            case "utf-8":
-                propertyType = "string";
-                break;
+        switch (property.ElementType) {
+        case "utf-8":
+            propertyType = "string";
+            break;
 
-            case "string":
-                propertyType = "string";
-                break;
+        case "string":
+            propertyType = "string";
+            break;
 
-            case "binary":
-                propertyType = property.UseNameInsteadOfBinary ? field : "byte[]";
-                break;
+        case "binary":
+            propertyType = property.UseNameInsteadOfBinary ? field : "byte[]";
+            break;
 
-            case "date":
-                propertyType = "DateTime";
-                break;
+        case "date":
+            propertyType = "DateTime";
+            break;
 
-            case "float":
-                propertyType = "float";
-                break;
+        case "float":
+            propertyType = "float";
+            break;
 
-            case "uinteger":
-                propertyType = property.Name == "TrackType" ? "TrackType" : "ulong";
-                break;
+        case "uinteger":
+            propertyType = property.Name == "TrackType" ? "TrackType" : "ulong";
+            break;
 
-            case "integer":
-                propertyType = "long";
-                break;
+        case "integer":
+            propertyType = "long";
+            break;
 
-            case "master":
-                propertyType = field;
-                break;
+        case "master":
+            propertyType = field;
+            break;
 
-            default:
-                propertyType = "???";
-                break;
+        default:
+            propertyType = "???";
+            break;
         }
 
-        if (property.IsList)
-        {
+        if (property.IsList) {
             return $"IReadOnlyList<{propertyType}>" + (!property.Required ? "?" : "");
         }
         return propertyType + (!property.Required || propertyType == "TrackType" ? "?" : "");
@@ -759,14 +730,11 @@ namespace ActualChat.Audio.WebM.Models
     public string Pluralize(Element property, string field)
     {
         var name = field;
-        if (property.IsList)
-        {
-            if (property.Name.EndsWith("y"))
-            {
+        if (property.IsList) {
+            if (property.Name.EndsWith("y")) {
                 name = property.Name.Replace("y", "ies");
             }
-            else
-            {
+            else {
                 name = name + "s";
             }
         }
@@ -789,6 +757,6 @@ namespace ActualChat.Audio.WebM.Models
         public string Documentation;
         public int Level;
 
-        public List<Element> SubElements = new List<Element>();
+        public List<Element> SubElements = new();
     }
 #>

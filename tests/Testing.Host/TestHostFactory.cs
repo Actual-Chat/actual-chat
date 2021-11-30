@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
@@ -27,7 +28,9 @@ public static class TestHostFactory
         throw new FileNotFoundException("Can't find manifest.", manifestPath);
     }
 
-    public static async Task<AppHost> NewAppHost(Action<AppHost>? configure = null)
+    public static async Task<AppHost> NewAppHost(
+        Action<AppHost>? configure = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         var port = WebTestExt.GetUnusedTcpPort();
         var manifestPath = GetManifestPath();
@@ -43,7 +46,8 @@ public static class TestHostFactory
                     });
             },
             AppServicesBuilder = (_, services) => {
-                services.AddSingleton(new ServerAuthHelper.Options {
+                configureServices?.Invoke(services);
+                services.TryAddSingleton(new ServerAuthHelper.Options {
                     KeepSignedIn = true,
                 });
             },

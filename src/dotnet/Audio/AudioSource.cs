@@ -9,12 +9,11 @@ namespace ActualChat.Audio;
 
 public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 {
-    private static byte[] _brokenHeader = { 0x45, 0xDF, 0xA3, 0x9F, 0x42, 0x86 };
+    protected bool DebugMode { get; } = Constants.DebugMode.AudioSource;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
-    public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frames, ILogger? log, CancellationToken cancellationToken)
-        : base(formatTask, frames, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
         : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
 
@@ -31,10 +30,10 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
     // Protected & private methods
 
-    protected override async IAsyncEnumerable<AudioFrame> Parse(
+    protected override IAsyncEnumerable<AudioFrame> Parse(
         IAsyncEnumerable<BlobPart> blobStream,
         TimeSpan skipTo,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
@@ -44,64 +43,85 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var clusterOffsetMs = 0;
         var state = new WebMReader.State();
         var frameBuffer = new List<AudioFrame>();
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
-        try {
-            await foreach (var blobPart in blobStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        var readBuffer = ArrayBuffer<byte>.Lease(false, 32 * 1024);
+
+        // We're doing this fairly complex processing via tasks & channels only
+        // because "async IAsyncEnumerable<..>" methods can't contain
+        // "yield return" inside "catch" blocks, and we need this here.
+
+        var target = Channel.CreateBounded<AudioFrame>(new BoundedChannelOptions(128) {
+            SingleWriter = true,
+            SingleReader = true,
+            AllowSynchronousContinuations = true,
+            FullMode = BoundedChannelFullMode.Wait,
+        });
+
+        var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
+            async blobPart => {
                 var (_, data) = blobPart;
-                var remainingLength = state.Remaining;
-                var buffer = bufferLease.Memory;
 
-                // AK: broken stream check
-                if (data.Take(6).SequenceEqual(_brokenHeader)) {
-                    Log.LogWarning("Recorded broken header");
-                    var fixedChunk = new byte[data.Length + 1];
-                    fixedChunk[0] = 0x1A;
-                    Buffer.BlockCopy(data, 0, fixedChunk, 1, data.Length);
-                    data = fixedChunk;
-                }
+                AppendData(ref readBuffer, ref state, data);
+                frameBuffer.Clear();
+                state = FillFrameBuffer(
+                    frameBuffer,
+                    state.IsEmpty
+                        ? new WebMReader(readBuffer.Span)
+                        : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
+                    skipTo,
+                    ref clusterOffsetMs,
+                    ref blockOffsetMs);
 
-                buffer.Slice(state.Position, remainingLength)
-                    .CopyTo(buffer[..remainingLength]);
-                data.CopyTo(buffer[state.Remaining..]);
-                var dataLength = state.Remaining + data.Length;
-
-                try {
-                    frameBuffer.Clear();
-                    state = FillFrameBuffer(
-                        frameBuffer,
-                        state.IsEmpty
-                            ? new WebMReader(bufferLease.Memory.Span[..dataLength])
-                            : WebMReader.FromState(state).WithNewSource(bufferLease.Memory.Span[..dataLength]),
-                        skipTo,
-                        ref clusterOffsetMs,
-                        ref blockOffsetMs);
-                }
-                catch (Exception ex) {
-                    if (ex is not OperationCanceledException)
-                        Log.LogError(ex, "FillFrameBuffer failed");
-                    formatTaskSource.TrySetException(ex);
-                    durationTaskSource.TrySetException(ex);
-                    throw;
-                }
                 foreach (var frame in frameBuffer) {
                     duration = frame.Offset + frame.Duration;
-                    yield return frame;
+                    await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
                 }
+            }, cancellationToken), cancellationToken);
+
+        var _ = BackgroundTask.Run(async () => {
+            try {
+                await parseTask.ConfigureAwait(false);
+                durationTaskSource.SetResult(duration);
             }
-            durationTaskSource.SetResult(duration);
-        }
-        finally {
-            if (cancellationToken.IsCancellationRequested) {
-                formatTaskSource.TrySetCanceled(cancellationToken);
-                durationTaskSource.TrySetCanceled(cancellationToken);
+            catch (OperationCanceledException e) {
+                target.Writer.TryComplete(e);
+                if (cancellationToken.IsCancellationRequested) {
+                    formatTaskSource.TrySetCanceled(cancellationToken);
+                    durationTaskSource.TrySetCanceled(cancellationToken);
+                }
+                else {
+                    formatTaskSource.TrySetCanceled();
+                    durationTaskSource.TrySetCanceled();
+                }
+                throw;
             }
-            else {
+            catch (Exception e) {
+                Log.LogError(e, "Parse failed");
+                target.Writer.TryComplete(e);
+                formatTaskSource.TrySetException(e);
+                durationTaskSource.TrySetException(e);
+                throw;
+            }
+            finally {
+                target.Writer.TryComplete();
                 if (!FormatTask.IsCompleted)
                     formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
                 if (!DurationTask.IsCompleted)
                     durationTaskSource.TrySetException(new InvalidOperationException("Duration wasn't parsed."));
+                readBuffer.Release();
             }
-        }
+        }, CancellationToken.None);
+
+        return target.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    private void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)
+    {
+        var remainder = buffer.Span.Slice(state.Position, state.Remaining);
+        var newLength = remainder.Length + data.Length;
+        buffer.EnsureCapacity(newLength);
+        buffer.Count = newLength;
+        remainder.CopyTo(buffer.Span);
+        data.CopyTo(buffer.Span[remainder.Length..]);
     }
 
     private WebMReader.State FillFrameBuffer(
@@ -118,7 +138,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         EBML? ebml = null;
         Segment? segment = null;
 
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
+        using var writeBufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
+        var writeBuffer = writeBufferLease.Memory;
+
         while (webMReader.Read()) {
             var state = webMReader.GetState();
             switch (webMReader.ReadResultKind) {
@@ -163,8 +185,11 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         // Complex case: we may need to skip this frame
                         var outputFrameOffset = frameOffset - skipTo;
                         if (outputFrameOffset >= TimeSpan.Zero) {
+                            DebugLog?.LogInformation(
+                                "Rewriting audio frame offset: {FrameOffset}s -> {OutputFrameOffset}s",
+                                frameOffset.TotalSeconds, outputFrameOffset.TotalSeconds);
                             simpleBlock.TimeCode -= (short)(skipToMs - clusterOffsetMs);
-                            var webMWriter = new WebMWriter(bufferLease.Memory.Span);
+                            var webMWriter = new WebMWriter(writeBuffer.Span);
                             webMWriter.Write(simpleBlock);
                             mediaFrame = new AudioFrame() {
                                 Offset = outputFrameOffset,
@@ -195,10 +220,12 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
     private AudioFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader)
     {
-        var trackEntry = segment.Tracks?.TrackEntries.Single(t => t.TrackType == TrackType.Audio)
-                         ?? throw new InvalidOperationException("Stream doesn't contain Audio track.");
-        var audio = trackEntry.Audio
-                    ?? throw new InvalidOperationException("Track doesn't contain Audio entry.");
+        var trackEntry =
+            segment.Tracks?.TrackEntries.Single(t => t.TrackType == TrackType.Audio)
+            ?? throw new InvalidOperationException("Stream doesn't contain Audio track.");
+        var audio =
+            trackEntry.Audio
+            ?? throw new InvalidOperationException("Track doesn't contain Audio entry.");
 
         return new AudioFormat {
             ChannelCount = (int) audio.Channels,

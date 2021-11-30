@@ -7,10 +7,12 @@ public class AudioDownloader
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger _log;
 
     public AudioDownloader(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory)
     {
         _loggerFactory = loggerFactory;
+        _log = loggerFactory.CreateLogger(GetType());
         _httpClientFactory = httpClientFactory;
     }
 
@@ -29,5 +31,5 @@ public class AudioDownloader
     public IAsyncEnumerable<BlobPart> DownloadBlobStream(
         Uri audioUri,
         CancellationToken cancellationToken = default)
-        => _httpClientFactory.DownloadBlobStream(audioUri, cancellationToken);
+        => _httpClientFactory.DownloadBlobStream(audioUri, _log, cancellationToken);
 }

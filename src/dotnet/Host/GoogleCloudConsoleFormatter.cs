@@ -51,13 +51,9 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
         writer.WriteStartObject();
         writer.WriteString("message", message);
+        writer.WriteString("version", ThisAssembly.AssemblyInformationalVersion);
         if (logEntry.Exception != null) {
-            string exceptionMessage = logEntry.Exception.ToString();
-            // TODO: check how google's fluentbit works with EOLs
-            // if (!_options.JsonWriterOptions.Indented) {
-            //     exceptionMessage = exceptionMessage.Replace(Environment.NewLine, " ", StringComparison.Ordinal);
-            // }
-            writer.WriteString("exception", exceptionMessage);
+            writer.WriteString("exception", logEntry.Exception.ToString());
         }
         writer.WriteString("severity", GetSeverity(logEntry.LogLevel));
         writer.WriteString("category", logEntry.Category);
@@ -114,51 +110,51 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
     {
         var key = item.Key;
         switch (item.Value) {
-            case bool boolValue:
-                writer.WriteBoolean(key, boolValue);
-                break;
-            case byte byteValue:
-                writer.WriteNumber(key, byteValue);
-                break;
-            case sbyte sbyteValue:
-                writer.WriteNumber(key, sbyteValue);
-                break;
-            case char charValue:
-                writer.WriteString(key, MemoryMarshal.CreateSpan(ref charValue, 1));
-                break;
-            case decimal decimalValue:
-                writer.WriteNumber(key, decimalValue);
-                break;
-            case double doubleValue:
-                writer.WriteNumber(key, doubleValue);
-                break;
-            case float floatValue:
-                writer.WriteNumber(key, floatValue);
-                break;
-            case int intValue:
-                writer.WriteNumber(key, intValue);
-                break;
-            case uint uintValue:
-                writer.WriteNumber(key, uintValue);
-                break;
-            case long longValue:
-                writer.WriteNumber(key, longValue);
-                break;
-            case ulong ulongValue:
-                writer.WriteNumber(key, ulongValue);
-                break;
-            case short shortValue:
-                writer.WriteNumber(key, shortValue);
-                break;
-            case ushort ushortValue:
-                writer.WriteNumber(key, ushortValue);
-                break;
-            case null:
-                writer.WriteNull(key);
-                break;
-            default:
-                writer.WriteString(key, ToInvariantString(item.Value));
-                break;
+        case bool boolValue:
+            writer.WriteBoolean(key, boolValue);
+            break;
+        case byte byteValue:
+            writer.WriteNumber(key, byteValue);
+            break;
+        case sbyte sbyteValue:
+            writer.WriteNumber(key, sbyteValue);
+            break;
+        case char charValue:
+            writer.WriteString(key, MemoryMarshal.CreateSpan(ref charValue, 1));
+            break;
+        case decimal decimalValue:
+            writer.WriteNumber(key, decimalValue);
+            break;
+        case double doubleValue:
+            writer.WriteNumber(key, doubleValue);
+            break;
+        case float floatValue:
+            writer.WriteNumber(key, floatValue);
+            break;
+        case int intValue:
+            writer.WriteNumber(key, intValue);
+            break;
+        case uint uintValue:
+            writer.WriteNumber(key, uintValue);
+            break;
+        case long longValue:
+            writer.WriteNumber(key, longValue);
+            break;
+        case ulong ulongValue:
+            writer.WriteNumber(key, ulongValue);
+            break;
+        case short shortValue:
+            writer.WriteNumber(key, shortValue);
+            break;
+        case ushort ushortValue:
+            writer.WriteNumber(key, ushortValue);
+            break;
+        case null:
+            writer.WriteNull(key);
+            break;
+        default:
+            writer.WriteString(key, ToInvariantString(item.Value));
+            break;
         }
     }
 
@@ -167,7 +163,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
     private static string? ToInvariantString(object? obj) => Convert.ToString(obj, CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// <see href="https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Text/Json/PooledByteBufferWriter.cs"/> 
+    /// <see href="https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Text/Json/PooledByteBufferWriter.cs"/>
     /// </summary>
     private sealed class PooledByteBufferWriter : IBufferWriter<byte>, IDisposable
     {

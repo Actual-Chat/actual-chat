@@ -1,13 +1,17 @@
 using System.Net;
 using System.Reflection;
+using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -36,6 +40,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
     public void ConfigureApp(IApplicationBuilder app)
     {
+        if (Settings.BaseUri.ToLowerInvariant().StartsWith("https://", StringComparison.Ordinal)) {
+            Log.LogInformation("Overriding request scheme to https://");
+            app.Use((context, next) => {
+                context.Request.Scheme = "https";
+                return next();
+            });
+        }
+
         // This server serves static content from Blazor Client,
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
@@ -49,12 +61,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (Env.IsDevelopment()) {
             app.UseDeveloperExceptionPage();
             app.UseWebAssemblyDebugging();
+            app.UseForwardedHeaders();
         }
         else {
             app.UseExceptionHandler("/Error");
+            app.UseForwardedHeaders();
             app.UseHsts();
         }
-        app.UseHttpsRedirection();
+        // app.UseCors("Default");
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
@@ -88,6 +102,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
+        // Debug mode
+        if (Constants.DebugMode.WebMReader)
+            WebMReader.DebugLog = Plugins.LogFor(typeof(WebMReader));
+
         // UriMapper
         services.AddSingleton(c => {
             var baseUri = Settings.BaseUri;
@@ -113,6 +131,14 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
+        services.AddCors(options => {
+            options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
+        });
+        services.Configure<ForwardedHeadersOptions>(options => {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+            options.KnownNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
         services.AddRouting();
         services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
@@ -134,10 +160,25 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!openTelemetryEndpoint.IsNullOrEmpty()) {
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
-            var version = typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "n/a";
+            Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
+            const string version = ThisAssembly.AssemblyInformationalVersion;
+            services.AddOpenTelemetryMetrics(builder => builder
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                // gcloud exporter doesn't support some of metrics yet https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+                // .AddAspNetCoreInstrumentation()
+                .AddMeter(Tracer.Metric.Name)
+                .AddOtlpExporter(cfg => {
+                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
+                    cfg.MetricExportIntervalMilliseconds = 5000;
+                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.Endpoint = openTelemetryEndpointUri;
+                })
+            );
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
-                .SetSampler(new AlwaysOnSampler())
+                .SetErrorStatusOnException()
+                .AddSource(Tracer.Span.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
@@ -147,27 +188,15 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                         "/_framework",
                     };
                     opt.Filter = httpContext =>
-                        !excludedPaths.Any(x => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
-                    opt.EnableGrpcAspNetCoreSupport = true;
-                    opt.RecordException = true;
+                        !excludedPaths.Any(x
+                            => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
                 })
                 .AddHttpClientInstrumentation(cfg => cfg.RecordException = true)
                 .AddGrpcClientInstrumentation()
                 .AddNpgsql()
-                .AddRedisInstrumentation()
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
-                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.Endpoint = openTelemetryEndpointUri;
-                })
-            );
-            services.AddOpenTelemetryMetrics(builder => builder
-                .AddAspNetCoreInstrumentation()
-                .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = OpenTelemetry.ExportProcessorType.Simple;
-                    cfg.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.Grpc;
-                    cfg.MetricExportIntervalMilliseconds = 5000;
-                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );

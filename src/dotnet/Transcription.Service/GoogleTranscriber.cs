@@ -18,7 +18,7 @@ public class GoogleTranscriber : ITranscriber
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var (streamId, format, options) = request;
-        _log.LogInformation("Start transcription of StreamId = {StreamId}", (string)streamId);
+        _log.LogInformation("Start transcription of stream #{StreamId}", (string)streamId);
 
         var builder = new SpeechClientBuilder();
         var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
@@ -168,14 +168,14 @@ public class GoogleTranscriber : ITranscriber
     private static RecognitionConfig.Types.AudioEncoding MapEncoding(AudioCodecKind codecKind)
     {
         switch (codecKind) {
-            case AudioCodecKind.Wav:
-                return RecognitionConfig.Types.AudioEncoding.Linear16;
-            case AudioCodecKind.Flac:
-                return RecognitionConfig.Types.AudioEncoding.Flac;
-            case AudioCodecKind.Opus:
-                return RecognitionConfig.Types.AudioEncoding.WebmOpus;
-            default:
-                return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
+        case AudioCodecKind.Wav:
+            return RecognitionConfig.Types.AudioEncoding.Linear16;
+        case AudioCodecKind.Flac:
+            return RecognitionConfig.Types.AudioEncoding.Flac;
+        case AudioCodecKind.Opus:
+            return RecognitionConfig.Types.AudioEncoding.WebmOpus;
+        default:
+            return RecognitionConfig.Types.AudioEncoding.EncodingUnspecified;
         }
     }
 }

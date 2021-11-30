@@ -38,7 +38,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     // Protected methods
 
     protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
-    protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
+    protected abstract ValueTask<bool> ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
@@ -53,14 +53,15 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             // Actual playback
             await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
             var frames = Source.GetFramesUntyped(cancellationToken);
-            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false))
-                await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
-            await WhenCompleted.WithFakeCancellation(cancellationToken);
+            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                if(!await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false)){
+                    break;
+                }
+            }
+            await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
+            await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) {
-            throw; // "Stop" is called, nothing to log here
-        }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             error = ex;
             Log.LogError(ex, "Failed to play media track");
         }
@@ -106,7 +107,12 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     }
 
     protected virtual void OnPlayedTo(TimeSpan offset)
-        => UpdateState(offset, (o, s) => s with { IsStarted = true, PlayingAt = s.SkipTo + o });
+        => UpdateState(offset, (o, s) => {
+            var playingAt = s.SkipTo + o;
+            if (s.IsStarted && s.PlayingAt >= playingAt)
+                return s; // Sometimes these events come in a wrong order
+            return s with { IsStarted = true, PlayingAt = playingAt };
+        });
 
     protected virtual void OnStopped(Exception? error = null)
         => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });

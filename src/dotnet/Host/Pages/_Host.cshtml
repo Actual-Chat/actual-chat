@@ -82,7 +82,6 @@ else
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.js" integrity="sha384-jIP8x04pGV2+EJ4CazrWXBB4PQcrVXziBPF+ooznA+Q3958AOH7HXOBXx6A6Zpw1" crossorigin="anonymous"></script>
     <script src="/dist/bundle.js"></script>
     @if(isServerSideBlazor)
     {
@@ -97,11 +96,13 @@ else
                 });
             });
         </script>
+        @* TODO: check https://github.com/dotnet/aspnetcore/issues/29991 *@
+        @* https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Platform/Circuits/DefaultReconnectionHandler.ts *@
+        @*
         <environment include="Development">
         <script>
             document.addEventListener('readystatechange', event => {
                 if (event.target.readyState === 'complete'){
-                    @* https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Platform/Circuits/DefaultReconnectionHandler.ts *@
                     Blazor.defaultReconnectionHandler.onConnectionDown = function () {
                         console.warn("[onConnectionDown]: Can't reconnect to restore state, force reload after 5 sec.");
                         setTimeout(function () {location.reload(); }, 5000);
@@ -110,6 +111,7 @@ else
             });
         </script>
         </environment>
+        *@
     }
     else
     {

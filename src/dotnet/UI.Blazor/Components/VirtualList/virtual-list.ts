@@ -7,8 +7,8 @@ const SizeEpsilon: number = 0.6;
 const StickyEdgeEpsilon: number = 4;
 
 export class VirtualList {
-    /** ref to div.virtual-list */
     private readonly _debugMode: boolean = false;
+    /** ref to div.virtual-list */
     private readonly _elementRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _spacerRef: HTMLElement;

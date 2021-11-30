@@ -12,6 +12,10 @@ trim_trailing_whitespace = true
 # Standard properties
 max_line_length = 120
 
+# Prevent analyzers from artifacts
+[artifacts/**.cs]
+generated_code = true
+
 [*.{appxmanifest,asax,ascx,aspx,axaml,build,cg,cginc,compute,cs,cshtml,dtd,fs,fsi,fsscript,fsx,hlsl,hlsli,hlslinc,master,ml,mli,nuspec,paml,razor,resw,resx,shader,skin,usf,ush,vb,xaml,xamlx,xoml,xsd}]
 indent_style = space
 indent_size = 4
