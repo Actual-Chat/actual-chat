@@ -10,7 +10,7 @@
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <StlFusionVersion>2.0.124</StlFusionVersion>
-    <OpenTelemetryVersion>1.2.0-beta1</OpenTelemetryVersion>
+    <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
