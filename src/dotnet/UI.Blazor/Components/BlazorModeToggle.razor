@@ -3,12 +3,13 @@
 @inject BlazorModeHelper _blazorModeHelper
 @inject IJSRuntime _js
 
-<div @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))" class="cursor-pointer select-none flex flex-row bg-gray-700 text-gray-400 text-xs py-2 px-2 rounded-lg opacity-75 hover:opacity-100">
-    <span><i class="fa fa-cog" aria-hidden="true"></i> @(IsPrerenderding ? "Loading..." : GetModeName(IsServerSideBlazor))</span>
+<div @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))" class="blazor-mode-toggle-common blazor-mode-toggle-blue">
+    <span class="visible-blazor-mode-toggle">@(IsPrerendering ? "Loading..." : GetModeName(IsServerSideBlazor))</span>
+    <span class="hidden-blazor-mode-toggle">@(IsPrerendering ? "Loading..." : GetBlazorToggleHoverText(IsServerSideBlazor))</span>
 </div>
 
 @code {
-    private bool IsPrerenderding { get; set; }
+    private bool IsPrerendering { get; set; }
     private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsServerSideBlazor;
 
     [Parameter]
@@ -18,14 +19,17 @@
     {
         var jsRuntimeType = _js.GetType();
         if (jsRuntimeType.Name != "RemoteJSRuntime") {
-            IsPrerenderding = false;
+            IsPrerendering = false;
             return;
         }
         var fClientProxy = jsRuntimeType.GetField("_clientProxy", BindingFlags.Instance | BindingFlags.NonPublic);
         var clientProxy = fClientProxy?.GetValue(_js);
-        IsPrerenderding = fClientProxy != null && clientProxy == null;
+        IsPrerendering = fClientProxy != null && clientProxy == null;
     }
 
     private string GetModeName(bool isServerSideBlazor)
         => isServerSideBlazor ? "Blazor Server" : "Blazor WASM";
+
+    private string GetBlazorToggleHoverText(bool isServerSideBlazor)
+        => isServerSideBlazor ? "Switch to WASM" : "Switch to Server";
 }

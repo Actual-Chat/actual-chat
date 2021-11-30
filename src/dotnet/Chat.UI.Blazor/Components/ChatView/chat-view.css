@@ -1,3 +1,138 @@
+.content {
+    @apply antialiased sm:subpixel-antialiased md:antialiased flex-1 flex flex-col overflow-y-auto p-3;
+}
+
+.content .text {
+    overflow-wrap: break-word;
+}
+
+.content .word {
+    @apply hover:cursor-pointer;
+}
+
+
+.chat-message-editor-common {
+    @apply sticky bottom-0 self-end w-full;
+}
+
+.chat-message-editor-input-common {
+    @apply flex-1 px-2 py-2 mr-1 outline-none rounded-r-xl border-none break-all hover:cursor-text;
+}
+
+.additional-action-btn {
+    @apply block py-2 pr-2 pl-4 ml-1 rounded-l-xl border-none outline-none hover:cursor-pointer;
+}
+
+[contenteditable=true]:empty:not(:focus):before{
+    content:attr(data-text)
+}
+
+.chat-page-common {
+    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
+}
+
+.chat-header-common {
+    @apply flex flex-row justify-between mt-0 font-medium p-3 select-none;
+}
+
+.content-blue {
+    @apply bg-chatBackground;
+}
+
+.content-blue .word {
+    @apply text-textDark;
+}
+
+.content-blue .word-playing {
+    @apply text-error;
+}
+
+.content-blue .word-not-playing {
+    @apply text-textDark hover:text-error-dark hover:cursor-pointer;
+}
+
+.chat-message-editor-blue {
+    @apply bg-chatBackground;
+}
+
+.chat-message-editor-input-blue {
+    @apply bg-inputBackground text-textLight border-inputBackground focus:text-textDark;
+}
+
+.message-submit-common {
+    @apply block px-3 py-2;
+}
+
+.message-submit-blue {
+    @apply text-success hover:text-success-saturate;
+}
+
+.additional-action-btn-blue {
+    @apply bg-inputBackground border-inputBackground text-textDark;
+}
+
+.svg-additional-action-blue {
+    @apply text-textDark h-4 w-4;
+}
+
+.chat-page-blue {
+    @apply bg-primary;
+}
+
+.chat-header-blue {
+    @apply bg-chatBackground text-textDark border-b border-chatBackground-dark;
+}
+
+.chat-message-author-name-blue {
+    @apply font-bold text-textDark;
+}
+
+.chat-message-entry-time-blue {
+    @apply text-textDark-light text-xs;
+}
+
+.chat-message-entry-id-blue {
+    @apply text-textLight text-xxs;
+}
+
+.chat-title-blue {
+    @apply text-textDark-dark;
+}
+
+.chat-title-hash-blue {
+    @apply text-textDark-light;
+}
+
+.chat-entry-content {
+    @apply text-textDark;
+}
+
+.audio-recorder-on-blue {
+    @apply text-error opacity-100 hover:text-error-saturate animate-pulse;
+}
+
+.audio-recorder-off-blue {
+    @apply text-primary opacity-100 hover:text-secondary;
+}
+
+.media-player-toggle-on-blue {
+    @apply text-info opacity-100 hover:opacity-80;
+}
+
+.media-player-toggle-off-blue {
+    @apply text-textLight opacity-100 hover:text-textLight-saturate;
+}
+
+.chat-avatar-common {
+    @apply w-10 h-10 rounded-md mr-3 select-none;
+}
+
+.chat-avatar-blue {
+    @apply  bg-chatBackground;
+}
+
+
+
 .chat-message {
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
@@ -13,10 +148,10 @@
 }
 
 .chat-markup .playable {
-    @apply hover:text-blue-800 hover:cursor-pointer;
-    @apply transition-colors ease-in-out duration-200
+    @apply hover:text-error-dark hover:cursor-pointer;
+    @apply transition-colors ease-in-out duration-200;
 }
 
 .chat-markup .playing {
-    @apply text-sky-500
+    @apply text-error;
 }
