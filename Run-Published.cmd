@@ -1,5 +1,5 @@
 @echo off
-dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o ./artifacts/app ./src/dotnet/Host/Host.csproj
+dotnet publish -c Release -o ./artifacts/app ./src/dotnet/Host/Host.csproj
 
 set ASPNETCORE_ENVIRONMENT=Development
 set ASPNETCORE_URLS=http://localhost:7080/

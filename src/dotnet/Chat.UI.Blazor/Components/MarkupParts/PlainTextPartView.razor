@@ -1,0 +1,67 @@
+@using Stl.Extensibility
+@using ActualChat.Mathematics
+@using ActualChat.Chat.UI.Blazor.Services
+@using Microsoft.Extensions.DependencyInjection
+@implements IMarkupPartView
+@attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
+
+@{
+    var textToTimeMap = Part.Markup.TextToTimeMap;
+    var isPlayable = Entry.AudioEntryId.HasValue && !textToTimeMap.IsEmpty;
+    var cls = "plain-text";
+    if (isPlayable) {
+        cls += " playable";
+        if (PlayingAt != null) {
+            var playingAt = PlayingAt.GetValueOrDefault();
+            if (Part.TimeRange.Move(-0.5, 0.3).Contains(playingAt))
+                cls += " playing";
+        }
+    }
+}
+@if (isPlayable) {
+    <span class="@cls" @onclick="Play">@Part.Text</span>
+} else {
+    <span class="@cls">@Part.Text</span>
+}
+
+@code {
+    // Just one dependency: it should render as quickly as possible
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public ChatEntry Entry { get; set; } = null!;
+    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public MarkupPart Part { get; set; } = null!;
+    [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
+    public double? PlayingAt { get; set; }
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    private async Task Play() {
+        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
+        var part = Part;
+        var entry = Entry;
+        var chatId = entry.ChatId;
+        var audioEntryId = entry.AudioEntryId.GetValueOrDefault(); // It's there for sure, otherwise click won't work
+
+        var log = Services.LogFor(GetType());
+        var session = Services.GetRequiredService<Session>();
+        var chats = Services.GetRequiredService<IChats>();
+        var chatMediaPlayers = Services.GetRequiredService<ChatMediaPlayers>();
+        var chatEntryReader = chats.CreateEntryReader(session, chatId);
+
+        var historicalPlayer = await chatMediaPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
+        var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
+        if (audioEntry == null) {
+            log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            return; // We can't do much in this case
+        }
+
+        var startOffset = Math.Max(0, part.TimeRange.Start - 0.25);
+        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
+        _ = BackgroundTask.Run(
+            () => historicalPlayer.Play(startAt),
+            log, "Historical playback failed");
+    }
+}

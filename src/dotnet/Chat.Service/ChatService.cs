@@ -1,6 +1,4 @@
-using System.Security;
 using ActualChat.Chat.Db;
-using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Redis;
 
@@ -8,6 +6,8 @@ namespace ActualChat.Chat;
 
 public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 {
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+
     private readonly IAuth _auth;
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
@@ -44,27 +44,27 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsB
     }
 
     // [ComputeMethod]
-    public virtual async Task<ImmutableArray<ChatEntry>> GetEntries(
+    public virtual async Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idRange,
+        Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntries(chatId, idRange, cancellationToken).ConfigureAwait(false);
+        return await GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
-        Range<long>? idRange,
+        Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntryCount(chatId, idRange, cancellationToken).ConfigureAwait(false);
+        return await GetEntryCount(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

@@ -1,0 +1,17 @@
+@using Stl.Extensibility
+@implements IMarkupPartView
+@attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
+
+<span class="text-red-500">
+    [<span class="fa fa-exclamation-triangle"></span> no view for '@Part.GetType().Name']
+</span>
+
+@code {
+    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public ChatEntry Entry { get; set; } = null!;
+    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public MarkupPart Part { get; set; } = null!;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+}

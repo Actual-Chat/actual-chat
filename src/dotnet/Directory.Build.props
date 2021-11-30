@@ -40,8 +40,10 @@
     <!-- Global usings -->
     <Using Include="ActualChat" />
     <Using Include="ActualChat.Channels" />
+    <Using Include="ActualChat.Mathematics" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Immutable" />
+    <Using Include="System.Diagnostics" />
     <Using Include="System.Globalization" />
     <Using Include="System.FormattableString" Static="True" />
     <Using Include="System.Linq" />
@@ -54,6 +56,7 @@
     <Using Include="Stl.Async" />
     <Using Include="Stl.Channels" />
     <Using Include="Stl.Collections" />
+    <Using Include="Stl.Mathematics" />
     <Using Include="Stl.Serialization" />
     <Using Include="Stl.Text" />
     <Using Include="Stl.Time" />

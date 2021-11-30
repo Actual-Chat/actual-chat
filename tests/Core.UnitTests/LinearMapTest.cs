@@ -30,6 +30,19 @@ namespace ActualChat.Core.UnitTests
             map.Map(0.5).Should().Be(2.0);
             map.Map(6).Should().Be(3.5);
         }
+        [Fact]
+        public void ActualMapTest()
+        {
+            var json = "{\"sourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"targetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}";
+            var map = SystemJsonSerializer.Default.Read<LinearMap>(json);
+            map.Length.Should().BeGreaterThan(10);
+            var last = 0d;
+            for (var i = 0; i <= 98; i++) {
+                var current = map.Map(i)!.Value;
+                current.Should().BeGreaterOrEqualTo(last);
+                last = current;
+            }
+        }
 
         [Fact]
         public void WrongMapTest()

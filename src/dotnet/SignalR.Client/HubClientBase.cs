@@ -10,14 +10,16 @@ public abstract class HubClientBase
     protected IServiceProvider Services { get; }
     protected Uri HubUrl { get; }
     protected HubConnection HubConnection => _hubConnectionLazy.Value;
+    protected MomentClockSet Clocks { get; }
     protected ILogger Log { get; }
 
     protected HubClientBase(IServiceProvider services, string hubUrl)
     {
         Services = services;
-        Log = Services.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
+        Log = Services.LogFor(GetType());
+        Clocks = Services.Clocks();
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
-        _hubConnectionLazy = new (CreateHubConnection);
+        _hubConnectionLazy = new(CreateHubConnection);
     }
 
     protected HubConnection CreateHubConnection()
@@ -35,7 +37,7 @@ public abstract class HubClientBase
         if (HubConnection.State == HubConnectionState.Connected)
             return;
 
-        var delayInterval = 500;
+        var retryDelay = 0.5d;
         var attempt = 0;
         while (HubConnection.State != HubConnectionState.Connected || attempt < 10)
             try {
@@ -43,17 +45,14 @@ public abstract class HubClientBase
                 if (HubConnection.State == HubConnectionState.Disconnected)
                     await HubConnection.StartAsync(cancellationToken).ConfigureAwait(false);
                 else
-                    await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                    await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException e) {
-                Log.LogError(e, "HubClientBase.EnsureConnected - Operation cancelled");
-                throw;
-            }
-            catch (Exception e) {
-                Log.LogError(e, "HubClientBase.EnsureConnected - Failed to reconnect SignalR Hub");
-                await Task.Delay(delayInterval, cancellationToken).ConfigureAwait(false);
-                if (delayInterval < 10000)
-                    delayInterval += Random.Shared.Next(1000);
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e,
+                    "EnsureConnected failed to reconnect SignalR Hub, will retry after {RetryDelay}s", retryDelay);
+                await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(retryDelay), cancellationToken)
+                    .ConfigureAwait(false);
+                retryDelay = Math.Min(10d, retryDelay * (1 + Random.Shared.NextDouble())); // Exp. growth to 10s
             }
     }
 }

@@ -2,13 +2,11 @@ namespace ActualChat;
 
 public static partial class Constants
 {
-    public static class Time
+    public static class Chat
     {
-        public static readonly Moment Inf = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc).ToMoment();
-    }
-
-    public static class LongId
-    {
-        public static readonly long Inf = long.MaxValue;
+        public static string DefaultChatId { get; } = "the-actual-one";
+        public static TileStack<long> IdTileStack { get; } = TileStacks.Long16To1K;
+        public static TileStack<Moment> TimeTileStack { get; } = TileStacks.Moment3MTo6Y;
+        public static TimeSpan MaxEntryDuration { get; } = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
     }
 }

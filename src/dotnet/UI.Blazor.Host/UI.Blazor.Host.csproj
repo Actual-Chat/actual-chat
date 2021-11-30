@@ -2,16 +2,20 @@
 
   <!-- Publish & runtime properties -->
   <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>link</TrimMode>
     <RunAOTCompilation>false</RunAOTCompilation>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <TrimMode>link</TrimMode>
   </PropertyGroup>
 
   <!-- Extra trimming roots -->
   <ItemGroup>
+    <TrimmerRootAssembly Include="Stl.Fusion" />
+    <TrimmerRootAssembly Include="Stl.Fusion.Client" />
+    <TrimmerRootAssembly Include="Stl.Fusion.Blazor" />
+    <TrimmerRootAssembly Include="System.Collections.Immutable" />
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
     <TrimmerRootAssembly Include="System.Text.Json" />
-    <TrimmerRootAssembly Include="System.Collections.Immutable" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +33,12 @@
     <ProjectReference Include="..\Users.Client\Users.Client.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Shared\MainLayout.razor" />
+    <_ContentIncludedByDefault Remove="Shared\PageLayout.razor" />
+    <_ContentIncludedByDefault Remove="Components\AccountDropdown\AccountDropdown.razor" />
   </ItemGroup>
 
 </Project>

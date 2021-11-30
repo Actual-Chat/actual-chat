@@ -10,7 +10,7 @@ public abstract class Plugin : IHasCapabilities, IHasDependencies
     private ILogger? _log = null;
 
     protected IPluginHost Plugins { get; } = null!;
-    protected ILogger Log => _log ??= Plugins.GetRequiredService<ILoggerFactory>().CreateLogger(GetType());
+    protected ILogger Log => _log ??= Plugins.LogFor(GetType());
 
     public string Name => Capabilities.Get<string>() ?? throw new KeyNotFoundException();
     public Version Version => Capabilities.Get<Version>() ?? throw new KeyNotFoundException();

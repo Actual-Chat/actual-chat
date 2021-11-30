@@ -9,7 +9,7 @@ public interface IChats
     Task<long> GetEntryCount(
         Session session,
         ChatId chatId,
-        Range<long>? idRange,
+        Range<long>? idTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
@@ -19,10 +19,10 @@ public interface IChats
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ImmutableArray<ChatEntry>> GetEntries(
+    Task<ChatTile> GetTile(
         Session session,
         ChatId chatId,
-        Range<long> idRange,
+        Range<long> idTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]

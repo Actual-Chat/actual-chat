@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using ActualChat.Mathematics;
 using Stl.Reflection;
 
 namespace ActualChat.UI.Blazor.Components.Internal;
@@ -48,8 +47,9 @@ public class VirtualListRenderPlan<TItem>
 
     protected IVirtualListStatistics Statistics => VirtualList.Statistics;
     protected VirtualListEdge PreferredTrackingEdge => VirtualList.PreferredTrackingEdge;
-    protected bool DebugMode => VirtualList.DebugMode;
     protected ILogger Log => VirtualList.Log;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected bool DebugMode => VirtualList.DebugMode;
 
     public VirtualListRenderPlan() { }
     public VirtualListRenderPlan(VirtualList<TItem> virtualList)
@@ -104,8 +104,8 @@ public class VirtualListRenderPlan<TItem>
         var newItemSizes = ClientSideState?.ItemSizes;
         var prevItemByKey = lastPlan?.ItemByKey;
 
-        LoadedItems = new List<ItemRenderPlan>();
         ItemByKey = new Dictionary<string, ItemRenderPlan>(StringComparer.Ordinal);
+        LoadedItems = new List<ItemRenderPlan>();
         DisplayedItems = new List<ItemRenderPlan>();
         UnmeasuredItems = new List<ItemRenderPlan>();
         var itemRange = default(Range<double>);
@@ -143,9 +143,9 @@ public class VirtualListRenderPlan<TItem>
             var viewportStart = ClientSideState.ScrollTop - ClientSideState.SpacerSize;
             var viewport = new Range<double>(viewportStart, viewportStart + ClientSideState.ClientHeight);
             if (DebugMode && ClientSideState.IsUserScrollDetected) {
-                Log.LogInformation("User scroll: {VP} -> {NewVP}", Viewport, viewport);
+                DebugLog?.LogInformation("User scroll: {VP} -> {NewVP}", Viewport, viewport);
                 if (Math.Abs(viewport.Start - Viewport.Start) > 3000)
-                    Log.LogWarning("Suspicious scroll detected!");
+                    DebugLog?.LogWarning("Suspicious scroll detected!");
             }
             Viewport = viewport;
         }
@@ -155,12 +155,11 @@ public class VirtualListRenderPlan<TItem>
         if (item != null && oldItem != null) {
             // Update Viewport & SpacerSize
             var topExpansion = item.Range.Start - oldItem.Range.Start;
-            if (DebugMode)
-                Log.LogInformation("Top expansion: {TopExpansion} @ {Key}, [{KS} ... {KE}] of [{KS1} ... {KE1}]",
-                    topExpansion,
-                    item.Key,
-                    DisplayedItems.FirstOrDefault()?.Key, DisplayedItems.LastOrDefault()?.Key,
-                    LoadedItems.FirstOrDefault()?.Key, LoadedItems.LastOrDefault()?.Key);
+            DebugLog?.LogInformation("Top expansion: {TopExpansion} @ {Key}, [{KS} ... {KE}] of [{KS1} ... {KE1}]",
+                topExpansion,
+                item.Key,
+                DisplayedItems.FirstOrDefault()?.Key, DisplayedItems.LastOrDefault()?.Key,
+                LoadedItems.FirstOrDefault()?.Key, LoadedItems.LastOrDefault()?.Key);
             Viewport = Viewport.Move(topExpansion);
             SpacerSize -= topExpansion;
         }
@@ -182,10 +181,9 @@ public class VirtualListRenderPlan<TItem>
             if (PreferredTrackingEdge == VirtualListEdge.End && Data.HasVeryLastItem && IsViewportAtEnd())
                 TrackingEdge = VirtualListEdge.End;
 
-            if (DebugMode)
-                Log.LogInformation("Location: {Location}, tracking edge: {TrackingEdge}",
-                    (IsViewportAtStart() ? "start " : "") + (IsViewportAtEnd() ? "end" : ""),
-                    TrackingEdge);
+            DebugLog?.LogInformation("Location: {Location}, tracking edge: {TrackingEdge}",
+                (IsViewportAtStart() ? "start " : "") + (IsViewportAtEnd() ? "end" : ""),
+                TrackingEdge);
         }
 
         var firstItemChanged = Data.HasVeryFirstItem
@@ -217,7 +215,7 @@ public class VirtualListRenderPlan<TItem>
         // Remember, we maybe removed & added some items + applied size changes,
         // so there is no warranty the viewport will actually be fully inside
         // the new FullRange.
-        Viewport = Viewport.SlideInto(FullRange);
+        Viewport = Viewport.ScrollInto(FullRange);
 
         if (!MustScroll) {
             // 3. We aren't scrolling, but maybe we still want to adjust the spacer...

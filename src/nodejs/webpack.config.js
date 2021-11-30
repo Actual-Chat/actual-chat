@@ -73,13 +73,13 @@ module.exports = (env, args) => {
     },
     resolve: {
       extensions: ['.ts', '.js', '...'],
+      modules: [_('./node_modules')]
     },
     // to enable ts debug uncomment the line below
     devtool: args.mode === 'development' ? 'source-map' : false,
     // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
-      // @ts-ignore
       new MiniCssExtractPlugin({
         filename: '[name].css',
         ignoreOrder: true,
@@ -92,6 +92,7 @@ module.exports = (env, args) => {
       rules: [
         {
           test: /\.tsx?$/i,
+          exclude: /node_modules/,
           use: [
             {
               loader: 'ts-loader',
@@ -99,9 +100,10 @@ module.exports = (env, args) => {
                 // disable type checking in development (vs does this anyway)
                 transpileOnly: args.mode === 'development',
                 experimentalWatchApi: true,
+                configFile: _('./tsconfig.json')
               },
             }
-          ], exclude: /node_modules/
+          ],
         },
         {
           test: /^\.d.ts$/i,

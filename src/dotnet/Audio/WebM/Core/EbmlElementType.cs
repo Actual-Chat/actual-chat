@@ -1,23 +1,14 @@
-namespace ActualChat.Audio.WebM
+namespace ActualChat.Audio.WebM;
+
+public enum EbmlElementType
 {
-    public enum EbmlElementType
-    {
-        SignedInteger,
-
-        UnsignedInteger,
-
-        Float,
-
-        AsciiString,
-
-        Utf8String,
-
-        Date,
-
-        Binary,
-
-        MasterElement,
-
-        None = -1
-    }
+    SignedInteger,
+    UnsignedInteger,
+    Float,
+    AsciiString,
+    Utf8String,
+    Date,
+    Binary,
+    MasterElement,
+    None = -1
 }

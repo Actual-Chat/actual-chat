@@ -18,7 +18,8 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         var dbContextFactory = Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
-        if (ShouldRecreateDb) {
+        if (DbInfo.ShouldRecreateDb) {
+            Log.LogInformation("Recreating DB...");
             var authBackend = Services.GetRequiredService<IAuthBackend>();
             var sessionFactory = Services.GetRequiredService<ISessionFactory>();
 
