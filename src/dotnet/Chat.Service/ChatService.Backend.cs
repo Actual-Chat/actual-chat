@@ -33,7 +33,7 @@ public partial class ChatService
 
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
-        if (ChatConstants.DefaultChatId == chatId)
+        if (Constants.Chat.DefaultChatId == chatId)
             return ChatPermissions.All;
         if (chat.IsPublic)
             return ChatPermissions.Read;
