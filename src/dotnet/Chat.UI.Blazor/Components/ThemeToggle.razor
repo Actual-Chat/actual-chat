@@ -1,3 +1,4 @@
+@using Castle.Components.DictionaryAdapter
 @{
     var themes = new string[] { "Gray", "Blue", "Green" };
 }
@@ -9,7 +10,7 @@
                 <div class="absolute right-0 mt-10 w-48 rounded-md @(_isOpen ? "" : "hidden")">
                     <div class="py-1 rounded-md bg-white shadow-lg mb-1 relative z-40">
                         @foreach (var theme in themes) {
-                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
+                            <a href="#" @onclick="@(_ => OnChangeTheme.InvokeAsync(theme))" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200">
                                 @theme
                             </a>
                         }
@@ -25,7 +26,14 @@
         </div>
     </div>
 </div>
+<div>
+    <h5>CurrentTheme: @CurrentTheme</h5>
+</div>
 
 @code{
     private bool _isOpen = false;
+    [Parameter]
+    public string? CurrentTheme { get; set; }
+    [Parameter]
+    public EventCallback<string> OnChangeTheme { get; set; }
 }
