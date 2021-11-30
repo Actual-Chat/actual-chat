@@ -8,7 +8,7 @@
         : author.Picture;
 }
 
-<div class="chat-message flex items-start mb-4 text-sm">
+<div class="@(_componentCssClass ??= this.ComponentCssClass()) flex items-start mb-4 text-sm">
     <img src="@picture" class="author w-10 h-10 rounded-md mr-3 select-none bg-gray-50" alt="@author.Name"/>
     <div class="flex-1 overflow-hidden">
         <div class="header">
@@ -28,6 +28,8 @@
 </div>
 
 @code {
+    private static string? _componentCssClass;
+
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
 
