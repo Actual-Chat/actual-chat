@@ -109,7 +109,8 @@ public abstract class MediaPlayerService : IMediaPlayerService
                 await (trackPlayer.RunningTask ?? Task.CompletedTask).ConfigureAwait(false);
                 trackPlayers.TryRemove(commandRef, trackPlayer);
             }
-            DebugLog?.LogDebug("Play #{PlayIndex}: completed, reason: {Reason}", playIndex, debugStopReason);
+            DebugLog?.LogDebug("Play #{PlayIndex}: completed, reason: {Reason}",
+                playIndex, debugStopReason);
         }
     }
 
