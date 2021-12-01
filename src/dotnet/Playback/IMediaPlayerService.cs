@@ -22,8 +22,6 @@ public interface IMediaPlayerService : IAsyncDisposable
     ///     Cancellation token.<br />
     ///     This method shouldn't throw <see cref="OperationCanceledException" /> on cancellation.
     /// </param>
-    /// <returns>A task that completes once the playback completes or gets cancelled.</returns>
-    Task Play(IAsyncEnumerable<MediaPlayerCommand> commands, CancellationToken cancellationToken);
-
-    void RegisterDefaultMediaTrackState(MediaTrackPlaybackState state);
+    /// <returns>An object you can use to monitor the playback state.</returns>
+    MediaPlaybackState Play(IAsyncEnumerable<MediaPlayerCommand> commands, CancellationToken cancellationToken);
 }

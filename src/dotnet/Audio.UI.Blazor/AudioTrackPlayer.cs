@@ -21,12 +21,13 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     public AudioSource AudioSource => (AudioSource)Source;
 
     public AudioTrackPlayer(
+        MediaPlaybackState? parentState,
         PlayMediaTrackCommand command,
         BlazorCircuitContext circuitContext,
         IJSRuntime js,
         MomentClockSet clocks,
         ILogger<AudioTrackPlayer> log)
-        : base(command, clocks, log)
+        : base(parentState, command, clocks, log)
     {
         _circuitContext = circuitContext;
         _js = js;
@@ -125,11 +126,11 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 }
             }).ConfigureAwait(false);
 
-    protected override async ValueTask<bool> ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
+    protected override async ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken)
         => await CircuitInvoke(
             async () => {
                 if (_jsRef == null)
-                    return false;
+                    return;
 
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
@@ -137,19 +138,12 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 try {
                     await _jsReadyToBuffer.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) {
-                    DebugLog?.LogDebug(
-                        "Playing was cancelled while waiting js buffer, was on frame: (offset: {FrameOffset})",
-                        frame.Offset);
-                    return false;
-                }
                 catch (TimeoutException) {
-                    DebugLog?.LogWarning(
-                        "Buffer waiting timeout, playing was cancelled on frame: (offset: {FrameOffset})",
+                    Log.LogError(
+                        "ProcessMediaFrame: ready-to-buffer wait timed out, frame: (offset: {FrameOffset})",
                         frame.Offset);
-                    return false;
+                    throw;
                 }
-                return true;
             }).ConfigureAwait(false);
 
     private Task CircuitInvoke(Func<Task> workItem)
@@ -163,10 +157,10 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 ? Task.FromResult(default(TResult?))
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(CircuitInvoke)} failed");
+            throw;
         }
-        return Task.FromResult(default(TResult));
     }
 
     protected override ValueTask DisposeAsyncCore()
@@ -177,9 +171,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) {
+        if (disposing)
             _jsReadyToBuffer.Dispose();
-        }
         base.Dispose(disposing);
     }
 }

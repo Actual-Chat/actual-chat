@@ -48,12 +48,12 @@ public class ChatMediaPlayers : IAsyncDisposable
         }
     }
 
-    public async ValueTask<ChatMediaPlayer> GetRealtimePlayer(
+    public ValueTask<ChatMediaPlayer> GetRealtimePlayer(
         ChatId chatId, CancellationToken cancellationToken = default)
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
         if (player is { IsDisposed: false })
-            return player;
+            return ValueTask.FromResult(player);
 
         player = new ChatMediaPlayer(Services) {
             IsRealTimePlayer = true,
@@ -61,17 +61,15 @@ public class ChatMediaPlayers : IAsyncDisposable
             Session = Session,
         };
         RealtimePlayers[chatId] = player;
-        return player;
+        return ValueTask.FromResult(player);
     }
 
-#pragma warning disable CS1998
-    public async ValueTask<ChatMediaPlayer> GetHistoricalPlayer(
+    public ValueTask<ChatMediaPlayer> GetHistoricalPlayer(
         ChatId chatId, CancellationToken cancellationToken = default)
-#pragma warning restore CS1998
     {
         var player = HistoricalPlayers.GetValueOrDefault(chatId);
         if (player is { IsDisposed: false })
-            return player;
+            return ValueTask.FromResult(player);
 
         player = new ChatMediaPlayer(Services) {
             IsRealTimePlayer = false,
@@ -79,7 +77,7 @@ public class ChatMediaPlayers : IAsyncDisposable
             Session = Session,
         };
         HistoricalPlayers[chatId] = player;
-        return player;
+        return ValueTask.FromResult(player);
     }
 
     public async ValueTask DisposePlayers(ChatId chatId)
