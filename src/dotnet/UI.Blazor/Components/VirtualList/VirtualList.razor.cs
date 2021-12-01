@@ -33,10 +33,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected internal IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
     protected internal virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? new();
 
-    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string CssClass { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
     [Parameter, EditorRequired] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
-    [Parameter] public RenderFragment Skeleton { get; set; } = _ => { };
+    [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 100;
     [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;

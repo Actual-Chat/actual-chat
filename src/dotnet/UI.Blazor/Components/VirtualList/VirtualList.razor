@@ -10,7 +10,7 @@
 }
 
 @* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
-<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full"
+<div @ref="Ref" class="@CssClass virtual-list overflow-y-scroll h-full"
      style="@Style"
      data-render-index="@Plan.RenderIndex">
     <div class="content relative">
@@ -24,8 +24,8 @@
         <div class="spacer spacer-start overflow-y-hidden flex flex-col-reverse flex-nowrap items-stretch"
              style="height: @(Plan.SpacerSize)px">
             <SkeletonContainer>
-                @for (var i = 0; i < SkeletonCount; ++i) {
-                    @Skeleton
+                @for (var i = SkeletonCount; i > 0; --i) {
+                    @Skeleton(-i)
                 }
             </SkeletonContainer>
         </div>
@@ -40,7 +40,7 @@
              style="height: @(Plan.EndSpacerSize)px">
             <SkeletonContainer>
                 @for (var i = 0; i < SkeletonCount; ++i) {
-                    @Skeleton
+                    @Skeleton(i)
                 }
             </SkeletonContainer>
         </div>

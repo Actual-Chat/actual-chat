@@ -38,7 +38,7 @@ public class ChatMediaPlayers : IAsyncDisposable
         var players = RealtimePlayers.Values.Concat(HistoricalPlayers.Values).ToList();
         RealtimePlayers.Clear();
         HistoricalPlayers.Clear();
-        foreach (var player in players.OrderBy(p => p.ChatId)) {
+        foreach (var player in players.OrderBy(p => p.ChatId.Value)) {
             try {
                 await player.DisposeAsync().ConfigureAwait(true);
             }
