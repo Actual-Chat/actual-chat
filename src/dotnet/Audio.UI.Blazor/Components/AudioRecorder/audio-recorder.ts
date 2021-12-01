@@ -1,8 +1,22 @@
 import RecordRTC, { MediaStreamRecorder, Options } from 'recordrtc';
 import { SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
+import OpusMediaRecorder from 'opus-media-recorder';
+import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
 
 const LogScope = 'AudioRecorder';
 const sampleRate = 48000;
+
+const workerOptions = {
+    encoderWorkerFactory: _ => new Worker(new URL('./encoderWorker.js', import.meta.url)),
+    WebMOpusEncoderWasmPath: WebMOpusWasm
+};
+
+const OpusMediaRecorderWrapper = Object.assign(function (stream: MediaStream, options?: MediaRecorderOptions) {
+    console.warn(`Constructor call options: ${JSON.stringify(options)}`);
+    return new OpusMediaRecorder(stream, options, workerOptions);
+}, OpusMediaRecorder)
+
+self.MediaRecorder = OpusMediaRecorderWrapper;
 
 export class AudioRecorder {
     private readonly _debugMode: boolean;
@@ -67,6 +81,7 @@ export class AudioRecorder {
                 audio: {
                     channelCount: 1,
                     sampleRate: sampleRate,
+                    sampleSize: 32,
                     // @ts-ignore
                     autoGainControl: {
                         ideal: true
@@ -83,13 +98,11 @@ export class AudioRecorder {
             const options: Options = {
                 type: 'audio',
                 // @ts-ignore
-                mimeType: 'audio/webm; codecs=opus',
+                mimeType: 'audio/webm;codecs=opus',
                 recorderType: MediaStreamRecorder,
                 disableLogs: false,
                 timeSlice: 60,
                 checkForInactiveTracks: true,
-                bitsPerSecond: 24000,
-                audioBitsPerSecond: 24000,
                 sampleRate: sampleRate,
                 desiredSampleRate: sampleRate,
                 bufferSize: 16384,
