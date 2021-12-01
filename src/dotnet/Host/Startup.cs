@@ -40,7 +40,7 @@ public class Startup
 #pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
 #pragma warning restore IL2026
-            logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Information : LogLevel.Warning);
+            logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Debug : LogLevel.Warning);
             // use appsettings*.json to configure logging filters
         });
 

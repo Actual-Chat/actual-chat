@@ -185,7 +185,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         // Complex case: we may need to skip this frame
                         var outputFrameOffset = frameOffset - skipTo;
                         if (outputFrameOffset >= TimeSpan.Zero) {
-                            DebugLog?.LogInformation(
+                            DebugLog?.LogDebug(
                                 "Rewriting audio frame offset: {FrameOffset}s -> {OutputFrameOffset}s",
                                 frameOffset.TotalSeconds, outputFrameOffset.TotalSeconds);
                             simpleBlock.TimeCode -= (short)(skipToMs - clusterOffsetMs);
