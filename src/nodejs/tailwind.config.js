@@ -17,6 +17,25 @@ module.exports = ctx => {
       presets: [],
       darkMode: false, // or 'media' or 'class'
       theme: {
+        extend: {
+          textColor: {
+            primary: 'var(--text-color-primary)',
+            primaryMuted: 'var(--text-color-primary-muted)',
+            secondary: 'var(--text-color-secondary)',
+            secondaryMuted: 'var(--text-color-secondary-muted)',
+          },
+          backgroundColor: {
+            primary: 'var(--background-primary)',
+            secondary: 'var(--background-secondary)',
+            accent: 'var(--background-accent)',
+          },
+          buttonColor: {
+            success: 'var(--button-color-success)',
+            successHover: 'var(--button-color-success-hover)',
+            accent: 'var(--button-color-accent)',
+            accentHover: 'var(--button-color-accent-hover)',
+          },
+        },
         screens: {
           sm: '640px',
           md: '768px',
