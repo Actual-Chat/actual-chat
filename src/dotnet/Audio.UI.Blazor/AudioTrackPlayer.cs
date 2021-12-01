@@ -16,7 +16,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private IJSObjectReference? _jsRef;
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
-    private readonly ManualResetEventSlim _jsReadyToBuffer = new();
+    private readonly SemaphoreSlim _jsReadyToBuffer = new(1, 1);
 
     public AudioSource AudioSource => (AudioSource)Source;
 
@@ -32,7 +32,6 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         _circuitContext = circuitContext;
         _js = js;
         _header = AudioSource.Format.ToBlobPart().Data;
-        _jsReadyToBuffer.Set();
     }
 
     [JSInvokable]
@@ -64,7 +63,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
+    public async Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
         DebugLog?.LogDebug(
             "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
@@ -73,12 +72,17 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
             ToMediaElementReadyState(readyState));
 
         if (isBufferReady) {
-            _jsReadyToBuffer.Set();
+            try {
+                await _jsReadyToBuffer.WaitAsync(10_000);
+            }
+            catch (TimeoutException ex) {
+                Log.LogError(ex, "OnChangeReadiness: can't change the buffer readiness to true");
+                throw;
+            }
         }
         else {
-            _jsReadyToBuffer.Reset();
+            _jsReadyToBuffer.Release();
         }
-        return Task.CompletedTask;
 
         static string ToMediaElementReadyState(int? state) => state switch {
             0 => "HAVE_NOTHING",

@@ -106,6 +106,8 @@ export class AudioRecorder {
                 sampleRate: sampleRate,
                 desiredSampleRate: sampleRate,
                 bufferSize: 16384,
+                bitsPerSecond: 32000,
+                audioBitsPerSecond: 32000,
                 audioBitrateMode: "constant",
                 numberOfAudioChannels: 1,
 
