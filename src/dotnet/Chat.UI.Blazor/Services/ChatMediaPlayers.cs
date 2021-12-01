@@ -14,9 +14,6 @@ public class ChatMediaPlayers : IAsyncDisposable
     private IServiceProvider Services { get; }
     private BlazorCircuitContext CircuitContext { get; }
     private Session Session { get; }
-    private IChats Chats { get; }
-    private IChatAuthors ChatAuthors { get; }
-    private AuthStateProvider AuthStateProvider { get; }
 
     public ChatMediaPlayers(IServiceProvider services)
     {
@@ -24,16 +21,9 @@ public class ChatMediaPlayers : IAsyncDisposable
         Services = services;
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         Session = Services.GetRequiredService<Session>();
-        Chats = Services.GetRequiredService<IChats>();
-        ChatAuthors = Services.GetRequiredService<IChatAuthors>();
-        AuthStateProvider = Services.GetRequiredService<AuthStateProvider>();
-        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
     }
 
-    public ValueTask DisposeAsync()
-        => Reset();
-
-    public async ValueTask Reset()
+    public async ValueTask DisposeAsync()
     {
         var players = RealtimePlayers.Values.Concat(HistoricalPlayers.Values).ToList();
         RealtimePlayers.Clear();
@@ -89,7 +79,4 @@ public class ChatMediaPlayers : IAsyncDisposable
         if (player != null)
             await player.DisposeAsync();
     }
-
-    private void OnAuthStateChanged(Task<AuthenticationState> task)
-        => CircuitContext.Dispatcher.InvokeAsync(() => Reset().AsTask());
 }
