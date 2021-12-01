@@ -37,7 +37,9 @@
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", BlazorRef, DebugMode);
         }
-        DebugLog?.LogDebug("OnAfterRender(firstRender: {FirstRender}: ChatId = {ChatId}, AudioRecorder loaded", firstRender, ChatId);
+        DebugLog?.LogDebug(
+            "OnAfterRender: Chat #{ChatId}, firstRender = {FirstRender}",
+            ChatId, firstRender);
     }
 
     private Task ToggleRecording()
