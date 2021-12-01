@@ -24,10 +24,10 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
     public bool IsRealTimePlayer { get; init; }
 
     // This should be approximately a ping time
-    public TimeSpan NowOffset { get; init; } = TimeSpan.FromMilliseconds(100);
+    public TimeSpan RealtimeNowOffset { get; init; } = TimeSpan.FromMilliseconds(100);
     // Once enqueued, playback loop continues, so the larger is this gap, the higher is the chance
     // to enqueue the next entry on time.
-    public TimeSpan EnqueueToPlaybackGap { get; init; } = TimeSpan.FromSeconds(2);
+    public TimeSpan EnqueueToPlaybackGap { get; init; } = TimeSpan.FromSeconds(1);
 
     public MediaPlayer MediaPlayer { get; }
     public bool IsPlaying => MediaPlayer.PlaybackState.IsPlaying;
@@ -59,6 +59,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var cancellationToken = MediaPlayer.StopToken;
         var clock = Clocks.CpuClock;
         var infDuration = 2 * Constants.Chat.MaxEntryDuration;
+        var nowOffset = IsRealTimePlayer ? RealtimeNowOffset : TimeSpan.Zero;
         var chatAuthor = (ChatAuthor?) null;
 
         var playIndex = Interlocked.Increment(ref _playIndex);
@@ -70,8 +71,8 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
             var startEntryId = await entryReader
                 .GetNextEntryId(startAt - Constants.Chat.MaxEntryDuration, cancellationToken)
                 .ConfigureAwait(false);
-            var now = clock.Now + NowOffset;
-            var realtimeOffset = now - startAt;
+            var now = clock.Now + nowOffset;
+            var realtimeOffset = IsRealTimePlayer ? TimeSpan.Zero : now - startAt;
             var realtimeBlockEnd = now;
 
             var entries = entryReader
@@ -82,16 +83,21 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                     // so we need to skip a few entries.
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
-                if (IsRealTimePlayer && !Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
-                    // It can't change once it's created, so we want to fetch it just once
-                    chatAuthor ??= await ChatAuthors
-                        .GetSessionChatAuthor(Session, ChatId, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (chatAuthor != null && entry.AuthorId == chatAuthor.Id)
-                        continue;
+
+                now = clock.Now + nowOffset;
+                if (IsRealTimePlayer) {
+                    realtimeBlockEnd = now;
+                    startAt = now;
+                    if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
+                        // It can't change once it's created, so we want to fetch it just once
+                        chatAuthor ??= await ChatAuthors
+                            .GetSessionChatAuthor(Session, ChatId, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (chatAuthor != null && entry.AuthorId == chatAuthor.Id)
+                            continue;
+                    }
                 }
 
-                now = clock.Now + NowOffset;
                 var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
                 var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + infDuration;
                 var entrySkipTo = entryBeginsAt - entry.BeginsAt;
