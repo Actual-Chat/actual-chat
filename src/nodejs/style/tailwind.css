@@ -4,3 +4,18 @@
 /* purgecss end ignore */
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --background-primary: #051D43;
+    --background-secondary: #E5E5E5;
+    --background-accent: #DBEAFE;
+    --text-color-primary: #ffffff;
+    --text-color-primary-muted: #E5E5E5;
+    --text-color-secondary: #262626;
+    --text-color-secondary-muted: #525252;
+    --button-color-success: #16A34A;
+    --button-color-success-hover: #22C55E;
+    --button-color-accent: #ffffff;
+    --button-color-accent-hover: #FAFAFA;
+  }
+}
