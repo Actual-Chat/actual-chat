@@ -8,7 +8,7 @@ export class SendingQueue {
 
     constructor(options: ISendingQueueOptions) {
         this._options = options;
-        this._buffer = new Uint8Array(this._options.chunkSize * 2);
+        this._buffer = new Uint8Array(this._options.chunkSize);
         this._bufferLength = 0;
         this._seqNum = 0;
         this._sendBufferTimeout = null;
@@ -21,16 +21,14 @@ export class SendingQueue {
         }
 
         const chunkSize = this._options.chunkSize;
-
-        while (true) {
-            let freeBufferLength = chunkSize - this._bufferLength;
-            if (data.length < freeBufferLength)
-                break;
+        let freeBufferLength = chunkSize - this._bufferLength;
+        while (data.length <= freeBufferLength) {
             let dataPrefix = data.subarray(0, freeBufferLength);
             data = data.subarray(freeBufferLength)
             this._buffer.set(dataPrefix, this._bufferLength);
             this._bufferLength += freeBufferLength;
             let _ = this.sendBufferAsync();
+            freeBufferLength = chunkSize - this._bufferLength; // Actually always chunkSize
         }
         if (data.length > 0) {
             // We know for sure here that data fits into the buffer
@@ -106,7 +104,7 @@ export class SendingQueue {
         this._chunks.set(seqNum, packetBytes);
         // increment through boundary of uint32.max (ex: 0xFFFFFFFF + 1 == 0)
         this._seqNum = (seqNum + 1) >>> 0;
-        this._buffer = new Uint8Array(this._options.chunkSize * 2);
+        this._buffer = new Uint8Array(this._options.chunkSize);
         this._bufferLength = 0;
         try {
             await this._options.sendAsync(packetBytes);
