@@ -24,7 +24,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
     public bool IsRealTimePlayer { get; init; }
 
     // This should be approximately a ping time
-    public TimeSpan RealtimeNowOffset { get; init; } = TimeSpan.FromMilliseconds(100);
+    public TimeSpan RealtimeNowOffset { get; init; } = TimeSpan.FromMilliseconds(150);
     // Once enqueued, playback loop continues, so the larger is this gap, the higher is the chance
     // to enqueue the next entry on time.
     public TimeSpan EnqueueToPlaybackGap { get; init; } = TimeSpan.FromSeconds(1);
