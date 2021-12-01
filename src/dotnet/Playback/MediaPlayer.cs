@@ -4,8 +4,10 @@ namespace ActualChat.Playback;
 
 public sealed class MediaPlayer : IAsyncDisposable
 {
-    private readonly ILogger<MediaPlayer> _log;
-    private CancellationTokenSource _stopCts = null!;
+    private CancellationTokenSource StopCts { get; set; }
+    private ILogger<MediaPlayer> Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
 
     public IMediaPlayerService MediaPlayerService { get; }
     public Channel<MediaPlayerCommand> Queue { get; private set; } = null!;
@@ -16,7 +18,7 @@ public sealed class MediaPlayer : IAsyncDisposable
 
     public MediaPlayer(IMediaPlayerService mediaPlayerService, ILogger<MediaPlayer> log)
     {
-        _log = log;
+        Log = log;
         MediaPlayerService = mediaPlayerService;
         Reset(false);
     }
@@ -25,8 +27,9 @@ public sealed class MediaPlayer : IAsyncDisposable
     {
         if (IsDisposed)
             return;
+        DebugLog?.LogDebug("Disposing");
         IsDisposed = true;
-        _stopCts.CancelAndDisposeSilently();
+        StopCts.CancelAndDisposeSilently();
         var playingTask = PlaybackState.PlayingTask;
         if (playingTask is { IsCompleted: false })
             await playingTask.SuppressExceptions().ConfigureAwait(false);
@@ -85,7 +88,7 @@ public sealed class MediaPlayer : IAsyncDisposable
                 Complete();
             }
         }
-        _stopCts.CancelAndDisposeSilently();
+        StopCts.CancelAndDisposeSilently();
         Reset();
         await playingTask.SuppressExceptions();
     }
@@ -101,8 +104,8 @@ public sealed class MediaPlayer : IAsyncDisposable
     private void Reset(bool invokeStateChanged = true)
     {
         AssertNotDisposed();
-        _stopCts = new ();
-        StopToken = _stopCts.Token;
+        StopCts = new();
+        StopToken = StopCts.Token;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
             new BoundedChannelOptions(128) {
                 SingleReader = false,
