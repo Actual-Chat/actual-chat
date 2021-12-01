@@ -6,6 +6,8 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.Audio.UI.Blazor;
 
+#pragma warning disable CS0162 // for if(false){ logging }
+
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
     [Inject]

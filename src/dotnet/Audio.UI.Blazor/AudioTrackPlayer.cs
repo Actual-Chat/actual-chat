@@ -16,7 +16,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     private IJSObjectReference? _jsRef;
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
-    private readonly SemaphoreSlim _jsReadyToBuffer = new(1, 1);
+    private Task<Unit> _jsReadyToBuffer = TaskSource.New<Unit>(true).Task;
 
     public AudioSource AudioSource => (AudioSource)Source;
 
@@ -32,6 +32,21 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         _circuitContext = circuitContext;
         _js = js;
         _header = AudioSource.Format.ToBlobPart().Data;
+        SetJsReadyToBuffer(true);
+    }
+
+    private void SetJsReadyToBuffer(bool readiness)
+    {
+        if (readiness) {
+            if (_jsReadyToBuffer.IsCompleted)
+                return;
+            TaskSource.For(_jsReadyToBuffer).TrySetResult(default);
+        }
+        else {
+            if (!_jsReadyToBuffer.IsCompleted)
+                return;
+            _jsReadyToBuffer = TaskSource.New<Unit>(true).Task;
+        }
     }
 
     [JSInvokable]
@@ -62,8 +77,9 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
         return Task.CompletedTask;
     }
 
+
     [JSInvokable]
-    public async Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
+    public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
         DebugLog?.LogDebug(
             "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
@@ -71,18 +87,8 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
             offset,
             ToMediaElementReadyState(readyState));
 
-        if (isBufferReady) {
-            try {
-                await _jsReadyToBuffer.WaitAsync(10_000);
-            }
-            catch (TimeoutException ex) {
-                Log.LogError(ex, "OnChangeReadiness: can't change the buffer readiness to true");
-                throw;
-            }
-        }
-        else {
-            _jsReadyToBuffer.Release();
-        }
+        SetJsReadyToBuffer(isBufferReady);
+        return Task.CompletedTask;
 
         static string ToMediaElementReadyState(int? state) => state switch {
             0 => "HAVE_NOTHING",
@@ -140,7 +146,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                 var offset = frame.Offset.TotalSeconds;
                 _ = _jsRef.InvokeVoidAsync("appendAudioAsync", cancellationToken, chunk, offset);
                 try {
-                    await _jsReadyToBuffer.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+                    await _jsReadyToBuffer.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }
                 catch (TimeoutException) {
                     Log.LogError(
@@ -165,18 +171,5 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
             Log.LogError(e, $"{nameof(CircuitInvoke)} failed");
             throw;
         }
-    }
-
-    protected override ValueTask DisposeAsyncCore()
-    {
-        _jsReadyToBuffer.Dispose();
-        return base.DisposeAsyncCore();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-            _jsReadyToBuffer.Dispose();
-        base.Dispose(disposing);
     }
 }
