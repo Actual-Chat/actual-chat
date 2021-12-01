@@ -7,7 +7,7 @@ namespace ActualChat.Playback;
 public abstract class MediaPlayerService : IMediaPlayerService
 {
     private static readonly TileStack<Moment> TimeTileStack = PlaybackConstants.TimeTileStack;
-    private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _playbackStates = new ();
+    private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _trackPlaybackStates = new ();
     private static long _playIndex;
 
     protected ILogger<MediaPlayerService> Log { get; }
@@ -35,18 +35,61 @@ public abstract class MediaPlayerService : IMediaPlayerService
     }
 
     /// <inheritdoc />
-    public async Task Play(IAsyncEnumerable<MediaPlayerCommand> commands, CancellationToken cancellationToken)
+    public MediaPlaybackState Play(
+        IAsyncEnumerable<MediaPlayerCommand> commands,
+        CancellationToken cancellationToken)
     {
-        using var linkedTokenSource = cancellationToken.LinkWith(StopToken);
-        var linkedToken = linkedTokenSource.Token;
-        var playIndex = Interlocked.Increment(ref _playIndex);
+        var linkedTokenSource = cancellationToken.LinkWith(StopToken); // Dispose is handled via .ContinueWith later
 
+        var playbackState = new MediaPlaybackState {
+            StopToken =  linkedTokenSource.Token
+        };
+        playbackState.PlayingTask = BackgroundTask.Run(
+            () => PlayInternal(playbackState, commands),
+            playbackState.StopToken);
+
+        // Disposal
+        var _ = playbackState.PlayingTask.ContinueWith(_ => linkedTokenSource.Dispose(), TaskScheduler.Default);
+        return playbackState;
+    }
+
+    public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
+        Symbol trackId,
+        CancellationToken cancellationToken)
+        => Task.FromResult(_trackPlaybackStates.GetValueOrDefault(trackId));
+
+    public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
+        Symbol trackId,
+        Range<Moment> timestampRange,
+        CancellationToken cancellationToken)
+    {
+        TimeTileStack.AssertIsTile(timestampRange);
+        var state = _trackPlaybackStates.GetValueOrDefault(trackId);
+        if (state == null)
+            return Task.FromResult(state);
+
+        var timestamp = state.RecordingStartedAt + state.PlayingAt;
+        var result = timestampRange.Contains(timestamp) ? state : null;
+        return Task.FromResult(result);
+    }
+
+    // Protected methods
+
+    protected abstract MediaTrackPlayer CreateMediaTrackPlayer(
+        MediaPlaybackState playbackState,
+        PlayMediaTrackCommand playTrackCommand);
+
+    protected async Task PlayInternal(MediaPlaybackState playbackState, IAsyncEnumerable<MediaPlayerCommand> commands)
+    {
+        var cancellationToken = playbackState.StopToken;
+        var trackPlayers = playbackState.TrackPlayers;
+
+        var playIndex = Interlocked.Increment(ref _playIndex);
         DebugLog?.LogDebug("Play #{PlayIndex}: started", playIndex);
-        var trackPlayers = new ConcurrentDictionary<Ref<PlayMediaTrackCommand>, MediaTrackPlayer>();
         var debugStopReason = "n/a";
 
         try {
-            await foreach (var command in commands.WithCancellation(linkedToken).ConfigureAwait(false)) {
+            await foreach (var command in commands.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 DebugLog?.LogDebug("Play #{PlayIndex}: command {Command}", playIndex, command);
                 switch (command) {
                 case PlayMediaTrackCommand playTrackCommand: {
@@ -56,15 +99,15 @@ public abstract class MediaPlayerService : IMediaPlayerService
                     var commandRef = Ref.New(playTrackCommand);
                     if (trackPlayers.ContainsKey(commandRef))
                         continue;
-                    var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
+                    var trackPlayer = CreateMediaTrackPlayer(playbackState, playTrackCommand);
                     trackPlayers[commandRef] = trackPlayer;
                     trackPlayer.StateChanged += OnStateChanged;
-                        _ = trackPlayer.Run(linkedToken).ContinueWith(
-                            _ => {
-                                trackPlayers.TryRemove(commandRef, out var _);
-                            },
-                            TaskScheduler.Default);
-                        break;
+                    _ = trackPlayer.Run(cancellationToken).ContinueWith(
+                        _ => {
+                            trackPlayers.TryRemove(commandRef, out var _);
+                        },
+                        TaskScheduler.Default);
+                    break;
                 }
                 case SetVolumeCommand setVolume:
                     var volumeTasks = trackPlayers.Values
@@ -113,33 +156,6 @@ public abstract class MediaPlayerService : IMediaPlayerService
         }
     }
 
-    public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
-        Symbol trackId,
-        CancellationToken cancellationToken)
-        => Task.FromResult(_playbackStates.GetValueOrDefault(trackId));
-
-    public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
-        Symbol trackId,
-        Range<Moment> timestampRange,
-        CancellationToken cancellationToken)
-    {
-        TimeTileStack.AssertIsTile(timestampRange);
-        var state = _playbackStates.GetValueOrDefault(trackId);
-        if (state == null)
-            return Task.FromResult(state);
-
-        var timestamp = state.RecordingStartedAt + state.PlayingAt;
-        var result = timestampRange.Contains(timestamp) ? state : null;
-        return Task.FromResult(result);
-    }
-
-    public void RegisterDefaultMediaTrackState(MediaTrackPlaybackState state)
-        => _playbackStates[state.TrackId] = state;
-
-    // Protected methods
-
-    protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
-
     protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
         // Debug.WriteLine($"StateChanged: " +
@@ -147,9 +163,9 @@ public abstract class MediaPlayerService : IMediaPlayerService
         //     $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
         var trackId = state.TrackId;
         if (state.IsCompleted)
-            _playbackStates.TryRemove(trackId, out _);
+            _trackPlaybackStates.TryRemove(trackId, out _);
         else
-            _playbackStates[trackId] = state;
+            _trackPlaybackStates[trackId] = state;
 
         using (Computed.Invalidate()) {
             _ = GetMediaTrackPlaybackState(trackId, default);
