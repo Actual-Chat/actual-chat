@@ -7,6 +7,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatMediaPlayer : IAsyncDisposable
 {
+    private static long _playIndex;
+
     private IChats Chats { get; }
     private IChatAuthors ChatAuthors { get; }
     private IChatMediaResolver MediaResolver { get; }
@@ -54,11 +56,11 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var clock = Clocks.CpuClock;
         var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var chatAuthor = (ChatAuthor?) null;
-        var debugStopReason = "n/a";
 
-        DebugLog?.LogDebug(
-            "Play({StartAt}) started for chat #{ChatId} / {PlaybackKind}",
-            startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
+        var playIndex = Interlocked.Increment(ref _playIndex);
+        var playId = $"{playIndex} (chat #{ChatId}, {(IsRealTimePlayer ? "real-time" : "historical")})";
+        var debugStopReason = "n/a";
+        DebugLog?.LogDebug("Play #{PlayId}: started @ {StartAt}", playId, startAt);
         try {
             var entryReader = Chats.CreateEntryReader(Session, ChatId);
             var startEntryId = await entryReader
@@ -116,9 +118,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         }
         catch (Exception e) {
             debugStopReason = "error";
-            Log.LogError(e,
-                "Play({StartAt}) failed for chat #{ChatId} / {PlaybackKind}",
-                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
+            Log.LogError(e, "Play #{PlayId}: failed", playId);
             try {
                 await MediaPlayer.Stop().ConfigureAwait(false);
             }
@@ -128,9 +128,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
             throw;
         }
         finally {
-            DebugLog?.LogDebug(
-                "Play({StartAt}) stopped for chat #{ChatId} / {PlaybackKind}, reason: {StopReason}",
-                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical", debugStopReason);
+            DebugLog?.LogDebug("Play #{PlayId}: ended ({StopReason})", playId, debugStopReason);
         }
     }
 

@@ -8,7 +8,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
 {
     private static readonly TileStack<Moment> TimeTileStack = PlaybackConstants.TimeTileStack;
     private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _playbackStates = new ();
-    private long _playIndex;
+    private static long _playIndex;
 
     protected ILogger<MediaPlayerService> Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -109,8 +109,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
                 await (trackPlayer.RunningTask ?? Task.CompletedTask).ConfigureAwait(false);
                 trackPlayers.TryRemove(commandRef, trackPlayer);
             }
-            DebugLog?.LogDebug("Play #{PlayIndex}: completed, reason: {Reason}",
-                playIndex, debugStopReason);
+            DebugLog?.LogDebug("Play #{PlayIndex}: ended ({StopReason})", playIndex, debugStopReason);
         }
     }
 
