@@ -16,6 +16,7 @@
     "cssnano": "^5.0.11",
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
     "mini-css-extract-plugin": "^2.4.5",
+    "opus-media-recorder": "^0.8.0",
     "postcss-loader": "^6.2.0",
     "tailwindcss": "^2.2.19",
     "ts-loader": "^9.2.6",
