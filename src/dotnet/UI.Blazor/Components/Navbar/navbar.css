@@ -7,9 +7,46 @@
 }
 
 .navbar-mobile {
-    @apply md:hidden px-6 h-16 py-4 bg-primary text-primary flex flex-row flex-nowrap justify-between;
+    @apply md:hidden bg-primary text-primary px-6 h-16 py-4 flex flex-row flex-nowrap justify-between;
 }
 
 .navbar-desktop {
-    @apply flex-1 flex flex-row justify-items-stretch bg-primary h-full max-h-full overflow-y-hidden relative;
+    @apply bg-primary flex-1 flex flex-row justify-items-stretch h-full max-h-full overflow-y-hidden relative;
+}
+
+.navbar-icon {
+    @apply text-primaryMuted hover:text-primary fill-current;
+}
+
+.navbar-links-group {
+    @apply text-secondaryMuted text-xs uppercase font-medium;
+}
+
+.navbar-version {
+    @apply flex flex-row justify-start items-center text-xxs text-primaryMuted mb-1;
+}
+
+.blazor-mode-toggle {
+    @apply select-none cursor-pointer;
+}
+
+.visible-blazor-mode-toggle,
+.hidden-blazor-mode-toggle {
+    @apply block overflow-hidden transition duration-500 ease-in-out
+}
+
+.visible-blazor-mode-toggle {
+    @apply text-primaryMuted text-xxs cursor-pointer select-none;
+}
+
+.hidden-blazor-mode-toggle {
+    @apply opacity-0 w-0 h-0;
+}
+
+.blazor-mode-toggle:hover .visible-blazor-mode-toggle {
+    @apply opacity-0 w-0 h-0;
+}
+
+.blazor-mode-toggle:hover .hidden-blazor-mode-toggle {
+    @apply opacity-100 w-auto h-auto text-primary text-xxs;
 }
