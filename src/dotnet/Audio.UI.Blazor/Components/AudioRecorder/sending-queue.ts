@@ -22,7 +22,7 @@ export class SendingQueue {
 
         const chunkSize = this._options.chunkSize;
         let freeBufferLength = chunkSize - this._bufferLength;
-        while (data.length <= freeBufferLength) {
+        while (data.length >= freeBufferLength) {
             let dataPrefix = data.subarray(0, freeBufferLength);
             data = data.subarray(freeBufferLength)
             this._buffer.set(dataPrefix, this._bufferLength);
