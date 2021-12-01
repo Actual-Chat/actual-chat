@@ -86,8 +86,10 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
 
                 now = clock.Now + nowOffset;
                 if (IsRealTimePlayer) {
-                    realtimeBlockEnd = now;
                     startAt = now;
+                    realtimeBlockEnd = now;
+                    realtimeOffset = TimeSpan.Zero;
+
                     if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
                         // It can't change once it's created, so we want to fetch it just once
                         chatAuthor ??= await ChatAuthors
@@ -102,7 +104,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                 var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + infDuration;
                 var entrySkipTo = entryBeginsAt - entry.BeginsAt;
 
-                if (entryBeginsAt + realtimeOffset > realtimeBlockEnd) {
+                if (!IsRealTimePlayer && entryBeginsAt + realtimeOffset > realtimeBlockEnd) {
                     // There is a gap between the currently playing "block" and the entry.
                     // This means we're still playing the "historical" block, and the new entry
                     // starts with some gap after it; we're going to nullify this gap here by
@@ -115,7 +117,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                 var enqueueDelay = playAt - now - EnqueueToPlaybackGap;
                 if (enqueueDelay > TimeSpan.Zero)
                     await clock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
-                await EnqueueEntry(playAt, entry, entrySkipTo, cancellationToken).ConfigureAwait(false);
+                await EnqueueEntry(playAt - nowOffset, entry, entrySkipTo, cancellationToken).ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
             MediaPlayer.Complete();
