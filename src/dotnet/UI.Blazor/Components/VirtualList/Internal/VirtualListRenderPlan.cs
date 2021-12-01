@@ -143,7 +143,7 @@ public class VirtualListRenderPlan<TItem>
             var viewportStart = ClientSideState.ScrollTop - ClientSideState.SpacerSize;
             var viewport = new Range<double>(viewportStart, viewportStart + ClientSideState.ClientHeight);
             if (DebugMode && ClientSideState.IsUserScrollDetected) {
-                DebugLog?.LogInformation("User scroll: {VP} -> {NewVP}", Viewport, viewport);
+                DebugLog?.LogDebug("User scroll: {VP} -> {NewVP}", Viewport, viewport);
                 if (Math.Abs(viewport.Start - Viewport.Start) > 3000)
                     DebugLog?.LogWarning("Suspicious scroll detected!");
             }
@@ -155,7 +155,7 @@ public class VirtualListRenderPlan<TItem>
         if (item != null && oldItem != null) {
             // Update Viewport & SpacerSize
             var topExpansion = item.Range.Start - oldItem.Range.Start;
-            DebugLog?.LogInformation("Top expansion: {TopExpansion} @ {Key}, [{KS} ... {KE}] of [{KS1} ... {KE1}]",
+            DebugLog?.LogDebug("Top expansion: {TopExpansion} @ {Key}, [{KS} ... {KE}] of [{KS1} ... {KE1}]",
                 topExpansion,
                 item.Key,
                 DisplayedItems.FirstOrDefault()?.Key, DisplayedItems.LastOrDefault()?.Key,
@@ -181,7 +181,7 @@ public class VirtualListRenderPlan<TItem>
             if (PreferredTrackingEdge == VirtualListEdge.End && Data.HasVeryLastItem && IsViewportAtEnd())
                 TrackingEdge = VirtualListEdge.End;
 
-            DebugLog?.LogInformation("Location: {Location}, tracking edge: {TrackingEdge}",
+            DebugLog?.LogDebug("Location: {Location}, tracking edge: {TrackingEdge}",
                 (IsViewportAtStart() ? "start " : "") + (IsViewportAtEnd() ? "end" : ""),
                 TrackingEdge);
         }

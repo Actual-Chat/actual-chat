@@ -54,9 +54,9 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var clock = Clocks.CpuClock;
         var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var chatAuthor = (ChatAuthor?) null;
-        var stopReason = "";
+        var debugStopReason = "n/a";
 
-        DebugLog?.LogInformation(
+        DebugLog?.LogDebug(
             "Play({StartAt}) started for chat #{ChatId} / {PlaybackKind}",
             startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
         try {
@@ -106,16 +106,16 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
                 await EnqueueEntry(entry, entrySkipTo, realtimeBeginsAt, cancellationToken).ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
-            stopReason = "no more entries";
             MediaPlayer.Complete();
             await playTask.ConfigureAwait(false);
+            debugStopReason = "no more entries";
         }
         catch (OperationCanceledException) {
-            stopReason = "cancellation";
+            debugStopReason = "cancellation";
             throw;
         }
         catch (Exception e) {
-            stopReason = "error";
+            debugStopReason = "error";
             Log.LogError(e,
                 "Play({StartAt}) failed for chat #{ChatId} / {PlaybackKind}",
                 startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical");
@@ -128,9 +128,9 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
             throw;
         }
         finally {
-            DebugLog?.LogInformation(
+            DebugLog?.LogDebug(
                 "Play({StartAt}) stopped for chat #{ChatId} / {PlaybackKind}, reason: {StopReason}",
-                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical", stopReason);
+                startAt, ChatId, IsRealTimePlayer ? "real-time" : "historical", debugStopReason);
         }
     }
 
@@ -190,7 +190,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         ChatEntry audioEntry, TimeSpan skipTo, Moment? playAt,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation(
+        DebugLog?.LogDebug(
             "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}",
             audioEntry.ChatId,
             audioEntry.Id,
@@ -213,7 +213,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         ChatEntry audioEntry, TimeSpan skipTo, Moment? playAt,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogInformation(
+        DebugLog?.LogDebug(
             "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
             audioEntry.ChatId,
             audioEntry.Id);

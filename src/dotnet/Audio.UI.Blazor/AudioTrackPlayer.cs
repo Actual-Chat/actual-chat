@@ -65,7 +65,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
     [JSInvokable]
     public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
-        DebugLog?.LogInformation(
+        DebugLog?.LogDebug(
             "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
             isBufferReady,
             offset,
@@ -138,7 +138,7 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                     await _jsReadyToBuffer.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) {
-                    DebugLog?.LogInformation(
+                    DebugLog?.LogDebug(
                         "Playing was cancelled while waiting js buffer, was on frame: (offset: {FrameOffset})",
                         frame.Offset);
                     return false;
