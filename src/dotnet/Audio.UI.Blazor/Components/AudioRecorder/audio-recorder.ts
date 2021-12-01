@@ -18,7 +18,8 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
         this._queue = new SendingQueue({
             debugMode: debugMode,
-            maxChunkSize: 1024,
+            minChunkSize: 64,
+            chunkSize: 1020,
             maxFillBufferTimeMs: 400,
             cleaningStrategy: new TimeoutCleaningStrategy(60_000),
             sendAsync: async (packet: Uint8Array): Promise<void> => {
