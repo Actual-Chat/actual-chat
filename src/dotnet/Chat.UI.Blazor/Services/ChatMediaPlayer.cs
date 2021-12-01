@@ -214,7 +214,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         DebugLog?.LogInformation(
-            "EEnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
+            "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
             audioEntry.ChatId,
             audioEntry.Id);
         var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
