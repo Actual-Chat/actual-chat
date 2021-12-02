@@ -26,6 +26,8 @@ const path = require('path');
 //const fs = require("fs");
 // entry: () => fs.readdirSync("./React/").filter(f => f.endsWith(".js")).map(f => `./React/${f}`),
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CopyPlugin = require("copy-webpack-plugin");
+const WorkerUrlPlugin = require('worker-url/plugin');
 
 /**
  * @param {string} file
@@ -90,6 +92,13 @@ module.exports = (env, args) => {
         experimentalUseImportModule: true,
       }),
       new WatchRunPlugin(),
+      new CopyPlugin({
+        // Use copy plugin to copy *.wasm to output folder.
+        patterns: [
+          { from: 'node_modules/onnxruntime-web/dist/*.wasm', to: 'wasm/[name][ext]' },
+        ]
+      }),
+      new WorkerUrlPlugin(),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
@@ -142,6 +151,13 @@ module.exports = (env, args) => {
           }
         },
         {
+          test: /\.onnx$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'models/[name][ext][query]'
+          }
+        },
+        {
           test: /\.(ttf|eot|svg|woff(2)?)$/i,
           type: 'asset/resource',
           generator: {
@@ -155,6 +171,7 @@ module.exports = (env, args) => {
     },
     output: {
       path: outputPath,
+      globalObject: 'globalThis',
       filename: '[name].js',
       library: {
         type: 'this'
