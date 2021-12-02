@@ -40,14 +40,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
     public void ConfigureApp(IApplicationBuilder app)
     {
-        if (Settings.BaseUri.ToLowerInvariant().StartsWith("https://", StringComparison.Ordinal)) {
-            Log.LogInformation("Overriding request scheme to https://");
-            app.Use((context, next) => {
-                context.Request.Scheme = "https";
-                return next();
-            });
-        }
-
         // This server serves static content from Blazor Client,
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
@@ -61,14 +53,23 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (Env.IsDevelopment()) {
             app.UseDeveloperExceptionPage();
             app.UseWebAssemblyDebugging();
-            app.UseForwardedHeaders();
         }
         else {
             app.UseExceptionHandler("/Error");
-            app.UseForwardedHeaders();
             app.UseHsts();
         }
         // app.UseCors("Default");
+
+        // See
+        // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
+        // - https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-6.0
+        app.UseForwardedHeaders();
+        // And here we can modify httpContext.Request.Scheme & Host manually to whatever we like
+        if (!Settings.BaseUri.IsNullOrEmpty()) {
+            var baseUri = new Uri(Settings.BaseUri);
+            Log.LogInformation("Overriding request host to {BaseUri}", baseUri);
+            app.UseBaseUri(baseUri);
+        }
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
@@ -135,7 +136,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
         });
         services.Configure<ForwardedHeadersOptions>(options => {
-            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+            options.ForwardedHeaders = ForwardedHeaders.All;
             options.KnownNetworks.Clear();
             options.KnownProxies.Clear();
         });

@@ -7,8 +7,8 @@ public class UsersSettings
     public string Redis { get; set; } = "";
 
     // Auth provider settings
+    public string GoogleClientId { get; set; } = "";
+    public string GoogleClientSecret { get; set; } = "";
     public string MicrosoftAccountClientId { get; set; } = "";
     public string MicrosoftAccountClientSecret { get; set; } = "";
-    public string GitHubClientId { get; set; } = "";
-    public string GitHubClientSecret { get; set; } = "";
 }
