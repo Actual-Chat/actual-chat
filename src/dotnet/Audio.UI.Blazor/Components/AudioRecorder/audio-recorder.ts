@@ -1,10 +1,17 @@
-import RecordRTC, { MediaStreamRecorder, Options } from 'recordrtc';
-import { SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
+import RecordRTC, {MediaStreamRecorder, Options} from 'recordrtc';
+import {SendingQueue, TimeoutCleaningStrategy} from './sending-queue';
 import OpusMediaRecorder from 'opus-media-recorder';
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
+import {VoiceActivityChanged} from './audio-vad';
+import {WorkerUrl} from 'worker-url';
 
 const LogScope = 'AudioRecorder';
 const sampleRate = 48000;
+
+const vadAudioWorkletUrl = new WorkerUrl(new URL('./audio-vad.worklet-module.ts', import.meta.url), {
+    name: 'audio-vad.worklet-processor',
+    customPath: () => new URL('audio-vad.worklet-processor.js', window.location.href)
+});
 
 const workerOptions = {
     encoderWorkerFactory: _ => new Worker(new URL('./encoderWorker.js', import.meta.url)),
@@ -25,7 +32,7 @@ export class AudioRecorder {
     private readonly _debugMode: boolean;
     private readonly isMicrophoneAvailable: boolean;
     private readonly _blazorRef: DotNet.DotNetObject;
-    private recording: { recorder: RecordRTC, stream: MediaStream; };
+    private recording: { recorder: RecordRTC, stream: MediaStream; context: AudioContext };
     private _queue: SendingQueue;
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
@@ -89,6 +96,16 @@ export class AudioRecorder {
             return null;
         }
 
+        const channel = new MessageChannel();
+        const worker = new Worker(new URL('./audio-vad.worker.ts', import.meta.url));
+        worker.onmessage = (ev: MessageEvent<VoiceActivityChanged[]>) => {
+            for (const vadEvent of ev.data) {
+                console.log(vadEvent);
+            }
+        };
+        worker.postMessage({topic: 'init-port'}, [channel.port1]);
+
+
         if (this.recording === null) {
             let stream: MediaStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -143,9 +160,27 @@ export class AudioRecorder {
 
             this.recording = {
                 recorder: recorder,
-                stream: stream
+                stream: stream,
+                context: new AudioContext({sampleRate: 16000, latencyHint: 'interactive'})
             };
         }
+
+        const audioContext = this.recording.context;
+        const sourceNode = audioContext.createMediaStreamSource(this.recording.stream);
+
+        await audioContext.audioWorklet.addModule(vadAudioWorkletUrl);
+        const audioWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+        };
+        const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad.worklet-processor', audioWorkletOptions);
+        vadWorkletNode.port.postMessage({topic: 'init-port'}, [channel.port2]);
+        sourceNode
+            .connect(vadWorkletNode)
+            .connect(audioContext.destination);
 
         this.recording.recorder.startRecording();
         await this._blazorRef.invokeMethodAsync('OnStartRecording');

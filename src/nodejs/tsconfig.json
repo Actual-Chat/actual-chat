@@ -1,7 +1,8 @@
 {
   "include": [
     "index.ts",
-    "global.d.ts"
+    "global.d.ts",
+    "audio-worklet-processor.d.ts"
   ],
   "compilerOptions": {
     "alwaysStrict": true,
@@ -13,6 +14,7 @@
     "noEmitOnError": true,
     "importsNotUsedAsValues": "remove",
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     // change to true (?)
     "noImplicitAny": false,
     // change to true (?)
@@ -22,7 +24,8 @@
     "checkJs": false,
     "sourceMap": true,
     /* Basic Options */
-    "target": "es2017", /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
+    "target": "es2017",
+    /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
     "module": "es2020",
     "lib": [
       "dom",
