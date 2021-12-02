@@ -8,7 +8,7 @@
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 
-<div class="sticky bottom-0 self-end bg-white w-full">
+<div class="@(_componentCssClass ??= this.ComponentCssClass()) sticky bottom-0 self-end bg-white w-full">
     <div class="flex flex-row justify-between mx-3 my-2">
         @if (RealtimePlayer != null) {
             <ChatMediaPlayerToggle Player="RealtimePlayer"/>
@@ -27,6 +27,8 @@
 </div>
 
 @code {
+    private static string? _componentCssClass;
+
     [Inject] private ChatMediaPlayers ChatMediaPlayers { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;

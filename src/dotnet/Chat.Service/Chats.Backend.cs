@@ -5,7 +5,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public partial class ChatService
+public partial class Chats
 {
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -63,28 +63,39 @@ public partial class ChatService
         return await dbMessages.LongCountAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
     {
+        var minId = await GetMinId(chatId, cancellationToken).ConfigureAwait(false);
+        var maxId = await GetMaxId(chatId, cancellationToken).ConfigureAwait(false);
+        return (minId, maxId + 1);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<long> GetMinId(ChatId chatId, CancellationToken cancellationToken)
+    {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
-        var tx = await dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-        await using var __ = tx.ConfigureAwait(false);
-
-        var firstId = await dbContext.ChatEntries.AsQueryable()
+        return await dbContext.ChatEntries.AsQueryable()
             .Where(e => e.ChatId == chatId.Value)
             .OrderBy(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        var lastId = await dbContext.ChatEntries.AsQueryable()
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<long> GetMaxId(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        return await dbContext.ChatEntries.AsQueryable()
             .Where(e => e.ChatId == chatId.Value)
             .OrderByDescending(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-
-        return (firstId, lastId);
     }
 
     // [ComputeMethod]
@@ -129,7 +140,7 @@ public partial class ChatService
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
             if (invChatEntry != null)
                 InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, isUpdate);
-            _ = GetIdRange(chatEntry.ChatId, default); // We invalidate min-max Id range at last
+            _ = GetMaxId(chatEntry.ChatId, default); // We invalidate min-max Id range at last
             return null!;
         }
 

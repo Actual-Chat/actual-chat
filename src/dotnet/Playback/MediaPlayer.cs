@@ -4,21 +4,21 @@ namespace ActualChat.Playback;
 
 public sealed class MediaPlayer : IAsyncDisposable
 {
-    private readonly ILogger<MediaPlayer> _log;
-    private CancellationTokenSource _stopCts = null!;
+    private CancellationTokenSource StopCts { get; set; }
+    private ILogger<MediaPlayer> Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
 
     public IMediaPlayerService MediaPlayerService { get; }
     public Channel<MediaPlayerCommand> Queue { get; private set; } = null!;
-    public Task PlayingTask { get; private set; } = null!;
-    public bool IsPlaying => PlayingTask is { IsCompleted: false };
-    public bool IsStopped => _stopCts.IsCancellationRequested;
+    public MediaPlaybackState PlaybackState { get; private set; } = null!;
     public bool IsDisposed { get; private set; }
     public CancellationToken StopToken { get; private set; }
     public event Action<MediaPlayer>? StateChanged;
 
     public MediaPlayer(IMediaPlayerService mediaPlayerService, ILogger<MediaPlayer> log)
     {
-        _log = log;
+        Log = log;
         MediaPlayerService = mediaPlayerService;
         Reset(false);
     }
@@ -27,9 +27,10 @@ public sealed class MediaPlayer : IAsyncDisposable
     {
         if (IsDisposed)
             return;
+        DebugLog?.LogDebug("Disposing");
         IsDisposed = true;
-        _stopCts.CancelAndDisposeSilently();
-        var playingTask = PlayingTask;
+        StopCts.CancelAndDisposeSilently();
+        var playingTask = PlaybackState.PlayingTask;
         if (playingTask is { IsCompleted: false })
             await playingTask.SuppressExceptions().ConfigureAwait(false);
     }
@@ -42,17 +43,16 @@ public sealed class MediaPlayer : IAsyncDisposable
 
     public ValueTask AddMediaTrack(
         Symbol trackId,
-        IMediaSource source,
+        Moment playAt,
         Moment recordingStartedAt,
-        Moment? playAt,
+        IMediaSource source,
         TimeSpan skipTo,
         CancellationToken cancellationToken = default)
     {
-        MediaPlayerService.RegisterDefaultMediaTrackState(new (trackId, recordingStartedAt, skipTo));
         var command = new PlayMediaTrackCommand(trackId,
-            source,
-            recordingStartedAt,
             playAt,
+            recordingStartedAt,
+            source,
             skipTo);
         return AddCommand(command, cancellationToken);
     }
@@ -60,16 +60,16 @@ public sealed class MediaPlayer : IAsyncDisposable
     public void Complete()
         => Queue.Writer.Complete();
 
-    public Task Play()
+    public MediaPlaybackState Play()
     {
-        if (!PlayingTask.IsCompleted)
-            return PlayingTask;
+        if (PlaybackState.IsPlaying)
+            return PlaybackState;
         AssertNotDisposed();
 
-        PlayingTask = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
+        PlaybackState = MediaPlayerService.Play(Queue.Reader.ReadAllAsync(StopToken), StopToken);
         StateChanged?.Invoke(this);
-        _ = PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
-        return PlayingTask;
+        _ = PlaybackState.PlayingTask.ContinueWith(_ => StateChanged?.Invoke(this), TaskScheduler.Default);
+        return PlaybackState;
     }
 
     public ValueTask SetVolume(double volume, CancellationToken cancellationToken = default)
@@ -78,7 +78,7 @@ public sealed class MediaPlayer : IAsyncDisposable
     public async Task Stop()
     {
         AssertNotDisposed();
-        var playingTask = PlayingTask;
+        var playingTask = PlaybackState.PlayingTask;
         if (!playingTask.IsCompleted) {
             var stopCompletion = new TaskCompletionSource();
             var stopCommand = new StopCommand(stopCompletion);
@@ -88,7 +88,7 @@ public sealed class MediaPlayer : IAsyncDisposable
                 Complete();
             }
         }
-        _stopCts.CancelAndDisposeSilently();
+        StopCts.CancelAndDisposeSilently();
         Reset();
         await playingTask.SuppressExceptions();
     }
@@ -104,8 +104,8 @@ public sealed class MediaPlayer : IAsyncDisposable
     private void Reset(bool invokeStateChanged = true)
     {
         AssertNotDisposed();
-        _stopCts = new ();
-        StopToken = _stopCts.Token;
+        StopCts = new();
+        StopToken = StopCts.Token;
         Queue = Channel.CreateBounded<MediaPlayerCommand>(
             new BoundedChannelOptions(128) {
                 SingleReader = false,
@@ -113,7 +113,8 @@ public sealed class MediaPlayer : IAsyncDisposable
                 AllowSynchronousContinuations = true,
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
-        PlayingTask = Task.CompletedTask;
-        StateChanged?.Invoke(this);
+        PlaybackState = new();
+        if (invokeStateChanged)
+            StateChanged?.Invoke(this);
     }
 }

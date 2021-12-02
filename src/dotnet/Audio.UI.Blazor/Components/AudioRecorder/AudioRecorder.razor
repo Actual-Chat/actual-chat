@@ -37,7 +37,9 @@
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", BlazorRef, DebugMode);
         }
-        DebugLog?.LogInformation("OnAfterRender(firstRender: {FirstRender}: ChatId = {ChatId}, AudioRecorder loaded", firstRender, ChatId);
+        DebugLog?.LogDebug(
+            "OnAfterRender: Chat #{ChatId}, firstRender = {FirstRender}",
+            ChatId, firstRender);
     }
 
     private Task ToggleRecording()
@@ -56,11 +58,11 @@
         StateHasChanged();
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("startRecording");
-        DebugLog?.LogInformation("StartRecording");
+        DebugLog?.LogDebug("StartRecording");
     }
 
     private async Task StopRecording() {
-        DebugLog?.LogInformation("StopRecording, current AudioChannel status is {AudioChannelStatus}",
+        DebugLog?.LogDebug("StopRecording, current AudioChannel status is {AudioChannelStatus}",
             AudioChannel == null ? "closed" : "opened"
         );
 
@@ -111,13 +113,13 @@
 
         LastSeqNum = seqNum;
         var blobPart = new BlobPart(Index++, chunk[4..]);
-        DebugLog?.LogInformation("OnAudioData: got packet #{SeqNum}: {BlobPart}", seqNum, blobPart);
+        DebugLog?.LogDebug("OnAudioData: got packet #{SeqNum}: {BlobPart}", seqNum, blobPart);
         await AudioChannel.Writer.WriteAsync(blobPart);
     }
 
     [JSInvokable]
     public void OnRecordingStopped() {
-        DebugLog?.LogInformation("OnRecordingStopped: current AudioChannel status is {AudioChannelStatus}",
+        DebugLog?.LogDebug("OnRecordingStopped: current AudioChannel status is {AudioChannelStatus}",
             AudioChannel == null ? "closed" : "opened"
         );
         // Does the same as StopRecording; we assume here that recording

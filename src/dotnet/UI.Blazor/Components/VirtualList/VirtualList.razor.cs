@@ -33,10 +33,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected internal IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
     protected internal virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? new();
 
-    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string CssClass { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
     [Parameter, EditorRequired] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
-    [Parameter] public RenderFragment Skeleton { get; set; } = _ => { };
+    [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 100;
     [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
@@ -105,7 +105,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         };
         if (!plan.IsFullyLoaded(plan.GetLoadZoneRange()))
             UpdateData();
-        DebugLog?.LogInformation("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
+        DebugLog?.LogDebug("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
         ClientSideState = plan.ClientSideState ?? ClientSideState;
         await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
@@ -115,14 +115,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     {
         var lastPlan = LastPlan;
         if (lastPlan == null! || clientSideState.RenderIndex != lastPlan.RenderIndex) {
-            DebugLog?.LogInformation(
+            DebugLog?.LogDebug(
                 "UpdateClientSideState: outdated RenderIndex = {RenderIndex} < {ExpectedRenderIndex}",
                 clientSideState.RenderIndex, lastPlan?.RenderIndex);
             return Task.FromResult(lastPlan?.RenderIndex ?? -1);
         }
 
         // await Task.Delay(1000); // Debug only!
-        DebugLog?.LogInformation("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
+        DebugLog?.LogDebug("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
         ClientSideState = clientSideState;
         _ = this.StateHasChangedAsync();
         return Task.FromResult(lastPlan.RenderIndex);
@@ -137,6 +137,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             _ = State.Recompute();
     }
 
+    protected override void ConfigureState(ComputedState<VirtualListData<TItem>>.Options options)
+        => options.UpdateDelayer = UpdateDelayer.MinDelay;
+
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
@@ -144,7 +147,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         VirtualListData<TItem> response;
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
-            DebugLog?.LogInformation("ComputeState: {Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
+            DebugLog?.LogDebug("ComputeState: {Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
                 query,
                 response.Items.FirstOrDefault().Key,
                 response.Items.LastOrDefault().Key,
@@ -204,11 +207,11 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         var firstItem = displayedItems[startIndex];
         var lastItem = displayedItems[endIndex];
-        DebugLog?.LogInformation("GetDataQuery: bufferZone fits {FirstItemId} ... {LastItemId} keys",
+        DebugLog?.LogDebug("GetDataQuery: bufferZone fits {FirstItemId} ... {LastItemId} keys",
             firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
         var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
-        DebugLog?.LogInformation("GetDataQuery: startGap: {StartGap}, endGap: {EndGap}", startGap, endGap);
+        DebugLog?.LogDebug("GetDataQuery: startGap: {StartGap}, endGap: {EndGap}", startGap, endGap);
 
         var expectedStartExpansion = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxExpectedExpansion);
         var expectedEndExpansion = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxExpectedExpansion);
@@ -224,7 +227,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ExpandEndBy = expectedEndExpansion / responseFulfillmentRatio,
         };
 
-        DebugLog?.LogInformation(
+        DebugLog?.LogDebug(
             "GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {RFR}, query = {Query}",
             itemSize, responseFulfillmentRatio, query);
         return query;

@@ -1,11 +1,13 @@
 @using ActualChat.Transcription
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<p class="chat-transcription">
+<p class="@(_componentCssClass ??= this.ComponentCssClass())">
     <span>@Transcript.Text</span>
 </p>
 
 @code {
+    private static string? _componentCssClass;
+
     [Inject] private ILogger<ChatMessageTranscript> Log { get; set; } = null!;
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; set; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; set; } = null!;

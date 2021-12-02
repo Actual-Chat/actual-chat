@@ -23,11 +23,9 @@ public class ChatEntryReaderTest
         chat?.Title.Should().Be("The Actual One");
 
         await AddChatEntries(chats, session, ChatId, CancellationToken.None);
-
         var idRange = await chats.GetIdRange(session, ChatId, CancellationToken.None);
-        idRange.Start.Should().Be(131);
-        var chuckBerryId = idRange.End;
-        chuckBerryId.Should().BeGreaterThan(idRange.Start);
+
+        var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
         var acDcId = nirvanaId - 1;
 
@@ -37,19 +35,7 @@ public class ChatEntryReaderTest
             Session = session,
         };
 
-        var entry = await reader.Get(131, CancellationToken.None);
-        entry.Should().NotBeNull();
-        entry!.Content.Should().Be("audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm");
-        entry.BeginsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:18.5043140Z")));
-        entry.Duration.Should().Be(11.039);
-
-        entry = await reader.Get(132, CancellationToken.None);
-        entry.Should().NotBeNull();
-        entry!.Content.Should().Be("Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал открыв мне чудо на Земле");
-        entry.EndsAt.Should().Be(new Moment(DateTime.Parse("2021-11-05T16:41:29.0043140Z")));
-        entry.Duration.Should().Be(10.5);
-
-        entry = await reader.Get(acDcId, CancellationToken.None);
+        var entry = await reader.Get(acDcId, CancellationToken.None);
         entry.Should().NotBeNull();
         entry!.Content.Should().Be("back in black i hit the sack");
 

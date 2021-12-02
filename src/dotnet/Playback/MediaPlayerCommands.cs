@@ -13,9 +13,9 @@ public record StopCommand(TaskCompletionSource CommandProcessedSource) : MediaPl
 
 public record PlayMediaTrackCommand(
     Symbol TrackId,
-    IMediaSource Source,
+    Moment PlayAt,
     Moment RecordingStartedAt,
-    Moment? PlayAt,
+    IMediaSource Source,
     TimeSpan SkipTo
 ) : MediaPlayerCommand(Task.CompletedTask)
 { }
