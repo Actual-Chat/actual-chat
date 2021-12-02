@@ -73,7 +73,11 @@ module.exports = (env, args) => {
     },
     resolve: {
       extensions: ['.ts', '.js', '...'],
-      modules: [_('./node_modules')]
+      modules: [_('./node_modules')],
+      fallback: {
+        "path": false,
+        "fs": false
+      }
     },
     // to enable ts debug uncomment the line below
     devtool: args.mode === 'development' ? 'source-map' : false,
@@ -129,6 +133,13 @@ module.exports = (env, args) => {
               }
             }
           ]
+        },
+        {
+          test: /\.wasm$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'wasm/[name][ext][query]'
+          }
         },
         {
           test: /\.(ttf|eot|svg|woff(2)?)$/i,

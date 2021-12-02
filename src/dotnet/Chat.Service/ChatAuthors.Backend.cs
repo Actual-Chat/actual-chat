@@ -5,7 +5,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public partial class ChatAuthorsService
+public partial class ChatAuthors
 {
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(
@@ -87,7 +87,7 @@ public partial class ChatAuthorsService
 
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNone) {
-            var name = _randomNameGenerator.Generate('_', true);
+            var name = _randomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
                 Picture = "",

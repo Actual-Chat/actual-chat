@@ -21,6 +21,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     public event Action<MediaTrackPlaybackState, MediaTrackPlaybackState>? StateChanged;
 
     protected MediaTrackPlayer(
+        MediaPlaybackState? parentState,
         PlayMediaTrackCommand command,
         MomentClockSet clocks,
         ILogger<MediaTrackPlayer> log)
@@ -28,7 +29,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         Log = log;
         Clocks = clocks;
         Command = command;
-        _state = new(command.TrackId, command.RecordingStartedAt, command.SkipTo);
+        _state = new(parentState, command.TrackId, command.RecordingStartedAt, command.SkipTo);
         _whenCompletedSource = TaskSource.New<Unit>(true);
     }
 
@@ -38,32 +39,36 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     // Protected methods
 
     protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
-    protected abstract ValueTask<bool> ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
+    protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         Exception? error = null;
+        var isStarted = false;
         try {
-            // Start delay
-            if (Command.PlayAt.HasValue) {
-                var playAt = Command.PlayAt.GetValueOrDefault();
-                await Clocks.CpuClock.Delay(playAt, cancellationToken).ConfigureAwait(false);
-            }
-
             // Actual playback
-            await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
             var frames = Source.GetFramesUntyped(cancellationToken);
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                if(!await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false)){
-                    break;
+                if (!isStarted) {
+                    // We do this here because we want to start buffering as early as possible
+                    isStarted = true;
+                    await Clocks.CpuClock.Delay(Command.PlayAt, cancellationToken).ConfigureAwait(false);
+                    OnPlayedTo(TimeSpan.Zero);
+                    await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
                 }
+                await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             }
             await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
             await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            error = ex;
-            Log.LogError(ex, "Failed to play media track");
+        catch (OperationCanceledException e) {
+            error = e;
+            throw;
+        }
+        catch (Exception e) {
+            error = e;
+            Log.LogError(e, "Media track playback failed");
+            throw;
         }
         finally {
             if (!WhenCompleted.IsCompleted) {
@@ -101,17 +106,22 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             catch (Exception e) {
                 Log.LogError(e, "Error on StateChanged handler(s) invocation");
             }
+            var parentState = state.ParentState;
+            if (parentState != null) {
+                if (!lastState.IsStarted && state.IsStarted)
+                    parentState.IncrementPlayingTrackCount();
+                if (state.IsCompleted && !lastState.IsCompleted)
+                    parentState.DecrementPlayingTrackCount();
+            }
         }
         if (state.IsCompleted)
             _whenCompletedSource.TrySetResult(default);
     }
 
     protected virtual void OnPlayedTo(TimeSpan offset)
-        => UpdateState(offset, (o, s) => {
-            var playingAt = s.SkipTo + o;
-            if (s.IsStarted && s.PlayingAt >= playingAt)
-                return s; // Sometimes these events come in a wrong order
-            return s with { IsStarted = true, PlayingAt = playingAt };
+        => UpdateState(offset, (o, s) => s with {
+            IsStarted = true,
+            PlayingAt = TimeSpanExt.Max(s.PlayingAt, s.SkipTo + o),
         });
 
     protected virtual void OnStopped(Exception? error = null)

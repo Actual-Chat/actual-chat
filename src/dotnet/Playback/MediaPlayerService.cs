@@ -7,10 +7,14 @@ namespace ActualChat.Playback;
 public abstract class MediaPlayerService : IMediaPlayerService
 {
     private static readonly TileStack<Moment> TimeTileStack = PlaybackConstants.TimeTileStack;
-    private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _playbackStates = new ();
+    private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _trackPlaybackStates = new ();
+    private static long _lastPlayIndex;
+
+    protected ILogger<MediaPlayerService> Log { get; }
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
 
     protected IServiceProvider Services { get; }
-    protected ILogger<MediaPlayerService> Log { get; }
     protected CancellationTokenSource StopTokenSource { get; }
     protected CancellationToken StopToken { get; }
 
@@ -20,7 +24,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
     {
         Log = log;
         Services = services;
-        StopTokenSource = new ();
+        StopTokenSource = new();
         StopToken = StopTokenSource.Token;
     }
 
@@ -31,64 +35,28 @@ public abstract class MediaPlayerService : IMediaPlayerService
     }
 
     /// <inheritdoc />
-    public async Task Play(IAsyncEnumerable<MediaPlayerCommand> commands, CancellationToken cancellationToken)
+    public MediaPlaybackState Play(
+        IAsyncEnumerable<MediaPlayerCommand> commands,
+        CancellationToken cancellationToken)
     {
-        using var linkedTokenSource = cancellationToken.LinkWith(StopToken);
-        var linkedToken = linkedTokenSource.Token;
+        var linkedTokenSource = cancellationToken.LinkWith(StopToken); // Dispose is handled via .ContinueWith later
 
-        var trackPlayers = new ConcurrentDictionary<Ref<PlayMediaTrackCommand>, MediaTrackPlayer>();
-        await foreach (var command in commands.WithCancellation(linkedToken).ConfigureAwait(false))
-            switch (command) {
-            case PlayMediaTrackCommand playTrackCommand:
-                var commandRef = Ref.New(playTrackCommand); // Reference-based comparison works faster for records
-                if (trackPlayers.ContainsKey(commandRef))
-                    continue;
-                var trackPlayer = CreateMediaTrackPlayer(playTrackCommand);
-                trackPlayers[commandRef] = trackPlayer;
-                trackPlayer.StateChanged += OnStateChanged;
-                _ = trackPlayer.Run(linkedToken).ContinueWith(
-                    _ => {
-                        trackPlayers.TryRemove(commandRef, out var _);
-                    },
-                    TaskScheduler.Default);
-                break;
-            case SetVolumeCommand setVolume:
-                var volumeTasks = trackPlayers.Values
-                    .Select(p => p.EnqueueCommand(new SetTrackVolumeCommand(p, setVolume.Volume)).AsTask())
-                    .ToArray();
-                await Task.WhenAll(volumeTasks).ConfigureAwait(false);
-                break;
-            case StopCommand stopCommand:
-                try {
-                    var stopTasks = trackPlayers.Values
-                        .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, true)).AsTask())
-                        .ToArray();
-                    await Task.WhenAll(stopTasks).ConfigureAwait(false);
-                }
-                finally {
-                    stopCommand.CommandProcessedSource.SetResult();
-                }
-                break;
-            default:
-                throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
-            }
+        var playbackState = new MediaPlaybackState {
+            StopToken =  linkedTokenSource.Token
+        };
+        playbackState.PlayingTask = BackgroundTask.Run(
+            () => PlayInternal(playbackState, commands),
+            playbackState.StopToken);
 
-        // TODO(AK): to make this code reachable, the command sequence must have an end
-        // ~= await Task.WhenAll(unfinishedPlayTasks).ConfigureAwait(false);
-        while (true) {
-            var (commandRef, trackPlayer) = trackPlayers.FirstOrDefault();
-            if (trackPlayer == null!)
-                break;
-
-            await (trackPlayer.RunningTask ?? Task.CompletedTask).ConfigureAwait(false);
-            trackPlayers.TryRemove(commandRef, trackPlayer);
-        }
+        // Disposal
+        var _ = playbackState.PlayingTask.ContinueWith(_ => linkedTokenSource.Dispose(), TaskScheduler.Default);
+        return playbackState;
     }
 
     public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
         Symbol trackId,
         CancellationToken cancellationToken)
-        => Task.FromResult(_playbackStates.GetValueOrDefault(trackId));
+        => Task.FromResult(_trackPlaybackStates.GetValueOrDefault(trackId));
 
     public virtual Task<MediaTrackPlaybackState?> GetMediaTrackPlaybackState(
         Symbol trackId,
@@ -96,7 +64,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
         CancellationToken cancellationToken)
     {
         TimeTileStack.AssertIsTile(timestampRange);
-        var state = _playbackStates.GetValueOrDefault(trackId);
+        var state = _trackPlaybackStates.GetValueOrDefault(trackId);
         if (state == null)
             return Task.FromResult(state);
 
@@ -105,12 +73,88 @@ public abstract class MediaPlayerService : IMediaPlayerService
         return Task.FromResult(result);
     }
 
-    public void RegisterDefaultMediaTrackState(MediaTrackPlaybackState state)
-        => _playbackStates[state.TrackId] = state;
-
     // Protected methods
 
-    protected abstract MediaTrackPlayer CreateMediaTrackPlayer(PlayMediaTrackCommand mediaTrack);
+    protected abstract MediaTrackPlayer CreateMediaTrackPlayer(
+        MediaPlaybackState playbackState,
+        PlayMediaTrackCommand playTrackCommand);
+
+    protected async Task PlayInternal(MediaPlaybackState playbackState, IAsyncEnumerable<MediaPlayerCommand> commands)
+    {
+        var cancellationToken = playbackState.StopToken;
+        var trackPlayers = playbackState.TrackPlayers;
+
+        var playIndex = Interlocked.Increment(ref _lastPlayIndex);
+        DebugLog?.LogDebug("Play #{PlayIndex}: started", playIndex);
+        var debugStopReason = "n/a";
+
+        try {
+            await foreach (var command in commands.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                DebugLog?.LogDebug("Play #{PlayIndex}: command {Command}", playIndex, command);
+                switch (command) {
+                case PlayMediaTrackCommand playTrackCommand: {
+                    // Reference-based comparison works faster for records.
+                    // The { } block here ensures captured commandRef
+                    // (a part of closure) won't be modified on every loop iteration.
+                    var commandRef = Ref.New(playTrackCommand);
+                    if (trackPlayers.ContainsKey(commandRef))
+                        continue;
+                    var trackPlayer = CreateMediaTrackPlayer(playbackState, playTrackCommand);
+                    trackPlayers[commandRef] = trackPlayer;
+                    trackPlayer.StateChanged += OnStateChanged;
+                    _ = trackPlayer.Run(cancellationToken).ContinueWith(
+                        _ => {
+                            trackPlayers.TryRemove(commandRef, out var _);
+                        },
+                        TaskScheduler.Default);
+                    break;
+                }
+                case SetVolumeCommand setVolume:
+                    var volumeTasks = trackPlayers.Values
+                        .Select(p => p.EnqueueCommand(new SetTrackVolumeCommand(p, setVolume.Volume)).AsTask())
+                        .ToArray();
+                    await Task.WhenAll(volumeTasks).ConfigureAwait(false);
+                    break;
+                case StopCommand stopCommand:
+                    try {
+                        var stopTasks = trackPlayers.Values
+                            .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, true)).AsTask())
+                            .ToArray();
+                        await Task.WhenAll(stopTasks).ConfigureAwait(false);
+                    }
+                    finally {
+                        stopCommand.CommandProcessedSource.SetResult();
+                    }
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
+                }
+            }
+            debugStopReason = "end of command sequence";
+        }
+        catch (OperationCanceledException) {
+            debugStopReason = "cancellation";
+            throw;
+        }
+        catch (Exception e) {
+            debugStopReason = "error";
+            Log.LogError(e, "Play #{PlayIndex}: failed", playIndex);
+            throw;
+        }
+        finally {
+            DebugLog?.LogDebug("Play #{PlayIndex}: waiting for track players to stop", playIndex);
+            // ~= await Task.WhenAll(unfinishedPlayTasks).ConfigureAwait(false);
+            while (true) {
+                var (commandRef, trackPlayer) = trackPlayers.FirstOrDefault();
+                if (trackPlayer == null!)
+                    break;
+
+                await (trackPlayer.RunningTask ?? Task.CompletedTask).ConfigureAwait(false);
+                trackPlayers.TryRemove(commandRef, trackPlayer);
+            }
+            DebugLog?.LogDebug("Play #{PlayIndex}: ended ({StopReason})", playIndex, debugStopReason);
+        }
+    }
 
     protected void OnStateChanged(MediaTrackPlaybackState lastState, MediaTrackPlaybackState state)
     {
@@ -119,9 +163,9 @@ public abstract class MediaPlayerService : IMediaPlayerService
         //     $"({state.PlayingAt}, {state.IsStarted}, {state.IsCompleted})");
         var trackId = state.TrackId;
         if (state.IsCompleted)
-            _playbackStates.TryRemove(trackId, out _);
+            _trackPlaybackStates.TryRemove(trackId, out _);
         else
-            _playbackStates[trackId] = state;
+            _trackPlaybackStates[trackId] = state;
 
         using (Computed.Invalidate()) {
             _ = GetMediaTrackPlaybackState(trackId, default);

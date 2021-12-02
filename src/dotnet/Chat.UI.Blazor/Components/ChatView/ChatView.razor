@@ -3,6 +3,7 @@
 @using ActualChat.Comparison
 
 <VirtualList
+    CssClass="@(this.ComponentCssClass())"
     SpacerSize="6000" LoadZoneSize="6000" BufferZoneSize="12000"
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">
@@ -10,6 +11,9 @@
         <ChatMessage Model="@context.Value" />
     </Item>
     <Skeleton>
+        @{
+            var rnd = new Random(context);
+        }
         <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
             <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
             <div class="flex-1 overflow-hidden">
@@ -17,7 +21,7 @@
                     <div class="font-bold bg-gray-200 rounded-md border-white border-2 w-32 h-4"></div>
                     <div class="bg-gray-200 w-10 h-4 rounded-md border-white border-2"></div>
                 </div>
-                <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: 30%;"></div>
+                <div class="leading-normal bg-gray-200 block h-4 rounded-md border-white border-2" style="width: @(30 + rnd.Next(70))%;"></div>
             </div>
         </div>
     </Skeleton>

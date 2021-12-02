@@ -2,26 +2,26 @@
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
 
-.chat-transcription {
+.chat-message-transcript {
     overflow-wrap: break-word;
     @apply text-current;
 }
 
-.chat-markup {
+.chat-message-markup {
     overflow-wrap: break-word;
     @apply text-current;
 }
 
-.chat-markup .playable {
+.chat-message-markup .playable {
     transition: color 300ms ease-in, text-shadow 300ms ease-in;
 }
 
-.chat-markup .playable:hover {
+.chat-message-markup .playable:hover {
     @apply text-blue-800 cursor-pointer;
     text-shadow: 0 0 2px #fff, 0 0 4px #BFDBFE, 0 0 8px #3B82F6;
 }
 
-.chat-markup .playing {
+.chat-message-markup .playing {
     @apply text-sky-600;
     text-shadow: 0 0 2px #fff, 0 0 4px #BAE6FD, 0 0 8px #0EA5E9;
 }

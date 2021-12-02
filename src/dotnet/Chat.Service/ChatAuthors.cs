@@ -5,7 +5,7 @@ using Stl.Redis;
 
 namespace ActualChat.Chat;
 
-public partial class ChatAuthorsService : DbServiceBase<ChatDbContext>, IChatAuthors, IChatAuthorsBackend
+public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, IChatAuthorsBackend
 {
     private readonly IAuth _auth;
     private readonly IUserInfos _userInfos;
@@ -15,7 +15,7 @@ public partial class ChatAuthorsService : DbServiceBase<ChatDbContext>, IChatAut
     private readonly ICommander _commander;
     private readonly IRandomNameGenerator _randomNameGenerator;
 
-    public ChatAuthorsService(
+    public ChatAuthors(
         IAuth auth,
         IUserInfos userInfos,
         IUserStates userStates,

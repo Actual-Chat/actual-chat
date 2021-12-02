@@ -97,7 +97,10 @@ public class AppHost : IDisposable
     }
 
     protected virtual void ConfigureAppConfiguration(IConfigurationBuilder appBuilder)
-        => AppConfigurationBuilder?.Invoke(appBuilder);
+    {
+        appBuilder.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
+        AppConfigurationBuilder?.Invoke(appBuilder);
+    }
 
     protected virtual void ConfigureAppServices(
         WebHostBuilderContext webHost,

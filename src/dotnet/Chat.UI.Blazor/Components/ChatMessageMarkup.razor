@@ -8,7 +8,7 @@
 @inject IMediaPlayerService _mediaPlayerService
 
 @if (Markup != null) {
-    <p class="chat-markup">
+    <p class="@(_componentCssClass ??= this.ComponentCssClass())">
         @foreach (var part in Markup.Parts) {
             @RenderPart(part)
         }
@@ -16,6 +16,8 @@
 }
 
 @code {
+    private static string? _componentCssClass;
+
     [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; set; } = null!;
     [Inject] private MarkupParser MarkupParser { get; set; } = null!;
     private ChatEntry Entry => Model.Entry;
@@ -33,6 +35,8 @@
     }
 
     protected override async Task<MediaTrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.AudioEntryId == null)
+            return null;
         var trackId = ChatMediaPlayer.GetAudioTrackId(Entry);
         return await _mediaPlayerService.GetMediaTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
     }

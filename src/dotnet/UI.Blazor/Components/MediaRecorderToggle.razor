@@ -1,0 +1,23 @@
+@namespace ActualChat.UI.Blazor.Components
+@inject IJSRuntime _js
+
+<div @onclick="@ToggleMediaRecorder" class="cursor-pointer select-none flex flex-row bg-gray-700 text-gray-400 text-xs py-2 px-2 rounded-lg opacity-75 hover:opacity-100">
+    <span>MediaRecorder: @_mediaRecorderType</span>
+</div>
+
+@code {
+    private string _mediaRecorderType = "wasm";
+    private const string _audioModuleImportName = "audio";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            _mediaRecorderType = await _js.InvokeAsync<string>($"{_audioModuleImportName}.AudioRecorder.getMediaRecorderType");
+    }
+
+    public async Task ToggleMediaRecorder()
+    {
+        _mediaRecorderType = _mediaRecorderType == "wasm" ? "standard" : "wasm";
+        var jsFunc = $"{_audioModuleImportName}.AudioRecorder.changeMediaRecorder";
+        await _js.InvokeVoidAsync(jsFunc, _mediaRecorderType == "standard").ConfigureAwait(false);
+    }
+}
