@@ -8,7 +8,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
 {
     private static readonly TileStack<Moment> TimeTileStack = PlaybackConstants.TimeTileStack;
     private readonly ConcurrentDictionary<Symbol, MediaTrackPlaybackState> _trackPlaybackStates = new ();
-    private static long _playIndex;
+    private static long _lastPlayIndex;
 
     protected ILogger<MediaPlayerService> Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -84,7 +84,7 @@ public abstract class MediaPlayerService : IMediaPlayerService
         var cancellationToken = playbackState.StopToken;
         var trackPlayers = playbackState.TrackPlayers;
 
-        var playIndex = Interlocked.Increment(ref _playIndex);
+        var playIndex = Interlocked.Increment(ref _lastPlayIndex);
         DebugLog?.LogDebug("Play #{PlayIndex}: started", playIndex);
         var debugStopReason = "n/a";
 
