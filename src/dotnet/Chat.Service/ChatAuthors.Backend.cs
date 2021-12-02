@@ -87,7 +87,7 @@ public partial class ChatAuthors
 
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNone) {
-            var name = _randomNameGenerator.Generate('_', true);
+            var name = _randomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
                 Picture = "",
