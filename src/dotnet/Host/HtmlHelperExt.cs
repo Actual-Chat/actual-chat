@@ -36,7 +36,8 @@ public static class HtmlHelperExt
             try {
                 return await html.RenderComponentAsync<App>(
                     isServerSideBlazor ? RenderMode.ServerPrerendered : RenderMode.WebAssemblyPrerendered,
-                    new { SessionId = sessionId });
+                    new { SessionId = sessionId }
+                    ).ConfigureAwait(false);
             }
             catch (InvalidOperationException) {
                 if (++errorCount > 3)

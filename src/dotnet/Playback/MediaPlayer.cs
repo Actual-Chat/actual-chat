@@ -4,10 +4,11 @@ namespace ActualChat.Playback;
 
 public sealed class MediaPlayer : IAsyncDisposable
 {
-    private CancellationTokenSource StopCts { get; set; }
     private ILogger<MediaPlayer> Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+
+    private CancellationTokenSource StopCts { get; set; } = null!;
 
     public IMediaPlayerService MediaPlayerService { get; }
     public Channel<MediaPlayerCommand> Queue { get; private set; } = null!;
@@ -90,7 +91,7 @@ public sealed class MediaPlayer : IAsyncDisposable
         }
         StopCts.CancelAndDisposeSilently();
         Reset();
-        await playingTask.SuppressExceptions();
+        await playingTask.SuppressExceptions().ConfigureAwait(false);
     }
 
     // Private methods

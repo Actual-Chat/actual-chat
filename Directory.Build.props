@@ -50,14 +50,15 @@
     <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
     <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
 
-    <!-- Suppressed warnings -->
-    <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
-    <!-- NU5048: The 'PackageIconUrl' 'iconUrl' element is deprecated -->
-    <!-- MA0048: File name must match type name -->
-    <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
+    <!-- Suppressed warnings (please sort alphabetically!) -->
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
-    <!-- TODO: Remove MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed -->
-    <NoWarn>$(NoWarn);RCS1047;CS1591;MA0048;NU5105;NU5048;MA0004;VSTHRD003</NoWarn>
+    <!-- MA0009: Regular expressions should not be vulnerable to Denial of Service attacks -->
+    <!-- MA0048: File name must match type name -->
+    <!-- NU5048: The 'PackageIconUrl' 'iconUrl' element is deprecated -->
+    <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
+    <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
+    <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
+    <NoWarn>$(NoWarn);CS1591;MA0009;MA0048;NU5048;NU5105;RCS1047;VSTHRD003</NoWarn>
 
     <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
     <EnableSourceLink>false</EnableSourceLink>

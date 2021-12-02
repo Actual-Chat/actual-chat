@@ -76,7 +76,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
             });
             await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
-            await foreach (var frame in audioSource.GetFrames(_cts.Token)) {
+            await foreach (var frame in audioSource.GetFrames(_cts.Token).ConfigureAwait(true)) {
                 if (false) {
                     _log.LogInformation(
                         "Send the frame data to js side (bytes: {FrameBytes}, offset sec: {FrameOffset}, duration sec: {FrameDuration})",
@@ -84,10 +84,11 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = jsRef.InvokeVoidAsync("appendAudioAsync", _cts.Token, frame.Data, frame.Offset.TotalSeconds);
+                _ = jsRef.InvokeVoidAsync("appendAudioAsync", _cts.Token, frame.Data, frame.Offset.TotalSeconds)
+                    .ConfigureAwait(true);
             }
             if (!_cts.Token.IsCancellationRequested)
-                _ = jsRef.InvokeVoidAsync("endOfStream");
+                _ = jsRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
         }
     }
     [JSInvokable]

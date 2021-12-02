@@ -5,7 +5,7 @@ namespace ActualChat;
 public static class StringExt
 {
     private static readonly Regex CaseChangeRegex =
-        new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled);
+        new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
 
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");

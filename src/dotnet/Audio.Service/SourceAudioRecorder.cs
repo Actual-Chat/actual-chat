@@ -58,7 +58,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         async Task DelayedStreamerRemoval()
         {
             await _clocks.CpuClock.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
-            await streamer.Remove();
+            await streamer.Remove().ConfigureAwait(false);
         }
     }
 
