@@ -159,18 +159,6 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
             : throw new InvalidOperationException("Provided chat entry has no associated audio track.");
     }
 
-    public static Symbol GetVideoTrackId(ChatEntry chatEntry)
-    {
-        var entryId = chatEntry.Type switch {
-            ChatEntryType.Text => chatEntry.VideoEntryId ?? -1,
-            ChatEntryType.Video => chatEntry.Id,
-            _ => -1,
-        };
-        return entryId >= 0
-            ? ZString.Concat("video:", chatEntry.ChatId, ":", entryId)
-            : throw new InvalidOperationException("Provided chat entry has no associated video track.");
-    }
-
     // Private  methods
 
     private async Task<Symbol> EnqueueEntry(

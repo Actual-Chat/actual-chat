@@ -4,11 +4,11 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class UserAuthorsService : DbServiceBase<UsersDbContext>, IUserAuthorsBackend
+public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBackend
 {
     private readonly IUserInfos _userInfos;
 
-    public UserAuthorsService(IUserInfos userInfos, IServiceProvider services)
+    public UserAuthorsBackend(IUserInfos userInfos, IServiceProvider services)
         : base(services)
         => _userInfos = userInfos;
 
