@@ -10,6 +10,9 @@ public static class StringExt
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
 
+    public static string Capitalize(this string s)
+        => s.IsNullOrEmpty() ? s : s[..1].ToUpperInvariant() + s[1..];
+
     public static (string Host, ushort Port) ParseHostPort(this string hostPort, ushort defaultPort)
     {
         var (host, port) = hostPort.ParseHostPort();
