@@ -25,7 +25,7 @@ public class TestListService
     public virtual async Task<VirtualListData<string>> GetItemKeys(
         VirtualListDataQuery query, CancellationToken cancellationToken)
     {
-        var range = await GetListRange(cancellationToken);
+        var range = await GetListRange(cancellationToken).ConfigureAwait(false);
         if (query.InclusiveRange == default) {
             var key = _resetToBottom ? range.End : _resetToTop ? 0 : range.Start + (range.End - range.Start) / 2;
             query = query with { InclusiveRange = new Range<string>(
@@ -50,7 +50,7 @@ public class TestListService
             item => item,
             start == range.Start,
             end == range.End);
-        await Task.Delay(100, cancellationToken);
+        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -58,15 +58,15 @@ public class TestListService
     public virtual async Task<TestListItem> GetItem(string key, CancellationToken cancellationToken)
     {
         var intKey = int.Parse(key, NumberStyles.Integer, CultureInfo.InvariantCulture);
-        var seed = await GetSeed(cancellationToken);
-        var range = await GetListRange(cancellationToken);
+        var seed = await GetSeed(cancellationToken).ConfigureAwait(false);
+        var range = await GetListRange(cancellationToken).ConfigureAwait(false);
         var rnd = new Random(intKey + (intKey + seed) / 10);
         var fontSize = 1 + rnd.NextDouble();
         if (fontSize > 1.95)
             fontSize = 3;
         var wordCount = rnd.Next(20);
         if (intKey == range.End)
-            wordCount = await GetWordCount(cancellationToken);
+            wordCount = await GetWordCount(cancellationToken).ConfigureAwait(false);
         return new TestListItem(
             intKey,
             $"#{key}",

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Blazor;
 
@@ -74,9 +73,9 @@ public class ChatMediaPlayers : IAsyncDisposable
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
         if (player != null)
-            await player.DisposeAsync();
+            await player.DisposeAsync().ConfigureAwait(false);
         player = HistoricalPlayers.GetValueOrDefault(chatId);
         if (player != null)
-            await player.DisposeAsync();
+            await player.DisposeAsync().ConfigureAwait(false);
     }
 }
