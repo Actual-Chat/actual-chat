@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatMediaPlayer : IAsyncDisposable
 {
-    private static long _playIndex;
+    private static long _lastPlayIndex;
 
     private IChats Chats { get; }
     private IChatAuthors ChatAuthors { get; }
@@ -62,7 +62,7 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         var nowOffset = IsRealTimePlayer ? RealtimeNowOffset : TimeSpan.Zero;
         var chatAuthor = (ChatAuthor?) null;
 
-        var playIndex = Interlocked.Increment(ref _playIndex);
+        var playIndex = Interlocked.Increment(ref _lastPlayIndex);
         var playId = $"{playIndex} (chat #{ChatId}, {(IsRealTimePlayer ? "real-time" : "historical")})";
         var debugStopReason = "n/a";
         DebugLog?.LogDebug("Play #{PlayId}: started @ {StartAt}", playId, startAt);
