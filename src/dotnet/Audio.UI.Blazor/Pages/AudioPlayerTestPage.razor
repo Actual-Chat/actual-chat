@@ -1,12 +1,24 @@
 @page "/test/audio-player"
 @namespace ActualChat.Audio.UI.Blazor
 
-<div class="px-6 pt-6">
+<div class="px-6 pt-6 flex flex-col">
     <h1 class="block text-3xl text-bold mb-6">Audio player test page</h1>
-    <div class="mt-1 text-xl text-bold">IsPlaying: @_isPlaying</div>
-    <div class="mt-1 text-xl text-bold">MediaElementReadyState: @ToMediaElementReadyState(_prevMediaElementReadyState)</div>
-    <div class="mt-1 text-xl text-bold">Offset: @_offset</div>
-    <button onclick="@OnClick" class="mt-3 px-8 py-2 text-gray-50 rounded-md @(_isPlaying ? "bg-red-700" : "bg-green-700")">@(_isPlaying ? "Stop" : "Play")</button>
-    <audio controls="" name="media"><source src="https://dev.actual.chat/api/audio/download/audio-record/01FNB06R1YHJCT793JV1CVD79M/0000.webm" type="audio/webm"></audio>
-</div>
+    <div class="mt-1 text-xl text-bold">
+        <label for="url" >URL:</label>
+        <input id="url" class="w-full mt-1 p-1 text-lg bg-gray-50 focus:outline-none border border-gray-200 rounded text-gray-600" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
+    </div>
+    <div class="mt-6 text-xl text-bold bg-green-50 p-3 rounded-2xl">
+        <p class="text-2xl text-bold mb-3 text-indigo-500">Our audio-player.ts tag:</p>
+        <p>IsPlaying: @_isPlaying</p>
+        <p>MediaElementReadyState: @ToMediaElementReadyState(_prevMediaElementReadyState)</p>
+        <p>Offset: @_offset</p>
+        <button onclick="@OnClick" class="mt-3 px-8 py-2 text-gray-50 rounded-md @(_isPlaying ? "bg-red-700" : "bg-green-700")">@(_isPlaying ? "Stop" : "Play")</button>
+    </div>
+    <div class="mt-6 bg-red-50 rounded-2xl p-3">
+        <p class="text-2xl text-bold text-indigo-500 mb-3">Default &lt;audio&gt; player:</p>
+        <audio controls="" name="media">
+            <source src="@_uri" type="audio/webm">
+        </audio>
 
+    </div>
+</div>
