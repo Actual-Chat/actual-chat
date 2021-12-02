@@ -7,12 +7,27 @@
 @layer base {
   :root {
     --background-primary: #051D43;
+    --background-primary-muted: #0C46A2;
     --background-secondary: #E5E5E5;
     --background-accent: #DBEAFE;
     --text-color-primary: #ffffff;
     --text-color-primary-muted: #E5E5E5;
     --text-color-secondary: #262626;
     --text-color-secondary-muted: #525252;
+    --button-color-success: #16A34A;
+    --button-color-success-hover: #22C55E;
+    --button-color-accent: #ffffff;
+    --button-color-accent-hover: #FAFAFA;
+  }
+  .theme-light {
+    --background-primary: #64b5f6;
+    --background-primary-muted: #bbdefb;
+    --background-secondary: #4fc3f7;
+    --background-accent: #2196f3;
+    --text-color-primary: #262626;
+    --text-color-primary-muted: #525252;
+    --text-color-secondary: #ffffff;
+    --text-color-secondary-muted: #ffffff;
     --button-color-success: #16A34A;
     --button-color-success-hover: #22C55E;
     --button-color-accent: #ffffff;

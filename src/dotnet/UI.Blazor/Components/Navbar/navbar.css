@@ -15,15 +15,15 @@
 }
 
 .navbar-icon {
-    @apply text-primaryMuted hover:text-primary fill-current;
+    @apply text-primary-muted hover:text-primary fill-current;
 }
 
 .navbar-links-group {
-    @apply text-secondaryMuted text-xs uppercase font-medium;
+    @apply text-secondary-muted text-xs uppercase font-medium;
 }
 
 .navbar-version {
-    @apply flex flex-row justify-start items-center text-xxs text-primaryMuted mb-1;
+    @apply flex flex-row justify-start items-center text-xxs text-primary-muted mb-1;
 }
 
 .blazor-mode-toggle {
@@ -36,7 +36,7 @@
 }
 
 .visible-blazor-mode-toggle {
-    @apply text-primaryMuted text-xxs cursor-pointer select-none;
+    @apply text-primary-muted text-xxs cursor-pointer select-none;
 }
 
 .hidden-blazor-mode-toggle {
@@ -49,4 +49,24 @@
 
 .blazor-mode-toggle:hover .hidden-blazor-mode-toggle {
     @apply opacity-100 w-auto h-auto text-primary text-xxs;
+}
+
+.account-dropdown {
+    @apply flex flex-row justify-between items-center w-full pt-3 border-t border-primary-muted;
+}
+
+.account-authorized-menu {
+    @apply py-1 rounded-md bg-secondary shadow-lg mb-1 relative select-none;
+}
+
+.account-authorized-menu > .menu-item {
+    @apply block px-4 py-2 text-sm text-secondary hover:bg-accent;
+}
+
+.signin-button {
+    @apply bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover inline-flex justify-center w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 transition duration-150 ease-in-out rounded-md outline-none;
+}
+
+.signin-button > .button-text {
+    @apply animate-bounce text-primary fill-current;
 }

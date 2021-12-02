@@ -20,20 +20,27 @@ module.exports = ctx => {
         extend: {
           textColor: {
             primary: 'var(--text-color-primary)',
-            primaryMuted: 'var(--text-color-primary-muted)',
+            'primary-muted': 'var(--text-color-primary-muted)',
             secondary: 'var(--text-color-secondary)',
-            secondaryMuted: 'var(--text-color-secondary-muted)',
+            'secondary-muted': 'var(--text-color-secondary-muted)',
+          },
+          borderColor: {
+            primary: 'var(--background-primary)',
+            'primary-muted': 'var(--background-primary-muted)',
+            secondary: 'var(--background-secondary)',
+            accent: 'var(--background-accent)',
+            success: 'var(--button-color-success)',
+            'success-muted': 'var(--button-color-success-hover)',
           },
           backgroundColor: {
             primary: 'var(--background-primary)',
+            'primary-muted': 'var(--background-primary-muted)',
             secondary: 'var(--background-secondary)',
             accent: 'var(--background-accent)',
-          },
-          buttonColor: {
-            success: 'var(--button-color-success)',
-            successHover: 'var(--button-color-success-hover)',
-            accent: 'var(--button-color-accent)',
-            accentHover: 'var(--button-color-accent-hover)',
+            'button-success': 'var(--button-color-success)',
+            'button-success-hover': 'var(--button-color-success-hover)',
+            'button-accent': 'var(--button-color-accent)',
+            'button-accent-hover': 'var(--button-color-accent-hover)',
           },
         },
         screens: {
