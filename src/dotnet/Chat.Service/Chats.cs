@@ -67,6 +67,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         return await GetEntryCount(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
+    // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(
         Session session,

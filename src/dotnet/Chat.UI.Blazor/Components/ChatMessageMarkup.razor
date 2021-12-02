@@ -35,6 +35,8 @@
     }
 
     protected override async Task<MediaTrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.AudioEntryId == null)
+            return null;
         var trackId = ChatMediaPlayer.GetAudioTrackId(Entry);
         return await _mediaPlayerService.GetMediaTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
     }

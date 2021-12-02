@@ -21,14 +21,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-    {
-        RealtimePlayer = await ChatMediaPlayers.GetRealtimePlayer(Chat.Id);
-        _ = BackgroundTask.Run(
-            () => RealtimePlayer.Play(),
-            Log, "Realtime playback failed");
-    }
-
     public ValueTask DisposeAsync()
         => ChatMediaPlayers.DisposePlayers(Chat.Id);
 
@@ -45,7 +37,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         if (query.InclusiveRange == default)
             query = query with {
                 InclusiveRange = new(
-                    (chatIdRange.End - IdTileStack.MinTileSize).ToString(CultureInfo.InvariantCulture),
+                    (chatIdRange.End - IdTileStack.MinTileSize * 2).ToString(CultureInfo.InvariantCulture),
                     chatIdRange.End.ToString(CultureInfo.InvariantCulture)),
             };
 
