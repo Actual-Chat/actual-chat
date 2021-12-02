@@ -13,22 +13,22 @@
                 <div class="relative">
                     <div class="relative">
                         <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden")">
-                            <div class="account-authorized-menu">
+                            <div class="menu">
                                 <span class="menu-item">Settings</span>
                                 <a @onclick="SignOut" href="#" class="menu-item">Sign out</a>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <button @onclick="() => IsOpen = !IsOpen" class="max-w-xs flex items-center text-sm rounded-full text-primary-muted outline-none">
+                    <div class="account-dropdown-block">
+                        <button @onclick="() => IsOpen = !IsOpen" class="account-button">
                             <img class="inline-block h-8 w-8 rounded-full" src="@picture" alt="avatar">
                             <div class="ml-3">
-                                <p class="text-sm leading-5 font-medium text-primary-muted hover:text-primary">
+                                <p class="username">
                                     @User.Name
                                 </p>
                                 <div class="flex flex-row items-center px-1">
-                                    <span class="rounded-full block w-2 h-2 mr-2 bg-button-success"></span>
-                                    <span class="text-primary-muted font-medium text-xxs text-left leading-4 hover:text-primary"><a href="#">Online</a></span>
+                                    <span class="status-icon"></span>
+                                    <span class="status"><a href="#">Online</a></span>
                                 </div>
                             </div>
                         </button>
@@ -43,7 +43,7 @@
                 <div class="relative">
                     <div class="relative">
                         <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden")">
-                            <div class="account-authorized-menu">
+                            <div class="menu">
                                 @foreach (var (name, displayName) in unusedAuthSchemas) {
                                     <a @onclick="@(_ => SignIn(name))" href="#" class="menu-item">
                                         Sign in with @displayName
@@ -54,8 +54,8 @@
                     </div>
                     <div>
                         <button @onclick="() => IsOpen = !IsOpen" class="signin-button" type="button" aria-haspopup="true" aria-expanded="true" aria-controls="account-dropdown-items">
-                            <span class="button-text">Sign in</span>
-                            <svg class="button-text ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
+                            <span class="signin-text">Sign in</span>
+                            <svg class="signin-text ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
                         </button>
                     </div>
                 </div>
