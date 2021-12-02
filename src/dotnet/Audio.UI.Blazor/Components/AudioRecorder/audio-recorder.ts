@@ -14,7 +14,10 @@ const workerOptions = {
 const OpusMediaRecorderWrapper = Object.assign(function (stream: MediaStream, options?: MediaRecorderOptions) {
     console.warn(`Constructor call options: ${JSON.stringify(options)}`);
     return new OpusMediaRecorder(stream, options, workerOptions);
-}, OpusMediaRecorder)
+}, OpusMediaRecorder);
+
+self["StandardMediaRecorder"] = self.MediaRecorder;
+self["OpusMediaRecorder"] = OpusMediaRecorderWrapper;
 
 self.MediaRecorder = OpusMediaRecorderWrapper;
 
@@ -62,6 +65,14 @@ export class AudioRecorder {
 
     public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         return new AudioRecorder(blazorRef, debugMode);
+    }
+
+    public static changeMediaRecorder(useStandardRecorder: boolean) {
+        self.MediaRecorder = useStandardRecorder ? self["StandardMediaRecorder"] : self["OpusMediaRecorder"];
+    }
+
+    public static getMediaRecorderType(): string {
+        return self.MediaRecorder === self["StandardMediaRecorder"] ? "standard" : "wasm";
     }
 
     public dispose() {
