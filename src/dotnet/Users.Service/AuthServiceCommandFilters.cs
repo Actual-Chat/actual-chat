@@ -34,12 +34,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        try {
-            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-        }
-        finally {
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        if (!Computed.IsInvalidating())
             await ResetSessionOptions().ConfigureAwait(false);
-        }
 
         async Task ResetSessionOptions()
         {
