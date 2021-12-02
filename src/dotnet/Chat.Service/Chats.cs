@@ -4,7 +4,7 @@ using Stl.Redis;
 
 namespace ActualChat.Chat;
 
-public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
+public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
@@ -16,7 +16,7 @@ public partial class ChatService : DbServiceBase<ChatDbContext>, IChats, IChatsB
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
     private readonly ICommander _commander;
 
-    public ChatService(
+    public Chats(
         IAuth auth,
         IAuthBackend authBackend,
         IChatAuthors chatAuthors,

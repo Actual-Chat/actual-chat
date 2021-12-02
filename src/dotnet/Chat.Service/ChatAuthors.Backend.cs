@@ -5,7 +5,7 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public partial class ChatAuthorsService
+public partial class ChatAuthors
 {
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(

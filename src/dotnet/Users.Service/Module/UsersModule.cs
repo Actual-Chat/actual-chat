@@ -110,10 +110,10 @@ public class UsersModule : HostModule<UsersSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IUserInfos, UserInfosService>();
-        fusion.AddComputeService<IUserStates, UserStatesService>();
-        fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsService>();
-        fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsService>();
+        fusion.AddComputeService<IUserInfos, UserInfos>();
+        fusion.AddComputeService<IUserStates, UserStates>();
+        fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
+        fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();
         services.AddSingleton<ClaimMapper>();
