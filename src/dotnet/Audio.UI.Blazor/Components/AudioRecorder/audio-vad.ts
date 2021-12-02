@@ -168,7 +168,7 @@ export class VoiceActivityDetector {
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged[]> {
         if (this._session === null) {
-            this._session = await ort.InferenceSession.create(this._modelUri, {
+            this._session = await ort.InferenceSession.create(this._modelUri.toString(), {
                 enableCpuMemArena: false,
                 executionMode: 'parallel',
                 graphOptimizationLevel: 'basic',
