@@ -44,7 +44,7 @@ public class AppHost : IDisposable
         {
             try {
                 log.LogInformation("{DbInitializer} started", dbInitializer.GetType().Name);
-                await dbInitializer.Initialize(cancellationToken);
+                await dbInitializer.Initialize(cancellationToken).ConfigureAwait(false);
                 log.LogInformation("{DbInitializer} completed", dbInitializer.GetType().Name);
                 taskSource.TrySetResult(default);
             }
@@ -68,7 +68,7 @@ public class AppHost : IDisposable
         var tasks = initializeTaskSources
             .Select(kv => InitializeOne(kv.Key, kv.Value))
             .ToArray();
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
         // await Task.Delay(100, cancellationToken); // Just in case
     }
 
