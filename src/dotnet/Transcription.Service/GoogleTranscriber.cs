@@ -76,7 +76,7 @@ public class GoogleTranscriber : ITranscriber
         CancellationToken cancellationToken)
     {
         try {
-            await foreach (var part in audioStream.WithCancellation(cancellationToken)) {
+            await foreach (var part in audioStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
                     AudioContent = ByteString.CopyFrom(part.ToBlobPart().Data),
                 };
@@ -93,7 +93,7 @@ public class GoogleTranscriber : ITranscriber
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var updateExtractor = new TranscriptUpdateExtractor();
-        await foreach (var response in recognizeResponses.WithCancellation(cancellationToken)) {
+        await foreach (var response in recognizeResponses.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             ProcessResponse(response);
             while (updateExtractor.Updates.TryDequeue(out var update))
                 yield return update;

@@ -34,7 +34,8 @@ public static class BlobStreamExt
             response.EnsureSuccessStatusCode();
         }
         try {
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await using var _ = stream.ConfigureAwait(false);
             var blobStream = stream.ReadBlobStream(false, cancellationToken);
             await foreach (var blobPart in blobStream.ConfigureAwait(false))
                 yield return blobPart;

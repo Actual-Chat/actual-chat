@@ -116,17 +116,18 @@ public class AudioTrackPlayer : MediaTrackPlayer, IAudioPlayerBackend
                         _jsRef = await _js.InvokeAsync<IJSObjectReference>(
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                             _blazorRef,
-                            DebugMode);
-                        await _jsRef!.InvokeVoidAsync("initialize", _header);
+                            DebugMode
+                            ).ConfigureAwait(true);
+                        await _jsRef!.InvokeVoidAsync("initialize", _header).ConfigureAwait(true);
                         break;
                     case StopPlaybackCommand stop:
                         if (_jsRef == null)
                             break;
 
                         if (stop.Immediately)
-                            await _jsRef.InvokeVoidAsync("stop", null);
+                            await _jsRef.InvokeVoidAsync("stop", null).ConfigureAwait(true);
                         else
-                            await _jsRef.InvokeVoidAsync("endOfStream");
+                            await _jsRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
                         break;
                     case SetTrackVolumeCommand setVolume:
                         // TODO: Implement this
