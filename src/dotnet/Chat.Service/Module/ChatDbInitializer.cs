@@ -69,7 +69,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             await AddAudioBlob("0001.webm", "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm", cancellationToken)
                 .ConfigureAwait(false);
 
-            await AddRandomEntries(dbContext, dbChat, dbAuthor, 0.5, 50, cancellationToken).ConfigureAwait(false);
+            var now = Clocks.SystemClock.Now;
+            await AddRandomEntries(dbContext, dbChat, dbAuthor, 0.5, 100, null, cancellationToken).ConfigureAwait(false);
+            await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
         }
 
         if (DbInfo.ShouldVerifyDb) {
@@ -105,15 +107,17 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         DbChatAuthor dbAuthor,
         double audioRecordProbability,
         int count,
+        Moment? beginsAt,
         CancellationToken cancellationToken)
     {
-        var lastId = 0L;
-        var lastBeginsAt = SystemClock.Now - TimeSpan.FromDays(1);
+        var lastId = await dbContext.ChatEntries
+            .Select(e => e.Id)
+            .OrderByDescending(v => v)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
-        if (await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {
-            lastId = await dbContext.ChatEntries
-                .Select(e => e.Id)
-                .MaxAsync(cancellationToken).ConfigureAwait(false);
+        if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {
             lastBeginsAt = await dbContext.ChatEntries
                     .Select(e => e.BeginsAt)
                     .MaxAsync(cancellationToken).ConfigureAwait(false);
@@ -125,7 +129,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         var rnd = new Random(1);
         for (var i = 0; i < count; i++) {
-            if (i == 0)
+            if (i == 0 && !beginsAt.HasValue)
                 AddTextEntry("First");
             else if (rnd.NextDouble() <= audioRecordProbability) {
                 if (i % 2 == 0)

@@ -68,15 +68,18 @@ public sealed class ChatMediaPlayer : IAsyncDisposable
         DebugLog?.LogDebug("Play #{PlayId}: started @ {StartAt}", playId, startAt);
         try {
             var entryReader = Chats.CreateEntryReader(Session, ChatId);
-            var startEntryId = await entryReader
-                .GetNextEntryId(startAt - Constants.Chat.MaxEntryDuration, cancellationToken)
+            var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
+            var startEntry = await entryReader
+                .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
                 .ConfigureAwait(false);
+            idRange = (startEntry?.Id ?? idRange.Start, idRange.End);
             var now = clock.Now + nowOffset;
             var realtimeOffset = IsRealTimePlayer ? TimeSpan.Zero : now - startAt;
             var realtimeBlockEnd = now;
 
-            var entries = entryReader
-                .GetAllAfter(startEntryId, IsRealTimePlayer, cancellationToken)
+            var entries = (IsRealTimePlayer
+                ? entryReader.ReadAllWaitingForNew(idRange.Start, cancellationToken)
+                : entryReader.ReadAll(idRange, cancellationToken))
                 .Where(e => e.Type == ChatEntryType.Audio);
             await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 if (entry.EndsAt < startAt) // We're normally starting @ (startAt - ChatConstants.MaxEntryDuration),
