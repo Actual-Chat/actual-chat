@@ -86,6 +86,7 @@ module.exports = (env, args) => {
     // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
+      new WorkerUrlPlugin(),
       new MiniCssExtractPlugin({
         filename: '[name].css',
         ignoreOrder: true,
@@ -98,7 +99,6 @@ module.exports = (env, args) => {
           { from: 'node_modules/onnxruntime-web/dist/*.wasm', to: 'wasm/[name][ext]' },
         ]
       }),
-      new WorkerUrlPlugin(),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
