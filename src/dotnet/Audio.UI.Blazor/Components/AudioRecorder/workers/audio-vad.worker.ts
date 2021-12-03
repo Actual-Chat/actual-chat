@@ -1,17 +1,16 @@
-//import {default as Denque} from 'denque';
 import Denque from 'denque';
-import {adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector} from "./audio-vad"
-import {VadMessage} from "./audio-vad.message";
+import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
+import { VadMessage } from "../audio-vad.message";
+import OnnxModel from '../vad-model-mini.onnx';
 
-
-const voiceDetector = new VoiceActivityDetector(new URL('./vad-model-mini.onnx', import.meta.url));
+const voiceDetector = new VoiceActivityDetector(OnnxModel);
 const queue = new Denque<ArrayBuffer>();
 
 let workletPort: MessagePort = null;
 let isVadRunning: boolean = false;
 
 onmessage = (ev) => {
-    const {topic}: VadMessage = ev.data;
+    const { topic }: VadMessage = ev.data;
 
     switch (topic) {
         case 'init-port':
@@ -25,7 +24,7 @@ onmessage = (ev) => {
 };
 
 const onWorkletMessage = async (ev: MessageEvent<VadMessage>) => {
-    const {topic, buffer}: VadMessage = ev.data;
+    const { topic, buffer }: VadMessage = ev.data;
 
     let vadBuffer: ArrayBuffer;
     switch (topic) {
@@ -59,7 +58,7 @@ async function processQueue(): Promise<void> {
         const adjustedVadEvents = adjustChangeEventsToSeconds(vadEvents);
 
         sendResult(adjustedVadEvents);
-        workletPort.postMessage({topic: "buffer", buffer: buffer}, [buffer]);
+        workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
 
     } catch (error) {
         isVadRunning = false;

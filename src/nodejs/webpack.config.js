@@ -1,5 +1,4 @@
 //@ts-check
-
 'use strict';
 
 // https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
@@ -23,11 +22,7 @@ class WatchRunPlugin {
 }
 
 const path = require('path');
-//const fs = require("fs");
-// entry: () => fs.readdirSync("./React/").filter(f => f.endsWith(".js")).map(f => `./React/${f}`),
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const CopyPlugin = require("copy-webpack-plugin");
-const WorkerUrlPlugin = require('worker-url/plugin');
 
 /**
  * @param {string} file
@@ -86,19 +81,13 @@ module.exports = (env, args) => {
     // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
-      new WorkerUrlPlugin(),
+      // @ts-ignore
       new MiniCssExtractPlugin({
         filename: '[name].css',
         ignoreOrder: true,
         experimentalUseImportModule: true,
       }),
       new WatchRunPlugin(),
-      new CopyPlugin({
-        // Use copy plugin to copy *.wasm to output folder.
-        patterns: [
-          { from: 'node_modules/onnxruntime-web/dist/*.wasm', to: 'wasm/[name][ext]' },
-        ]
-      }),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
@@ -154,7 +143,7 @@ module.exports = (env, args) => {
           test: /\.onnx$/i,
           type: 'asset/resource',
           generator: {
-            filename: 'models/[name][ext][query]'
+            filename: 'wasm/[name].bin'
           }
         },
         {
@@ -167,9 +156,13 @@ module.exports = (env, args) => {
       ]
     },
     entry: {
+      vadWorklet: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts',
+      vadWorker: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts',
+      encoderWorker: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoderWorker.ts',
       bundle: './index.ts',
     },
     output: {
+      clean: true,
       path: outputPath,
       globalObject: 'globalThis',
       filename: '[name].js',
