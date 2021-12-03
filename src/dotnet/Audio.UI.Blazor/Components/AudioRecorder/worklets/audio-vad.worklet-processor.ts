@@ -1,13 +1,17 @@
-import {RingBuffer} from "./ring-buffer";
-import {VadMessage} from "./audio-vad.message";
+import { RingBuffer } from "./ring-buffer";
+import { VadMessage } from "../audio-vad.message";
 
 const SamplesPerWindow = 4000;
 
-export class VadAudioWorkletProcessor extends AudioWorkletProcessor implements IAudioWorkletProcessor {
+export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private readonly _buffer: RingBuffer;
     private readonly _bufferDeque: ArrayBuffer[];
 
     private _workerPort: MessagePort;
+
+    static get parameterDescriptors() {
+        return [];
+    }
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -20,7 +24,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor implements I
         this._bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
 
         this.port.onmessage = (ev) => {
-            const {topic}: VadMessage = ev.data;
+            const { topic }: VadMessage = ev.data;
 
             switch (topic) {
                 case 'init-port':
@@ -33,7 +37,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor implements I
         };
     }
 
-    public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array }): boolean {
+    public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
         const input = inputs[0];
         const output = outputs[0];
 
@@ -56,7 +60,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor implements I
 
             if (this._buffer.pull(vadBuffer)) {
                 if (this._workerPort !== undefined) {
-                    this._workerPort.postMessage({topic: 'buffer', buffer: vadArrayBuffer}, [vadArrayBuffer]);
+                    this._workerPort.postMessage({ topic: 'buffer', buffer: vadArrayBuffer }, [vadArrayBuffer]);
                 } else {
                     console.log('worklet port is still undefined');
                 }
@@ -69,7 +73,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor implements I
     }
 
     private onWorkerMessage(ev: MessageEvent<VadMessage>) {
-        const {topic, buffer} = ev.data;
+        const { topic, buffer } = ev.data;
 
         switch (topic) {
             case 'buffer':
