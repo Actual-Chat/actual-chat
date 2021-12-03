@@ -1,5 +1,6 @@
 using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Playback;
+using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -52,9 +53,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                _cts.Token,
-                blazorRef,
-                debugMode).ConfigureAwait(true);
+                _cts.Token, blazorRef, debugMode
+                ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             _registration = _cts.Token.Register(async () => {
                 try {

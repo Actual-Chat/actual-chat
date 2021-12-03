@@ -9,20 +9,20 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private ChatMediaPlayers ChatMediaPlayers { get; set; } = default!;
+    [Inject] private ChatPlayers ChatPlayers { get; set; } = default!;
     [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatView> Log { get; set; } = default!;
-    private ChatMediaPlayer? RealtimePlayer { get; set; }
+    private ChatPlayer? RealtimePlayer { get; set; }
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public Chat Chat { get; set; } = null!;
 
     public ValueTask DisposeAsync()
-        => ChatMediaPlayers.DisposePlayers(Chat.Id);
+        => ChatPlayers.DisposePlayers(Chat.Id);
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;

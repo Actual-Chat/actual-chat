@@ -1,14 +1,20 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.Module;
+using ActualChat.Audio.UI.Blazor;
+using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
+using ActualChat.Chat.UI.Blazor;
 using ActualChat.Db.Module;
 using ActualChat.Host.Module;
 using ActualChat.Hosting;
 using ActualChat.Module;
+using ActualChat.MediaPlayback.Module;
 using ActualChat.Transcription.Module;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Host;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.Module;
+using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Web.Module;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -62,9 +68,11 @@ public class Startup
 
         // FileSystemPluginFinder cache fails on .NET 6 some times, so...
         /*
+        var pluginHostBuilder = new PluginHostBuilder(pluginServices);
         pluginHostBuilder.UsePlugins(
             // Core modules
             typeof(CoreModule),
+            typeof(PlaybackModule),
             typeof(DbModule),
             typeof(WebModule),
             typeof(BlazorUICoreModule),

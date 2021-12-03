@@ -1,11 +1,11 @@
 using ActualChat.Hosting;
-using ActualChat.Playback;
+using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.Audio.UI.Blazor;
+namespace ActualChat.Audio.UI.Blazor.Module;
 
 public class AudioBlazorUIModule: HostModule, IBlazorUIModule
 {
@@ -21,8 +21,6 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        var fusion = services.AddFusion();
-        fusion.AddComputeService<IMediaPlayerService, AudioPlayerService>(ServiceLifetime.Scoped);
-        services.AddTransient<MediaPlayer>();
+        services.AddScoped<ITrackPlayerFactory, AudioTrackPlayerFactory>();
     }
 }

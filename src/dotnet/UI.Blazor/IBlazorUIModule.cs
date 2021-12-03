@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor;
 
 public interface IBlazorUIModule
 {
-// NOTE(AY): Temporarily commented out - abstract static members aren't supported by Rider EAP yet
+// NOTE(AY): Temporarily commented out - requires preview features
 /*
     /// <summary>
     /// The lowercase name of the module in a webpack bundle <br/>
