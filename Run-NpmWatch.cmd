@@ -1,4 +1,5 @@
 @echo off
 pushd src\nodejs
-npm run watch
+call npm install
+start cmd /C npm run watch
 popd
