@@ -50,10 +50,10 @@
         var log = Services.LogFor(GetType());
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatMediaPlayers = Services.GetRequiredService<ChatMediaPlayers>();
+        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
         var chatEntryReader = chats.CreateEntryReader(session, chatId);
 
-        var historicalPlayer = await chatMediaPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
+        var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
         if (audioEntry == null) {
             log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
