@@ -34,12 +34,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        try {
-            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-        }
-        finally {
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        if (!Computed.IsInvalidating())
             await ResetSessionOptions().ConfigureAwait(false);
-        }
 
         async Task ResetSessionOptions()
         {
@@ -125,7 +122,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             user = user.MustBeAuthenticated();
             var userId = user.Id;
 
-            await using var dbContext = CreateDbContext();
+            var dbContext = CreateDbContext();
+            await using var _ = dbContext.ConfigureAwait(false);
+
             var isNameUsed = await dbContext.Users.AsQueryable()
                 .AnyAsync(u => u.Name == command.Name && u.Id != userId, cancellationToken)
                 .ConfigureAwait(false);
@@ -169,7 +168,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             return;
         }
 
-        await using var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
         var userState = await dbContext.UserStates.FindAsync(ComposeKey(userId), cancellationToken).ConfigureAwait(false);
         if (userState == null) {
             userState = new DbUserState() { UserId = userId };

@@ -85,7 +85,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio", "src\dotnet\Audio\Audio.csproj", "{D66CB283-D965-4AB5-A796-33931246D297}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playback", "src\dotnet\Playback\Playback.csproj", "{43E54532-23A6-4BFE-AE54-777D865BC954}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaPlayback", "src\dotnet\MediaPlayback\MediaPlayback.csproj", "{43E54532-23A6-4BFE-AE54-777D865BC954}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.IntegrationTests", "tests\Redis.IntegrationTests\Redis.IntegrationTests.csproj", "{C5FD17CE-66A9-4CDF-A3E1-793668707583}"
 EndProject

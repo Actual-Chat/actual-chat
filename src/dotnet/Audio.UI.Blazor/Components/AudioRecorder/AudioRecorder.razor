@@ -1,5 +1,6 @@
 @namespace ActualChat.Audio.UI.Blazor.Components
 @implements IAudioRecorderBackend
+@using ActualChat.Audio.UI.Blazor.Module
 @implements IAsyncDisposable
 @inject Session _session
 @inject IJSRuntime _js
@@ -45,7 +46,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSRef = await _js.InvokeAsync<IJSObjectReference>($"{AudioBlazorUIModule.ImportName}.AudioRecorder.create", BlazorRef, DebugMode);
+            JSRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
+                BlazorRef, DebugMode
+                ).ConfigureAwait(true);
         }
         DebugLog?.LogDebug(
             "OnAfterRender: Chat #{ChatId}, firstRender = {FirstRender}",

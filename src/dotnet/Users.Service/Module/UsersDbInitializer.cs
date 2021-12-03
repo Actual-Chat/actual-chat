@@ -16,7 +16,8 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
     {
         await base.Initialize(cancellationToken).ConfigureAwait(false);
         var dbContextFactory = Services.GetRequiredService<IDbContextFactory<UsersDbContext>>();
-        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
 
         if (DbInfo.ShouldRecreateDb) {
             Log.LogInformation("Recreating DB...");
