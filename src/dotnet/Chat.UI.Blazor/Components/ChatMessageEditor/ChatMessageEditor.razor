@@ -11,7 +11,7 @@
 <div class="@(_componentCssClass ??= this.ComponentCssClass()) sticky bottom-0 self-end bg-white w-full">
     <div class="flex flex-row justify-between mx-3 my-2">
         @if (RealtimePlayer != null) {
-            <ChatMediaPlayerToggle Player="RealtimePlayer"/>
+            <ChatPlayerToggle Player="RealtimePlayer"/>
         }
         <div @ref="Ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">
         </div>
@@ -29,11 +29,11 @@
 @code {
     private static string? _componentCssClass;
 
-    [Inject] private ChatMediaPlayers ChatMediaPlayers { get; set; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-    private ChatMediaPlayer? RealtimePlayer { get; set; }
+    private ChatPlayer? RealtimePlayer { get; set; }
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
 
@@ -41,7 +41,7 @@
     public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
-        => RealtimePlayer = await ChatMediaPlayers.GetRealtimePlayer(Chat.Id);
+        => RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
 
     public async ValueTask DisposeAsync() {
         if (JSRef != null!)

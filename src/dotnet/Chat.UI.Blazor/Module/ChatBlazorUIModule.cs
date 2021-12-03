@@ -31,6 +31,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<TestListService>();
 
         // Scoped / Blazor Circuit services
-        services.TryAddScoped<ChatMediaPlayers>();
+        services.TryAddScoped<ChatPlayers>();
     }
 }

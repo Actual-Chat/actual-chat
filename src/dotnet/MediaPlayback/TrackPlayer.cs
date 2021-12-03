@@ -1,44 +1,46 @@
 using ActualChat.Media;
+using Stl.DependencyInjection;
 
-namespace ActualChat.Playback;
+namespace ActualChat.MediaPlayback;
 
-public abstract class MediaTrackPlayer : AsyncProcessBase
+public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 {
-    private readonly object _stateLock = new ();
-    private volatile MediaTrackPlaybackState _state;
+    private volatile TrackPlaybackState _state;
     private readonly TaskSource<Unit> _whenCompletedSource;
 
+    protected ILogger Log { get; }
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
     protected MomentClockSet Clocks { get; }
-    protected ILogger<MediaTrackPlayer> Log { get; }
 
-    public PlayMediaTrackCommand Command { get; }
+    public IServiceProvider Services { get; }
+    public Playback Playback { get; }
+    public PlayTrackCommand Command { get; }
     public IMediaSource Source => Command.Source;
     public Task WhenCompleted => _whenCompletedSource.Task;
 
     // ReSharper disable once InconsistentlySynchronizedField
-    public MediaTrackPlaybackState State => _state;
+    public TrackPlaybackState State => _state;
 
-    public event Action<MediaTrackPlaybackState, MediaTrackPlaybackState>? StateChanged;
+    public event Action<TrackPlaybackState, TrackPlaybackState>? StateChanged;
 
-    protected MediaTrackPlayer(
-        MediaPlaybackState? parentState,
-        PlayMediaTrackCommand command,
-        MomentClockSet clocks,
-        ILogger<MediaTrackPlayer> log)
+    protected TrackPlayer(Playback playback, PlayTrackCommand command)
     {
-        Log = log;
-        Clocks = clocks;
+        Playback = playback;
+        Services = Playback.Services;
+        Log = Services.LogFor(GetType());
+        Clocks = Services.Clocks();
         Command = command;
-        _state = new(parentState, command.TrackId, command.RecordingStartedAt, command.SkipTo);
+        _state = new(this);
         _whenCompletedSource = TaskSource.New<Unit>(true);
     }
 
-    public ValueTask EnqueueCommand(MediaTrackPlayerCommand command)
+    public ValueTask EnqueueCommand(TrackPlayerCommand command)
         => ProcessCommand(command);
 
     // Protected methods
 
-    protected abstract ValueTask ProcessCommand(MediaTrackPlayerCommand command);
+    protected abstract ValueTask ProcessCommand(TrackPlayerCommand command);
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
@@ -89,10 +91,10 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
         }
     }
 
-    protected void UpdateState<TArg>(TArg arg, Func<TArg, MediaTrackPlaybackState, MediaTrackPlaybackState> updater)
+    protected void UpdateState<TArg>(TArg arg, Func<TArg, TrackPlaybackState, TrackPlaybackState> updater)
     {
-        MediaTrackPlaybackState state;
-        lock (_stateLock) {
+        TrackPlaybackState state;
+        lock (Lock) {
             var lastState = _state;
             if (lastState.IsCompleted)
                 return; // No need to update it further
@@ -106,13 +108,6 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
             catch (Exception e) {
                 Log.LogError(e, "Error on StateChanged handler(s) invocation");
             }
-            var parentState = state.ParentState;
-            if (parentState != null) {
-                if (!lastState.IsStarted && state.IsStarted)
-                    parentState.IncrementPlayingTrackCount();
-                if (state.IsCompleted && !lastState.IsCompleted)
-                    parentState.DecrementPlayingTrackCount();
-            }
         }
         if (state.IsCompleted)
             _whenCompletedSource.TrySetResult(default);
@@ -121,7 +116,7 @@ public abstract class MediaTrackPlayer : AsyncProcessBase
     protected virtual void OnPlayedTo(TimeSpan offset)
         => UpdateState(offset, (o, s) => s with {
             IsStarted = true,
-            PlayingAt = TimeSpanExt.Max(s.PlayingAt, s.SkipTo + o),
+            PlayingAt = TimeSpanExt.Max(s.PlayingAt, s.Command.SkipTo + o),
         });
 
     protected virtual void OnStopped(Exception? error = null)
