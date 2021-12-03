@@ -4,33 +4,31 @@
 /* purgecss end ignore */
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background-primary: #051D43;
-    --background-primary-muted: #0C46A2;
-    --background-secondary: #E5E5E5;
-    --background-accent: #DBEAFE;
-    --text-color-primary: #ffffff;
-    --text-color-primary-muted: #E5E5E5;
-    --text-color-secondary: #262626;
-    --text-color-secondary-muted: #525252;
-    --button-color-success: #16A34A;
-    --button-color-success-hover: #22C55E;
+:root {
+    --background-primary: #2e115a;
+    --background-secondary: #36146B;
+    --background-accent: #471a8c;
+
+    --text-color-primary: #FAFAFA;
+    --text-color-primary-muted: #C7C7C7;
+    --text-color-secondary: #B3BEC0;
+    --text-color-secondary-muted: #7C8F91;
+    --text-color-accent: #8951de;
+    --text-color-accent-muted: #7330d8;
+    --text-color-toggle-off: #d87330;
+    --text-color-toggle-on: #62e194;
+
+    --playable-shadow-first: #ffffff;
+    --playable-shadow-second: #BFDBFE;
+    --playable-shadow-third: #3B82F6;
+    --playing-shadow-first: #ffffff;
+    --playing-shadow-second: #BAE6FD;
+    --playing-shadow-third: #0EA5E9;
+
+    --button-color-success: #2da01e;
+    --button-color-success-hover: #36C124;
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
-  }
-  .theme-light {
-    --background-primary: #64b5f6;
-    --background-primary-muted: #bbdefb;
-    --background-secondary: #4fc3f7;
-    --background-accent: #2196f3;
-    --text-color-primary: #262626;
-    --text-color-primary-muted: #525252;
-    --text-color-secondary: #ffffff;
-    --text-color-secondary-muted: #ffffff;
-    --button-color-success: #16A34A;
-    --button-color-success-hover: #22C55E;
-    --button-color-accent: #ffffff;
-    --button-color-accent-hover: #FAFAFA;
-  }
+    --button-color-error: #95211E;
+    --button-color-error-hover: #D94440;
 }

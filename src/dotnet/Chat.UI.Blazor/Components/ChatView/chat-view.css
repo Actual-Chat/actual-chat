@@ -1,15 +1,13 @@
 .chat-message {
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words;
 }
 
 .chat-message-transcript {
-    overflow-wrap: break-word;
-    @apply text-current;
+    @apply text-primary;
 }
 
 .chat-message-markup {
-    overflow-wrap: break-word;
-    @apply text-current;
+    @apply text-primary;
 }
 
 .chat-message-markup .playable {
@@ -18,10 +16,90 @@
 
 .chat-message-markup .playable:hover {
     @apply text-blue-800 cursor-pointer;
-    text-shadow: 0 0 2px #fff, 0 0 4px #BFDBFE, 0 0 8px #3B82F6;
+    text-shadow: 0 0 2px var(--playable-shadow-first), 0 0 4px var(--playable-shadow-second), 0 0 8px var(--playable-shadow-third);
 }
 
 .chat-message-markup .playing {
     @apply text-sky-600;
-    text-shadow: 0 0 2px #fff, 0 0 4px #BAE6FD, 0 0 8px #0EA5E9;
+    text-shadow: 0 0 2px var(--playing-shadow-first), 0 0 4px var(--playing-shadow-second), 0 0 8px var(--playing-shadow-third);
+}
+
+.chat-message .avatar {
+    @apply w-10 h-10 rounded-md mr-3 select-none bg-secondary;
+}
+
+.chat-message .author-name {
+    @apply font-bold text-primary bg-primary rounded px-1 border-b border-accent;
+}
+
+.chat-message .begin-time {
+    @apply text-secondary text-xs;
+}
+
+.chat-message .entry-id {
+    @apply text-accent-muted text-xxs;
+}
+
+.chat-header {
+    @apply flex flex-row justify-between mt-0 font-medium bg-secondary text-primary p-3 select-none border-b border-accent;
+}
+
+.chat-content {
+    @apply flex-1 flex flex-col overflow-y-auto bg-secondary p-3;
+}
+
+.chat-footer {
+    @apply flex sticky m-0;
+}
+
+.chat-message-editor {
+    @apply sticky bottom-0 pb-1 self-end bg-secondary w-full;
+}
+
+.plus-button {
+    @apply block py-2 pr-2 pl-4 ml-1 rounded-l-xl outline-none hover:cursor-pointer bg-accent border-b-2 border-primary text-primary;
+}
+
+.plus-button-svg {
+    @apply fill-current h-4 w-4 text-primary-muted hover:text-primary;
+}
+
+.message-input {
+    @apply flex-1 px-2 py-2 mr-1 outline-none rounded-r-xl break-all hover:cursor-text bg-accent text-primary border-b-2 border-r-2 border-primary focus:text-secondary;
+}
+
+.post-message {
+    @apply block px-3 py-2 text-primary rounded-xl bg-primary mr-1 border-b-2 border-r-2 border-accent;
+}
+
+.post-message:hover {
+    @apply opacity-60;
+}
+
+[contenteditable=true]:empty:not(:focus):before{
+    content:attr(data-text)
+}
+
+.chat-media-player-toggle {
+    @apply block px-2 py-2 text-justify bg-primary rounded-xl mr-1 border-b-2 border-r-2 border-accent hover:animate-pulse;
+}
+
+.toggle-button-on {
+    @apply text-toggle-on;
+}
+
+.toggle-button {
+    @apply text-toggle-off;
+}
+
+.audio-recorder {
+    @apply block px-3 py-2 rounded-xl bg-primary border-b-2 border-r-2 border-accent hover:animate-pulse;
+}
+
+.not-recording {
+    @apply text-toggle-off;
+}
+
+.recording {
+    @apply text-toggle-on;
 }

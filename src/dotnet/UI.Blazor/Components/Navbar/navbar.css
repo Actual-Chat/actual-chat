@@ -3,7 +3,7 @@
 }
 
 .navbar .links {
-    @apply bg-primary text-primary z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-72 lg:w-96 transition duration-200 ease-in-out p-3
+    @apply bg-primary text-primary z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition duration-200 ease-in-out p-3
 }
 
 .navbar-mobile {
@@ -23,7 +23,7 @@
 }
 
 .navbar .links-item {
-    @apply text-primary-muted hover:text-primary;
+    @apply text-primary-muted text-sm hover:text-primary;
 }
 
 .navbar .version {
@@ -60,7 +60,7 @@
 }
 
 .account-dropdown {
-    @apply flex flex-row justify-between items-center w-full pt-3 border-t border-primary-muted;
+    @apply flex flex-row justify-between items-center w-full pt-2 border-t border-accent bg-primary;
 }
 
 .account-dropdown .menu {
@@ -72,15 +72,15 @@
 }
 
 .account-dropdown .signin-button {
-    @apply bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover inline-flex justify-center w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 transition duration-150 ease-in-out rounded-md outline-none;
+    @apply text-primary bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover inline-flex justify-center ml-2 w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 transition duration-150 ease-in-out rounded-md outline-none;
 }
 
 .account-dropdown .signin-text {
-    @apply animate-bounce text-primary fill-current;
+    @apply text-primary fill-current;
 }
 
 .account-dropdown .account-button {
-    @apply max-w-xs flex items-center text-sm rounded-full text-primary-muted outline-none;
+    @apply max-w-xs flex items-center text-sm rounded-full text-primary-muted outline-none ml-2;
 }
 
 .account-dropdown .username {
