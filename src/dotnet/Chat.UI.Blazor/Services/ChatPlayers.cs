@@ -1,61 +1,50 @@
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // This service can be used only from the UI thread
-public class ChatMediaPlayers : IAsyncDisposable
+public class ChatPlayers : IAsyncDisposable
 {
-    private Dictionary<ChatId, ChatMediaPlayer> RealtimePlayers { get; } = new();
-    private Dictionary<ChatId, ChatMediaPlayer> HistoricalPlayers { get; } = new();
+    private Dictionary<ChatId, ChatPlayer> RealtimePlayers { get; } = new();
+    private Dictionary<ChatId, ChatPlayer> HistoricalPlayers { get; } = new();
 
     private ILogger Log { get; }
     private IServiceProvider Services { get; }
     private BlazorCircuitContext CircuitContext { get; }
     private Session Session { get; }
-    private IChats Chats { get; }
-    private IChatAuthors ChatAuthors { get; }
-    private AuthStateProvider AuthStateProvider { get; }
 
-    public ChatMediaPlayers(IServiceProvider services)
+    public ChatPlayers(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         Services = services;
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         Session = Services.GetRequiredService<Session>();
-        Chats = Services.GetRequiredService<IChats>();
-        ChatAuthors = Services.GetRequiredService<IChatAuthors>();
-        AuthStateProvider = Services.GetRequiredService<AuthStateProvider>();
-        AuthStateProvider.AuthenticationStateChanged += OnAuthStateChanged;
     }
 
-    public ValueTask DisposeAsync()
-        => Reset();
-
-    public async ValueTask Reset()
+    public async ValueTask DisposeAsync()
     {
         var players = RealtimePlayers.Values.Concat(HistoricalPlayers.Values).ToList();
         RealtimePlayers.Clear();
         HistoricalPlayers.Clear();
-        foreach (var player in players.OrderBy(p => p.ChatId)) {
+        foreach (var player in players.OrderBy(p => p.ChatId.Value)) {
             try {
                 await player.DisposeAsync().ConfigureAwait(true);
             }
             catch (Exception e) {
-                Log.LogError(e, "MediaPlayer.DisposeAsync() failed");
+                Log.LogError(e, "ChatPlayer.DisposeAsync() failed");
             }
         }
     }
 
-    public ValueTask<ChatMediaPlayer> GetRealtimePlayer(
+    public ValueTask<ChatPlayer> GetRealtimePlayer(
         ChatId chatId, CancellationToken cancellationToken = default)
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
-        if (player is { IsDisposed: false })
+        if (player is { IsDisposeStarted: false })
             return ValueTask.FromResult(player);
 
-        player = new ChatMediaPlayer(Services) {
+        player = new ChatPlayer(Services) {
             IsRealTimePlayer = true,
             ChatId = chatId,
             Session = Session,
@@ -64,14 +53,14 @@ public class ChatMediaPlayers : IAsyncDisposable
         return ValueTask.FromResult(player);
     }
 
-    public ValueTask<ChatMediaPlayer> GetHistoricalPlayer(
+    public ValueTask<ChatPlayer> GetHistoricalPlayer(
         ChatId chatId, CancellationToken cancellationToken = default)
     {
         var player = HistoricalPlayers.GetValueOrDefault(chatId);
-        if (player is { IsDisposed: false })
+        if (player is { IsDisposeStarted: false })
             return ValueTask.FromResult(player);
 
-        player = new ChatMediaPlayer(Services) {
+        player = new ChatPlayer(Services) {
             IsRealTimePlayer = false,
             ChatId = chatId,
             Session = Session,
@@ -84,12 +73,9 @@ public class ChatMediaPlayers : IAsyncDisposable
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
         if (player != null)
-            await player.DisposeAsync();
+            await player.DisposeAsync().ConfigureAwait(false);
         player = HistoricalPlayers.GetValueOrDefault(chatId);
         if (player != null)
-            await player.DisposeAsync();
+            await player.DisposeAsync().ConfigureAwait(false);
     }
-
-    private void OnAuthStateChanged(Task<AuthenticationState> task)
-        => CircuitContext.Dispatcher.InvokeAsync(() => Reset().AsTask());
 }

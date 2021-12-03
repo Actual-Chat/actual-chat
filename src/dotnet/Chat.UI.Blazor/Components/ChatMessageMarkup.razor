@@ -1,11 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Playback
+@using ActualChat.MediaPlayback
 @using ActualChat.Chat.UI.Blazor.Services
 @using System.Text.RegularExpressions
 @using ActualChat.Chat.UI.Blazor.Components.MarkupParts
 @using Stl.Extensibility
-@inherits ComputedStateComponent<ActualChat.Playback.MediaTrackPlaybackState?>
-@inject IMediaPlayerService _mediaPlayerService
+@inherits ComputedStateComponent<ActualChat.MediaPlayback.TrackPlaybackState?>
+@inject IActivePlaybackInfo _activePlaybackInfo
 
 @if (Markup != null) {
     <p class="@(_componentCssClass ??= this.ComponentCssClass())">
@@ -34,9 +34,11 @@
         _ = State.Recompute();
     }
 
-    protected override async Task<MediaTrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
-        var trackId = ChatMediaPlayer.GetAudioTrackId(Entry);
-        return await _mediaPlayerService.GetMediaTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+    protected override async Task<TrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+        if (Entry.AudioEntryId == null)
+            return null;
+        var trackId = ChatPlayer.GetAudioTrackId(Entry);
+        return await _activePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

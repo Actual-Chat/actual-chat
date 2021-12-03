@@ -95,7 +95,7 @@ public sealed class AsyncMemoizer<T>
                 while (!result.HasError && _bufferWriter.FreeCapacity > 0) {
                     if (!readTask.IsCompleted)
                         break;
-                    result = await readTask; // Sync wait
+                    result = await readTask.ConfigureAwait(false); // Sync wait
                     memory.Span[index++] = result;
                     _bufferWriter.Advance(1);
                     readTask = _source.ReadResultAsync(cancellationToken);
@@ -135,7 +135,7 @@ public sealed class AsyncMemoizer<T>
                 buffer = await SwitchToNewBuffer(buffer).ConfigureAwait(false);
 
             if (hasMoreNewTargets && newTargetReadTask!.IsCompleted) {
-                if ((await newTargetReadTask).IsSome(out var newTarget)) {
+                if ((await newTargetReadTask.ConfigureAwait(false)).IsSome(out var newTarget)) {
                     var success = await buffer
                         .TryCopyTo(newTarget.Target, newTarget.CopiedItemCount, cancellationToken)
                         .ConfigureAwait(false);

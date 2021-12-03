@@ -1,10 +1,13 @@
 using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Playback;
+using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace ActualChat.Audio.UI.Blazor;
+
+#pragma warning disable CS0162 // for if(false){ logging }
 
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
@@ -26,6 +29,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private CancellationTokenRegistration _registration;
     private int? _prevMediaElementReadyState = null;
     private double _offset;
+    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
 
     public async Task OnClick()
     {
@@ -43,16 +47,14 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
-            const string uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNB06R1YHJCT793JV1CVD79M/0000.webm";
             const bool debugMode = true;
             var audioDownloader = new AudioDownloader(_httpClientFactory, _loggerFactory);
-            var audioSource = await audioDownloader.Download(new Uri(uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
+            var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                _cts.Token,
-                blazorRef,
-                debugMode).ConfigureAwait(true);
+                _cts.Token, blazorRef, debugMode
+                ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             _registration = _cts.Token.Register(async () => {
                 try {
@@ -74,7 +76,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
             });
             await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
-            await foreach (var frame in audioSource.GetFrames(_cts.Token)) {
+            await foreach (var frame in audioSource.GetFrames(_cts.Token).ConfigureAwait(true)) {
                 if (false) {
                     _log.LogInformation(
                         "Send the frame data to js side (bytes: {FrameBytes}, offset sec: {FrameOffset}, duration sec: {FrameDuration})",
@@ -82,10 +84,11 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = jsRef.InvokeVoidAsync("appendAudioAsync", _cts.Token, frame.Data, frame.Offset.TotalSeconds);
+                _ = jsRef.InvokeVoidAsync("appendAudioAsync", _cts.Token, frame.Data, frame.Offset.TotalSeconds)
+                    .ConfigureAwait(true);
             }
             if (!_cts.Token.IsCancellationRequested)
-                _ = jsRef.InvokeVoidAsync("endOfStream");
+                _ = jsRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
         }
     }
     [JSInvokable]

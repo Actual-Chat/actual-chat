@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.DependencyInjection;
-using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.Module;

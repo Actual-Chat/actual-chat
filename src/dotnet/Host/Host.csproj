@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Playback\Playback.csproj" />
+    <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\Chat.Client\Chat.Client.csproj" />

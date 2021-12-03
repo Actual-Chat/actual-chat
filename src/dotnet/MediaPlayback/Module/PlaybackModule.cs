@@ -3,9 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.Playback.Module;
+namespace ActualChat.MediaPlayback.Module;
 
-/*
 public class PlaybackModule : HostModule
 {
     public PlaybackModule(IPluginInfoProvider.Query _) : base(_) { }
@@ -18,6 +17,6 @@ public class PlaybackModule : HostModule
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();
+        fusion.AddComputeService<IActivePlaybackInfo, ActivePlaybackInfo>(ServiceLifetime.Scoped);
     }
 }
-*/

@@ -4,12 +4,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class UserInfosService : DbServiceBase<UsersDbContext>, IUserInfos
+public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
 {
     private readonly IDbEntityResolver<string, DbUser> _dbUserResolver;
     private readonly DbUserByNameResolver _dbUserByNameResolver;
 
-    public UserInfosService(IServiceProvider services) : base(services)
+    public UserInfos(IServiceProvider services) : base(services)
     {
         _dbUserResolver = services.DbEntityResolver<string, DbUser>();
         _dbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();

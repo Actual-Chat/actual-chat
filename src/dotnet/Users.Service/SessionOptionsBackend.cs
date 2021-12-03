@@ -4,11 +4,11 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class SessionOptionsService : DbServiceBase<UsersDbContext>, ISessionOptionsBackend
+public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOptionsBackend
 {
     private readonly IAuth _auth;
 
-    public SessionOptionsService(IAuth auth, IServiceProvider services) : base(services)
+    public SessionOptionsBackend(IAuth auth, IServiceProvider services) : base(services)
         => _auth = auth;
 
     // Backend

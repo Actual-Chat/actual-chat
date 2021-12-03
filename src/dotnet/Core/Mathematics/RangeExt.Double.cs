@@ -1,6 +1,6 @@
 namespace ActualChat.Mathematics;
 
-public static class RangeExt
+public static partial class RangeExt
 {
     public static Range<double> Move(this Range<double> range, double startOffset, double endOffset)
         => new(range.Start + startOffset, range.End + endOffset);

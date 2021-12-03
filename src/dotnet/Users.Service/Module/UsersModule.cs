@@ -37,18 +37,16 @@ public class UsersModule : HostModule<UsersSettings>
             options.LogoutPath = "/signOut";
             if (IsDevelopmentInstance)
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+        }).AddGoogle(options => {
+            options.ClientId = Settings.GoogleClientId;
+            options.ClientSecret = Settings.GoogleClientSecret;
+            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         }).AddMicrosoftAccount(options => {
             options.ClientId = Settings.MicrosoftAccountClientId;
             options.ClientSecret = Settings.MicrosoftAccountClientSecret;
             // That's for personal account authentication flow
             options.AuthorizationEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
             options.TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-        }).AddGitHub(options => {
-            options.ClientId = Settings.GitHubClientId;
-            options.ClientSecret = Settings.GitHubClientSecret;
-            options.Scope.Add("read:user");
-            options.Scope.Add("user:email");
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         });
 
@@ -110,10 +108,10 @@ public class UsersModule : HostModule<UsersSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IUserInfos, UserInfosService>();
-        fusion.AddComputeService<IUserStates, UserStatesService>();
-        fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsService>();
-        fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsService>();
+        fusion.AddComputeService<IUserInfos, UserInfos>();
+        fusion.AddComputeService<IUserStates, UserStates>();
+        fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
+        fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();
         services.AddSingleton<ClaimMapper>();

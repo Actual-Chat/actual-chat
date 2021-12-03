@@ -12,6 +12,7 @@ public interface IChats
         Range<long>? idTileRange,
         CancellationToken cancellationToken);
 
+    // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Range<long>> GetIdRange(
         Session session,
