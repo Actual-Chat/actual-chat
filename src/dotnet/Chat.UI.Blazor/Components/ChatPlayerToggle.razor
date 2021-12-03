@@ -1,41 +1,34 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<Playback?>
 @using ActualChat.Chat.UI.Blazor.Services
-@using ActualChat.Playback
-@implements IDisposable
+@using ActualChat.MediaPlayback
 @inject MomentClockSet _clocks
+@{
+    var playback = State.ValueOrDefault;
+    var isPlaying = playback is { IsStopped: false };
+}
 
-<button @onclick="Toggle" class="block px-2 py-2 @(Player.IsPlaying ? "text-blue-500" : "text-gray-500")">
+<button @onclick="Toggle" class="block px-2 py-2 @(isPlaying ? "text-blue-500" : "text-gray-500")">
     <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
         <path d="M22 22.966v1.034h-20v-1.034c0-2.1.166-3.312 2.648-3.886 2.804-.647 5.572-1.227 4.241-3.682-3.943-7.274-1.124-11.398 3.111-11.398 4.152 0 7.043 3.972 3.11 11.398-1.292 2.44 1.375 3.02 4.241 3.682 2.483.573 2.649 1.786 2.649 3.886zm-10-21.229c2.228-.004 3.948 1.329 4.492 3.513h1.212c-.528-2.963-2.624-5.25-5.704-5.25s-5.176 2.287-5.704 5.25h1.212c.544-2.184 2.264-3.518 4.492-3.513zm5.542 10.263c1.608 0 2.458-1.507 2.458-3.01 0-1.497-.842-2.99-2.755-2.99.832 1.603.925 3.656.297 6zm-11.112 0c-.632-2.331-.534-4.384.313-6-1.913 0-2.743 1.489-2.743 2.984 0 1.505.843 3.016 2.43 3.016z"/>
     </svg>
 </button>
 
 @code {
-    private ChatMediaPlayer? _lastPlayer;
-
     [Parameter]
-    public ChatMediaPlayer Player { get; set; } = null!;
+    public ChatPlayer Player { get; set; } = null!;
 
-    protected override void OnParametersSet() {
-        if (_lastPlayer == Player)
-            return;
-        if (_lastPlayer != null)
-            _lastPlayer.MediaPlayer.StateChanged -= PlayerStateChanged;
-        _lastPlayer = Player;
-        _lastPlayer.MediaPlayer.StateChanged += PlayerStateChanged;
+    protected override void ConfigureState(ComputedState<Playback?>.Options options) {
+        options.UpdateDelayer = UpdateDelayer.MinDelay;
+        options.InitialOutputFactory = _ => null;
     }
 
-    public void Dispose() {
-        if (_lastPlayer != null)
-            _lastPlayer.MediaPlayer.StateChanged -= PlayerStateChanged;
-    }
-
-    private void PlayerStateChanged(MediaPlayer mediaPlayer) {
-        this.StateHasChangedAsync(); // This method runs SHC in the UI thread
-    }
+    protected override Task<Playback?> ComputeState(CancellationToken cancellationToken)
+        => Player.PlaybackState.Use(cancellationToken).AsTask();
 
     private Task Toggle() {
-        return Player.IsPlaying ? Stop() : Play();
+        var isPlaying = Player.Playback is { IsStopped: false };
+        return isPlaying ? Stop() : Play();
     }
 
     private Task Play() {

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
-    <ProjectReference Include="..\Playback\Playback.csproj" />
+    <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
   </ItemGroup>

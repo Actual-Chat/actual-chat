@@ -1,11 +1,13 @@
 using ActualChat.Audio.Client.Module;
 using ActualChat.Audio.UI.Blazor;
+using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.WebM;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor;
 using ActualChat.Hosting;
 using ActualChat.Module;
+using ActualChat.MediaPlayback.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -61,6 +63,7 @@ public static class Program
         // FileSystemPluginFinder doesn't work in Blazor, so we have to enumerate them explicitly
         pluginHostBuilder.UsePlugins(
             typeof(CoreModule),
+            typeof(PlaybackModule),
             typeof(BlazorUICoreModule),
             typeof(AudioClientModule),
             typeof(AudioBlazorUIModule),
