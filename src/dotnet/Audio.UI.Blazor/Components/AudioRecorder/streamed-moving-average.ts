@@ -12,7 +12,7 @@ export class ExponentialMovingAverage {
         }
     }
 
-    public get lastAverage() : number {
+    public get lastAverage(): number {
         return this._lastMovingAverage;
     }
 
@@ -20,7 +20,7 @@ export class ExponentialMovingAverage {
         if (!values || values.length < this._window) {
             throw new Error("values should not be null, undefined, empty or less than configured window");
         }
-        
+
         const window = this._window;
         const length = values.length;
         const smoothingFactor = 2 / (window + 1);
@@ -35,7 +35,7 @@ export class ExponentialMovingAverage {
             exponentialMovingAverages[0] = this._lastMovingAverage;
             startIndex = 1;
         }
-        
+
         for (let index = startIndex; index < values.length; index++) {
             const value = values[index];
             const previousEma = exponentialMovingAverages[index - 1];
@@ -56,12 +56,12 @@ function simpleMovingAverage(values: Float32Array, window = 5, n = Infinity): Fl
     const movingAverages = new Float32Array(values.length);
     for (let index = 0; index < values.length; index++) {
         if (index < window) {
-            movingAverages[index] = values.subarray(0, index + 1).reduce((prev,curr) => prev + curr, 0) / (index + 1)
+            movingAverages[index] = values.subarray(0, index + 1).reduce((prev, curr) => prev + curr, 0) / (index + 1);
         }
         else {
-            movingAverages[index] = movingAverages[index - 1] - values[index - window]/window + values[index]/window;
+            movingAverages[index] = movingAverages[index - 1] - values[index - window] / window + values[index] / window;
         }
     }
-  
+
     return movingAverages;
 }

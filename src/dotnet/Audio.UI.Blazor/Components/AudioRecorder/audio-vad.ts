@@ -1,6 +1,10 @@
 import * as ort from 'onnxruntime-web';
-import {dma} from 'moving-averages';
-import {ExponentialMovingAverage} from './streamed-moving-average';
+import { dma } from 'moving-averages';
+import { ExponentialMovingAverage } from './streamed-moving-average';
+import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
+import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
+import wasmSimdPath from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
+import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 
 export class Boundary {
     public start: number;
@@ -69,7 +73,12 @@ export class VoiceActivityDetector {
 
         ort.env.wasm.numThreads = 4;
         ort.env.wasm.simd = true;
-        ort.env.wasm.wasmPaths = 'wasm';
+        ort.env.wasm.wasmPaths = {
+            'ort-wasm.wasm': wasmPath,
+            'ort-wasm-threaded.wasm': wasmThreadedPath,
+            'ort-wasm-simd.wasm': wasmSimdPath,
+            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
+        };
     }
 
     public async getBoundaries(monoPcm: Float32Array): Promise<Boundary[]> {
@@ -100,7 +109,7 @@ export class VoiceActivityDetector {
                     tensorSource.set(batches[j], j * SamplesPerWindow);
                 }
                 const tensor = new ort.Tensor(tensorSource, [batchSize, SamplesPerWindow]);
-                const feeds = {input: tensor};
+                const feeds = { input: tensor };
                 const result = await session.run(feeds);
                 results.push(result);
                 batches.length = 0;
@@ -113,7 +122,7 @@ export class VoiceActivityDetector {
             }
             const remainTensorSource = tensorSource.subarray(0, batches.length * SamplesPerWindow);
             const tensor = new ort.Tensor('float32', remainTensorSource, [batches.length, SamplesPerWindow]);
-            const feeds = {input: tensor};
+            const feeds = { input: tensor };
             const result = await session.run(feeds);
             results.push(result);
         }
@@ -202,7 +211,7 @@ export class VoiceActivityDetector {
                     tensorSource.set(batches[j], j * SamplesPerWindow);
                 }
                 const tensor = new ort.Tensor(tensorSource, [batchSize, SamplesPerWindow]);
-                const feeds = {input: tensor};
+                const feeds = { input: tensor };
                 const result = await session.run(feeds);
                 results.push(result);
                 batches.length = 0;
