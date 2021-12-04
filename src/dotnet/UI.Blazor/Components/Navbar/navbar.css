@@ -74,11 +74,15 @@
 }
 
 .account-dropdown .signin-button {
-    @apply text-primary bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover inline-flex justify-center ml-2 w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 transition duration-150 ease-in-out rounded-md outline-none;
+    @apply bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover inline-flex justify-center ml-2 w-full max-w-xs px-4 py-2 text-sm font-medium leading-5 transition duration-150 ease-in-out rounded-md outline-none;
+}
+
+.signin-button:hover .signin-text {
+    @apply fill-current text-primary;
 }
 
 .account-dropdown .signin-text {
-    @apply text-primary fill-current;
+    @apply fill-current text-accent-muted;
 }
 
 .account-dropdown .account-button {
