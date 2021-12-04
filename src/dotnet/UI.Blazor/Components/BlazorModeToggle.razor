@@ -3,9 +3,10 @@
 @inject BlazorModeHelper _blazorModeHelper
 @inject IJSRuntime _js
 
-<div @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))" class="blazor-mode-toggle">
-    <span class="visible-blazor-mode-toggle">@(IsPrerendering ? "Loading..." : GetModeName(IsServerSideBlazor))</span>
-    <span class="hidden-blazor-mode-toggle">@(IsPrerendering ? "Loading..." : GetBlazorToggleHoverText(IsServerSideBlazor))</span>
+<div class="@this.ComponentCssClass() group"
+     @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
+    <span class="hover-item">@(IsPrerendering ? "Loading..." : GetActiveText(IsServerSideBlazor))</span>
+    <span class="hover-item alt">@(IsPrerendering ? "Loading..." : GetInactiveText(IsServerSideBlazor))</span>
 </div>
 
 @code {
@@ -27,9 +28,9 @@
         IsPrerendering = fClientProxy != null && clientProxy == null;
     }
 
-    private string GetModeName(bool isServerSideBlazor)
+    private string GetActiveText(bool isServerSideBlazor)
         => isServerSideBlazor ? "Blazor Server" : "Blazor WASM";
 
-    private string GetBlazorToggleHoverText(bool isServerSideBlazor)
+    private string GetInactiveText(bool isServerSideBlazor)
         => isServerSideBlazor ? "Switch to WASM" : "Switch to Server";
 }

@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.group .hover-item {
+    @apply opacity-100 w-auto h-auto
+}
+.group:hover .hover-item {
+    @apply opacity-0 w-0 h-0
+}
+.group .hover-item.alt {
+    @apply opacity-0 w-0 h-0
+}
+.group:hover .hover-item.alt {
+    @apply opacity-100 w-auto h-auto
+}
