@@ -45,10 +45,10 @@ div.col2 .break {
 }
 </style>
 
-![bg](./img/final-slide.jpg)
+![bg width:100%](./img/we-are-building.jpg)
 
 ---
-![bg](./img/whatsApp-meme.png)
+![bg fit](./img/another-chat-app.jpg)
 
 ---
 <!-- _class: highlight center invert -->
@@ -84,15 +84,16 @@ there isn't much to improve."
 
 </br></br></br></br></br></br></br></br></br></br>
 <h3>
-Not bad, right?</br>
+Looks good, right?</br>
 Q: Why this isn't shown in real-time?</br> 
 Why I can't respond right there?</br>
 </h3>
 
 ---
-<!-- _class: highlight center -->
+<!-- _class: invert center -->
 
-<h2>Wait, but people love phone calls!</h2>
+<h1>Wait, but people love phone calls!<br/>
+They do, right?</h1>
 
 <footer style="font-size: 24px">
 Hang tight, loading my meme gun.
@@ -107,11 +108,11 @@ Hang tight, loading my meme gun.
 ---
 <!-- _class: highlight -->
 
-![](./img/shower-call.jpg)
+![](./img/phone-shower.jpg)
 ![bg fit right](./img/scam-likely.jpg)
 
 ---
-<!-- _class: highlight -->
+<!-- _class: invert highlight -->
 ![bg left:34%](./img/call-screen.jpg)
 
 <h3>On a serious note:</h3>
@@ -124,7 +125,7 @@ That's why calling or receiving calls is a stressful activity for a fair share o
 **But do you really have to choose?**
 
 ---
-<!-- _class: highlight -->
+<!-- _class: invert highlight -->
 
 ![bg left:34%](./img/call-screen.jpg)
 
@@ -143,7 +144,7 @@ invented to keep the parties wire-connected!**
 </div>
 
 ---
-<!-- _class: highlight -->
+<!-- _class: invert highlight -->
 
 ![bg left:31%](./img/telegram-voice-messages.jpg)
 
@@ -160,50 +161,166 @@ invented to keep the parties wire-connected!**
 <p><strong>→ It's another attempt to duct-tape the real problem.</strong></p>
 
 ---
-![bg fit](./img/text-and-drive-google.jpg)
+<!-- _class: invert highlight -->
+
+<h1>A daily routine where you really<br/> 
+miss a real-time audio chat?</h1>
 
 ---
-<!-- _class: highlight  -->
+![](./img/text-and-drive-google.jpg)
+
+---
+<!-- _class: invert highlight  -->
 
 ![bg right:56%](./img/text-and-drive-app.jpg)
 
-Pay close attention to what you see here. 
+According to Google, this is the #1 solution to a real problem most of us face every day.<br/><br/>And 3.8 stars is an ok rating!
 
-**According to Google, this is the #1 solution to a real problem most of us face every day.<br/><br/>And 3.8 stars is an ok rating!**
+**Pay close attention to what you see here.**
+
+---
+<!-- _class: invert highlight -->
+<h1>And an area where all missing features</br>
+would make a *huge* difference?</h1>
+
+---
+<!-- _class: highlight -->
+![bg fit](./img/b2c-middle-finger.jpg)
+
+---
+<!-- _class: invert -->
+![bg](black)
+![bg fit](./img/b2c-call-recording.jpg)
+
+---
+<!-- _class: -->
+![bg](black)
+![bg fit](./img/b2c-robodance.gif)
+<br/>
+<br/>
+<br/>
+<h1 style="color: #fff; font-weight: bold; text-shadow: 0 0 3px #000, 0 0 10px #000">
+PRESS 1 FOR ROBOT 1<br/>
+PRESS 2 FOR ROBOT 2<br/>
+PRESS 3 FOR...<br/>
+</h1>
+
+---
+<!-- _class: highlight -->
+![bg](black)
+![bg fit](./img/b2c-call-is-important.jpg)
+
+---
+<!-- _class: highlight -->
+![bg](black)
+![bg fit](./img/b2c-sick.jpg)
+
+---
+<!-- _class: highlight invert -->
+![bg blur:0.5px](./img/riptide.jpg)
+
+---
+<!-- _class: highlight invert -->
+![bg blur:5px brightness:0.3](./img/riptide.jpg)
+
+<h2>The reason this UX sells?</h2>
+
+The Q. isn't specifically about Riptide &ndash; it's about every customer communication product on the market, standalone or embedded.
+
+---
+<!-- _class: invert highlight -->
+![bg right:47%](./img/call-log-1.jpg)
+![bg right](./img/call-log-2.jpg)
+
+<h1 style="color: #fff">It sells because this is the baseline.</h1>
+
+---
+<!-- _class: invert highlight -->
+![bg left:45%](./img/i-am-listening.gif)
+
+<h2>We know people LOVE to hear each other!</h2>
+
+- Most of us prefer to talk when the subject is either important or sensitive
+- "Hinge adds voice notes and voice prompts to dating profiles"
+- The meteoric raise of Discord and Clubhouse
+- etc.
+
+---
+<!-- _class: invert highlight -->
+![bg right:35%](./img/to-the-moon.jpg)
+
+And that's why...
+
+<h2>Voice communication is duct-taped to every product on the market</h2>
+
+- "Voice messages" plaguing every chat app
+- Slack copycats Discord voice channels
+- And "Huddle" isn't bad after all: others offer just P2P calls!
+- Google Meet gets real-time STT. But sorry, no history.
+
+
+---
+<!-- _class: highlight -->
+![bg](./img/actual-chat.jpg)
+
+---
+<!-- _class: highlight -->
+<h2>Actual.chat</h2>
+
+No more duct taping. We're here to reimagine.
+
+- **Use voice, text, or both** - any piece of content is text + audio/video. You decide whether to read or listen, talk or type, to respond now or later.
+- **No more "audio messages"** - you've got 100% real-time speech-to-text everywhere
+- **No more "calls"** - any conversation is synchronous and asynchronous.
+- **Every conversation is stored** - history matters, and we're working on a revolutionary UX here as well.
+- **Privacy matters,** and we're taking it to the next level with built-in anonymity.
 
 ---
 <!-- _class: highlight center -->
-
-<h1>Is there a solution?<br/>
-Yes, we're building one!<h1>
-
----
-<!-- _class: highlight -->
-
-<h2>Actual.chat</h2>
-
-We're sick of seeing how all these issues with calls & texts are duct-taped by every product on the market. That's why we re-imagine online communication completely.
-
-- **Use voice, text, or both,** and seamlessly switch between these modes. Any piece of content is text + audio/video, the "counterpart" is generated in real-time.
-- **No "call" concept** - any conversation is always asynchronous, but it becomes synchronous when you respond in real-time
-- **You, not the other party, decide** whether you want to read or listen, to talk or type, to respond right now, later, or never.
-- **History matters.** Existing products somehow ignore this aspect completely. We'll bring a new, but quite familiar and truly amazing experience here.
-- **Privacy matters.** We'll take it to the next level by supporting anonymity and using it by default in all B2C channels.
+<br/>
+<h2>THE GRAND PLAN</h2>
+<div style="text-align: center">
+<img style="width: 80%" src="./diagrams/product.dio.svg"/>
+</div>
 
 ---
 <!-- _class: highlight -->
+<h3>We want to create:</h3>
 
-<h2>Thinking you saw something similar? </h2>
+- The best communication channel / UX
+- A naturally viral freemium product relying on it
+  - The world needs it anyway
+  - And we certainly hope that if it's a truly valuable product, it will help us to dramatically decrease the cost of marketing...
+- Its corporate / B2C offering targeting both internal and customer communications
+- An API enabling third-party integrations - CRM and productivity scenarios first, but IoT seems to be another interesting case. Imagine all of your Ring & Blink cameras are "sitting" in the same chat channel & you can talk in real-time with a person on another end right there. In fact, we can provide a perfect communication backbone for such products.
 
-Name a product, where:
-- You see a transcript for whatever you tell
-- And you can replay a recording behind the transcript
-- What about playing from a certain WORLD (a wrongly transcribed one)?
-- Or seeing N play points moving in-sync through the text because N people were talking simultaneously?
-- What about deleting a part of the transcribed message (e.g. a credit card number) & seeing the matching part of the audio is gone too?
-- Or editing a message & seeing the audio is edited too? And the new content is read using your own voice?
+---
+<!-- _class: highlight -->
+<h3>And the end goal is...</h3>
 
-The truth is: no one dared to implement this. **We do.**
+To become your #1 communication software and your #1 option to re-engage with any business you've ever contacted.
+
+To conquer every B2C market by offering a truly next level communication experience there.
+
+**To become a part of every B2C transaction.**
+
+---
+<!-- _class: highlight -->
+<h3>Monetization</h3>
+
+- **Freemium:** phone redirection, HQ transcribers, storage
+- **Social:** ads
+- **Corporate communication:** subscriptions, integrations
+- **Customer communication:** subscriptions, integrations, fintech
+- **API / integrations:** pay-per-use.
+
+---
+<!-- _class: highlight -->
+![bg](./img/actual-chat.jpg)
+
+---
+<!-- _class: highlight -->
+<h1>Appendix</h1>
 
 ---
 <!-- _class: highlight -->
@@ -214,56 +331,40 @@ The truth is: no one dared to implement this. **We do.**
 - The upload, download & playback logic should be redesigned to work in "streaming + blob" rather than "blob only" mode
 - 1 message per user per minute vs 20 messages per user per second = 1200x = very different scalability assumptions.
 
-In fact, this is closer to Google Meet or Zoom than to a regular chat app. But they also miss a number of critical components &ndash; they're designed for streaming only, there is no "replay like it's happening now", no history, etc.
+In fact, it's easier for Google Meet or Zoom to implement this than to a regular chat app. But they also miss a number of critical components &ndash; they're designed for streaming only, there is no "replay like it's happening now", no history, etc.
 
 **The gist: if you're WhatsApp, Discord, or Slack, you need a major redesign to deliver this experience. And if you know how big companies operate, you know they're 10x more likely to buy you vs take the "major redesign" path.**
 
 ---
 <!-- _class: highlight -->
-<h2>Ok, where are the money?</h2>
+<h2>Isn't it expensive to store audio?</h2>
 
-<br/>
-<br/>
-<div style="text-align: center">
-<img style="width: 80%" src="./diagrams/product.dio.svg"/>
-</div>
+No: **< $0.04 per user-month.**
 
----
-<!-- _class: highlight -->
-<h3>We want to:</h3>
+- We use [Opus codec](https://en.wikipedia.org/wiki/Opus_(audio_format)) with 32kbps bitrate
+- An average user will probably **talk** less than 1 hour per day
+-  ~= 3kB/s × 3600 ~= 10MB/day or **3.6GB/year.**
+- Google bills $0.02/GB*mo, so it's < 0.07/mo after 1 year assuming the price will exponentially decrease over time, and the amount of data per user grows ~ linearly.
+- There are tons of options to decrease this price, e.g. switching to Nearline storage will decrease it by 2x immediately.
 
-- Create a platform providing the best communication channel
-- Conquer every B2C market by offering a truly next level customer communication experience there
-- Replace most of existing communication tools with a single app combining a superior communication experience and an ability instantly re-engage with any business you've ever contacted, re-order everything, etc.
-
-**In the end, we want to be a part of every B2C transaction.**
+So even 24 hours of audio per person per day are fine to store.
 
 ---
 <!-- _class: highlight -->
-<h2>What's wrong with modern-day B2C communications?</h2>
+<h2>Isn't it expensive to transcribe audio?</h2>
 
-Chat support:
-&ndash; Please wait while I'm connecting you with an agent...
-&ndash; You can do this only via the phone [and whatever you say there won't be shown here]
-&ndash; It seems you're not here. Thank you for reaching us. Bye!
+No: **~ $0.08 per user-month.**
 
-Phone support:
-&ndash; This call is recorded for quality and training purposes.
-&ndash; You're 15th person on the line, please wait...
-&ndash; Do you know you can reach us via our web app? Go to www, n-like-nancy, e-like-emily, v-like-victor, e-like-emily, r-like-rob dot com
-&ndash; To pay your bill, say "pay bills" [... and 30+ seconds of crap like this]
-&ndash; Sorry to hear you tried to explain the problem 10 times already. My name is Joe, I'm the 11th CSR who's happy to learn more about your problem!
-&ndash; We'll mail you the invoice. Yes, by regular mail.
+We plan to support multiple transcription engines, but the free ones are based on Silero models. Their a bit outdated performance benchmarks: https://tinyurl.com/4rsptfae
 
----
-<!-- _class: highlight invert -->
-![bg blur:0.5px](./img/riptide.jpg)
+The gist:
+- Tesla T4-like GPU + 12-core CPU transcribes ~= 150 audio streams in real time
+- $804.35/mo preemptive [a2-highgpu-1g with a single NVidia A100](https://cloud.google.com/compute/docs/accelerator-optimized-machines) ~ ×3 to this
+- Assuming ~ 1 hour of recorded audio per user per day, we need 1 machine for ~10K users, so 1 user costs us ~ $0.08/mo.
+- Tons of ways to save here as well.
 
----
-<!-- _class: highlight invert -->
-![bg blur:5px brightness:0.3](./img/riptide.jpg)
+Overall, our infrastructure cost should be **~ $2 per user per year.**
 
-<h2>The only reason you can sell this UX?</h2>
 
-The Q. isn't specifically about Riptide &ndash; it's about every customer communication product on the market, standalone or embedded.
+
 
