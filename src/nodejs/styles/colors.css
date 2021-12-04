@@ -1,9 +1,3 @@
-/* purgecss start ignore */
-@tailwind base;
-@tailwind components;
-/* purgecss end ignore */
-@tailwind utilities;
-
 :root {
     --background-primary: #2e115a;
     --background-secondary: #36146B;
