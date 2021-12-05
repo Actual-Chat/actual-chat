@@ -1,7 +1,5 @@
 ﻿using ActualChat.Hosting;
 using ActualChat.Transcription;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 

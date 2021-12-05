@@ -1,14 +1,13 @@
-@namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 
-@Model.Footer
+@Model.Header
 
 @code {
     private readonly Action<PageLayoutModel> _onPageLayoutModelChanged;
 
     [Inject] private PageLayoutModel Model { get; set; } = null!;
 
-    public PageLayoutFooter()
+    public PageLayoutHeader()
         => _onPageLayoutModelChanged = OnPageLayoutModelChanged;
 
     protected override void OnInitialized()

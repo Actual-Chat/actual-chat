@@ -1,9 +1,7 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Components;
+using ActualChat.UI.Blazor.Layouts;
 using Microsoft.Extensions.DependencyInjection;
 using Stl.DependencyInjection;
-using Stl.Fusion.Blazor;
-using Stl.Fusion.UI;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor;

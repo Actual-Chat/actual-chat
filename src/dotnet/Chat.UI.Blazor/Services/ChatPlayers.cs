@@ -1,6 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Blazor;
-
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // This service can be used only from the UI thread

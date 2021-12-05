@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.Hosting;

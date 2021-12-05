@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Components;
-
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.UI.Blazor.Layouts;
 
 public class PageLayoutModel
 {
