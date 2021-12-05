@@ -4,6 +4,6 @@ namespace ActualChat.UI.Blazor;
 
 public static class ComponentExt
 {
-    public static string ComponentCssClass(this IComponent component)
-        => CssClassRegistry.Get(component.GetType());
+    public static string DefaultClass(this IComponent component)
+        => CssClasses.Default[component.GetType()];
 }

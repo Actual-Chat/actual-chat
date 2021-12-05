@@ -3,18 +3,17 @@
 @inject BlazorModeHelper _blazorModeHelper
 @inject IJSRuntime _js
 
-<div class="@this.ComponentCssClass() group"
+<div class="@(_class ??= this.DefaultClass()) group"
      @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
     <span class="hover-item">@(IsPrerendering ? "Loading..." : GetActiveText(IsServerSideBlazor))</span>
     <span class="hover-item alt">@(IsPrerendering ? "Loading..." : GetInactiveText(IsServerSideBlazor))</span>
 </div>
 
 @code {
+    private static string? _class;
+
     private bool IsPrerendering { get; set; }
     private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsServerSideBlazor;
-
-    [Parameter]
-    public string CssClass { get; set; } = "";
 
     protected override void OnInitialized()
     {
