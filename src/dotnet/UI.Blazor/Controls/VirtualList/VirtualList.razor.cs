@@ -1,6 +1,6 @@
 using ActualChat.UI.Blazor.Controls.Internal;
+using ActualChat.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.UI.Blazor.Controls;
@@ -226,7 +226,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         };
 
         DebugLog?.LogDebug(
-            "GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {RFR}, query = {Query}",
+            "GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {ResponseFulfillmentRatio}, query = {Query}",
             itemSize, responseFulfillmentRatio, query);
         return query;
     }

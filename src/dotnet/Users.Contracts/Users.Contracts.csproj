@@ -4,8 +4,4 @@
     <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Implementation" />
-  </ItemGroup>
-
 </Project>

@@ -1,8 +1,3 @@
-
-
-
-
-
 using System;
 using System.ComponentModel;
 using System.Globalization;
@@ -11,7 +6,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 // ReSharper disable PartialTypeWithSinglePart
 #pragma warning disable 618
-
 
 
 namespace ActualChat
@@ -97,7 +91,6 @@ namespace ActualChat.Internal
     }
 }
 
-
 namespace ActualChat
 {
     [DataContract]
@@ -180,7 +173,6 @@ namespace ActualChat.Internal
             => new((string?) reader.Value!);
     }
 }
-
 
 namespace ActualChat
 {
@@ -265,7 +257,6 @@ namespace ActualChat.Internal
     }
 }
 
-
 namespace ActualChat
 {
     [DataContract]
@@ -348,7 +339,6 @@ namespace ActualChat.Internal
             => new((string?) reader.Value!);
     }
 }
-
 
 namespace ActualChat
 {
@@ -433,7 +423,6 @@ namespace ActualChat.Internal
     }
 }
 
-
 namespace ActualChat
 {
     [DataContract]
@@ -516,4 +505,3 @@ namespace ActualChat.Internal
             => new((string?) reader.Value!);
     }
 }
-

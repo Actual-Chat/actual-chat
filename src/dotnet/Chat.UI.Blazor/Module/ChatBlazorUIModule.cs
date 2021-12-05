@@ -4,11 +4,10 @@ using ActualChat.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
-namespace ActualChat.Chat.UI.Blazor;
+namespace ActualChat.Chat.UI.Blazor.Module;
 
 public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
-    /// <inheritdoc />
     public static string ImportName => "chat";
 
     public ChatBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }

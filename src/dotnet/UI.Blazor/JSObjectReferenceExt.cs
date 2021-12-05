@@ -1,5 +1,3 @@
-using Microsoft.JSInterop;
-
 namespace ActualChat.UI.Blazor;
 
 /// <summary>

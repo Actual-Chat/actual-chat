@@ -1,5 +1,4 @@
-﻿using System.Data;
-using ActualChat.Configuration;
+﻿using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;

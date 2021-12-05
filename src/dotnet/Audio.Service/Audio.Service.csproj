@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ToDo: fix t4 generation without vs/rider or move to sourcegenerators, move generation results to a separate folder (?)  -->
+    <!-- TODO: fix T4 generation without VS/Rider or move to source generators, move generation results to a separate folder (?) -->
     <None Update="Ebml\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="Ebml\%(Filename).cs" />
     <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs" />
     <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs" />
@@ -44,9 +44,13 @@
       <DependentUpon>MatroskaModels.tt</DependentUpon>
     </Compile>
     <Compile Update="WebM\Models\MatroskaModels.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
       <DependentUpon>MatroskaModels.tt</DependentUpon>
     </Compile>
     <Compile Update="WebM\MatroskaSpecification.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
       <DependentUpon>MatroskaSpecification.tt</DependentUpon>
     </Compile>
   </ItemGroup>

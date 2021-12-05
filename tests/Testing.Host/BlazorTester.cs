@@ -1,40 +1,38 @@
 using ActualChat.Host;
 using Bunit;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace ActualChat.Testing.Host
+namespace ActualChat.Testing.Host;
+
+public class BlazorTester : TestContext, IWebTester
 {
-    public class BlazorTester : TestContext, IWebTester
+    private readonly IServiceScope _serviceScope;
+
+    public AppHost AppHost { get; }
+    public IServiceProvider AppServices => AppHost.Services;
+    public IServiceProvider ScopedAppServices => _serviceScope!.ServiceProvider;
+    public Session Session { get; }
+    public UriMapper UriMapper => AppServices.UriMapper();
+    public IAuth Auth => AppServices.GetRequiredService<IAuth>();
+    public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
+
+    public BlazorTester(AppHost appHost)
     {
-        private readonly IServiceScope _serviceScope;
+        AppHost = appHost;
+        _serviceScope = AppServices.CreateScope();
+        Services.AddFallbackServiceProvider(ScopedAppServices);
 
-        public AppHost AppHost { get; }
-        public IServiceProvider AppServices => AppHost.Services;
-        public IServiceProvider ScopedAppServices => _serviceScope!.ServiceProvider;
-        public Session Session { get; }
-        public UriMapper UriMapper => AppServices.UriMapper();
-        public IAuth Auth => AppServices.GetRequiredService<IAuth>();
-        public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
+        var sessionFactory = AppServices.GetRequiredService<ISessionFactory>();
+        Session = sessionFactory.CreateSession();
+        var sessionProvider = ScopedAppServices.GetRequiredService<ISessionProvider>();
+        sessionProvider.Session = Session;
 
-        public BlazorTester(AppHost appHost)
-        {
-            AppHost = appHost;
-            _serviceScope = AppServices.CreateScope();
-            Services.AddFallbackServiceProvider(ScopedAppServices);
+        Services.AddTransient(_ => ScopedAppServices.StateFactory());
+    }
 
-            var sessionFactory = AppServices.GetRequiredService<ISessionFactory>();
-            Session = sessionFactory.CreateSession();
-            var sessionProvider = ScopedAppServices.GetRequiredService<ISessionProvider>();
-            sessionProvider.Session = Session;
-
-            Services.AddTransient(_ => ScopedAppServices.StateFactory());
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (!disposing)
-                return;
-            _serviceScope.Dispose();
-        }
+    protected override void Dispose(bool disposing)
+    {
+        if (!disposing)
+            return;
+        _serviceScope.Dispose();
     }
 }

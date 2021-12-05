@@ -1,5 +1,4 @@
 using ActualChat.Audio.Processing;
-using ActualChat.Blobs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stl.IO;
 
@@ -22,7 +21,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var blobStream = GetAudioFilePath("file.webm").ReadBlobStream();
 
         var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream, default);
+        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream);
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
             openAudioSegment.AudioRecord.Should().Be(record);
@@ -48,7 +47,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var blobStream = audioFilePath.ReadBlobStream();
 
         var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream, default);
+        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -80,7 +79,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var blobStream = audioFilePath.ReadBlobStream();
 
         var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream, default);
+        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);

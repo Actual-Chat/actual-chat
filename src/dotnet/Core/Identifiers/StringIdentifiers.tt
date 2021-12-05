@@ -9,11 +9,11 @@
         "VideoRecord",
         "Stream",
         "User",
-        "Author"
+        "Author",
     };
 
     List<(string,string)> slaveEntityTypeNames = new () {
-        ("Stream", "AudioRecord")
+        ("Stream", "AudioRecord"),
     };
 
 #>

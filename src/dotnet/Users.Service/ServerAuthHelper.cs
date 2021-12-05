@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.Users.Db;
 using Stl.Fusion.Server.Internal;
 
 namespace ActualChat.Users;

@@ -1,18 +1,17 @@
 using ActualChat.Audio.Client.Module;
-using ActualChat.Audio.UI.Blazor;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.WebM;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
-using ActualChat.Chat.UI.Blazor;
+using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.MediaPlayback.Module;
+using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.DependencyInjection;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 

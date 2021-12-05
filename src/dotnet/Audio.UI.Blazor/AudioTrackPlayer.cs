@@ -105,7 +105,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         else
                             await JSRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
                         break;
-                    case SetTrackVolumeCommand setVolume:
+                    case SetTrackVolumeCommand:
                         // TODO: Implement this
                         break;
                     default:

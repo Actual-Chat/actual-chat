@@ -1,14 +1,10 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Layouts;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.UI.Blazor;
+namespace ActualChat.UI.Blazor.Module;
 
 public class BlazorUICoreModule : HostModule, IBlazorUIModule
 {
-    /// <inheritdoc />
     public static string ImportName => "core";
 
     public BlazorUICoreModule(IPluginInfoProvider.Query _) : base(_) { }

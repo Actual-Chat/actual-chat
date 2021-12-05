@@ -1,6 +1,4 @@
-using ActualChat.Blobs;
 using ActualChat.Testing.Host;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
@@ -29,8 +27,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
 
         var record = await recordTask.ConfigureAwait(false);
         record.Should().Be(recordSpec with {
-            Id = record!.Id,
-            AuthorId = record!.AuthorId
+            Id = record.Id,
+            AuthorId = record.AuthorId
         });
 
         var audioStream = sourceAudioRecorder.GetSourceAudioBlobStream(record.Id, CancellationToken.None);
@@ -51,7 +49,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var writtenSize = await UploadRecording(session, "1", sourceAudioRecorder);
 
         var record = await recordTask;
-        var blobStream = sourceAudioRecorder.GetSourceAudioBlobStream(record!.Id, CancellationToken.None);
+        var blobStream = sourceAudioRecorder.GetSourceAudioBlobStream(record.Id, CancellationToken.None);
         var readSize = (long) await blobStream.SumAsync(p => p.Data.Length);
 
         readSize.Should().Be(writtenSize);
