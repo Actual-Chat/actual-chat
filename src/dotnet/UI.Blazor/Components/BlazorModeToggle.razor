@@ -1,31 +1,23 @@
 @namespace ActualChat.UI.Blazor.Components
 @using System.Reflection
 @inject BlazorModeHelper _blazorModeHelper
-@inject IJSRuntime _js
+@inject BlazorCircuitContext _circuitContext
 
-<div class="@(_class ??= this.DefaultClass()) group"
+<span class="@(_class ??= this.DefaultClass()) group"
      @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
-    <span class="hover-item">@(IsPrerendering ? "Loading..." : GetActiveText(IsServerSideBlazor))</span>
-    <span class="hover-item alt">@(IsPrerendering ? "Loading..." : GetInactiveText(IsServerSideBlazor))</span>
-</div>
+    @if (_circuitContext.IsPrerendering) {
+        <span>"Loading..."</span>
+    } else {
+        <span class="hover-item">Blazor: <b>@(ModeNames[IsServerSideBlazor ? 1 : 0])</b></span>@*
+        *@<span class="hover-item alt">Switch to <b>@(ModeNames[IsServerSideBlazor ? 0 : 1])</b></span>
+    }
+</span>
 
 @code {
+    private static readonly string[] ModeNames = { "WASM", "Server" };
     private static string? _class;
 
-    private bool IsPrerendering { get; set; }
     private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsServerSideBlazor;
-
-    protected override void OnInitialized()
-    {
-        var jsRuntimeType = _js.GetType();
-        if (jsRuntimeType.Name != "RemoteJSRuntime") {
-            IsPrerendering = false;
-            return;
-        }
-        var fClientProxy = jsRuntimeType.GetField("_clientProxy", BindingFlags.Instance | BindingFlags.NonPublic);
-        var clientProxy = fClientProxy?.GetValue(_js);
-        IsPrerendering = fClientProxy != null && clientProxy == null;
-    }
 
     private string GetActiveText(bool isServerSideBlazor)
         => isServerSideBlazor ? "Blazor Server" : "Blazor WASM";

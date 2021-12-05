@@ -21,15 +21,14 @@
         </div>
         @* Bottom sticky panel *@
         <div class="flex flex-col sticky items-stretch">
-            <div class="version">
-                @version
-                <span class="px-1">/</span>
-                <BlazorModeToggle />
+            <div class="version-info">
+                <span class="version">v<b>@version</b></span>
+                <br/>
+                <BlazorModeToggle />,
                 <MediaRecorderToggle />
             </div>
             <div class="account-dropdown">
                 <AccountDropdown />
-                <BlazorModeToggle />
             </div>
         </div>
     </nav>

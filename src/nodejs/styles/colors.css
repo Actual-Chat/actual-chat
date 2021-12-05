@@ -1,36 +1,8 @@
-:root {
-    --background-primary: #2e115a;
-    --background-secondary: #36146B;
-    --background-accent: #471a8c;
 
-    --text-color-primary: #FAFAFA;
-    --text-color-primary-muted: #C7C7C7;
-    --text-color-secondary: #B3BEC0;
-    --text-color-secondary-muted: #7C8F91;
-    --text-color-accent: #8951de;
-    --text-color-accent-muted: #7330d8;
-    --text-color-toggle-off: #d87330;
-    --text-color-toggle-on: #62e194;
-
-    --playable-shadow-first: #ffffff;
-    --playable-shadow-second: #BFDBFE;
-    --playable-shadow-third: #3B82F6;
-    --playing-shadow-first: #ffffff;
-    --playing-shadow-second: #BAE6FD;
-    --playing-shadow-third: #0EA5E9;
-
-    --button-color-success: #2da01e;
-    --button-color-success-hover: #36C124;
-    --button-color-accent: #ffffff;
-    --button-color-accent-hover: #FAFAFA;
-    --button-color-error: #95211E;
-    --button-color-error-hover: #D94440;
-}
-
-.main-theme {
+:root, .theme-dark {
     --background-primary: #1a1f25;
     --background-secondary: #222831;
-    --background-accent: #323b48;
+    --background-accent: #4b5666;
 
     --text-color-primary: #f6f7f9;
     --text-color-primary-muted: #d3d9e1;
@@ -41,17 +13,17 @@
     --text-color-toggle-off: #d87330;
     --text-color-toggle-on: #31d872;
 
-    --playable-shadow-first: #ffffff;
-    --playable-shadow-second: #BFDBFE;
-    --playable-shadow-third: #3B82F6;
-    --playing-shadow-first: #ffffff;
-    --playing-shadow-second: #BAE6FD;
-    --playing-shadow-third: #0EA5E9;
-
     --button-color-success: #31d872;
     --button-color-success-hover: #21ac58;
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
     --button-color-error: #95211E;
     --button-color-error-hover: #D94440;
+
+    --glow-max: #fff;
+    --glow-mid: rgb(181, 240, 255);
+    --glow-min: rgb(0, 204, 255);
+    --playing-glow-max: rgb(181, 240, 255);
+    --playing-glow-mid: rgb(0, 204, 255);
+    --playing-glow-min: rgb(0, 139, 173);
 }

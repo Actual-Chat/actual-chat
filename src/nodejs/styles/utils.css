@@ -2,15 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-.group .hover-item {
-    @apply opacity-100 w-auto h-auto
-}
 .group:hover .hover-item {
-    @apply opacity-0 w-0 h-0
+    position: absolute;
+    opacity: 0%;
 }
 .group .hover-item.alt {
-    @apply opacity-0 w-0 h-0
+    position: absolute;
+    opacity: 0%;
 }
 .group:hover .hover-item.alt {
-    @apply opacity-100 w-auto h-auto
+    position: static;
+    opacity: 100%;
 }

@@ -67,12 +67,14 @@ export class AudioRecorder {
         return new AudioRecorder(blazorRef, debugMode);
     }
 
-    public static changeMediaRecorder(useStandardRecorder: boolean) {
-        self.MediaRecorder = useStandardRecorder ? self["StandardMediaRecorder"] : self["OpusMediaRecorder"];
+    public static changeMediaRecorder(useStandardMediaRecorder: boolean) {
+        self.MediaRecorder = useStandardMediaRecorder
+            ? self["StandardMediaRecorder"]
+            : self["OpusMediaRecorder"];
     }
 
-    public static getMediaRecorderType(): string {
-        return self.MediaRecorder === self["StandardMediaRecorder"] ? "standard" : "wasm";
+    public static isStandardMediaRecorder(): boolean {
+        return self.MediaRecorder === self["StandardMediaRecorder"];
     }
 
     public dispose() {
