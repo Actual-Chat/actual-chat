@@ -1,5 +1,3 @@
-using ActualChat.Blobs;
-
 namespace ActualChat.Media;
 
 public static class MediaStreamExt

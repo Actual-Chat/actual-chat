@@ -1,64 +1,57 @@
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
-using ActualChat.MediaPlayback;
-using ActualChat.UI.Blazor;
-using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 
-namespace ActualChat.Audio.UI.Blazor;
+namespace ActualChat.Audio.UI.Blazor.Pages;
 
-#pragma warning disable CS0162 // for if(false){ logging }
+#pragma warning disable CS0162 // for if (false) { logging }
 
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
     [Inject]
-    private ILogger<AudioPlayerTestPage> _log { get; set; } = null!;
-
+    private ILogger<AudioPlayerTestPage> Log { get; set; } = null!;
     [Inject]
-    private IHttpClientFactory _httpClientFactory { get; set; } = null!;
-
+    private IHttpClientFactory HttpClientFactory { get; set; } = null!;
     [Inject]
-    private ILoggerFactory _loggerFactory { get; set; } = null!;
-
+    private ILoggerFactory LoggerFactory { get; set; } = null!;
     [Inject]
-    private IJSRuntime _js { get; set; } = null!;
+    private IJSRuntime JS { get; set; } = null!;
 
     private bool _isPlaying;
-
-    private CancellationTokenSource? _cts = null;
+    private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
-    private int? _prevMediaElementReadyState = null;
+    private int? _prevMediaElementReadyState;
     private double _offset;
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
 
     public async Task OnClick()
     {
         if (_isPlaying) {
-            _log.LogInformation("Stop playing");
+            Log.LogInformation("Stop playing");
             _cts?.CancelAndDisposeSilently();
             _cts = null;
             _isPlaying = false;
             StateHasChanged();
         }
         else {
-            _log.LogInformation("Start playing");
+            Log.LogInformation("Start playing");
             _isPlaying = true;
             _offset = 0d;
             _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
             const bool debugMode = true;
-            var audioDownloader = new AudioDownloader(_httpClientFactory, _loggerFactory);
+            var audioDownloader = new AudioDownloader(HttpClientFactory, LoggerFactory);
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-            var jsRef = await _js.InvokeAsync<IJSObjectReference>(
+            var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                 _cts.Token, blazorRef, debugMode
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
+            // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 try {
-                    _log.LogInformation("Playing was cancelled");
+                    Log.LogInformation("Playing was cancelled");
                     await jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
                     await jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
                     if (_registration != default) {
@@ -67,7 +60,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     }
                 }
                 catch (Exception ex) {
-                    _log.LogError(ex, "Dispose registration error");
+                    Log.LogError(ex, "Dispose registration error");
                 }
                 finally {
                     _isPlaying = false;
@@ -78,7 +71,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
             await foreach (var frame in audioSource.GetFrames(_cts.Token).ConfigureAwait(true)) {
                 if (false) {
-                    _log.LogInformation(
+                    Log.LogInformation(
                         "Send the frame data to js side (bytes: {FrameBytes}, offset sec: {FrameOffset}, duration sec: {FrameDuration})",
                          frame.Data.Length,
                          frame.Offset.TotalSeconds,
@@ -96,7 +89,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (_prevMediaElementReadyState != readyState) {
             _prevMediaElementReadyState = readyState;
-            _log.LogInformation(
+            Log.LogInformation(
                 "Playing offset~: {PlayingOffset} OnChangeReadiness(isBufferReady: {BufferReadiness}, offset: {Offset}, readyState: {MediaElementReadyState})",
                 _offset,
                 isBufferReady,
@@ -114,13 +107,14 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         3 => "HAVE_FUTURE_DATA",
         4 => "HAVE_ENOUGH_DATA",
         null => "null",
+        // ReSharper disable once ConstantConditionalAccessQualifier
         _ => $"UNKNOWN:{state?.ToString(CultureInfo.InvariantCulture) ?? "(null)"}",
     };
 
     [JSInvokable]
     public async Task OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
-        _log.LogInformation(
+        Log.LogInformation(
             "OnPlaybackEnded(errorCode: {ErrorCode}, errorMessage: {ErrorMessage})",
             errorCode,
             errorMessage
@@ -135,7 +129,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public Task OnPlaybackTimeChanged(double? offset)
     {
         if (false) {
-            _log.LogInformation("OnPlaybackTimeChanged(offset: {Offset})", offset);
+            Log.LogInformation("OnPlaybackTimeChanged(offset: {Offset})", offset);
         }
         _offset = offset ?? 0d;
         StateHasChanged();

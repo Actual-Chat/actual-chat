@@ -3,13 +3,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("ChatAuthors")]
 [Index(nameof(ChatId), nameof(UserId))]
-public class DbChatAuthor : IAuthorLike, IHasId<string>, IHasVersion<long>
+public class DbChatAuthor : IAuthorLike, IHasId<string>
 {
     private AuthorId _id;
 

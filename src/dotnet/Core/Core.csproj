@@ -14,7 +14,7 @@
     <PackageReference Include="Storage.NetCore.Gcp.CloudStorage" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <None Update="Identifiers\StringIdentifiers.tt">
       <Generator>TextTemplatingFileGenerator</Generator>

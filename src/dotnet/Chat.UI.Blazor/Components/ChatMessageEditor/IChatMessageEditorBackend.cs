@@ -5,6 +5,6 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 /// </summary>
 public interface IChatMessageEditorBackend
 {
-    void UpdateClientSideState(string text);
+    void UpdateClientSideState(string? text);
     Task Post(string? text = null);
 }

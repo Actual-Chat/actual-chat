@@ -1,5 +1,4 @@
 using ActualChat.Host;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Testing.Host;

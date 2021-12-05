@@ -1,7 +1,6 @@
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Db;

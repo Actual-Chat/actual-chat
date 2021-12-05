@@ -3,9 +3,6 @@ using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.JSInterop;
-using Stl.Fusion.Blazor;
 
 namespace ActualChat.Audio.UI.Blazor;
 
@@ -108,7 +105,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         else
                             await JSRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
                         break;
-                    case SetTrackVolumeCommand setVolume:
+                    case SetTrackVolumeCommand:
                         // TODO: Implement this
                         break;
                     default:

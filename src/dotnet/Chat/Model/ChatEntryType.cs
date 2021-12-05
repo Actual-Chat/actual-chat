@@ -1,9 +1,8 @@
-namespace ActualChat.Chat
+namespace ActualChat.Chat;
+
+public enum ChatEntryType
 {
-    public enum ChatEntryType
-    {
-        Text = 0x0,
-        Audio = 0x1,
-        Video = 0x2,
-    }
+    Text = 0x0,
+    Audio = 0x1,
+    Video = 0x2,
 }

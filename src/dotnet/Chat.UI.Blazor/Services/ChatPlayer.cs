@@ -1,7 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using Cysharp.Text;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

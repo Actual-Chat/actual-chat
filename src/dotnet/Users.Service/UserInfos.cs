@@ -1,5 +1,4 @@
 using ActualChat.Users.Db;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;

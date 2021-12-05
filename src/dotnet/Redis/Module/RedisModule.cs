@@ -1,9 +1,6 @@
 ﻿using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 using Stl.Redis;
 

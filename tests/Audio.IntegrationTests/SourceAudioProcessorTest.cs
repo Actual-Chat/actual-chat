@@ -1,9 +1,7 @@
-using ActualChat.Blobs;
 using ActualChat.Chat;
 using ActualChat.Host;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
@@ -35,8 +33,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var record = await dequeueTask;
         record.Should()
             .Be(recordingSpec with {
-                Id = record!.Id,
-                AuthorId = record!.AuthorId,
+                Id = record.Id,
+                AuthorId = record.AuthorId,
             });
     }
 
@@ -76,10 +74,10 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
 
         var recording = await recordingTask;
-        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
+        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording, cts.Token);
 
-        var readTask = ReadAudioData(recording!.Id, audioStreamer);
-        var readTranscriptTask = ReadTranscriptStream(recording!.Id, transcriptStreamer);
+        var readTask = ReadAudioData(recording.Id, audioStreamer);
+        var readTranscriptTask = ReadTranscriptStream(recording.Id, transcriptStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
         var transcribed = await readTranscriptTask;
@@ -109,9 +107,9 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
 
         var recording = await recordingTask;
-        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
+        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording, cts.Token);
 
-        var readTask = ReadAudioData(recording!.Id, audioStreamer);
+        var readTask = ReadAudioData(recording.Id, audioStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
 

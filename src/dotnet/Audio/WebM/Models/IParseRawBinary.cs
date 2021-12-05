@@ -1,9 +1,6 @@
-﻿using System;
+﻿namespace ActualChat.Audio.WebM.Models;
 
-namespace ActualChat.Audio.WebM.Models
+public interface IParseRawBinary
 {
-    public interface IParseRawBinary
-    {
-        void Parse(ReadOnlySpan<byte> span);
-    }
+    void Parse(ReadOnlySpan<byte> span);
 }

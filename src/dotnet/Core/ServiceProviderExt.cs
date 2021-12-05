@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace ActualChat;
 
 public static class ServiceProviderExt

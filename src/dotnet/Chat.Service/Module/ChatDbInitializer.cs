@@ -1,10 +1,8 @@
 using ActualChat.Audio;
-using ActualChat.Blobs;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.IO;
 
 namespace ActualChat.Chat.Module;
@@ -162,9 +160,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         void AddAudioEntry1()
         {
-            var beginsAt = new Moment(DateTime.Parse("2021-11-05 16:41:18.504314 +00:00", NumberFormatInfo.InvariantInfo));
-            var endsAt = new Moment(DateTime.Parse("2021-11-05 16:41:29.543314 +00:00", NumberFormatInfo.InvariantInfo));
-            var duration = endsAt - beginsAt;
+            var originalBeginsAt = new Moment(DateTime.Parse("2021-11-05 16:41:18.504314 +00:00", NumberFormatInfo.InvariantInfo));
+            var originalEndsAt = new Moment(DateTime.Parse("2021-11-05 16:41:29.543314 +00:00", NumberFormatInfo.InvariantInfo));
+            var duration = originalEndsAt - originalBeginsAt;
             lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
             lastEndsAt = lastBeginsAt + duration;
 
@@ -202,9 +200,9 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         void AddAudioEntry2()
         {
-            var beginsAt = new Moment(DateTime.Parse("2021-11-05 17:26:05.745700 +00:00", NumberFormatInfo.InvariantInfo));
-            var endsAt = new Moment(DateTime.Parse("2021-11-05 17:26:16.275700 +00:00", NumberFormatInfo.InvariantInfo));
-            var duration = endsAt - beginsAt;
+            var originalBeginsAt = new Moment(DateTime.Parse("2021-11-05 17:26:05.745700 +00:00", NumberFormatInfo.InvariantInfo));
+            var originalEndsAt = new Moment(DateTime.Parse("2021-11-05 17:26:16.275700 +00:00", NumberFormatInfo.InvariantInfo));
+            var duration = originalEndsAt - originalBeginsAt;
             lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
             lastEndsAt = lastBeginsAt + duration;
 

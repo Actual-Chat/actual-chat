@@ -1,22 +1,19 @@
 using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.Transcription.Module
+namespace ActualChat.Transcription.Module;
+
+public class TranscriptionModule: HostModule
 {
-    public class TranscriptionModule: HostModule
+    public TranscriptionModule(IPluginInfoProvider.Query _) : base(_) { }
+    [ServiceConstructor]
+    public TranscriptionModule(IPluginHost plugins) : base(plugins) { }
+
+    public override void InjectServices(IServiceCollection services)
     {
-        public TranscriptionModule(IPluginInfoProvider.Query _) : base(_) { }
-        [ServiceConstructor]
-        public TranscriptionModule(IPluginHost plugins) : base(plugins) { }
+        if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
+            return; // Server-side only module
 
-        public override void InjectServices(IServiceCollection services)
-        {
-            if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
-                return; // Server-side only module
-
-            services.AddSingleton<ITranscriber, GoogleTranscriber>();
-        }
+        services.AddSingleton<ITranscriber, GoogleTranscriber>();
     }
 }
