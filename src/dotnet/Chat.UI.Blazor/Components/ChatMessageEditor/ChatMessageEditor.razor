@@ -2,6 +2,7 @@
 @implements IChatMessageEditorBackend
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
 @implements IAsyncDisposable
 @inject IChats _chatService
 @inject Session _session
@@ -50,6 +51,7 @@
     public async ValueTask DisposeAsync() {
         if (JSRef != null!)
             await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+    // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
     }
 
@@ -68,7 +70,7 @@
     }
 
     [JSInvokable]
-    public void UpdateClientSideState(string text) {
+    public void UpdateClientSideState(string? text) {
         Text = text ?? "";
     }
 

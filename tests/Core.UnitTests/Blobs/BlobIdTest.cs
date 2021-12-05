@@ -1,14 +1,11 @@
-using ActualChat.Blobs;
+namespace ActualChat.Core.UnitTests.Blobs;
 
-namespace ActualChat.Core.UnitTests.Blobs
+public class BlobIdTest
 {
-    public class BlobIdTest
+    [Fact]
+    public void GetScopeTest()
     {
-        [Fact]
-        public void GetScopeTest()
-        {
-            BlobPath.GetScope("a").Should().Be("");
-            BlobPath.GetScope("a/b").Should().Be("a");
-        }
+        BlobPath.GetScope("a").Should().Be("");
+        BlobPath.GetScope("a/b").Should().Be("a");
     }
 }

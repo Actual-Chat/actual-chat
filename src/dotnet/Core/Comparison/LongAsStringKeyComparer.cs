@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace ActualChat.Comparison;
 
 public class LongAsStringKeyComparer : IComparer<string>

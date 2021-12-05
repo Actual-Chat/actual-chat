@@ -1,7 +1,6 @@
 using System.Buffers;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
-using ActualChat.Blobs;
 using ActualChat.Media;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -218,6 +217,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         return webMReader.GetState();
     }
 
+    // ReSharper disable once UnusedParameter.Local
     private AudioFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader)
     {
         var trackEntry =

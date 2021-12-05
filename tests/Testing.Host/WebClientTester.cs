@@ -1,8 +1,6 @@
 using ActualChat.Host;
 using ActualChat.UI.Blazor.Host;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 
 namespace ActualChat.Testing.Host;
 

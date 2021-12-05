@@ -73,6 +73,7 @@ public static class BackgroundTask
         ILogger errorLog,
         string message,
         CancellationToken cancellationToken = default)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => Run(taskFactory, e => errorLog.LogError(e, message), cancellationToken);
 
     public static Task<T> Run<T>(
@@ -80,5 +81,6 @@ public static class BackgroundTask
         ILogger errorLog,
         string message,
         CancellationToken cancellationToken = default)
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
         => Run(taskFactory, e => errorLog.LogError(e, message), cancellationToken);
 }

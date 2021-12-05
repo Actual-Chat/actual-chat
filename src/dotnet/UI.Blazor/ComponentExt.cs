@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components;
-
 namespace ActualChat.UI.Blazor;
 
 public static class ComponentExt

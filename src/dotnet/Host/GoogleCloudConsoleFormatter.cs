@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
@@ -41,12 +40,12 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
     /// <inheritdoc />
     public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider scopeProvider, TextWriter textWriter)
     {
-        string message = logEntry.Formatter!(logEntry.State, logEntry.Exception);
-        if (logEntry.Exception == null && message == null) {
+        var message = logEntry.Formatter!.Invoke(logEntry.State, logEntry.Exception);
+        if (logEntry.Exception == null && message == null!)
             return;
-        }
-        const int DefaultBufferSize = 1024;
-        using var output = new PooledByteBufferWriter(DefaultBufferSize);
+
+        const int defaultBufferSize = 1024;
+        using var output = new PooledByteBufferWriter(defaultBufferSize);
         using var writer = new Utf8JsonWriter(output, _options.JsonWriterOptions);
 
         writer.WriteStartObject();
@@ -57,7 +56,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
         }
         writer.WriteString("severity", GetSeverity(logEntry.LogLevel));
         writer.WriteString("category", logEntry.Category);
-        if (logEntry.State != null) {
+        if (logEntry.State != null!) {
             writer.WriteStartObject("state");
             writer.WriteString("message", logEntry.State.ToString());
             if (logEntry.State is IEnumerable<KeyValuePair<string, object>> stateProperties) {
@@ -86,7 +85,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
     private void WriteScopeInformation(Utf8JsonWriter writer, IExternalScopeProvider scopeProvider)
     {
-        if (!_options.IncludeScopes || scopeProvider == null)
+        if (!_options.IncludeScopes || scopeProvider == null!)
             return;
 
         writer.WriteStartArray("scopes");
@@ -223,9 +222,8 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
         // Returns the rented buffer back to the pool
         public void Dispose()
         {
-            if (_rentedBuffer == null) {
+            if (_rentedBuffer == null!)
                 return;
-            }
 
             ClearHelper();
             byte[] toReturn = _rentedBuffer;

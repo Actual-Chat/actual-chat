@@ -1,5 +1,4 @@
 ﻿using ActualChat.Testing.Host;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Chat.IntegrationTests;
 
