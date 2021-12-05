@@ -39,9 +39,11 @@
 
     <!-- Global usings -->
     <Using Include="ActualChat" />
+    <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Channels" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="System.Collections" />
+    <Using Include="System.Collections.Concurrent" />
     <Using Include="System.Collections.Immutable" />
     <Using Include="System.Diagnostics" />
     <Using Include="System.Globalization" />
@@ -51,11 +53,13 @@
     <Using Include="System.Runtime.CompilerServices" />
     <Using Include="System.Runtime.InteropServices" />
     <Using Include="System.Runtime.Serialization" />
+    <Using Include="System.Threading" />
     <Using Include="System.Threading.Channels" />
     <Using Include="Stl" />
     <Using Include="Stl.Async" />
     <Using Include="Stl.Channels" />
     <Using Include="Stl.Collections" />
+    <Using Include="Stl.DependencyInjection" />
     <Using Include="Stl.Mathematics" />
     <Using Include="Stl.Serialization" />
     <Using Include="Stl.Text" />
@@ -67,6 +71,27 @@
     <Using Include="Stl.CommandR.Configuration" />
     <Using Include="Stl.CommandR.Commands" />
     <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
+    <!-- Global usings for UI.Blazor projects -->
+    <Using Include="ActualChat.UI.Blazor" />
+    <Using Include="ActualChat.UI.Blazor.Controls" />
+    <Using Include="ActualChat.UI.Blazor.Components" />
+    <Using Include="ActualChat.UI.Blazor.Layouts" />
+    <Using Include="Microsoft.AspNetCore.Components" />
+    <Using Include="Microsoft.AspNetCore.Components.Authorization" />
+    <Using Include="Microsoft.AspNetCore.Components.Forms" />
+    <Using Include="Microsoft.AspNetCore.Components.Routing" />
+    <Using Include="Microsoft.AspNetCore.Components.Web" />
+    <Using Include="Microsoft.AspNetCore.Components.WebAssembly.Http" />
+    <Using Include="Microsoft.JSInterop" />
+    <Using Include="Stl.Fusion.Blazor" />
+    <Using Include="Stl.Fusion.Blazor.Authentication" />
+    <Using Include="Stl.Fusion.Extensions" />
+    <Using Include="Stl.Fusion.UI" />
+    <Using Include="System.Net.Http" />
   </ItemGroup>
 
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->

@@ -1,6 +1,4 @@
 ﻿using ActualChat.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.MediaPlayback.Module;

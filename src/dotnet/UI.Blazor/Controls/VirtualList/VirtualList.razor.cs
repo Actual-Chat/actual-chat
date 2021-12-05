@@ -1,11 +1,9 @@
-using ActualChat.Mathematics;
-using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Controls.Internal;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Stl.Fusion.Blazor;
-using Stl.Reflection;
 
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.UI.Blazor.Controls;
 
 public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
 {

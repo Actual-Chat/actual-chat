@@ -1,5 +1,5 @@
 // ReSharper disable once CheckNamespace
-namespace ActualChat.UI.Blazor.Components.Internal;
+namespace ActualChat.UI.Blazor.Controls.Internal;
 
 public interface IVirtualListBackend
 {

@@ -1,8 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
-using ActualChat.UI.Blazor;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.UI.Blazor.Module;

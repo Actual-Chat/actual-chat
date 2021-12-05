@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace ActualChat.UI.Blazor;
 
 public class CssClasses

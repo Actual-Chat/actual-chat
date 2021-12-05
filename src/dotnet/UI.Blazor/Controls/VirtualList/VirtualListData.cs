@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Components;
+namespace ActualChat.UI.Blazor.Controls;
 
 public record VirtualListData<TItem>(List<KeyValuePair<string, TItem>> Items)
 {

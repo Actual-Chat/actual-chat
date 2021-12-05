@@ -1,13 +1,13 @@
-@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Controls
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager _navigator
 @inject UICommandFailureList _commandFailureList
+
 @{
     var failures = _commandFailureList.Items;
     var version = (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
-
 <Navbar />
 <div class="navbar">
     <input id="navbar-toggle" class="hidden" type="checkbox" />
