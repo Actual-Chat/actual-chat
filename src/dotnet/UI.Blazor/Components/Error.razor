@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @if (!_isClosed) {
-    <div class="@CssClass">
+    <div class="@Class">
         <div>@Title</div>
         <div>@ChildContent</div>
         <button @onclick="Close">✖</button>
@@ -12,7 +12,7 @@
     private bool _isClosed;
 
     [Parameter]
-    public string CssClass { get; set; } = "";
+    public string Class { get; set; } = CssClasses.Default[typeof(Error)];
     [Parameter]
     public string Title { get; set; } = "Error:";
     [Parameter]

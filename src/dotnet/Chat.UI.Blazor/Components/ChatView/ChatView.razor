@@ -3,7 +3,7 @@
 @using ActualChat.Comparison
 
 <VirtualList
-    CssClass="@(this.ComponentCssClass())"
+    Class="@(this.DefaultClass())"
     SpacerSize="6000" LoadZoneSize="6000" BufferZoneSize="12000"
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">

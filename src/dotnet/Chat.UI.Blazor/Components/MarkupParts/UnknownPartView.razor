@@ -2,12 +2,12 @@
 @implements IMarkupPartView
 @attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
 
-<span class="@(_componentCssClass ??= this.ComponentCssClass()) text-red-500">
+<span class="@(_class ??= this.DefaultClass()) text-red-500">
     [<span class="fa fa-exclamation-triangle"></span> no view for '@Part.GetType().Name']
 </span>
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatEntry Entry { get; set; } = null!;

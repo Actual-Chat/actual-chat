@@ -8,7 +8,7 @@
         : author.Picture;
 }
 
-<div class="@(_componentCssClass ??= this.ComponentCssClass())">
+<div class="@(_class ??= this.DefaultClass())">
     <img src="@picture" class="avatar author" alt="@author.Name"/>
     <div class="flex-1 overflow-hidden">
         <div class="header">
@@ -28,7 +28,7 @@
 </div>
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;

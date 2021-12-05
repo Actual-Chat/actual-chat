@@ -8,7 +8,7 @@
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 
-<div class="@(_componentCssClass ??= this.ComponentCssClass())">
+<div class="@(_class ??= this.DefaultClass())">
     <div class="flex flex-row justify-between mx-3 my-2">
         @if (RealtimePlayer != null) {
             <ChatPlayerToggle Player="RealtimePlayer"/>
@@ -31,7 +31,7 @@
 </div>
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
     private ElementReference Ref { get; set; }

@@ -8,7 +8,7 @@
 @{
     var textToTimeMap = Part.Markup.TextToTimeMap;
     var isPlayable = Entry.AudioEntryId.HasValue && !textToTimeMap.IsEmpty;
-    var cls = _componentCssClass ??= this.ComponentCssClass();
+    var cls = _class ??= this.DefaultClass();
     if (isPlayable) {
         cls += " playable";
         if (PlayingAt != null) {
@@ -25,7 +25,7 @@
 }
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     // Just one dependency: it should render as quickly as possible
     [Inject] private IServiceProvider Services { get; set; } = null!;
