@@ -47,12 +47,6 @@ module.exports = ctx => {
             'button-success-hover': 'var(--button-color-success-hover)',
             'button-accent': 'var(--button-color-accent)',
             'button-accent-hover': 'var(--button-color-accent-hover)',
-            'shadow-1': 'var(--shadow-color-1)',
-            'shadow-2': 'var(--shadow-color-2)',
-            'shadow-3': 'var(--shadow-color-3)',
-            'shadow-4': 'var(--shadow-color-4)',
-            'shadow-5': 'var(--shadow-color-5)',
-            'shadow-6': 'var(--shadow-color-6)',
           },
         },
         screens: {

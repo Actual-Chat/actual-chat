@@ -11,17 +11,16 @@
 }
 
 .chat-message-markup .playable {
+    @apply cursor-pointer;
     transition: color 300ms ease-in, text-shadow 300ms ease-in;
 }
 
 .chat-message-markup .playable:hover {
-    @apply text-blue-800 cursor-pointer;
-    text-shadow: 0 0 2px var(--playable-shadow-first), 0 0 4px var(--playable-shadow-second), 0 0 8px var(--playable-shadow-third);
+    text-shadow: 0 0 2px var(--glow-max), 0 0 4px var(--glow-mid), 0 0 8px var(--glow-min);
 }
 
 .chat-message-markup .playing {
-    @apply text-sky-600;
-    text-shadow: 0 0 2px var(--playing-shadow-first), 0 0 4px var(--playing-shadow-second), 0 0 8px var(--playing-shadow-third);
+    text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
 }
 
 .chat-message .avatar {

@@ -33,9 +33,18 @@
     @apply hover:text-primary;
 }
 
-.navbar .version {
+.navbar .version-info {
     @apply text-xxs text-primary-muted;
-    @apply flex flex-row justify-start items-center mb-1;
+    @apply w-auto h-auto block;
+}
+.navbar .version-info * {
+    width: initial;
+    height: initial;
+    display: initial;
+    flex: initial;
+}
+.navbar .version-info b {
+    @apply text-primary;
 }
 
 .navbar .failure {
@@ -47,12 +56,14 @@
 
 .blazor-mode-toggle {
     @apply select-none cursor-pointer;
+    @apply transition duration-500 ease-in-out;
 }
 
-.blazor-mode-toggle .hover-item {
-    @apply text-primary text-xxs cursor-pointer select-none;
+/* MediaRecorderToggle */
+
+.media-recorder-toggle {
+    @apply select-none cursor-pointer;
     @apply transition duration-500 ease-in-out;
-    @apply block overflow-hidden;
 }
 
 /* AccountDropdown */
