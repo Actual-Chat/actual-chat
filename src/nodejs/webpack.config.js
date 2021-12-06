@@ -4,7 +4,7 @@
 // https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
 class WatchRunPlugin {
   apply(compiler) {
-    compiler.hooks.watchRun.tap('WatchRun', (comp) => {
+    compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
       if (comp.modifiedFiles && comp.modifiedFiles.size > 0) {
         const changedFiles = Array.from(comp.modifiedFiles, (file) => `\n  ${file}`).join('');
         console.log('\x1b[35m-----------------------');
@@ -43,13 +43,12 @@ module.exports = (env, args) => {
       // https://github.com/webpack/webpack/issues/7300#issuecomment-702840962
       // removes '1.bundle.js' and other trash from emitting
       removeEmptyChunks: true,
+      usedExports: true,
       splitChunks: {
         cacheGroups: {
           styles: {
             name: 'styles',
             type: 'css/mini-extract',
-            //chunks: 'all',
-            //enforce: true,
           },
         },
       },
@@ -156,20 +155,50 @@ module.exports = (env, args) => {
       ]
     },
     entry: {
-      vadWorklet: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts',
-      vadWorker: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts',
-      encoderWorker: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoderWorker.ts',
-      bundle: './index.ts',
+      vadWorklet: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
+      vadWorker: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
+      encoderWorker: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoder-worker.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
+      bundle: {
+        import: './index.ts',
+        library: {
+          type: 'this'
+        },
+      }
     },
     output: {
       clean: true,
       path: outputPath,
       globalObject: 'globalThis',
       filename: '[name].js',
-      library: {
-        type: 'this'
-      },
       publicPath: "/dist/"
+    },
+    experiments: {
+      /* https://github.com/webpack/webpack/issues/11382 */
+      outputModule: true,
     }
   };
   return config;
