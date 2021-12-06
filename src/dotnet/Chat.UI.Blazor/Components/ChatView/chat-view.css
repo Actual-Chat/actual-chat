@@ -68,11 +68,11 @@
 }
 
 .post-message {
-    @apply block px-3 py-2 text-secondary rounded-xl bg-secondary mr-1;
+    @apply block px-3 py-2 text-secondary rounded-xl bg-secondary mr-1 transition duration-500 ease-in-out;
 }
 
 .post-message:hover {
-    @apply text-primary;
+    @apply text-primary transform -translate-y-1 hover:scale-110;
 }
 
 [contenteditable=true]:empty:not(:focus):before{
@@ -80,11 +80,19 @@
 }
 
 .chat-player-toggle {
-    @apply block px-2 py-2 text-justify bg-secondary rounded-xl mr-1 hover:animate-pulse;
+    @apply block px-2 py-2 text-justify bg-secondary rounded-xl mr-1 transition duration-500 ease-in-out;
+}
+
+.chat-player-toggle:hover {
+    @apply transform -translate-y-1 hover:scale-110;
 }
 
 .toggle-button-on {
     @apply text-toggle-on;
+}
+
+.chat-player-toggle:hover .toggle-button {
+    @apply text-primary;
 }
 
 .toggle-button {
@@ -92,7 +100,15 @@
 }
 
 .audio-recorder {
-    @apply block px-3 py-2 rounded-xl bg-secondary hover:animate-pulse;
+    @apply block px-3 py-2 rounded-xl bg-secondary transition duration-500 ease-in-out;
+}
+
+.audio-recorder:hover {
+    @apply transform -translate-y-1 hover:scale-110;
+}
+
+.audio-recorder:hover .not-recording {
+    @apply text-primary;
 }
 
 .not-recording {
