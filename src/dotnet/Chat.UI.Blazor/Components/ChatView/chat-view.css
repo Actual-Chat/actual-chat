@@ -79,7 +79,7 @@
     content:attr(data-text)
 }
 
-.chat-media-player-toggle {
+.chat-player-toggle {
     @apply block px-2 py-2 text-justify bg-secondary rounded-xl mr-1 hover:animate-pulse;
 }
 
