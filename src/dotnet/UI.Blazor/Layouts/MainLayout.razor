@@ -5,7 +5,7 @@
 
 @{
     var failures = _commandFailureList.Items;
-    var version = (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
+    var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
 <Navbar />
 <div class="navbar">
@@ -22,9 +22,12 @@
         @* Bottom sticky panel *@
         <div class="flex flex-col sticky items-stretch">
             <div class="version-info">
-                <span class="version">v<b>@version</b></span>
+                <span class="version"><b>@version</b></span>
                 <br/>
-                <BlazorModeToggle />,
+            </div>
+            <div class="version-info">
+                <BlazorModeToggle />
+                <br/>
                 <MediaRecorderToggle />
             </div>
             <div class="account-dropdown">

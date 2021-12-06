@@ -35,7 +35,7 @@
 
 .navbar .version-info {
     @apply text-xxs text-primary-muted;
-    @apply w-auto h-auto block;
+    @apply w-auto h-auto block pb-1;
 }
 .navbar .version-info * {
     width: initial;
@@ -44,7 +44,7 @@
     flex: initial;
 }
 .navbar .version-info b {
-    @apply text-primary;
+    @apply text-primary font-medium border-b border-accent;
 }
 
 .navbar .failure {
