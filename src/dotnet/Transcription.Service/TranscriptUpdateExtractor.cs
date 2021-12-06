@@ -4,44 +4,58 @@ namespace ActualChat.Transcription;
 
 public class TranscriptUpdateExtractor
 {
+    private readonly List<Transcript> _finalTranscripts = new ();
+
+    private Transcript _transcript = new ();
+    private Transcript _previous = new ();
+
     public Transcript FinalizedPart { get; private set; } = new ();
-    public Transcript CurrentPart { get; private set; } = new ();
     public Queue<TranscriptUpdate> Updates { get; } = new ();
-    public int UpdateCount { get; private set; }
 
-    public void FinalizeCurrentPart()
+    public void EnqueueUpdate(string text, double transcriptEndTime)
     {
-        if (CurrentPart.Text.IsNullOrEmpty())
-            return; // Nothing to do
 
-        FinalizedPart = new() {
-            Text = ZString.Concat(FinalizedPart.Text, CurrentPart.Text, ". "),
-            TextToTimeMap = FinalizedPart.TextToTimeMap.AppendOrUpdateTail(CurrentPart.TextToTimeMap),
+        var plainText = text.Replace(",", "", StringComparison.InvariantCultureIgnoreCase);
+        var plainPreviousText = _previous.Text.Replace(",", "", StringComparison.InvariantCultureIgnoreCase);
+        if (plainText.Equals(plainPreviousText, StringComparison.InvariantCultureIgnoreCase))
+            return;
+
+        if (text.Length < _previous.Text.Length / 1.67)
+            _transcript = _transcript.WithUpdate(new TranscriptUpdate(_previous));
+
+        var updateText = ZString.Concat(_transcript.Text, text);
+        var updateMap = new LinearMap(
+            new []{ (double)_transcript.Text.Length, updateText.Length },
+            new []{ _transcript.Duration, transcriptEndTime });
+
+        Updates.Enqueue(new TranscriptUpdate(new Transcript {
+            Text = updateText,
+            TextToTimeMap = updateMap,
+        }));
+
+        _previous = new Transcript {
+            Text = text,
+            TextToTimeMap = updateMap,
         };
-        FinalizedPart.TextToTimeMap.SourcePoints[^1] += 2;
-        CurrentPart = NewCurrentPart();
     }
 
-    public void UpdateCurrentPart(Transcript newCurrentPart)
+    public void FinalizeWith(Transcript finalUpdate)
     {
-        var update = new TranscriptUpdate(newCurrentPart);
-        Updates.Enqueue(update);
-        UpdateCount++;
-        CurrentPart = newCurrentPart;
-#if DEBUG
-        DebugUpdates.Add(update);
-        DebugTranscript = DebugTranscript.WithUpdate(update);
-#endif
+        FinalizedPart = finalUpdate;
+        _finalTranscripts.Add(finalUpdate);
     }
 
-    private Transcript NewCurrentPart()
-        => new () {
-            TextToTimeMap = Transcript.EmptyMap.Offset(
-                FinalizedPart.Text.Length,
-                FinalizedPart.Duration),
-        };
-#if DEBUG
-    public List<TranscriptUpdate> DebugUpdates { get; } = new ();
-    public Transcript DebugTranscript { get; private set; } = new ();
-#endif
+    public void Complete()
+    {
+        if (_finalTranscripts.Count == 0)
+            return;
+
+        _transcript = _finalTranscripts
+            .Skip(1)
+            .Aggregate(
+                _finalTranscripts[0],
+                (result, transcript) => result.WithUpdate(new TranscriptUpdate(transcript)));
+
+        Updates.Enqueue(new TranscriptUpdate(_transcript));
+    }
 }

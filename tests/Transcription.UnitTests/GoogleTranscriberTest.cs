@@ -1,4 +1,5 @@
 using Google.Cloud.Speech.V1P1Beta1;
+using Google.Protobuf.WellKnownTypes;
 
 namespace ActualChat.Transcription.UnitTests;
 
@@ -6,8 +7,12 @@ public class GoogleTranscriberTest
 {
     private readonly ILogger<GoogleTranscriber> _logger;
 
-    public GoogleTranscriberTest(ILogger<GoogleTranscriber> logger)
-        => _logger = logger;
+    public ITestOutputHelper Out { get; }
+    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> logger)
+    {
+        _logger = logger;
+        Out = @out;
+    }
 
     [Fact]
     public async Task DuplicateFinalResponsesTest()
@@ -41,7 +46,7 @@ public class GoogleTranscriberTest
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверь" } } },
                             Stability = 0.01f,
-                            ResultEndTime = new () { Seconds = 1, Nanos = 100_000_000 },
+                            ResultEndTime = new Duration { Seconds = 1, Nanos = 100_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -54,7 +59,7 @@ public class GoogleTranscriberTest
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверка" } } },
                             Stability = 0.01f,
-                            ResultEndTime = new () { Seconds = 1, Nanos = 220_000_000 },
+                            ResultEndTime = new Duration { Seconds = 1, Nanos = 220_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -67,7 +72,7 @@ public class GoogleTranscriberTest
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверка" } } },
                             Stability = 0.09f,
-                            ResultEndTime = new () { Seconds = 1, Nanos = 820_000_000 },
+                            ResultEndTime = new Duration { Seconds = 1, Nanos = 820_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -80,7 +85,7 @@ public class GoogleTranscriberTest
                         new StreamingRecognitionResult {
                             Alternatives = { new[] { new SpeechRecognitionAlternative { Transcript = "проверка" } } },
                             Stability = 0.09f,
-                            ResultEndTime = new () { Seconds = 2, Nanos = 840_000_000 },
+                            ResultEndTime = new Duration { Seconds = 2, Nanos = 840_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -94,7 +99,7 @@ public class GoogleTranscriberTest
                             Alternatives =
                                 { new[] { new SpeechRecognitionAlternative { Transcript = "проверка связи" } } },
                             Stability = 0.09f,
-                            ResultEndTime = new () { Seconds = 3, Nanos = 440_000_000 },
+                            ResultEndTime = new Duration { Seconds = 3, Nanos = 440_000_000 },
                             LanguageCode = "ru-ru",
                         },
                     },
@@ -112,13 +117,13 @@ public class GoogleTranscriberTest
                                         Words = {
                                             new[] {
                                                 new WordInfo {
-                                                    StartTime = new () { Seconds = 0, Nanos = 200_000_000 },
-                                                    EndTime = new () { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartTime = new Duration { Seconds = 0, Nanos = 200_000_000 },
+                                                    EndTime = new Duration { Seconds = 1, Nanos = 300_000_000 },
                                                     Word = "проверка", SpeakerTag = 1,
                                                 },
                                                 new WordInfo {
-                                                    StartTime = new () { Seconds = 1, Nanos = 300_000_000 },
-                                                    EndTime = new () { Seconds = 2, Nanos = 900_000_000 },
+                                                    StartTime = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    EndTime = new Duration { Seconds = 2, Nanos = 900_000_000 },
                                                     Word = "связи", SpeakerTag = 1,
                                                 },
                                             },
@@ -126,7 +131,7 @@ public class GoogleTranscriberTest
                                     },
                                 },
                             },
-                            ResultEndTime = new () { Seconds = 3, Nanos = 470_000_000 },
+                            ResultEndTime = new Duration { Seconds = 3, Nanos = 470_000_000 },
                             LanguageCode = "ru-ru",
                             IsFinal = true,
                         },
@@ -145,23 +150,23 @@ public class GoogleTranscriberTest
                                         Words = {
                                             new[] {
                                                 new WordInfo {
-                                                    StartTime = new () { Seconds = 0, Nanos = 200_000_000 },
-                                                    EndTime = new () { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartTime = new Duration { Seconds = 0, Nanos = 200_000_000 },
+                                                    EndTime = new Duration { Seconds = 1, Nanos = 300_000_000 },
                                                     Word = "проверка", SpeakerTag = 1,
                                                 },
                                                 new WordInfo {
-                                                    StartTime = new () { Seconds = 1, Nanos = 300_000_000 },
-                                                    EndTime = new () { Seconds = 2, Nanos = 900_000_000 },
+                                                    StartTime = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    EndTime = new Duration { Seconds = 2, Nanos = 900_000_000 },
                                                     Word = "связи", SpeakerTag = 1,
                                                 },
                                                 new WordInfo {
-                                                    StartTime = new () { Seconds = 0, Nanos = 200_000_000 },
-                                                    EndTime = new () { Seconds = 1, Nanos = 300_000_000 },
+                                                    StartTime = new Duration { Seconds = 0, Nanos = 200_000_000 },
+                                                    EndTime = new Duration { Seconds = 1, Nanos = 300_000_000 },
                                                     Word = "проверка", SpeakerTag = 1,
                                                 },
                                                 new WordInfo {
-                                                    StartTime = new () { Seconds = 1, Nanos = 300_000_000 },
-                                                    EndTime = new () { Seconds = 2, Nanos = 900_000_000 },
+                                                    StartTime = new Duration { Seconds = 1, Nanos = 300_000_000 },
+                                                    EndTime = new Duration { Seconds = 2, Nanos = 900_000_000 },
                                                     Word = "связи", SpeakerTag = 1,
                                                 },
                                             },
@@ -169,7 +174,7 @@ public class GoogleTranscriberTest
                                     },
                                 },
                             },
-                            ResultEndTime = new () { Seconds = 3, Nanos = 470_000_000 },
+                            ResultEndTime = new Duration { Seconds = 3, Nanos = 470_000_000 },
                             LanguageCode = "ru-ru",
                             IsFinal = true,
                         },
@@ -177,5 +182,22 @@ public class GoogleTranscriberTest
                 },
             };
         }
+    }
+
+    [Fact]
+    public async Task TextToTimeMapTest()
+    {
+        var transcriber = new GoogleTranscriber(_logger);
+        var transcriptStream = transcriber.ReadTranscript(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
+
+        var results = await transcriptStream.ToListAsync();
+        var transcript = results[0].UpdatedPart!;
+        foreach (var transcriptUpdate in results.Skip(1)) {
+            Out.WriteLine(transcriptUpdate.ToString());
+            transcript = transcript.WithUpdate(transcriptUpdate);
+        }
+
+        Out.WriteLine(transcript.ToString());
+        transcript.Duration.Should().BeLessThan(23d);
     }
 }

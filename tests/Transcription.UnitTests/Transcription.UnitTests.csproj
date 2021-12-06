@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <None Update="data\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="transcript*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
