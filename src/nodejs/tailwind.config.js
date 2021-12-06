@@ -43,6 +43,7 @@ module.exports = ctx => {
             'primary': 'var(--background-primary)',
             'secondary': 'var(--background-secondary)',
             'accent': 'var(--background-accent)',
+            'online': 'var(--background-online)',
             'button-success': 'var(--button-color-success)',
             'button-success-hover': 'var(--button-color-success-hover)',
             'button-accent': 'var(--button-color-accent)',

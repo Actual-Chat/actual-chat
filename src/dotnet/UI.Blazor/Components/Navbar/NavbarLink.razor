@@ -2,7 +2,7 @@
 
 @{
     string additionalCssClass = Data.Status switch {
-        NavbarLinkModelStatus.Online => "bg-button-success",
+        NavbarLinkModelStatus.Online => "bg-online",
         NavbarLinkModelStatus.Offline => "border border-primary-inverted",
         NavbarLinkModelStatus.None => "",
         _ => "",
