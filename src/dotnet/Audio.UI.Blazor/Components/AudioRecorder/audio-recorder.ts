@@ -171,9 +171,7 @@ export class AudioRecorder {
         };
         const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad.worklet-processor', audioWorkletOptions);
         vadWorkletNode.port.postMessage({ topic: 'init-port' }, [channel.port2]);
-        sourceNode
-            .connect(vadWorkletNode)
-            .connect(audioContext.destination);
+        sourceNode.connect(vadWorkletNode);
 
         this.recording.recorder.startRecording();
         await this._blazorRef.invokeMethodAsync('OnStartRecording');
