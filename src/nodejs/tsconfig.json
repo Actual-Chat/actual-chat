@@ -5,7 +5,7 @@
     "global.d.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts",
-    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoderWorker.ts"
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoder-worker.ts"
   ],
   "compilerOptions": {
     "alwaysStrict": true,

@@ -159,7 +159,6 @@ export class AudioRecorder {
         }
 
         const audioContext = this.recording.context;
-        console.warn("this.recording:", this.recording, "this.recording.context", audioContext)
         const sourceNode = audioContext.createMediaStreamSource(this.recording.stream);
 
         await audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
