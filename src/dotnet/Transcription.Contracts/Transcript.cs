@@ -5,7 +5,7 @@ namespace ActualChat.Transcription;
 [DataContract]
 public record Transcript
 {
-    public static LinearMap EmptyMap { get; } = new(new[] { 0d, 1 }, new[] { 0d, 0d });
+    public static LinearMap EmptyMap { get; } = new(new[] { 0d, 0 }, new[] { 0d, 0d });
 
     [DataMember(Order = 0)]
     public string Text { get; init; } = "";

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.IO;
@@ -14,15 +15,15 @@ public class StartupBase
             var dir = GetBaseDirectory();
             cfg.Sources.Clear();
             cfg.SetBasePath(dir);
-            cfg.AddJsonFile("testsettings.json", optional: false, reloadOnChange: false);
-            if (IsRunningInContainer()) {
-                cfg.AddJsonFile("testsettings.docker.json", optional: false, reloadOnChange: false);
-            }
-            cfg.AddJsonFile("testsettings.local.json", optional: true, reloadOnChange: false);
-        });
+            cfg.AddJsonFile("testsettings.json", false, false);
+            if (IsRunningInContainer())
+                cfg.AddJsonFile("testsettings.docker.json", false, false);
+            cfg.AddJsonFile("testsettings.local.json", true, false);
+        })
+        .ConfigureLogging(log => log.SetMinimumLevel(LogLevel.Trace));
 
     public void Configure(ILoggerFactory loggerFactory, ITestOutputHelperAccessor accessor) =>
-        loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor));
+        loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor, (s, level) => true));
 
     public virtual void ConfigureServices(IServiceCollection services, HostBuilderContext ctx)
     {

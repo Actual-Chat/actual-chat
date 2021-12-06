@@ -98,12 +98,13 @@ public class GoogleTranscriber : ITranscriber
             while (updateExtractor.Updates.TryDequeue(out var update))
                 yield return update;
         }
-        updateExtractor.FinalizeCurrentPart();
+        updateExtractor.Complete();
         while (updateExtractor.Updates.TryDequeue(out var update))
             yield return update;
 
         void ProcessResponse(StreamingRecognizeResponse response)
         {
+            _log.LogTrace("{Response}", response);
             if (response.Error != null) {
                 _log.LogError("Transcription error: Code: {ErrorCode}, Message: {ErrorMessage}",
                     response.Error.Code,
@@ -114,19 +115,15 @@ public class GoogleTranscriber : ITranscriber
             }
 
             foreach (var result in response.Results) {
-                _log.LogTrace("Google transcript: {Result}", result);
                 var alternative = result.Alternatives.First();
+                if (result.Stability < 0.02 && !result.IsFinal)
+                    continue;
+
                 var endTime = result.ResultEndTime.ToTimeSpan().TotalSeconds;
                 var text = alternative.Transcript;
                 var finalizedPart = updateExtractor.FinalizedPart;
-                var finalizedTextLength = finalizedPart.Text.Length;
-                var finalizedSpeechDuration = finalizedPart.Duration;
-                var currentPart = new Transcript {
-                    Text = text,
-                    TextToTimeMap = new (
-                        new[] { (double)finalizedTextLength, finalizedTextLength + text.Length },
-                        new[] { finalizedSpeechDuration, finalizedSpeechDuration + endTime }),
-                };
+                var finalizedTextLength = finalizedPart.TextToTimeMap.SourceRange.Max;
+                var finalizedSpeechDuration = finalizedPart.TextToTimeMap.TargetRange.Max;
                 if (result.IsFinal) {
                     if (Math.Abs(finalizedSpeechDuration - endTime) < 0.00001d)
                         break; // we have already processed final results up to endTime
@@ -134,7 +131,7 @@ public class GoogleTranscriber : ITranscriber
                     var sourcePoints = new List<double> { finalizedTextLength };
                     var targetPoints = new List<double> { finalizedSpeechDuration };
                     var textIndex = 0;
-                    foreach (var word in alternative.Words) {
+                    foreach (var word in alternative.Words.SkipWhile(w => w.StartTime.ToTimeSpan().Seconds < finalizedSpeechDuration)) {
                         var wordIndex = text.IndexOf(word.Word, textIndex, StringComparison.InvariantCultureIgnoreCase);
                         if (wordIndex < 0)
                             continue;
@@ -144,21 +141,20 @@ public class GoogleTranscriber : ITranscriber
                             continue;
 
                         sourcePoints.Add(finalizedTextLength + wordIndex);
-                        targetPoints.Add(finalizedSpeechDuration + word.StartTime.ToTimeSpan().TotalSeconds);
+                        targetPoints.Add(word.StartTime.ToTimeSpan().TotalSeconds);
                     }
                     sourcePoints.Add(finalizedTextLength + text.Length);
-                    targetPoints.Add(finalizedSpeechDuration + endTime);
-                    if (sourcePoints.Count > 2)
-                        currentPart = new () {
-                            Text = text,
-                            TextToTimeMap = new (sourcePoints.ToArray(), targetPoints.ToArray()),
-                        };
+                    targetPoints.Add(endTime);
+                    var currentPart = sourcePoints.Count > 2
+                        ? new Transcript { Text = text, TextToTimeMap = new (sourcePoints.ToArray(), targetPoints.ToArray())}
+                        : new Transcript { Text = text, TextToTimeMap = new (
+                            new[] { (double)finalizedTextLength, finalizedTextLength + text.Length },
+                            new[] { finalizedSpeechDuration, endTime })};
 
-                    updateExtractor.UpdateCurrentPart(currentPart);
-                    updateExtractor.FinalizeCurrentPart();
+                    updateExtractor.FinalizeWith(currentPart);
                 }
                 else {
-                    updateExtractor.UpdateCurrentPart(currentPart);
+                    updateExtractor.EnqueueUpdate(text, endTime);
                     break; // We process only the first one of non-final results
                 }
             }

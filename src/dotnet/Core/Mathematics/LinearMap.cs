@@ -30,7 +30,7 @@ public readonly struct LinearMap
     }
 
     public override string ToString()
-        => $"{GetType().Name}({{{SourcePoints.ToDelimitedString()}}} -> {{{TargetPoints.ToDelimitedString()}}})";
+        => $"{GetType().Name}({{{SourcePoints.ToDelimitedString()}}} -> {{{string.Join(", ", TargetPoints.Select(t => t.ToString(CultureInfo.InvariantCulture)))}}})";
 
     public bool IsValid()
         => TargetPoints.Length == SourcePoints.Length
