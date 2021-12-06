@@ -105,7 +105,7 @@
 }
 
 .account-dropdown .status-icon {
-    @apply rounded-full block w-2 h-2 mr-2 bg-button-success;
+    @apply rounded-full block w-2 h-2 mr-2 bg-online;
 }
 
 .account-dropdown .status {
