@@ -33,7 +33,10 @@ public class TranscriptStreamer : ITranscriptStreamer
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<TranscriptUpdate>(streamId);
+        var streamer = RedisDb.GetStreamer(
+            streamId,
+            new RedisStreamer<TranscriptUpdate>.Options { ReadItemTimeout = TimeSpan.FromMinutes(1) }
+        );
         return streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
     }
 }
