@@ -11,6 +11,10 @@ public class SourceAudioProcessor : AsyncProcessBase
         public bool IsEnabled { get; init; } = true;
     }
 
+    protected ILogger<SourceAudioProcessor> Log { get; }
+    protected bool DebugMode { get; } = Constants.DebugMode.AudioProcessing;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+
     public Options Settings { get; }
     public ITranscriber Transcriber { get; }
     public AudioSegmentSaver AudioSegmentSaver { get; }
@@ -20,7 +24,6 @@ public class SourceAudioProcessor : AsyncProcessBase
     public TranscriptStreamer TranscriptStreamer { get; }
     public IChatsBackend ChatsBackend { get; }
     public MomentClockSet ClockSet { get; }
-    protected ILogger<SourceAudioProcessor> Log { get; }
 
     public SourceAudioProcessor(
         Options settings,
@@ -69,20 +72,25 @@ public class SourceAudioProcessor : AsyncProcessBase
         }
     }
 
-    internal async Task ProcessSourceAudio(AudioRecord audioRecord, CancellationToken cancellationToken)
+    internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
-        var audioStream = SourceAudioRecorder.GetSourceAudioBlobStream(audioRecord.Id, cancellationToken);
+        DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
+        var stream = SourceAudioRecorder.GetSourceAudioBlobStream(record.Id, cancellationToken);
         if (Constants.DebugMode.AudioRecordingBlobStream)
-            audioStream = audioStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
-        var openSegments = AudioActivityExtractor.SplitToAudioSegments(audioRecord, audioStream, cancellationToken);
+            stream = stream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
+        var openSegments = AudioActivityExtractor.SplitToAudioSegments(record, stream, cancellationToken);
         await foreach (var openSegment in openSegments.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             var beginsAt = ClockSet.CpuClock.UtcNow;
+            DebugLog?.LogDebug(
+                "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
+                record.Id, openSegment.Index, openSegment.StreamId);
             var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
             var publishTranscriptTask = PublishTranscriptStream(openSegment, cancellationToken);
             var saveAudioSegmentTask = SaveAudioSegment(openSegment, cancellationToken);
-            var audioChatEntry = await CreateAudioChatEntry(openSegment, beginsAt, cancellationToken)
-                .ConfigureAwait(false);
-            var textChatEntry = await CreateTextChatEntry(openSegment, audioChatEntry, cancellationToken)
+            DebugLog?.LogDebug(
+                "ProcessSourceAudio: record #{RecordId}, segment #{SegmentIndex}: starting to create chat entries",
+                record.Id, openSegment.Index);
+            var (audioChatEntry, textChatEntry) = await CreateChatEntries(openSegment, beginsAt, cancellationToken)
                 .ConfigureAwait(false);
 
             _ = BackgroundTask.Run(FinalizeAudioProcessing,
@@ -139,39 +147,24 @@ public class SourceAudioProcessor : AsyncProcessBase
             .ConfigureAwait(false);
     }
 
-    private async Task<ChatEntry> CreateAudioChatEntry(
+    private async Task<(ChatEntry AudioEntry, ChatEntry TextEntry)> CreateChatEntries(
         OpenAudioSegment openSegment,
         Moment beginsAt,
         CancellationToken cancellationToken)
     {
-        var chatEntry = new ChatEntry() {
+        var command = new IChatsBackend.CreateAudioEntryCommand(new ChatEntry() {
             ChatId = openSegment.AudioRecord.ChatId,
             AuthorId = openSegment.AudioRecord.AuthorId,
             Content = "",
             Type = ChatEntryType.Audio,
             StreamId = openSegment.StreamId,
             BeginsAt = beginsAt,
-        };
-        var command = new IChatsBackend.UpsertEntryCommand(chatEntry);
-        return await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<ChatEntry> CreateTextChatEntry(
-        OpenAudioSegment openSegment,
-        ChatEntry audioChatEntry,
-        CancellationToken cancellationToken)
-    {
-        var chatEntry = new ChatEntry() {
-            ChatId = openSegment.AudioRecord.ChatId,
-            AuthorId = openSegment.AudioRecord.AuthorId,
-            Content = "...",
-            Type = ChatEntryType.Text,
-            StreamId = openSegment.StreamId,
-            AudioEntryId = audioChatEntry.Id,
-            BeginsAt = audioChatEntry.BeginsAt,
-        };
-        var command = new IChatsBackend.UpsertEntryCommand(chatEntry);
-        return await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
+        });
+        var entries = await ChatsBackend.CreateAudioEntry(command, cancellationToken).ConfigureAwait(false);
+        DebugLog?.LogDebug(
+            "CreateChatEntries: #{AudioEntryId} + #{TextEntryId} are created in chat #{ChatId}",
+            entries.AudioEntry.Id, entries.TextEntry.Id, entries.AudioEntry.ChatId);
+        return entries;
     }
 
     private async Task FinalizeAudioChatEntry(

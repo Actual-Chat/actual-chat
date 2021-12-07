@@ -47,10 +47,21 @@ public sealed class Playback : AsyncProcessBase, IHasServices
             Run();
     }
 
-    public Task Stop(bool immediately)
+    public Task Complete()
     {
         Commands.Writer.TryComplete();
-        return immediately ? base.Stop() : RunningTask ?? Task.CompletedTask;
+        return RunningTask ?? Task.CompletedTask;
+    }
+
+    public new Task Stop()
+        => Stop(null);
+
+    public Task Stop(Exception? error)
+    {
+        error ??= new OperationCanceledException("Playback is stopped.");
+        Commands.Writer.TryComplete(error);
+        base.Stop(); // This stops the playback immediately
+        return RunningTask ?? Task.CompletedTask;
     }
 
     public ValueTask AddCommand(PlaybackCommand command, CancellationToken cancellationToken = default)

@@ -104,7 +104,7 @@ public class GoogleTranscriber : ITranscriber
 
         void ProcessResponse(StreamingRecognizeResponse response)
         {
-            _log.LogTrace("{Response}", response);
+            _log.LogDebug("{Response}", response);
             if (response.Error != null) {
                 _log.LogError("Transcription error: Code: {ErrorCode}, Message: {ErrorMessage}",
                     response.Error.Code,

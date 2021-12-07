@@ -67,8 +67,17 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         return playback.DisposeAsync();
     }
 
-    public Task Stop(bool immediately = false)
-        => Playback?.Stop(immediately) ?? Task.CompletedTask;
+    public Task Complete()
+    {
+        var playback = Playback;
+        return playback == null ? Task.CompletedTask : playback.Complete();
+    }
+
+    public Task Stop(Exception? error = null)
+    {
+        var playback = Playback;
+        return playback == null ? Task.CompletedTask : playback.Stop(error);
+    }
 
     public Task Play()
         => Play(Clocks.CpuClock.Now);
@@ -77,11 +86,12 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     {
         Playback? playback;
         while (true) {
-            await Stop(true).ConfigureAwait(true);
+            playback = Playback;
+            if (playback != null)
+                await playback.Stop().ConfigureAwait(false);
             lock (Lock) {
                 if (Playback != null)
                     continue;
-
                 playback = new Playback(Services, false);
                 playback.Stopped += OnStopped;
                 PlaybackState.Value = Playback = playback;
@@ -158,7 +168,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                     .ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
-            await Playback.Stop(false).ConfigureAwait(false);
+            await Playback.Complete().ConfigureAwait(false);
             debugStopReason = "no more entries";
         }
         catch (OperationCanceledException) {
@@ -169,7 +179,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             debugStopReason = "error";
             Log.LogError(e, "Play #{PlayId}: failed", playId);
             try {
-                await Playback.Stop().ConfigureAwait(false);
+                await Playback.Stop(e).ConfigureAwait(false);
             }
             catch {
                 // Intended
@@ -213,6 +223,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         CancellationToken cancellationToken)
     {
         try {
+            cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
             return audioEntry.IsStreaming

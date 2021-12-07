@@ -8,15 +8,15 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 {
     private const int StreamBufferSize = 64;
 
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly RedisDb _redisDb;
+    private ILoggerFactory LoggerFactory { get; }
+    private RedisDb RedisDb { get; }
 
     public AudioSourceStreamer(
         RedisDb<AudioContext> audioRedisDb,
         ILoggerFactory loggerFactory)
     {
-        _loggerFactory = loggerFactory;
-        _redisDb = audioRedisDb.WithKeyPrefix("audio-sources");
+        LoggerFactory = loggerFactory;
+        RedisDb = audioRedisDb.WithKeyPrefix("audio-sources");
     }
 
     public async Task<AudioSource> GetAudio(
@@ -25,7 +25,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         CancellationToken cancellationToken)
     {
         var audioStream = GetAudioStream(streamId, skipTo, cancellationToken);
-        var audioLog = _loggerFactory.CreateLogger<AudioSource>();
+        var audioLog = LoggerFactory.CreateLogger<AudioSource>();
         var audio = new AudioSource(audioStream, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
@@ -36,19 +36,19 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<AudioStreamPart>(streamId);
+        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
         var audioStream = streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
         if (skipTo == TimeSpan.Zero)
             return audioStream;
 
-        var audioLog = _loggerFactory.CreateLogger<AudioSource>();
+        var audioLog = LoggerFactory.CreateLogger<AudioSource>();
         var audio = new AudioSource(audioStream, audioLog, cancellationToken);
         return audio.SkipTo(skipTo, cancellationToken).GetStream(cancellationToken);
     }
 
     public Task Publish(StreamId streamId, AudioSource audio, CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<AudioStreamPart>(streamId);
+        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
         var audioStream = audio.GetStream(cancellationToken);
         return streamer.Write(audioStream, cancellationToken);
     }
