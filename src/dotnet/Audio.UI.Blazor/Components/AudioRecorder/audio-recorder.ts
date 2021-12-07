@@ -161,7 +161,17 @@ export class AudioRecorder {
         const audioContext = this.recording.context;
         const sourceNode = audioContext.createMediaStreamSource(this.recording.stream);
 
-        await audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
+        if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+            const response = await fetch('/dist/vadWorklet.js');
+            const blob = await response.blob();
+            const reader = new FileReader();
+            reader.onloadend = (ev) => {
+                audioContext.audioWorklet.addModule(reader.result as string);
+            };
+            reader.readAsText(blob);
+        } else {
+            await audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
+        }
         const audioWorkletOptions: AudioWorkletNodeOptions = {
             numberOfInputs: 1,
             numberOfOutputs: 1,
