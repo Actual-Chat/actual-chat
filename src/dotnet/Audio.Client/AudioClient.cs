@@ -44,14 +44,14 @@ public class AudioClient : HubClientBase,
 
     public async Task RecordSourceAudio(
         Session session,
-        AudioRecord audioRecord,
+        AudioRecord record,
         IAsyncEnumerable<BlobPart> blobStream,
         CancellationToken cancellationToken)
     {
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         await HubConnection.SendAsync("RecordSourceAudio",
                 session,
-                audioRecord,
+                record,
                 blobStream.Buffer(StreamBufferSize, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);

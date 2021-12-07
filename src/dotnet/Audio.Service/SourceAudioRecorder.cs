@@ -31,23 +31,23 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 
     public async Task RecordSourceAudio(
         Session session,
-        AudioRecord audioRecord,
+        AudioRecord record,
         IAsyncEnumerable<BlobPart> blobStream,
         CancellationToken cancellationToken)
     {
-        var author = await _chatAuthorsBackend.GetOrCreate(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false);
-        audioRecord = audioRecord with {
+        var author = await _chatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        record = record with {
             Id = new AudioRecordId(Ulid.NewUlid().ToString()),
             AuthorId = author.Id,
         };
-        _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", audioRecord);
+        _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", record);
 
-        var streamer = _redisDb.GetStreamer<BlobPart>(audioRecord.Id);
+        var streamer = _redisDb.GetStreamer<BlobPart>(record.Id);
         if (Constants.DebugMode.AudioRecordingBlobStream)
             blobStream = blobStream.WithLog(_log, "RecordSourceAudio", cancellationToken);
         await streamer.Write(
                 blobStream,
-                _ => _newRecordQueue.Enqueue(audioRecord).ToValueTask(),
+                _ => _newRecordQueue.Enqueue(record).ToValueTask(),
                 cancellationToken)
             .ConfigureAwait(false);
         _ = BackgroundTask.Run(DelayedStreamerRemoval,

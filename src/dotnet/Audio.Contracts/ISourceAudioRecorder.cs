@@ -4,7 +4,7 @@ public interface ISourceAudioRecorder
 {
     Task RecordSourceAudio(
         Session session,
-        AudioRecord audioRecord,
+        AudioRecord record,
         IAsyncEnumerable<BlobPart> blobStream,
         CancellationToken cancellationToken);
 }

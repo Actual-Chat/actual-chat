@@ -24,7 +24,11 @@ public interface IChatsBackend
     Task<Chat> CreateChat(CreateChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatEntry> UpsertEntry(UpsertEntryCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<(ChatEntry AudioEntry, ChatEntry TextEntry)> CreateAudioEntry(
+        CreateAudioEntryCommand command, CancellationToken cancellationToken);
 
     public record CreateChatCommand(Chat Chat) : ICommand<Chat>, IBackendCommand;
+    public record CreateAudioEntryCommand(ChatEntry AudioEntry) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
     public record UpsertEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>, IBackendCommand;
 }

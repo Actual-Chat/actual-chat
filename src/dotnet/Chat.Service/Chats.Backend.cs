@@ -128,6 +128,33 @@ public partial class Chats
         return new ChatTile(idTileRange, entries);
     }
 
+    // Command handlers
+
+    // [CommandHandler]
+    public virtual async Task<Chat> CreateChat(
+        IChatsBackend.CreateChatCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating())
+            return null!; // Nothing to invalidate
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var chat = command.Chat with { Id = Ulid.NewUlid().ToString() };
+        var dbChat = new DbChat(chat) {
+            Version = VersionGenerator.NextVersion(),
+            CreatedAt = Clocks.SystemClock.Now,
+        };
+        dbContext.Add(dbChat);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        chat = dbChat.ToModel();
+        context.Operation().Items.Set(chat);
+        return chat;
+    }
+
     // [CommandHandler]
     public virtual async Task<ChatEntry> UpsertEntry(
         IChatsBackend.UpsertEntryCommand command,
@@ -159,28 +186,47 @@ public partial class Chats
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateChat(
-        IChatsBackend.CreateChatCommand command,
+    public virtual async Task<(ChatEntry AudioEntry, ChatEntry TextEntry)> CreateAudioEntry(
+        IChatsBackend.CreateAudioEntryCommand command,
         CancellationToken cancellationToken)
     {
+        var audioEntry = command.AudioEntry;
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating())
-            return null!; // Nothing to invalidate
+        var isUpdate = audioEntry.Id != 0;
+        if (Computed.IsInvalidating()) {
+            if (context.Operation().Items.TryGet<(ChatEntry AudioEntry, ChatEntry TextEntry)>(out var invEntries)) {
+                InvalidateChatPages(invEntries.AudioEntry.ChatId, invEntries.AudioEntry.Id, false);
+                InvalidateChatPages(invEntries.TextEntry.ChatId, invEntries.TextEntry.Id, false);
+                _ = GetMaxId(audioEntry.ChatId, default); // We invalidate min-max Id range at last
+            }
+            return default!;
+        }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
-        var chat = command.Chat with { Id = Ulid.NewUlid().ToString() };
-        var dbChat = new DbChat(chat) {
-            Version = VersionGenerator.NextVersion(),
-            CreatedAt = Clocks.SystemClock.Now,
+        // TODO: Use entity resolver or remove this check (?)
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .SingleAsync(a => a.Id == (string)audioEntry.AuthorId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var dbAudioEntry = await DbAddOrUpdate(dbContext, audioEntry, cancellationToken).ConfigureAwait(false);
+        var textEntry = new ChatEntry() {
+            ChatId = audioEntry.ChatId,
+            AuthorId = audioEntry.AuthorId,
+            Content = "...",
+            Type = ChatEntryType.Text,
+            StreamId = audioEntry.StreamId,
+            AudioEntryId = dbAudioEntry.Id,
+            BeginsAt = audioEntry.BeginsAt,
         };
-        dbContext.Add(dbChat);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var dbTextEntry = await DbAddOrUpdate(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
 
-        chat = dbChat.ToModel();
-        context.Operation().Items.Set(chat);
-        return chat;
+        audioEntry = dbAudioEntry.ToModel();
+        textEntry = dbTextEntry.ToModel();
+        var entries = (audioEntry, textEntry);
+        context.Operation().Items.Set(entries);
+        return entries;
     }
 
     // Protected methods
