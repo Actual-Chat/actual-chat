@@ -53,6 +53,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
             openAudioSegment.Index.Should().Be(0);
             openAudioSegment.AudioRecord.Should().Be(record);
             var audio = openAudioSegment.Audio;
+            await audio.WhenFormatAvailable;
 
             size += audio.Format.ToBlobPart().Data.Length;
             size += await audio.GetFrames(default).SumAsync(f => f.Data.Length);
@@ -85,6 +86,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
             openAudioSegment.Index.Should().Be(0);
             openAudioSegment.AudioRecord.Should().Be(record);
             var audio = openAudioSegment.Audio;
+            await audio.WhenFormatAvailable;
 
             size += audio.Format.ToBlobPart().Data.Length;
             size += await audio.GetFrames(default).SumAsync(f => f.Data.Length);
