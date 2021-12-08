@@ -1,4 +1,4 @@
-import type { OGVCompat } from "ogv";
+import type { OGVCompat, OGVLoader } from "ogv";
 
 declare global {
 
@@ -10,6 +10,7 @@ declare global {
     }
 
     var OGVCompat: OGVCompat;
+    var OGVLoader: OGVLoader;
 }
 
 export { };

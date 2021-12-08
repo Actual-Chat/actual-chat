@@ -166,6 +166,13 @@ module.exports = (env, args) => {
           }
         },
         {
+          test: /ogv[-].*\.(js|wasm)$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'ogv/[name][ext][query]'
+          }
+        },
+        {
           test: /\.(ttf|eot|svg|woff(2)?)$/i,
           type: 'asset/resource',
           generator: {
@@ -210,6 +217,7 @@ module.exports = (env, args) => {
       }
     },
     output: {
+      clean: true,
       path: outputPath,
       globalObject: 'globalThis',
       filename: '[name].js',

@@ -21,7 +21,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private CancellationTokenRegistration _registration;
     private int? _prevMediaElementReadyState;
     private double _offset;
-    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
+    //private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
+    private string _uri = "http://localhost:7080/api/audio/download/audio-record/01FP81V6V4HXBWEY22SRXC8V46/0000.webm";
+    private const bool DebugMode = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -31,6 +33,18 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             StateHasChanged();
         }
         await base.OnAfterRenderAsync(firstRender).ConfigureAwait(true);
+    }
+
+    public async Task OnOgvClick()
+    {
+        Log.LogInformation("Start playing via OGV player");
+        var blazorRef = DotNetObjectReference.Create(this);
+        await using var jsRef = await JS.InvokeAsync<IJSObjectReference>(
+            $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
+            blazorRef,
+            DebugMode).ConfigureAwait(true);
+
+        _ = jsRef.InvokeVoidAsync("ogvPlay", _uri);
     }
 
     public async Task OnClick()
@@ -49,13 +63,12 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
-            const bool debugMode = true;
             var audioDownloader = new AudioDownloader(Services);
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                _cts.Token, blazorRef, debugMode
+                _cts.Token, blazorRef, DebugMode
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda

@@ -28,8 +28,8 @@ export class AudioPlayer {
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._debugMode = debugMode;
-        this._audio = new Audio();
         this._blazorRef = blazorRef;
+        this._audio = new Audio();
         this._sourceBuffer = null;
         this._bufferQueue = [];
         this._isBufferReady = true;
