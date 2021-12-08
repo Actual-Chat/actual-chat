@@ -7,7 +7,7 @@
 .navbar .links {
     @apply bg-primary text-primary;
     @apply z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between;
-    @apply transform translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition duration-200 ease-in-out p-3;
+    @apply transform translate-x-full md:translate-x-0 w-full md:w-1/4 lg:w-1/5 transition duration-200 ease-in-out p-3;
 }
 
 .navbar-mobile {
@@ -70,7 +70,7 @@
 
 .account-dropdown {
     @apply bg-primary;
-    @apply flex flex-row justify-between items-center w-full pt-2 border-t border-accent;
+    @apply flex flex-row justify-between items-center w-full pt-3 border-t border-accent;
 }
 
 .account-dropdown .menu {
