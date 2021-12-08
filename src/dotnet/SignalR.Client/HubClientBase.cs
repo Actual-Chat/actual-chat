@@ -5,17 +5,17 @@ namespace ActualChat.SignalR.Client;
 public abstract class HubClientBase
 {
     private readonly Lazy<HubConnection> _hubConnectionLazy;
+    private ILogger? _log;
 
     protected IServiceProvider Services { get; }
     protected Uri HubUrl { get; }
     protected HubConnection HubConnection => _hubConnectionLazy.Value;
     protected MomentClockSet Clocks { get; }
-    protected ILogger Log { get; }
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    protected HubClientBase(IServiceProvider services, string hubUrl)
+    protected HubClientBase(string hubUrl, IServiceProvider services)
     {
         Services = services;
-        Log = Services.LogFor(GetType());
         Clocks = Services.Clocks();
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
         _hubConnectionLazy = new(CreateHubConnection);

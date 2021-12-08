@@ -8,7 +8,7 @@ namespace ActualChat.Audio;
 
 public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 {
-    protected bool DebugMode { get; } = Constants.DebugMode.AudioSource;
+    protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)

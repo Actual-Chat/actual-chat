@@ -3,17 +3,18 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 // This service can be used only from the UI thread
 public class ChatPlayers : IAsyncDisposable
 {
+    private ILogger? _log;
+
     private Dictionary<ChatId, ChatPlayer> RealtimePlayers { get; } = new();
     private Dictionary<ChatId, ChatPlayer> HistoricalPlayers { get; } = new();
 
-    private ILogger Log { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private IServiceProvider Services { get; }
     private BlazorCircuitContext CircuitContext { get; }
     private Session Session { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Services = services;
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         Session = Services.GetRequiredService<Session>();
