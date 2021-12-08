@@ -7,11 +7,13 @@ public class RedisStreamer<T>
 {
     public record Options
     {
+        public int MaxStreamLength { get; init; } = 2048;
         public string AppendPubSubKeySuffix { get; init; } = "-updates";
         public string ItemKey { get; init; } = "v";
         public string StatusKey { get; init; } = "s";
-        public string CompletedStatus { get; init; } = "c";
-        public string FailedStatus { get; init; } = "e";
+        public string StartedStatus { get; init; } = "[";
+        public string CompletedStatus { get; init; } = "]";
+        public string FailedStatus { get; init; } = "!";
         public TimeSpan ReadItemTimeout { get; init; } = TimeSpan.FromSeconds(0.250);
         public IByteSerializer<T> Serializer { get; init; } = ByteSerializer<T>.Default;
     }
@@ -43,11 +45,15 @@ public class RedisStreamer<T>
             Log?.LogDebug("RedisStreamer: [-] StreamReadAsync -> {EntryCount} entries", entries.Length);
             if (entries?.Length > 0)
                 foreach (var entry in entries) {
-                    var status = entry[Settings.StatusKey];
-                    if (status == Settings.CompletedStatus)
-                        yield break;
-                    if (status == Settings.FailedStatus)
-                        throw new InvalidOperationException("Source stream was completed with an error.");
+                    var status = (string) entry[Settings.StatusKey];
+                    if (!status.IsNullOrEmpty()) {
+                        if (status == Settings.StartedStatus)
+                            continue;
+                        if (status == Settings.CompletedStatus)
+                            yield break;
+                        if (status == Settings.FailedStatus)
+                            throw new InvalidOperationException("Source stream was completed with an error.");
+                    }
                     var data = (ReadOnlyMemory<byte>)entry[Settings.ItemKey];
                     var item = serializer.Reader.Read(data);
                     yield return item;
@@ -88,47 +94,35 @@ public class RedisStreamer<T>
         var appendPubSub = GetPubSub();
         await using var _ = appendPubSub.ConfigureAwait(false);
 
-        var isAnnounced = false;
-        Task? lastAppendTask = null;
+        await RedisDb.Database.StreamAddAsync(
+                Key, Settings.StatusKey, Settings.StartedStatus,
+                maxLength: Settings.MaxStreamLength, useApproximateMaxLength: true)
+            .ConfigureAwait(false);
+        await newStreamAnnouncer.Invoke(this).ConfigureAwait(false);
+
+        var lastAppendTask = Task.CompletedTask;
         var finalStatus = Settings.FailedStatus;
         try {
             await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                if (lastAppendTask != null)
-                    await lastAppendTask.ConfigureAwait(false);
-                lastAppendTask = Append(item);
-            }
-            if (lastAppendTask != null)
                 await lastAppendTask.ConfigureAwait(false);
+                lastAppendTask = AppendItem(item, appendPubSub, cancellationToken);
+            }
+            await lastAppendTask.ConfigureAwait(false);
             finalStatus = Settings.CompletedStatus;
         }
         finally {
-            if (lastAppendTask != null) {
+            if (!lastAppendTask.IsCompleted)
                 try {
                     await lastAppendTask.ConfigureAwait(false);
                 }
                 catch {
                     finalStatus = Settings.FailedStatus;
                 }
-                if (isAnnounced)
-                    await RedisDb.Database.StreamAddAsync(
-                            Key, Settings.StatusKey, finalStatus,
-                            maxLength: 1000,
-                            useApproximateMaxLength: true)
-                        .ConfigureAwait(false);
-            }
-        }
-
-        async Task Append(T item)
-        {
-            Log?.LogDebug("RedisStreamer: [+] Append");
-            await AppendItem(item, appendPubSub, cancellationToken).ConfigureAwait(false);
-            Log?.LogDebug("RedisStreamer: [-] Append");
-            if (isAnnounced)
-                return;
-            isAnnounced = true;
-            Log?.LogDebug("RedisStreamer: [+] newStreamAnnouncer.Invoke");
-            await newStreamAnnouncer.Invoke(this).ConfigureAwait(false);
-            Log?.LogDebug("RedisStreamer: [-] newStreamAnnouncer.Invoke");
+            await RedisDb.Database.StreamAddAsync(
+                    Key, Settings.StatusKey, finalStatus,
+                    maxLength: 1000,
+                    useApproximateMaxLength: true)
+                .ConfigureAwait(false);
         }
     }
 

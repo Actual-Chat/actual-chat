@@ -27,7 +27,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         RedisDb = audioRedisDb.WithKeyPrefix("source-audio");
         NewRecordQueue = RedisDb.GetQueue<AudioRecord>("new-records",
             new RedisQueue<AudioRecord>.Options() {
-                DequeueTimeout = TimeSpan.FromMinutes(10),
+                DequeueTimeout = TimeSpan.FromMilliseconds(10),
             });
         ChatAuthorsBackend = chatAuthorsBackend;
     }
@@ -52,7 +52,6 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         // streamer.Log = DebugLog;
         if (Constants.DebugMode.AudioRecordingBlobStream)
             blobStream = blobStream.WithLog(Log, "RecordSourceAudio", cancellationToken);
-        blobStream = PrefixWithEmptyPacket(blobStream, cancellationToken);
         await streamer.Write(
                 blobStream,
                 _ => NewRecordQueue.Enqueue(record).ToValueTask(),
@@ -77,15 +76,5 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         var streamer = RedisDb.GetStreamer<BlobPart>(audioRecordId);
         // streamer.Log = DebugLog;
         return streamer.Read(cancellationToken);
-    }
-
-    private async IAsyncEnumerable<BlobPart> PrefixWithEmptyPacket(
-        IAsyncEnumerable<BlobPart> source,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var blobPartIndex = 0;
-        yield return new BlobPart(blobPartIndex++, Array.Empty<byte>());
-        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
-            yield return new BlobPart(blobPartIndex++, item.Data);
     }
 }
