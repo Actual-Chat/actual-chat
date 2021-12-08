@@ -53,8 +53,8 @@ public class RedisQueue<T> : IAsyncDisposable
                 try {
                     Log?.LogDebug("RedisQueue: Dequeue - [+] PubSub.Read");
                     await EnqueuePubSub.Read(cancellationToken)
-                        .AsTask()
-                        .WithTimeout(Settings.Clock, Settings.DequeueTimeout, cancellationToken)
+                        // .AsTask()
+                        // .WithTimeout(Settings.Clock, Settings.DequeueTimeout, cancellationToken)
                         .ConfigureAwait(false);
                     Log?.LogDebug("RedisQueue: Dequeue - [-] PubSub.Read");
                 }
