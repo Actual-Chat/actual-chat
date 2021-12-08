@@ -75,10 +75,10 @@ public class SourceAudioProcessor : AsyncProcessBase
     internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
-        var stream = SourceAudioRecorder.GetSourceAudioBlobStream(record.Id, cancellationToken);
+        var blobStream = SourceAudioRecorder.GetSourceAudioBlobStream(record.Id, cancellationToken);
         if (Constants.DebugMode.AudioRecordingBlobStream)
-            stream = stream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
-        var openSegments = AudioActivityExtractor.SplitToAudioSegments(record, stream, cancellationToken);
+            blobStream = blobStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
+        var openSegments = AudioActivityExtractor.SplitToAudioSegments(record, blobStream, cancellationToken);
         await foreach (var openSegment in openSegments.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             var beginsAt = ClockSet.CpuClock.UtcNow;
             DebugLog?.LogDebug(
