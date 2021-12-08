@@ -6,10 +6,11 @@ namespace ActualChat.MediaPlayback;
 public sealed class Playback : AsyncProcessBase, IHasServices
 {
     private static long _lastPlaybackIndex;
+    private ILogger? _log;
 
-    private ILogger Log { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+    private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     private readonly Action _disposeDelegate;
 
@@ -29,7 +30,6 @@ public sealed class Playback : AsyncProcessBase, IHasServices
     public Playback(IServiceProvider services, bool start = true)
     {
         Services = services;
-        Log = Services.LogFor(GetType());
         ActivePlaybackInfo = Services.GetRequiredService<IActivePlaybackInfo>();
         TrackPlayerFactory = Services.GetRequiredService<ITrackPlayerFactory>();
         DisposeMonitor = Services.GetRequiredService<DisposeMonitor>();

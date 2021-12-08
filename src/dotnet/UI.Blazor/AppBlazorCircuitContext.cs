@@ -3,9 +3,10 @@ namespace ActualChat.UI.Blazor;
 public sealed class AppBlazorCircuitContext : BlazorCircuitContext
 {
     private static long _lastId;
+    private ILogger? _log;
 
     private MomentClockSet Clocks { get; }
-    private ILogger Log { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public long Id { get; }
     public IServiceProvider Services { get; }
@@ -14,7 +15,6 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
     {
         Id = Interlocked.Increment(ref _lastId);
         Services = services;
-        Log = Services.LogFor(GetType());
         Clocks = Services.Clocks();
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
     }

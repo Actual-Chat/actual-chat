@@ -12,7 +12,7 @@ public class SourceAudioProcessor : AsyncProcessBase
     }
 
     protected ILogger<SourceAudioProcessor> Log { get; }
-    protected bool DebugMode { get; } = Constants.DebugMode.AudioProcessing;
+    protected bool DebugMode => Constants.DebugMode.AudioProcessing;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public Options Settings { get; }

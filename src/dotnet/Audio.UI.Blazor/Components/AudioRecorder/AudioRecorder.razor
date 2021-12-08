@@ -26,7 +26,7 @@
 
     [Inject] private ILogger<AudioRecorder> Log { get; init; } = null!;
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode { get; } = Constants.DebugMode.AudioRecording;
+    private bool DebugMode => Constants.DebugMode.AudioRecording;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;

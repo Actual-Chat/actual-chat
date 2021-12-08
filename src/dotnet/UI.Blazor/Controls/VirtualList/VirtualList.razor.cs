@@ -14,7 +14,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Inject]
     protected internal ILogger<VirtualList<TItem>> Log { get; init; } = null!;
     protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected internal bool DebugMode { get; } = Constants.DebugMode.VirtualList;
+    protected internal bool DebugMode => Constants.DebugMode.VirtualList;
 
     protected ElementReference Ref { get; set; }
     protected IJSObjectReference JSRef { get; set; } = null!;

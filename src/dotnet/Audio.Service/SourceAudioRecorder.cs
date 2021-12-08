@@ -40,7 +40,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
             Id = new AudioRecordId(Ulid.NewUlid().ToString()),
             AuthorId = author.Id,
         };
-        _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", record);
+        _log.LogInformation("RecordSourceAudio: Record = {Record}", record);
 
         var streamer = _redisDb.GetStreamer<BlobPart>(record.Id);
         if (Constants.DebugMode.AudioRecordingBlobStream)

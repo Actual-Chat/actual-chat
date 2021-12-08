@@ -9,7 +9,7 @@
     <NpgsqlVersion>$(EntityFrameworkCoreVersion)</NpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.129</StlFusionVersion>
+    <StlFusionVersion>2.0.131</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>

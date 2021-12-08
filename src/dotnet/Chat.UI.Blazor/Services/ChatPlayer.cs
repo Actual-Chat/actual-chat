@@ -7,10 +7,11 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
 {
     private static long _lastPlayIndex;
+    private ILogger? _log;
 
-    private ILogger Log { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+    private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     private IServiceProvider Services { get; }
     private MomentClockSet Clocks { get; }
@@ -39,7 +40,6 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     {
         // ReSharper disable once SuspiciousTypeConversion.Global
         Services = services;
-        Log = Services.LogFor(GetType());
         Clocks = Services.Clocks();
         Chats = Services.GetRequiredService<IChats>();
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();

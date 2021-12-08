@@ -40,9 +40,16 @@ public static class Program
     {
         // Logging
         services.AddLogging(logging => {
-            logging.SetMinimumLevel(LogLevel.Information);
+            logging.ClearProviders();
+            logging.Add
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.AddFilter(null, LogLevel.Information); // Default level
             logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
             logging.AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning);
+            logging.AddFilter("ActualChat", LogLevel.Debug);
+            logging.AddFilter("ActualChat.Audio", LogLevel.Debug);
+            logging.AddFilter("ActualChat.Chat", LogLevel.Debug);
+            logging.AddFilter("ActualChat.MediaPlayback", LogLevel.Debug);
         });
 
         // Other services shared with plugins

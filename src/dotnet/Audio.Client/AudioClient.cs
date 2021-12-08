@@ -13,7 +13,7 @@ public class AudioClient : HubClientBase,
     private const int StreamBufferSize = 64;
 
     public AudioClient(IServiceProvider services)
-        : base(services, "api/hub/audio") { }
+        : base("api/hub/audio", services) { }
 
     public async Task<AudioSource> GetAudio(
         StreamId streamId,
