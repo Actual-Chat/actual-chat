@@ -2,5 +2,5 @@ namespace ActualChat.Audio;
 
 public interface IAudioSourceStreamer
 {
-    Task<AudioSource> GetAudio(StreamId streamId, TimeSpan skipTo, CancellationToken cancellationToken);
+    Task<AudioSource> GetAudio(string streamId, TimeSpan skipTo, CancellationToken cancellationToken);
 }

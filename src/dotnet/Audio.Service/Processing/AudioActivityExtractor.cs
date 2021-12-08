@@ -7,7 +7,9 @@ public class AudioActivityExtractor
     public AudioActivityExtractor(ILoggerFactory loggerFactory)
         => _loggerFactory = loggerFactory;
 
+#pragma warning disable CS1998
     public async IAsyncEnumerable<OpenAudioSegment> SplitToAudioSegments(
+#pragma warning restore CS1998
         AudioRecord audioRecord,
         IAsyncEnumerable<BlobPart> blobStream,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

@@ -7,25 +7,25 @@ public class IdentifierTest : TestBase
     [Fact]
     public void NoneTest()
     {
-        default(ChatId).Should().Be(new ChatId(""));
-        default(ChatId).Should().Be(ChatId.None);
-        ChatId.None.Value.Should().Be("");
+        default(IdentifierTestingId).Should().Be(new IdentifierTestingId(""));
+        default(IdentifierTestingId).Should().Be(IdentifierTestingId.None);
+        IdentifierTestingId.None.Value.Should().Be("");
     }
 
     [Fact]
     public void EqualityTest()
     {
-        new ChatId("1").Should().Be(new ChatId("1"));
-        new ChatId("1").Should().NotBe(new ChatId("2"));
-        new ChatId("1").Should().NotBe(ChatId.None);
+        new IdentifierTestingId("1").Should().Be(new IdentifierTestingId("1"));
+        new IdentifierTestingId("1").Should().NotBe(new IdentifierTestingId("2"));
+        new IdentifierTestingId("1").Should().NotBe(IdentifierTestingId.None);
     }
 
     [Fact]
     public void SerializationTest()
     {
-        default(ChatId).AssertPassesThroughAllSerializers(Out);
+        default(IdentifierTestingId).AssertPassesThroughAllSerializers(Out);
 
-        var chatId = new ChatId("1");
+        var chatId = new IdentifierTestingId("1");
         chatId.AssertPassesThroughAllSerializers(Out);
 
         var s1 = new NewtonsoftJsonSerializer();

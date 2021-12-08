@@ -3,7 +3,7 @@ namespace ActualChat.Users;
 public interface IUserInfos
 {
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken);
+    Task<UserInfo?> Get(string userId, CancellationToken cancellationToken);
 
     // TODO(AY): Move to backend; the proper impl. of this method will end up hitting every user cluster
     [ComputeMethod(KeepAliveTime = 10)]

@@ -9,7 +9,7 @@ public partial class ChatAuthors
 {
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(
-        ChatId chatId, AuthorId authorId, bool inherit,
+        string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)
     {
         ChatAuthor? chatAuthor;
@@ -21,7 +21,7 @@ public partial class ChatAuthors
             chatAuthor = dbChatAuthor?.ToModel();
         }
 
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsNone)
+        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
             return chatAuthor;
 
         var userInfo = await _userInfos.Get(chatAuthor.UserId, cancellationToken).ConfigureAwait(false);
@@ -30,21 +30,21 @@ public partial class ChatAuthors
 
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> GetByUserId(
-        ChatId chatId, UserId userId, bool inherit,
+        string chatId, string userId, bool inherit,
         CancellationToken cancellationToken)
     {
-        if (userId.IsNone || chatId.IsNone)
+        if (userId.IsNullOrEmpty() || chatId.IsNullOrEmpty())
             return null;
 
         ChatAuthor? chatAuthor;
         var dbContext = CreateDbContext();
         await using (var _ = dbContext.ConfigureAwait(false)) {
             var dbChatAuthor = await dbContext.ChatAuthors
-                .SingleOrDefaultAsync(a => a.ChatId == (string) chatId && a.UserId == (string)userId, cancellationToken)
+                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             chatAuthor = dbChatAuthor?.ToModel();
         }
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsNone)
+        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
             return chatAuthor;
 
         var userInfo = await _userInfos.Get(userId, cancellationToken).ConfigureAwait(false);
@@ -52,14 +52,14 @@ public partial class ChatAuthors
     }
 
     // Not a [ComputeMethod]!
-    public async Task<ChatAuthor> GetOrCreate(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
         var chatAuthor = await GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 
         var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
-        var userId = user.IsAuthenticated ? user.Id : UserId.None;
+        var userId = user.IsAuthenticated ? user.Id : Symbol.Empty;
 
         var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
         chatAuthor = await _commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
@@ -78,7 +78,7 @@ public partial class ChatAuthors
     {
         var (chatId, userId) = command;
         if (Computed.IsInvalidating()) {
-            if (!userId.IsNone) {
+            if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
                 _ = GetByUserId(chatId, userId, false, default);
             }
@@ -86,7 +86,7 @@ public partial class ChatAuthors
         }
 
         DbChatAuthor? dbChatAuthor;
-        if (userId.IsNone) {
+        if (userId.IsNullOrEmpty()) {
             var name = _randomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
@@ -116,7 +116,7 @@ public partial class ChatAuthors
         dbChatAuthor.ChatId = chatId;
         dbChatAuthor.LocalId = await _idSequences.Next(chatId, maxLocalId).ConfigureAwait(false);
         dbChatAuthor.Id = DbChatAuthor.ComposeId(chatId, dbChatAuthor.LocalId);
-        dbChatAuthor.UserId = userId.Value.NullIfEmpty();
+        dbChatAuthor.UserId = userId.NullIfEmpty();
 
         await dbContext.AddAsync(dbChatAuthor, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -15,9 +15,9 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
     // Backend
 
     // [ComputeMethod]
-    public virtual async Task<UserAuthor?> Get(UserId userId, bool inherit, CancellationToken cancellationToken)
+    public virtual async Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken)
     {
-        if (userId == UserId.None)
+        if (userId.IsNullOrEmpty())
             return null;
 
         UserAuthor? userAuthor;

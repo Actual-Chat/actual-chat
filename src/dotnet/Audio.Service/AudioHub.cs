@@ -23,16 +23,16 @@ public class AudioHub : Hub
     }
 
     public IAsyncEnumerable<AudioStreamPart> GetAudioStream(
-        StreamId streamId,
+        string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
         => _audioSourceStreamer.GetAudioStream(streamId, skipTo, cancellationToken);
 
-    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(StreamId streamId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(string streamId, CancellationToken cancellationToken)
         => _audioStreamer.GetAudioBlobStream(streamId, cancellationToken);
 
     public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
-        StreamId streamId,
+        string streamId,
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptStream(streamId, cancellationToken);
 

@@ -17,7 +17,7 @@ public class AudioClient : HubClientBase,
     { }
 
     public async Task<AudioSource> GetAudio(
-        StreamId streamId,
+        string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -34,7 +34,7 @@ public class AudioClient : HubClientBase,
     }
 
     public async IAsyncEnumerable<BlobPart> GetAudioBlobStream(
-        StreamId streamId,
+        string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetAudioBlobStream: StreamId = {StreamId}", streamId);
@@ -65,7 +65,7 @@ public class AudioClient : HubClientBase,
     }
 
     public async IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
-        StreamId streamId,
+        string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         Log.LogDebug("GetTranscriptStream: StreamId = {StreamId}", streamId);

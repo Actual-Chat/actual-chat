@@ -4,6 +4,6 @@ namespace ActualChat.Chat;
 
 public record ChatAuthor : Author
 {
-    public ChatId ChatId { get; init; }
-    public UserId UserId { get; init; }
+    public Symbol ChatId { get; init; }
+    public Symbol UserId { get; init; }
 }

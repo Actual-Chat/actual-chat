@@ -17,7 +17,7 @@ public class UserInfosController : ControllerBase, IUserInfos
     }
 
     [HttpGet, Publish]
-    public Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken)
+    public Task<UserInfo?> Get(string userId, CancellationToken cancellationToken)
         => _userInfos.Get(userId, cancellationToken);
 
     [HttpGet, Publish]

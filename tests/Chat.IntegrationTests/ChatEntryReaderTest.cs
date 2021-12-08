@@ -47,7 +47,7 @@ public class ChatEntryReaderTest
         entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
-    private async Task AddChatEntries(IChats chats, Session session, ChatId chatId, CancellationToken cancellationToken)
+    private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken)
     {
         var phrases = new[] {
             "back in black i hit the sack",

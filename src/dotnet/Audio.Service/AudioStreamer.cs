@@ -19,13 +19,13 @@ public class AudioStreamer : IAudioStreamer
         RedisDb = audioRedisDb.WithKeyPrefix("audio-streams");
     }
 
-    public Task Publish(StreamId streamId, IAsyncEnumerable<BlobPart> blobParts, CancellationToken cancellationToken)
+    public Task Publish(string streamId, IAsyncEnumerable<BlobPart> blobParts, CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer<BlobPart>(streamId);
         return streamer.Write(blobParts, cancellationToken);
     }
 
-    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(StreamId streamId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(string streamId, CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer<BlobPart>(streamId);
         return streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);

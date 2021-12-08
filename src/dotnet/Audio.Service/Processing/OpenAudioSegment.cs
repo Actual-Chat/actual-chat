@@ -3,8 +3,11 @@ namespace ActualChat.Audio.Processing;
 
 public sealed class OpenAudioSegment
 {
+    public static string ComposeStreamId(string audioRecordId, int index)
+        => $"{audioRecordId}-{index:D4}";
+
     public int Index { get; }
-    public StreamId StreamId { get; }
+    public string StreamId { get; }
     public AudioRecord AudioRecord { get; }
     public AudioSource Audio { get; }
     public TimeSpan Offset { get; }
@@ -19,7 +22,7 @@ public sealed class OpenAudioSegment
         CancellationToken cancellationToken)
     {
         Index = index;
-        StreamId = new StreamId(audioRecord.Id, index);
+        StreamId = ComposeStreamId(audioRecord.Id, index);
         AudioRecord = audioRecord;
         Audio = audio;
         Offset = offset;

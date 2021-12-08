@@ -1,3 +1,4 @@
+using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Host;
 using ActualChat.Testing.Host;
@@ -128,12 +129,12 @@ public class SourceAudioProcessorTest : AppHostTestBase
             });
 
     private async Task<int> ReadTranscriptStream(
-        AudioRecordId audioRecordId,
+        string audioRecordId,
         ITranscriptStreamer transcriptStreamer)
     {
         var size = 0;
         // TODO(AK): we need to figure out how to notify consumers about new streamID - with new ChatEntry?
-        var streamId = new StreamId(audioRecordId, 0);
+        var streamId = OpenAudioSegment.ComposeStreamId(audioRecordId, 0);
         var transcriptStream = transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
         await foreach (var update in transcriptStream) {
             if (update.UpdatedPart == null)
@@ -146,10 +147,10 @@ public class SourceAudioProcessorTest : AppHostTestBase
     }
 
     private static async Task<int> ReadAudioData(
-        AudioRecordId audioRecordId,
+        string audioRecordId,
         IAudioSourceStreamer audioStreamer)
     {
-        var streamId = new StreamId(audioRecordId, 0);
+        var streamId = OpenAudioSegment.ComposeStreamId(audioRecordId, 0);
         var audio = await audioStreamer.GetAudio(streamId, default, CancellationToken.None);
         var header = audio.Format.ToBlobPart().Data;
 

@@ -14,7 +14,7 @@ public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
         _dbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
     }
 
-    public virtual async Task<UserInfo?> Get(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<UserInfo?> Get(string userId, CancellationToken cancellationToken)
     {
         var dbUser = await _dbUserResolver.Get(userId, cancellationToken).ConfigureAwait(false);
         return dbUser == null ? null : new UserInfo(dbUser.Id, dbUser.Name);

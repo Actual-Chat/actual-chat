@@ -63,7 +63,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var services = appHost.Services;
         var audioStreamer = services.GetRequiredService<AudioStreamer>();
 
-        var streamId = (StreamId)"test-stream-id";
+        var streamId = (string)"test-stream-id";
         var filePath = GetAudioFilePath();
 
         var blobStream = filePath.ReadBlobStream();
@@ -78,7 +78,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     }
 
     private static async Task<long> ReadAudioStream(
-        StreamId streamId,
+        string streamId,
         IAudioStreamer audioStreamer)
     {
         var blobStream = audioStreamer.GetAudioBlobStream(streamId, CancellationToken.None);

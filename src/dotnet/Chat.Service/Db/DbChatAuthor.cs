@@ -8,16 +8,11 @@ namespace ActualChat.Chat.Db;
 
 [Table("ChatAuthors")]
 [Index(nameof(ChatId), nameof(UserId))]
-public class DbChatAuthor : IAuthorLike, IHasId<string>
+public class DbChatAuthor : IHasId<string>
 {
-    private AuthorId _id;
+    [Key] public string Id { get; set; } = null!;
+    string IHasId<string>.Id => Id;
 
-    [Key]
-    public string Id {
-        get => _id.Value.NullIfEmpty()!; // To make sure it's set on insertion
-        set => _id = value;
-    }
-    AuthorId IHasId<AuthorId>.Id => _id;
     public string ChatId { get; set; } = null!;
     public long LocalId { get; set; }
 

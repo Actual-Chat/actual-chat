@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 public partial class Chats
 {
     // [ComputeMethod]
-    public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
     {
         var dbChat = await _dbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
@@ -16,18 +16,18 @@ public partial class Chats
 
     // [ComputeMethod]
     public virtual async Task<ChatPermissions> GetPermissions(
-        ChatId chatId,
-        AuthorId? authorId,
+        string chatId,
+        string? authorId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return 0;
 
-        var author = !(authorId?.IsNone ?? true)
-            ? await _chatAuthorsBackend.Get(chatId, authorId.Value, false, cancellationToken).ConfigureAwait(false)
+        var author = !authorId.IsNullOrEmpty()
+            ? await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false)
             : null;
-        var user = author is { UserId.IsNone: false }
+        var user = author is { UserId.IsEmpty: false }
             ? await _authBackend.GetUser(author.UserId, cancellationToken).ConfigureAwait(false)
             : null;
 
@@ -43,7 +43,7 @@ public partial class Chats
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
-        ChatId chatId,
+        string chatId,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
@@ -65,7 +65,7 @@ public partial class Chats
 
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
-    public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken)
     {
         var minId = await GetMinId(chatId, cancellationToken).ConfigureAwait(false);
         var maxId = await GetMaxId(chatId, cancellationToken).ConfigureAwait(false);
@@ -73,12 +73,12 @@ public partial class Chats
     }
 
     // [ComputeMethod]
-    public virtual async Task<long> GetMinId(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<long> GetMinId(string chatId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         return await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value)
+            .Where(e => e.ChatId == chatId)
             .OrderBy(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
@@ -86,12 +86,12 @@ public partial class Chats
     }
 
     // [ComputeMethod]
-    public virtual async Task<long> GetMaxId(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<long> GetMaxId(string chatId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         return await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value)
+            .Where(e => e.ChatId == chatId)
             .OrderByDescending(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
@@ -100,7 +100,7 @@ public partial class Chats
 
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
-        ChatId chatId,
+        string chatId,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
@@ -232,8 +232,8 @@ public partial class Chats
     // Protected methods
 
     protected async Task<Unit> AssertHasPermissions(
-        ChatId chatId,
-        AuthorId? authorId,
+        string chatId,
+        string? authorId,
         ChatPermissions permissions,
         CancellationToken cancellationToken)
     {
@@ -244,7 +244,7 @@ public partial class Chats
         return default;
     }
 
-    protected void InvalidateChatPages(ChatId chatId, long chatEntryId, bool isUpdate)
+    protected void InvalidateChatPages(string chatId, long chatEntryId, bool isUpdate)
     {
         if (!isUpdate)
             _ = GetEntryCount(chatId, null, default);

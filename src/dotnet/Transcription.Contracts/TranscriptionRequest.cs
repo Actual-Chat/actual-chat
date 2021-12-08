@@ -3,6 +3,6 @@ using ActualChat.Audio;
 namespace ActualChat.Transcription;
 
 public record TranscriptionRequest(
-    StreamId StreamId,
+    string StreamId,
     AudioFormat Format,
     TranscriptionOptions Options);

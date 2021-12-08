@@ -3,7 +3,7 @@ namespace ActualChat.Audio.Processing;
 public class ClosedAudioSegment
 {
     public int Index { get; init; }
-    public StreamId StreamId { get; init; }
+    public string StreamId { get; init; }
     public AudioRecord AudioRecord { get; init; }
     public TimeSpan Offset { get; init; }
     public TimeSpan Duration { get; init; }

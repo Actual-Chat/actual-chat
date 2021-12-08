@@ -23,7 +23,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     private object Lock { get; } = new();
 
     public Session Session { get; init; } = Session.Null;
-    public ChatId ChatId { get; init; } = default;
+    public Symbol ChatId { get; init; } = default;
     public bool IsRealTimePlayer { get; init; }
 
     // This should be approximately 2.5 x ping time
