@@ -1,3 +1,4 @@
+using ActualChat.Host;
 using ActualChat.Testing.Host;
 using Stl.IO;
 
@@ -10,7 +11,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     [Fact]
     public async void EmptyRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -38,7 +39,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     [Fact]
     public async Task StreamRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -58,7 +59,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     [Fact]
     public async Task StreamTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var audioStreamer = services.GetRequiredService<AudioStreamer>();
 
@@ -99,4 +100,13 @@ public class SourceAudioRecorderTest : AppHostTestBase
 
     private static FilePath GetAudioFilePath(FilePath? fileName = null)
         => new FilePath(Environment.CurrentDirectory) & "data" & (fileName ?? "file.webm");
+
+    private static async Task<AppHost> NewAppHost()
+        => await TestHostFactory.NewAppHost(
+            null,
+            services => {
+                services.AddSingleton(new SourceAudioProcessor.Options {
+                    IsEnabled = false,
+                });
+            });
 }
