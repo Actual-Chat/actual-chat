@@ -69,7 +69,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
             var now = Clocks.SystemClock.Now;
             await AddRandomEntries(dbContext, dbChat, dbAuthor, 0.5, 100, null, cancellationToken).ConfigureAwait(false);
-            await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
+            // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
         }
 
         if (DbInfo.ShouldVerifyDb) {
