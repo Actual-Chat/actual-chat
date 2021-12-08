@@ -31,12 +31,5 @@ public class RedisStreamerTest : RedisTestBase
             await Task.Delay(TimeSpan.FromMilliseconds(100));
             yield return "two";
         }
-
-        // queue.EnqueuePubSub.
-
-        Task<string> Deque()
-        {
-            return queue.Dequeue();
-        }
     }
 }
