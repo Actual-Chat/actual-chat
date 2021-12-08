@@ -13,7 +13,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 
     private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private RedisDb RedisDb { get; }
-    private RedisQueue<AudioRecord> NewRecordQueue { get; }
+    private Redis.RedisQueue<AudioRecord> NewRecordQueue { get; }
     private MomentClockSet Clocks { get; }
 
     public SourceAudioRecorder(
@@ -26,9 +26,10 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         Clocks = clocks;
         RedisDb = audioRedisDb.WithKeyPrefix("source-audio");
         NewRecordQueue = RedisDb.GetQueue<AudioRecord>("new-records",
-            new RedisQueue<AudioRecord>.Options() {
+            new Redis.RedisQueue<AudioRecord>.Options() {
                 DequeueTimeout = TimeSpan.FromMilliseconds(10),
             });
+        NewRecordQueue.Log = log;
         ChatAuthorsBackend = chatAuthorsBackend;
     }
 
