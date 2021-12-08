@@ -40,15 +40,15 @@ public static class Program
     {
         // Logging
         services.AddLogging(logging => {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Debug);
-            logging.AddFilter(null, LogLevel.Information); // Default level
-            logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
-            logging.AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning);
-            logging.AddFilter("ActualChat", LogLevel.Debug);
-            logging.AddFilter("ActualChat.Audio", LogLevel.Debug);
-            logging.AddFilter("ActualChat.Chat", LogLevel.Debug);
-            logging.AddFilter("ActualChat.MediaPlayback", LogLevel.Debug);
+            logging.SetMinimumLevel(LogLevel.Debug)
+                .AddFilter(null, LogLevel.Information) // Default level
+                .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning)
+                .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
+                .AddFilter("ActualChat", LogLevel.Debug)
+                .AddFilter("ActualChat.Audio", LogLevel.Debug)
+                .AddFilter("ActualChat.Chat", LogLevel.Debug)
+                .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
+                .AddFilter("ActualChat.Audio.Client", LogLevel.Debug);
         });
 
         // Other services shared with plugins

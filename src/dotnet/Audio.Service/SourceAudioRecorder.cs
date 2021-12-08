@@ -27,7 +27,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         RedisDb = audioRedisDb.WithKeyPrefix("source-audio");
         NewRecordQueue = RedisDb.GetQueue<AudioRecord>("new-records",
             new RedisQueue<AudioRecord>.Options() {
-                DequeueTimeout = TimeSpan.FromMilliseconds(10),
+                DequeueTimeout = TimeSpan.FromMinutes(10),
             });
         ChatAuthorsBackend = chatAuthorsBackend;
     }
@@ -41,12 +41,12 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         IAsyncEnumerable<BlobPart> blobStream,
         CancellationToken cancellationToken)
     {
+        Log.LogInformation("RecordSourceAudio: Record = {Record}", record);
         var author = await ChatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
         record = record with {
             Id = new AudioRecordId(Ulid.NewUlid().ToString()),
             AuthorId = author.Id,
         };
-        Log.LogInformation("RecordSourceAudio: Record = {Record}", record);
 
         var streamer = RedisDb.GetStreamer<BlobPart>(record.Id);
         // streamer.Log = DebugLog;
