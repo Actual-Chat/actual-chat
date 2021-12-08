@@ -21,7 +21,7 @@ public class TranscriptStreamer : ITranscriptStreamer
     }
 
     public Task Publish(
-        StreamId streamId,
+        string streamId,
         IAsyncEnumerable<TranscriptUpdate> transcriptStream,
         CancellationToken cancellationToken)
     {
@@ -30,7 +30,7 @@ public class TranscriptStreamer : ITranscriptStreamer
     }
 
     public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
-        StreamId streamId,
+        string streamId,
         CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer(

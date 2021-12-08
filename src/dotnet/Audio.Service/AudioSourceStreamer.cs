@@ -20,7 +20,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
     }
 
     public async Task<AudioSource> GetAudio(
-        StreamId streamId,
+        string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -32,7 +32,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
     }
 
     public IAsyncEnumerable<AudioStreamPart> GetAudioStream(
-        StreamId streamId,
+        string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -46,7 +46,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         return audio.SkipTo(skipTo, cancellationToken).GetStream(cancellationToken);
     }
 
-    public Task Publish(StreamId streamId, AudioSource audio, CancellationToken cancellationToken)
+    public Task Publish(string streamId, AudioSource audio, CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
         var audioStream = audio.GetStream(cancellationToken);

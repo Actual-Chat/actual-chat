@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 public interface IChatAuthors
 {
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<ChatAuthor?> GetSessionChatAuthor(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor?> GetSessionChatAuthor(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<Author?> GetAuthor(ChatId chatId, AuthorId authorId, bool inherit, CancellationToken cancellationToken);
+    Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
 }

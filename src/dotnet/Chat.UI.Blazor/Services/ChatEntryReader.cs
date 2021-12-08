@@ -6,7 +6,7 @@ public sealed class ChatEntryReader
     private IChats Chats { get; }
 
     public Session Session { get; init; } = Session.Null;
-    public ChatId ChatId { get; init; }
+    public Symbol ChatId { get; init; }
     public TimeSpan InvalidationWaitTimeout { get; init; } = TimeSpan.FromMilliseconds(50);
     public TimeSpan MaxBeginsAtDisorder { get; init; } = TimeSpan.FromSeconds(15);
 

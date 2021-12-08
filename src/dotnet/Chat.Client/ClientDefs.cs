@@ -7,32 +7,32 @@ namespace ActualChat.Chat.Client;
 public interface IChatsClientDef
 {
     [Get(nameof(Get))]
-    Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
         Session session,
-        ChatId chatId,
+        string chatId,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetEntryCount))]
     Task<long> GetEntryCount(
         Session session,
-        ChatId chatId,
+        string chatId,
         Range<long>? idTileRange,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetTile))]
     Task<ChatTile> GetTile(
         Session session,
-        ChatId chatId,
+        string chatId,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetPermissions))]
     Task<ChatPermissions> GetPermissions(
         Session session,
-        ChatId chatId,
+        string chatId,
         CancellationToken cancellationToken);
 
     [Post(nameof(CreateChat))]
@@ -45,7 +45,7 @@ public interface IChatsClientDef
 public interface IChatAuthorsClientDef
 {
     [Get(nameof(GetSessionChatAuthor))]
-    Task<ChatAuthor?> GetSessionChatAuthor(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<ChatAuthor?> GetSessionChatAuthor(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthor))]
-    Task<Author?> GetAuthor(ChatId chatId, AuthorId authorId, bool inherit, CancellationToken cancellationToken);
+    Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
 }

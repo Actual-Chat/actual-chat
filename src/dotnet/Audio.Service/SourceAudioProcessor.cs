@@ -176,7 +176,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         var closedSegment = await openSegment.ClosedSegmentTask.ConfigureAwait(false);
         audioChatEntry = audioChatEntry with {
             Content = audioBlobId ?? "",
-            StreamId = StreamId.None,
+            StreamId = Symbol.Empty,
             EndsAt = audioChatEntry.BeginsAt.ToDateTime().Add(closedSegment.Duration),
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioChatEntry);
@@ -191,12 +191,12 @@ public class SourceAudioProcessor : AsyncProcessBase
         textChatEntry = transcript != null
             ? textChatEntry with {
                 Content = transcript.Text,
-                StreamId = StreamId.None,
+                StreamId = Symbol.Empty,
                 EndsAt = textChatEntry.BeginsAt.ToDateTime().AddSeconds(transcript.Duration),
                 TextToTimeMap = transcript.TextToTimeMap,
             }
             : textChatEntry with {
-                StreamId = StreamId.None,
+                StreamId = Symbol.Empty,
                 EndsAt = ClockSet.CpuClock.Now,
             };
         var command = new IChatsBackend.UpsertEntryCommand(textChatEntry);

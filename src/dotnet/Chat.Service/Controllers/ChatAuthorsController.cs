@@ -18,13 +18,13 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     }
 
     [HttpGet, Publish]
-    public Task<ChatAuthor?> GetSessionChatAuthor(Session? session, ChatId chatId, CancellationToken cancellationToken)
+    public Task<ChatAuthor?> GetSessionChatAuthor(Session? session, string chatId, CancellationToken cancellationToken)
     {
         session ??= _sessionResolver.Session;
         return _service.GetSessionChatAuthor(session, chatId, cancellationToken);
     }
 
     [HttpGet, Publish]
-    public Task<Author?> GetAuthor(ChatId chatId, AuthorId authorId, bool inherit, CancellationToken cancellationToken)
+    public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
         => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
 }

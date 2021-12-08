@@ -44,7 +44,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         Log.LogInformation("RecordSourceAudio: Record = {Record}", record);
         var author = await ChatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
         record = record with {
-            Id = new AudioRecordId(Ulid.NewUlid().ToString()),
+            Id = new string(Ulid.NewUlid().ToString()),
             AuthorId = author.Id,
         };
 
@@ -72,7 +72,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     public Task<AudioRecord> DequeueSourceAudio(CancellationToken cancellationToken)
         => NewRecordQueue.Dequeue(cancellationToken);
 
-    public IAsyncEnumerable<BlobPart> GetSourceAudioBlobStream(AudioRecordId audioRecordId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<BlobPart> GetSourceAudioBlobStream(string audioRecordId, CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer<BlobPart>(audioRecordId);
         // streamer.Log = DebugLog;
