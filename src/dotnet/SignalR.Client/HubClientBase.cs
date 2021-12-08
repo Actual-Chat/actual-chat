@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace ActualChat.SignalR.Client;
@@ -19,6 +20,8 @@ public abstract class HubClientBase
         Clocks = Services.Clocks();
         HubUrl = Services.UriMapper().ToAbsolute(hubUrl);
         _hubConnectionLazy = new(CreateHubConnection);
+
+        Task.Run(() => EnsureConnected(CancellationToken.None).AsTask());
     }
 
     protected HubConnection CreateHubConnection()
@@ -26,8 +29,21 @@ public abstract class HubClientBase
         Log.LogDebug("CreateHubConnection: Time: {Time}", Clocks.CpuClock.UtcNow.TimeOfDay);
         try {
             var builder = new HubConnectionBuilder()
-                .WithUrl(HubUrl)
-                .WithAutomaticReconnect();
+                .WithUrl(
+                    HubUrl,
+    options => {
+                        options.SkipNegotiation = true;
+                        options.Transports = HttpTransportType.WebSockets;
+                    })
+                .WithAutomaticReconnect(new[] {
+                    TimeSpan.FromMilliseconds(10d),
+                    TimeSpan.FromMilliseconds(20d),
+                    TimeSpan.FromMilliseconds(40d),
+                    TimeSpan.FromMilliseconds(100d),
+                    TimeSpan.FromMilliseconds(500d),
+                    TimeSpan.FromMilliseconds(1000d),
+                    TimeSpan.FromMilliseconds(2000d),
+                });
             if (!Debugging.SignalR.DisableMessagePackProtocol)
                 builder = builder.AddMessagePackProtocol();
             return builder.Build();
