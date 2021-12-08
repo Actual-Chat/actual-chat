@@ -41,7 +41,6 @@ public static class Program
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();
-            logging.Add
             logging.SetMinimumLevel(LogLevel.Debug);
             logging.AddFilter(null, LogLevel.Information); // Default level
             logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
