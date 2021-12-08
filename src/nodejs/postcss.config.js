@@ -8,8 +8,7 @@ module.exports = (api) => {
 
   return {
     plugins: [
-      require('postcss-import'),
-      require('tailwindcss/nesting'),
+      require('./postcss-watch-plugin.js'),
       require('tailwindcss')(tailwindcssConfig),
       require('autoprefixer'),
       ...(api.mode === 'production' ? [require('cssnano')({ preset: 'default' })] : [])

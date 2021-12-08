@@ -1,28 +1,8 @@
 //@ts-check
 'use strict';
 
-// https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
-class WatchRunPlugin {
-  apply(compiler) {
-    compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
-      if (comp.modifiedFiles && comp.modifiedFiles.size > 0) {
-        const changedFiles = Array.from(comp.modifiedFiles, (file) => `\n  ${file}`).join('');
-        console.log('\x1b[35m-----------------------');
-        console.log('FILES CHANGED:', changedFiles);
-        console.log('-----------------------\x1b[0m');
-      }
-      if (comp.removedFiles && comp.removedFiles.size > 0) {
-        const removedFiles = Array.from(comp.removedFiles, (file) => `\n  ${file}`).join('');
-        console.log('\x1b[35m-----------------------');
-        console.log('FILES REMOVED:', removedFiles);
-        console.log('-----------------------\x1b[0m');
-      }
-    });
-  }
-}
-
 const path = require('path');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const fs = require('fs');
 
 /**
  * @param {string} file
@@ -30,6 +10,44 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 function _(file) {
   return path.normalize(path.resolve(__dirname, file));
 }
+
+
+// https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
+class WatchRunPlugin {
+  apply(compiler) {
+    const srcDotnet = _('./../dotnet/');
+
+    const /** @type {import('webpack').Compilation} */ compilation = null;
+
+    compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
+
+      if (comp.modifiedFiles && comp.modifiedFiles.size > 0) {
+
+        const changedFiles = Array.from(comp.modifiedFiles)
+          .map(x => {
+            while (x.charAt(x.length - 1) === path.sep) {
+              x = x.substring(0, x.length - 1);
+            }
+            return x;
+          })
+          .filter((x, idx, self) => self.indexOf(x) === idx);
+        const changedFilesStr = changedFiles.map(file => `\n  ${file}`).join('');
+        console.log('\x1b[35m-----------------------');
+        console.log('CHANGED:', changedFilesStr);
+        console.log('-----------------------\x1b[0m');
+      }
+      if (comp.removedFiles && comp.removedFiles.size > 0) {
+        const removedFilesStr = Array.from(comp.removedFiles, (file) => `\n  ${file}`).join('');
+        console.log('\x1b[35m-----------------------');
+        console.log('REMOVED:', removedFilesStr);
+        console.log('-----------------------\x1b[0m');
+      }
+    });
+  }
+}
+
+
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
 
@@ -57,19 +75,14 @@ module.exports = (env, args) => {
       aggregateTimeout: 30, // ms
       ignored: [
         _('node_modules'),
-        _('../dotnet/UI.Blazor.Host/wwwroot'),
-        '**/*.cs',
-        _('../../tests/'),
-        _('../../docs/'),
-        '**/*.csproj',
-        '**/*.targets',
-        '**/*.props',
+        outputPath,
       ],
       followSymlinks: false,
     },
     resolve: {
       extensions: ['.ts', '.js', '...'],
       modules: [_('./node_modules')],
+      roots: [],
       fallback: {
         "path": false,
         "fs": false
@@ -80,6 +93,13 @@ module.exports = (env, args) => {
     // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
+      // new FilterWatchIgnorePlugin(filepath => {
+      //  // if (fs.statSync(filepath).isDirectory())
+      //  //   return true;
+      //  // console.log(`Called with path: ${filepath}`);
+      //  //return false;
+      //  return false;
+      // }),
       // @ts-ignore
       new MiniCssExtractPlugin({
         filename: '[name].css',
@@ -107,7 +127,7 @@ module.exports = (env, args) => {
           ],
         },
         {
-          test: /^\.d.ts$/i,
+          test: /^\.d\.ts$/i,
           loader: 'ignore-loader'
         },
         {
@@ -152,7 +172,7 @@ module.exports = (env, args) => {
             filename: 'fonts/[name][ext][query]'
           }
         }
-      ]
+      ],
     },
     entry: {
       vadWorklet: {
@@ -185,16 +205,15 @@ module.exports = (env, args) => {
       bundle: {
         import: './index.ts',
         library: {
-          type: 'this'
+          type: 'this',
         },
       }
     },
     output: {
-      clean: true,
       path: outputPath,
       globalObject: 'globalThis',
       filename: '[name].js',
-      publicPath: "/dist/"
+      publicPath: "/dist/",
     },
     experiments: {
       /* https://github.com/webpack/webpack/issues/11382 */
