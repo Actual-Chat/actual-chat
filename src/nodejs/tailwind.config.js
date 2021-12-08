@@ -1,3 +1,19 @@
+// @ts-check
+"use strict";
+const path = require('path');
+const fs = require('fs');
+/**
+ * @param {string} file
+ */
+function _(file) {
+  return path.normalize(path.resolve(__dirname, file));
+}
+
+const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
+  .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0 && d.name !== "UI.Blazor.Host")
+  .map(d => `${_(`./../dotnet/${d.name}`)}${path.sep}**/*.{razor,cshtml}`)
+  .concat(`${_('./../dotnet/Host')}${path.sep}**/*.{razor,cshtml}`);
+
 const colors = require('tailwindcss/colors');
 
 module.exports = ctx => {
@@ -6,10 +22,7 @@ module.exports = ctx => {
       mode: 'jit',
       purge: {
         enabled: ctx.env === 'production' ? true : false,
-        content: [
-          './../dotnet/**/*.razor',
-          './../dotnet/**/*.cshtml',
-        ],
+        content: dirs,
         options: {
           keyframes: true,
         },

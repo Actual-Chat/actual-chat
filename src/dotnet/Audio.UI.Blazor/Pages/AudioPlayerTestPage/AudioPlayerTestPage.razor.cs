@@ -4,6 +4,7 @@ using ActualChat.Audio.UI.Blazor.Module;
 namespace ActualChat.Audio.UI.Blazor.Pages;
 
 #pragma warning disable CS0162 // for if (false) { logging }
+#pragma warning disable MA0040
 
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
@@ -16,12 +17,23 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [Inject]
     private IJSRuntime JS { get; set; } = null!;
 
+    protected bool IsOgvCompatible { get; set; }
     private bool _isPlaying;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private int? _prevMediaElementReadyState;
     private double _offset;
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) {
+            IsOgvCompatible = await JS.InvokeAsync<bool>(
+                $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.isOgvCompatible").ConfigureAwait(true);
+            StateHasChanged();
+        }
+        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(true);
+    }
 
     public async Task OnClick()
     {
@@ -84,6 +96,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 _ = jsRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
         }
     }
+
     [JSInvokable]
     public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
@@ -100,7 +113,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         return Task.CompletedTask;
     }
 
-    string ToMediaElementReadyState(int? state) => state switch {
+    private static string ToMediaElementReadyState(int? state) => state switch {
         0 => "HAVE_NOTHING",
         1 => "HAVE_METADATA",
         2 => "HAVE_CURRENT_DATA",
@@ -143,5 +156,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _registration = default;
         }
         _cts?.CancelAndDisposeSilently();
+        GC.SuppressFinalize(this);
     }
 }

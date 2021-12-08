@@ -1,8 +1,7 @@
 {
   "include": [
     "index.ts",
-    "types.d.ts",
-    "global.d.ts",
+    "types/",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoder-worker.ts"

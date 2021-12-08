@@ -1,9 +1,10 @@
+@namespace ActualChat.Audio.UI.Blazor.Pages
 @page "/test/audio-player"
 
 <div class="px-6 pt-6 flex flex-col">
     <h1 class="block text-3xl text-bold mb-6">Audio player test page</h1>
     <div class="mt-1 text-xl text-bold">
-        <label for="url" >URL:</label>
+        <label for="url">URL:</label>
         <input id="url" class="w-full mt-1 p-1 text-lg bg-gray-50 focus:outline-none border border-gray-200 rounded text-gray-600" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
     </div>
     <div class="mt-6 text-xl text-bold bg-green-50 p-3 rounded-2xl">
@@ -18,6 +19,9 @@
         <audio controls="" name="media">
             <source src="@_uri" type="audio/webm">
         </audio>
-
+    </div>
+    <div class="mt-6 bg-blue-100 text-xl text-bold rounded-2xl p-3">
+        <p class="text-2xl text-bold text-indigo-500 mb-3">OGV player:</p>
+        <p>IsCompatible: @IsOgvCompatible</p>
     </div>
 </div>
