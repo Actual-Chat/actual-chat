@@ -1,3 +1,3 @@
 export * from './Components/AudioPlayer/audio-player';
 export * from './Components/AudioRecorder/audio-recorder';
-export * from './Pages/AudioPlayerTestPage/audio-player-test-page';
+export * from './Components/AudioPlayer/ogv-audio-player';

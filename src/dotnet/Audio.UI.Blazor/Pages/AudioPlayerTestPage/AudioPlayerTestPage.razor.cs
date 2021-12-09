@@ -29,25 +29,13 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (firstRender) {
             IsOgvCompatible = await JS.InvokeAsync<bool>(
-                $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.isOgvCompatible").ConfigureAwait(true);
+                $"{AudioBlazorUIModule.ImportName}.OgvAudioPlayer.isCompatible").ConfigureAwait(true);
             StateHasChanged();
         }
         await base.OnAfterRenderAsync(firstRender).ConfigureAwait(true);
     }
 
-    public async Task OnOgvClick()
-    {
-        Log.LogInformation("Start playing via OGV player");
-        var blazorRef = DotNetObjectReference.Create(this);
-        await using var jsRef = await JS.InvokeAsync<IJSObjectReference>(
-            $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
-            blazorRef,
-            DebugMode).ConfigureAwait(true);
-
-        _ = jsRef.InvokeVoidAsync("ogvPlay", _uri);
-    }
-
-    public async Task OnClick()
+    public async Task OnClick(bool isStandardPlayer)
     {
         if (_isPlaying) {
             Log.LogInformation("Stop playing");
@@ -67,7 +55,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                $"{AudioBlazorUIModule.ImportName}.{(isStandardPlayer ? "AudioPlayer" : "OgvAudioPlayer")}.create",
                 _cts.Token, blazorRef, DebugMode
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
