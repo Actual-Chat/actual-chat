@@ -1,6 +1,8 @@
+using ActualChat.Audio.Db;
 using ActualChat.Host;
 using ActualChat.Testing.Host;
 using Stl.IO;
+using Stl.Redis;
 
 namespace ActualChat.Audio.IntegrationTests;
 
@@ -64,6 +66,11 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var audioStreamer = services.GetRequiredService<AudioStreamer>();
 
         var streamId = (string)"test-stream-id";
+        var audioRedisDb = services.GetRequiredService<RedisDb<AudioContext>>();
+        var audioStreamsDb = audioRedisDb.WithKeyPrefix("audio-streams");
+        var streamer = audioStreamsDb.GetStreamer<BlobPart>(streamId);
+        await streamer.Remove();
+
         var filePath = GetAudioFilePath();
 
         var blobStream = filePath.ReadBlobStream();

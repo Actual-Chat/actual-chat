@@ -1,5 +1,4 @@
 using ActualChat.Audio.Db;
-using ActualChat.Redis;
 using ActualChat.Transcription;
 using Stl.Redis;
 
@@ -33,10 +32,8 @@ public class TranscriptStreamer : ITranscriptStreamer
         string streamId,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer(
-            streamId,
-            new RedisStreamer<TranscriptUpdate>.Options { ReadItemTimeout = TimeSpan.FromMinutes(1) }
-        );
-        return streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
+        var streamer = RedisDb.GetStreamer<TranscriptUpdate>(streamId);
+        return streamer.Read(cancellationToken)
+            .WithBuffer(StreamBufferSize, cancellationToken);
     }
 }

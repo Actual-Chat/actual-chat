@@ -1,5 +1,4 @@
 using ActualChat.Audio.Db;
-using ActualChat.Redis;
 using Stl.Redis;
 
 namespace ActualChat.Audio;
@@ -28,6 +27,8 @@ public class AudioStreamer : IAudioStreamer
     public IAsyncEnumerable<BlobPart> GetAudioBlobStream(string streamId, CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer<BlobPart>(streamId);
-        return streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
+        return streamer
+            .Read(cancellationToken)
+            .WithBuffer(StreamBufferSize, cancellationToken);
     }
 }
