@@ -25,7 +25,7 @@ public class AudioClient : HubClientBase,
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         var audioStream = HubConnection
             .StreamAsync<AudioStreamPart>("GetAudioStream", streamId, skipTo, cancellationToken)
-            .Buffer(StreamBufferSize, cancellationToken);
+            .WithBuffer(StreamBufferSize, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
         var audio = new AudioSource(audioStream, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
@@ -41,7 +41,7 @@ public class AudioClient : HubClientBase,
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         var blobParts = HubConnection
             .StreamAsync<BlobPart>("GetAudioBlobStream", streamId, cancellationToken)
-            .Buffer(StreamBufferSize, cancellationToken);
+            .WithBuffer(StreamBufferSize, cancellationToken);
         await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false))
             yield return blobPart;
         Log.LogDebug("GetAudioBlobStream: Exited; StreamId = {StreamId}", streamId);
@@ -58,7 +58,7 @@ public class AudioClient : HubClientBase,
         await HubConnection.SendAsync("RecordSourceAudio",
                 session,
                 record,
-                blobStream.Buffer(StreamBufferSize, cancellationToken),
+                blobStream.WithBuffer(StreamBufferSize, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
         Log.LogDebug("RecordSourceAudio: Exited; Record = {Record}", record);
@@ -72,7 +72,7 @@ public class AudioClient : HubClientBase,
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         var updates = HubConnection
             .StreamAsync<TranscriptUpdate>("GetTranscriptStream", streamId, cancellationToken)
-            .Buffer(StreamBufferSize, cancellationToken);
+            .WithBuffer(StreamBufferSize, cancellationToken);
         await foreach (var update in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
             yield return update;
         Log.LogDebug("GetTranscriptStream: Exited; StreamId = {StreamId}", streamId);

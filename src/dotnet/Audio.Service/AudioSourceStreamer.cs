@@ -37,7 +37,9 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         CancellationToken cancellationToken)
     {
         var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
-        var audioStream = streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
+        var audioStream = streamer
+            .Read(cancellationToken)
+            .WithBuffer(StreamBufferSize, cancellationToken);
         if (skipTo == TimeSpan.Zero)
             return audioStream;
 

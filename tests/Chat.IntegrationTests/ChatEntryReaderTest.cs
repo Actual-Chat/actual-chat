@@ -3,9 +3,11 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatEntryReaderTest
+public class ChatEntryReaderTest : AppHostTestBase
 {
     private const string ChatId = "the-actual-one";
+
+    public ChatEntryReaderTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task BasicTest()
