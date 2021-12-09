@@ -10,7 +10,7 @@
     <OpenTelemetryNpgsqlVersion>6.0.1</OpenTelemetryNpgsqlVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.0.137</StlFusionVersion>
+    <StlFusionVersion>2.0.138</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
