@@ -52,7 +52,7 @@ body {
 }
 
 .chat-header {
-    @apply flex flex-row justify-between mt-0 font-medium bg-secondary text-primary p-3 select-none border-b border-accent;
+    @apply flex flex-row justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary p-3 select-none border-b border-accent;
 }
 
 .chat-content {
@@ -61,6 +61,14 @@ body {
 
 .chat-footer {
     @apply flex fixed bottom-0 right-0 w-full md:w-3/4 lg:w-4/5 border-t border-primary md:border-secondary;
+}
+
+.mobile-header {
+    @apply w-full;
+}
+
+.chat-title {
+    @apply float-left mt-1;
 }
 
 .chat-message-editor {
