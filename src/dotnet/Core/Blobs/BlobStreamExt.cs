@@ -36,7 +36,7 @@ public static class BlobStreamExt
         try {
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
-            var blobStream = stream.ReadBlobStream(false, cancellationToken);
+            var blobStream = stream.ReadBlobStream(false, 1024, cancellationToken);
             await foreach (var blobPart in blobStream.ConfigureAwait(false))
                 yield return blobPart;
         }
@@ -67,15 +67,17 @@ public static class BlobStreamExt
 
     public static IAsyncEnumerable<BlobPart> ReadBlobStream(
         this FilePath sourceFilePath,
+        int blobSize = 1024,
         CancellationToken cancellationToken = default)
     {
         var inputStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read);
-        return inputStream.ReadBlobStream(true, cancellationToken);
+        return inputStream.ReadBlobStream(true, blobSize, cancellationToken);
     }
 
     public static async IAsyncEnumerable<BlobPart> ReadBlobStream(
         this Stream source,
         bool mustDisposeSource,
+        int blobSize = 1024,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         try {
@@ -84,13 +86,14 @@ public static class BlobStreamExt
             // only for arrays:
             // - https://github.com/zwcloud/MonoWasm/blob/master/WasmHttpMessageHandler.cs#L349
             var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            var memory = buffer.AsMemory();
             try {
                 var blobIndex = 0;
-                var bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                var bytesRead = await source.ReadAsync(memory[..blobSize], cancellationToken).ConfigureAwait(false);
                 while (bytesRead != 0) {
                     var blobPart = new BlobPart(blobIndex++, buffer[..bytesRead]);
                     yield return blobPart;
-                    bytesRead = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                    bytesRead = await source.ReadAsync(memory[..blobSize], cancellationToken).ConfigureAwait(false);
                 }
             }
             finally {

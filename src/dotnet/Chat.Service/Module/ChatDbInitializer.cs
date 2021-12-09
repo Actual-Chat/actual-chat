@@ -245,7 +245,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         CancellationToken cancellationToken)
     {
         var filePath = GetAudioDataDir() & fileName;
-        var sourceBlobStream = filePath.ReadBlobStream(cancellationToken);
+        var sourceBlobStream = filePath.ReadBlobStream(1024, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
         var audio = new AudioSource(sourceBlobStream, TimeSpan.Zero, audioLog, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);

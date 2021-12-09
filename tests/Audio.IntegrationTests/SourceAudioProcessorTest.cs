@@ -181,7 +181,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
     private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
     {
-        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(cancellationToken);
+        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(1024, cancellationToken);
         var audio = new AudioSource(blobStream, default, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;

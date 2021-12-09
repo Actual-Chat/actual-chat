@@ -37,9 +37,10 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
-
-        var blockOffsetMs = 0;
         var clusterOffsetMs = 0;
+        short blockOffsetMs = 0;
+        var skipAdjustmentBlockMs = short.MinValue;
+        var skipAdjustmentClusterMs = int.MinValue;
         var state = new WebMReader.State();
         var frameBuffer = new List<AudioFrame>();
         var readBuffer = ArrayBuffer<byte>.Lease(false, 32 * 1024);
@@ -68,7 +69,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
                     skipTo,
                     ref clusterOffsetMs,
-                    ref blockOffsetMs);
+                    ref blockOffsetMs,
+                    ref skipAdjustmentClusterMs,
+                    ref skipAdjustmentBlockMs);
 
                 foreach (var frame in frameBuffer) {
                     duration = frame.Offset + frame.Duration;
@@ -128,17 +131,20 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         WebMReader webMReader,
         TimeSpan skipTo,
         ref int clusterOffsetMs,
-        ref int blockOffsetMs)
+        ref short blockOffsetMs,
+        ref int skipAdjustmentClusterMs,
+        ref short skipAdjustmentBlockMs)
     {
         var prevPosition = 0;
         var framesStart = 0;
-        var currentBlockOffsetMs = 0;
         var skipToMs = (int)skipTo.TotalMilliseconds;
+        short currentBlockOffsetMs = 0;
         EBML? ebml = null;
         Segment? segment = null;
 
         using var writeBufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
-        var writeBuffer = writeBufferLease.Memory;
+        var writeBuffer = writeBufferLease.Memory.Span;
+        var webMWriter = new WebMWriter(writeBuffer);
 
         while (webMReader.Read()) {
             var state = webMReader.GetState();
@@ -155,14 +161,21 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             case WebMReadResultKind.CompleteCluster:
                 break;
             case WebMReadResultKind.BeginCluster:
+                var cluster = (Cluster)webMReader.ReadResult;
                 if (!FormatTask.IsCompleted) {
                     var formatTaskSource = TaskSource.For(FormatTask);
                     var format = CreateMediaFormat(ebml!, segment!, webMReader.Span[..state.Position]);
                     formatTaskSource.SetResult(format);
                     framesStart = state.Position;
                 }
-                var cluster = (Cluster)webMReader.ReadResult;
-                clusterOffsetMs = (int)cluster.Timestamp;
+                else {
+                    clusterOffsetMs = (int)cluster.Timestamp;
+
+                    if (skipAdjustmentBlockMs > 0) {
+                        cluster.Timestamp -= (ulong)skipAdjustmentBlockMs;
+                        webMWriter.Write(cluster);
+                    }
+                }
                 currentBlockOffsetMs = 0;
                 break;
             case WebMReadResultKind.Block:
@@ -182,18 +195,26 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     }
                     else {
                         // Complex case: we may need to skip this frame
-                        var outputFrameOffset = frameOffset - skipTo;
-                        if (outputFrameOffset >= TimeSpan.Zero) {
+                        if (frameOffset - skipTo >= TimeSpan.Zero) {
+                            if (skipAdjustmentBlockMs == short.MinValue) {
+                                skipAdjustmentBlockMs = currentBlockOffsetMs;
+                                skipAdjustmentClusterMs = clusterOffsetMs;
+                                simpleBlock.TimeCode = 0;
+                            }
+                            else if (skipAdjustmentClusterMs >= clusterOffsetMs)
+                                simpleBlock.TimeCode -= skipAdjustmentBlockMs;
+                            var outputFrameOffset = frameOffset.Subtract(
+                                TimeSpan.FromMilliseconds(skipAdjustmentClusterMs + skipAdjustmentBlockMs));
                             DebugLog?.LogDebug(
                                 "Rewriting audio frame offset: {FrameOffset}s -> {OutputFrameOffset}s",
                                 frameOffset.TotalSeconds, outputFrameOffset.TotalSeconds);
-                            simpleBlock.TimeCode -= (short)(skipToMs - clusterOffsetMs);
-                            var webMWriter = new WebMWriter(writeBuffer.Span);
+
                             webMWriter.Write(simpleBlock);
-                            mediaFrame = new AudioFrame() {
+                            mediaFrame = new AudioFrame {
                                 Offset = outputFrameOffset,
                                 Data = webMWriter.Written.ToArray(),
                             };
+                            webMWriter = new WebMWriter(writeBuffer);
                         }
                     }
 

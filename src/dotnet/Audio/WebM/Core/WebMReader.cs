@@ -121,6 +121,9 @@ public ref struct WebMReader
                 _entry = container;
                 _element = containerElement;
                 _spanReader.Position = beginPosition;
+                if (_spanReader.Position == _spanReader.Length)
+                    if (container.Descriptor.Identifier.EncodedValue == MatroskaSpecification.Cluster)
+                        _resume = true;
                 if (_spanReader.Position < _spanReader.Length)
                     _resume = true;
                 else if (resume)
