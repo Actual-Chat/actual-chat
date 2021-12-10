@@ -37,8 +37,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         if (query.InclusiveRange == default)
             query = query with {
                 InclusiveRange = new(
-                    (chatIdRange.End - IdTileStack.MinTileSize * 2).ToString(CultureInfo.InvariantCulture),
-                    chatIdRange.End.ToString(CultureInfo.InvariantCulture)),
+                    (chatIdRange.End - IdTileStack.MinTileSize).ToString(CultureInfo.InvariantCulture),
+                    (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture)),
             };
 
         var startId = long.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
