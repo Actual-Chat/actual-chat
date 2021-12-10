@@ -24,17 +24,13 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat?.Title.Should().Be("The Actual One");
 
         await AddChatEntries(chats, session, ChatId, CancellationToken.None);
-        var idRange = await chats.GetIdRange(session, ChatId, CancellationToken.None);
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
 
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
         var acDcId = nirvanaId - 1;
 
-        var reader = new ChatEntryReader(chats) {
-            ChatId = ChatId,
-            InvalidationWaitTimeout = TimeSpan.FromSeconds(1),
-            Session = session,
-        };
+        var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
 
         var entry = await reader.Get(acDcId, CancellationToken.None);
         entry.Should().NotBeNull();

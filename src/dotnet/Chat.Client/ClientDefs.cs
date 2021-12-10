@@ -13,12 +13,14 @@ public interface IChatsClientDef
     Task<Range<long>> GetIdRange(
         Session session,
         string chatId,
+        ChatEntryType entryType,
         CancellationToken cancellationToken);
 
     [Get(nameof(GetEntryCount))]
     Task<long> GetEntryCount(
         Session session,
         string chatId,
+        ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken);
 
@@ -26,6 +28,7 @@ public interface IChatsClientDef
     Task<ChatTile> GetTile(
         Session session,
         string chatId,
+        ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
