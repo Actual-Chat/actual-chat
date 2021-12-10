@@ -7,6 +7,7 @@ namespace ActualChat.Audio;
 public class AudioSourceStreamer : IAudioSourceStreamer
 {
     private const int StreamBufferSize = 64;
+    private const int MaxStreamDuration = 600;
 
     private ILoggerFactory LoggerFactory { get; }
     private RedisDb RedisDb { get; }
@@ -36,6 +37,9 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
+        if (skipTo > TimeSpan.FromSeconds(MaxStreamDuration))
+            return AsyncEnumerable.Empty<AudioStreamPart>();
+
         var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
         var audioStream = streamer
             .Read(cancellationToken)
@@ -50,7 +54,9 @@ public class AudioSourceStreamer : IAudioSourceStreamer
 
     public Task Publish(string streamId, AudioSource audio, CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
+        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId, new RedisStreamer<AudioStreamPart>.Options {
+            MaxStreamLength = 10 * 1024,
+        });
         var audioStream = audio.GetStream(cancellationToken);
         return streamer.Write(audioStream, cancellationToken);
     }

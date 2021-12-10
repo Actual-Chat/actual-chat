@@ -11,6 +11,13 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
+    protected override AudioFormat DefaultFormat => new AudioFormat {
+        CodecSettings = "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwH/////////FUmpZrMq17GD"
+            + "D0JATYCTb3B1cy1tZWRpYS1yZWNvcmRlcldBk29wdXMtbWVkaWEtcmVjb3JkZXIWVK5rv66914EB"
+            + "c8WHtvVVEG3dyIOBAoaGQV9PUFVTY6KTT3B1c0hlYWQBAQAAgLsAAAAAAOGNtYRHO4AAn4EBYmSB"
+            + "IB9DtnUB/////////+eBAA==",
+    };
+
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
