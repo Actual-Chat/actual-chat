@@ -21,7 +21,7 @@ public sealed class AudioSegmentSaver
         ClosedAudioSegment closedAudioSegment,
         CancellationToken cancellationToken)
     {
-        var streamIndex = ((string)closedAudioSegment.StreamId).Replace(
+        var streamIndex = closedAudioSegment.StreamId.Replace(
             $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".webm");
 

@@ -186,7 +186,7 @@ public partial class Chats
 
         // TODO: Use entity resolver or remove this check (?)
         var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleAsync(a => a.Id == (string)entry.AuthorId, cancellationToken)
+            .SingleAsync(a => a.Id == entry.AuthorId.Value, cancellationToken)
             .ConfigureAwait(false);
         var dbEntry = await DbAddOrUpdate(dbContext, entry, cancellationToken).ConfigureAwait(false);
 
@@ -222,7 +222,7 @@ public partial class Chats
 
         // TODO: Use entity resolver or remove this check (?)
         var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleAsync(a => a.Id == (string)audioEntry.AuthorId, cancellationToken)
+            .SingleAsync(a => a.Id == audioEntry.AuthorId.Value, cancellationToken)
             .ConfigureAwait(false);
 
         var dbAudioEntry = await DbAddOrUpdate(dbContext, audioEntry, cancellationToken).ConfigureAwait(false);
