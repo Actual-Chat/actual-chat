@@ -26,7 +26,7 @@ public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOpti
 
         var dbSession = await dbContext.Sessions
             .ForUpdate()
-            .SingleAsync(s => s.Id == (string)command.Session.Id, cancellationToken)
+            .SingleAsync(s => s.Id == command.Session.Id.Value, cancellationToken)
             .ConfigureAwait(false);
         dbSession.Options = dbSession.Options
             .Set(command.Option.Key, command.Option.Value);

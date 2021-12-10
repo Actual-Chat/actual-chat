@@ -18,7 +18,7 @@ public class GoogleTranscriber : ITranscriber
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var (streamId, format, options) = request;
-        _log.LogInformation("Start transcription of stream #{StreamId}", (string)streamId);
+        _log.LogInformation("Transcribe: #{StreamId}", streamId);
 
         var builder = new SpeechClientBuilder();
         var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);

@@ -16,7 +16,7 @@ public partial class ChatAuthors
         var dbContext = CreateDbContext();
         await using (var _ = dbContext.ConfigureAwait(false)) {
             var dbChatAuthor = await dbContext.ChatAuthors
-                .SingleOrDefaultAsync(a => a.Id == (string)authorId, cancellationToken)
+                .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
                 .ConfigureAwait(false);
             chatAuthor = dbChatAuthor?.ToModel();
         }
@@ -108,7 +108,7 @@ public partial class ChatAuthors
         await using var __ = dbContext.ConfigureAwait(false);
 
         var maxLocalId = await dbContext.ChatAuthors.ForUpdate() // To serialize inserts
-            .Where(e => e.ChatId == (string) chatId)
+            .Where(e => e.ChatId == chatId)
             .OrderByDescending(e => e.LocalId)
             .Select(e => e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)

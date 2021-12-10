@@ -24,7 +24,7 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
         var dbContext = CreateDbContext();
         await using (var _ = dbContext.ConfigureAwait(false)) {
             var dbUserAuthor = await dbContext.UserAuthors
-                .SingleOrDefaultAsync(a => a.UserId == (string)userId, cancellationToken)
+                .SingleOrDefaultAsync(a => a.UserId == userId, cancellationToken)
                 .ConfigureAwait(false);
             userAuthor = dbUserAuthor?.ToModel();
         }
