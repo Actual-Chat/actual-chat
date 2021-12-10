@@ -7,7 +7,7 @@
     var failures = _commandFailureList.Items;
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
-<NavbarIcon />
+<Navbar />
 <div class="navbar">
     <input id="navbar-toggle" class="hidden" type="checkbox" />
     <nav id="navbar-links" class="links">
@@ -15,7 +15,6 @@
             <div class="hidden md:flex flex-row flex-nowrap justify-center">
                 <NavbarLogo />
             </div>
-            <NavbarIcon/>
             <div class="flex-1 flex flex-col overflow-y-auto">
                 <NavbarLinks />
             </div>

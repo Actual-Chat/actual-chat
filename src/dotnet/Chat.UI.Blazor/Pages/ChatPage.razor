@@ -20,7 +20,7 @@
         PageLayout.Header = @<span>Loading...</span>;
         PageLayout.Footer = null;
     } else {
-        PageLayout.Header = @<div class="mobile-header"><span class="chat-title">@chat.Title</span><span><NavbarIcon/></span></div>;
+        PageLayout.Header = @<span>@chat.Title</span>;
         PageLayout.Footer = @<ChatMessageEditor Chat="@chat" />;
     }
 }
