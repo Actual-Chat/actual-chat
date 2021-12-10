@@ -210,7 +210,7 @@ public partial class Chats
                 var invAudioEntry = invEntries.AudioEntry;
                 var invTextEntry = invEntries.TextEntry;
                 InvalidateChatPages(invAudioEntry.ChatId, invAudioEntry.Type, invAudioEntry.Id, false);
-                InvalidateChatPages(invTextEntry.ChatId, invAudioEntry.Type, invTextEntry.Id, false);
+                InvalidateChatPages(invTextEntry.ChatId, invTextEntry.Type, invTextEntry.Id, false);
                 _ = GetMaxId(invAudioEntry.ChatId, invAudioEntry.Type, default); // We invalidate min-max Id range at last
                 _ = GetMaxId(invTextEntry.ChatId, invTextEntry.Type, default); // We invalidate min-max Id range at last
             }
