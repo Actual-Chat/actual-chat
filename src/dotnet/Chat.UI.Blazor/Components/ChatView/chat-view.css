@@ -1,15 +1,3 @@
-html {
-    height: 100%;
-}
-
-body {
-    height: 100%;
-}
-
-.chat-page {
-    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto overflow-x-auto;
-}
-
 .chat-message {
     @apply antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words;
 }
@@ -52,27 +40,19 @@ body {
 }
 
 .chat-header {
-    @apply flex flex-row justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary p-3 select-none border-b border-accent;
+    @apply flex flex-row justify-between mt-0 font-medium bg-secondary text-primary p-3 select-none border-b border-accent;
 }
 
 .chat-content {
-    @apply flex-1 flex flex-col overflow-y-auto bg-secondary px-3 pt-3 mb-12;
+    @apply flex-1 flex flex-col overflow-y-auto bg-secondary p-3;
 }
 
 .chat-footer {
-    @apply flex fixed bottom-0 right-0 w-full md:w-3/4 lg:w-4/5 border-t border-primary md:border-secondary;
-}
-
-.mobile-header {
-    @apply w-full;
-}
-
-.chat-title {
-    @apply float-left mt-1;
+    @apply flex sticky m-0;
 }
 
 .chat-message-editor {
-    @apply sticky bottom-0 pb-0.5 self-end bg-secondary w-full;
+    @apply sticky bottom-0 pb-1 self-end bg-secondary w-full;
 }
 
 .plus-button {
