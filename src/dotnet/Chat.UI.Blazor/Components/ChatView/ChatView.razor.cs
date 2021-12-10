@@ -33,7 +33,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     {
         var chat = Chat;
         var chatId = chat.Id;
-        var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, cancellationToken);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
         if (query.InclusiveRange == default)
             query = query with {
                 InclusiveRange = new(
@@ -53,7 +53,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
         var idTiles = IdTileStack.GetOptimalCoveringTiles((startId, endId + 1));
         var chatTiles = await Task
-            .WhenAll(idTiles.Select(idTile => Chats.GetTile(Session, chatId.Value, idTile.Range, cancellationToken)))
+            .WhenAll(idTiles.Select(
+                idTile => Chats.GetTile(Session, chatId.Value, ChatEntryType.Text, idTile.Range, cancellationToken)))
             .ConfigureAwait(false);
 
         var chatEntries = chatTiles

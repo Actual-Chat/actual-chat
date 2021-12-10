@@ -111,8 +111,8 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         var debugStopReason = "n/a";
         DebugLog?.LogDebug("Play #{PlayId}: started @ {StartAt}", playId, startAt);
         try {
-            var entryReader = Chats.CreateEntryReader(Session, ChatId);
-            var idRange = await Chats.GetIdRange(Session, ChatId, cancellationToken).ConfigureAwait(false);
+            var entryReader = Chats.CreateEntryReader(Session, ChatId, ChatEntryType.Audio);
+            var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
             var startEntry = await entryReader
                 .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
                 .ConfigureAwait(false);

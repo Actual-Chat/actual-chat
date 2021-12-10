@@ -7,18 +7,10 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
-[Index(nameof(ChatId), nameof(Id))]
-[Index(
-    nameof(ChatId),
-    nameof(BeginsAt),
-    nameof(EndsAt),
-    nameof(Type))]
-[IndexAttribute(
-    nameof(ChatId),
-    nameof(EndsAt),
-    nameof(BeginsAt),
-    nameof(Type))]
-[IndexAttribute(nameof(ChatId), nameof(Version))]
+[Index(nameof(ChatId), nameof(Type), nameof(Id))]
+[Index(nameof(ChatId), nameof(Type), nameof(BeginsAt), nameof(EndsAt))]
+[Index(nameof(ChatId), nameof(Type), nameof(EndsAt), nameof(BeginsAt))]
+[Index(nameof(ChatId), nameof(Type), nameof(Version))]
 public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
     private DateTime _beginsAt;
@@ -28,6 +20,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
+    // (ChatId, Type, Id)
     [Key] public string CompositeId { get; set; } = "";
     public string ChatId { get; set; } = "";
     public long Id { get; set; }
@@ -55,17 +48,17 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public long? VideoEntryId { get; set; }
     public string? TextToTimeMap { get; set; }
 
-    public static string GetCompositeId(string chatId, long id)
-        => $"{chatId}:{id.ToString(CultureInfo.InvariantCulture)}";
+    public static string GetCompositeId(string chatId, ChatEntryType entryType, long entryId)
+        => $"{chatId}:{entryType:D}:{entryId.ToString(CultureInfo.InvariantCulture)}";
 
     public ChatEntry ToModel()
         => new() {
-            Id = Id,
             ChatId = ChatId,
+            Type = Type,
+            Id = Id,
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             EndsAt = EndsAt,
-            Type = Type,
             Content = Content,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
@@ -81,14 +74,15 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     {
         if (model.Id == 0)
             throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
-        Id = model.Id;
+        CompositeId = GetCompositeId(model.ChatId, model.Type, model.Id);
         ChatId = model.ChatId;
-        CompositeId = GetCompositeId(model.ChatId, model.Id);
+        Type = model.Type;
+        Id = model.Id;
         Version = model.Version;
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
         EndsAt = model.EndsAt;
-        Type = model.Type;
+        Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         Content = model.Content;
         StreamId = model.StreamId;
         AudioEntryId = model.AudioEntryId;

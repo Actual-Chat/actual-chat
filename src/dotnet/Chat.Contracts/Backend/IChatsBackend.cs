@@ -5,18 +5,30 @@ public interface IChatsBackend
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<long> GetEntryCount(string chatId, Range<long>? idTileRange, CancellationToken cancellationToken);
+    Task<long> GetEntryCount(
+        string chatId, ChatEntryType entryType, Range<long>? idTileRange,
+        CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatTile> GetTile(string chatId, Range<long> idTileRange, CancellationToken cancellationToken);
+    Task<ChatTile> GetTile(
+        string chatId, ChatEntryType entryType, Range<long> idTileRange,
+        CancellationToken cancellationToken);
     // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Range<long>> GetIdRange(string chatId, CancellationToken cancellationToken);
+    Task<Range<long>> GetIdRange(
+        string chatId, ChatEntryType entryType,
+        CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<long> GetMinId(string chatId, CancellationToken cancellationToken);
+    Task<long> GetMinId(
+        string chatId, ChatEntryType entryType,
+        CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<long> GetMaxId(string chatId, CancellationToken cancellationToken);
+    Task<long> GetMaxId(
+        string chatId, ChatEntryType entryType,
+        CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<ChatPermissions> GetPermissions(string chatId, string? authorId, CancellationToken cancellationToken);
+    Task<ChatPermissions> GetPermissions(
+        string chatId, string? authorId,
+        CancellationToken cancellationToken);
 
     // Commands
 

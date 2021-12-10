@@ -145,13 +145,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
             lastBeginsAt = lastEndsAt;
             var textEntry = new DbChatEntry() {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
+                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, ++lastId),
+                Type = ChatEntryType.Text,
                 ChatId = dbChat.Id,
                 Id = lastId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Type = ChatEntryType.Text,
                 Content = content ?? GetRandomSentence(rnd, 30),
                 AuthorId = dbAuthor.Id,
             };
@@ -169,25 +169,25 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap =
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}";
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
+                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, ++lastId),
                 ChatId = dbChat.Id,
+                Type = ChatEntryType.Audio,
                 Id = lastId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Type = ChatEntryType.Audio,
                 Content = "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm",
                 AuthorId = dbAuthor.Id,
             };
             dbContext.Add(audioEntry);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
+                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, ++lastId),
                 ChatId = dbChat.Id,
+                Type = ChatEntryType.Text,
                 Id = lastId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Type = ChatEntryType.Text,
                 Content =
                     "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал " +
                     "открыв мне чудо на Земле",
@@ -209,25 +209,25 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap =
                 "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}";
             var audioEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
+                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, ++lastId),
                 ChatId = dbChat.Id,
+                Type = ChatEntryType.Audio,
                 Id = lastId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Type = ChatEntryType.Audio,
                 Content = "audio-record/01FKRJ5P2C87TYP1V3JTNB228D/0000.webm",
                 AuthorId = dbAuthor.Id,
             };
             dbContext.Add(audioEntry);
             var textEntry = new DbChatEntry {
-                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ++lastId),
+                CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, ++lastId),
                 ChatId = dbChat.Id,
+                Type = ChatEntryType.Text,
                 Id = lastId,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Type = ChatEntryType.Text,
                 Content =
                     "утро в декабре туманом окутана под ногами белый снег предатель виден каждый " +
                     "шаг и холоду лютому слишком просто сладить с тобой",
