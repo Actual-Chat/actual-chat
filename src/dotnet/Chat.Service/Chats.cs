@@ -47,24 +47,26 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     public virtual async Task<ChatTile> GetTile(
         Session session,
         string chatId,
+        ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await GetTile(chatId, entryType, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
         Session session,
         string chatId,
+        ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntryCount(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await GetEntryCount(chatId, entryType, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!
@@ -72,11 +74,12 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     public virtual async Task<Range<long>> GetIdRange(
         Session session,
         string chatId,
+        ChatEntryType entryType,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetIdRange(chatId, cancellationToken).ConfigureAwait(false);
+        return await GetIdRange(chatId, entryType, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

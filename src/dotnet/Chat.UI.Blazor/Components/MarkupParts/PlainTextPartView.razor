@@ -52,7 +52,7 @@
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        var chatEntryReader = chats.CreateEntryReader(session, chatId);
+        var chatEntryReader = chats.CreateEntryReader(session, chatId, ChatEntryType.Audio);
 
         var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
