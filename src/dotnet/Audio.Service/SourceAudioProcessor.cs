@@ -183,7 +183,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             ? textChatEntry with {
                 Content = transcript.Text,
                 StreamId = Symbol.Empty,
-                EndsAt = textChatEntry.BeginsAt.ToDateTime().AddSeconds(transcript.Duration),
+                EndsAt = textChatEntry.BeginsAt.ToDateTime().AddSeconds(transcript.TimeRange.End),
                 TextToTimeMap = transcript.TextToTimeMap,
             }
             : textChatEntry with {

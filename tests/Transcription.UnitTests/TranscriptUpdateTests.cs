@@ -74,6 +74,25 @@ public class TranscriptUpdateTests : TestBase
     public void SimpleTest3()
     {
         var extractor = new TranscriptUpdateExtractor();
+        var t = new Transcript();
+        var u = extractor.AppendFinal("1", 1);
+        Dump(extractor.LastFinal);
+        t = t.WithUpdate(u);
+        u = extractor.AppendFinal(" 2", 2);
+        Dump(extractor.LastFinal);
+        t = t.WithUpdate(u);
+        u = extractor.AppendFinal(" 3", new LinearMap(new double[] {3 , 5}, new double[] {2 , 3}));
+        t = t.WithUpdate(u);
+        u = extractor.AppendFinal("", extractor.LastFinal.TimeRange.End);
+        t = t.WithUpdate(u);
+        Dump(t);
+        t.TextToTimeMap.Length.Should().Be(4);
+    }
+
+    [Fact]
+    public void SimpleTest4()
+    {
+        var extractor = new TranscriptUpdateExtractor();
         var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString();
         var rnd = new Random(0);
         var t = new Transcript();
@@ -93,8 +112,9 @@ public class TranscriptUpdateTests : TestBase
         }
     }
 
-    public void Dump(Transcript transcript)
+    private void Dump(Transcript transcript)
         => Out.WriteLine($"* {transcript}");
-    public void Dump(TranscriptUpdate transcriptUpdate)
+
+    private void Dump(TranscriptUpdate transcriptUpdate)
         => Out.WriteLine($"+ {transcriptUpdate}");
 }

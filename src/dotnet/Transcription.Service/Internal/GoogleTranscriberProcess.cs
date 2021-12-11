@@ -94,7 +94,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             ProcessResponse(updateExtractor, response);
 
         // The final update should include just the final transcript
-        var update = updateExtractor.AppendFinal("", updateExtractor.LastFinal.Duration);
+        var update = updateExtractor.AppendFinal("", updateExtractor.LastFinal.TimeRange.End);
         Updates.Writer.TryWrite(update);
         Updates.Writer.Complete();
     }
@@ -117,7 +117,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 
             // Parsing word map
             var lastFinal = updateExtractor.LastFinal;
-            var lastFinalTextLength = (int) lastFinal.TextToTimeMap.TargetRange.Max;
+            var lastFinalTextLength = lastFinal.Text.Length;
             var lastFinalDuration = lastFinal.TextToTimeMap.TargetRange.Max;
             var sourcePoints = new List<double> { lastFinalTextLength };
             var targetPoints = new List<double> { lastFinalDuration };
@@ -146,9 +146,9 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 
             sourcePoints.Add(lastFinalTextLength + text.Length);
             targetPoints.Add(endTime);
-            // TODO(AY): Figure out why this map is broken; it's unused for now
-            var textToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray());
-            update = updateExtractor.AppendFinal(text, endTime);
+            var textToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray())
+                .Simplify(Transcript.TextToTimeMapTimePrecision);
+            update = updateExtractor.AppendFinal(text, textToTimeMap);
         }
         else {
             var text = results

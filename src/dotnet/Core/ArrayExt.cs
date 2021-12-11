@@ -2,6 +2,28 @@ namespace ActualChat;
 
 public static class ArrayExt
 {
+    public static int CommonPrefixLength<T>(this T[] first, T[] second, IEqualityComparer<T>? comparer = null)
+    {
+        var c = comparer ?? EqualityComparer<T>.Default;
+        var length = Math.Min(first.Length, second.Length);
+        for (var i = 0; i < length; i++) {
+            if (!c.Equals(first[i], second[i]))
+                return i;
+        }
+        return length;
+    }
+
+    public static int CommonPrefixLength<T>(this ReadOnlySpan<T> first, ReadOnlySpan<T> second, IEqualityComparer<T>? comparer = null)
+    {
+        var c = comparer ?? EqualityComparer<T>.Default;
+        var length = Math.Min(first.Length, second.Length);
+        for (var i = 0; i < length; i++) {
+            if (!c.Equals(first[i], second[i]))
+                return i;
+        }
+        return length;
+    }
+
     public static void Deconstruct<T>(this T[] array, out T? first, out T[] rest)
     {
         if (array == null) throw new ArgumentNullException(nameof(array));

@@ -75,17 +75,39 @@ public readonly struct LinearMap
             SourcePoints.Select(x => x + sourceOffset).ToArray(),
             TargetPoints.Select(x => x + targetOffset).ToArray());
 
+    public LinearMap Append(double sourcePoint, double targetPoint)
+    {
+        if (IsEmpty) return new LinearMap(new [] { sourcePoint }, new [] { targetPoint });
+
+        var sourcePoints = new double[Length + 1];
+        var targetPoints = new double[Length + 1];
+        SourcePoints.CopyTo(sourcePoints, 0);
+        TargetPoints.CopyTo(targetPoints, 0);
+        sourcePoints[^1] = sourcePoint;
+        targetPoints[^1] = targetPoint;
+        return new LinearMap(sourcePoints, targetPoints);
+    }
+
+    public LinearMap TryAppend(double sourcePoint, double targetPoint, double sourceEpsilon)
+    {
+        if (IsEmpty) return Append(sourceEpsilon, targetPoint);
+
+        var lastSourcePoint = SourcePoints[^1];
+        return sourcePoint < lastSourcePoint + sourceEpsilon
+            ? this
+            : Append(sourcePoint, targetPoint);
+    }
+
     public LinearMap TrySimplifyToPoint(double minSourceDistance = 1e-6, double minTargetDistance = 1e-6)
     {
         if (Length != 2)
             return this;
-        var p0 = this[0];
-        var p1 = this[1];
-        if (Math.Abs(p1.SourcePoint - p0.SourcePoint) >= minSourceDistance)
+        var ((x0, y0), (x1, y1)) = (this[0], this[1]);
+        if (Math.Abs(x1 - x0) >= minSourceDistance)
             return this;
-        if (Math.Abs(p1.TargetPoint - p0.TargetPoint) >= minTargetDistance)
+        if (Math.Abs(y1 - y0) >= minTargetDistance)
             return this;
-        return new LinearMap(new[] { p0.SourcePoint }, new [] { p0.TargetPoint });
+        return new LinearMap(new[] { x0 }, new [] { y0 });
     }
 
     public LinearMap Simplify(double minDistance)
