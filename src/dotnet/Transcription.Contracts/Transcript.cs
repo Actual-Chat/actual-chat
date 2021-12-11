@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Cysharp.Text;
+using Stl.Internal;
 
 namespace ActualChat.Transcription;
 
@@ -15,7 +17,9 @@ public sealed record Transcript
     [DataMember(Order = 1)]
     public LinearMap TextToTimeMap { get; init; } = EmptyMap;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public double Duration => TextToTimeMap.TargetPoints[^1];
+    public Range<double> TextRange => TextToTimeMap.SourceRange;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Range<double> TimeRange => TextToTimeMap.TargetRange;
 
     public Transcript() { }
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
@@ -34,26 +38,44 @@ public sealed record Transcript
         if (Math.Abs(map.SourceRange.Min - updatedMap.SourceRange.Min) > 0.1)
             return new TranscriptUpdate(updated); // Start differs
 
-        var commonLength = Math.Min(text.Length, updatedText.Length);
-        var commonPrefixLength = 0;
-        for (; commonPrefixLength < commonLength; commonPrefixLength++) {
-            if (text[commonPrefixLength] != updatedText[commonPrefixLength])
-                break;
-        }
-        var updatePointIndex = updatedMap.SourcePoints.IndexOfLowerOrEqual(commonPrefixLength);
-        if (updatePointIndex <= 0)
-            return new TranscriptUpdate(updated); // Everything differs
-        var updateTextStart = (int) updatedMap.SourcePoints[updatePointIndex];
-        return new TranscriptUpdate(new Transcript(
-            updatedText[updateTextStart..],
-            updatedMap[updatePointIndex..]));
+        // The logic below is fairly complex, but overall:
+        // - We find the max. common part of the map and the text
+        // - Take shorter(commonMap, commonText) as our common prefix
+        // - Try to augment commonMap with one extra point - (commonTextEnd, itsTime)
+        // - Compute the updated map as (commonText, commonMap) + suffix from (updatedText, updatedMap)
+
+        var commonMapPrefixLength = Math.Min(
+            map.SourcePoints.CommonPrefixLength(updatedMap.SourcePoints),
+            map.TargetPoints.CommonPrefixLength(updatedMap.TargetPoints));
+        if (commonMapPrefixLength == 0)
+            return new TranscriptUpdate(updated);
+        var commonTextPrefixLengthBasedOnMap = (int) map.SourcePoints[commonMapPrefixLength - 1];
+
+        var commonTextPrefixLength = text.AsSpan().CommonPrefixLength(updatedText.AsSpan());
+        var lastCommonMapPointIndex = map.SourcePoints.IndexOfLowerOrEqual(commonTextPrefixLength - 0.5);
+        if (lastCommonMapPointIndex < 0)
+            return new TranscriptUpdate(updated);
+        var commonMapPrefixLengthBasedOnText = lastCommonMapPointIndex + 1;
+
+        var textPrefix = text[..Math.Min(commonTextPrefixLength, commonTextPrefixLengthBasedOnMap)];
+        var mapPrefix = map[..Math.Min(commonMapPrefixLength, commonMapPrefixLengthBasedOnText)];
+        if (mapPrefix.IsEmpty)
+            return new TranscriptUpdate(updated);
+        var mapSuffix = updatedMap[mapPrefix.Length..];
+        updatedMap = mapPrefix
+            .TryAppend(textPrefix.Length, map.Map(textPrefix.Length)!.Value, TextToTimeMapTextPrecision)
+            .AppendOrUpdateTail(mapSuffix, TextToTimeMapTextPrecision);
+
+        var transcript = new Transcript(updatedText, updatedMap);
+        transcript.Validate(); // TODO(AY): Remove this call once we see everything is fine
+        return new TranscriptUpdate(transcript);
     }
 
     public Transcript WithSuffix(string suffix, double suffixEndTime)
     {
         var suffixTextToTimeMap = new LinearMap(
-            new []{ (double) Text.Length, Text.Length + suffix.Length },
-            new []{ Duration, suffixEndTime }
+            new [] { (double) Text.Length, Text.Length + suffix.Length },
+            new [] { TimeRange.End, suffixEndTime }
         ).TrySimplifyToPoint();
         return WithSuffix(suffix, suffixTextToTimeMap);
     }
@@ -92,6 +114,21 @@ public sealed record Transcript
         await foreach (var update in transcriptStream.WithCancellation(cancellationToken).ConfigureAwait(false))
             transcript = transcript.WithUpdate(update);
         return transcript;
+    }
+
+    public void Validate()
+    {
+        if (Text.Length == 0) {
+            if (!TextToTimeMap.IsEmpty)
+                throw Errors.InternalError("TextToTimeMap must be empty.");
+        }
+        else {
+            TextToTimeMap.Validate();
+            if (TextToTimeMap.SourcePoints[0] != 0)
+                throw Errors.InternalError("TextToTimeMap start must be 0.");
+            if (Text.Length != (int) TextToTimeMap.SourcePoints[^1])
+                throw Errors.InternalError("TextToTimeMap end must match Text's end.");
+        }
     }
 
     // This record relies on referential equality

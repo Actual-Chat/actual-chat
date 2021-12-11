@@ -23,19 +23,22 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(options, null!, Log);
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
 
-        var results = await process.Updates.Reader.ReadAllAsync().ToListAsync();
-        results.Max(update => update.UpdatedPart!.Duration).Should().Be(3.47d);
-        results.Min(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
+        var updates = await process.Updates.Reader.ReadAllAsync().ToListAsync();
+        updates.Max(update => update.UpdatedPart!.TimeRange.End).Should().Be(3.47d);
+        updates.Min(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 
-        var transcript = results[0].UpdatedPart!;
-        foreach (var transcriptUpdate in results.Skip(1))
-            transcript = transcript.WithUpdate(transcriptUpdate);
+        var transcript = new Transcript();
+        foreach (var update in updates) {
+            transcript = transcript.WithUpdate(update);
+            Out.WriteLine($"+ {update}");
+            Out.WriteLine($"= {transcript}");
+        }
 
         transcript.Text.Should().Be("проверка связи");
         transcript.TextToTimeMap.SourcePoints.Should()
-            .Equal(new[] { 0d, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
+            .Equal(new[] { 0d, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
         transcript.TextToTimeMap.TargetPoints.Should()
-            .Equal(new[] { 0d, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
+            .Equal(new[] { 0d, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
 
         Log.LogInformation("Transcript: {Transcript}", transcript);
 
@@ -207,6 +210,6 @@ public class GoogleTranscriberTest : TestBase
         }
 
         Out.WriteLine(transcript.ToString());
-        transcript.Duration.Should().BeLessThan(23d);
+        transcript.TimeRange.End.Should().BeLessThan(23d);
     }
 }
