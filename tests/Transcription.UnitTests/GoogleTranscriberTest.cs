@@ -1,26 +1,29 @@
+using ActualChat.Transcription.Internal;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf.WellKnownTypes;
 
 namespace ActualChat.Transcription.UnitTests;
 
-public class GoogleTranscriberTest
+public class GoogleTranscriberTest : TestBase
 {
-    private readonly ILogger<GoogleTranscriber> _logger;
+    private ILogger<GoogleTranscriber> Log { get; }
 
-    public ITestOutputHelper Out { get; }
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> logger)
-    {
-        _logger = logger;
-        Out = @out;
-    }
+    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
+        => Log = log;
 
     [Fact]
     public async Task DuplicateFinalResponsesTest()
     {
-        var transcriber = new GoogleTranscriber(_logger);
-        var transcriptStream = transcriber.ReadTranscript(GenerateResponses(), CancellationToken.None);
+        var options = new TranscriptionOptions() {
+            Language = "ru-RU",
+            IsDiarizationEnabled = false,
+            IsPunctuationEnabled = true,
+            MaxSpeakerCount = 1,
+        };
+        var process = new GoogleTranscriberProcess(options, null!, null, Log);
+        await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
 
-        var results = await transcriptStream.ToListAsync();
+        var results = await process.Updates.Reader.ReadAllAsync().ToListAsync();
         results.Max(update => update.UpdatedPart!.Duration).Should().Be(3.47d);
         results.Max(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 
@@ -34,7 +37,7 @@ public class GoogleTranscriberTest
         transcript.TextToTimeMap.TargetPoints.Should()
             .Equal(new[] { 0d, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
 
-        _logger.LogInformation("Transcript: {Transcript}", transcript);
+        Log.LogInformation("Transcript: {Transcript}", transcript);
 
 #pragma warning disable CS1998
         async IAsyncEnumerable<StreamingRecognizeResponse> GenerateResponses()
@@ -187,10 +190,16 @@ public class GoogleTranscriberTest
     [Fact]
     public async Task TextToTimeMapTest()
     {
-        var transcriber = new GoogleTranscriber(_logger);
-        var transcriptStream = transcriber.ReadTranscript(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
+        var options = new TranscriptionOptions() {
+            Language = "ru-RU",
+            IsDiarizationEnabled = false,
+            IsPunctuationEnabled = true,
+            MaxSpeakerCount = 1,
+        };
+        var process = new GoogleTranscriberProcess(options, null!, null, Log);
+        await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
 
-        var results = await transcriptStream.ToListAsync();
+        var results = await process.Updates.Reader.ReadAllAsync().ToListAsync();
         var transcript = results[0].UpdatedPart!;
         foreach (var transcriptUpdate in results.Skip(1)) {
             Out.WriteLine(transcriptUpdate.ToString());

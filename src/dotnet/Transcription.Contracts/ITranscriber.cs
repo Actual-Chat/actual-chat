@@ -5,7 +5,7 @@ namespace ActualChat.Transcription;
 public interface ITranscriber
 {
     IAsyncEnumerable<TranscriptUpdate> Transcribe(
-        TranscriptionRequest request,
+        TranscriptionOptions options,
         IAsyncEnumerable<AudioStreamPart> audioStream,
         CancellationToken cancellationToken);
 }
