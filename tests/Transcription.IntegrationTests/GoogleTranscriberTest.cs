@@ -16,18 +16,14 @@ public class GoogleTranscriberTest : TestBase
     public async Task TranscribeTest(string fileName)
     {
         var transcriber = new GoogleTranscriber(_logger);
-        var request = new TranscriptionRequest(
-            "123",
-            new () { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            new () {
-                Language = "ru-RU",
-                IsDiarizationEnabled = false,
-                IsPunctuationEnabled = true,
-                MaxSpeakerCount = 1,
-            });
-
+        var options = new TranscriptionOptions() {
+            Language = "ru-RU",
+            IsDiarizationEnabled = false,
+            IsPunctuationEnabled = true,
+            MaxSpeakerCount = 1,
+        };
         var audio = await GetAudio(fileName);
-        var transcriptStream = transcriber.Transcribe(request, audio.GetStream(default), default);
+        var transcriptStream = transcriber.Transcribe(options, audio.GetStream(default), default);
 
         var transcript = new Transcript();
         await foreach (var update in transcriptStream) {
@@ -43,18 +39,14 @@ public class GoogleTranscriberTest : TestBase
     {
         var fileName = "0000-AY.webm";
         var transcriber = new GoogleTranscriber(_logger);
-        var request = new TranscriptionRequest(
-            "123",
-            new () { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            new () {
-                Language = "ru-RU",
-                IsDiarizationEnabled = false,
-                IsPunctuationEnabled = true,
-                MaxSpeakerCount = 1,
-            });
-
+        var options = new TranscriptionOptions() {
+            Language = "ru-RU",
+            IsDiarizationEnabled = false,
+            IsPunctuationEnabled = true,
+            MaxSpeakerCount = 1,
+        };
         var audio = await GetAudio(fileName);
-        var transcriptStream = transcriber.Transcribe(request, audio.GetStream(default), default);
+        var transcriptStream = transcriber.Transcribe(options, audio.GetStream(default), default);
 
         var transcript = new Transcript();
         await foreach (var update in transcriptStream) {

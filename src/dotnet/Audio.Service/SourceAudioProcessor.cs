@@ -121,23 +121,14 @@ public class SourceAudioProcessor : AsyncProcessBase
         OpenAudioSegment openSegment,
         CancellationToken cancellationToken)
     {
-        // TODO(AK): read actual config
-        var request = new TranscriptionRequest(
-            openSegment.StreamId,
-            new () {
-                CodecKind = AudioCodecKind.Opus,
-                ChannelCount = 1,
-                SampleRate = 48_000,
-            },
-            new () {
-                Language = "ru-RU",
-                IsDiarizationEnabled = false,
-                IsPunctuationEnabled = true,
-                MaxSpeakerCount = 1,
-            });
-
+        var transcriptionOptions = new TranscriptionOptions() {
+            Language = "ru-RU",
+            IsDiarizationEnabled = false,
+            IsPunctuationEnabled = true,
+            MaxSpeakerCount = 1,
+        };
         var audioStream = openSegment.Audio.GetStream(cancellationToken);
-        var transcriptStream = Transcriber.Transcribe(request, audioStream, cancellationToken);
+        var transcriptStream = Transcriber.Transcribe(transcriptionOptions, audioStream, cancellationToken);
         var memoizedTranscript = transcriptStream.Memoize();
         await TranscriptStreamer
             .Publish(openSegment.StreamId, memoizedTranscript.Replay(cancellationToken), cancellationToken)

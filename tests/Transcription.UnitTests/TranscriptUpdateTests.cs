@@ -1,11 +1,8 @@
 namespace ActualChat.Transcription.UnitTests;
 
-public class TranscriptUpdateTests
+public class TranscriptUpdateTests : TestBase
 {
-    public ITestOutputHelper Out { get; }
-
-    public TranscriptUpdateTests(ITestOutputHelper @out)
-        => Out = @out;
+    public TranscriptUpdateTests(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public void UpdateTranscriptTest()

@@ -1,0 +1,29 @@
+namespace ActualChat.Channels.Internal;
+
+public class AsyncEnumerableOnce<T> : IAsyncEnumerable<T>
+{
+    private int _getAsyncEnumeratorCount;
+    private readonly IAsyncEnumerator<T> _enumerator;
+    private readonly bool _suppressDispose;
+
+    public AsyncEnumerableOnce(IAsyncEnumerator<T> enumerator, bool suppressDispose = false)
+    {
+        _enumerator = enumerator;
+        _suppressDispose = suppressDispose;
+    }
+
+    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    {
+        var isUsed = Interlocked.CompareExchange(ref _getAsyncEnumeratorCount, 1, 0) != 0;
+        if (isUsed)
+            throw new InvalidOperationException(
+                $"{nameof(GetAsyncEnumerator)} can be called just once on this sequence.");
+        return _suppressDispose ? GetNonDisposableAsyncEnumerator() : _enumerator;
+    }
+
+    private async IAsyncEnumerator<T> GetNonDisposableAsyncEnumerator()
+    {
+        while (await _enumerator.MoveNextAsync().ConfigureAwait(false))
+            yield return _enumerator.Current;
+    }
+}

@@ -26,6 +26,7 @@ public static class Program
         await ConfigureServices(builder.Services, builder.Configuration, baseUri).ConfigureAwait(false);
 
         var host = builder.Build();
+        Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
         await host.Services.HostedServices().Start().ConfigureAwait(false);
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
@@ -39,17 +40,17 @@ public static class Program
         Uri baseUri)
     {
         // Logging
-        services.AddLogging(logging => {
-            logging.SetMinimumLevel(LogLevel.Debug)
-                .AddFilter(null, LogLevel.Information) // Default level
-                .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning)
-                .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
-                .AddFilter("ActualChat", LogLevel.Debug)
-                .AddFilter("ActualChat.Audio", LogLevel.Debug)
-                .AddFilter("ActualChat.Chat", LogLevel.Debug)
-                .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
-                .AddFilter("ActualChat.Audio.Client", LogLevel.Debug);
-        });
+        services.AddLogging(logging => logging
+            .SetMinimumLevel(LogLevel.Debug)
+            .AddFilter(null, LogLevel.Information) // Default level
+            .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning)
+            .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
+            .AddFilter("ActualChat", LogLevel.Debug)
+            .AddFilter("ActualChat.Audio", LogLevel.Debug)
+            .AddFilter("ActualChat.Chat", LogLevel.Debug)
+            .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
+            .AddFilter("ActualChat.Audio.Client", LogLevel.Debug)
+        );
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
