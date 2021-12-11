@@ -21,6 +21,9 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         await using var _ = dbContext.ConfigureAwait(false);
 
         var db = dbContext.Database;
+        if (db.IsInMemory())
+            return;
+
         if (DbInfo.ShouldRecreateDb)
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
         await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);

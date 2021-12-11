@@ -27,10 +27,10 @@ public static class Program
 
         var host = builder.Build();
         Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
-        await host.Services.HostedServices().Start().ConfigureAwait(false);
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
+        await host.Services.HostedServices().Start().ConfigureAwait(false);
         await host.RunAsync().ConfigureAwait(false);
     }
 
