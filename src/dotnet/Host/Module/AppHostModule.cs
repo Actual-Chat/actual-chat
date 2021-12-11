@@ -102,10 +102,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
 
-        // Debug mode
-        if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = Plugins.LogFor(typeof(WebMReader));
-
         // UriMapper
         services.AddSingleton(c => {
             var baseUri = Settings.BaseUri;
