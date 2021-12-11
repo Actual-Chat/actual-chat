@@ -25,7 +25,7 @@ public class GoogleTranscriberTest : TestBase
 
         var results = await process.Updates.Reader.ReadAllAsync().ToListAsync();
         results.Max(update => update.UpdatedPart!.Duration).Should().Be(3.47d);
-        results.Max(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
+        results.Min(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 
         var transcript = results[0].UpdatedPart!;
         foreach (var transcriptUpdate in results.Skip(1))
@@ -33,9 +33,9 @@ public class GoogleTranscriberTest : TestBase
 
         transcript.Text.Should().Be("проверка связи");
         transcript.TextToTimeMap.SourcePoints.Should()
-            .Equal(new[] { 0d, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
+            .Equal(new[] { 0d, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
         transcript.TextToTimeMap.TargetPoints.Should()
-            .Equal(new[] { 0d, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
+            .Equal(new[] { 0d, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
 
         Log.LogInformation("Transcript: {Transcript}", transcript);
 
