@@ -4,7 +4,8 @@ public class TranscriptionException : Exception
 {
     public string? Code { get; init; }
 
-    public TranscriptionException(string? code, string? message) : base(message)
+    public TranscriptionException(string? code, string? message)
+        : base(code.IsNullOrEmpty() ? message : $"[{code}] {message}")
         => Code = code;
 
     public TranscriptionException() : base() { }

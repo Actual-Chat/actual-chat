@@ -22,6 +22,11 @@ public readonly struct LinearMap
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public (double Min, double Max) TargetRange => (TargetPoints[0], TargetPoints[^1]);
 
+    public (double SourcePoint, double TargetPoint) this[int index]
+        => (SourcePoints[index], TargetPoints[index]);
+    public LinearMap this[Range range]
+        => new(SourcePoints[range], TargetPoints[range]);
+
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public LinearMap(double[] sourcePoints, double[] targetPoints)
     {
@@ -70,10 +75,21 @@ public readonly struct LinearMap
             SourcePoints.Select(x => x + sourceOffset).ToArray(),
             TargetPoints.Select(x => x + targetOffset).ToArray());
 
-    public LinearMap Simplify(double maxError)
+    public LinearMap TrySimplifyToPoint(double minSourceDistance = 1e-6, double minTargetDistance = 1e-6)
     {
-        if (!IsValid())
+        if (Length != 2)
             return this;
+        var p0 = this[0];
+        var p1 = this[1];
+        if (Math.Abs(p1.SourcePoint - p0.SourcePoint) >= minSourceDistance)
+            return this;
+        if (Math.Abs(p1.TargetPoint - p0.TargetPoint) >= minTargetDistance)
+            return this;
+        return new LinearMap(new[] { p0.SourcePoint }, new [] { p0.TargetPoint });
+    }
+
+    public LinearMap Simplify(double minDistance)
+    {
         var sourcePoints = new List<double>() { SourcePoints[0] };
         var targetPoints = new List<double>() { TargetPoints[0] };
         var lastI = 0;
@@ -82,7 +98,7 @@ public readonly struct LinearMap
             var k = (x - x0) / (x1 - x0);
             var (y0, y, y1) = (TargetPoints[lastI], TargetPoints[i], TargetPoints[i + 1]);
             var yy = y0 + k * (y1 - y0);
-            if (Math.Abs(y - yy) < maxError)
+            if (Math.Abs(y - yy) < minDistance)
                 continue;
             sourcePoints.Add(x);
             targetPoints.Add(y);
@@ -93,14 +109,15 @@ public readonly struct LinearMap
         return new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray());
     }
 
-    public LinearMap AppendOrUpdateTail(LinearMap tail)
+    public LinearMap AppendOrUpdateTail(LinearMap tail, double sourceEpsilon)
     {
         tail.Validate();
-        var leIndex = SourcePoints.IndexOfLowerOrEqual(tail.SourcePoints[0]);
+        var leIndex = SourcePoints.IndexOfLowerOrEqual(tail.SourcePoints[0] - sourceEpsilon);
         if (leIndex < 0)
             return tail.Clone(); // We always return a map w/ new arrays from this method
-        var sourcePoints = SourcePoints[..leIndex].Concat(tail.SourcePoints).ToArray();
-        var targetPoints = TargetPoints[..leIndex].Concat(tail.TargetPoints).ToArray();
+        var cutIndex = leIndex + 1;
+        var sourcePoints = SourcePoints[..cutIndex].Concat(tail.SourcePoints).ToArray();
+        var targetPoints = TargetPoints[..cutIndex].Concat(tail.TargetPoints).ToArray();
         return new LinearMap(sourcePoints, targetPoints);
     }
 

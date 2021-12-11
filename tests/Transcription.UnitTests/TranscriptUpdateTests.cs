@@ -5,7 +5,7 @@ public class TranscriptUpdateTests : TestBase
     public TranscriptUpdateTests(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
-    public void UpdateTranscriptTest()
+    public void SimpleTest1()
     {
         var transcript = new Transcript();
         var update = new Transcript
@@ -52,4 +52,49 @@ public class TranscriptUpdateTests : TestBase
 
         Out.WriteLine(transcript.ToString());
     }
+
+    [Fact]
+    public void SimpleTest2()
+    {
+        var extractor = new TranscriptUpdateExtractor();
+        var t = new Transcript();
+        var u = extractor.AppendAlternative("раз-два-три-четыре-пять,", 4.68);
+        t = t.WithUpdate(u);
+        u = extractor.AppendFinal("раз-два-три-четыре-пять, 67", 4.98);
+        t = t.WithUpdate(u);
+        u = extractor.AppendAlternative(" вот", 8.140);
+        t = t.WithUpdate(u);
+        Dump(t);
+        u = extractor.AppendAlternative(" Вот это", 8.560);
+        t = t.WithUpdate(u);
+        Dump(t);
+    }
+
+    [Fact]
+    public void SimpleTest3()
+    {
+        var extractor = new TranscriptUpdateExtractor();
+        var text = Enumerable.Range(0, 100).Select(i => i.ToString()).ToDelimitedString();
+        var rnd = new Random(0);
+        var t = new Transcript();
+        for (var offset = 0; offset <= text.Length; offset += rnd.Next(3)) {
+            var isFinal = rnd.Next(3) == 0;
+            var finalTextLength = extractor.LastFinal.Text.Length;
+            var update = isFinal
+                ? extractor.AppendFinal(text[finalTextLength..offset], offset)
+                : extractor.AppendAlternative(text[finalTextLength..offset], offset);
+            t = t.WithUpdate(update);
+            var expected = text[..offset];
+
+            t.Text.Should().Be(expected);
+            t.TextToTimeMap.IsValid().Should().BeTrue();
+            for (var i = 0; i <= offset; i++)
+                t.TextToTimeMap.Map(i).Should().BeApproximately(i, 0.01);
+        }
+    }
+
+    public void Dump(Transcript transcript)
+        => Out.WriteLine($"* {transcript}");
+    public void Dump(TranscriptUpdate transcriptUpdate)
+        => Out.WriteLine($"+ {transcriptUpdate}");
 }

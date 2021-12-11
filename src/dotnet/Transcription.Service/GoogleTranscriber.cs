@@ -16,7 +16,7 @@ public class GoogleTranscriber : ITranscriber
         IAsyncEnumerable<AudioStreamPart> audioStream,
         CancellationToken cancellationToken)
     {
-        var process = new GoogleTranscriberProcess(options, audioStream, null, Log);
+        var process = new GoogleTranscriberProcess(options, audioStream, Log);
         process.Run(cancellationToken).ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.Updates.Reader.ReadAllAsync(cancellationToken);
     }
