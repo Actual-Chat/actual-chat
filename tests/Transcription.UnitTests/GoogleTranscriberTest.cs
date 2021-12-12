@@ -23,7 +23,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(options, null!, Log);
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
 
-        var updates = await process.Updates.Reader.ReadAllAsync().ToListAsync();
+        var updates = await process.GetUpdates().ToListAsync();
         updates.Max(update => update.UpdatedPart!.TimeRange.End).Should().Be(3.47d);
         updates.Min(update => update.UpdatedPart!.TextToTimeMap.TargetRange.Min).Should().Be(0d);
 
@@ -202,7 +202,7 @@ public class GoogleTranscriberTest : TestBase
         var process = new GoogleTranscriberProcess(options, null!, Log);
         await process.ProcessResponses(GoogleTranscriptReader.ReadFromFile("transcript.json"), CancellationToken.None);
 
-        var results = await process.Updates.Reader.ReadAllAsync().ToListAsync();
+        var results = await process.GetUpdates().ToListAsync();
         var transcript = results[0].UpdatedPart!;
         foreach (var transcriptUpdate in results.Skip(1)) {
             Out.WriteLine(transcriptUpdate.ToString());

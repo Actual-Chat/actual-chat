@@ -18,6 +18,6 @@ public class GoogleTranscriber : ITranscriber
     {
         var process = new GoogleTranscriberProcess(options, audioStream, Log);
         process.Run(cancellationToken).ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
-        return process.Updates.Reader.ReadAllAsync(cancellationToken);
+        return process.GetUpdates(cancellationToken);
     }
 }
