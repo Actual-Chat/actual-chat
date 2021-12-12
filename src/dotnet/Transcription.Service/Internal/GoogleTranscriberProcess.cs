@@ -3,7 +3,6 @@ using ActualChat.Media;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
-using Google.Protobuf.Collections;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Transcription.Internal;
@@ -14,9 +13,9 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.GoogleTranscriber;
 
-    public TranscriptionOptions Options { get; }
-    public IAsyncEnumerable<AudioStreamPart> AudioStream { get; }
-    public Channel<TranscriptUpdate> Updates { get; }
+    private TranscriptionOptions Options { get; }
+    private IAsyncEnumerable<AudioStreamPart> AudioStream { get; }
+    private Channel<TranscriptUpdate> Updates { get; }
 
     public GoogleTranscriberProcess(
         TranscriptionOptions options,
@@ -31,6 +30,10 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             SingleReader = true,
         });
     }
+
+    public IAsyncEnumerable<TranscriptUpdate> GetUpdates(
+        CancellationToken cancellationToken = default)
+        => Updates.Reader.ReadAllAsync(cancellationToken);
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
