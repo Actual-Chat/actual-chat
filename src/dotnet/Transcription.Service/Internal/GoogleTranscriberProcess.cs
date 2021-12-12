@@ -15,6 +15,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 
     private TranscriptionOptions Options { get; }
     private IAsyncEnumerable<AudioStreamPart> AudioStream { get; }
+    private TranscriptUpdateExtractor UpdateExtractor { get; }
     private Channel<TranscriptUpdate> Updates { get; }
 
     public GoogleTranscriberProcess(
@@ -25,6 +26,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
         Log = log ?? NullLogger.Instance;
         Options = options;
         AudioStream = audioStream;
+        UpdateExtractor = new();
         Updates = Channel.CreateUnbounded<TranscriptUpdate>(new UnboundedChannelOptions() {
             SingleWriter = true,
             SingleReader = true,
@@ -92,17 +94,15 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 
     internal async Task ProcessResponses(IAsyncEnumerable<StreamingRecognizeResponse> recognizeResponses, CancellationToken cancellationToken)
     {
-        var updateExtractor = new TranscriptUpdateExtractor();
         await foreach (var response in recognizeResponses.WithCancellation(cancellationToken).ConfigureAwait(false))
-            ProcessResponse(updateExtractor, response);
+            ProcessResponse(response);
 
-        // The final update should include just the final transcript
-        var update = updateExtractor.AppendFinal("", updateExtractor.LastFinal.TimeRange.End);
-        Updates.Writer.TryWrite(update);
+        var finalUpdate = UpdateExtractor.Complete();
+        Updates.Writer.TryWrite(finalUpdate);
         Updates.Writer.Complete();
     }
 
-    private void ProcessResponse(TranscriptUpdateExtractor updateExtractor, StreamingRecognizeResponse response)
+    private void ProcessResponse(StreamingRecognizeResponse response)
     {
         DebugLog?.LogDebug("Response: {Response}", response);
         var error = response.Error;
@@ -114,54 +114,63 @@ public class GoogleTranscriberProcess : AsyncProcessBase
         var isFinal = results.Any(r => r.IsFinal);
         if (isFinal) {
             var result = results.Single();
-            var alternative = result.Alternatives.Single();
-            var endTime = result.ResultEndTime.ToTimeSpan().TotalSeconds;
-            var text = alternative.Transcript;
-
-            // Parsing word map
-            var lastFinal = updateExtractor.LastFinal;
-            var lastFinalTextLength = lastFinal.Text.Length;
-            var lastFinalDuration = lastFinal.TextToTimeMap.TargetRange.Max;
-            var sourcePoints = new List<double> { lastFinalTextLength };
-            var targetPoints = new List<double> { lastFinalDuration };
-            var lastWordOffset = 0;
-            var lastWordStartTime = -1d;
-            foreach (var word in alternative.Words) {
-                var wordStartTime = word.StartTime.ToTimeSpan().TotalSeconds;
-                if (lastWordStartTime - 0.1 > wordStartTime) {
-                    DebugLog?.LogDebug("Invalid response skipped, word: {Word}", word);
-                    return;
-                }
-                lastWordStartTime = wordStartTime;
-                if (wordStartTime < lastFinalDuration)
-                    continue;
-                var wordOffset = text.IndexOf(word.Word, lastWordOffset, StringComparison.InvariantCultureIgnoreCase);
-                if (wordOffset < 0)
-                    continue;
-                lastWordOffset = wordOffset + word.Word.Length;
-                var finalTextWordOffset = lastFinalTextLength + wordOffset;
-                if (sourcePoints[^1] >= finalTextWordOffset)
-                    continue;
-
-                sourcePoints.Add(finalTextWordOffset);
-                targetPoints.Add(word.StartTime.ToTimeSpan().TotalSeconds);
-            }
-
-            sourcePoints.Add(lastFinalTextLength + text.Length);
-            targetPoints.Add(endTime);
-            var textToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray())
-                .Simplify(Transcript.TextToTimeMapTimePrecision);
-            update = updateExtractor.AppendFinal(text, textToTimeMap);
+            if (!TryParseFinal(result, out var text, out var textToTimeMap))
+                return;
+            update = UpdateExtractor.AppendFinal(text, textToTimeMap);
         }
         else {
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
             var endTime = results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
-            update = updateExtractor.AppendAlternative(text, endTime);
+            update = UpdateExtractor.AppendAlternative(text, endTime);
         }
         DebugLog?.LogDebug("Update: {Update}", update);
         Updates.Writer.TryWrite(update);
+    }
+
+    private bool TryParseFinal(StreamingRecognitionResult result,
+        out string text, out LinearMap textToTimeMap)
+    {
+        var alternative = result.Alternatives.Single();
+        var endTime = result.ResultEndTime.ToTimeSpan().TotalSeconds;
+        text = alternative.Transcript;
+
+        var lastFinal = UpdateExtractor.LastFinal;
+        var lastFinalTextLength = lastFinal.Text.Length;
+        var lastFinalDuration = lastFinal.TextToTimeMap.TargetRange.Max;
+        var sourcePoints = new List<double> { lastFinalTextLength };
+        var targetPoints = new List<double> { lastFinalDuration };
+        var lastWordOffset = 0;
+        var lastWordStartTime = -1d;
+        foreach (var word in alternative.Words) {
+            var wordStartTime = word.StartTime.ToTimeSpan().TotalSeconds;
+            if (lastWordStartTime - 0.1 > wordStartTime) {
+                DebugLog?.LogDebug("Invalid response skipped, word: {Word}", word);
+                textToTimeMap = default;
+                return false;
+            }
+
+            lastWordStartTime = wordStartTime;
+            if (wordStartTime < lastFinalDuration)
+                continue;
+            var wordOffset = text.IndexOf(word.Word, lastWordOffset, StringComparison.InvariantCultureIgnoreCase);
+            if (wordOffset < 0)
+                continue;
+            lastWordOffset = wordOffset + word.Word.Length;
+            var finalTextWordOffset = lastFinalTextLength + wordOffset;
+            if (sourcePoints[^1] >= finalTextWordOffset)
+                continue;
+
+            sourcePoints.Add(finalTextWordOffset);
+            targetPoints.Add(word.StartTime.ToTimeSpan().TotalSeconds);
+        }
+
+        sourcePoints.Add(lastFinalTextLength + text.Length);
+        targetPoints.Add(endTime);
+        textToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray())
+            .Simplify(Transcript.TextToTimeMapTimePrecision);
+        return true;
     }
 
     private async Task PushAudio(
