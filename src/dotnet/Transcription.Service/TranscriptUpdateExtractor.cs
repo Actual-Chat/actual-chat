@@ -22,4 +22,7 @@ public class TranscriptUpdateExtractor
 
     public TranscriptUpdate AppendFinal(string suffix, LinearMap suffixTextToTimeMap)
         => UpdateTo(LastFinal.WithSuffix(suffix, suffixTextToTimeMap), true);
+
+    public TranscriptUpdate Complete()
+        => UpdateTo(LastFinal);
 }
