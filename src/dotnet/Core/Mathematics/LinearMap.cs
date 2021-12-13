@@ -34,27 +34,52 @@ public readonly struct LinearMap
         _targetPoints = targetPoints;
     }
 
+    public LinearMap(double sourcePoint, double targetPoint)
+        : this(new [] { sourcePoint }, new [] { targetPoint })
+    { }
+
+    public LinearMap((double Source, double Target) point)
+        : this(new [] { point.Source }, new [] { point.Target })
+    { }
+
+    public LinearMap((double Source, double Target) point1, (double Source, double Target) point2)
+        : this(new [] { point1.Source, point2.Source }, new [] { point1.Target, point2.Target })
+    { }
+
+    public LinearMap((double Source, double Target) point1, (double Source, double Target) point2, (double Source, double Target) point3)
+        : this(new [] { point1.Source, point2.Source, point3.Source }, new [] { point1.Target, point2.Target, point3.Target })
+    { }
+
+    public LinearMap(params (double Source, double Target)[] points)
+        : this(points.Select(p => p.Source).ToArray(), points.Select(p => p.Target).ToArray())
+    { }
+
     public override string ToString()
-        => $"{GetType().Name}({{{SourcePoints.ToDelimitedString()}}} -> {{{string.Join(", ", TargetPoints.Select(t => t.ToString(CultureInfo.InvariantCulture)))}}})";
+        => $"{{{SourcePoints.ToDelimitedString()}}} -> {{{TargetPoints.ToDelimitedString(", ")}}}";
 
-    public bool IsValid()
-        => TargetPoints.Length == SourcePoints.Length
-            && SourcePoints.IsStrictlyIncreasingSequence();
+    public bool IsValid() => IsValid(SourcePoints, TargetPoints);
+    public bool IsInversionValid() => IsValid(TargetPoints, SourcePoints);
 
-    public bool IsInversionValid()
-        => TargetPoints.Length == SourcePoints.Length
-            && TargetPoints.IsStrictlyIncreasingSequence();
+    public LinearMap AssertValid(bool requireInvertible = false)
+    {
+        if (!IsValid())
+            throw new InvalidOperationException($"Invalid {GetType().Name}.");
+        if (requireInvertible && !IsInversionValid())
+            throw new InvalidOperationException($"Invalid {GetType().Name}.");
+        return this;
+    }
 
-    public double? Map(double value)
+    public double? TryMap(double value)
     {
         var leIndex = SourcePoints.IndexOfLowerOrEqual(value);
         if (leIndex < 0)
             return null;
         var leValue = SourcePoints[leIndex];
-        if (leIndex == Length - 1) {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            return leValue == value ? TargetPoints[leIndex] : null;
-        }
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        if (leValue == value)
+            return TargetPoints[leIndex];
+        if (leIndex == Length - 1)
+            return null;
 
         var geIndex = leIndex + 1;
         var geValue = SourcePoints[geIndex];
@@ -63,6 +88,9 @@ public readonly struct LinearMap
         var tgeValue = TargetPoints[geIndex];
         return tleValue + (tgeValue - tleValue) * factor;
     }
+
+    public double Map(double value)
+        => TryMap(value) ?? throw new ArgumentOutOfRangeException(nameof(value), "Can't map provided value.");
 
     public LinearMap Clone()
         => new(SourcePoints[..], TargetPoints[..]);
@@ -77,7 +105,7 @@ public readonly struct LinearMap
 
     public LinearMap Append(double sourcePoint, double targetPoint)
     {
-        if (IsEmpty) return new LinearMap(new [] { sourcePoint }, new [] { targetPoint });
+        if (IsEmpty) return new LinearMap(sourcePoint, targetPoint);
 
         var sourcePoints = new double[Length + 1];
         var targetPoints = new double[Length + 1];
@@ -107,7 +135,7 @@ public readonly struct LinearMap
             return this;
         if (Math.Abs(y1 - y0) >= minTargetDistance)
             return this;
-        return new LinearMap(new[] { x0 }, new [] { y0 });
+        return new LinearMap(x0, y0);
     }
 
     public LinearMap Simplify(double minDistance)
@@ -133,7 +161,7 @@ public readonly struct LinearMap
 
     public LinearMap AppendOrUpdateTail(LinearMap tail, double sourceEpsilon)
     {
-        tail.Validate();
+        tail.AssertValid();
         var leIndex = SourcePoints.IndexOfLowerOrEqual(tail.SourcePoints[0] - sourceEpsilon);
         if (leIndex < 0)
             return tail.Clone(); // We always return a map w/ new arrays from this method
@@ -143,12 +171,13 @@ public readonly struct LinearMap
         return new LinearMap(sourcePoints, targetPoints);
     }
 
-    public LinearMap Validate(bool requireInvertible = false)
+    private static bool IsValid(double[] x, double[] y)
     {
-        if (!IsValid())
-            throw new InvalidOperationException($"Invalid {GetType().Name}.");
-        if (requireInvertible && !IsInversionValid())
-            throw new InvalidOperationException($"Invalid {GetType().Name}.");
-        return this;
+        if (y.Length != x.Length)
+            return false;
+        if (x.IsStrictlyIncreasingSequence())
+            return true;
+        // ReSharper disable once CompareOfFloatsByEqualityOperator
+        return x.Length == 2 && x[0] == x[1] && y[0] == y[1];
     }
 }

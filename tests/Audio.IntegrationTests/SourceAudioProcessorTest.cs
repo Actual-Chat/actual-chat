@@ -70,15 +70,13 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
         var chat = await chatService.CreateChat(new(session, "Test"), default);
         using var cts = new CancellationTokenSource();
-        var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
-
+        var sourceAudioTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
+        var audioRecord = await sourceAudioTask;
 
-        var recording = await recordingTask;
-        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording, cts.Token);
-
-        var readTask = ReadAudioData(recording.Id, audioStreamer);
-        var readTranscriptTask = ReadTranscriptStream(recording.Id, transcriptStreamer);
+        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(audioRecord, cts.Token);
+        var readTask = ReadAudioData(audioRecord.Id, audioStreamer);
+        var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
         var transcribed = await readTranscriptTask;
@@ -109,7 +107,6 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
         var recording = await recordingTask;
         var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording, cts.Token);
-
         var readTask = ReadAudioData(recording.Id, audioStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
@@ -134,14 +131,12 @@ public class SourceAudioProcessorTest : AppHostTestBase
     {
         var size = 0;
         // TODO(AK): we need to figure out how to notify consumers about new streamID - with new ChatEntry?
-        var streamId = OpenAudioSegment.ComposeStreamId(audioRecordId, 0);
-        var transcriptStream = transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
-        await foreach (var update in transcriptStream) {
-            if (update.UpdatedPart == null)
-                continue;
-
-            Out.WriteLine(update.UpdatedPart.Text);
-            size = (int)update.UpdatedPart.TextToTimeMap.SourceRange.Max;
+        var audioStreamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
+        var transcriptStreamId = TranscriptSegment.GetStreamId(audioStreamId, 0);
+        var diffs = transcriptStreamer.GetTranscriptDiffStream(transcriptStreamId, CancellationToken.None);
+        await foreach (var diff in diffs) {
+            Out.WriteLine(diff.Text);
+            size = (int) diff.TextToTimeMap.SourceRange.Max;
         }
         return size;
     }
@@ -150,7 +145,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         string audioRecordId,
         IAudioSourceStreamer audioStreamer)
     {
-        var streamId = OpenAudioSegment.ComposeStreamId(audioRecordId, 0);
+        var streamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
         var audio = await audioStreamer.GetAudio(streamId, default, CancellationToken.None);
         var header = audio.Format.ToBlobPart().Data;
 

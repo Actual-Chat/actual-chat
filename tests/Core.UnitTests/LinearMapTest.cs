@@ -7,26 +7,26 @@ public class LinearMapTest : TestBase
     [Fact]
     public void BasicTest()
     {
-        var map = new LinearMap(new[] {0.0}, new[] {1.0}).Validate();
-        map.Map(-1).Should().BeNull();
-        map.Map(1).Should().BeNull();
-        map.Map(0).Should().Be(1.0);
+        var map = new LinearMap(0, 1).AssertValid();
+        map.TryMap(-1).Should().BeNull();
+        map.TryMap(1).Should().BeNull();
+        map.TryMap(0).Should().Be(1.0);
 
-        map = new LinearMap(new[] {0.0, 1}, new[] {1.0, 3}).Validate();
-        map.Map(-0.1).Should().BeNull();
-        map.Map(1.1).Should().BeNull();
-        map.Map(0).Should().Be(1.0);
-        map.Map(1).Should().Be(3.0);
-        map.Map(0.5).Should().Be(2.0);
+        map = new LinearMap((0, 1), (1, 3)).AssertValid();
+        map.TryMap(-0.1).Should().BeNull();
+        map.TryMap(1.1).Should().BeNull();
+        map.TryMap(0).Should().Be(1.0);
+        map.TryMap(1).Should().Be(3.0);
+        map.TryMap(0.5).Should().Be(2.0);
 
-        map = new LinearMap(new[] {0.0, 1, 11}, new[] {1.0, 3, 4}).Validate();
-        map.Map(-0.1).Should().BeNull();
-        map.Map(11.1).Should().BeNull();
-        map.Map(0).Should().Be(1.0);
-        map.Map(1).Should().Be(3.0);
-        map.Map(11).Should().Be(4.0);
-        map.Map(0.5).Should().Be(2.0);
-        map.Map(6).Should().Be(3.5);
+        map = new LinearMap((0, 1), (1, 3), (11, 4)).AssertValid();
+        map.TryMap(-0.1).Should().BeNull();
+        map.TryMap(11.1).Should().BeNull();
+        map.TryMap(0).Should().Be(1.0);
+        map.TryMap(1).Should().Be(3.0);
+        map.TryMap(11).Should().Be(4.0);
+        map.TryMap(0.5).Should().Be(2.0);
+        map.TryMap(6).Should().Be(3.5);
     }
     [Fact]
     public void ActualMapTest()
@@ -36,7 +36,7 @@ public class LinearMapTest : TestBase
         map.Length.Should().BeGreaterThan(10);
         var last = 0d;
         for (var i = 0; i <= 98; i++) {
-            var current = map.Map(i)!.Value;
+            var current = map.TryMap(i)!.Value;
             current.Should().BeGreaterOrEqualTo(last);
             last = current;
         }
@@ -46,20 +46,20 @@ public class LinearMapTest : TestBase
     public void WrongMapTest()
     {
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(Array.Empty<double>(), new[] {1.0}).Validate();
+            new LinearMap(Array.Empty<double>(), new[] {1.0}).AssertValid();
         });
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(new[] {1.0}, Array.Empty<double>()).Validate();
+            new LinearMap(new[] {1.0}, Array.Empty<double>()).AssertValid();
         });
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(new[] {1.0, 1.0}, new[] {1.0, 2.0}).Validate();
+            new LinearMap(new[] {1.0, 1.0}, new[] {1.0, 2.0}).AssertValid();
         });
-        new LinearMap(new[] {1.0, 2.0}, new[] {2.0, 2.0}).Validate();
+        new LinearMap(new[] {1.0, 2.0}, new[] {2.0, 2.0}).AssertValid();
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(new[] {1.0, 2.0}, new[] {2.0, 2.0}).Validate(true);
+            new LinearMap(new[] {1.0, 2.0}, new[] {2.0, 2.0}).AssertValid(true);
         });
         Assert.Throws<InvalidOperationException>(() => {
-            new LinearMap(new[] {1.0, 2.0}, new[] {2.0, -2.0}).Validate(true);
+            new LinearMap(new[] {1.0, 2.0}, new[] {2.0, -2.0}).AssertValid(true);
         });
     }
 }

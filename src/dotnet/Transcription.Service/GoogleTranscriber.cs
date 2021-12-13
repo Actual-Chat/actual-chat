@@ -11,13 +11,13 @@ public class GoogleTranscriber : ITranscriber
     public GoogleTranscriber(ILogger<GoogleTranscriber>? log = null)
         => Log = log ?? NullLogger<GoogleTranscriber>.Instance;
 
-    public IAsyncEnumerable<TranscriptUpdate> Transcribe(
+    public IAsyncEnumerable<Transcript> Transcribe(
         TranscriptionOptions options,
         IAsyncEnumerable<AudioStreamPart> audioStream,
         CancellationToken cancellationToken)
     {
         var process = new GoogleTranscriberProcess(options, audioStream, Log);
         process.Run(cancellationToken).ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
-        return process.GetUpdates(cancellationToken);
+        return process.GetTranscripts(cancellationToken);
     }
 }

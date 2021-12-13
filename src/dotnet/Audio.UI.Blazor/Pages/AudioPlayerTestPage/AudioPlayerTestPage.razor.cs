@@ -11,9 +11,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [Inject]
     private ILogger<AudioPlayerTestPage> Log { get; set; } = null!;
     [Inject]
-    private IHttpClientFactory HttpClientFactory { get; set; } = null!;
-    [Inject]
-    private ILoggerFactory LoggerFactory { get; set; } = null!;
+    private IServiceProvider Services { get; set; } = null!;
     [Inject]
     private IJSRuntime JS { get; set; } = null!;
 
@@ -52,7 +50,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             StateHasChanged();
             _cts = new CancellationTokenSource();
             const bool debugMode = true;
-            var audioDownloader = new AudioDownloader(HttpClientFactory, LoggerFactory);
+            var audioDownloader = new AudioDownloader(Services);
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(

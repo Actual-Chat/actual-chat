@@ -13,7 +13,7 @@
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; set; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; set; } = null!;
     private CancellationTokenSource? RestartCts { get; set; }
-    private Transcript Transcript { get; set; } = new() { Text = "…" };
+    private Transcript Transcript { get; set; } = new();
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
@@ -41,14 +41,12 @@
 
     private async Task ReadTranscript(ChatMessageModel model, CancellationToken cancellationToken) {
         var entry = model.Entry;
-        var stream = TranscriptStreamer.GetTranscriptStream(entry.StreamId, cancellationToken).ConfigureAwait(false);
+        var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
         var circuitDispatcher = CircuitContext.Dispatcher;
-        var transcript = new Transcript();
-        await foreach (var update in stream.ConfigureAwait(false).WithCancellation(cancellationToken)) {
-            transcript = transcript.WithUpdate(update);
-            var transcriptCopy = transcript;
+        var transcripts = diffs.ApplyDiffs(cancellationToken);
+        await foreach (var transcript in transcripts.ConfigureAwait(false)) {
             await circuitDispatcher.InvokeAsync(() => {
-                Transcript = transcriptCopy;
+                Transcript = transcript;
                 StateHasChanged();
             }).ConfigureAwait(false);
         }

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.Toolkit.HighPerformance;
 using Stl.Internal;
 
 namespace ActualChat.Chat;
@@ -22,8 +23,7 @@ public class Markup
 
 public abstract class MarkupPart
 {
-    private Range<double> _timeRange;
-    private volatile int _isTimeRangeCached;
+    private object? _cachedTimeRange;
 
     public Markup Markup { get; init; } = null!;
     public Range<int> TextRange { get; init; }
@@ -31,18 +31,21 @@ public abstract class MarkupPart
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<double> TimeRange {
         get {
-            if (_isTimeRangeCached != 0)
-                return _timeRange;
-            var ttm = Markup.TextToTimeMap;
-            if (ttm.IsEmpty)
-                return default;
-            var start = ttm.Map(TextRange.Start);
-            if (!start.HasValue)
-                return default;
-            var startValue = start.GetValueOrDefault();
-            _timeRange = new Range<double>(startValue, ttm.Map(TextRange.End) ?? startValue).Normalize();
-            Interlocked.Increment(ref _isTimeRangeCached);
-            return _timeRange;
+            if (_cachedTimeRange != null) return (Range<double>) _cachedTimeRange;
+#pragma warning disable RCS1059, MA0064
+            lock (this) { // Double-check locking
+#pragma warning restore RCS1059, MA0064
+                if (_cachedTimeRange != null) return (Range<double>) _cachedTimeRange;
+                var ttm = Markup.TextToTimeMap;
+                if (ttm.IsEmpty)
+                    return default;
+                var start = ttm.TryMap(TextRange.Start) ?? 1000_000;
+                var end = ttm.TryMap(TextRange.End) ?? start;
+                var result = new Range<double>(start, end);
+                // ReSharper disable once HeapView.BoxingAllocation
+                _cachedTimeRange = result;
+                return result;
+            }
         }
     }
 
