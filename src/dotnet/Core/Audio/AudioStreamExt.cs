@@ -5,7 +5,7 @@ public static class AudioStreamExt
     public static async IAsyncEnumerable<AudioStreamPart> ExtractFormat(
         this IAsyncEnumerable<AudioStreamPart> stream,
         TaskSource<AudioFormat> formatTaskSource,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         try {
             var index = 0;

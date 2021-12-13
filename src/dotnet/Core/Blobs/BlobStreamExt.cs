@@ -18,7 +18,7 @@ public static class BlobStreamExt
         this IHttpClientFactory httpClientFactory,
         Uri blobUri,
         ILogger log,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
         HttpResponseMessage response;

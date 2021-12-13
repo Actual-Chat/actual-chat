@@ -23,14 +23,11 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var transcriptStream = transcriber.Transcribe(options, audio.GetStream(default), default);
+        var diffs = await transcriber.Transcribe(options, audio.GetStream(default), default).ToListAsync();
 
-        var transcript = new Transcript();
-        await foreach (var update in transcriptStream) {
-            transcript = transcript.WithUpdate(update);
-            Out.WriteLine(update.UpdatedPart?.TextToTimeMap.ToString() ?? "[\\]");
-            Out.WriteLine(update?.UpdatedPart?.Text ?? "");
-        }
+        foreach (var diff in diffs)
+            Out.WriteLine(diff.ToString());
+        var transcript = diffs.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
     }
 
@@ -46,14 +43,11 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var transcriptStream = transcriber.Transcribe(options, audio.GetStream(default), default);
+        var diffs = await transcriber.Transcribe(options, audio.GetStream(default), default).ToListAsync();
 
-        var transcript = new Transcript();
-        await foreach (var update in transcriptStream) {
-            transcript = transcript.WithUpdate(update);
-            Out.WriteLine(update.UpdatedPart?.TextToTimeMap.ToString() ?? "[\\]");
-            Out.WriteLine(update?.UpdatedPart?.Text ?? "");
-        }
+        foreach (var diff in diffs)
+            Out.WriteLine(diff.ToString());
+        var transcript = diffs.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
     }
 

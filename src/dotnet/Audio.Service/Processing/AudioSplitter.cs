@@ -1,21 +1,21 @@
 namespace ActualChat.Audio.Processing;
 
-public class AudioActivityExtractor
+public class AudioSplitter
 {
-    private readonly ILoggerFactory _loggerFactory;
+    private IServiceProvider Services { get; }
 
-    public AudioActivityExtractor(ILoggerFactory loggerFactory)
-        => _loggerFactory = loggerFactory;
+    public AudioSplitter(IServiceProvider services)
+        => Services = services;
 
 #pragma warning disable CS1998
-    public async IAsyncEnumerable<OpenAudioSegment> SplitToAudioSegments(
+    public async IAsyncEnumerable<OpenAudioSegment> GetSegments(
 #pragma warning restore CS1998
         AudioRecord audioRecord,
         IAsyncEnumerable<BlobPart> blobStream,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // TODO(AY): Implement actual audio activity extractor
-        var audioLog = _loggerFactory.CreateLogger<AudioSource>();
+        var audioLog = Services.LogFor<AudioSource>();
         var audio = new AudioSource(blobStream, TimeSpan.Zero, audioLog, cancellationToken);
         var openAudioSegment = new OpenAudioSegment(0, audioRecord, audio, TimeSpan.Zero, cancellationToken);
         _ = Task.Run(async () => {

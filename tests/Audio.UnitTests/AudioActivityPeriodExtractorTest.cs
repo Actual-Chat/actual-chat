@@ -20,8 +20,9 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var blobStream = GetAudioFilePath("file.webm").ReadBlobStream();
 
-        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream);
+        var services = new ServiceCollection().BuildServiceProvider();
+        var audioSplitter = new AudioSplitter(services);
+        var openAudioSegments = audioSplitter.GetSegments(record, blobStream, default);
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
             openAudioSegment.AudioRecord.Should().Be(record);
@@ -46,8 +47,9 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var fileSize = audioFilePath.GetFileInfo().Length;
         var blobStream = audioFilePath.ReadBlobStream();
 
-        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream);
+        var services = new ServiceCollection().BuildServiceProvider();
+        var audioSplitter = new AudioSplitter(services);
+        var openAudioSegments = audioSplitter.GetSegments(record, blobStream, default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -79,8 +81,9 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var fileSize = audioFilePath.GetFileInfo().Length;
         var blobStream = audioFilePath.ReadBlobStream();
 
-        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStream);
+        var services = new ServiceCollection().BuildServiceProvider();
+        var audioSplitter = new AudioSplitter(services);
+        var openAudioSegments = audioSplitter.GetSegments(record, blobStream, default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
