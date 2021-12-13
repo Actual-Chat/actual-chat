@@ -6,16 +6,6 @@ import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
 import wasmSimdPath from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 
-export class Boundary {
-    public start: number;
-    public end: number;
-
-    constructor(start: number, end: number) {
-        this.start = start;
-        this.end = end;
-    }
-}
-
 export type VoiceActivityKind = 'start' | 'end';
 
 export class VoiceActivityChanged {
@@ -32,20 +22,15 @@ export class VoiceActivityChanged {
     }
 }
 
-export function adjustToSeconds(data: Boundary[], sampleRate: number = 16000): Boundary[] {
-    return data.map(b => new Boundary(b.start / sampleRate, b.end / sampleRate));
-}
-
 export function adjustChangeEventsToSeconds(data: VoiceActivityChanged[], sampleRate: number = 16000): VoiceActivityChanged[] {
     return data.map(vac => new VoiceActivityChanged(vac.kind, vac.offset / sampleRate, vac.speechProb, vac.duration === null ? null : vac.duration / sampleRate));
 }
 
-const SamplesPerWindow = 1000;
+const SamplesPerWindow = 2000;
 const BytesPerSample = 4;
 const AccumulativePeriod = 50;
 
 export class VoiceActivityDetector {
-
     private readonly _modelUri: URL;
     private readonly _buffer: ArrayBuffer;
     private readonly _tensorBuffer: ArrayBuffer;
@@ -65,7 +50,7 @@ export class VoiceActivityDetector {
 
         this._buffer = new ArrayBuffer(SamplesPerWindow * BytesPerSample * 2);
         this._tensorBuffer = new ArrayBuffer(SamplesPerWindow * BytesPerSample * 8);
-        this._movingAverages = new ExponentialMovingAverage(4);
+        this._movingAverages = new ExponentialMovingAverage(8);
         this._streamedMedian = new StreamedMedian();
 
         this._sampleCount = 0;
@@ -79,100 +64,6 @@ export class VoiceActivityDetector {
             'ort-wasm-simd.wasm': wasmSimdPath,
             'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
         };
-    }
-
-    public async getBoundaries(monoPcm: Float32Array): Promise<Boundary[]> {
-        const session = await ort.InferenceSession.create(this._modelUri.toString(), {
-            enableCpuMemArena: false,
-            executionMode: 'parallel',
-            graphOptimizationLevel: 'basic',
-            executionProviders: ['wasm']
-        });
-
-        const batchSize = 200;
-        const stepCount = 8;
-        const step = SamplesPerWindow / stepCount;
-
-        const buffer = new ArrayBuffer(monoPcm.buffer.byteLength + SamplesPerWindow * BytesPerSample);
-        const extendedPcm = new Float32Array(buffer);
-        extendedPcm.set(monoPcm, 0);
-
-        const tensorBuffer = new ArrayBuffer(BytesPerSample * batchSize * SamplesPerWindow);
-        const tensorSource = new Float32Array(tensorBuffer, 0, batchSize * SamplesPerWindow);
-        const batches: Float32Array[] = [];
-        const results = [];
-        for (let i = 0; i < monoPcm.length; i += step) {
-            let chunk = new Float32Array(buffer, i * 4, SamplesPerWindow);
-            batches.push(chunk);
-            if (batches.length >= batchSize) {
-                for (let j = 0; j < batches.length; j++) {
-                    tensorSource.set(batches[j], j * SamplesPerWindow);
-                }
-                const tensor = new ort.Tensor(tensorSource, [batchSize, SamplesPerWindow]);
-                const feeds = { input: tensor };
-                const result = await session.run(feeds);
-                results.push(result);
-                batches.length = 0;
-            }
-        }
-
-        if (batches.length) {
-            for (let j = 0; j < batches.length; j++) {
-                tensorSource.set(batches[j], j * SamplesPerWindow);
-            }
-            const remainTensorSource = tensorSource.subarray(0, batches.length * SamplesPerWindow);
-            const tensor = new ort.Tensor('float32', remainTensorSource, [batches.length, SamplesPerWindow]);
-            const feeds = { input: tensor };
-            const result = await session.run(feeds);
-            results.push(result);
-        }
-
-        const speechProbabilities = new Float32Array(batchSize * results.length);
-        let probIndex = 0;
-        for (let i = 0; i < results.length; i++) {
-            const resultData = results[i].output.data as Float32Array;
-            for (let j = 1; j < resultData.length; j += 2) {
-                speechProbabilities[probIndex++] = resultData[j];
-            }
-        }
-        let trigSum = this._speechProbabilityTrigger;
-        let negTrigSum = this._silenceProbabilityTrigger;
-        const minSilenceSamples = 500;
-        const minSpeechSamples = 10000;
-
-        const speeches = [];
-        let tempEnd = 0;
-        let triggered = false;
-        let currentSpeech = new Boundary(0, 0);
-        const smoothedProbs = dma(speechProbabilities, 1 / stepCount, false);
-        for (let i = 0; i < smoothedProbs.length; i++) {
-            const smoothedProb = smoothedProbs[i];
-            if (smoothedProb >= trigSum && tempEnd > 0) {
-                tempEnd = 0;
-            }
-            if (smoothedProb >= trigSum && !triggered) {
-                triggered = true;
-                currentSpeech.start = step * Math.max(0, i - stepCount);
-                continue;
-            }
-            if (smoothedProb < negTrigSum && triggered) {
-                if (tempEnd == 0) {
-                    tempEnd = step * i;
-                }
-                if (step * i - tempEnd < minSilenceSamples) {
-
-                } else {
-                    currentSpeech.end = tempEnd;
-                    if (currentSpeech.end - currentSpeech.start > minSpeechSamples) {
-                        speeches.push(currentSpeech);
-                        tempEnd = 0;
-                        currentSpeech = new Boundary(0, 0);
-                        triggered = false;
-                    }
-                }
-            }
-        }
-        return speeches;
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged[]> {
@@ -226,7 +117,7 @@ export class VoiceActivityDetector {
                 speechProbabilities[probIndex++] = resultData[j];
             }
         }
-        const minSilenceSamples = 8000;
+        const minSilenceSamples = 18000;
         const minSpeechSamples = 12000;
         const padSamples = 500;
 
@@ -248,11 +139,11 @@ export class VoiceActivityDetector {
                 // enough statistics to adjust trigSum \ negTrigSum
 
                 trigSum = 0.89 * probMedian + 0.08; // 0.08 when median is zero, 0.97 when median is 1
-                negTrigSum = 0.5 * probMedian;
+                negTrigSum = 0.3 * probMedian;
             }
 
             if (smoothedProb >= trigSum && this._endOffset > 0) {
-                if (endResetCounter++ > 5) {
+                if (endResetCounter++ > 10) {
                     // silence period is too short
                     this._endOffset = null;
                     endResetCounter = 0;
