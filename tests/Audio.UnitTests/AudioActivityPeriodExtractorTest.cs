@@ -115,9 +115,9 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var fileSize = audioFilePath.GetFileInfo().Length;
         var blobStream = audioFilePath.ReadBlobStream();
         var blobStreamWithBoundaries = InsertSpeechBoundaries(blobStream);
-
-        var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
-        var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStreamWithBoundaries);
+        var services = new ServiceCollection().BuildServiceProvider();
+        var audioActivityExtractor = new AudioSplitter(services);
+        var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
         var size = 0L;
         var index = 0;
         await foreach (var openAudioSegment in openAudioSegments) {
