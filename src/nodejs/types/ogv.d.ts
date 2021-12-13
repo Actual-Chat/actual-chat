@@ -1,3 +1,69 @@
+interface Demuxer {
+    init(callback: () => void): void;
+    flush(callback: () => void): void;
+    /** noop */
+    close(): void;
+    /**
+     * Process previously queued data into packets.
+     *
+     * 'more' parameter to callback function is 'true' if there
+     * are more packets to be processed in the queued data,
+     * or 'false' if there aren't.
+     */
+    process(callback: (more: any) => void): void;
+    /** Queue up some data for later processing */
+    receiveInput(data: ArrayBuffer, callback: () => void): void;
+    dequeueAudioPacket(callback: (packet: ArrayBuffer,
+        /** discardPadding is in nanoseconds negative value trims from beginning, positive value trims from end */
+        discardPadding: number) => void): void;
+    dequeueVideoPacket(callback: (packet: ArrayBuffer) => void): void;
+    /** Returns the offset of the relevant keyframe or other position just before the given presentation timestamp */
+    getKeypointOffset(timeSeconds: number, callback: (offset: number) => void): void;
+    /**
+     * Initiate seek to the nearest keyframe or other position just before
+     * the given presentation timestamp. This may trigger seek requests, and
+     * it may take some time before processing returns more packets
+    */
+    seekToKeypoint(timeSeconds: number, callback: (isSeekingInitiated: boolean) => void): void;
+    loadedMetadata: boolean;
+    audioReady: boolean;
+    seekable: boolean;
+    hasVideo: boolean;
+    hasAudio: boolean | string | 'opus';
+    frameReady: boolean;
+    frameTimestamp: number;
+    duration: number;
+    audioTimestamp: number;
+    keyframeTimestamp: number;
+    nextKeyframeTimestamp: number;
+    /** CPU time spent in the demuxer. */
+    cpuTime: number;
+    /** Are we in the middle of an asynchronous processing operation? */
+    processing: boolean;
+    videoCodec?: string;
+    audioCodec?: string;
+    onseek: (offset: number) => void;
+    audioPackets: any[];
+}
+
+interface Decoder {
+    loadedMetadata: boolean;
+    audioFormat?: { channels: number, rate: number; };
+    /** Last-decoded audio packet */
+    audioBuffer?: Float32Array[];
+    /** CPU time spent in the decoder. */
+    cpuTime: number;
+    /** Are we in the middle of an asynchronous processing operation? */
+    processing: boolean;
+    init(callback: () => void): void;
+    /** Process a header packet */
+    processHeader(data: ArrayBuffer, callback: (elapsed: number) => void): void;
+    /** Decode the given audio data packet; fills out the audioBuffer property on success */
+    processAudio(data: ArrayBuffer, callback: (elapsed: number) => void): void;
+    /** noop */
+    close(): void;
+}
+
 declare module "ogv" {
     interface OGVPlayerOptions {
         /** base URL for additional resources, such as codec libraries */

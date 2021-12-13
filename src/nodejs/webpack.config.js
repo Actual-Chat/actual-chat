@@ -166,17 +166,17 @@ module.exports = (env, args) => {
           }
         },
         {
-          test: /ogv[-].*\.(js|wasm)$/i,
-          type: 'asset/resource',
-          generator: {
-            filename: 'ogv/[name][ext][query]'
-          }
-        },
-        {
           test: /\.(ttf|eot|svg|woff(2)?)$/i,
           type: 'asset/resource',
           generator: {
             filename: 'fonts/[name][ext][query]'
+          }
+        },
+        {
+          test: /feeder-node\.(worker|worklet)\.js$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: '[name][ext][query]'
           }
         }
       ],
