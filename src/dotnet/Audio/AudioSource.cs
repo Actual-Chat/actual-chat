@@ -44,6 +44,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
+        var actualSkipTo = skipTo;
         var clusterOffsetMs = 0;
         short blockOffsetMs = 0;
         var skipAdjustmentBlockMs = short.MinValue;
@@ -76,7 +77,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     state.IsEmpty
                         ? new WebMReader(readBuffer.Span)
                         : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
-                    skipTo,
+                    ref actualSkipTo,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
                     ref skipAdjustmentClusterMs,
@@ -138,7 +139,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
     private WebMReader.State FillFrameBuffer(
         List<AudioFrame> frameBuffer,
         WebMReader webMReader,
-        TimeSpan skipTo,
+        ref TimeSpan skipTo,
         ref int clusterOffsetMs,
         ref short blockOffsetMs,
         ref int skipAdjustmentClusterMs,
@@ -178,7 +179,13 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     framesStart = state.Position;
                 }
                 else {
-                    clusterOffsetMs = (int)cluster.Timestamp;
+                    if (cluster.Timestamp - (ulong)clusterOffsetMs > 32768) { // max block offset within the cluster, probably we have a gap
+                        clusterOffsetMs += currentBlockOffsetMs;
+                        clusterOffsetMs += 20; // hardcoded!!! it makes sense to calculate average block duration
+                        cluster.Timestamp = (ulong)clusterOffsetMs;
+                    }
+                    else
+                        clusterOffsetMs = (int)cluster.Timestamp;
 
                     if (skipAdjustmentBlockMs > 0) {
                         cluster.Timestamp -= (ulong)skipAdjustmentBlockMs;
@@ -189,9 +196,13 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 break;
             case WebMReadResultKind.Block:
                 var block = (Block)webMReader.ReadResult;
-                // if (currentBlockOffsetMs > block.TimeCode) {
-                //
-                // }
+
+                if (currentBlockOffsetMs == 0 && clusterOffsetMs == 0) {
+                    if (block.TimeCode > 60) { // audio segment with an offset, 60 is the largest opus frame duration
+                        skipTo = TimeSpan.FromMilliseconds(1);
+                        skipToMs = 1;
+                    }
+                }
                 currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
 
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {

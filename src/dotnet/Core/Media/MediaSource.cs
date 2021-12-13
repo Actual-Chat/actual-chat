@@ -121,9 +121,8 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
                     else
                         throw new InvalidOperationException("MediaStreamPart doesn't have any properties set.");
                 }
-                else {
+                else
                     formatTaskSource.SetResult(format ?? DefaultFormat);
-                }
             }
             durationTaskSource.SetResult(duration);
         }

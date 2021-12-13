@@ -127,7 +127,15 @@ public class AudioActivityPeriodExtractorTest : TestBase
             await audio.WhenFormatAvailable;
 
             size += audio.Format.ToBlobPart().Data.Length;
-            size += await audio.GetFrames(default).SumAsync(f => f.Data.Length);
+            var sum = 0;
+            var offset = TimeSpan.Zero;
+            await foreach (var f in audio.GetFrames(default)) {
+                sum += f.Data.Length;
+
+                (f.Offset - offset).Should().BeLessThan(TimeSpan.FromMilliseconds(80));
+                offset = f.Offset;
+            }
+            size += sum;
 
             var closedAudioSegment = await openAudioSegment.ClosedSegmentTask;
             closedAudioSegment.Audio.Should().NotBeNull();
