@@ -138,6 +138,16 @@ public class TranscriptUpdateTests : TestBase
         t.Text.Should().Be(t2.Text);
     }
 
+    [Fact]
+    public void SerializationTest()
+    {
+        var o = new Transcript(" поешь",
+            new LinearMap(new [] {15d, 21}, new [] {0d, 1}));
+        var s = o.PassThroughAllSerializers();
+        s.Text.Should().Be(o.Text);
+        s.TextToTimeMap.Length.Should().Be(o.TextToTimeMap.Length);
+    }
+
     private void Dump(Transcript transcript)
         => Out.WriteLine($"* {transcript}");
 }
