@@ -10,10 +10,10 @@ public class AudioSplitter
     public AudioSplitter(IServiceProvider services)
         => Services = services;
 
-    public async IAsyncEnumerable<OpenAudioSegment> GetSegments(
+    public IAsyncEnumerable<OpenAudioSegment> GetSegments(
         AudioRecord audioRecord,
         IAsyncEnumerable<BlobPart> blobStream,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         var openSegmentChannel =
             Channel.CreateUnbounded<OpenAudioSegment>(new UnboundedChannelOptions { SingleWriter = true });
