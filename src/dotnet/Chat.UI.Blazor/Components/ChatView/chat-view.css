@@ -1,3 +1,15 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+}
+
+.chat-page {
+    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
+}
+
 .chat-message {
     @apply antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words;
 }
@@ -40,19 +52,27 @@
 }
 
 .chat-header {
-    @apply flex flex-row justify-between mt-0 font-medium bg-secondary text-primary p-3 select-none border-b border-accent;
+    @apply flex flex-row justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary p-3 select-none border-b border-accent;
 }
 
 .chat-content {
-    @apply flex-1 flex flex-col overflow-y-auto bg-secondary p-3;
+    @apply flex-1 flex flex-col overflow-y-auto bg-secondary px-3 pt-3 mb-12;
 }
 
 .chat-footer {
-    @apply flex sticky m-0;
+    @apply flex fixed bottom-0 right-0 w-full md:w-3/4 lg:w-4/5 border-t border-primary md:border-secondary;
+}
+
+.mobile-header {
+    @apply w-full;
+}
+
+.chat-title {
+    @apply float-left mt-1;
 }
 
 .chat-message-editor {
-    @apply sticky bottom-0 pb-1 self-end bg-secondary w-full;
+    @apply sticky bottom-0 pb-0.5 self-end bg-secondary w-full;
 }
 
 .plus-button {
@@ -64,15 +84,25 @@
 }
 
 .message-input {
-    @apply flex-1 px-2 py-2 mr-1 outline-none rounded-r-xl break-all hover:cursor-text bg-primary text-primary focus:text-secondary;
+    @apply overflow-y-auto max-h-12 break-words;
+    @apply flex-1 px-2 py-2 mr-1 outline-none rounded-r-xl hover:cursor-text bg-primary text-primary focus:text-secondary;
+}
+
+.message-input::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.post-recorder-buttons {
+    @apply flex flex-row h-full md:px-1 justify-center justify-items-center;
 }
 
 .post-message {
-    @apply block px-3 py-2 text-secondary rounded-xl bg-secondary mr-1 transition duration-500 ease-in-out;
+    @apply block pr-1 md:pr-0 md:px-3 py-2 text-secondary rounded-xl bg-secondary mr-1 md:transition md:duration-500 md:ease-in-out;
 }
 
 .post-message:hover {
-    @apply text-primary transform -translate-y-1 hover:scale-110;
+    @apply md:text-primary transform md:-translate-y-1 md:scale-110;
 }
 
 [contenteditable=true]:empty:not(:focus):before{
@@ -80,11 +110,11 @@
 }
 
 .chat-player-toggle {
-    @apply block px-2 py-2 text-justify bg-secondary rounded-xl mr-1 transition duration-500 ease-in-out;
+    @apply block md:px-2 py-2 text-justify bg-secondary rounded-xl mr-1 md:transition md:duration-500 md:ease-in-out;
 }
 
 .chat-player-toggle:hover {
-    @apply transform -translate-y-1 hover:scale-110;
+    @apply transform md:-translate-y-1 md:scale-110;
 }
 
 .toggle-button-on {
@@ -92,7 +122,7 @@
 }
 
 .chat-player-toggle:hover .toggle-button {
-    @apply text-primary;
+    @apply md:text-primary;
 }
 
 .toggle-button {
@@ -100,15 +130,15 @@
 }
 
 .audio-recorder {
-    @apply block px-3 py-2 rounded-xl bg-secondary transition duration-500 ease-in-out;
+    @apply block md:px-3 py-2 rounded-xl bg-secondary md:transition md:duration-500 md:ease-in-out;
 }
 
 .audio-recorder:hover {
-    @apply transform -translate-y-1 hover:scale-110;
+    @apply transform md:-translate-y-1 md:scale-110;
 }
 
 .audio-recorder:hover .not-recording {
-    @apply text-primary;
+    @apply md:text-primary;
 }
 
 .not-recording {
