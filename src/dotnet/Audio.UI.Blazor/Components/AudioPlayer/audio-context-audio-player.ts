@@ -6,12 +6,87 @@ import { FeederNode, createFeederNode } from '@alexanderolsen/feeder-node';
 import feederNodeWorker from '@alexanderolsen/feeder-node/dist/feeder-node.worker.js';
 import feederNodeWorklet from '@alexanderolsen/feeder-node/dist/feeder-node.worklet.js';
 import libsamplerate from '@alexanderolsen/feeder-node/dist/libsamplerate.wasm';
+import Denque from 'denque';
+
+interface Operation {
+    execute: () => Promise<void>;
+    onStart: () => void;
+    onSuccess: () => void;
+    onError: (error: Error) => void;
+}
+
+class OperationQueue {
+    private readonly _debugMode: boolean;
+    private readonly _queue: Denque<Operation>;
+
+    constructor(debugMode: boolean) {
+        this._debugMode = debugMode;
+        this._queue = new Denque<Operation>();
+    }
+
+    public abort() {
+        if (this._debugMode)
+            this.log("Enqueue 'Abort' operation.");
+        this._queue.unshift({
+            execute: () => { this._queue.clear(); return Promise.resolve(); },
+            onSuccess: () => {
+                if (this._debugMode)
+                    this.log("Aborted.");
+            },
+            onStart: () => { },
+            onError: error => {
+                if (this._debugMode)
+                    this.logWarn(`Can't abort operations in queue. Error: ${error.message}, ${error.stack}`);
+            }
+        });
+    }
+
+    public append(operation: Operation): void {
+        this._queue.push(operation);
+    }
+
+    public async executeNext(): Promise<boolean> {
+        const queue = this._queue;
+        if (queue.length > 0) {
+            const operation: Operation = queue.shift();
+            try {
+                operation.onStart();
+                await operation.execute();
+                operation.onSuccess();
+            }
+            catch (error) {
+                if (this._debugMode) {
+                    this.logError("Unhandled exception executing the current operation. Error: " +
+                        (error instanceof Error ? `${error.message}, ${error.stack}` : error));
+                }
+                operation.onError(error as Error);
+            }
+            finally {
+                return this._queue.length > 0;
+            }
+        }
+    }
+
+    private log(message: string) {
+        console.debug(`[${new Date(Date.now()).toISOString()}] OperationQueue: ${message}`);
+    }
+    private logWarn(message: string) {
+        console.warn(`[${new Date(Date.now()).toISOString()}] OperationQueue: ${message}`);
+    }
+    private logError(message: string) {
+        console.error(`[${new Date(Date.now()).toISOString()}] OperationQueue: ${message}`);
+    }
+}
+
 
 /** Adapter class for ogv.js player */
 export class AudioContextAudioPlayer {
 
-    private readonly _debugMode: boolean;
     private readonly _blazorRef: DotNet.DotNetObject;
+    private readonly _debugMode: boolean;
+    private readonly _debugOperations: boolean;
+    private readonly _debugDecoder: boolean;
+    private readonly _debugFeeder: boolean;
 
     private _demuxer?: Demuxer;
     private _demuxerReady: Promise<Demuxer>;
@@ -20,6 +95,9 @@ export class AudioContextAudioPlayer {
     private _audioContext: AudioContext;
     private _feeder?: FeederNode;
     private _feederReady: Promise<FeederNode>;
+    private _queue: OperationQueue;
+    private _nextProcessingTickTimer: number | null;
+    private _isProcessing: boolean;
 
     private static getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
         return {
@@ -50,10 +128,15 @@ export class AudioContextAudioPlayer {
         this._debugMode = debugMode;
         this._blazorRef = blazorRef;
         this._demuxer = null;
+        this._isProcessing = false;
         this._decoder = null;
         this._feeder = null;
+        this._debugOperations = debugMode && false;
+        this._debugDecoder = debugMode && false;
+        this._debugFeeder = debugMode && true;
+        this._queue = new OperationQueue(this._debugOperations);
+        this._nextProcessingTickTimer = null;
         this._audioContext = new AudioContext({ sampleRate: 48000 });
-
         this._demuxerReady = AudioContextAudioPlayer.createDemuxer()
             .then(demuxer => new Promise<Demuxer>(resolve => demuxer.init(() => {
                 this._demuxer = demuxer;
@@ -70,7 +153,7 @@ export class AudioContextAudioPlayer {
             batchSize: 128,
             inputSampleRate: 48000,
             bufferLength: 64 * 1024,
-            bufferThreshold: 256,
+            bufferThreshold: 960,
             pathToWasm: libsamplerate,
             pathToWorker: feederNodeWorker,
             pathToWorklet: feederNodeWorklet,
@@ -134,62 +217,96 @@ export class AudioContextAudioPlayer {
             && _decoder.audioFormat !== null
             && _decoder.audioFormat !== undefined;
     }
-    private isWorking: boolean;
+
+    private _operationSequenceNumber: number = 0;
+    /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
-        try {
-            if (this.isWorking) {
-                this.logError("Wrong order!");
-            }
-            this.isWorking = true;
-            const { _decoder, _demuxer } = this;
-            if (_decoder === null || _demuxer === null) {
-                this.logError("called appendAudio on disposed object");
-                return;
-            }
-            try {
-                if (this._debugMode)
-                    this.log(`appendAudio(size: ${byteArray.length}, offset: ${offset}) isMetadataLoaded: ${this._isMetadataLoaded}`);
-                await this.demuxEnqueue(byteArray);
-                while (await this.demuxProcess()) {
-                    while (_demuxer.audioPackets.length > 0) {
+        const { _decoder, _demuxer } = this;
+        if (_decoder === null || _demuxer === null) {
+            this.logError("called appendAudio on disposed object");
+            return;
+        }
+        const operationSequenceNumber = this._operationSequenceNumber++;
+        const operation: Operation = {
+            execute: async () => {
+                try {
+                    if (this._debugMode)
+                        this.log(`appendAudio(size: ${byteArray.length}, offset: ${offset}) isMetadataLoaded: ${this._isMetadataLoaded}`);
+                    await this.demuxEnqueue(byteArray);
+                    while (await this.demuxProcess()) {
+                        while (_demuxer.audioPackets.length > 0) {
 
-                        const { packet, padding } = await this.demuxDequeue();
-                        const samples = await this.decodeProcess(packet);
-                        if (this._debugMode) {
-                            this.log(`decodeProcess returned ${(samples instanceof Float32Array ? `${samples.byteLength} bytes / ${samples.length} samples` : samples)}, isMetadataLoaded: ${this._isMetadataLoaded}`);
+                            const { packet, padding } = await this.demuxDequeue();
+                            const samples = await this.decodeProcess(packet);
+                            if (this._debugDecoder) {
+                                this.log(`decodeProcess returned ${(samples instanceof Float32Array ? `${samples.byteLength} bytes / ${samples.length} samples` : samples)}, isMetadataLoaded: ${this._isMetadataLoaded}`);
+                            }
+                            if (samples === null)
+                                continue;
+
+                            this._feeder.feed(samples);
                         }
-                        if (samples === null)
-                            continue;
-
-                        this._feeder.feed(samples);
+                        if (this._debugFeeder) {
+                            this.logWarn(`Feeder: ${this._audioContext.currentTime}`);
+                        }
                     }
+                } catch (error) {
+                    this.logError(`appendAudio: error ${error} ${error.stack}`);
+                    throw error;
                 }
-            } catch (error) {
-                this.logError(`appendAudio: error ${error} ${error.stack}`);
-                throw error;
+            },
+            onSuccess: () => {
+                if (this._debugOperations)
+                    this.log(`End operation appendAudio ${operationSequenceNumber}`);
+            },
+            onStart: () => {
+                if (this._debugOperations)
+                    this.log(`Start operation appendAudio ${operationSequenceNumber}`);
+            },
+            onError: _ => { }
+        };
+        this._queue.append(operation);
+        this.onProcessingTick();
+    }
+
+    private onProcessingTick = async () => {
+        if (this._isProcessing) {
+            this._nextProcessingTickTimer = self.setTimeout(this.onProcessingTick, 5);
+            return;
+        }
+        this._isProcessing = true;
+        try {
+            if (this._nextProcessingTickTimer !== null) {
+                clearTimeout(this._nextProcessingTickTimer);
+                this._nextProcessingTickTimer = null;
             }
+            while (await this._queue.executeNext());
         }
         finally {
-            this.isWorking = false;
+            this._isProcessing = false;
         }
-    }
+    };
 
     public endOfStream(): void {
         if (this._debugMode) {
             this.log("endOfStream()");
         }
-        // TODO: set eof
+        // TODO: something
+
     }
 
     public stop(error: EndOfStreamError | null) {
         if (this._debugMode)
             this.log(`stop(error:${error})`);
-
+        this._queue.abort();
+        this.onProcessingTick();
     }
 
     public dispose(): void {
         if (this._debugMode)
             this.log(`dispose()`);
+
+        this._queue.abort();
         this._demuxer?.flush(() => { this._demuxer?.close(); this._demuxer = null; });
         this._decoder?.close();
         this._decoder = null;
