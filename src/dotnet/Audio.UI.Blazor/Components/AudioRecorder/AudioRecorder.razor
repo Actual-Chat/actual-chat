@@ -147,4 +147,28 @@
         AudioChannel = null;
         StateHasChanged();
     }
+
+    [JSInvokable]
+    public void OnPauseRecording() {
+        DebugLog?.LogDebug("OnPauseRecording: current AudioChannel status is {AudioChannelStatus}",
+            AudioChannel == null ? "closed" : "opened"
+        );
+        if (AudioChannel == null) return;
+
+        var blobPart = new BlobPart(Index++, new byte [] { 0, 0, 0, 0 });
+        AudioChannel.Writer.WriteAsync(blobPart);
+    }
+
+    [JSInvokable]
+    public void OnResumeRecording() {
+        DebugLog?.LogDebug("OnResumeRecording: current AudioChannel status is {AudioChannelStatus}",
+            AudioChannel == null ? "closed" : "opened"
+        );
+
+        if (AudioChannel == null) return;
+
+        var blobPart = new BlobPart(Index++, new byte [] { 1, 1, 1, 1 });
+        AudioChannel.Writer.WriteAsync(blobPart);
+    }
+
 }

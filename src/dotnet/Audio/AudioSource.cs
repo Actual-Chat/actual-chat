@@ -187,7 +187,11 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 break;
             case WebMReadResultKind.Block:
                 var block = (Block)webMReader.ReadResult;
+                if (currentBlockOffsetMs > block.TimeCode) {
+
+                }
                 currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
+
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
                     var frameOffset = TimeSpan.FromTicks( // To avoid floating-point errors
                         TimeSpan.TicksPerMillisecond * (clusterOffsetMs + currentBlockOffsetMs));

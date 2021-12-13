@@ -2,32 +2,77 @@ namespace ActualChat.Audio.Processing;
 
 public class AudioSplitter
 {
+    private static readonly byte[] _pauseSignature = { 0,0,0,0 };
+    private static readonly byte[] _resumeSignature = { 1,1,1,1 };
+
     private IServiceProvider Services { get; }
 
     public AudioSplitter(IServiceProvider services)
         => Services = services;
 
-#pragma warning disable CS1998
     public async IAsyncEnumerable<OpenAudioSegment> GetSegments(
-#pragma warning restore CS1998
         AudioRecord audioRecord,
         IAsyncEnumerable<BlobPart> blobStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // TODO(AY): Implement actual audio activity extractor
+        var openSegmentChannel =
+            Channel.CreateUnbounded<OpenAudioSegment>(new UnboundedChannelOptions { SingleWriter = true });
+
+        _ = Task.Run(() => WriteSegments(audioRecord, blobStream, openSegmentChannel, cancellationToken),
+            cancellationToken);
+
+        return openSegmentChannel.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    private async Task WriteSegments(
+        AudioRecord audioRecord,
+        IAsyncEnumerable<BlobPart> blobStream,
+        ChannelWriter<OpenAudioSegment> writer,
+        CancellationToken cancellationToken)
+    {
+        Exception? error = null;
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(blobStream, TimeSpan.Zero, audioLog, cancellationToken);
-        var openAudioSegment = new OpenAudioSegment(0, audioRecord, audio, TimeSpan.Zero, cancellationToken);
-        _ = Task.Run(async () => {
-            try {
-                await audio.WhenFormatAvailable.ConfigureAwait(false);
-                await audio.WhenDurationAvailable.ConfigureAwait(false);
-                openAudioSegment.Close(audio.Duration);
+        var index = 0;
+        var channel = Channel.CreateUnbounded<BlobPart>(new UnboundedChannelOptions{ SingleWriter = true });
+        try {
+            await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
+
+            await foreach (var blobPart in blobStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                if (blobPart.Data.SequenceEqual(_pauseSignature)) {
+                    channel.Writer.Complete();
+                    continue;
+                }
+                if (blobPart.Data.SequenceEqual(_resumeSignature)) {
+                    channel = Channel.CreateUnbounded<BlobPart>(new UnboundedChannelOptions { SingleWriter = true });
+                    await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
+                    continue;
+                }
+                await channel.Writer.WriteAsync(blobPart, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception error) {
-                openAudioSegment.TryClose(error);
-            }
-        }, CancellationToken.None);
-        yield return openAudioSegment;
+        }
+        catch (Exception e) {
+            error = e;
+        }
+        finally {
+            channel.Writer.TryComplete(error);
+            writer.TryComplete(error);
+        }
+
+        async ValueTask StartNewSegment(IAsyncEnumerable<BlobPart> segmentBlobStream)
+        {
+            var audio = new AudioSource(segmentBlobStream, TimeSpan.Zero, audioLog, cancellationToken);
+            var openAudioSegment = new OpenAudioSegment(index, audioRecord, audio, TimeSpan.Zero, cancellationToken);
+            _ = Task.Run(async () => {
+                try {
+                    await audio.WhenFormatAvailable.ConfigureAwait(false);
+                    await audio.WhenDurationAvailable.ConfigureAwait(false);
+                    openAudioSegment.Close(audio.Duration);
+                }
+                catch (Exception e) {
+                    openAudioSegment.TryClose(e);
+                }
+            }, CancellationToken.None);
+            await writer.WriteAsync(openAudioSegment, cancellationToken).ConfigureAwait(false);
+        }
     }
 }
