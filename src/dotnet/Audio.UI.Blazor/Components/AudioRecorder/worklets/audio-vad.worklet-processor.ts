@@ -1,7 +1,7 @@
 import { RingBuffer } from "./ring-buffer";
 import { VadMessage } from "../audio-vad.message";
 
-const SamplesPerWindow = 4000;
+const SamplesPerWindow = 1000;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private readonly _buffer: RingBuffer;

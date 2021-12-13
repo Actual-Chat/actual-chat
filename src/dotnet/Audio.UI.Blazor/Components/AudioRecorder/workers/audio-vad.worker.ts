@@ -55,9 +55,10 @@ async function processQueue(): Promise<void> {
         const buffer = queue.pop();
         const monoPcm = new Float32Array(buffer);
         const vadEvents = await voiceDetector.appendChunk(monoPcm);
-        const adjustedVadEvents = adjustChangeEventsToSeconds(vadEvents);
-
-        sendResult(adjustedVadEvents);
+        if (vadEvents.length) {
+            const adjustedVadEvents = adjustChangeEventsToSeconds(vadEvents);
+            sendResult(adjustedVadEvents[adjustedVadEvents.length - 1]);
+        }
         workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
 
     } catch (error) {
@@ -72,6 +73,6 @@ async function processQueue(): Promise<void> {
 }
 
 
-function sendResult(result: VoiceActivityChanged[]): void {
+function sendResult(result: VoiceActivityChanged): void {
     postMessage(result);
 }
