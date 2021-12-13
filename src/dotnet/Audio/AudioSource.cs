@@ -63,9 +63,11 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             FullMode = BoundedChannelFullMode.Wait,
         });
 
+        var blobs = new List<BlobPart>();
         var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
             async blobPart => {
                 var (_, data) = blobPart;
+                blobs.Add(blobPart);
 
                 AppendData(ref readBuffer, ref state, data);
                 frameBuffer.Clear();
@@ -187,9 +189,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 break;
             case WebMReadResultKind.Block:
                 var block = (Block)webMReader.ReadResult;
-                if (currentBlockOffsetMs > block.TimeCode) {
-
-                }
+                // if (currentBlockOffsetMs > block.TimeCode) {
+                //
+                // }
                 currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
 
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
@@ -246,6 +248,12 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             throw new InvalidOperationException("Unexpected WebM structure.");
 
         blockOffsetMs = currentBlockOffsetMs;
+        if (!FormatTask.IsCompleted) {
+            var formatTaskSource = TaskSource.For(FormatTask);
+            var format = CreateMediaFormat(ebml!, segment!, webMReader.Span);
+            formatTaskSource.SetResult(format);
+        }
+
         return webMReader.GetState();
     }
 

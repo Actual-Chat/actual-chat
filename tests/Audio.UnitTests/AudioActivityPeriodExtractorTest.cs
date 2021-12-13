@@ -119,8 +119,9 @@ public class AudioActivityPeriodExtractorTest : TestBase
         var audioActivityExtractor = new AudioActivityExtractor(NullLoggerFactory.Instance);
         var openAudioSegments = audioActivityExtractor.SplitToAudioSegments(record, blobStreamWithBoundaries);
         var size = 0L;
+        var index = 0;
         await foreach (var openAudioSegment in openAudioSegments) {
-            openAudioSegment.Index.Should().Be(0);
+            openAudioSegment.Index.Should().Be(index++);
             openAudioSegment.AudioRecord.Should().Be(record);
             var audio = openAudioSegment.Audio;
             await audio.WhenFormatAvailable;
@@ -132,7 +133,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
             closedAudioSegment.Audio.Should().NotBeNull();
             closedAudioSegment.Duration.Should().BeGreaterThan(TimeSpan.Zero);
         }
-        size.Should().Be(fileSize);
+        size.Should().Be(fileSize + 161); // + format of next segment
 
         async IAsyncEnumerable<BlobPart> InsertSpeechBoundaries(IAsyncEnumerable<BlobPart> bs)
         {
@@ -140,7 +141,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
             await foreach (var blobPart in bs) {
                 if (blobPart.Index == 20) {
                     var nextBlockStartsAt = blobPart.Data
-                        .Select((b, i) => ((b == 0xA3 && blobPart.Data[i + 3] == (byte)0x81), i))
+                        .Select((b, i) => (b == 0xA3 && blobPart.Data[i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
                     yield return new BlobPart(blobPart.Index + increment++, blobPart.Data[..nextBlockStartsAt]);
