@@ -64,11 +64,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-        var blobs = new List<BlobPart>();
         var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
             async blobPart => {
                 var (_, data) = blobPart;
-                blobs.Add(blobPart);
 
                 AppendData(ref readBuffer, ref state, data);
                 frameBuffer.Clear();
