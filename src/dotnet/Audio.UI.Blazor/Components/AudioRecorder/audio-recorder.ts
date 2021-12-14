@@ -99,18 +99,19 @@ export class AudioRecorder {
                 const state = recording.recorder.getState()
                 console.log(state);
 
-                /*if (vadEvent.kind === 'end') {
-                    if (state == 'recording') {
-                        recording.recorder.pauseRecording();
-                        this._blazorRef.invokeMethodAsync('OnPauseRecording');
-                    }
+                if (vadEvent.kind === 'end') {
+
+                    // if (state == 'recording') {
+                        // recording.recorder.pauseRecording();
+                        // this._blazorRef.invokeMethodAsync('OnPauseRecording');
+                    // }
                 }
                 else {
-                    if (state == 'paused') {
-                        recording.recorder.resumeRecording();
-                        this._blazorRef.invokeMethodAsync('OnResumeRecording');
-                    }
-                }*/
+                    // if (state == 'paused') {
+                        // this._blazorRef.invokeMethodAsync('OnResumeRecording');
+                        // recording.recorder.resumeRecording();
+                    // }
+                }
             }
             console.log(vadEvent);
         };
