@@ -2,10 +2,7 @@ import OGVDecoderAudioOpusW from 'ogv/dist/ogv-decoder-audio-opus-wasm';
 import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm';
 import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
-import { FeederNode, createFeederNode } from '@alexanderolsen/feeder-node';
-import feederNodeWorker from '@alexanderolsen/feeder-node/dist/feeder-node.worker.js';
-import feederNodeWorklet from '@alexanderolsen/feeder-node/dist/feeder-node.worklet.js';
-import libsamplerate from '@alexanderolsen/feeder-node/dist/libsamplerate.wasm';
+import AudioFeeder from 'audio-feeder';
 import Denque from 'denque';
 
 interface Operation {
@@ -45,6 +42,10 @@ class OperationQueue {
         this._queue.push(operation);
     }
 
+    public prepend(operation: Operation): void {
+        this._queue.unshift(operation);
+    }
+
     public async executeNext(): Promise<boolean> {
         const queue = this._queue;
         if (queue.length > 0) {
@@ -78,6 +79,12 @@ class OperationQueue {
     }
 }
 
+enum BufferState {
+    Starving = -1,
+    Nothing = 0,
+    Enough = 1,
+    TooMuch = 2
+}
 
 /** Adapter class for ogv.js player */
 export class AudioContextAudioPlayer {
@@ -85,19 +92,61 @@ export class AudioContextAudioPlayer {
     private readonly _blazorRef: DotNet.DotNetObject;
     private readonly _debugMode: boolean;
     private readonly _debugOperations: boolean;
+    private readonly _debugAppendAudioCalls: boolean;
     private readonly _debugDecoder: boolean;
     private readonly _debugFeeder: boolean;
+    private readonly _debugFeederStats: boolean;
+
+    /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
+    private readonly _bufferTooMuchThreshold = 1.0;
+    /**
+     * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
+     * should be in sync with audio-feeder bufferSize
+     */
+    private readonly _bufferEnoughThreshold = 0.010;
 
     private _demuxer?: Demuxer;
     private _demuxerReady: Promise<Demuxer>;
     private _decoder?: Decoder;
     private _decoderReady: Promise<Decoder>;
     private _audioContext: AudioContext;
-    private _feeder?: FeederNode;
-    private _feederReady: Promise<FeederNode>;
+    private _feeder?: AudioFeeder;
     private _queue: OperationQueue;
     private _nextProcessingTickTimer: number | null;
     private _isProcessing: boolean;
+    private _isAppending: boolean;
+    private _isEndOfStreamReached: boolean;
+    private _operationSequenceNumber: number;
+
+    public static sharedAudioContext: AudioContext | null = null;
+    private _state: BufferState;
+    private _unblockQueue?: () => void;
+
+    public static getOrCreateSharedAudioContext(): AudioContext | null {
+        if (AudioContextAudioPlayer.sharedAudioContext === null) {
+            console.warn("AudioContextAudioPlayer.sharedAudioContext is null, create one");
+            if (AudioFeeder.isSupported()) {
+                // We're only allowed 4 contexts on many browsers
+                // and there's no way to discard them (!)...
+                const context = new AudioContext({ sampleRate: 48000 });
+                let node: ScriptProcessorNode | null = null;
+                if (context.createScriptProcessor) {
+                    node = context.createScriptProcessor(1024, 0, 2);
+                } else if (context["createJavaScriptNode"]) {
+                    node = context["createJavaScriptNode"](1024, 0, 2);
+                } else {
+                    throw new Error("Bad version of web audio API?");
+                }
+
+                // Don't actually run any audio, just start & stop the node
+                node.connect(context.destination);
+                node.disconnect();
+
+                AudioContextAudioPlayer.sharedAudioContext = context;
+            }
+        }
+        return AudioContextAudioPlayer.sharedAudioContext;
+    }
 
     private static getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
         return {
@@ -129,39 +178,57 @@ export class AudioContextAudioPlayer {
         this._blazorRef = blazorRef;
         this._demuxer = null;
         this._isProcessing = false;
+        this._isAppending = false;
+        this._isEndOfStreamReached = false;
+        this._state = BufferState.Nothing;
+        this._operationSequenceNumber = 0;
         this._decoder = null;
         this._feeder = null;
-        this._debugOperations = debugMode && false;
+        this._unblockQueue = null;
+        this._debugAppendAudioCalls = debugMode && false;
+        this._debugOperations = debugMode && true;
         this._debugDecoder = debugMode && false;
         this._debugFeeder = debugMode && true;
+        this._debugFeederStats = this._debugFeeder && false;
         this._queue = new OperationQueue(this._debugOperations);
         this._nextProcessingTickTimer = null;
-        this._audioContext = new AudioContext({ sampleRate: 48000 });
         this._demuxerReady = AudioContextAudioPlayer.createDemuxer()
             .then(demuxer => new Promise<Demuxer>(resolve => demuxer.init(() => {
                 this._demuxer = demuxer;
                 resolve(this._demuxer);
             })));
 
-        this._decoderReady = AudioContextAudioPlayer.createDecoder()
+            this._decoderReady = AudioContextAudioPlayer.createDecoder()
             .then(decoder => new Promise<Decoder>(resolve => decoder.init(() => {
                 this._decoder = decoder;
                 resolve(this._decoder);
             })));
-
-        this._feederReady = createFeederNode(this._audioContext, 1, {
-            batchSize: 128,
-            inputSampleRate: 48000,
-            bufferLength: 64 * 1024,
-            bufferThreshold: 960,
-            pathToWasm: libsamplerate,
-            pathToWorker: feederNodeWorker,
-            pathToWorklet: feederNodeWorklet,
-        }).then(feederNode => {
-            feederNode.connect(this._audioContext.destination);
-            this._feeder = feederNode;
-            return feederNode;
+        this._audioContext = AudioContextAudioPlayer.getOrCreateSharedAudioContext();
+        if (this._audioContext === null) {
+            this._audioContext = new AudioContext({ sampleRate: 48000 });
+        }
+        if (this._audioContext.state === "suspended")
+            this._audioContext.resume();
+        this._feeder = new AudioFeeder({
+            // TODO: adjust this buffer size and maybe inside the WebAudioBackend
+            // we have 960 samples in opus frame (if it was recorded by our wasm recorder)
+            // bufferSize must be power of 2, so 512 (10ms-20ms) or 1024 (20ms+)
+            bufferSize: 512,
+            audioContext: this._audioContext,
         });
+        this._feeder.onbufferlow = () => this.unblockQueue('onbufferlow');
+        this._feeder.onstarved = () => {
+            if (this._isEndOfStreamReached) {
+                this._feeder.onstarved = null;
+                if (debugMode)
+                    this.log(`audio ended.`);
+                this.dispose();
+                this.invokeOnPlaybackEnded();
+                return;
+            }
+            this.unblockQueue('onstarved');
+        };
+
     }
 
     public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
@@ -175,8 +242,9 @@ export class AudioContextAudioPlayer {
     public async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
             this.log(`initialize(header: ${byteArray.length} bytes)`);
-
         try {
+            this._feeder.init(1, 48000);
+            this._feeder.bufferThreshold = this._bufferTooMuchThreshold - 0.5;
             if (this._demuxer === null) {
                 if (this._debugMode)
                     this.log("initialize: awaiting creation of demuxer");
@@ -191,13 +259,12 @@ export class AudioContextAudioPlayer {
                 if (this._debugMode)
                     this.log("initialize: decoder header has been created");
             }
-            if (this._feeder === null) {
-                if (this._debugMode)
-                    this.log("initialize: awaiting creation of feeder");
-                await this._feederReady;
-                if (this._debugMode)
-                    this.log("initialize: feeder header has been created");
-            }
+            if (this._debugMode)
+                this.log("initialize: awaiting creation of feeder");
+            await this.feederReady();
+            if (this._debugMode)
+                this.log("initialize: feeder has been created");
+
             if (this._debugMode)
                 this.log("initialize: start processing headers");
             await this.appendAudioAsync(byteArray, -1);
@@ -206,6 +273,10 @@ export class AudioContextAudioPlayer {
         } catch (error) {
             this.logError(`initialize: error ${error} ${error.stack}`);
         }
+    }
+
+    private feederReady(): Promise<void> {
+        return new Promise<void>(resolve => this._feeder.waitUntilReady(resolve));
     }
 
     private get _isMetadataLoaded(): boolean {
@@ -218,55 +289,108 @@ export class AudioContextAudioPlayer {
             && _decoder.audioFormat !== undefined;
     }
 
-    private _operationSequenceNumber: number = 0;
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
-    public async appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
-        const { _decoder, _demuxer } = this;
-        if (_decoder === null || _demuxer === null) {
-            this.logError("called appendAudio on disposed object");
-            return;
+    public appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
+        if (this._isAppending) {
+            this.logError("Append called in wrong order");
         }
-        const operationSequenceNumber = this._operationSequenceNumber++;
-        const operation: Operation = {
-            execute: async () => {
-                try {
-                    if (this._debugMode)
-                        this.log(`appendAudio(size: ${byteArray.length}, offset: ${offset}) isMetadataLoaded: ${this._isMetadataLoaded}`);
-                    await this.demuxEnqueue(byteArray);
-                    while (await this.demuxProcess()) {
-                        while (_demuxer.audioPackets.length > 0) {
+        this._isAppending = true;
+        try {
+            const { _decoder, _demuxer } = this;
+            if (_decoder === null || _demuxer === null) {
+                this.logError("called appendAudio on disposed object");
+                return;
+            }
+            const operationSequenceNumber = this._operationSequenceNumber++;
+            const operation: Operation = {
+                execute: async () => {
+                    try {
+                        if (this._debugAppendAudioCalls) {
+                            this.log(`appendAudio(size: ${byteArray.length}, `
+                                + `offset: ${offset}) `
+                                + `isMetadataLoaded: ${this._isMetadataLoaded}`);
+                        }
+                        await this.demuxEnqueue(byteArray);
+                        while (await this.demuxProcess()) {
+                            while (_demuxer.audioPackets.length > 0) {
 
-                            const { packet, padding } = await this.demuxDequeue();
-                            const samples = await this.decodeProcess(packet);
-                            if (this._debugDecoder) {
-                                this.log(`decodeProcess returned ${(samples instanceof Float32Array ? `${samples.byteLength} bytes / ${samples.length} samples` : samples)}, isMetadataLoaded: ${this._isMetadataLoaded}`);
+                                const { packet, padding } = await this.demuxDequeue();
+                                const samples = await this.decodeProcess(packet);
+                                if (this._debugDecoder) {
+                                    this.log("decodeProcess returned " + (samples instanceof Float32Array
+                                        ? `${samples.byteLength} bytes / ${samples.length} samples`
+                                        : samples
+                                    ) + `isMetadataLoaded: ${this._isMetadataLoaded}`);
+                                }
+                                if (samples === null)
+                                    continue;
+                                this._feeder.bufferData(samples);
+                                const playbackState = this._feeder.getPlaybackState();
+                                const durationBuffered = playbackState.samplesQueued / this._feeder.targetRate;
+                                const bufferedSpan = durationBuffered - playbackState.playbackPosition;
+
+                                if (this._debugFeederStats) {
+                                    this.log("Feeder stats [appendAudio]: "
+                                        + `playbackPosition: ${playbackState.playbackPosition}, `
+                                        + `durationBuffered: ${durationBuffered}, `
+                                        + `bufferedSpan: ${bufferedSpan}, `
+                                        + `playbackState: ${JSON.stringify(playbackState)} `);
+                                }
+                                if (bufferedSpan >= this._bufferEnoughThreshold) {
+                                    if (this._state === BufferState.Nothing) {
+                                        this._feeder.start();
+                                        if (this._debugFeeder) {
+                                            this.log("Feeder start playing, "
+                                                + `bufferDuration: ${this._feeder.durationBuffered}, `
+                                                + `playbackState: ${JSON.stringify(this._feeder.getPlaybackState())}`);
+                                        }
+                                    }
+                                    this._state = BufferState.Enough;
+                                }
+                                // we buffered enough data, tell to blazor about it and block the operation queue
+                                if (bufferedSpan >= this._bufferTooMuchThreshold) {
+                                    this._state = BufferState.TooMuch;
+                                    await this.invokeOnChangeReadiness(false, playbackState.playbackPosition, 4);
+                                    const blocker = new Promise<void>(resolve => this._unblockQueue = resolve);
+                                    this._queue.prepend({
+                                        execute: () => blocker,
+                                        onSuccess: () => {
+                                            if (this._debugOperations)
+                                                this.logWarn("End blocking operation queue");
+                                        },
+                                        onStart: () => {
+                                            if (this._debugOperations) {
+                                                this.logWarn("Start blocking operation queue, "
+                                                    + `bufferedSpan: ${bufferedSpan}`);
+                                            }
+                                        },
+                                        onError: _ => { }
+                                    });
+                                }
                             }
-                            if (samples === null)
-                                continue;
-
-                            this._feeder.feed(samples);
                         }
-                        if (this._debugFeeder) {
-                            this.logWarn(`Feeder: ${this._audioContext.currentTime}`);
-                        }
+                    } catch (error) {
+                        this.logError(`appendAudio: error ${error} ${error.stack}`);
+                        throw error;
                     }
-                } catch (error) {
-                    this.logError(`appendAudio: error ${error} ${error.stack}`);
-                    throw error;
-                }
-            },
-            onSuccess: () => {
-                if (this._debugOperations)
-                    this.log(`End operation appendAudio ${operationSequenceNumber}`);
-            },
-            onStart: () => {
-                if (this._debugOperations)
-                    this.log(`Start operation appendAudio ${operationSequenceNumber}`);
-            },
-            onError: _ => { }
-        };
-        this._queue.append(operation);
-        this.onProcessingTick();
+                },
+                onSuccess: () => {
+                    if (this._debugOperations && this._debugAppendAudioCalls)
+                        this.log(`End appendAudio operation #${operationSequenceNumber}`);
+                },
+                onStart: () => {
+                    if (this._debugOperations && this._debugAppendAudioCalls)
+                        this.log(`Start appendAudio operation #${operationSequenceNumber}`);
+                },
+                onError: _ => { }
+            };
+            this._queue.append(operation);
+            this.onProcessingTick();
+            return Promise.resolve();
+        }
+        finally {
+            this._isAppending = false;
+        }
     }
 
     private onProcessingTick = async () => {
@@ -291,7 +415,24 @@ export class AudioContextAudioPlayer {
         if (this._debugMode) {
             this.log("endOfStream()");
         }
-        // TODO: something
+        this._queue.append({
+            execute: (): Promise<void> => {
+                if (this._debugMode)
+                    this.log("endOfStream operation is reached");
+                this._isEndOfStreamReached = true;
+                return new Promise<void>(resolve => this._demuxer.flush(resolve));
+            },
+            onSuccess: () => {
+                if (this._debugOperations)
+                    this.log("End endOfStream operation");
+            },
+            onStart: () => {
+                if (this._debugOperations)
+                    this.log("Start endOfStream operation");
+            },
+            onError: _ => { }
+        });
+        this.onProcessingTick();
 
     }
 
@@ -310,8 +451,12 @@ export class AudioContextAudioPlayer {
         this._demuxer?.flush(() => { this._demuxer?.close(); this._demuxer = null; });
         this._decoder?.close();
         this._decoder = null;
-        this._audioContext.suspend()
-            .then(() => this._audioContext.close().then(() => { this._audioContext = null; }));
+        this._feeder.flush();
+        this._feeder.close();
+        if (this._audioContext !== AudioContextAudioPlayer.sharedAudioContext) {
+            this._audioContext.suspend()
+                .then(() => this._audioContext.close().then(() => { this._audioContext = null; }));
+        }
     }
 
     private demuxEnqueue(buffer: ArrayBuffer): Promise<void> {
@@ -339,26 +484,37 @@ export class AudioContextAudioPlayer {
         return new Promise<boolean>(resolve => demuxer.process(more => resolve(more)));
     }
 
-    private decodeProcess(packet: ArrayBuffer): Promise<Float32Array | null> {
+    private decodeProcess(packet: ArrayBuffer): Promise<Float32Array[] | null> {
         const decoder = this._decoder;
         if (decoder === null)
             return Promise.reject("Decoder is disposed");
         if (decoder.processing === true)
             return Promise.reject("Decoder is processing");
 
-        return new Promise<Float32Array | null>((resolve, reject) => {
+        return new Promise<Float32Array[] | null>((resolve, reject) => {
             if (!this._isMetadataLoaded) {
                 decoder.processHeader(packet, _ => resolve(null));
             }
             else {
                 decoder.processAudio(packet, _ => {
                     if (decoder.audioBuffer !== null && decoder.audioBuffer.length > 0)
-                        resolve(decoder.audioBuffer[0]);
+                        resolve(decoder.audioBuffer);
                     else
                         reject("Can't decode packet to the right format");
                 });
             }
         });
+    }
+
+    private unblockQueue(source: string) {
+        const unblock = this._unblockQueue;
+        this._unblockQueue = null;
+        if (unblock !== null) {
+            if (this._debugOperations)
+                this.logWarn(`[${source}]: Unblocking queue`);
+            unblock();
+            this.invokeOnChangeReadiness(true, this._feeder.playbackPosition, 2);
+        }
     }
 
     private invokeOnPlaybackTimeChanged(time: number): Promise<void> {
@@ -385,3 +541,7 @@ export class AudioContextAudioPlayer {
         console.error(`[${new Date(Date.now()).toISOString()}] AudioContextAudioPlayer: ${message}`);
     }
 }
+
+// We're only allowed 4 contexts on many browsers and there's no way to discard them so we create
+// one as soon as we could, anyway some of browsers don't allow to create without it user interaction
+AudioContextAudioPlayer.getOrCreateSharedAudioContext();

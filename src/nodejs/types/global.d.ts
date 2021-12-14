@@ -1,5 +1,3 @@
-import type { OGVCompat, OGVLoader } from "ogv";
-
 declare global {
 
     interface AudioWorkletProcessor {
@@ -8,9 +6,6 @@ declare global {
         // https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/AudioWorkletProcessor
         new(options?: AudioWorkletNodeOptions): AudioWorkletProcessor;
     }
-
-    var OGVCompat: OGVCompat;
-    var OGVLoader: OGVLoader;
 }
 
 export { };

@@ -105,6 +105,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 offset,
                 ToMediaElementReadyState(readyState)
             );
+            StateHasChanged();
         }
         return Task.CompletedTask;
     }
@@ -128,10 +129,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             errorCode,
             errorMessage
         );
+        _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
             await _registration.DisposeAsync().ConfigureAwait(true);
         }
-        _cts?.CancelAndDisposeSilently();
     }
 
     [JSInvokable]
