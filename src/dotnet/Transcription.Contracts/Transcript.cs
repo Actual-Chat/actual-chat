@@ -18,28 +18,47 @@ public sealed class Transcript
     public string Text { get; }
     [DataMember(Order = 1)]
     public LinearMap TextToTimeMap { get; }
+    [DataMember(Order = 2)]
+    public int StableLength { get; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<int> TextRange { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<double> TimeRange { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public int Length => Text.Length;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public int UnstableLength => Length - StableLength;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double Duration => TimeRange.Size();
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string StableText => Text[..StableLength];
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public string UnstableText => Text[StableLength..];
 
-    public Transcript() : this("", EmptyMap) { }
+    public Transcript()
+        : this("", EmptyMap, 0) { }
+
+    public Transcript(string text, LinearMap textToTimeMap)
+        : this(text, textToTimeMap, text.Length) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public Transcript(string text, LinearMap textToTimeMap)
+    public Transcript(string text, LinearMap textToTimeMap, int stableLength)
     {
+        if (stableLength < 0 || stableLength > text.Length)
+            throw new ArgumentOutOfRangeException(nameof(stableLength));
         Text = text;
         TextToTimeMap = textToTimeMap;
         var textRange = TextToTimeMap.SourceRange;
         TextRange = ((int) textRange.Min, (int) textRange.Max);
+        if (TextRange.Size() != Text.Length)
+            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
         TimeRange = TextToTimeMap.TargetRange;
+        StableLength = stableLength;
     }
 
     public override string ToString()
-        => $"'{Text}' & {TextToTimeMap}";
+        => $"'{StableText}'{(UnstableLength != 0 ? $" + ~'{UnstableText}'" : "")} & {TextToTimeMap}";
 
     public int GetContentStart()
     {
