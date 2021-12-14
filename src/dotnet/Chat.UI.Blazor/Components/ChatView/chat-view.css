@@ -6,6 +6,14 @@ body {
     height: 100%;
 }
 
+input,
+textarea,
+button,
+select,
+a {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
 .chat-page {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
@@ -76,7 +84,7 @@ body {
 }
 
 .plus-button {
-    @apply block py-2 pr-2 pl-4 ml-1 rounded-l-xl outline-none hover:cursor-pointer bg-primary text-primary;
+    @apply block py-2 px-2 md:px-4 ml-1 md:ml-2 rounded-l-xl outline-none hover:cursor-pointer bg-primary text-primary;
 }
 
 .plus-button-svg {
@@ -85,7 +93,7 @@ body {
 
 .message-input {
     @apply overflow-y-auto max-h-12 break-words;
-    @apply flex-1 px-2 py-2 mr-1 outline-none rounded-r-xl hover:cursor-text bg-primary text-primary focus:text-secondary;
+    @apply flex-1 px-2 py-2 mr-1 md:mr-2 outline-none rounded-r-xl hover:cursor-text bg-primary text-primary focus:text-secondary;
 }
 
 .message-input::-webkit-scrollbar {
@@ -94,11 +102,11 @@ body {
 }
 
 .post-recorder-buttons {
-    @apply flex flex-row h-full md:px-1 justify-center justify-items-center;
+    @apply flex flex-row h-full md:px-1 justify-center justify-items-center outline-none;
 }
 
 .post-message {
-    @apply block pr-1 md:pr-0 md:px-3 py-2 text-secondary rounded-xl bg-secondary mr-1 md:transition md:duration-500 md:ease-in-out;
+    @apply block outline-none md:px-2 py-2 text-secondary rounded-xl bg-secondary md:transition md:duration-500 md:ease-in-out;
 }
 
 .post-message:hover {
@@ -110,7 +118,7 @@ body {
 }
 
 .chat-player-toggle {
-    @apply block md:px-2 py-2 text-justify bg-secondary rounded-xl mr-1 md:transition md:duration-500 md:ease-in-out;
+    @apply block outline-none md:px-2 py-2 text-justify bg-secondary rounded-xl md:transition md:duration-500 md:ease-in-out active:bg-secondary;
 }
 
 .chat-player-toggle:hover {
@@ -130,7 +138,7 @@ body {
 }
 
 .audio-recorder {
-    @apply block md:px-3 py-2 rounded-xl bg-secondary md:transition md:duration-500 md:ease-in-out;
+    @apply block outline-none md:px-2 py-2 rounded-xl bg-secondary md:transition md:duration-500 md:ease-in-out active:bg-secondary;
 }
 
 .audio-recorder:hover {
