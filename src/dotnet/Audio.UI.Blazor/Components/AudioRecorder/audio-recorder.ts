@@ -99,7 +99,7 @@ export class AudioRecorder {
                 const state = recording.recorder.getState()
                 console.log(state);
 
-                if (vadEvent.kind === 'end') {
+                /*if (vadEvent.kind === 'end') {
                     if (state == 'recording') {
                         recording.recorder.pauseRecording();
                         this._blazorRef.invokeMethodAsync('OnPauseRecording');
@@ -110,7 +110,7 @@ export class AudioRecorder {
                         recording.recorder.resumeRecording();
                         this._blazorRef.invokeMethodAsync('OnResumeRecording');
                     }
-                }
+                }*/
             }
             console.log(vadEvent);
         };
