@@ -2,19 +2,24 @@ export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
     private _input: HTMLDivElement;
+    private _post: HTMLButtonElement;
 
-    static create(input: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(input, backendRef);
+    static create(input: HTMLDivElement, post: HTMLButtonElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(input, post, backendRef);
     }
 
-    constructor(input: HTMLDivElement, backendRef: DotNet.DotNetObject) {
+    constructor(input: HTMLDivElement, post: HTMLButtonElement, backendRef: DotNet.DotNetObject) {
         if (input === undefined || input === null ) {
             throw new Error("input element is undefined");
+        }
+        if (post === undefined || post === null) {
+            throw new Error("post element is undefined");
         }
         if (backendRef === undefined || backendRef === null) {
             throw new Error("dotnet backend object is undefined");
         }
         this._input = input;
+        this._post = post;
         this._blazorRef = backendRef;
 
         // Wiring up event listeners
@@ -27,6 +32,9 @@ export class ChatMessageEditor {
             event.preventDefault();
             this._blazorRef.invokeMethodAsync("Post", this.getText());
         });
+        this._post.addEventListener("click", (event: Event & { target: HTMLButtonElement; }) => {
+            this._input.focus();
+        })
     }
 
     public getText(): string {
