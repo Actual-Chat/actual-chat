@@ -26,9 +26,10 @@ export function adjustChangeEventsToSeconds(data: VoiceActivityChanged[], sample
     return data.map(vac => new VoiceActivityChanged(vac.kind, vac.offset / sampleRate, vac.speechProb, vac.duration === null ? null : vac.duration / sampleRate));
 }
 
-const SamplesPerWindow = 2000;
+const SamplesPerWindow = 4000;
 const BytesPerSample = 4;
-const AccumulativePeriod = 50;
+const AccumulativePeriodStart = 50;
+const AccumulativePeriodEnd = 200;
 
 export class VoiceActivityDetector {
     private readonly _modelUri: URL;
@@ -41,7 +42,7 @@ export class VoiceActivityDetector {
     private _sampleCount: number;
     private _lastActivityEvent: VoiceActivityChanged;
     private _endOffset: number = null;
-    private _totalSteps = 0;
+    private _speechSteps = 0;
     private _speechProbabilityTrigger = 0.26;
     private _silenceProbabilityTrigger = 0.15;
 
@@ -133,13 +134,14 @@ export class VoiceActivityDetector {
             const prob = speechProbabilities[i];
             const smoothedProb = smoothedProbs[i];
             const currentOffset = this._sampleCount + step * i;
-            const probMedian = this._streamedMedian.push(prob);
 
-            if (this._totalSteps++ >= AccumulativePeriod) {
+            if (this._speechSteps++ >= AccumulativePeriodStart) {
                 // enough statistics to adjust trigSum \ negTrigSum
 
+                const probMedian = this._streamedMedian.median;
                 trigSum = 0.89 * probMedian + 0.08; // 0.08 when median is zero, 0.97 when median is 1
                 negTrigSum = 0.3 * probMedian;
+
             }
 
             if (smoothedProb >= trigSum && this._endOffset > 0) {
@@ -155,6 +157,9 @@ export class VoiceActivityDetector {
                 const duration = offset - currentEvent.offset;
                 currentEvent = new VoiceActivityChanged('start', offset, smoothedProb, duration);
                 voiceActivityChangeEvents.push(currentEvent);
+                if (this._speechSteps++ < AccumulativePeriodEnd) {
+                    this._streamedMedian.push(prob);
+                }
                 continue;
             }
             if (smoothedProb < negTrigSum && currentEvent.kind === 'start') {
