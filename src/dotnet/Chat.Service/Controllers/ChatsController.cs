@@ -17,36 +17,39 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpGet, Publish]
-    public Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
         => _chats.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<long> GetEntryCount(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
-        => _chats.GetEntryCount(session, chatId, idTileRange, cancellationToken);
+        => _chats.GetEntryCount(session, chatId, entryType, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatTile> GetTile(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
-        => _chats.GetTile(session, chatId, idTileRange, cancellationToken);
+        => _chats.GetTile(session, chatId, entryType, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Range<long>> GetIdRange(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         CancellationToken cancellationToken)
-        => _chats.GetIdRange(session, chatId, cancellationToken);
+        => _chats.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatPermissions> GetPermissions(
         Session session,
-        ChatId chatId,
+        string chatId,
         CancellationToken cancellationToken)
         => _chats.GetPermissions(session, chatId, cancellationToken);
 

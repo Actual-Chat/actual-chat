@@ -1,5 +1,4 @@
 using ActualChat.Audio.Db;
-using ActualChat.Redis;
 using ActualChat.Transcription;
 using Stl.Redis;
 
@@ -8,31 +7,33 @@ namespace ActualChat.Audio;
 public class TranscriptStreamer : ITranscriptStreamer
 {
     private const int StreamBufferSize = 64;
-    private readonly ILogger<TranscriptStreamer> _log;
-    private readonly RedisDb _redisDb;
+    // ReSharper disable once UnusedAutoPropertyAccessor.Local
+    private ILogger<TranscriptStreamer> Log { get; }
+    private RedisDb RedisDb { get; }
 
     public TranscriptStreamer(
         RedisDb<AudioContext> audioRedisDb,
         ILogger<TranscriptStreamer> log)
     {
-        _log = log;
-        _redisDb = audioRedisDb.WithKeyPrefix("transcripts");
+        Log = log;
+        RedisDb = audioRedisDb.WithKeyPrefix("transcripts");
     }
 
     public Task Publish(
-        StreamId streamId,
-        IAsyncEnumerable<TranscriptUpdate> transcriptStream,
+        string streamId,
+        IAsyncEnumerable<Transcript> diffs,
         CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<TranscriptUpdate>(streamId);
-        return streamer.Write(transcriptStream, cancellationToken);
+        var streamer = RedisDb.GetStreamer<Transcript>(streamId);
+        return streamer.Write(diffs, cancellationToken);
     }
 
-    public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
-        StreamId streamId,
+    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
+        string streamId,
         CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<TranscriptUpdate>(streamId);
-        return streamer.Read(cancellationToken).Buffer(64, cancellationToken);
+        var streamer = RedisDb.GetStreamer<Transcript>(streamId);
+        return streamer.Read(cancellationToken)
+            .WithBuffer(StreamBufferSize, cancellationToken);
     }
 }

@@ -4,10 +4,10 @@ namespace ActualChat.Chat;
 
 public record Chat
 {
-    public ChatId Id { get; init; } = "";
+    public Symbol Id { get; init; } = "";
     public string Title { get; init; } = "";
     public DateTime CreatedAt { get; init; }
     public bool IsPublic { get; init; }
-    public ImmutableArray<UserId> OwnerIds { get; init; } = ImmutableArray<UserId>.Empty;
+    public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
 }
 

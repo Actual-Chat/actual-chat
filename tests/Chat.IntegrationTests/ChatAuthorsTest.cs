@@ -1,10 +1,11 @@
 ﻿using ActualChat.Testing.Host;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatAuthorsTest
+public class ChatAuthorsTest : AppHostTestBase
 {
+    public ChatAuthorsTest(ITestOutputHelper @out) : base(@out) { }
+
     [Fact]
     public async Task NullAuthorResult()
     {

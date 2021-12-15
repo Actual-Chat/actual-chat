@@ -1,0 +1,15 @@
+<div class="@Class">
+    <h1>@Title</h1>
+    <div>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Class { get; set; } = CssClasses.Default[typeof(Note)];
+    [Parameter]
+    public string Title { get; set; } = "Note:";
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

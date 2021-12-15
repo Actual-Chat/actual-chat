@@ -1,23 +1,32 @@
 @namespace ActualChat.UI.Blazor.Components
 @inject IJSRuntime _js
 
-<div @onclick="@ToggleMediaRecorder" class="cursor-pointer select-none flex flex-row bg-gray-700 text-gray-400 text-xs py-2 px-2 rounded-lg opacity-75 hover:opacity-100">
-    <span>MediaRecorder: @_mediaRecorderType</span>
-</div>
+<span class="@(_class ??= this.DefaultClass()) group"
+     @onclick="@ToggleMediaRecorder">
+    <span class="hover-item">Recorder: <b>@(MediaRecorderNames[IsStandardMediaRecorder ? 1 : 0])</b></span>@*
+    *@<span class="hover-item alt">Switch to <b>@(MediaRecorderNames[IsStandardMediaRecorder ? 0 : 1])</b></span>
+</span>
 
 @code {
-    private string _mediaRecorderType = "wasm";
-    private const string _audioModuleImportName = "audio";
+    private static readonly string[] MediaRecorderNames = { "WASM", "Standard" };
+    private static string? _class;
+
+    private const string AudioModuleImportName = "audio";
+    private bool IsStandardMediaRecorder { get; set; } = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
-            _mediaRecorderType = await _js.InvokeAsync<string>($"{_audioModuleImportName}.AudioRecorder.getMediaRecorderType");
+            IsStandardMediaRecorder = await _js.InvokeAsync<bool>(
+                $"{AudioModuleImportName}.AudioRecorder.isStandardMediaRecorder"
+                ).ConfigureAwait(true);
     }
 
-    public async Task ToggleMediaRecorder()
+    private async Task ToggleMediaRecorder()
     {
-        _mediaRecorderType = _mediaRecorderType == "wasm" ? "standard" : "wasm";
-        var jsFunc = $"{_audioModuleImportName}.AudioRecorder.changeMediaRecorder";
-        await _js.InvokeVoidAsync(jsFunc, _mediaRecorderType == "standard").ConfigureAwait(false);
+        IsStandardMediaRecorder = !IsStandardMediaRecorder;
+        await _js.InvokeVoidAsync(
+            $"{AudioModuleImportName}.AudioRecorder.changeMediaRecorder",
+            IsStandardMediaRecorder
+            ).ConfigureAwait(false);
     }
 }

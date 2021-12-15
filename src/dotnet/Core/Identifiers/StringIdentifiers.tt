@@ -4,16 +4,7 @@
 <#@ import namespace="System.Linq" #>
 <#
     List<string> entityTypeNames = new () {
-        "Chat",
-        "AudioRecord",
-        "VideoRecord",
-        "Stream",
-        "User",
-        "Author"
-    };
-
-    List<(string,string)> slaveEntityTypeNames = new () {
-        ("Stream", "AudioRecord")
+        "IdentifierTesting",
     };
 
 #>

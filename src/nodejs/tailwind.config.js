@@ -1,3 +1,19 @@
+// @ts-check
+"use strict";
+const path = require('path');
+const fs = require('fs');
+/**
+ * @param {string} file
+ */
+function _(file) {
+  return path.normalize(path.resolve(__dirname, file));
+}
+
+const dirs = fs.readdirSync(_('./../dotnet/'), { withFileTypes: true })
+  .filter(d => d.isDirectory() && d.name.indexOf("UI.Blazor") >= 0 && d.name !== "UI.Blazor.Host")
+  .map(d => `${_(`./../dotnet/${d.name}`)}${path.sep}**/*.{razor,cshtml}`)
+  .concat(`${_('./../dotnet/Host')}${path.sep}**/*.{razor,cshtml}`);
+
 const colors = require('tailwindcss/colors');
 
 module.exports = ctx => {
@@ -6,10 +22,7 @@ module.exports = ctx => {
       mode: 'jit',
       purge: {
         enabled: ctx.env === 'production' ? true : false,
-        content: [
-          './../dotnet/**/*.razor',
-          './../dotnet/**/*.cshtml',
-        ],
+        content: dirs,
         options: {
           keyframes: true,
         },
@@ -17,6 +30,39 @@ module.exports = ctx => {
       presets: [],
       darkMode: false, // or 'media' or 'class'
       theme: {
+        extend: {
+          textColor: {
+            'primary': 'var(--text-color-primary)',
+            'primary-muted': 'var(--text-color-primary-muted)',
+            'secondary': 'var(--text-color-secondary)',
+            'secondary-muted': 'var(--text-color-secondary-muted)',
+            'accent': 'var(--text-color-accent)',
+            'accent-muted': 'var(--text-color-accent-muted)',
+            'success': 'var(--button-color-success)',
+            'toggle-off': 'var(--text-color-toggle-off)',
+            'toggle-on': 'var(--text-color-toggle-on)',
+          },
+          borderColor: {
+            'primary': 'var(--background-primary)',
+            'primary-inverted': 'var(--text-color-primary)',
+            'secondary': 'var(--background-secondary)',
+            'secondary-inverted': 'var(--text-color-secondary)',
+            'accent': 'var(--background-accent)',
+            'accent-inverted': 'var(--text-color-accent)',
+            'success': 'var(--button-color-success)',
+            'success-muted': 'var(--button-color-success-hover)',
+          },
+          backgroundColor: {
+            'primary': 'var(--background-primary)',
+            'secondary': 'var(--background-secondary)',
+            'accent': 'var(--background-accent)',
+            'online': 'var(--background-online)',
+            'button-success': 'var(--button-color-success)',
+            'button-success-hover': 'var(--button-color-success-hover)',
+            'button-accent': 'var(--button-color-accent)',
+            'button-accent-hover': 'var(--button-color-accent-hover)',
+          },
+        },
         screens: {
           sm: '640px',
           md: '768px',
@@ -281,6 +327,7 @@ module.exports = ctx => {
           ],
         },
         fontSize: {
+          xxs: ['0.6rem', { lineHeight: '0.75rem' }],
           xs: ['0.75rem', { lineHeight: '1rem' }],
           sm: ['0.875rem', { lineHeight: '1.25rem' }],
           base: ['1rem', { lineHeight: '1.5rem' }],
@@ -911,7 +958,7 @@ module.exports = ctx => {
         gridRowStart: ['responsive'],
         gridTemplateColumns: ['responsive'],
         gridTemplateRows: ['responsive'],
-        height: ['responsive'],
+        height: ['responsive', 'group-hover'],
         hueRotate: ['responsive'],
         inset: ['responsive'],
         invert: ['responsive'],
@@ -976,7 +1023,7 @@ module.exports = ctx => {
         verticalAlign: ['responsive'],
         visibility: ['responsive'],
         whitespace: ['responsive'],
-        width: ['responsive'],
+        width: ['responsive', 'group-hover'],
         wordBreak: ['responsive'],
         zIndex: ['responsive', 'focus-within', 'focus'],
       },

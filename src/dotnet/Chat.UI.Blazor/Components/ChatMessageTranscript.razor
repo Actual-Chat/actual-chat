@@ -1,24 +1,30 @@
 @using ActualChat.Transcription
 @namespace ActualChat.Chat.UI.Blazor.Components
+@implements IAsyncDisposable
 
-<p class="@(_componentCssClass ??= this.ComponentCssClass())">
+<p class="@(_class ??= this.DefaultClass())">
     <span>@Transcript.Text</span>
 </p>
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Inject] private ILogger<ChatMessageTranscript> Log { get; set; } = null!;
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; set; } = null!;
     [Inject] private BlazorCircuitContext CircuitContext { get; set; } = null!;
     private CancellationTokenSource? RestartCts { get; set; }
-    private Transcript Transcript { get; set; } = new() { Text = "…" };
+    private Transcript Transcript { get; set; } = new();
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    public ValueTask DisposeAsync() {
+        RestartCts?.CancelAndDisposeSilently();
+        return ValueTask.CompletedTask;
+    }
 
     protected override void OnParametersSet() {
         if (CircuitContext.IsPrerendering)
@@ -35,16 +41,15 @@
 
     private async Task ReadTranscript(ChatMessageModel model, CancellationToken cancellationToken) {
         var entry = model.Entry;
-        var stream = TranscriptStreamer.GetTranscriptStream(entry.StreamId, cancellationToken).ConfigureAwait(false);
+        var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
         var circuitDispatcher = CircuitContext.Dispatcher;
-        var transcript = new Transcript();
-        await foreach (var update in stream.ConfigureAwait(false).WithCancellation(cancellationToken)) {
-            transcript = transcript.WithUpdate(update);
-            var transcriptCopy = transcript;
+        var transcripts = diffs.ApplyDiffs(cancellationToken);
+        await foreach (var transcript in transcripts.ConfigureAwait(false)) {
             await circuitDispatcher.InvokeAsync(() => {
-                Transcript = transcriptCopy;
+                Transcript = transcript;
                 StateHasChanged();
             }).ConfigureAwait(false);
         }
     }
+
 }

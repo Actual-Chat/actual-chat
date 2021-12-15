@@ -286,8 +286,9 @@ public ref struct SpanReader
         // This means that we can read the first 4 bytes without
         // worrying about integer overflow.
 
-        const int MaxBytesWithoutOverflow = 4;
-        for (var shift = 0; shift < MaxBytesWithoutOverflow * 7; shift += 7) {
+        const int maxBytesWithoutOverflow = 4;
+
+        for (var shift = 0; shift < maxBytesWithoutOverflow * 7; shift += 7) {
             // ReadByte handles end of stream cases for us.
             byteReadJustNow = ReadByte();
             if (!byteReadJustNow.HasValue)
@@ -309,7 +310,7 @@ public ref struct SpanReader
         if (byteReadJustNow > 0b_1111u)
             throw new FormatException("Too many bytes in what should have been a 7-bit encoded integer.");
 
-        result |= (uint)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
+        result |= (uint)byteReadJustNow << (maxBytesWithoutOverflow * 7);
         return (int)result;
     }
 

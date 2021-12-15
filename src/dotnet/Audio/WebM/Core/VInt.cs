@@ -31,6 +31,7 @@ public readonly struct VInt : IEquatable<VInt>
     private const ulong MaxValue = (1L << 56) - 1;
     private const ulong UnknownSizeValue = MaxValue | (1ul << 56);
     private const ulong MaxSizeValue = MaxValue - 1;
+    // ReSharper disable once UnusedMember.Local
     private const ulong MaxElementIdValue = (1 << 28) - 1;
 
     private static readonly sbyte[] ExtraBytesSize =

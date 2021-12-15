@@ -7,10 +7,11 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 {
     private volatile TrackPlaybackState _state;
     private readonly TaskSource<Unit> _whenCompletedSource;
+    private ILogger? _log;
 
-    protected ILogger Log { get; }
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+    protected bool DebugMode => Constants.DebugMode.AudioPlayback;
     protected MomentClockSet Clocks { get; }
 
     public IServiceProvider Services { get; }
@@ -28,7 +29,6 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     {
         Playback = playback;
         Services = Playback.Services;
-        Log = Services.LogFor(GetType());
         Clocks = Services.Clocks();
         Command = command;
         _state = new(this);
@@ -45,6 +45,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
+        DebugLog?.LogDebug("Track #{TrackId}: started, Command = {Command}", Command.TrackId, Command);
         Exception? error = null;
         var isStarted = false;
         try {
@@ -52,15 +53,22 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
             var frames = Source.GetFramesUntyped(cancellationToken);
             await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 if (!isStarted) {
+                    DebugLog?.LogDebug("Track #{TrackId}: first frame", Command.TrackId);
                     // We do this here because we want to start buffering as early as possible
                     isStarted = true;
                     await Clocks.CpuClock.Delay(Command.PlayAt, cancellationToken).ConfigureAwait(false);
                     OnPlayedTo(TimeSpan.Zero);
+                    DebugLog?.LogDebug("Track #{TrackId}: [+] StartPlaybackCommand", Command.TrackId);
                     await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
+                    DebugLog?.LogDebug("Track #{TrackId}: [-] StartPlaybackCommand", Command.TrackId);
                 }
+                DebugLog?.LogDebug("Track #{TrackId}: [+] ProcessMediaFrame", Command.TrackId);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
+                DebugLog?.LogDebug("Track #{TrackId}: [-] ProcessMediaFrame", Command.TrackId);
             }
+            DebugLog?.LogDebug("Track #{TrackId}: [+] StopPlaybackCommand", Command.TrackId);
             await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
+            DebugLog?.LogDebug("Track #{TrackId}: [-] StopPlaybackCommand", Command.TrackId);
             await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException e) {

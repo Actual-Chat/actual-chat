@@ -1,18 +1,17 @@
 using ActualChat.Audio.Client.Module;
-using ActualChat.Audio.UI.Blazor;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.WebM;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
-using ActualChat.Chat.UI.Blazor;
+using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.MediaPlayback.Module;
+using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.DependencyInjection;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
@@ -27,10 +26,11 @@ public static class Program
         await ConfigureServices(builder.Services, builder.Configuration, baseUri).ConfigureAwait(false);
 
         var host = builder.Build();
-        await host.Services.HostedServices().Start().ConfigureAwait(false);
+        Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
 
+        await host.Services.HostedServices().Start().ConfigureAwait(false);
         await host.RunAsync().ConfigureAwait(false);
     }
 
@@ -40,11 +40,17 @@ public static class Program
         Uri baseUri)
     {
         // Logging
-        services.AddLogging(logging => {
-            logging.SetMinimumLevel(LogLevel.Information);
-            logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
-            logging.AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning);
-        });
+        services.AddLogging(logging => logging
+            .SetMinimumLevel(LogLevel.Debug)
+            .AddFilter(null, LogLevel.Information) // Default level
+            .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning)
+            .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
+            .AddFilter("ActualChat", LogLevel.Debug)
+            .AddFilter("ActualChat.Audio", LogLevel.Debug)
+            .AddFilter("ActualChat.Chat", LogLevel.Debug)
+            .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
+            .AddFilter("ActualChat.Audio.Client", LogLevel.Debug)
+        );
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);

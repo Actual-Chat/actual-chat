@@ -47,7 +47,7 @@
     public string ChatId { get; set; } = "";
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = (ChatId) ChatId;
+        var chatId = ChatId;
         var user = await _auth.GetSessionUser(_session, cancellationToken).ConfigureAwait(false);
         var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
