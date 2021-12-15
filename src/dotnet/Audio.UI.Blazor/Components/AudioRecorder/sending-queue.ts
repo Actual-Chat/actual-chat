@@ -1,7 +1,11 @@
+import Denque from "denque";
+
 export class SendingQueue {
+    private _state: 'running' | 'paused';
     private _buffer: Uint8Array;
-    private _bufferLength: number;
+    private _bufferOffset: number;
     private _seqNum: number;
+    private readonly _lastBlocks: Denque<Uint8Array>;
     private readonly _chunks: Map<number, Uint8Array>;
     private readonly _options: ISendingQueueOptions;
     private _sendBufferTimeout?: ReturnType<typeof setTimeout>;
@@ -9,10 +13,43 @@ export class SendingQueue {
     constructor(options: ISendingQueueOptions) {
         this._options = options;
         this._buffer = new Uint8Array(this._options.chunkSize);
-        this._bufferLength = 0;
+        this._bufferOffset = 0;
         this._seqNum = 0;
         this._sendBufferTimeout = null;
         this._chunks = new Map<number, Uint8Array>();
+        this._state = 'running';
+        this._lastBlocks = new Denque<Uint8Array>();
+    }
+
+    public async pause(): Promise<void> {
+        this._state = "paused";
+
+        if (this._bufferOffset > 0) {
+            await this.sendBufferAsync(true);
+        }
+        this._buffer.set([0,0,0,0], 0)
+        this._bufferOffset = 4;
+        await this.sendBufferAsync(true);
+    }
+
+    public async resume(): Promise<void> {
+        if (this._state === "running")
+            return;
+
+        this._buffer.set([1,1,1,1], 0)
+        this._bufferOffset = 4;
+        await this.sendBufferAsync(true);
+
+        while (this._lastBlocks.length) {
+            const block = this._lastBlocks.shift();
+            if (block.length + this._bufferOffset >= this._buffer.length) {
+                await this.sendBufferAsync(true);
+            }
+            this._buffer.set(block, this._bufferOffset);
+            this._bufferOffset += block.length;
+        }
+        await this.sendBufferAsync(true);
+        this._state = "running";
     }
 
     public enqueue(data: Uint8Array) {
@@ -20,26 +57,34 @@ export class SendingQueue {
             this.log(`enqueue: ${data.length} byte(s)`);
         }
 
+        if (this._state === "paused") {
+            const queueLength = this._lastBlocks.push(data);
+            if (queueLength > 10) {
+                this._lastBlocks.shift();
+            }
+            return;
+        }
+
         const chunkSize = this._options.chunkSize;
-        let freeBufferLength = chunkSize - this._bufferLength;
+        let freeBufferLength = chunkSize - this._bufferOffset;
         while (data.length >= freeBufferLength) {
             let dataPrefix = data.subarray(0, freeBufferLength);
             data = data.subarray(freeBufferLength)
-            this._buffer.set(dataPrefix, this._bufferLength);
-            this._bufferLength += freeBufferLength;
+            this._buffer.set(dataPrefix, this._bufferOffset);
+            this._bufferOffset += freeBufferLength;
             let _ = this.sendBufferAsync();
-            freeBufferLength = chunkSize - this._bufferLength; // Actually always chunkSize
+            freeBufferLength = chunkSize - this._bufferOffset; // Actually always chunkSize
         }
         if (data.length > 0) {
             // We know for sure here that data fits into the buffer
-            this._buffer.set(data, this._bufferLength);
-            this._bufferLength += data.length;
+            this._buffer.set(data, this._bufferOffset);
+            this._bufferOffset += data.length;
         }
 
-        if (this._bufferLength >= this._options.minChunkSize) {
+        if (this._bufferOffset >= this._options.minChunkSize) {
             let _ = this.sendBufferAsync();
         } else {
-            this.log(`enqueue: ${this._bufferLength} byte(s) were left in buffer`);
+            this.log(`enqueue: ${this._bufferOffset} byte(s) were left in buffer`);
         }
         this.ensureSendTimeout();
     }
@@ -71,7 +116,7 @@ export class SendingQueue {
         if (this._sendBufferTimeout === null) {
             this._sendBufferTimeout = setTimeout(() => {
                 if (this._options.debugMode) {
-                    this.log(`Send timeout is fired, sending buffer with ${this._bufferLength} data bytes, seqNum: ${this._seqNum}.`);
+                    this.log(`Send timeout is fired, sending buffer with ${this._bufferOffset} data bytes, seqNum: ${this._seqNum}.`);
                 }
                 let _ = this.sendBufferAsync();
             }, this._options.maxFillBufferTimeMs);
@@ -85,9 +130,13 @@ export class SendingQueue {
         }
     }
 
-    private async sendBufferAsync(): Promise<void> {
+    private async sendBufferAsync(override: boolean = false): Promise<void> {
         this.clearSendTimeout();
-        const bufferLength = this._bufferLength;
+
+        if (this._state === "paused" && !override)
+            return;
+
+        const bufferLength = this._bufferOffset;
         const seqNum = this._seqNum;
         if (bufferLength === 0) {
             if (this._options.debugMode) {
@@ -105,7 +154,7 @@ export class SendingQueue {
         // increment through boundary of uint32.max (ex: 0xFFFFFFFF + 1 == 0)
         this._seqNum = (seqNum + 1) >>> 0;
         this._buffer = new Uint8Array(this._options.chunkSize);
-        this._bufferLength = 0;
+        this._bufferOffset = 0;
         try {
             await this._options.sendAsync(packetBytes);
             if (this._options.debugMode) {
