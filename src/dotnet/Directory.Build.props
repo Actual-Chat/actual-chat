@@ -41,6 +41,7 @@
     <Using Include="ActualChat" />
     <Using Include="ActualChat.Blobs" />
     <Using Include="ActualChat.Channels" />
+    <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="System.Collections" />
     <Using Include="System.Collections.Concurrent" />
