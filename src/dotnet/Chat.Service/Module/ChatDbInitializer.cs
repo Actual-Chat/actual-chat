@@ -74,6 +74,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
+            // Commented out OldLinearMap -> LinearMap conversion
+            /*
             var dbChatEntries = await dbContext.ChatEntries
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -82,12 +84,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 if (textToTimeMap.IsNullOrEmpty())
                     continue;
                 var newTextToTimeMap = ConvertOldTextToTimeMap(textToTimeMap);
-                if (textToTimeMap == newTextToTimeMap)
+                if (ReferenceEquals(newTextToTimeMap, textToTimeMap))
                     continue;
                 dbChatEntry.TextToTimeMap = newTextToTimeMap;
                 dbContext.Update(dbChatEntry);
             }
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            */
         }
 
         if (DbInfo.ShouldVerifyDb) {
