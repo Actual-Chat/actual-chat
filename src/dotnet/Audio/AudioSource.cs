@@ -196,7 +196,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 var block = (Block)webMReader.ReadResult;
 
                 if (currentBlockOffsetMs == 0 && clusterOffsetMs == 0) {
-                    if (block.TimeCode > 60) { // audio segment with an offset, 60 is the largest opus frame duration
+                    if (block.TimeCode > 60 && skipTo == TimeSpan.Zero) { // audio segment with an offset, 60 is the largest opus frame duration
                         skipTo = TimeSpan.FromMilliseconds(1);
                         skipToMs = 1;
                     }
