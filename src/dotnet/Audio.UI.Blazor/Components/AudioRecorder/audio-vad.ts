@@ -118,7 +118,7 @@ export class VoiceActivityDetector {
                 speechProbabilities[probIndex++] = resultData[j];
             }
         }
-        const minSilenceSamples = 18000;
+        const minSilenceSamples = 64000;
         const minSpeechSamples = 12000;
         const padSamples = 500;
 
@@ -139,13 +139,13 @@ export class VoiceActivityDetector {
                 // enough statistics to adjust trigSum \ negTrigSum
 
                 const probMedian = this._streamedMedian.median;
-                trigSum = 0.89 * probMedian + 0.08; // 0.08 when median is zero, 0.97 when median is 1
+                trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
                 negTrigSum = 0.3 * probMedian;
 
             }
 
             if (smoothedProb >= trigSum && this._endOffset > 0) {
-                if (endResetCounter++ > 10) {
+                if (endResetCounter++ > 5) {
                     // silence period is too short
                     this._endOffset = null;
                     endResetCounter = 0;
