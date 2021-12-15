@@ -23,7 +23,7 @@ public sealed class Transcript
     [DataMember(Order = 1)]
     public LinearMap TextToTimeMap { get; }
     [DataMember(Order = 2)]
-    public bool IsStable { get; }
+    public TranscriptFlags Flags { get; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<int> TextRange { get; }
@@ -33,15 +33,25 @@ public sealed class Transcript
     public int Length => Text.Length;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public float Duration => TimeRange.Size();
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsStable => 0 != (Flags & TranscriptFlags.Stable);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsDiff => 0 != (Flags & TranscriptFlags.Diff);
 
     public Transcript()
-        : this("", EmptyMap, false) { }
+        : this("", EmptyMap, default(TranscriptFlags)) { }
 
     public Transcript(string text, LinearMap textToTimeMap)
-        : this(text, textToTimeMap, false) { }
+        : this(text, textToTimeMap, default(TranscriptFlags)) { }
+
+    public Transcript(string text, LinearMap textToTimeMap, bool isStable)
+        : this(text, textToTimeMap, isStable ? TranscriptFlags.Stable : 0) { }
+
+    public Transcript(string text, LinearMap textToTimeMap, bool isStable, bool isDiff)
+        : this(text, textToTimeMap, (isStable ? TranscriptFlags.Stable : 0) | (isDiff ? TranscriptFlags.Diff : 0)) { }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public Transcript(string text, LinearMap textToTimeMap, bool isStable)
+    public Transcript(string text, LinearMap textToTimeMap, TranscriptFlags flags)
     {
         Text = text;
         TextToTimeMap = textToTimeMap;
@@ -50,11 +60,14 @@ public sealed class Transcript
         if (TextRange.Size() != Text.Length)
             throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
         TimeRange = TextToTimeMap.YRange;
-        IsStable = isStable;
+        Flags = flags;
     }
 
     public override string ToString()
-        => $"{(IsStable ? "" : "~")}'{Text}' & {TextToTimeMap}";
+        => $"{(IsDiff ? "diff: " : "")}{(IsStable ? "" : "~")}'{Text}' & {TextToTimeMap}";
+
+    public Transcript WithFlags(TranscriptFlags flags)
+        => new(Text, TextToTimeMap, flags);
 
     public int GetContentStart()
     {
@@ -106,28 +119,29 @@ public sealed class Transcript
             var prefixText = Text[..textStart];
             var prefixMap = map[..mapStart]
                 .AppendOrUpdateTail(new LinearMap(start, timeStart), TextToTimeMapTextPrecision);
-            prefix = new Transcript(prefixText, prefixMap, IsStable);
+            prefix = new Transcript(prefixText, prefixMap, Flags);
         }
         if (needSuffix) {
             var suffixText = Text[textStart..];
             var suffixMap = new LinearMap(start, overlappingTimeStart)
                 .AppendOrUpdateTail(map[mapStart..], TextToTimeMapTextPrecision);
-            suffix = new Transcript(suffixText, suffixMap, IsStable);
+            suffix = new Transcript(suffixText, suffixMap, Flags);
         }
         return (prefix!, suffix!);
     }
 
-    public Transcript DiffWith(Transcript @base)
+    public Transcript DiffWith(Transcript @base, bool noDiffFlag = false)
     {
+        if (IsDiff || @base.IsDiff)
+            throw new InvalidOperationException("Can't compute diff for diffs.");
         var text = Text;
         var map = TextToTimeMap;
         var baseText = @base.Text;
         var baseMap = @base.TextToTimeMap;
         var d = map[0] - baseMap[0];
-        if (Math.Abs(d.X) > 1e-6)
-            throw new InvalidOperationException("Transcripts should start at the same position.");
-        if (Math.Abs(d.Y) > 1e-6)
-            throw new InvalidOperationException("Transcripts should start at the same time.");
+        if (Math.Abs(d.X) > 1e-6 || Math.Abs(d.Y) > 1e-6)
+            return this;
+        var textRangeStart = TextRange.Start;
 
         // The logic below is fairly complex, but overall:
         // - We find the max. common part of the map and the text
@@ -138,11 +152,10 @@ public sealed class Transcript
         var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points);
         if (commonMapPrefixLength == 0)
             return this;
-        var commonTextPrefixLengthBasedOnMap = (int) baseMap.Points[commonMapPrefixLength - 1].X;
-        var commonTextPrefixLength = baseText
-            .AsSpan(0, commonTextPrefixLengthBasedOnMap)
+        var commonTextPrefixLengthBasedOnMap = (int) baseMap.Points[commonMapPrefixLength - 1].X - textRangeStart;
+        var commonTextPrefixLength = baseText.AsSpan(0, commonTextPrefixLengthBasedOnMap)
             .CommonPrefixLength(text.AsSpan(0, commonTextPrefixLengthBasedOnMap));
-        commonMapPrefixLength = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength);
+        commonMapPrefixLength = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength + textRangeStart);
         if (commonMapPrefixLength <= 0)
             return this;
         // Here commonMapPrefixLength points to a map point that lies before commonTextPrefixLength,
@@ -154,10 +167,11 @@ public sealed class Transcript
         var textPrefix = baseText[..commonTextPrefixLength];
 
         var textSuffix = text[textPrefix.Length..];
-        var mapSuffix = new LinearMap(textPrefix.Length, map.Map(textPrefix.Length))
+        var textPrefixRangeEnd = textPrefix.Length + textRangeStart;
+        var mapSuffix = new LinearMap(textPrefixRangeEnd, map.Map(textPrefixRangeEnd))
             .AppendOrUpdateTail(map[mapPrefix.Length..], TextToTimeMapTextPrecision);
 
-        var diff = new Transcript(textSuffix, mapSuffix, IsStable);
+        var diff = new Transcript(textSuffix, mapSuffix, IsStable, !noDiffFlag);
         diff.AssertValid(); // TODO(AY): Remove this call once we see everything is fine
         return diff;
     }
@@ -181,6 +195,8 @@ public sealed class Transcript
     public Transcript WithDiff(Transcript? diff)
     {
         if (diff == null) return this;
+        if (!diff.IsDiff)
+            return diff;
 
         var diffMap = diff.TextToTimeMap;
         var cutIndex = diff.TextRange.Start - TextRange.Start;

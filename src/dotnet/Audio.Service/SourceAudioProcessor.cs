@@ -22,6 +22,7 @@ public class SourceAudioProcessor : AsyncProcessBase
     public AudioSplitter AudioSplitter { get; }
     public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptSplitter TranscriptSplitter { get; }
+    public TranscriptBeautifier TranscriptBeautifier { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
     public IChatsBackend ChatsBackend { get; }
     public MomentClockSet ClockSet { get; }
@@ -34,6 +35,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         AudioSplitter audioSplitter,
         AudioSourceStreamer audioSourceStreamer,
         TranscriptSplitter transcriptSplitter,
+        TranscriptBeautifier transcriptBeautifier,
         TranscriptStreamer transcriptStreamer,
         IChatsBackend chatsBackend,
         MomentClockSet clockSet,
@@ -47,6 +49,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         AudioSplitter = audioSplitter;
         AudioSourceStreamer = audioSourceStreamer;
         TranscriptSplitter = transcriptSplitter;
+        TranscriptBeautifier = transcriptBeautifier;
         TranscriptStreamer = transcriptStreamer;
         ChatsBackend = chatsBackend;
         ClockSet = clockSet;
@@ -135,9 +138,10 @@ public class SourceAudioProcessor : AsyncProcessBase
         CancellationToken cancellationToken)
     {
         var streamId = $"{audioSegment.StreamId}-{segment.Index:D}";
-        var transcripts = segment.Suffixes.Memoize(cancellationToken);
-        var publishTask = TranscriptStreamer.Publish(streamId, transcripts.Replay(cancellationToken), cancellationToken);
-        await CreateTextEntry(audioEntry, streamId, transcripts.Replay(cancellationToken), cancellationToken)
+        var transcripts = TranscriptBeautifier.Apply(segment, cancellationToken);
+        var diffs = transcripts.GetDiffs(cancellationToken).Memoize(); // Should
+        var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
+        await CreateTextEntry(audioEntry, streamId, diffs.Replay(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await publishTask.ConfigureAwait(false);
     }
