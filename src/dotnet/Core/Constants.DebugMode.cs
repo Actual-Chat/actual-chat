@@ -16,7 +16,7 @@ public static partial class Constants
         public static bool AudioRecording { get; } = false;
         public static bool AudioRecordingBlobStream { get; } = false;
         public static bool Transcription { get; } = true;
-        public static bool GoogleTranscriber { get; } = false;
+        public static bool GoogleTranscriber { get; } = true;
         public static bool WebMReader { get; } = false;
     }
 }

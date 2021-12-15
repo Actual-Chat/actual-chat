@@ -1,4 +1,4 @@
-using ActualChat.Transcription.Internal;
+using ActualChat.Transcription.Google;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf.WellKnownTypes;
 

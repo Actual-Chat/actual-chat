@@ -4,8 +4,8 @@ namespace ActualChat.Audio.Processing;
 
 public class TranscriptSplitter
 {
-    public static TimeSpan SplitPauseDuration { get; set; } = TimeSpan.FromSeconds(1);
-    public static TimeSpan SplitOverlap { get; set; } = TimeSpan.FromSeconds(0.25);
+    public static float SplitPauseDuration { get; set; } = 0.5f;
+    public static float SplitOverlap { get; set; } = 0.25f;
 
     private ILogger? _log;
     protected ILogger Log => _log ??= Services.LogFor(GetType());
@@ -36,7 +36,7 @@ public class TranscriptSplitter
                     continue;
                 }
 
-                if (transcript.TextRange.End <= lastSentTranscript.TextRange.End) {
+                if (transcript.TextRange.End <= lastSentTranscript.TextRange.End || !lastSentTranscript.IsStable) {
                     // transcript is shorter than lastSentTranscript
                     var diff = transcript.DiffWith(segment!.Prefix);
                     DebugLog?.LogDebug("Append shorter: {Diff}", diff);
@@ -50,14 +50,11 @@ public class TranscriptSplitter
                 var contentStart = suffix.GetContentStart();
                 if (contentStart == suffix.TextRange.End)
                     continue; // Empty suffix
-
                 var contentStartTime = suffix.TextToTimeMap.Map(contentStart);
-                var pauseDuration = contentStartTime - lastSentTranscript.TimeRange.End;
-                DebugLog?.LogDebug(
-                    ".. {Suffix}, content @ {ContentStart} -> {ContentStartTime}",
-                    suffix, contentStart, contentStartTime);
+                DebugLog?.LogDebug(".. {Suffix}, content @ {ContentStartTime}", suffix, contentStartTime);
 
-                if (pauseDuration < SplitPauseDuration.TotalSeconds) {
+                var pauseDuration = contentStartTime - lastSentTranscript.GetContentEndTime();
+                if (pauseDuration < SplitPauseDuration) {
                     var diff = transcript.DiffWith(segment!.Prefix);
                     DebugLog?.LogDebug("Append: {Diff}", diff);
                     segment.Suffixes.Writer.TryWrite(diff);
@@ -66,7 +63,7 @@ public class TranscriptSplitter
                 }
 
                 segment!.Suffixes.Writer.Complete();
-                var (prefix, suffix1) = transcript.Split(contentStart, (float) SplitOverlap.TotalSeconds);
+                var (prefix, suffix1) = transcript.Split(contentStart, SplitOverlap);
                 segment = segment.Next(prefix);
                 DebugLog?.LogDebug("Split: {Start}", suffix1);
                 segment.Suffixes.Writer.TryWrite(suffix1);
