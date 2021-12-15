@@ -38,37 +38,34 @@ public class TranscriptSplitter
 
                 if (transcript.TextRange.End <= lastSentTranscript.TextRange.End || !lastSentTranscript.IsStable) {
                     // transcript is shorter than lastSentTranscript
-                    var diff = transcript.DiffWith(segment!.Prefix);
-                    DebugLog?.LogDebug("Append shorter: {Diff}", diff);
-                    segment.Suffixes.Writer.TryWrite(diff);
+                    var suffix = transcript.GetSuffix(segment!.Prefix.Length);
+                    DebugLog?.LogDebug("| {Suffix} (unstable)", suffix);
+                    segment!.Suffixes.Writer.TryWrite(suffix);
                     lastSentTranscript = transcript;
-                    continue;
                 }
+                else {
+                    var suffix = transcript.GetSuffix(lastSentTranscript.TextRange.End);
+                    var contentStart = suffix.GetContentStart();
+                    if (contentStart == suffix.TextRange.End)
+                        continue; // Empty suffix
+                    var contentStartTime = suffix.TextToTimeMap.Map(contentStart);
 
-                var suffixStart = lastSentTranscript.TextRange.End;
-                var suffix = transcript.GetSuffix(suffixStart);
-                var contentStart = suffix.GetContentStart();
-                if (contentStart == suffix.TextRange.End)
-                    continue; // Empty suffix
-                var contentStartTime = suffix.TextToTimeMap.Map(contentStart);
-                DebugLog?.LogDebug(".. {Suffix}, content @ {ContentStartTime}", suffix, contentStartTime);
+                    var pauseDuration = contentStartTime - lastSentTranscript.GetContentEndTime();
+                    if (pauseDuration < SplitPauseDuration) {
+                        DebugLog?.LogDebug("| {Suffix} ({PauseDuration}s pause)", suffix, pauseDuration);
+                        segment!.Suffixes.Writer.TryWrite(transcript);
+                        lastSentTranscript = transcript;
+                        continue;
+                    }
 
-                var pauseDuration = contentStartTime - lastSentTranscript.GetContentEndTime();
-                if (pauseDuration < SplitPauseDuration) {
-                    var diff = transcript.DiffWith(segment!.Prefix);
-                    DebugLog?.LogDebug("Append: {Diff}", diff);
-                    segment.Suffixes.Writer.TryWrite(diff);
-                    lastSentTranscript = transcript;
-                    continue;
+                    segment!.Suffixes.Writer.Complete();
+                    var (prefix, suffix1) = transcript.Split(contentStart, SplitOverlap);
+                    segment = segment.Next(prefix);
+                    DebugLog?.LogDebug("⏎ {Suffix} ({PauseDuration}s pause)", suffix1, pauseDuration);
+                    segment.Suffixes.Writer.TryWrite(suffix1);
+                    lastSentTranscript = prefix;
+                    yield return segment;
                 }
-
-                segment!.Suffixes.Writer.Complete();
-                var (prefix, suffix1) = transcript.Split(contentStart, SplitOverlap);
-                segment = segment.Next(prefix);
-                DebugLog?.LogDebug("Split: {Start}", suffix1);
-                segment.Suffixes.Writer.TryWrite(suffix1);
-                lastSentTranscript = prefix;
-                yield return segment;
             }
         }
         finally {

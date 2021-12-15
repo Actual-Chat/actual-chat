@@ -124,7 +124,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
-            if (State.LastStable.Text.Length != 0 && !text.StartsWith(" ")) {
+            if (State.LastStable.Text.Length != 0 && !text.StartsWith(" ", StringComparison.InvariantCulture)) {
                 // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
