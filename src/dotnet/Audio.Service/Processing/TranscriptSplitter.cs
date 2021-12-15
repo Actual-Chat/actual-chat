@@ -4,7 +4,7 @@ namespace ActualChat.Audio.Processing;
 
 public class TranscriptSplitter
 {
-    public static float SplitPauseDuration { get; set; } = 0.5f;
+    public static float SplitPauseDuration { get; set; } = 0.75f;
     public static float SplitOverlap { get; set; } = 0.25f;
 
     private ILogger? _log;
