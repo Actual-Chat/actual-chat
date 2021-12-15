@@ -16,6 +16,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>MatroskaModels.cs</LastGenOutput>
     </None>
+    <None Update="WebM\MatroskaSpecification.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaSpecification.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

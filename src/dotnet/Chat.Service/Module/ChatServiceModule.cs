@@ -1,11 +1,8 @@
 ﻿using ActualChat.Chat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;

@@ -37,7 +37,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
 
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> GetSessionChatAuthor(
-        Session session, ChatId chatId,
+        Session session, string chatId,
         CancellationToken cancellationToken)
     {
         var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
@@ -53,7 +53,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
 
     // [ComputeMethod]
     public virtual async Task<Author?> GetAuthor(
-        ChatId chatId, AuthorId authorId, bool inherit,
+        string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)
     {
         var chatAuthor = await Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);

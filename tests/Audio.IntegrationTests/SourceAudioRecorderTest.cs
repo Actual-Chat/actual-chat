@@ -1,7 +1,8 @@
-using ActualChat.Blobs;
+using ActualChat.Audio.Db;
+using ActualChat.Host;
 using ActualChat.Testing.Host;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.IO;
+using Stl.Redis;
 
 namespace ActualChat.Audio.IntegrationTests;
 
@@ -12,7 +13,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     [Fact]
     public async void EmptyRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -29,8 +30,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
 
         var record = await recordTask.ConfigureAwait(false);
         record.Should().Be(recordSpec with {
-            Id = record!.Id,
-            AuthorId = record!.AuthorId
+            Id = record.Id,
+            AuthorId = record.AuthorId
         });
 
         var audioStream = sourceAudioRecorder.GetSourceAudioBlobStream(record.Id, CancellationToken.None);
@@ -40,7 +41,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     [Fact]
     public async Task StreamRecordingTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var sessionFactory = services.GetRequiredService<ISessionFactory>();
         var session = sessionFactory.CreateSession();
@@ -51,7 +52,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var writtenSize = await UploadRecording(session, "1", sourceAudioRecorder);
 
         var record = await recordTask;
-        var blobStream = sourceAudioRecorder.GetSourceAudioBlobStream(record!.Id, CancellationToken.None);
+        var blobStream = sourceAudioRecorder.GetSourceAudioBlobStream(record.Id, CancellationToken.None);
         var readSize = (long) await blobStream.SumAsync(p => p.Data.Length);
 
         readSize.Should().Be(writtenSize);
@@ -60,11 +61,16 @@ public class SourceAudioRecorderTest : AppHostTestBase
     [Fact]
     public async Task StreamTest()
     {
-        using var appHost = await TestHostFactory.NewAppHost();
+        using var appHost = await NewAppHost();
         var services = appHost.Services;
         var audioStreamer = services.GetRequiredService<AudioStreamer>();
 
-        var streamId = (StreamId)"test-stream-id";
+        var streamId = (string)"test-stream-id";
+        var audioRedisDb = services.GetRequiredService<RedisDb<AudioContext>>();
+        var audioStreamsDb = audioRedisDb.WithKeyPrefix("audio-streams");
+        var streamer = audioStreamsDb.GetStreamer<BlobPart>(streamId);
+        await streamer.Remove();
+
         var filePath = GetAudioFilePath();
 
         var blobStream = filePath.ReadBlobStream();
@@ -79,7 +85,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
     }
 
     private static async Task<long> ReadAudioStream(
-        StreamId streamId,
+        string streamId,
         IAudioStreamer audioStreamer)
     {
         var blobStream = audioStreamer.GetAudioBlobStream(streamId, CancellationToken.None);
@@ -101,4 +107,13 @@ public class SourceAudioRecorderTest : AppHostTestBase
 
     private static FilePath GetAudioFilePath(FilePath? fileName = null)
         => new FilePath(Environment.CurrentDirectory) & "data" & (fileName ?? "file.webm");
+
+    private static async Task<AppHost> NewAppHost()
+        => await TestHostFactory.NewAppHost(
+            null,
+            services => {
+                services.AddSingleton(new SourceAudioProcessor.Options {
+                    IsEnabled = false,
+                });
+            });
 }

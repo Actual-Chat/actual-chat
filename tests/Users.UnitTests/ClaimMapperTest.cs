@@ -1,6 +1,4 @@
-﻿using ActualChat.Users.Db;
-
-namespace ActualChat.Users.UnitTests;
+﻿namespace ActualChat.Users.UnitTests;
 
 public class ClaimMapperTest
 {

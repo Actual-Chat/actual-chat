@@ -1,17 +1,13 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
-namespace ActualChat.Chat.UI.Blazor;
+namespace ActualChat.Chat.UI.Blazor.Module;
 
 public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 {
-    /// <inheritdoc />
     public static string ImportName => "chat";
 
     public ChatBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }

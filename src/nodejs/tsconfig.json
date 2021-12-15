@@ -1,7 +1,10 @@
 {
   "include": [
     "index.ts",
-    "global.d.ts"
+    "types/",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoder-worker.ts"
   ],
   "compilerOptions": {
     "alwaysStrict": true,
@@ -13,6 +16,7 @@
     "noEmitOnError": true,
     "importsNotUsedAsValues": "remove",
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": false,
     // change to true (?)
     "noImplicitAny": false,
     // change to true (?)
@@ -22,7 +26,7 @@
     "checkJs": false,
     "sourceMap": true,
     /* Basic Options */
-    "target": "es2017", /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019' or 'ESNEXT'. */
+    "target": "es2017",
     "module": "es2020",
     "lib": [
       "dom",

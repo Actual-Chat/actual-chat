@@ -1,9 +1,8 @@
-using ActualChat.Blobs;
+using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Host;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
@@ -35,8 +34,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var record = await dequeueTask;
         record.Should()
             .Be(recordingSpec with {
-                Id = record!.Id,
-                AuthorId = record!.AuthorId,
+                Id = record.Id,
+                AuthorId = record.AuthorId,
             });
     }
 
@@ -71,15 +70,13 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
         var chat = await chatService.CreateChat(new(session, "Test"), default);
         using var cts = new CancellationTokenSource();
-        var recordingTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
-
+        var sourceAudioTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
+        var audioRecord = await sourceAudioTask;
 
-        var recording = await recordingTask;
-        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
-
-        var readTask = ReadAudioData(recording!.Id, audioStreamer);
-        var readTranscriptTask = ReadTranscriptStream(recording!.Id, transcriptStreamer);
+        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(audioRecord, cts.Token);
+        var readTask = ReadAudioData(audioRecord.Id, audioStreamer);
+        var readTranscriptTask = ReadTranscriptStream(audioRecord.Id, transcriptStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
         var transcribed = await readTranscriptTask;
@@ -109,9 +106,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var pushAudioTask = PushAudioData(session, chat.Id, sourceAudioRecorder);
 
         var recording = await recordingTask;
-        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording!, cts.Token);
-
-        var readTask = ReadAudioData(recording!.Id, audioStreamer);
+        var pipelineTask = sourceAudioProcessor.ProcessSourceAudio(recording, cts.Token);
+        var readTask = ReadAudioData(recording.Id, audioStreamer);
         var writtenSize = await pushAudioTask;
         var readSize = await readTask;
 
@@ -130,28 +126,26 @@ public class SourceAudioProcessorTest : AppHostTestBase
             });
 
     private async Task<int> ReadTranscriptStream(
-        AudioRecordId audioRecordId,
+        string audioRecordId,
         ITranscriptStreamer transcriptStreamer)
     {
-        var size = 0;
-        // TODO(AK): we need to figure out how to notify consumers about new streamID - with new ChatEntry?
-        var streamId = new StreamId(audioRecordId, 0);
-        var transcriptStream = transcriptStreamer.GetTranscriptStream(streamId, CancellationToken.None);
-        await foreach (var update in transcriptStream) {
-            if (update.UpdatedPart == null)
-                continue;
-
-            Out.WriteLine(update.UpdatedPart.Text);
-            size = (int)update.UpdatedPart.TextToTimeMap.SourceRange.Max;
+        var totalLength = 0;
+        // TODO(AK): we need to figure out how to notify consumers about new streamId - with new ChatEntry?
+        var audioStreamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
+        var transcriptStreamId = TranscriptSegment.GetStreamId(audioStreamId, 0);
+        var diffs = transcriptStreamer.GetTranscriptDiffStream(transcriptStreamId, CancellationToken.None);
+        await foreach (var diff in diffs) {
+            Out.WriteLine(diff.Text);
+            totalLength += diff.Length;
         }
-        return size;
+        return totalLength;
     }
 
     private static async Task<int> ReadAudioData(
-        AudioRecordId audioRecordId,
+        string audioRecordId,
         IAudioSourceStreamer audioStreamer)
     {
-        var streamId = new StreamId(audioRecordId, 0);
+        var streamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
         var audio = await audioStreamer.GetAudio(streamId, default, CancellationToken.None);
         var header = audio.Format.ToBlobPart().Data;
 
@@ -182,7 +176,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
     private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
     {
-        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(cancellationToken);
+        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(1024, cancellationToken);
         var audio = new AudioSource(blobStream, default, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;

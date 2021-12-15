@@ -1,9 +1,7 @@
 using ActualChat.Db;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication.Commands;
-using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users.Module;

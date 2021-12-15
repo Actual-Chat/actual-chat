@@ -8,14 +8,14 @@
         : author.Picture;
 }
 
-<div class="@(_componentCssClass ??= this.ComponentCssClass()) flex items-start mb-4 text-sm">
-    <img src="@picture" class="author w-10 h-10 rounded-md mr-3 select-none bg-gray-50" alt="@author.Name"/>
+<div class="@(_class ??= this.DefaultClass())">
+    <img src="@picture" class="avatar author" alt="@author.Name"/>
     <div class="flex-1 overflow-hidden">
         <div class="header">
-            <span class="font-bold text-gray-900">@author.Name</span>
-            <span class="text-gray-500 text-xs">@entry.BeginsAt.ToString("HH:mm")</span>
+            <span class="author-name">@author.Name</span>
+            <span class="begin-time">@entry.BeginsAt.ToString("HH:mm")</span>
             &nbsp;
-            <span class="text-gray-100 text-xs">id=@entry.Id</span>
+            <span class="entry-id">id=@entry.Id</span>
         </div>
         <div class="content">
             @if (entry.IsStreaming) {
@@ -28,7 +28,7 @@
 </div>
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;

@@ -1,5 +1,4 @@
-﻿using ActualChat.UI.Blazor.Components;
-namespace ActualChat.UI.Blazor.UnitTests;
+﻿namespace ActualChat.UI.Blazor.UnitTests;
 
 public class VirtualListStatisticsTest
 {

@@ -36,7 +36,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [ComputeMethod]
-    public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
@@ -46,43 +46,46 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetTile(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await GetTile(chatId, entryType, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntryCount(chatId, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await GetEntryCount(chatId, entryType, idTileRange, cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
     public virtual async Task<Range<long>> GetIdRange(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetIdRange(chatId, cancellationToken).ConfigureAwait(false);
+        return await GetIdRange(chatId, entryType, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
     public virtual async Task<ChatPermissions> GetPermissions(
         Session session,
-        ChatId chatId,
+        string chatId,
         CancellationToken cancellationToken)
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
@@ -123,7 +126,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 
         var chat = new Chat() {
             Title = title,
-            OwnerIds = ImmutableArray.Create((UserId)user.Id),
+            OwnerIds = ImmutableArray.Create(user.Id),
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
         return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);

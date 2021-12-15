@@ -2,8 +2,8 @@
 
 @{
     string additionalCssClass = Data.Status switch {
-        NavbarLinkModelStatus.Online => "bg-green-500",
-        NavbarLinkModelStatus.Offline => "border border-white",
+        NavbarLinkModelStatus.Online => "bg-online",
+        NavbarLinkModelStatus.Offline => "border border-primary-inverted",
         NavbarLinkModelStatus.None => "",
         _ => "",
     };
@@ -11,7 +11,7 @@
 
 <div class="flex flex-row items-center mb-2 px-1">
     <span class="rounded-full block w-2 h-2 mr-3 @additionalCssClass"></span>
-    <span class="text-white opacity-75 hover:opacity-100"><a href="@Data.Href">@Data.Name</a></span>
+    <span class="links-item"><a href="@Data.Href">@Data.Name</a></span>
 </div>
 
 @code {

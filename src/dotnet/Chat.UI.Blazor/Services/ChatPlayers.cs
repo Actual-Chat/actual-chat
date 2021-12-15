@@ -1,22 +1,20 @@
-using Microsoft.Extensions.DependencyInjection;
-using Stl.Fusion.Blazor;
-
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // This service can be used only from the UI thread
 public class ChatPlayers : IAsyncDisposable
 {
-    private Dictionary<ChatId, ChatPlayer> RealtimePlayers { get; } = new();
-    private Dictionary<ChatId, ChatPlayer> HistoricalPlayers { get; } = new();
+    private ILogger? _log;
 
-    private ILogger Log { get; }
+    private Dictionary<Symbol, ChatPlayer> RealtimePlayers { get; } = new();
+    private Dictionary<Symbol, ChatPlayer> HistoricalPlayers { get; } = new();
+
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private IServiceProvider Services { get; }
     private BlazorCircuitContext CircuitContext { get; }
     private Session Session { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
-        Log = services.LogFor(GetType());
         Services = services;
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         Session = Services.GetRequiredService<Session>();
@@ -27,7 +25,7 @@ public class ChatPlayers : IAsyncDisposable
         var players = RealtimePlayers.Values.Concat(HistoricalPlayers.Values).ToList();
         RealtimePlayers.Clear();
         HistoricalPlayers.Clear();
-        foreach (var player in players.OrderBy(p => p.ChatId.Value)) {
+        foreach (var player in players.OrderBy(p => p.ChatId)) {
             try {
                 await player.DisposeAsync().ConfigureAwait(true);
             }
@@ -38,7 +36,7 @@ public class ChatPlayers : IAsyncDisposable
     }
 
     public ValueTask<ChatPlayer> GetRealtimePlayer(
-        ChatId chatId, CancellationToken cancellationToken = default)
+        Symbol chatId, CancellationToken cancellationToken = default)
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
         if (player is { IsDisposeStarted: false })
@@ -54,7 +52,7 @@ public class ChatPlayers : IAsyncDisposable
     }
 
     public ValueTask<ChatPlayer> GetHistoricalPlayer(
-        ChatId chatId, CancellationToken cancellationToken = default)
+        Symbol chatId, CancellationToken cancellationToken = default)
     {
         var player = HistoricalPlayers.GetValueOrDefault(chatId);
         if (player is { IsDisposeStarted: false })
@@ -69,7 +67,7 @@ public class ChatPlayers : IAsyncDisposable
         return ValueTask.FromResult(player);
     }
 
-    public async ValueTask DisposePlayers(ChatId chatId)
+    public async ValueTask DisposePlayers(string chatId)
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
         if (player != null)

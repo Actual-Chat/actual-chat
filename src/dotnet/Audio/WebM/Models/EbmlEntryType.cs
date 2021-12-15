@@ -1,10 +1,9 @@
-namespace ActualChat.Audio.WebM.Models
+namespace ActualChat.Audio.WebM.Models;
+
+public enum EbmlEntryType : byte
 {
-    public enum EbmlEntryType : byte
-    {
-        None = 0,
-        Ebml,
-        Segment,
-        Cluster
-    }
+    None = 0,
+    Ebml,
+    Segment,
+    Cluster
 }

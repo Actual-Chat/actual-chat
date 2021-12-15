@@ -1,8 +1,5 @@
-using Xunit;
+namespace ActualChat.Testing.Collections;
 
-namespace ActualChat.Testing.Collections
-{
-    [CollectionDefinition(nameof(AppHostTests), DisableParallelization = true)]
-    public class AppHostTests
-    { }
-}
+[CollectionDefinition(nameof(AppHostTests), DisableParallelization = true)]
+public class AppHostTests
+{ }

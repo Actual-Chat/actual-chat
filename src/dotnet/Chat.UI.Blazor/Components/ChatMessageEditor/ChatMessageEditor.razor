@@ -2,22 +2,27 @@
 @implements IChatMessageEditorBackend
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
 @implements IAsyncDisposable
 @inject IChats _chatService
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 
-<div class="@(_componentCssClass ??= this.ComponentCssClass()) sticky bottom-0 self-end bg-white w-full">
+<div class="@(_class ??= this.DefaultClass())">
     <div class="flex flex-row justify-between mx-3 my-2">
         @if (RealtimePlayer != null) {
             <ChatPlayerToggle Player="RealtimePlayer"/>
         }
-        <div @ref="Ref" class="flex-1 p-2 ml-1 mr-1 outline-none rounded-xl border-2 break-all border-gray-400 hover:border-gray-500 focus:border-gray-800 border-opacity-25" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">
-        </div>
+        <button class="plus-button">
+                <svg class="plus-button-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+                </svg>
+        </button>
+        <div @ref="Ref" class="message-input" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">        </div>
         <div class="flex flex-row h-full px-1 justify-center justify-items-center">
-            <button @onclick="_ => Post()" class="message-submit block px-3 py-2 text-green-500">
-                <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+            <button @onclick="_ => Post()" class="post-message">
+                <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="-2 -2 28 28">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
@@ -27,7 +32,7 @@
 </div>
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
     private ElementReference Ref { get; set; }
@@ -46,6 +51,7 @@
     public async ValueTask DisposeAsync() {
         if (JSRef != null!)
             await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+    // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
     }
 
@@ -64,7 +70,7 @@
     }
 
     [JSInvokable]
-    public void UpdateClientSideState(string text) {
+    public void UpdateClientSideState(string? text) {
         Text = text ?? "";
     }
 

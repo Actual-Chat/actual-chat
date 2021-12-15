@@ -8,7 +8,7 @@
 @inject IActivePlaybackInfo _activePlaybackInfo
 
 @if (Markup != null) {
-    <p class="@(_componentCssClass ??= this.ComponentCssClass())">
+    <p class="@(_class ??= this.DefaultClass())">
         @foreach (var part in Markup.Parts) {
             @RenderPart(part)
         }
@@ -16,7 +16,7 @@
 }
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
 
     [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; set; } = null!;
     [Inject] private MarkupParser MarkupParser { get; set; } = null!;

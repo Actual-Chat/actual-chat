@@ -7,24 +7,29 @@
     "watch": "webpack --mode development --watch"
   },
   "devDependencies": {
+    "@types/audioworklet": "^0.0.22",
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
     "@types/recordrtc": "^5.6.8",
     "@typescript/lib-dom": "npm:@types/web@^0.0.47",
     "autoprefixer": "^10.4.0",
     "css-loader": "^6.5.1",
-    "cssnano": "^5.0.11",
+    "cssnano": "^5.0.12",
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
     "mini-css-extract-plugin": "^2.4.5",
     "opus-media-recorder": "^0.8.0",
-    "postcss-loader": "^6.2.0",
+    "postcss-loader": "^6.2.1",
     "tailwindcss": "^2.2.19",
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.2",
-    "webpack": "^5.64.2",
+    "webpack": "^5.64.4",
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
+    "denque": "^2.0.1",
+    "moving-averages": "^4.0.6",
+    "ogv": "^1.8.4",
+    "onnxruntime-web": "^1.9.0",
     "recordrtc": "^5.6.2"
   }
 }

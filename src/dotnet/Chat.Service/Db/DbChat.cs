@@ -42,7 +42,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
-            OwnerIds = Owners.Select(o => (UserId)o.UserId).ToImmutableArray(),
+            OwnerIds = Owners.Select(o => (Symbol)o.UserId).ToImmutableArray(),
         };
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChat>
