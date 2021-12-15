@@ -4,12 +4,12 @@
 @inject BlazorCircuitContext _circuitContext
 
 <span class="@(_class ??= this.DefaultClass()) group"
-     @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
+    @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
     @if (_circuitContext.IsPrerendering) {
         <span>"Loading..."</span>
     } else {
-        <span class="hover-item">Blazor: <b>@(ModeNames[IsServerSideBlazor ? 1 : 0])</b></span>@*
-        *@<span class="hover-item alt">Switch to <b>@(ModeNames[IsServerSideBlazor ? 0 : 1])</b></span>
+        <span class="hover-item">Blazor: <b>@(ModeNames[IsServerSideBlazor ? 1 : 0])</b></span>
+        <span class="hover-item alt">Switch to <b>@(ModeNames[IsServerSideBlazor ? 0 : 1])</b></span>
     }
 </span>
 

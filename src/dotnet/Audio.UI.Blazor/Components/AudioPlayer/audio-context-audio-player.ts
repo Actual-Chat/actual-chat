@@ -130,7 +130,6 @@ export class AudioContextAudioPlayer {
     private _isEndOfStreamReached: boolean;
     private _operationSequenceNumber: number;
 
-    private _state: BufferState;
     private _unblockQueue?: () => void;
 
     constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
@@ -147,7 +146,6 @@ export class AudioContextAudioPlayer {
         this._isPlaying = false;
         this._isAppending = false;
         this._isEndOfStreamReached = false;
-        this._state = BufferState.Nothing;
         this._operationSequenceNumber = 0;
         this._decoder = null;
         this._feeder = null;
@@ -309,11 +307,9 @@ export class AudioContextAudioPlayer {
                                                 + `playbackState: ${JSON.stringify(this._feeder.getPlaybackState())}`);
                                         }
                                     }
-                                    this._state = BufferState.Enough;
                                 }
                                 // we buffered enough data, tell to blazor about it and block the operation queue
                                 if (bufferedSpan >= this._bufferTooMuchThreshold) {
-                                    this._state = BufferState.TooMuch;
                                     await this.invokeOnChangeReadiness(false, playbackState.playbackPosition, 4);
                                     const blocker = new Promise<void>(resolve => this._unblockQueue = resolve);
                                     this._queue.prepend({
@@ -358,7 +354,6 @@ export class AudioContextAudioPlayer {
     }
 
     private onUpdateOffsetTick = async () => {
-        console.warn("onUpdateOffsetTick", this._feeder.playbackPosition)
         const feeder = this._feeder;
         if (feeder === null || this._isDisposed)
             return;
