@@ -100,17 +100,10 @@ export class AudioRecorder {
                 console.log(state);
 
                 if (vadEvent.kind === 'end') {
-
-                    // if (state == 'recording') {
-                        // recording.recorder.pauseRecording();
-                        // this._blazorRef.invokeMethodAsync('OnPauseRecording');
-                    // }
+                    this._queue.pause();
                 }
                 else {
-                    // if (state == 'paused') {
-                        // this._blazorRef.invokeMethodAsync('OnResumeRecording');
-                        // recording.recorder.resumeRecording();
-                    // }
+                    this._queue.resume();
                 }
             }
             console.log(vadEvent);

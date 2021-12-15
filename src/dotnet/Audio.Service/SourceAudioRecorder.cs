@@ -71,6 +71,6 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     {
         var streamer = RedisDb.GetStreamer<BlobPart>(audioRecordId);
         // streamer.Log = DebugLog;
-        return streamer.Read(cancellationToken);
+        return streamer.Read(cancellationToken).Memoize().Replay(cancellationToken);
     }
 }

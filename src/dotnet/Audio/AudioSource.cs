@@ -146,7 +146,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var prevPosition = 0;
         var framesStart = 0;
         var skipToMs = (int)skipTo.TotalMilliseconds;
-        short currentBlockOffsetMs = 0;
         EBML? ebml = null;
         Segment? segment = null;
 
@@ -178,7 +177,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 }
                 else {
                     if (cluster.Timestamp - (ulong)clusterOffsetMs > 32768) { // max block offset within the cluster, probably we have a gap
-                        clusterOffsetMs += currentBlockOffsetMs;
+                        clusterOffsetMs += blockOffsetMs;
                         clusterOffsetMs += 20; // hardcoded!!! it makes sense to calculate average block duration
                         cluster.Timestamp = (ulong)clusterOffsetMs;
                     }
@@ -190,22 +189,22 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         webMWriter.Write(cluster);
                     }
                 }
-                currentBlockOffsetMs = 0;
+                blockOffsetMs = 0;
                 break;
             case WebMReadResultKind.Block:
                 var block = (Block)webMReader.ReadResult;
 
-                if (currentBlockOffsetMs == 0 && clusterOffsetMs == 0) {
+                if (blockOffsetMs == 0 && clusterOffsetMs == 0) {
                     if (block.TimeCode > 60 && skipTo == TimeSpan.Zero) { // audio segment with an offset, 60 is the largest opus frame duration
                         skipTo = TimeSpan.FromMilliseconds(1);
                         skipToMs = 1;
                     }
                 }
-                currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
+                blockOffsetMs = block.TimeCode;
 
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
                     var frameOffset = TimeSpan.FromTicks( // To avoid floating-point errors
-                        TimeSpan.TicksPerMillisecond * (clusterOffsetMs + currentBlockOffsetMs));
+                        TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs));
 
                     AudioFrame? mediaFrame = null;
                     if (skipToMs <= 0) {
@@ -219,7 +218,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         // Complex case: we may need to skip this frame
                         if (frameOffset - skipTo >= TimeSpan.Zero) {
                             if (skipAdjustmentBlockMs == short.MinValue) {
-                                skipAdjustmentBlockMs = currentBlockOffsetMs;
+                                skipAdjustmentBlockMs = blockOffsetMs;
                                 skipAdjustmentClusterMs = clusterOffsetMs;
                                 simpleBlock.TimeCode = 0;
                             }
@@ -243,7 +242,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     if (mediaFrame != null)
                         frameBuffer.Add(mediaFrame);
                     framesStart = state.Position;
-                    blockOffsetMs = currentBlockOffsetMs;
                 }
                 break;
             case WebMReadResultKind.BlockGroup:
@@ -256,7 +254,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         if (framesStart != prevPosition)
             throw new InvalidOperationException("Unexpected WebM structure.");
 
-        blockOffsetMs = currentBlockOffsetMs;
         if (!FormatTask.IsCompleted) {
             var formatTaskSource = TaskSource.For(FormatTask);
             var format = CreateMediaFormat(ebml!, segment!, webMReader.Span);
