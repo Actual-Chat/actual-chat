@@ -1,3 +1,4 @@
+using System.Numerics;
 using ActualChat.Audio;
 using ActualChat.Media;
 using Google.Api.Gax.Grpc;
@@ -122,7 +123,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
-            var endTime = results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
+            var endTime = (float) results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
             transcript = State.AppendAlternative(text, endTime);
         }
         DebugLog?.LogDebug("Transcript: {Transcript}", transcript);
@@ -133,18 +134,17 @@ public class GoogleTranscriberProcess : AsyncProcessBase
         out string text, out LinearMap textToTimeMap)
     {
         var alternative = result.Alternatives.Single();
-        var endTime = result.ResultEndTime.ToTimeSpan().TotalSeconds;
+        var endTime = (float) result.ResultEndTime.ToTimeSpan().TotalSeconds;
         text = alternative.Transcript;
 
         var lastFinal = State.LastFinal;
         var lastFinalTextLength = lastFinal.Text.Length;
-        var lastFinalDuration = lastFinal.TextToTimeMap.TargetRange.Max;
-        var sourcePoints = new List<double> { lastFinalTextLength };
-        var targetPoints = new List<double> { lastFinalDuration };
+        var lastFinalDuration = lastFinal.TextToTimeMap.YRange.End;
+        var mapPoints = new List<Vector2> { new(lastFinalTextLength, lastFinalDuration) };
         var lastWordOffset = 0;
         var lastWordStartTime = -1d;
         foreach (var word in alternative.Words) {
-            var wordStartTime = word.StartTime.ToTimeSpan().TotalSeconds;
+            var wordStartTime = (float) word.StartTime.ToTimeSpan().TotalSeconds;
             if (lastWordStartTime - 0.1 > wordStartTime) {
                 DebugLog?.LogDebug("Invalid response skipped, word: {Word}", word);
                 textToTimeMap = default;
@@ -159,16 +159,14 @@ public class GoogleTranscriberProcess : AsyncProcessBase
                 continue;
             lastWordOffset = wordOffset + word.Word.Length;
             var finalTextWordOffset = lastFinalTextLength + wordOffset;
-            if (sourcePoints[^1] >= finalTextWordOffset)
+            if (mapPoints[^1].X >= finalTextWordOffset)
                 continue;
 
-            sourcePoints.Add(finalTextWordOffset);
-            targetPoints.Add(word.StartTime.ToTimeSpan().TotalSeconds);
+            mapPoints.Add(new Vector2(finalTextWordOffset, (float) word.StartTime.ToTimeSpan().TotalSeconds));
         }
 
-        sourcePoints.Add(lastFinalTextLength + text.Length);
-        targetPoints.Add(endTime);
-        textToTimeMap = new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray())
+        mapPoints.Add(new Vector2(lastFinalTextLength + text.Length, endTime));
+        textToTimeMap = new LinearMap(mapPoints.ToArray())
             .Simplify(Transcript.TextToTimeMapTimePrecision);
         return true;
     }

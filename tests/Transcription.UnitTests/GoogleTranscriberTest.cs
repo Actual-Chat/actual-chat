@@ -24,15 +24,16 @@ public class GoogleTranscriberTest : TestBase
         await process.ProcessResponses(GenerateResponses(), CancellationToken.None);
 
         var transcripts = await process.GetTranscripts().ToListAsync();
-        transcripts.Min(t => t.TimeRange.Start).Should().Be(0d);
-        transcripts.Max(t => t.TimeRange.End).Should().Be(3.47d);
+        transcripts.Min(t => t.TimeRange.Start).Should().Be(0f);
+        transcripts.Max(t => t.TimeRange.End).Should().Be(3.47f);
         var transcript = transcripts.ApplyDiffs().Last();
 
         transcript.Text.Should().Be("проверка связи");
-        transcript.TextToTimeMap.SourcePoints.Should()
-            .Equal(new[] { 0d, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
-        transcript.TextToTimeMap.TargetPoints.Should()
-            .Equal(new[] { 0d, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
+        var points = transcript.TextToTimeMap.Points.ToArray();
+        points.Select(p => p.X).Should()
+            .Equal(new[] { 0f, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
+        points.Select(p => p.Y).Should()
+            .Equal(new[] { 0f, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
 
         Log.LogInformation("Transcript: {Transcript}", transcript);
 
@@ -199,6 +200,6 @@ public class GoogleTranscriberTest : TestBase
         var transcripts = await process.GetTranscripts().ToListAsync();
         var transcript = transcripts.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
-        transcript.TimeRange.End.Should().BeLessThan(23d);
+        transcript.TimeRange.End.Should().BeLessThan(23f);
     }
 }

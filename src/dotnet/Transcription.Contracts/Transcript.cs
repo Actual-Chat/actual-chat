@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Cysharp.Text;
@@ -10,9 +11,9 @@ public sealed class Transcript
 {
     private static readonly Regex StartRegex = new("^\\s*", RegexOptions.Compiled);
 
-    public const double TextToTimeMapTextPrecision = 0.5d;
-    public const double TextToTimeMapTimePrecision = 0.1d;
-    public static LinearMap EmptyMap { get; } = new((0, 0), (0, 0));
+    public const float TextToTimeMapTextPrecision = 0.5f;
+    public const float TextToTimeMapTimePrecision = 0.1f;
+    public static LinearMap EmptyMap { get; } = new(Vector2.Zero, Vector2.Zero);
 
     [DataMember(Order = 0)]
     public string Text { get; }
@@ -24,13 +25,13 @@ public sealed class Transcript
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<int> TextRange { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Range<double> TimeRange { get; }
+    public Range<float> TimeRange { get; }
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public int Length => Text.Length;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public int UnstableLength => Length - StableLength;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public double Duration => TimeRange.Size();
+    public float Duration => TimeRange.Size();
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string StableText => Text[..StableLength];
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -49,11 +50,11 @@ public sealed class Transcript
             throw new ArgumentOutOfRangeException(nameof(stableLength));
         Text = text;
         TextToTimeMap = textToTimeMap;
-        var textRange = TextToTimeMap.SourceRange;
-        TextRange = ((int) textRange.Min, (int) textRange.Max);
+        var textRange = TextToTimeMap.XRange;
+        TextRange = ((int) textRange.Start, (int) textRange.End);
         if (TextRange.Size() != Text.Length)
             throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
-        TimeRange = TextToTimeMap.TargetRange;
+        TimeRange = TextToTimeMap.YRange;
         StableLength = stableLength;
     }
 
@@ -66,26 +67,26 @@ public sealed class Transcript
         return TextRange.Start + (match.Success ? match.Length : 0);
     }
 
-    public Transcript GetPrefix(int length, double timeOverlap = 0)
+    public Transcript GetPrefix(int length, float timeOverlap = 0)
         => Split(length, true, false, timeOverlap).Prefix;
 
-    public Transcript GetSuffix(int start, double timeOverlap = 0)
+    public Transcript GetSuffix(int start, float timeOverlap = 0)
         => Split(start, false, true, timeOverlap).Suffix;
 
-    public (Transcript Prefix, Transcript Suffix) Split(int start, double timeOverlap = 0)
+    public (Transcript Prefix, Transcript Suffix) Split(int start, float timeOverlap = 0)
         => Split(start, true, true, timeOverlap);
 
-    public (Transcript Prefix, Transcript Suffix) Split(int start, bool needPrefix, bool needSuffix, double timeOverlap = 0)
+    public (Transcript Prefix, Transcript Suffix) Split(int start, bool needPrefix, bool needSuffix, float timeOverlap = 0)
     {
         if (start == TextRange.Start)
-            return (new Transcript("", EmptyMap.Offset(TextRange.Start, TimeRange.Start)), this);
+            return (new Transcript("", EmptyMap.Move(TextToTimeMap[0])), this);
         if (start == TextRange.End)
-            return (this, new Transcript("", EmptyMap.Offset(TextRange.End, TimeRange.End)));
+            return (this, new Transcript("", EmptyMap.Move(TextToTimeMap[0])));
 
         var map = TextToTimeMap;
         if (start < TextRange.Start)
             throw new ArgumentOutOfRangeException(nameof(start));
-        var mapStart = map.SourcePoints.IndexOfGreaterOrEqual(start - 0.1);
+        var mapStart = map.Points.IndexOfGreaterOrEqualX(start - 0.1f);
         if (mapStart < 0)
             throw new ArgumentOutOfRangeException(nameof(start));
 
@@ -98,13 +99,13 @@ public sealed class Transcript
             var prefixText = Text[..textStart];
             var prefixMap = map[..mapStart]
                 .AppendOrUpdateTail(new LinearMap(start, timeStart), TextToTimeMapTextPrecision);
-            prefix = new Transcript(prefixText, prefixMap);
+            prefix = new Transcript(prefixText, prefixMap, Math.Min(StableLength, textStart));
         }
         if (needSuffix) {
             var suffixText = Text[textStart..];
             var suffixMap = new LinearMap(start, overlappingTimeStart)
                 .AppendOrUpdateTail(map[mapStart..], TextToTimeMapTextPrecision);
-            suffix = new Transcript(suffixText, suffixMap);
+            suffix = new Transcript(suffixText, suffixMap, Math.Max(0, StableLength - textStart));
         }
         return (prefix!, suffix!);
     }
@@ -115,7 +116,7 @@ public sealed class Transcript
         var map = TextToTimeMap;
         var baseText = @base.Text;
         var baseMap = @base.TextToTimeMap;
-        if (Math.Abs(baseMap.SourceRange.Min - map.SourceRange.Min) > 1e-6)
+        if (Math.Abs(baseMap.YRange.Start - map.YRange.Start) > 1e-6)
             throw new InvalidOperationException("Transcripts should start at the same time.");
 
         // The logic below is fairly complex, but overall:
@@ -124,15 +125,13 @@ public sealed class Transcript
         // - Try to augment commonMap with one extra point - (commonTextEnd, itsTime)
         // - Compute the updated map as (commonText, commonMap) + suffix from (updatedText, updatedMap)
 
-        var commonMapPrefixLength = Math.Min(
-            baseMap.SourcePoints.CommonPrefixLength(map.SourcePoints),
-            baseMap.TargetPoints.CommonPrefixLength(map.TargetPoints));
+        var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points);
         if (commonMapPrefixLength == 0)
             return this;
-        var commonTextPrefixLengthBasedOnMap = (int) baseMap.SourcePoints[commonMapPrefixLength - 1];
+        var commonTextPrefixLengthBasedOnMap = (int) baseMap.Points[commonMapPrefixLength - 1].X;
 
         var commonTextPrefixLength = baseText.AsSpan().CommonPrefixLength(text.AsSpan());
-        var lastCommonMapPointIndex = baseMap.SourcePoints.IndexOfLowerOrEqual(commonTextPrefixLength - 0.5);
+        var lastCommonMapPointIndex = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength - 0.1f);
         if (lastCommonMapPointIndex < 0)
             return this;
         var commonMapPrefixLengthBasedOnText = lastCommonMapPointIndex + 1;
@@ -154,11 +153,11 @@ public sealed class Transcript
         return diff;
     }
 
-    public Transcript WithSuffix(string suffix, double suffixEndTime)
+    public Transcript WithSuffix(string suffix, float suffixEndTime)
     {
         var suffixTextToTimeMap = new LinearMap(
-            new [] { (double) TextRange.End, TextRange.End + suffix.Length },
-            new [] { TimeRange.End, suffixEndTime }
+            new Vector2(TextRange.End, TimeRange.End),
+            new Vector2(TextRange.End + suffix.Length, suffixEndTime)
         ).TrySimplifyToPoint();
         return WithSuffix(suffix, suffixTextToTimeMap);
     }
