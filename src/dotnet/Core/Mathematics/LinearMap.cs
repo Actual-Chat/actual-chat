@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace ActualChat.Mathematics;
@@ -5,60 +6,92 @@ namespace ActualChat.Mathematics;
 [DataContract]
 public readonly struct LinearMap
 {
-    private readonly double[] _sourcePoints;
-    private readonly double[] _targetPoints;
+    private readonly float[]? _data;
 
     [DataMember(Order = 0)]
-    public double[] SourcePoints => _sourcePoints ?? Array.Empty<double>();
-    [DataMember(Order = 1)]
-    public double[] TargetPoints => _targetPoints ?? Array.Empty<double>();
+    public float[] Data => _data ?? Array.Empty<float>();
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public int Length => SourcePoints.Length;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public bool IsEmpty => SourcePoints.Length == 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public (double Min, double Max) SourceRange => (SourcePoints[0], SourcePoints[^1]);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public (double Min, double Max) TargetRange => (TargetPoints[0], TargetPoints[^1]);
-
-    public (double SourcePoint, double TargetPoint) this[int index]
-        => (SourcePoints[index], TargetPoints[index]);
-    public LinearMap this[Range range]
-        => new(SourcePoints[range], TargetPoints[range]);
-
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
-    public LinearMap(double[] sourcePoints, double[] targetPoints)
-    {
-        _sourcePoints = sourcePoints;
-        _targetPoints = targetPoints;
+    public ReadOnlySpan<Vector2> Points {
+        get {
+            var data = _data;
+            if (data == null)
+                return ReadOnlySpan<Vector2>.Empty;
+            ref var dataRef =
+                ref Unsafe.As<float, Vector2>(
+                    ref MemoryMarshal.GetArrayDataReference(data));
+            return MemoryMarshal.CreateReadOnlySpan(ref dataRef, data.Length >> 1);
+        }
     }
 
-    public LinearMap(double sourcePoint, double targetPoint)
-        : this(new [] { sourcePoint }, new [] { targetPoint })
-    { }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public int Length => _data == null ? 0 : _data.Length >> 1;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsEmpty => _data == null || _data.Length == 0;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Range<float> XRange => new(Points[0].X, Points[^1].X);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Range<float> YRange => new(Points[0].Y, Points[^1].Y);
 
-    public LinearMap((double Source, double Target) point)
-        : this(new [] { point.Source }, new [] { point.Target })
-    { }
+    public Vector2 this[int index] => Points[index];
+    public LinearMap this[Range range] => new(Points[range]);
 
-    public LinearMap((double Source, double Target) point1, (double Source, double Target) point2)
-        : this(new [] { point1.Source, point2.Source }, new [] { point1.Target, point2.Target })
-    { }
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public LinearMap(params float[] data)
+    {
+        if (0 != (data.Length & 1))
+            throw new ArgumentOutOfRangeException(nameof(data));
+        _data = data;
+    }
 
-    public LinearMap((double Source, double Target) point1, (double Source, double Target) point2, (double Source, double Target) point3)
-        : this(new [] { point1.Source, point2.Source, point3.Source }, new [] { point1.Target, point2.Target, point3.Target })
-    { }
+    public LinearMap(ReadOnlySpan<Vector2> points)
+    {
+        if (points.Length == 0) {
+            _data = Array.Empty<float>();
+            return;
+        }
 
-    public LinearMap(params (double Source, double Target)[] points)
-        : this(points.Select(p => p.Source).ToArray(), points.Select(p => p.Target).ToArray())
-    { }
+        var data = MemoryMarshal.Cast<Vector2, float>(points);
+        _data = new float[data.Length];
+        data.CopyTo(_data);
+    }
+
+    public LinearMap(Vector2 point)
+        : this(point.X, point.Y) { }
+    public LinearMap(Vector2 point1, Vector2 point2)
+        : this(point1.X, point1.Y, point2.X, point2.Y) { }
+    public LinearMap(Vector2 point1, Vector2 point2, Vector2 point3)
+        : this(point1.X, point1.Y, point2.X, point2.Y, point3.X, point3.Y) { }
+
+    public LinearMap(ReadOnlySpan<Vector2> head, ReadOnlySpan<Vector2> tail)
+    {
+        if (head.Length == 0 && tail.Length == 0)
+            _data = Array.Empty<float>();
+        else {
+            _data = new float[(head.Length + tail.Length) << 1];
+            var fHead = MemoryMarshal.Cast<Vector2, float>(head);
+            var fTail = MemoryMarshal.Cast<Vector2, float>(tail);
+            fHead.CopyTo(_data);
+            fTail.CopyTo(_data.AsSpan(fHead.Length));
+        }
+    }
 
     public override string ToString()
-        => $"{{{SourcePoints.ToDelimitedString()}}} -> {{{TargetPoints.ToDelimitedString(", ")}}}";
+        => $"{{{ Data.ToDelimitedString() }}}";
 
-    public bool IsValid() => IsValid(SourcePoints, TargetPoints);
-    public bool IsInversionValid() => IsValid(TargetPoints, SourcePoints);
+    public bool IsValid()
+    {
+        var points = Points;
+        return points.IsStrictlyIncreasingXSequence()
+            || points.Length == 2 && points[0] == points[1];
+    }
+
+    public bool IsInversionValid()
+    {
+        var points = Points;
+        return points.IsStrictlyIncreasingYSequence()
+            || points.Length == 2 && points[0] == points[1];
+    }
 
     public LinearMap AssertValid(bool requireInvertible = false)
     {
@@ -69,115 +102,101 @@ public readonly struct LinearMap
         return this;
     }
 
-    public double? TryMap(double value)
+    public float? TryMap(float value)
     {
-        var leIndex = SourcePoints.IndexOfLowerOrEqual(value);
-        if (leIndex < 0)
+        var points = Points;
+        var i = points.IndexOfLowerOrEqualX(value);
+        if (i < 0)
             return null;
-        var leValue = SourcePoints[leIndex];
+        var p0 = points[i];
         // ReSharper disable once CompareOfFloatsByEqualityOperator
-        if (leValue == value)
-            return TargetPoints[leIndex];
-        if (leIndex == Length - 1)
+        if (p0.X == value)
+            return p0.Y;
+        if (i == Length - 1)
             return null;
 
-        var geIndex = leIndex + 1;
-        var geValue = SourcePoints[geIndex];
-        var factor = (value - leValue) / (geValue - leValue);
-        var tleValue = TargetPoints[leIndex];
-        var tgeValue = TargetPoints[geIndex];
-        return tleValue + (tgeValue - tleValue) * factor;
+        var p1 = points[i + 1];
+        var k = (value - p0.X) / (p1.X - p0.X);
+        return p0.Y + k * (p1.Y - p0.Y);
     }
 
-    public double Map(double value)
+    public float Map(float value)
         => TryMap(value) ?? throw new ArgumentOutOfRangeException(nameof(value), "Can't map provided value.");
 
-    public LinearMap Clone()
-        => new(SourcePoints[..], TargetPoints[..]);
+    public LinearMap Move(float xOffset, float yOffset)
+        => Move(new Vector2(xOffset, yOffset));
 
-    public LinearMap Invert()
-        => new(TargetPoints, SourcePoints);
-
-    public LinearMap Offset(double sourceOffset, double targetOffset)
-        => new(
-            SourcePoints.Select(x => x + sourceOffset).ToArray(),
-            TargetPoints.Select(x => x + targetOffset).ToArray());
-
-    public LinearMap Append(double sourcePoint, double targetPoint)
+    public LinearMap Move(Vector2 offset)
     {
-        if (IsEmpty) return new LinearMap(sourcePoint, targetPoint);
-
-        var sourcePoints = new double[Length + 1];
-        var targetPoints = new double[Length + 1];
-        SourcePoints.CopyTo(sourcePoints, 0);
-        TargetPoints.CopyTo(targetPoints, 0);
-        sourcePoints[^1] = sourcePoint;
-        targetPoints[^1] = targetPoint;
-        return new LinearMap(sourcePoints, targetPoints);
+        var data = Data;
+        var newData = new float[data.Length];
+        for (var i = 0; i < data.Length; i++) {
+            newData[i] = data[i] + offset.X;
+            i++;
+            newData[i] = data[i] + offset.Y;
+        }
+        return new LinearMap(newData);
     }
 
-    public LinearMap TryAppend(double sourcePoint, double targetPoint, double sourceEpsilon)
+    public LinearMap Append(Vector2 point)
     {
-        if (IsEmpty) return Append(sourceEpsilon, targetPoint);
+        var data = Data;
+        if (data.Length == 0) return new LinearMap(point);
 
-        var lastSourcePoint = SourcePoints[^1];
-        return sourcePoint < lastSourcePoint + sourceEpsilon
-            ? this
-            : Append(sourcePoint, targetPoint);
+        var newData = new float[data.Length + 2];
+        data.AsSpan().CopyTo(newData);
+        newData[^2] = point.X;
+        newData[^1] = point.Y;
+        return new LinearMap(newData);
     }
 
-    public LinearMap TrySimplifyToPoint(double minSourceDistance = 1e-6, double minTargetDistance = 1e-6)
+    public LinearMap TryAppend(Vector2 point, float xEpsilon)
+        => IsEmpty || point.X >= Points[^1].X + xEpsilon
+            ? Append(point)
+            : this;
+
+    public LinearMap TrySimplifyToPoint(float minSourceDistance = 1e-6f, float minTargetDistance = 1e-6f)
     {
         if (Length != 2)
             return this;
-        var ((x0, y0), (x1, y1)) = (this[0], this[1]);
-        if (Math.Abs(x1 - x0) >= minSourceDistance)
-            return this;
-        if (Math.Abs(y1 - y0) >= minTargetDistance)
-            return this;
-        return new LinearMap(x0, y0);
+        var d = this[0] - this[1];
+        return Math.Abs(d.X) >= minSourceDistance || Math.Abs(d.Y) >= minTargetDistance
+            ? this
+            : new LinearMap(this[0]);
     }
 
-    public LinearMap Simplify(double minDistance)
+    public LinearMap Simplify(float yEpsilon)
     {
-        var sourcePoints = new List<double>() { SourcePoints[0] };
-        var targetPoints = new List<double>() { TargetPoints[0] };
+        var points = Points;
+        if (points.Length <= 2)
+            return this;
+        var pStart = points[0];
+        var newData = new List<float>() { pStart.X, pStart.Y };
         var lastI = 0;
-        for (var i = 1; i < SourcePoints.Length - 1; i++) {
-            var (x0, x, x1) = (SourcePoints[lastI], SourcePoints[i], SourcePoints[i + 1]);
-            var k = (x - x0) / (x1 - x0);
-            var (y0, y, y1) = (TargetPoints[lastI], TargetPoints[i], TargetPoints[i + 1]);
-            var yy = y0 + k * (y1 - y0);
-            if (Math.Abs(y - yy) < minDistance)
+        for (var i = 1; i < points.Length - 1; i++) {
+            var (p0, p, p1) = (this[lastI], this[i], this[i + 1]);
+            var k = (p.X - p0.X) / (p1.X - p0.X);
+            var y = p0.Y + k * (p1.Y - p0.Y);
+            if (Math.Abs(p.Y - y) < yEpsilon)
                 continue;
-            sourcePoints.Add(x);
-            targetPoints.Add(y);
+            newData.Add(p.X);
+            newData.Add(p.Y);
             lastI = i;
         }
-        sourcePoints.Add(SourcePoints[^1]);
-        targetPoints.Add(TargetPoints[^1]);
-        return new LinearMap(sourcePoints.ToArray(), targetPoints.ToArray());
+        var pEnd = points[^1];
+        newData.Add(pEnd.X);
+        newData.Add(pEnd.Y);
+        return new LinearMap(newData.ToArray());
     }
 
-    public LinearMap AppendOrUpdateTail(LinearMap tail, double sourceEpsilon)
+    public LinearMap AppendOrUpdateTail(LinearMap tail, float xEpsilon)
     {
         tail.AssertValid();
-        var leIndex = SourcePoints.IndexOfLowerOrEqual(tail.SourcePoints[0] - sourceEpsilon);
-        if (leIndex < 0)
-            return tail.Clone(); // We always return a map w/ new arrays from this method
-        var cutIndex = leIndex + 1;
-        var sourcePoints = SourcePoints[..cutIndex].Concat(tail.SourcePoints).ToArray();
-        var targetPoints = TargetPoints[..cutIndex].Concat(tail.TargetPoints).ToArray();
-        return new LinearMap(sourcePoints, targetPoints);
-    }
-
-    private static bool IsValid(double[] x, double[] y)
-    {
-        if (y.Length != x.Length)
-            return false;
-        if (x.IsStrictlyIncreasingSequence())
-            return true;
-        // ReSharper disable once CompareOfFloatsByEqualityOperator
-        return x.Length == 2 && x[0] == x[1] && y[0] == y[1];
+        var points = Points;
+        var i = points.IndexOfLowerOrEqualX(tail[0].X - xEpsilon);
+        if (i < 0)
+            return tail;
+        var cutIndex = i + 1;
+        return new LinearMap(points[..cutIndex], tail.Points);
     }
 }

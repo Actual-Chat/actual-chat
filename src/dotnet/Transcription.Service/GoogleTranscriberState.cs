@@ -13,10 +13,10 @@ public class GoogleTranscriberState
         return Last;
     }
 
-    public Transcript AppendAlternative(string suffix, double suffixEndTime)
+    public Transcript AppendAlternative(string suffix, float suffixEndTime)
         => Update(LastFinal.WithSuffix(suffix, suffixEndTime), false);
 
-    public Transcript AppendFinal(string suffix, double suffixEndTime)
+    public Transcript AppendFinal(string suffix, float suffixEndTime)
         => Update(LastFinal.WithSuffix(suffix, suffixEndTime), true);
 
     public Transcript AppendFinal(string suffix, LinearMap suffixTextToTimeMap)

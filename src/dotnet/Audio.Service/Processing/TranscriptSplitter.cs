@@ -66,7 +66,7 @@ public class TranscriptSplitter
                 }
 
                 segment!.Suffixes.Writer.Complete();
-                var (prefix, suffix1) = transcript.Split(contentStart, SplitOverlap.TotalSeconds);
+                var (prefix, suffix1) = transcript.Split(contentStart, (float) SplitOverlap.TotalSeconds);
                 segment = segment.Next(prefix);
                 DebugLog?.LogDebug("Split: {Start}", suffix1);
                 segment.Suffixes.Writer.TryWrite(suffix1);

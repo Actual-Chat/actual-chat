@@ -129,16 +129,16 @@ public class SourceAudioProcessorTest : AppHostTestBase
         string audioRecordId,
         ITranscriptStreamer transcriptStreamer)
     {
-        var size = 0;
-        // TODO(AK): we need to figure out how to notify consumers about new streamID - with new ChatEntry?
+        var totalLength = 0;
+        // TODO(AK): we need to figure out how to notify consumers about new streamId - with new ChatEntry?
         var audioStreamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
         var transcriptStreamId = TranscriptSegment.GetStreamId(audioStreamId, 0);
         var diffs = transcriptStreamer.GetTranscriptDiffStream(transcriptStreamId, CancellationToken.None);
         await foreach (var diff in diffs) {
             Out.WriteLine(diff.Text);
-            size = (int) diff.TextToTimeMap.SourceRange.Max;
+            totalLength += diff.Length;
         }
-        return size;
+        return totalLength;
     }
 
     private static async Task<int> ReadAudioData(

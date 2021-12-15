@@ -8,41 +8,33 @@ public class TranscriptUpdateTests : TestBase
     public void SimpleTest1()
     {
         var transcript = new Transcript();
-        var diff = new Transcript("раз", new (new[] { 0, 3d }, new[] { 0, 1.86 }));
+        var diff = new Transcript("раз", new (0, 0, 3, 1.86f));
         transcript = transcript.WithDiff(diff);
-        diff = new("рад", new (new[] { 0, 3d }, new[] { 0, 1.92 }));
+        diff = new("рад", new (0, 0, 3, 1.92f));
         transcript = transcript.WithDiff(diff);
-        diff = new("работа", new (new[] { 0, 6d }, new[] { 0, 1.98 }));
+        diff = new("работа", new (0, 0, 6, 1.98f));
         transcript = transcript.WithDiff(diff);
-        diff = new("разбор", new (new[] { 0, 6d }, new[] { 0, 2.04 }));
+        diff = new("разбор", new (0, 0, 6, 2.04f));
         transcript = transcript.WithDiff(diff);
-        diff = new("работа", new (new[] { 0, 6d }, new[] { 0, 2.22 }));
+        diff = new("работа", new (0, 0, 6, 2.22f));
         transcript = transcript.WithDiff(diff);
-        diff = new("раз-два-три", new (new[] { 0, 11d }, new[] { 0, 2.28 }));
+        diff = new("раз-два-три", new (0, 0, 11, 2.28f));
         transcript = transcript.WithDiff(diff);
-        diff = new("раз-два-три-четыре", new (new[] { 0, 18d }, new[] { 0, 2.76 }));
+        diff = new("раз-два-три-четыре", new (0, 0, 18, 2.76f));
         transcript = transcript.WithDiff(diff);
-        diff = new("раз-два-три-четыре", new (new[] { 0, 18d }, new[] { 0, 3.36 }));
+        diff = new("раз-два-три-четыре", new (0, 0, 18, 3.36f));
         transcript = transcript.WithDiff(diff);
-        diff = new("раз-два-три-четыре-пять", new (new[] { 0, 23d }, new[] { 0, 3.42 }));
+        diff = new("раз-два-три-четыре-пять", new (0, 0, 23, 3.42f));
         transcript = transcript.WithDiff(diff);
-        diff = new("раз-два-три-четыре-пять", new (new[] { 0, 23d }, new[] { 0, 4.02 }));
+        diff = new("раз-два-три-четыре-пять", new (0, 0, 23, 4.02f));
         transcript = transcript.WithDiff(diff);
-        diff = new(
-            "раз-два-три-четыре-пять Вышел",
-            new (new[] { 23d, 29d }, new[] { 4, 4.92 }));
+        diff = new(" Вышел", new (23, 4f, 29, 4.02f));
         transcript = transcript.WithDiff(diff);
-        diff = new(
-            "раз-два-три-четыре-пять Вышел зайчик",
-            new (new[] { 23d, 36d }, new[] { 4, 5.52 }));
+        diff = new(" Вышел зайчик", new (23, 4f, 36, 5.52f));
         transcript = transcript.WithDiff(diff);
-        diff = new(
-            "раз-два-три-четыре-пять вышел зайчик погулять",
-            new (new[] { 23d, 45d }, new[] { 4, 7.44 }));
+        diff = new(" вышел зайчик погулять", new (23, 4f, 45, 7.44f));
         transcript = transcript.WithDiff(diff);
-        diff = new(
-            "раз-два-три-четыре-пять вышел зайчик погулять Вдруг откуда",
-            new (new[] { 23d, 58d }, new[] { 4, 8.34 }));
+        diff = new(" вышел зайчик погулять Вдруг откуда", new (23, 4f, 58, 8.34f));
         transcript = transcript.WithDiff(diff);
         Out.WriteLine(transcript.ToString());
     }
@@ -52,11 +44,11 @@ public class TranscriptUpdateTests : TestBase
     {
         var extractor = new GoogleTranscriberState();
         var t = new Transcript();
-        _ = extractor.AppendAlternative("раз-два-три-четыре-пять,", 4.68);
-        _ = extractor.AppendFinal("раз-два-три-четыре-пять, 67", 4.98);
-        t = extractor.AppendAlternative(" вот", 8.140);
+        _ = extractor.AppendAlternative("раз-два-три-четыре-пять,", 4.68f);
+        _ = extractor.AppendFinal("раз-два-три-четыре-пять, 67", 4.98f);
+        t = extractor.AppendAlternative(" вот", 8.14f);
         Dump(t);
-        t = extractor.AppendAlternative(" Вот это", 8.560);
+        t = extractor.AppendAlternative(" Вот это", 8.56f);
         Dump(t);
     }
 
@@ -69,7 +61,7 @@ public class TranscriptUpdateTests : TestBase
         Dump(extractor.LastFinal);
         _ = extractor.AppendFinal(" 2", 2);
         Dump(extractor.LastFinal);
-        _ = extractor.AppendFinal(" 3", new LinearMap(new double[] {3 , 5}, new double[] {2 , 3}));
+        _ = extractor.AppendFinal(" 3", new LinearMap(3, 2, 5, 3));
         t = extractor.AppendFinal("", extractor.LastFinal.TimeRange.End);
         Dump(t);
         t.TextToTimeMap.Length.Should().Be(4);
@@ -92,23 +84,20 @@ public class TranscriptUpdateTests : TestBase
             t.Text.Should().Be(expected);
             t.TextToTimeMap.IsValid().Should().BeTrue();
             for (var i = 0; i <= offset; i++)
-                t.TextToTimeMap.Map(i).Should().BeApproximately(i, 0.01);
+                t.TextToTimeMap.Map(i).Should().BeApproximately(i, 0.01f);
         }
     }
 
     [Fact]
     public void SimpleTest5()
     {
-        var t1 = new Transcript("по",
-            new LinearMap(new [] {8d, 10}, new [] {5.21d, 9.24}));
-        var t2 = new Transcript("пое",
-            new LinearMap(new [] {8d, 11}, new [] {5.21d, 9.24}));
+        var t1 = new Transcript("по", new LinearMap(8, 5.21f, 10, 9.24f));
+        var t2 = new Transcript("пое", new LinearMap(8, 5.21f, 11, 9.24f));
         var t = t1.WithDiff(t2);
         Out.WriteLine(t.ToString());
         t.Text.Should().Be(t2.Text);
 
-        var t3 = new Transcript(" поехали",
-            new LinearMap(new [] {7d, 15}, new [] {3.57, 9.78}));
+        var t3 = new Transcript(" поехали", new LinearMap(7, 3.57f, 15, 9.78f));
         t = t1.WithDiff(t3);
         Out.WriteLine(t.ToString());
         t.Text.Should().Be(t3.Text);
@@ -117,10 +106,8 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void SimpleTest6()
     {
-        var t1 = new Transcript(" а нефиг",
-            new LinearMap(new [] {7d, 15}, new [] {7d, 15}));
-        var t2= new Transcript(" а нефигa",
-            new LinearMap(new [] {7d, 16}, new [] {7d, 16}));
+        var t1 = new Transcript(" а нефиг", new LinearMap(7, 7, 15, 15));
+        var t2= new Transcript(" а нефигa", new LinearMap(7, 7, 16, 16));
         var t = t1.WithDiff(t2);
         Out.WriteLine(t.ToString());
         t.Text.Should().Be(t2.Text);
@@ -129,10 +116,8 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void SimpleTest7()
     {
-        var t1 = new Transcript(" поешь",
-            new LinearMap(new [] {15d, 21}, new [] {0d, 1}));
-        var t2 = new Transcript(" поехал",
-            new LinearMap(new [] {15d, 22}, new [] {0d, 1}));
+        var t1 = new Transcript(" поешь", new LinearMap(15, 0, 21, 1));
+        var t2 = new Transcript(" поехал", new LinearMap(15, 0, 22, 1));
         var t = t1.WithDiff(t2);
         Out.WriteLine(t.ToString());
         t.Text.Should().Be(t2.Text);
@@ -141,9 +126,8 @@ public class TranscriptUpdateTests : TestBase
     [Fact]
     public void SerializationTest()
     {
-        var o = new Transcript(" поешь",
-            new LinearMap(new [] {15d, 21}, new [] {0d, 1}));
-        var s = o.PassThroughAllSerializers();
+        var o = new Transcript(" поешь", new LinearMap(15, 0, 21, 1));
+        var s = o.PassThroughAllSerializers(Out);
         s.Text.Should().Be(o.Text);
         s.TextToTimeMap.Length.Should().Be(o.TextToTimeMap.Length);
     }

@@ -9,4 +9,5 @@ public class DbInfo<TDbContext>
     public string ConnectionString { get; init; } = "";
     public bool ShouldRecreateDb { get; set; }
     public bool ShouldVerifyDb { get; set; }
+    public bool ShouldMigrateDb { get; set; }
 }

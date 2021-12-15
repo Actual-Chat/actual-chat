@@ -211,7 +211,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         }
         if (transcript == null)
             return;
-        var textToTimeMap = transcript.TextToTimeMap.Offset(-transcript.TextRange.Start, 0);
+        var textToTimeMap = transcript.TextToTimeMap.Move(-transcript.TextRange.Start, 0);
         textEntry = textEntry! with {
             Content = transcript.Text,
             StreamId = Symbol.Empty,
