@@ -93,7 +93,7 @@ export class AudioContextAudioPlayer {
     }
 
     /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-    private readonly _bufferTooMuchThreshold = 1.0;
+    private readonly _bufferTooMuchThreshold = 20.0;
     /**
      * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
      * should be in sync with audio-feeder bufferSize
@@ -103,7 +103,7 @@ export class AudioContextAudioPlayer {
      * How much seconds do we have in the buffer before unblocking the queue,
      * must be less than _bufferTooMuchThreshold
      */
-    private readonly _bufferUnblockThreshold = this._bufferTooMuchThreshold - 0.2;
+    private readonly _bufferUnblockThreshold = this._bufferTooMuchThreshold - 5;
     /** How often send offset update event to the blazor, in milliseconds */
     private readonly _updateOffsetMs = 200;
 
