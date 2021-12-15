@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 public partial class Chats
 {
     // [ComputeMethod]
-    public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
     {
         var dbChat = await _dbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
@@ -16,18 +16,18 @@ public partial class Chats
 
     // [ComputeMethod]
     public virtual async Task<ChatPermissions> GetPermissions(
-        ChatId chatId,
-        AuthorId? authorId,
+        string chatId,
+        string? authorId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return 0;
 
-        var author = !(authorId?.IsNone ?? true)
-            ? await _chatAuthorsBackend.Get(chatId, authorId.Value, false, cancellationToken).ConfigureAwait(false)
+        var author = !authorId.IsNullOrEmpty()
+            ? await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false)
             : null;
-        var user = author is { UserId.IsNone: false }
+        var user = author is { UserId.IsEmpty: false }
             ? await _authBackend.GetUser(author.UserId, cancellationToken).ConfigureAwait(false)
             : null;
 
@@ -43,42 +43,47 @@ public partial class Chats
 
     // [ComputeMethod]
     public virtual async Task<long> GetEntryCount(
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbMessages = dbContext.ChatEntries.AsQueryable()
-            .Where(m => m.ChatId == (string)chatId);
+        var dbEntries = dbContext.ChatEntries.AsQueryable()
+            .Where(m => m.ChatId == chatId && m.Type == entryType);
 
         if (idTileRange.HasValue) {
             var idRangeValue = idTileRange.GetValueOrDefault();
             IdTileStack.AssertIsTile(idRangeValue);
-            dbMessages = dbMessages.Where(m =>
-                m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
+            dbEntries = dbEntries
+                .Where(m => m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
         }
 
-        return await dbMessages.LongCountAsync(cancellationToken).ConfigureAwait(false);
+        return await dbEntries.LongCountAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!
     // [ComputeMethod]
-    public virtual async Task<Range<long>> GetIdRange(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Range<long>> GetIdRange(
+        string chatId, ChatEntryType entryType,
+        CancellationToken cancellationToken)
     {
-        var minId = await GetMinId(chatId, cancellationToken).ConfigureAwait(false);
-        var maxId = await GetMaxId(chatId, cancellationToken).ConfigureAwait(false);
+        var minId = await GetMinId(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        var maxId = await GetMaxId(chatId, entryType, cancellationToken).ConfigureAwait(false);
         return (minId, maxId + 1);
     }
 
     // [ComputeMethod]
-    public virtual async Task<long> GetMinId(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<long> GetMinId(
+        string chatId, ChatEntryType entryType,
+        CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         return await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value)
+            .Where(e => e.ChatId == chatId && e.Type == entryType)
             .OrderBy(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
@@ -86,12 +91,14 @@ public partial class Chats
     }
 
     // [ComputeMethod]
-    public virtual async Task<long> GetMaxId(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<long> GetMaxId(
+        string chatId, ChatEntryType entryType,
+        CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         return await dbContext.ChatEntries.AsQueryable()
-            .Where(e => e.ChatId == chatId.Value)
+            .Where(e => e.ChatId == chatId && e.Type == entryType)
             .OrderByDescending(e => e.Id)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
@@ -100,7 +107,8 @@ public partial class Chats
 
     // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
@@ -109,7 +117,8 @@ public partial class Chats
         if (smallerIdTiles.Length != 0) {
             var smallerChatTiles = new List<ChatTile>();
             foreach (var smallerIdTile in smallerIdTiles) {
-                var smallerChatTile = await GetTile(chatId, smallerIdTile.Range, cancellationToken).ConfigureAwait(false);
+                var smallerChatTile = await GetTile(chatId, entryType, smallerIdTile.Range, cancellationToken)
+                    .ConfigureAwait(false);
                 smallerChatTiles.Add(smallerChatTile);
             }
             return new ChatTile(smallerChatTiles);
@@ -118,7 +127,8 @@ public partial class Chats
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbEntries = await dbContext.ChatEntries
-            .Where(m => m.ChatId == (string)chatId
+            .Where(m => m.ChatId == chatId
+                && m.Type == entryType
                 && m.Id >= idTile.Range.Start
                 && m.Id < idTile.Range.End)
             .OrderBy(m => m.Id)
@@ -128,35 +138,7 @@ public partial class Chats
         return new ChatTile(idTileRange, entries);
     }
 
-    // [CommandHandler]
-    public virtual async Task<ChatEntry> UpsertEntry(
-        IChatsBackend.UpsertEntryCommand command,
-        CancellationToken cancellationToken)
-    {
-        var chatEntry = command.Entry;
-        var context = CommandContext.GetCurrent();
-        var isUpdate = chatEntry.Id != 0;
-        if (Computed.IsInvalidating()) {
-            var invChatEntry = context.Operation().Items.Get<ChatEntry>();
-            if (invChatEntry != null)
-                InvalidateChatPages(chatEntry.ChatId, invChatEntry.Id, isUpdate);
-            _ = GetMaxId(chatEntry.ChatId, default); // We invalidate min-max Id range at last
-            return null!;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        // TODO: Use entity resolver or remove this check (?)
-        var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleAsync(a => a.Id == (string)chatEntry.AuthorId, cancellationToken)
-            .ConfigureAwait(false);
-        var dbChatEntry = await DbAddOrUpdate(dbContext, chatEntry, cancellationToken).ConfigureAwait(false);
-
-        chatEntry = dbChatEntry.ToModel();
-        context.Operation().Items.Set(chatEntry);
-        return chatEntry;
-    }
+    // Command handlers
 
     // [CommandHandler]
     public virtual async Task<Chat> CreateChat(
@@ -183,11 +165,90 @@ public partial class Chats
         return chat;
     }
 
+    // [CommandHandler]
+    public virtual async Task<ChatEntry> UpsertEntry(
+        IChatsBackend.UpsertEntryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var entry = command.Entry;
+        var context = CommandContext.GetCurrent();
+        var isUpdate = entry.Id != 0;
+        if (Computed.IsInvalidating()) {
+            var invChatEntry = context.Operation().Items.Get<ChatEntry>();
+            if (invChatEntry != null)
+                InvalidateChatPages(entry.ChatId, entry.Type, invChatEntry.Id, isUpdate);
+            _ = GetMaxId(entry.ChatId, entry.Type, default); // We invalidate min-max Id range at last
+            return null!;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        // TODO: Use entity resolver or remove this check (?)
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .SingleAsync(a => a.Id == entry.AuthorId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        var dbEntry = await DbAddOrUpdate(dbContext, entry, cancellationToken).ConfigureAwait(false);
+
+        entry = dbEntry.ToModel();
+        context.Operation().Items.Set(entry);
+        return entry;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<(ChatEntry AudioEntry, ChatEntry TextEntry)> CreateAudioEntry(
+        IChatsBackend.CreateAudioEntryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var audioEntry = command.AudioEntry;
+        if (audioEntry.Type != ChatEntryType.Audio)
+            throw new ArgumentOutOfRangeException(nameof(command), "AudioEntry.Type != ChatEntryType.Audio");
+
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            if (context.Operation().Items.TryGet<(ChatEntry AudioEntry, ChatEntry TextEntry)>(out var invEntries)) {
+                var invAudioEntry = invEntries.AudioEntry;
+                var invTextEntry = invEntries.TextEntry;
+                InvalidateChatPages(invAudioEntry.ChatId, invAudioEntry.Type, invAudioEntry.Id, false);
+                InvalidateChatPages(invTextEntry.ChatId, invTextEntry.Type, invTextEntry.Id, false);
+                _ = GetMaxId(invAudioEntry.ChatId, invAudioEntry.Type, default); // We invalidate min-max Id range at last
+                _ = GetMaxId(invTextEntry.ChatId, invTextEntry.Type, default); // We invalidate min-max Id range at last
+            }
+            return default!;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        // TODO: Use entity resolver or remove this check (?)
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .SingleAsync(a => a.Id == audioEntry.AuthorId.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        var dbAudioEntry = await DbAddOrUpdate(dbContext, audioEntry, cancellationToken).ConfigureAwait(false);
+        var textEntry = new ChatEntry() {
+            ChatId = audioEntry.ChatId,
+            AuthorId = audioEntry.AuthorId,
+            Content = "...",
+            Type = ChatEntryType.Text,
+            StreamId = audioEntry.StreamId,
+            AudioEntryId = dbAudioEntry.Id,
+            BeginsAt = audioEntry.BeginsAt,
+        };
+        var dbTextEntry = await DbAddOrUpdate(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
+
+        audioEntry = dbAudioEntry.ToModel();
+        textEntry = dbTextEntry.ToModel();
+        var entries = (audioEntry, textEntry);
+        context.Operation().Items.Set(entries);
+        return entries;
+    }
+
     // Protected methods
 
     protected async Task<Unit> AssertHasPermissions(
-        ChatId chatId,
-        AuthorId? authorId,
+        string chatId,
+        string? authorId,
         ChatPermissions permissions,
         CancellationToken cancellationToken)
     {
@@ -198,59 +259,61 @@ public partial class Chats
         return default;
     }
 
-    protected void InvalidateChatPages(ChatId chatId, long chatEntryId, bool isUpdate)
+    protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
     {
         if (!isUpdate)
-            _ = GetEntryCount(chatId, null, default);
-        foreach (var idTile in IdTileStack.GetAllTiles(chatEntryId)) {
-            _ = GetTile(chatId, idTile.Range, default);
+            _ = GetEntryCount(chatId, entryType, null, default);
+        foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
+            _ = GetTile(chatId, entryType, idTile.Range, default);
             if (!isUpdate)
-                _ = GetEntryCount(chatId, idTile.Range, default);
+                _ = GetEntryCount(chatId, entryType, idTile.Range, default);
         }
     }
 
     protected async Task<DbChatEntry> DbAddOrUpdate(
         ChatDbContext dbContext,
-        ChatEntry chatEntry,
+        ChatEntry entry,
         CancellationToken cancellationToken)
     {
         // AK: Suspicious - probably can lead to performance issues
         // AY: Yes, but the goal is to have a dense sequence here;
         //     later we'll change this to something that's more performant.
-        var isNew = chatEntry.Id == 0;
-        DbChatEntry dbChatEntry;
+        var isNew = entry.Id == 0;
+        var entryType = entry.Type;
+        DbChatEntry dbEntry;
         if (isNew) {
-            var dbChatId = (string)chatEntry.ChatId;
+            var dbChatId = entry.ChatId.Value;
             var maxId = await dbContext.ChatEntries.ForUpdate() // To serialize inserts
-                .Where(e => e.ChatId == dbChatId)
+                .Where(e => e.ChatId == dbChatId && e.Type == entryType)
                 .OrderByDescending(e => e.Id)
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-            var id = await _idSequences.Next(dbChatId, maxId).ConfigureAwait(false);
-            chatEntry = chatEntry with {
+            var idSequenceKey = $"{dbChatId}:{entryType:D}";
+            var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
+            entry = entry with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = Clocks.SystemClock.Now,
             };
-            dbChatEntry = new (chatEntry);
-            dbContext.Add(dbChatEntry);
+            dbEntry = new (entry);
+            dbContext.Add(dbEntry);
         }
         else {
-            var compositeId = DbChatEntry.GetCompositeId(chatEntry.ChatId, chatEntry.Id);
-            dbChatEntry = await dbContext.ChatEntries.ForUpdate()
+            var compositeId = DbChatEntry.GetCompositeId(entry.ChatId, entryType, entry.Id);
+            dbEntry = await dbContext.ChatEntries.ForUpdate()
                     .FirstOrDefaultAsync(e => e.CompositeId == compositeId, cancellationToken)
                     .ConfigureAwait(false)
                 ?? throw new InvalidOperationException(Invariant(
-                    $"Chat entry with key {chatEntry.ChatId}, {chatEntry.Id} is not found"));
-            chatEntry = chatEntry with {
-                Version = VersionGenerator.NextVersion(dbChatEntry.Version),
+                    $"Chat entry with key {entry.ChatId}, {entry.Id} is not found"));
+            entry = entry with {
+                Version = VersionGenerator.NextVersion(dbEntry.Version),
             };
-            dbChatEntry.UpdateFrom(chatEntry);
-            dbContext.Update(dbChatEntry);
+            dbEntry.UpdateFrom(entry);
+            dbContext.Update(dbEntry);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbChatEntry;
+        return dbEntry;
     }
 }

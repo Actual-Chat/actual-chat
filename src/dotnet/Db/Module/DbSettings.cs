@@ -6,4 +6,5 @@ public class DbSettings
     public string OverrideDb { get; set; } = "";
     public bool ShouldRecreateDb { get; set; } = false;
     public bool ShouldVerifyDb { get; set; } = true;
+    public bool ShouldMigrateDb { get; set; } = true;
 }

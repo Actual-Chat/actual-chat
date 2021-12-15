@@ -1,18 +1,16 @@
-using System.Collections.Concurrent;
 using ActualChat.Media;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Concurrency;
-using Stl.DependencyInjection;
 
 namespace ActualChat.MediaPlayback;
 
 public sealed class Playback : AsyncProcessBase, IHasServices
 {
     private static long _lastPlaybackIndex;
+    private ILogger? _log;
 
-    private ILogger Log { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode { get; } = Constants.DebugMode.AudioPlayback;
+    private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     private readonly Action _disposeDelegate;
 
@@ -32,7 +30,6 @@ public sealed class Playback : AsyncProcessBase, IHasServices
     public Playback(IServiceProvider services, bool start = true)
     {
         Services = services;
-        Log = Services.LogFor(GetType());
         ActivePlaybackInfo = Services.GetRequiredService<IActivePlaybackInfo>();
         TrackPlayerFactory = Services.GetRequiredService<ITrackPlayerFactory>();
         DisposeMonitor = Services.GetRequiredService<DisposeMonitor>();
@@ -50,10 +47,21 @@ public sealed class Playback : AsyncProcessBase, IHasServices
             Run();
     }
 
-    public Task Stop(bool immediately)
+    public Task Complete()
     {
         Commands.Writer.TryComplete();
-        return immediately ? base.Stop() : RunningTask ?? Task.CompletedTask;
+        return RunningTask ?? Task.CompletedTask;
+    }
+
+    public new Task Stop()
+        => Stop(null);
+
+    public Task Stop(Exception? error)
+    {
+        error ??= new OperationCanceledException("Playback is stopped.");
+        Commands.Writer.TryComplete(error);
+        base.Stop(); // This stops the playback immediately
+        return RunningTask ?? Task.CompletedTask;
     }
 
     public ValueTask AddCommand(PlaybackCommand command, CancellationToken cancellationToken = default)

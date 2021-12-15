@@ -1,9 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Comparison
 
 <VirtualList
-    CssClass="@(this.ComponentCssClass())"
+    Class="@(this.DefaultClass())"
     SpacerSize="6000" LoadZoneSize="6000" BufferZoneSize="12000"
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">

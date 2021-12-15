@@ -1,12 +1,13 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatEntryReaderTest
+public class ChatEntryReaderTest : AppHostTestBase
 {
     private const string ChatId = "the-actual-one";
+
+    public ChatEntryReaderTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task BasicTest()
@@ -23,17 +24,13 @@ public class ChatEntryReaderTest
         chat?.Title.Should().Be("The Actual One");
 
         await AddChatEntries(chats, session, ChatId, CancellationToken.None);
-        var idRange = await chats.GetIdRange(session, ChatId, CancellationToken.None);
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
 
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
         var acDcId = nirvanaId - 1;
 
-        var reader = new ChatEntryReader(chats) {
-            ChatId = ChatId,
-            InvalidationWaitTimeout = TimeSpan.FromSeconds(1),
-            Session = session,
-        };
+        var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
 
         var entry = await reader.Get(acDcId, CancellationToken.None);
         entry.Should().NotBeNull();
@@ -48,7 +45,7 @@ public class ChatEntryReaderTest
         entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
-    private async Task AddChatEntries(IChats chats, Session session, ChatId chatId, CancellationToken cancellationToken)
+    private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken)
     {
         var phrases = new[] {
             "back in black i hit the sack",

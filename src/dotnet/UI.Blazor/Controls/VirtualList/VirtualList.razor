@@ -1,0 +1,46 @@
+@namespace ActualChat.UI.Blazor.Controls
+@typeparam TItem
+@inherits ComputedStateComponent<VirtualListData<TItem>>
+@{
+    LastPlan = Plan;
+    // Log.LogInformation("Rendering: RenderIndex = {RenderIndex}", Plan.RenderIndex);
+    // Log.LogInformation("Rendering: {Plan}", JsonFormatter.Format(Plan));
+}
+
+@* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
+<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full"
+     style="@Style"
+     data-render-index="@Plan.RenderIndex">
+    <div class="content relative">
+        <div class="items items-unmeasured flex flex-col flex-nowrap items-stretch overflow-y-hidden h-0 invisible">
+            @foreach (var e in Plan.UnmeasuredItems) {
+                <div @key="e.Key" class="item" data-key="@e.Key">
+                    @Item(KeyValuePair.Create(e.Key, e.Item))
+                </div>
+            }
+        </div>
+        <div class="spacer spacer-start overflow-y-hidden flex flex-col-reverse flex-nowrap items-stretch"
+             style="height: @(Plan.SpacerSize)px">
+            <SkeletonContainer>
+                @for (var i = SkeletonCount; i > 0; --i) {
+                    @Skeleton(-i)
+                }
+            </SkeletonContainer>
+        </div>
+        <div class="items items-displayed flex flex-col flex-nowrap items-stretch">
+            @foreach (var e in Plan.DisplayedItems) {
+                <div @key="e.Key" class="item" data-key="@e.Key">
+                    @Item(KeyValuePair.Create(e.Key, e.Item))
+                </div>
+            }
+        </div>
+        <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
+             style="height: @(Plan.EndSpacerSize)px">
+            <SkeletonContainer>
+                @for (var i = 0; i < SkeletonCount; ++i) {
+                    @Skeleton(i)
+                }
+            </SkeletonContainer>
+        </div>
+    </div>
+</div>

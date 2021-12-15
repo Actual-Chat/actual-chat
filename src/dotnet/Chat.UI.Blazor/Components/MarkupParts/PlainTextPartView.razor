@@ -8,7 +8,7 @@
 @{
     var textToTimeMap = Part.Markup.TextToTimeMap;
     var isPlayable = Entry.AudioEntryId.HasValue && !textToTimeMap.IsEmpty;
-    var cls = _componentCssClass ??= this.ComponentCssClass();
+    var cls = _class ??= this.DefaultClass();
     if (isPlayable) {
         cls += " playable";
         if (PlayingAt != null) {
@@ -25,10 +25,12 @@
 }
 
 @code {
-    private static string? _componentCssClass;
+    private static string? _class;
+    private ILogger? _log;
 
     // Just one dependency: it should render as quickly as possible
     [Inject] private IServiceProvider Services { get; set; } = null!;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatEntry Entry { get; set; } = null!;
@@ -47,16 +49,15 @@
         var chatId = entry.ChatId;
         var audioEntryId = entry.AudioEntryId.GetValueOrDefault(); // It's there for sure, otherwise click won't work
 
-        var log = Services.LogFor(GetType());
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        var chatEntryReader = chats.CreateEntryReader(session, chatId);
+        var chatEntryReader = chats.CreateEntryReader(session, chatId, ChatEntryType.Audio);
 
         var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
         if (audioEntry == null) {
-            log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
             return; // We can't do much in this case
         }
 
@@ -64,6 +65,6 @@
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
         _ = BackgroundTask.Run(
             () => historicalPlayer.Play(startAt),
-            log, "Historical playback failed");
+            Log, "Historical playback failed");
     }
 }

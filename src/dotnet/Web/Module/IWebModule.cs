@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 
-namespace ActualChat.Web.Module
+namespace ActualChat.Web.Module;
+
+public interface IWebModule
 {
-    public interface IWebModule
-    {
-        void ConfigureApp(IApplicationBuilder app);
-    }
+    void ConfigureApp(IApplicationBuilder app);
 }

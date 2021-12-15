@@ -17,6 +17,6 @@ public class UserStatesController : ControllerBase, IUserStates
     }
 
     [HttpGet, Publish]
-    public Task<bool> IsOnline(UserId userId, CancellationToken cancellationToken)
+    public Task<bool> IsOnline(string userId, CancellationToken cancellationToken)
         => _userStates.IsOnline(userId, cancellationToken);
 }

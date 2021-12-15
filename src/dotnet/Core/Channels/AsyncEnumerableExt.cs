@@ -1,7 +1,12 @@
+using ActualChat.Channels.Internal;
+
 namespace ActualChat.Channels;
 
 public static class AsyncEnumerableExt
 {
+    public static IAsyncEnumerable<T> AsEnumerableOnce<T>(this IAsyncEnumerator<T> enumerator, bool suppressDispose)
+        => new AsyncEnumerableOnce<T>(enumerator, suppressDispose);
+
     public static AsyncMemoizer<T> Memoize<T>(
         this IAsyncEnumerable<T> source,
         CancellationToken cancellationToken = default)

@@ -1,0 +1,14 @@
+@if (Error != null) {
+    <Error @key="@Error" Title="@Title" Dismissed="@Dismissed">@Error.Message</Error>
+}
+
+@code {
+    [Parameter]
+    public string Class { get; set; } = CssClasses.Default[typeof(WhenError)];
+    [Parameter]
+    public string Title { get; set; } = "Error!";
+    [Parameter]
+    public Exception? Error { get; set; }
+    [Parameter]
+    public EventCallback Dismissed { get; set; }
+}

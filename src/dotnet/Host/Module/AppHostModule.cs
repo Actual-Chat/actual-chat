@@ -15,7 +15,6 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Stl.DependencyInjection;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
@@ -102,10 +101,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         base.InjectServices(services);
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             return; // Server-side only module
-
-        // Debug mode
-        if (Constants.DebugMode.WebMReader)
-            WebMReader.DebugLog = Plugins.LogFor(typeof(WebMReader));
 
         // UriMapper
         services.AddSingleton(c => {

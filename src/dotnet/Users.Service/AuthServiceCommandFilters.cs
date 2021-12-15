@@ -1,7 +1,6 @@
 using ActualChat.Users.Db;
 using Cysharp.Text;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -42,7 +41,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
             await using var __ = dbContext.ConfigureAwait(false);
-            var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken)
+            var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == command.Session.Id.Value, cancellationToken)
                 .ConfigureAwait(false);
             if (dbSession != null) {
                 dbSession.Options = new ImmutableOptionSet();
@@ -93,7 +92,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         async Task ResetSessionOptions()
         {
             var dbSession = await dbContext.Sessions
-                .FirstOrDefaultAsync(x => x.Id == (string)command.Session.Id, cancellationToken).ConfigureAwait(false);
+                .FirstOrDefaultAsync(x => x.Id == command.Session.Id.Value, cancellationToken).ConfigureAwait(false);
 
             if (dbSession != null) {
                 dbSession.Options = new ImmutableOptionSet();

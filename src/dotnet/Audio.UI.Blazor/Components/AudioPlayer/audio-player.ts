@@ -63,6 +63,8 @@ export class AudioPlayer {
         });
         this._audio.addEventListener('timeupdate', e => {
             const time = this._audio.currentTime;
+            if (this._debugMode)
+                this.log(`timeupdate: playing at: ${time}`);
             if (this._audio.readyState !== this._lastReadyState) {
                 if (this._debugMode)
                     this.log(`timeupdate: new _audio.readyState = ${this.getReadyState()}`);

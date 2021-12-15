@@ -1,13 +1,9 @@
-﻿using System.Data;
-using ActualChat.Configuration;
+﻿using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Redis;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
@@ -50,6 +46,7 @@ public class DbModule : HostModule<DbSettings>
             ConnectionString = connectionString,
             ShouldRecreateDb = Settings.ShouldRecreateDb,
             ShouldVerifyDb = Settings.ShouldVerifyDb,
+            ShouldMigrateDb = Settings.ShouldMigrateDb,
         };
 
         // Adding services

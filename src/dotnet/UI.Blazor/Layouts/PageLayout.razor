@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+@layout MainLayout
+
+@{
+    var cssClass = RouteData.PageType.Name.TrimSuffix("Page").ToLowerInvariant() + "-page";
+}
+<div class="@cssClass h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
+    <div class="chat-header">
+        <PageLayoutHeader/>
+    </div>
+    <div class="chat-content">
+        @Body
+    </div>
+    <div class="chat-footer">
+        <PageLayoutFooter/>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] RouteData RouteData { get; set; } = null!;
+}

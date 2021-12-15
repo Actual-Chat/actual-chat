@@ -1,31 +1,27 @@
 @namespace ActualChat.UI.Blazor.Components
 @using System.Reflection
 @inject BlazorModeHelper _blazorModeHelper
-@inject IJSRuntime _js
+@inject BlazorCircuitContext _circuitContext
 
-<div @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))" class="cursor-pointer select-none flex flex-row bg-gray-700 text-gray-400 text-xs py-2 px-2 rounded-lg opacity-75 hover:opacity-100">
-    <span><i class="fa fa-cog" aria-hidden="true"></i> @(IsPrerenderding ? "Loading..." : GetModeName(IsServerSideBlazor))</span>
-</div>
+<span class="@(_class ??= this.DefaultClass()) group"
+     @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
+    @if (_circuitContext.IsPrerendering) {
+        <span>"Loading..."</span>
+    } else {
+        <span class="hover-item">Blazor: <b>@(ModeNames[IsServerSideBlazor ? 1 : 0])</b></span>@*
+        *@<span class="hover-item alt">Switch to <b>@(ModeNames[IsServerSideBlazor ? 0 : 1])</b></span>
+    }
+</span>
 
 @code {
-    private bool IsPrerenderding { get; set; }
+    private static readonly string[] ModeNames = { "WASM", "Server" };
+    private static string? _class;
+
     private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsServerSideBlazor;
 
-    [Parameter]
-    public string CssClass { get; set; } = "";
-
-    protected override void OnInitialized()
-    {
-        var jsRuntimeType = _js.GetType();
-        if (jsRuntimeType.Name != "RemoteJSRuntime") {
-            IsPrerenderding = false;
-            return;
-        }
-        var fClientProxy = jsRuntimeType.GetField("_clientProxy", BindingFlags.Instance | BindingFlags.NonPublic);
-        var clientProxy = fClientProxy?.GetValue(_js);
-        IsPrerenderding = fClientProxy != null && clientProxy == null;
-    }
-
-    private string GetModeName(bool isServerSideBlazor)
+    private string GetActiveText(bool isServerSideBlazor)
         => isServerSideBlazor ? "Blazor Server" : "Blazor WASM";
+
+    private string GetInactiveText(bool isServerSideBlazor)
+        => isServerSideBlazor ? "Switch to WASM" : "Switch to Server";
 }

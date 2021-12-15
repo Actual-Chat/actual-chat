@@ -1,15 +1,11 @@
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
-using ActualChat.UI.Blazor;
-using Microsoft.Extensions.DependencyInjection;
-using Stl.DependencyInjection;
 using Stl.Plugins;
 
 namespace ActualChat.Audio.UI.Blazor.Module;
 
 public class AudioBlazorUIModule: HostModule, IBlazorUIModule
 {
-    /// <inheritdoc />
     public static string ImportName => "audio";
 
     public AudioBlazorUIModule(IPluginInfoProvider.Query _) : base(_) { }

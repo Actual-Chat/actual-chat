@@ -1,6 +1,4 @@
 using ActualChat.Audio.Db;
-using ActualChat.Blobs;
-using ActualChat.Redis;
 using Stl.Redis;
 
 namespace ActualChat.Audio;
@@ -8,26 +6,29 @@ namespace ActualChat.Audio;
 public class AudioStreamer : IAudioStreamer
 {
     private const int StreamBufferSize = 64;
-    private readonly ILogger<AudioStreamer> _log;
-    private readonly RedisDb _redisDb;
+    // ReSharper disable once UnusedAutoPropertyAccessor.Local
+    private ILogger<AudioStreamer> Log { get; }
+    private RedisDb RedisDb { get; }
 
     public AudioStreamer(
         RedisDb<AudioContext> audioRedisDb,
         ILogger<AudioStreamer> log)
     {
-        _log = log;
-        _redisDb = audioRedisDb.WithKeyPrefix("audio-streams");
+        Log = log;
+        RedisDb = audioRedisDb.WithKeyPrefix("audio-streams");
     }
 
-    public Task Publish(StreamId streamId, IAsyncEnumerable<BlobPart> blobParts, CancellationToken cancellationToken)
+    public Task Publish(string streamId, IAsyncEnumerable<BlobPart> blobParts, CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<BlobPart>(streamId);
+        var streamer = RedisDb.GetStreamer<BlobPart>(streamId);
         return streamer.Write(blobParts, cancellationToken);
     }
 
-    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(StreamId streamId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<BlobPart> GetAudioBlobStream(string streamId, CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<BlobPart>(streamId);
-        return streamer.Read(cancellationToken).Buffer(StreamBufferSize, cancellationToken);
+        var streamer = RedisDb.GetStreamer<BlobPart>(streamId);
+        return streamer
+            .Read(cancellationToken)
+            .WithBuffer(StreamBufferSize, cancellationToken);
     }
 }

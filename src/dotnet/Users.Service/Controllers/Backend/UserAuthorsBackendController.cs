@@ -13,6 +13,6 @@ public class UserAuthorsBackendController : ControllerBase, IUserAuthorsBackend
     public UserAuthorsBackendController(IUserAuthorsBackend service) => _service = service;
 
     [HttpGet, Publish]
-    public Task<UserAuthor?> Get(UserId userId, bool inherit, CancellationToken cancellationToken)
+    public Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken)
         => _service.Get(userId, inherit, cancellationToken);
 }

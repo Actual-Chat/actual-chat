@@ -286,6 +286,7 @@ public static class EbmlHelper
             return true;
 
         foreach (var model in models)
+            // ReSharper disable once ConstantConditionalAccessQualifier
             if (!model?.Write(ref writer) ?? true)
                 return false;
 
@@ -298,6 +299,7 @@ public static class EbmlHelper
             return true;
 
         foreach (var block in blocks)
+            // ReSharper disable once ConstantConditionalAccessQualifier
             if (!block?.Write(ref writer) ?? true)
                 return false;
 
@@ -310,6 +312,7 @@ public static class EbmlHelper
             return true;
 
         foreach (var tag in tags)
+            // ReSharper disable once ConstantConditionalAccessQualifier
             if (!tag?.Write(ref writer) ?? true)
                 return false;
 

@@ -3,12 +3,13 @@
 public interface IChats
 {
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
+    Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<long> GetEntryCount(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken);
 
@@ -16,20 +17,22 @@ public interface IChats
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Range<long>> GetIdRange(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatTile> GetTile(
         Session session,
-        ChatId chatId,
+        string chatId,
+        ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatPermissions> GetPermissions(
         Session session,
-        ChatId chatId,
+        string chatId,
         CancellationToken cancellationToken);
 
     // Commands
@@ -40,5 +43,5 @@ public interface IChats
     Task<ChatEntry> CreateEntry(CreateEntryCommand command, CancellationToken cancellationToken);
 
     public record CreateChatCommand(Session Session, string Title) : ISessionCommand<Chat>;
-    public record CreateEntryCommand(Session Session, ChatId ChatId, string Text) : ISessionCommand<ChatEntry>;
+    public record CreateEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>;
 }

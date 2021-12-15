@@ -1,18 +1,19 @@
 using ActualChat.Audio.Db;
-using ActualChat.Blobs;
 using ActualChat.Chat;
-using ActualChat.Redis;
 using Stl.Redis;
 
 namespace ActualChat.Audio;
 
 public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 {
-    private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly RedisDb _redisDb;
-    private readonly RedisQueue<AudioRecord> _newRecordQueue;
-    private readonly MomentClockSet _clocks;
-    private readonly ILogger<SourceAudioRecorder> _log;
+    private ILogger<SourceAudioRecorder> Log { get; }
+    protected bool DebugMode => Constants.DebugMode.AudioProcessing;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
+
+    private IChatAuthorsBackend ChatAuthorsBackend { get; }
+    private RedisDb RedisDb { get; }
+    private RedisQueue<AudioRecord> NewRecordQueue { get; }
+    private MomentClockSet Clocks { get; }
 
     public SourceAudioRecorder(
         RedisDb<AudioContext> audioRedisDb,
@@ -20,55 +21,56 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         MomentClockSet clocks,
         ILogger<SourceAudioRecorder> log)
     {
-        _log = log;
-        _clocks = clocks;
-        _redisDb = audioRedisDb.WithKeyPrefix("source-audio");
-        _newRecordQueue = _redisDb.GetQueue<AudioRecord>("new-records");
-        _chatAuthorsBackend = chatAuthorsBackend;
+        Log = log;
+        Clocks = clocks;
+        RedisDb = audioRedisDb.WithKeyPrefix("source-audio");
+        NewRecordQueue = RedisDb.GetQueue<AudioRecord>("new-records");
+        ChatAuthorsBackend = chatAuthorsBackend;
     }
 
     public ValueTask DisposeAsync()
-        => _newRecordQueue.DisposeAsync();
+        => NewRecordQueue.DisposeAsync();
 
     public async Task RecordSourceAudio(
         Session session,
-        AudioRecord audioRecord,
+        AudioRecord record,
         IAsyncEnumerable<BlobPart> blobStream,
         CancellationToken cancellationToken)
     {
-        var author = await _chatAuthorsBackend.GetOrCreate(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false);
-        audioRecord = audioRecord with {
-            Id = new AudioRecordId(Ulid.NewUlid().ToString()),
+        Log.LogInformation("RecordSourceAudio: Record = {Record}", record);
+        var author = await ChatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        record = record with {
+            Id = new string(Ulid.NewUlid().ToString()),
             AuthorId = author.Id,
         };
-        _log.LogInformation(nameof(RecordSourceAudio) + ": Record = {Record}", audioRecord);
 
-        var streamer = _redisDb.GetStreamer<BlobPart>(audioRecord.Id);
+        var streamer = RedisDb.GetStreamer<BlobPart>(record.Id);
+        // streamer.Log = DebugLog;
         if (Constants.DebugMode.AudioRecordingBlobStream)
-            blobStream = blobStream.WithLog(_log, "RecordSourceAudio", cancellationToken);
+            blobStream = blobStream.WithLog(Log, "RecordSourceAudio", cancellationToken);
         await streamer.Write(
                 blobStream,
-                _ => _newRecordQueue.Enqueue(audioRecord).ToValueTask(),
+                _ => NewRecordQueue.Enqueue(record).ToValueTask(),
                 cancellationToken)
             .ConfigureAwait(false);
         _ = BackgroundTask.Run(DelayedStreamerRemoval,
-            _log, $"{nameof(DelayedStreamerRemoval)} failed",
+            Log, $"{nameof(DelayedStreamerRemoval)} failed",
             CancellationToken.None);
 
         async Task DelayedStreamerRemoval()
         {
-            await _clocks.CpuClock.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
+            await Clocks.CpuClock.Delay(TimeSpan.FromMinutes(1), CancellationToken.None).ConfigureAwait(false);
             await streamer.Remove().ConfigureAwait(false);
         }
     }
 
-
     public Task<AudioRecord> DequeueSourceAudio(CancellationToken cancellationToken)
-        => _newRecordQueue.Dequeue(cancellationToken);
+        => NewRecordQueue.Dequeue(cancellationToken);
 
-    public IAsyncEnumerable<BlobPart> GetSourceAudioBlobStream(AudioRecordId audioRecordId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<BlobPart> GetSourceAudioBlobStream(string audioRecordId, CancellationToken cancellationToken)
     {
-        var streamer = _redisDb.GetStreamer<BlobPart>(audioRecordId);
+        var streamer = RedisDb.GetStreamer<BlobPart>(audioRecordId);
+        // streamer.Log = DebugLog;
         return streamer.Read(cancellationToken);
     }
 }

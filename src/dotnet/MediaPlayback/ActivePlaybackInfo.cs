@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace ActualChat.MediaPlayback;
 
 public class ActivePlaybackInfo : IActivePlaybackInfo

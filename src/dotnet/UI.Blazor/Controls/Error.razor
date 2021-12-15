@@ -1,0 +1,26 @@
+@if (!_isClosed) {
+    <div class="@Class">
+        <div>@Title</div>
+        <div>@ChildContent</div>
+        <button @onclick="Close">✖</button>
+    </div>
+}
+
+@code {
+    private bool _isClosed;
+
+    [Parameter]
+    public string Class { get; set; } = CssClasses.Default[typeof(Error)];
+    [Parameter]
+    public string Title { get; set; } = "Error:";
+    [Parameter]
+    public EventCallback Dismissed { get; set; }
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private Task Close()
+    {
+        _isClosed = true;
+        return Dismissed.InvokeAsync(null);
+    }
+}
