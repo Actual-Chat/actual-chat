@@ -1,8 +1,7 @@
 using ActualChat.Audio;
-using ActualChat.Transcription.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace ActualChat.Transcription;
+namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriber : ITranscriber
 {

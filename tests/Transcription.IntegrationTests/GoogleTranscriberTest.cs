@@ -1,21 +1,22 @@
 using ActualChat.Audio;
+using ActualChat.Transcription.Google;
 using Stl.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
 public class GoogleTranscriberTest : TestBase
 {
-    private readonly ILogger<GoogleTranscriber> _logger;
+    private ILogger<GoogleTranscriber> Log { get; }
 
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> logger) : base(@out)
-        => _logger = logger;
+    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
+        => Log = log;
 
     [Theory]
     [InlineData("file.webm")]
     // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
-        var transcriber = new GoogleTranscriber(_logger);
+        var transcriber = new GoogleTranscriber(Log);
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -35,7 +36,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";
-        var transcriber = new GoogleTranscriber(_logger);
+        var transcriber = new GoogleTranscriber(Log);
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,

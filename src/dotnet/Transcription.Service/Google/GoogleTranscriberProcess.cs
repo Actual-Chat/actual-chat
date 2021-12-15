@@ -1,12 +1,13 @@
 using System.Numerics;
 using ActualChat.Audio;
 using ActualChat.Media;
+using Cysharp.Text;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace ActualChat.Transcription.Internal;
+namespace ActualChat.Transcription.Google;
 
 public class GoogleTranscriberProcess : AsyncProcessBase
 {
@@ -16,7 +17,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 
     private TranscriptionOptions Options { get; }
     private IAsyncEnumerable<AudioStreamPart> AudioStream { get; }
-    private GoogleTranscriberState State { get; }
+    private TranscriberState State { get; }
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
@@ -117,12 +118,17 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             var result = results.Single();
             if (!TryParseFinal(result, out var text, out var textToTimeMap))
                 return;
-            transcript = State.AppendFinal(text, textToTimeMap);
+            transcript = State.AppendStable(text, textToTimeMap);
         }
         else {
             var text = results
                 .Select(r => r.Alternatives.First().Transcript)
                 .ToDelimitedString("");
+            if (State.LastStable.Text.Length != 0 && !text.StartsWith(" ")) {
+                // Google Transcribe issue: sometimes it returns alternatives w/o " " prefix,
+                // i.e. they go concatenated with the stable (final) part.
+                text = ZString.Concat(" ", text);
+            }
             var endTime = (float) results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
             transcript = State.AppendAlternative(text, endTime);
         }
@@ -137,10 +143,10 @@ public class GoogleTranscriberProcess : AsyncProcessBase
         var endTime = (float) result.ResultEndTime.ToTimeSpan().TotalSeconds;
         text = alternative.Transcript;
 
-        var lastFinal = State.LastFinal;
-        var lastFinalTextLength = lastFinal.Text.Length;
-        var lastFinalDuration = lastFinal.TextToTimeMap.YRange.End;
-        var mapPoints = new List<Vector2> { new(lastFinalTextLength, lastFinalDuration) };
+        var lastStable = State.LastStable;
+        var lastStableTextLength = lastStable.Text.Length;
+        var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
+        var mapPoints = new List<Vector2> { new(lastStableTextLength, lastStableDuration) };
         var lastWordOffset = 0;
         var lastWordStartTime = -1d;
         foreach (var word in alternative.Words) {
@@ -152,20 +158,20 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             }
 
             lastWordStartTime = wordStartTime;
-            if (wordStartTime < lastFinalDuration)
+            if (wordStartTime < lastStableDuration)
                 continue;
             var wordOffset = text.IndexOf(word.Word, lastWordOffset, StringComparison.InvariantCultureIgnoreCase);
             if (wordOffset < 0)
                 continue;
             lastWordOffset = wordOffset + word.Word.Length;
-            var finalTextWordOffset = lastFinalTextLength + wordOffset;
-            if (mapPoints[^1].X >= finalTextWordOffset)
+            var stableTextWordOffset = lastStableTextLength + wordOffset;
+            if (mapPoints[^1].X >= stableTextWordOffset)
                 continue;
 
-            mapPoints.Add(new Vector2(finalTextWordOffset, (float) word.StartTime.ToTimeSpan().TotalSeconds));
+            mapPoints.Add(new Vector2(stableTextWordOffset, (float) word.StartTime.ToTimeSpan().TotalSeconds));
         }
 
-        mapPoints.Add(new Vector2(lastFinalTextLength + text.Length, endTime));
+        mapPoints.Add(new Vector2(lastStableTextLength + text.Length, endTime));
         textToTimeMap = new LinearMap(mapPoints.ToArray())
             .Simplify(Transcript.TextToTimeMapTimePrecision);
         return true;
