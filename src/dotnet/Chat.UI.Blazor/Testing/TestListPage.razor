@@ -1,5 +1,4 @@
 @page "/test-list"
-@page "/test-list/{IsReversed:bool}"
 @using ActualChat.Comparison
 @inject ILogger<TestListPage> _log
 @inject TestListService _listService
@@ -7,12 +6,12 @@
 <h1>VirtualList Test Page</h1>
 
 <VirtualList style="height: 600px;"
-             IsReversed="@IsReversed"
+             PreferredTrackingEdge="@(EndAligned ? VirtualListEdge.End : VirtualListEdge.Start)"
              SpacerSize="1000"
              LoadZoneSize="200" BufferZoneSize="400"
              DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
-        <TestListItemBadge Key="@context.Key" />
+        <TestListItemBadge ItemRef="@context.Value" />
     </Item>
     <Skeleton>
         <div>
@@ -22,9 +21,15 @@
 </VirtualList>
 
 @code {
-    [Parameter]
-    public bool IsReversed { get; set; } = false;
+    [Parameter, SupplyParameterFromQuery]
+    public bool EndAligned { get; set; } = false;
+    [Parameter, SupplyParameterFromQuery]
+    public int? RangeSeed { get; set; } = null;
+    [Parameter, SupplyParameterFromQuery]
+    public int? ContentSeed { get; set; } = null;
 
-    private Task<VirtualListData<string>> GetVirtualListItems(VirtualListDataQuery query, CancellationToken cancellationToken)
-        => _listService.GetItemKeys(query, cancellationToken);
+    private Task<VirtualListData<TestListItemRef>> GetVirtualListItems(
+        VirtualListDataQuery query,
+        CancellationToken cancellationToken)
+        => _listService.GetItemKeys(query, RangeSeed, ContentSeed, EndAligned, cancellationToken);
 }

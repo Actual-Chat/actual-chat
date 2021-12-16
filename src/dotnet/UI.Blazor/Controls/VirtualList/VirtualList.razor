@@ -6,7 +6,7 @@
     // Log.LogInformation("Rendering: RenderIndex = {RenderIndex}", Plan.RenderIndex);
     // Log.LogInformation("Rendering: {Plan}", JsonFormatter.Format(Plan));
     var flexBase = "flex flex-nowrap items-stretch";
-    var flexDir = IsReversed ? "flex-col-reverse" : "flex-col";
+    var flexDir = Plan.IsEndAligned ? "flex-col-reverse" : "flex-col";
     var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     var flexClass = $"{flexBase} flex-col";
     var invFlexClass = $"{flexBase} flex-col-reverse";

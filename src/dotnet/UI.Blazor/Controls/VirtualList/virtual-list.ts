@@ -3,12 +3,12 @@ import './virtual-list.css';
 const LogScope: string = 'VirtualList'
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
-const SizeEpsilon: number = 0.6;
+const SizeEpsilon: number = 4;
 const StickyEdgeEpsilon: number = 4;
 
 export class VirtualList {
     private readonly _debugMode: boolean = false;
-    private readonly _isReversed: boolean = false;
+    private readonly _isEndAligned: boolean = false;
     /** ref to div.virtual-list */
     private readonly _elementRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
@@ -29,17 +29,17 @@ export class VirtualList {
 
     public static create(
         elementRef: HTMLElement, backendRef: DotNet.DotNetObject,
-        isReversed: boolean, debugMode: boolean)
+        isEndAligned: boolean, debugMode: boolean)
     {
-        return new VirtualList(elementRef, backendRef, isReversed, debugMode);
+        return new VirtualList(elementRef, backendRef, isEndAligned, debugMode);
     }
 
     public constructor(
         elementRef: HTMLElement, backendRef: DotNet.DotNetObject,
-        isReversed: boolean, debugMode: boolean)
+        isEndAligned: boolean, debugMode: boolean)
     {
         this._debugMode = debugMode;
-        this._isReversed = isReversed;
+        this._isEndAligned = isEndAligned;
         this._elementRef = elementRef;
         this._blazorRef = backendRef;
         this._abortController = new AbortController();
@@ -88,14 +88,14 @@ export class VirtualList {
         let clientHeight = this._elementRef.getBoundingClientRect().height;
         let computedScrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
         let scrollTop = this._elementRef.scrollTop;
-        if (this._isReversed)
+        if (this._isEndAligned)
             scrollTop = scrollHeight + scrollTop - clientHeight;
 
         if (renderState.mustScroll && Math.abs(renderState.scrollTop - scrollTop) > SizeEpsilon) {
             if (this._debugMode)
                 console.log(`${LogScope}.afterRender: scrolling to ${renderState.scrollTop}`)
             let scrollTop = renderState.scrollTop;
-            if (this._isReversed)
+            if (this._isEndAligned)
                 scrollTop = scrollTop + clientHeight - scrollHeight;
             this._elementRef.scrollTop = scrollTop;
         }
@@ -200,7 +200,7 @@ export class VirtualList {
         let clientHeight = this._elementRef.getBoundingClientRect().height;
         let computedScrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
         let scrollTop = this._elementRef.scrollTop;
-        if (this._isReversed)
+        if (this._isEndAligned)
             scrollTop = scrollHeight + scrollTop - clientHeight;
 
         let state: Required<IClientSideState> = {

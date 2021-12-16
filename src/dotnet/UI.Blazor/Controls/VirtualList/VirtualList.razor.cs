@@ -35,7 +35,6 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public string Style { get; set; } = "";
     [Parameter, EditorRequired] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
-    [Parameter] public bool IsReversed { get; set; } = false;
     [Parameter] public int SkeletonCount { get; set; } = 100;
     [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
@@ -73,17 +72,18 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (CircuitContext.IsPrerendering)
+            return;
+
+        var plan = LastPlan;
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                Ref, BlazorRef, IsReversed, DebugMode
+                Ref, BlazorRef, plan!.IsEndAligned, DebugMode
                 ).ConfigureAwait(true);
         }
-        var plan = LastPlan;
-        if (CircuitContext.IsPrerendering || JSRef == null! || plan == null)
-            return;
-        if (plan.RenderIndex == LastAfterRenderRenderIndex)
+        if (plan == null || plan.RenderIndex == LastAfterRenderRenderIndex || JSRef == null!)
             return; // Nothing new is rendered
 
         LastAfterRenderRenderIndex = plan.RenderIndex;
