@@ -27,6 +27,7 @@ public static class BlobStreamExt
             if (OSInfo.IsWebAssembly) {
                 request.SetBrowserResponseStreamingEnabled(true);
                 request.SetBrowserRequestMode(BrowserRequestMode.Cors);
+                request.SetBrowserRequestCache(BrowserRequestCache.ForceCache);
             }
             response = await httpClient
                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
