@@ -12,10 +12,17 @@ public class DebounceTest : TestBase
     {
         // Normal sequence
         var delays = Delays(new [] {0.1, 0.1, 0.1, 0.1, 0.1});
-        var l = await delays.Debounce(TimeSpan.FromSeconds(0.25)).ToArrayAsync();
-        l.Should().Equal(0, 2, 4);
+        var l = await delays.Debounce(TimeSpan.FromSeconds(0.001)).ToArrayAsync();
+        Out.WriteLine(l.ToDelimitedString());
+        l.Length.Should().Be(6);
+
+        l = await delays.Debounce(TimeSpan.FromSeconds(0.25)).ToArrayAsync();
+        Out.WriteLine(l.ToDelimitedString());
+        l.Length.Should().BeLessThan(6);
+
         l = await delays.Debounce(TimeSpan.FromSeconds(0.6)).ToArrayAsync();
-        l.Should().Equal(0, 4);
+        Out.WriteLine(l.ToDelimitedString());
+        l.Length.Should().BeLessThan(3);
 
         // Sequence ending w/ exception
         await Assert.ThrowsAsync<InvalidOperationException>(async () => {
@@ -41,6 +48,7 @@ public class DebounceTest : TestBase
             yield return i++;
             await Task.Delay(TimeSpan.FromSeconds(delay), cancellationToken).ConfigureAwait(false);
         }
+        yield return i;
     }
 
     public static async IAsyncEnumerable<T> AppendThrow<T>(
