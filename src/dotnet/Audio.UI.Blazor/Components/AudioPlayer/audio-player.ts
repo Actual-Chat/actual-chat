@@ -18,13 +18,4 @@ export class AudioPlayer {
     public static isMsePlayer(): boolean {
         return this._isMsePlayer;
     }
-
-    public static debug?: {
-        debugMode: boolean;
-        debugOperations: boolean;
-        debugAppendAudioCalls: boolean;
-        debugDecoder: boolean;
-        debugFeeder: boolean;
-        debugFeederStats: boolean;
-    } = null;
 }

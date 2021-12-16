@@ -20,8 +20,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private CancellationTokenRegistration _registration;
     private int? _prevMediaElementReadyState;
     private double _offset;
-    //private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
-    private string _uri = "http://localhost:7080/api/audio/download/audio-record/01FP81V6V4HXBWEY22SRXC8V46/0000.webm";
+    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQ109DMZC9YC9FCW6YNW6Y31/0002.webm";
     private const bool DebugMode = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -52,7 +51,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{AudioBlazorUIModule.ImportName}.{(isMsePlayer ? "AudioPlayer" : "AudioContextAudioPlayer")}.create",
+                $"{AudioBlazorUIModule.ImportName}.{(isMsePlayer ? "MseAudioPlayer" : "AudioContextAudioPlayer")}.create",
                 _cts.Token, blazorRef, DebugMode
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
