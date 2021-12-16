@@ -35,6 +35,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public string Style { get; set; } = "";
     [Parameter, EditorRequired] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
+    [Parameter] public bool IsReversed { get; set; } = false;
     [Parameter] public int SkeletonCount { get; set; } = 100;
     [Parameter] public double SpacerSize { get; set; } = 8640;
     [Parameter] public double LoadZoneSize { get; set; } = 1080;
@@ -76,7 +77,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                Ref, BlazorRef, DebugMode
+                Ref, BlazorRef, IsReversed, DebugMode
                 ).ConfigureAwait(true);
         }
         var plan = LastPlan;

@@ -1,4 +1,5 @@
 @page "/test-list"
+@page "/test-list/{IsReversed:bool}"
 @using ActualChat.Comparison
 @inject ILogger<TestListPage> _log
 @inject TestListService _listService
@@ -6,7 +7,8 @@
 <h1>VirtualList Test Page</h1>
 
 <VirtualList style="height: 600px;"
-             SpacerSize="6000"
+             IsReversed="@IsReversed"
+             SpacerSize="1000"
              LoadZoneSize="200" BufferZoneSize="400"
              DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
@@ -20,6 +22,9 @@
 </VirtualList>
 
 @code {
+    [Parameter]
+    public bool IsReversed { get; set; } = false;
+
     private Task<VirtualListData<string>> GetVirtualListItems(VirtualListDataQuery query, CancellationToken cancellationToken)
         => _listService.GetItemKeys(query, cancellationToken);
 }
