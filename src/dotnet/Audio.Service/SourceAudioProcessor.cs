@@ -22,7 +22,7 @@ public class SourceAudioProcessor : AsyncProcessBase
     public AudioSplitter AudioSplitter { get; }
     public AudioSourceStreamer AudioSourceStreamer { get; }
     public TranscriptSplitter TranscriptSplitter { get; }
-    public TranscriptBeautifier TranscriptBeautifier { get; }
+    public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
     public IChatsBackend ChatsBackend { get; }
     public MomentClockSet ClockSet { get; }
@@ -35,7 +35,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         AudioSplitter audioSplitter,
         AudioSourceStreamer audioSourceStreamer,
         TranscriptSplitter transcriptSplitter,
-        TranscriptBeautifier transcriptBeautifier,
+        TranscriptPostProcessor transcriptPostProcessor,
         TranscriptStreamer transcriptStreamer,
         IChatsBackend chatsBackend,
         MomentClockSet clockSet,
@@ -49,7 +49,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         AudioSplitter = audioSplitter;
         AudioSourceStreamer = audioSourceStreamer;
         TranscriptSplitter = transcriptSplitter;
-        TranscriptBeautifier = transcriptBeautifier;
+        TranscriptPostProcessor = transcriptPostProcessor;
         TranscriptStreamer = transcriptStreamer;
         ChatsBackend = chatsBackend;
         ClockSet = clockSet;
@@ -138,7 +138,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         CancellationToken cancellationToken)
     {
         var streamId = $"{audioSegment.StreamId}-{segment.Index:D}";
-        var transcripts = TranscriptBeautifier.Apply(segment, cancellationToken);
+        var transcripts = TranscriptPostProcessor.Apply(segment, cancellationToken);
         var diffs = transcripts.GetDiffs(cancellationToken).Memoize(); // Should
         var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
         await CreateTextEntry(audioEntry, streamId, diffs.Replay(cancellationToken), cancellationToken)
