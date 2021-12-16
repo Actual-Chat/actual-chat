@@ -8,6 +8,7 @@ const StickyEdgeEpsilon: number = 4;
 
 export class VirtualList {
     private readonly _debugMode: boolean = false;
+    private readonly _isReversed: boolean = false;
     /** ref to div.virtual-list */
     private readonly _elementRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
@@ -26,12 +27,19 @@ export class VirtualList {
     private _updateClientSideStateTask: Promise<unknown> | null = null;
     private _blazorRenderIndex: number = -1;
 
-    public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject, debugMode: boolean) {
-        return new VirtualList(elementRef, backendRef, debugMode);
+    public static create(
+        elementRef: HTMLElement, backendRef: DotNet.DotNetObject,
+        isReversed: boolean, debugMode: boolean)
+    {
+        return new VirtualList(elementRef, backendRef, isReversed, debugMode);
     }
 
-    public constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject, debugMode: boolean) {
+    public constructor(
+        elementRef: HTMLElement, backendRef: DotNet.DotNetObject,
+        isReversed: boolean, debugMode: boolean)
+    {
         this._debugMode = debugMode;
+        this._isReversed = isReversed;
         this._elementRef = elementRef;
         this._blazorRef = backendRef;
         this._abortController = new AbortController();
@@ -72,20 +80,38 @@ export class VirtualList {
     public afterRender(renderState: Required<IRenderState>) {
         if (this._debugMode)
             console.log(`${LogScope}.afterRender, renderIndex = #${renderState.renderIndex}, renderState = `, renderState);
-        if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon) {
+
+        let spacerSize = this._spacerRef.getBoundingClientRect().height;
+        let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
+        let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
+        let scrollHeight = this._elementRef.scrollHeight;
+        let clientHeight = this._elementRef.getBoundingClientRect().height;
+        let computedScrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+        let scrollTop = this._elementRef.scrollTop;
+        if (this._isReversed)
+            scrollTop = scrollHeight + scrollTop - clientHeight;
+
+        if (renderState.mustScroll && Math.abs(renderState.scrollTop - scrollTop) > SizeEpsilon) {
             if (this._debugMode)
                 console.log(`${LogScope}.afterRender: scrolling to ${renderState.scrollTop}`)
-            this._elementRef.scrollTop = renderState.scrollTop;
+            let scrollTop = renderState.scrollTop;
+            if (this._isReversed)
+                scrollTop = scrollTop + clientHeight - scrollHeight;
+            this._elementRef.scrollTop = scrollTop;
         }
 
         if (this._debugMode) {
             // Render consistency checks
-            let spacerSize = this._spacerRef.getBoundingClientRect().height;
-            let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
-            let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
-            let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+            let anyScrollHeightDiff = false;
             if (Math.abs(renderState.scrollHeight - scrollHeight) > SizeEpsilon) {
-                console.warn(`${LogScope}.afterRender: scrollHeight doesn't match the expected one!`);
+                console.warn(`${LogScope}.afterRender: scrollHeight mismatch: ${scrollHeight} (actual) != ${renderState.scrollHeight} (expected)`);
+                anyScrollHeightDiff = true;
+            }
+            if (Math.abs(renderState.scrollHeight - computedScrollHeight) > SizeEpsilon) {
+                console.warn(`${LogScope}.afterRender: computedScrollHeight mismatch: ${scrollHeight} (actual) != ${renderState.scrollHeight} (expected)`);
+                anyScrollHeightDiff = true;
+            }
+            if (anyScrollHeightDiff) {
                 if (Math.abs(renderState.spacerSize - spacerSize) > SizeEpsilon)
                     console.log(`! spacerSize: actual ${spacerSize} != ${renderState.spacerSize}`);
                 if (Math.abs(renderState.endSpacerSize - endSpacerSize) > SizeEpsilon)
@@ -170,8 +196,12 @@ export class VirtualList {
         let spacerSize = this._spacerRef.getBoundingClientRect().height;
         let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
         let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
-        let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
-        let trueScrollHeight = this._elementRef.scrollHeight;
+        let scrollHeight = this._elementRef.scrollHeight;
+        let clientHeight = this._elementRef.getBoundingClientRect().height;
+        let computedScrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+        let scrollTop = this._elementRef.scrollTop;
+        if (this._isReversed)
+            scrollTop = scrollHeight + scrollTop - clientHeight;
 
         let state: Required<IClientSideState> = {
             renderIndex: rs.renderIndex,
@@ -181,8 +211,8 @@ export class VirtualList {
             scrollHeight: scrollHeight,
             itemSizes: {}, // Will be updated further
 
-            scrollTop: this._elementRef.scrollTop,
-            clientHeight: this._elementRef.getBoundingClientRect().height,
+            scrollTop: scrollTop,
+            clientHeight: clientHeight,
 
             isSafeToScroll: this._isSafeToScroll,
             isListResized: this._listResizeEventCount > 1, // First is always an initial measure event
@@ -240,7 +270,7 @@ export class VirtualList {
                     ` ${rs.scrollTop} + ${rs.clientHeight} == ${rs.scrollHeight}]` +
                     (isAtTheEnd ? " [is @ end," : " [isn't @ end,") +
                     ` ${state.scrollTop} + ${state.clientHeight} == ${state.scrollHeight}],`+
-                    ` [trueScrollHeight = ${(trueScrollHeight)}]`);
+                    ` [computedScrollHeight = ${(computedScrollHeight)}]`);
         }
 
         let mustUpdateClientSideState =
