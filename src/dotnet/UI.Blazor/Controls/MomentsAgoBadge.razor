@@ -1,11 +1,13 @@
 @inherits ComputedStateComponent<string>
 @inject IFusionTime _fusionTime
 
-<span class="@Class">@State.Value</span>
+<span class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">@State.Value</span>
 
 @code {
+    private static string? _typeClass;
+
     [Parameter]
-    public string Class { get; set; } = CssClasses.Default[typeof(MomentsAgoBadge)];
+    public string Class { get; set; } = "";
     [Parameter]
     public DateTime? Value { get; set; }
     [Parameter]

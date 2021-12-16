@@ -5,7 +5,7 @@
     - Updates on state change without re-rendering the parent component.
 *@
 
-<div class="@Class">
+<div class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">
     <span>Component state: </span>
     @if (IsLoading)
     {
@@ -30,11 +30,12 @@
 </div>
 
 @code {
+    private static string? _typeClass;
     private readonly Action<IState, StateEventKind> _stateChangedHandler;
     private IState _state = null!;
 
     [Parameter]
-    public string Class { get; set; } = CssClasses.Default[typeof(StateOfStateBadge)];
+    public string Class { get; set; } = "";
     [Parameter]
     public IState State {
         get => _state;

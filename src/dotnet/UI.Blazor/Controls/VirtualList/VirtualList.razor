@@ -13,7 +13,7 @@
 }
 
 @* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
-<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full @scrollContainerFlexClass"
+<div @ref="Ref" class="virtual-list overflow-y-scroll h-full @scrollContainerFlexClass @Class @(CssClasses.Default[GetType()])"
      style="@Style"
      data-render-index="@Plan.RenderIndex">
     <div class="content relative @flexBase flex-col">
