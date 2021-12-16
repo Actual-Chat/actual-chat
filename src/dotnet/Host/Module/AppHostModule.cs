@@ -79,14 +79,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         app.UseBlazorFrameworkFiles();
         app.UseStaticFiles(new StaticFileOptions {
                 OnPrepareResponse = context => {
-                    if (!(context.File.Name?.ToLowerInvariant() ?? "").EndsWith(".wasm", StringComparison.InvariantCultureIgnoreCase))
+                    if (string.IsNullOrEmpty(context.File.Name)
+                        || !context.File.Name.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase))
                         return;
-
                     context.Context.Response.Headers.Append("Cache-Control", "public,max-age=86400");
                     context.Context.Response.Headers.Append("Expires", DateTime.UtcNow.AddDays(1).ToString("R", CultureInfo.InvariantCulture));
                 },
-            }
-            );
+            });
         app.UseSwagger();
         app.UseSwaggerUI(c => {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");

@@ -194,7 +194,7 @@ export class AudioContextAudioPlayer {
         this._feeder = new AudioFeeder({
             // we have 960 samples in opus frame (if it was recorded by our wasm recorder)
             // bufferSize must be power of 2, so 512 (10ms-20ms) or 1024 (20ms+)
-            bufferSize: 512,
+            bufferSize: 2048,
             audioContext: this._audioContext,
         });
         this._feeder.onbufferlow = () => this.unblockQueue('onbufferlow');
@@ -289,12 +289,24 @@ export class AudioContextAudioPlayer {
                             while (_demuxer.audioPackets.length > 0) {
 
                                 const { packet, padding } = await this.demuxDequeue();
+                                if (!this._isMetadataLoaded) {
+                                    await this.decodeHeaderProcess(packet);
+                                    // skip the first header packet without samples
+                                    if (offset < 0)
+                                        continue;
+                                }
                                 const samples = await this.decodeProcess(packet);
                                 if (this._debugDecoder) {
-                                    this.log("decodeProcess returned " + (samples instanceof Float32Array
-                                        ? `${samples.byteLength} bytes / ${samples.length} samples`
-                                        : samples
-                                    ) + `isMetadataLoaded: ${this._isMetadataLoaded}`);
+                                    if (samples !== null && samples.length > 0) {
+                                        this.log(`decodeProcess(${packet.byteLength} bytes, padding:${padding}) `
+                                            + `returned ${samples[0].byteLength} `
+                                            + `bytes / ${samples[0].length} samples, `
+                                            + `isMetadataLoaded: ${this._isMetadataLoaded}`);
+                                    }
+                                    else {
+                                        this.log(`decodeProcess(${packet.byteLength} bytes, padding: ${padding}) ` +
+                                            "returned null");
+                                    }
                                 }
                                 if (samples === null)
                                     continue;
@@ -477,25 +489,28 @@ export class AudioContextAudioPlayer {
         return new Promise<boolean>(resolve => demuxer.process(more => resolve(more)));
     }
 
+    private decodeHeaderProcess(packet: ArrayBuffer): Promise<void> {
+        const decoder = this._decoder;
+        if (decoder === null)
+            return Promise.reject("Decoder is disposed");
+        if (decoder.processing === true)
+            return Promise.reject("Decoder is processing");
+        return new Promise<void>(resolve => decoder.processHeader(packet, _ => resolve()));
+    }
+
     private decodeProcess(packet: ArrayBuffer): Promise<Float32Array[] | null> {
         const decoder = this._decoder;
         if (decoder === null)
             return Promise.reject("Decoder is disposed");
         if (decoder.processing === true)
             return Promise.reject("Decoder is processing");
-
         return new Promise<Float32Array[] | null>((resolve, reject) => {
-            if (!this._isMetadataLoaded) {
-                decoder.processHeader(packet, _ => resolve(null));
-            }
-            else {
-                decoder.processAudio(packet, _ => {
-                    if (decoder.audioBuffer !== null && decoder.audioBuffer.length > 0)
-                        resolve(decoder.audioBuffer);
-                    else
-                        reject("Can't decode packet to the right format");
-                });
-            }
+            decoder.processAudio(packet, _ => {
+                if (decoder.audioBuffer !== null && decoder.audioBuffer.length > 0)
+                    resolve(decoder.audioBuffer);
+                else
+                    reject("Can't decode packet to the right format");
+            });
         });
     }
 
