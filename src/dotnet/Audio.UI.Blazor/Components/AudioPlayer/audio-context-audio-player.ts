@@ -4,17 +4,18 @@ import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import AudioFeeder from 'audio-feeder';
 import { OperationQueue, Operation } from './operation-queue';
-import { AudioPlayer } from './audio-player';
-
-enum BufferState {
-    Starving = -1,
-    Nothing = 0,
-    Enough = 1,
-    TooMuch = 2
-}
 
 /** Adapter class for ogv.js player */
 export class AudioContextAudioPlayer {
+
+    public static debug?: {
+        debugMode: boolean;
+        debugOperations: boolean;
+        debugAppendAudioCalls: boolean;
+        debugDecoder: boolean;
+        debugFeeder: boolean;
+        debugFeederStats: boolean;
+    } = null;
 
     public static sharedAudioContext: AudioContext | null = null;
     /**
@@ -27,6 +28,14 @@ export class AudioContextAudioPlayer {
         self.addEventListener('pointerdown', AudioContextAudioPlayer._initEventListener);
         self.addEventListener('pointerup', AudioContextAudioPlayer._initEventListener);
         self.addEventListener('touchstart', AudioContextAudioPlayer._initEventListener);
+    }
+
+    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        const player = new AudioContextAudioPlayer(blazorRef, debugMode);
+        if (debugMode) {
+            self["_player"] = player;
+        }
+        return player;
     }
 
     /** We're only allowed to have 4 contexts on many browsers and there's no way to discard them */
@@ -135,7 +144,7 @@ export class AudioContextAudioPlayer {
 
     constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._blazorRef = blazorRef;
-        const debugOverride = AudioPlayer.debug;
+        const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
             this._debugAppendAudioCalls = debugMode && false;
@@ -202,14 +211,6 @@ export class AudioContextAudioPlayer {
             this.unblockQueue('onstarved');
         };
 
-    }
-
-    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
-        const player = new AudioContextAudioPlayer(blazorRef, debugMode);
-        if (debugMode) {
-            self["_player"] = player;
-        }
-        return player;
     }
 
     public async initialize(byteArray: Uint8Array): Promise<void> {
