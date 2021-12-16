@@ -18,18 +18,6 @@ a {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
-.chat-message {
-    @apply antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words;
-}
-
-.chat-message-transcript {
-    @apply text-primary;
-}
-
-.chat-message-markup {
-    @apply text-primary;
-}
-
 .chat-message-markup .playable {
     @apply cursor-pointer;
     transition: color 300ms ease-in, text-shadow 300ms ease-in;
@@ -43,26 +31,6 @@ a {
     text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
 }
 
-.chat-message .avatar {
-    @apply w-10 h-10 rounded-md mr-3 select-none bg-secondary;
-}
-
-.chat-message .author-name {
-    @apply font-bold text-secondary bg-primary rounded px-1;
-}
-
-.chat-message .begin-time {
-    @apply text-secondary text-xs;
-}
-
-.chat-message .entry-id {
-    @apply text-accent-muted text-xxs;
-}
-
-.chat-header {
-    @apply flex flex-row justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary p-3 select-none border-b border-accent;
-}
-
 .chat-content {
     @apply flex-1 flex flex-col overflow-y-auto bg-secondary px-3 pt-3 mb-12;
 }
@@ -71,46 +39,13 @@ a {
     @apply flex fixed bottom-0 right-0 w-full md:w-3/4 lg:w-4/5 border-t border-primary md:border-secondary;
 }
 
-.mobile-header {
-    @apply w-full;
-}
-
-.chat-title {
-    @apply float-left mt-1;
-}
-
-.chat-message-editor {
-    @apply sticky bottom-0 pb-0.5 self-end bg-secondary w-full;
-}
-
-.plus-button {
-    @apply block py-2 px-2 md:px-4 ml-1 md:ml-2 rounded-l-full outline-none hover:cursor-pointer bg-accent text-primary;
-}
-
-.plus-button-svg {
-    @apply fill-current h-4 w-4 text-secondary hover:text-primary;
-}
-
-.message-input {
-    @apply overflow-y-auto max-h-12 break-words;
-    @apply flex-1 pl-2 py-2 outline-none hover:cursor-text bg-accent text-primary focus:text-secondary;
-}
-
 .message-input::-webkit-scrollbar {
     width: 0;
     height: 0;
 }
 
-.post-recorder-buttons {
-    @apply flex flex-row h-full justify-center justify-items-center outline-none;
-}
-
-.post-message {
-    @apply hidden outline-none py-2 pr-3 text-secondary rounded-r-full bg-accent mr-2 md:mr-8;
-}
-
 .post-message .fill-current {
-    @apply md:transition md:duration-500 md:ease-in-out;
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .post-message:hover {
@@ -118,50 +53,42 @@ a {
 }
 
 .post-message:hover .fill-current {
-    @apply md:transition md:duration-500 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.audio-recorder:hover .not-recording {
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.audio-recorder:hover .recording {
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.not-recording {
+    @apply text-secondary md:transition md:duration-300 md:ease-in-out;
+}
+
+.recording {
+    @apply text-toggle-on md:transition md:duration-300 md:ease-in-out;
 }
 
 [contenteditable=true]:empty:not(:focus):before{
     content:attr(data-text)
 }
 
-.chat-player-toggle {
-    @apply block outline-none md:px-2 py-2 text-justify bg-secondary rounded-full;
-    @apply md:ml-2;
-}
-
 .chat-player-toggle:hover .toggle-button {
-    @apply md:transition md:duration-500 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
 }
 
 .chat-player-toggle:hover .toggle-button-on {
-    @apply md:transition md:duration-500 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
 }
 
 .toggle-button {
-    @apply text-secondary md:transition md:duration-500 md:ease-in-out;
+    @apply text-secondary md:transition md:duration-300 md:ease-in-out;
 }
 
 .toggle-button-on {
-    @apply text-toggle-on md:transition md:duration-500 md:ease-in-out;
+    @apply text-toggle-on md:transition md:duration-300 md:ease-in-out;
 }
 
-.audio-recorder {
-    @apply block outline-none py-2 pr-3 rounded-r-full bg-accent mr-2 md:mr-8;
-}
-
-.audio-recorder:hover .not-recording {
-    @apply md:transition md:duration-500 md:ease-in-out md:scale-110;
-}
-
-.audio-recorder:hover .recording {
-    @apply md:transition md:duration-500 md:ease-in-out md:scale-110;
-}
-
-.not-recording {
-    @apply text-secondary md:transition md:duration-500 md:ease-in-out;
-}
-
-.recording {
-    @apply text-toggle-on md:transition md:duration-500 md:ease-in-out;
-}
