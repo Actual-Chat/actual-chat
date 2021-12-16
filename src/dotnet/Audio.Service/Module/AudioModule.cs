@@ -57,7 +57,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         services.AddSingleton<AudioSourceStreamer>();
         services.AddTransient<IAudioSourceStreamer>(c => c.GetRequiredService<AudioSourceStreamer>());
         services.AddSingleton<TranscriptSplitter>();
-        services.AddSingleton<TranscriptBeautifier>();
+        services.AddSingleton<TranscriptPostProcessor>();
         services.AddSingleton<TranscriptStreamer>();
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
         services.AddSingleton<SourceAudioRecorder>();
