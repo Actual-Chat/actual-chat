@@ -32,7 +32,11 @@ a {
 }
 
 .chat-content {
-    @apply flex-1 flex flex-col overflow-y-auto bg-secondary px-3 pt-3 mb-12;
+    @apply flex-1 flex flex-col overflow-y-auto bg-secondary px-3 pt-3;
+}
+
+.chat-view {
+    @apply h-[calc(100%-3rem)] md:h-[calc(100%-3.5rem)];
 }
 
 .chat-footer {
