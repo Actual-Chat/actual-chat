@@ -5,7 +5,7 @@
     var cssClass = RouteData.PageType.Name.TrimSuffix("Page").ToLowerInvariant() + "-page";
 }
 <div class="@cssClass h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
-    <div class="chat-header">
+    <div class="flex flex-row justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary p-3 select-none border-b border-accent">
         <PageLayoutHeader/>
     </div>
     <div class="chat-content">

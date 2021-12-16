@@ -8,14 +8,14 @@
         : author.Picture;
 }
 
-<div class="@(_class ??= this.DefaultClass())">
-    <img src="@picture" class="avatar author" alt="@author.Name"/>
+<div class="@(_class ??= this.DefaultClass()) antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words">
+    <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-secondary" alt="@author.Name"/>
     <div class="flex-1 overflow-hidden">
         <div class="header">
-            <span class="author-name">@author.Name</span>
-            <span class="begin-time">@entry.BeginsAt.ToString("HH:mm")</span>
+            <span class="font-bold text-secondary bg-primary rounded px-1">@author.Name</span>
+            <span class="text-secondary text-xs">@entry.BeginsAt.ToString("HH:mm")</span>
             &nbsp;
-            <span class="entry-id">id=@entry.Id</span>
+            <span class="text-accent-muted text-xxs">id=@entry.Id</span>
         </div>
         <div class="content">
             @if (entry.IsStreaming) {
