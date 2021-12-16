@@ -4,6 +4,7 @@ import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import AudioFeeder from 'audio-feeder';
 import { OperationQueue, Operation } from './operation-queue';
+import { AudioPlayer } from './audio-player';
 
 enum BufferState {
     Starving = -1,
@@ -98,7 +99,7 @@ export class AudioContextAudioPlayer {
      * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
      * should be in sync with audio-feeder bufferSize
      */
-    private readonly _bufferEnoughThreshold = 0.010;
+    private readonly _bufferEnoughThreshold = 0.150;
     /**
      * How much seconds do we have in the buffer before unblocking the queue,
      * must be less than _bufferTooMuchThreshold
@@ -134,12 +135,24 @@ export class AudioContextAudioPlayer {
 
     constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._blazorRef = blazorRef;
-        this._debugMode = debugMode;
-        this._debugAppendAudioCalls = debugMode && false;
-        this._debugOperations = debugMode && false;
-        this._debugDecoder = debugMode && false;
-        this._debugFeeder = debugMode && false;
-        this._debugFeederStats = this._debugFeeder && false;
+        const debugOverride = AudioPlayer.debug;
+        if (debugOverride === null || debugOverride === undefined) {
+            this._debugMode = debugMode;
+            this._debugAppendAudioCalls = debugMode && false;
+            this._debugOperations = debugMode && false;
+            this._debugDecoder = debugMode && false;
+            this._debugFeeder = debugMode && false;
+            this._debugFeederStats = this._debugFeeder && false;
+        }
+        else {
+            this._debugMode = debugOverride.debugMode;
+            this._debugAppendAudioCalls = debugOverride.debugAppendAudioCalls;
+            this._debugOperations = debugOverride.debugOperations;
+            this._debugDecoder = debugOverride.debugDecoder;
+            this._debugFeeder = debugOverride.debugFeeder;
+            this._debugFeederStats = debugOverride.debugFeederStats;
+        }
+
         this._demuxer = null;
         this._isProcessing = false;
         this._isDisposed = false;
@@ -181,7 +194,7 @@ export class AudioContextAudioPlayer {
                 this._feeder.onstarved = null;
                 if (debugMode)
                     this.log(`audio ended.`);
-                this.onUpdateOffsetTick()
+                this.onUpdateOffsetTick();
                 this.dispose();
                 this.invokeOnPlaybackEnded();
                 return;
