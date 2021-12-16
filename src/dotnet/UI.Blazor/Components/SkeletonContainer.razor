@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="@TypeClass @Class">
+<div class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">
     @ChildContent
 </div>
 
 @code {
-    private static readonly string TypeClass = CssClasses.Default[typeof(SkeletonContainer)];
+    private static string? _typeClass;
 
     [Parameter]
     public string Class { get; set; } = "";
