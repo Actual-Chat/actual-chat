@@ -36,10 +36,10 @@ public class VirtualListRenderPlan<TItem>
     public Range<double> DisplayedRange { get; set; }
     public Range<double> FullRange => (-SpacerSize, DisplayedRange.Size() + EndSpacerSize);
 
-    public bool IsReversed => VirtualList.IsReversed;
     public double SpacerSize { get; set; }
     public double EndSpacerSize => Data.HasVeryLastItem ? 0 : VirtualList.SpacerSize;
     public VirtualListEdge? TrackingEdge { get; set; }
+    public bool IsEndAligned => VirtualList.PreferredTrackingEdge == VirtualListEdge.End;
 
     /// <summary> Indicates whether JS backend must notify Blazor part when it's safe to scroll. </summary>
     public bool NotifyWhenSafeToScroll { get; set; }
