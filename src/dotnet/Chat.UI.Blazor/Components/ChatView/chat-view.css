@@ -31,18 +31,6 @@ a {
     text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
 }
 
-.chat-content {
-    @apply flex-1 flex flex-col overflow-y-auto bg-secondary px-3 pt-3;
-}
-
-.chat-view {
-    @apply h-[calc(100%-3rem)] md:h-[calc(100%-3.5rem)];
-}
-
-.chat-footer {
-    @apply flex fixed bottom-0 right-0 w-full md:w-3/4 lg:w-4/5 border-t border-primary md:border-secondary;
-}
-
 .message-input::-webkit-scrollbar {
     width: 0;
     height: 0;
