@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @inject IJSRuntime _js
 
-<span class="@(_class ??= this.DefaultClass()) group"
+<span class="@(_class ??= this.DefaultClass()) select-none cursor-pointer transition duration-500 ease-in-out group"
      @onclick="@ToggleMediaRecorder">
     <span class="hover-item">Recorder: <b>@(MediaRecorderNames[IsStandardMediaRecorder ? 1 : 0])</b></span>
     <span class="hover-item alt">Switch to <b>@(MediaRecorderNames[IsStandardMediaRecorder ? 0 : 1])</b></span>

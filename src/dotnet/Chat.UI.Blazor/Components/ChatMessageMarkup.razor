@@ -8,7 +8,7 @@
 @inject IActivePlaybackInfo _activePlaybackInfo
 
 @if (Markup != null) {
-    <p class="@(_class ??= this.DefaultClass())">
+    <p class="@(_class ??= this.DefaultClass()) text-primary">
         @foreach (var part in Markup.Parts) {
             @RenderPart(part)
         }

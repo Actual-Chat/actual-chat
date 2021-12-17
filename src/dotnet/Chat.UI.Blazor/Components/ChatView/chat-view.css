@@ -1,13 +1,21 @@
-.chat-message {
-    @apply antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words;
+html {
+    height: 100%;
 }
 
-.chat-message-transcript {
-    @apply text-primary;
+body {
+    height: 100%;
 }
 
-.chat-message-markup {
-    @apply text-primary;
+input,
+textarea,
+button,
+select,
+a {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+.chat-page {
+    @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
 .chat-message-markup .playable {
@@ -23,98 +31,56 @@
     text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
 }
 
-.chat-message .avatar {
-    @apply w-10 h-10 rounded-md mr-3 select-none bg-secondary;
+.message-input::-webkit-scrollbar {
+    width: 0;
+    height: 0;
 }
 
-.chat-message .author-name {
-    @apply font-bold text-secondary bg-primary rounded px-1;
-}
-
-.chat-message .begin-time {
-    @apply text-secondary text-xs;
-}
-
-.chat-message .entry-id {
-    @apply text-accent-muted text-xxs;
-}
-
-.chat-header {
-    @apply flex flex-row justify-between mt-0 font-medium bg-secondary text-primary p-3 select-none border-b border-accent;
-}
-
-.chat-content {
-    @apply flex-1 flex flex-col overflow-y-auto bg-secondary p-3;
-}
-
-.chat-footer {
-    @apply flex sticky m-0;
-}
-
-.chat-message-editor {
-    @apply sticky bottom-0 pb-1 self-end bg-secondary w-full;
-}
-
-.plus-button {
-    @apply block py-2 pr-2 pl-4 ml-1 rounded-l-xl outline-none hover:cursor-pointer bg-primary text-primary;
-}
-
-.plus-button-svg {
-    @apply fill-current h-4 w-4 text-secondary hover:text-primary;
-}
-
-.message-input {
-    @apply flex-1 px-2 py-2 mr-1 outline-none rounded-r-xl break-all hover:cursor-text bg-primary text-primary focus:text-secondary;
-}
-
-.post-message {
-    @apply block px-3 py-2 text-secondary rounded-xl bg-secondary mr-1 transition duration-500 ease-in-out;
+.post-message .fill-current {
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .post-message:hover {
-    @apply text-primary transform -translate-y-1 hover:scale-110;
+    @apply md:text-primary;
+}
+
+.post-message:hover .fill-current {
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.audio-recorder:hover .not-recording {
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.audio-recorder:hover .recording {
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.not-recording {
+    @apply text-secondary md:transition md:duration-300 md:ease-in-out;
+}
+
+.recording {
+    @apply text-toggle-on md:transition md:duration-300 md:ease-in-out;
 }
 
 [contenteditable=true]:empty:not(:focus):before{
     content:attr(data-text)
 }
 
-.chat-player-toggle {
-    @apply block px-2 py-2 text-justify bg-secondary rounded-xl mr-1 transition duration-500 ease-in-out;
-}
-
-.chat-player-toggle:hover {
-    @apply transform -translate-y-1 hover:scale-110;
-}
-
-.toggle-button-on {
-    @apply text-toggle-on;
-}
-
 .chat-player-toggle:hover .toggle-button {
-    @apply text-primary;
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+}
+
+.chat-player-toggle:hover .toggle-button-on {
+    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
 }
 
 .toggle-button {
-    @apply text-secondary;
+    @apply text-secondary md:transition md:duration-300 md:ease-in-out;
 }
 
-.audio-recorder {
-    @apply block px-3 py-2 rounded-xl bg-secondary transition duration-500 ease-in-out;
+.toggle-button-on {
+    @apply text-toggle-on md:transition md:duration-300 md:ease-in-out;
 }
 
-.audio-recorder:hover {
-    @apply transform -translate-y-1 hover:scale-110;
-}
-
-.audio-recorder:hover .not-recording {
-    @apply text-primary;
-}
-
-.not-recording {
-    @apply text-secondary;
-}
-
-.recording {
-    @apply text-toggle-on;
-}
