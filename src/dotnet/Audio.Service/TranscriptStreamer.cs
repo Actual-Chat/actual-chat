@@ -21,18 +21,18 @@ public class TranscriptStreamer : ITranscriptStreamer
 
     public Task Publish(
         string streamId,
-        IAsyncEnumerable<TranscriptUpdate> transcriptStream,
+        IAsyncEnumerable<Transcript> diffs,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<TranscriptUpdate>(streamId);
-        return streamer.Write(transcriptStream, cancellationToken);
+        var streamer = RedisDb.GetStreamer<Transcript>(streamId);
+        return streamer.Write(diffs, cancellationToken);
     }
 
-    public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
+    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         string streamId,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<TranscriptUpdate>(streamId);
+        var streamer = RedisDb.GetStreamer<Transcript>(streamId);
         return streamer.Read(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
     }

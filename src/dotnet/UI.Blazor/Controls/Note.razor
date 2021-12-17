@@ -1,4 +1,4 @@
-<div class="@Class">
+<div class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">
     <h1>@Title</h1>
     <div>
         @ChildContent
@@ -6,8 +6,10 @@
 </div>
 
 @code {
+    private static string? _typeClass;
+
     [Parameter]
-    public string Class { get; set; } = CssClasses.Default[typeof(Note)];
+    public string Class { get; set; } = "";
     [Parameter]
     public string Title { get; set; } = "Note:";
     [Parameter]

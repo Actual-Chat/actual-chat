@@ -12,18 +12,22 @@ public class AsyncEnumerableOnce<T> : IAsyncEnumerable<T>
         _suppressDispose = suppressDispose;
     }
 
-    public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
     {
         var isUsed = Interlocked.CompareExchange(ref _getAsyncEnumeratorCount, 1, 0) != 0;
         if (isUsed)
             throw new InvalidOperationException(
                 $"{nameof(GetAsyncEnumerator)} can be called just once on this sequence.");
-        return _suppressDispose ? GetNonDisposableAsyncEnumerator() : _enumerator;
-    }
-
-    private async IAsyncEnumerator<T> GetNonDisposableAsyncEnumerator()
-    {
-        while (await _enumerator.MoveNextAsync().ConfigureAwait(false))
-            yield return _enumerator.Current;
+        try {
+            cancellationToken.ThrowIfCancellationRequested();
+            while (await _enumerator.MoveNextAsync().ConfigureAwait(false)) {
+                yield return _enumerator.Current;
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
+        finally {
+            if (!_suppressDispose)
+                await _enumerator.DisposeAsync().ConfigureAwait(false);
+        }
     }
 }

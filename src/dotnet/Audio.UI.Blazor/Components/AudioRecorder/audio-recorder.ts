@@ -1,4 +1,4 @@
-import RecordRTC, { MediaStreamRecorder, Options } from 'recordrtc';
+import RecordRTC, { MediaStreamRecorder, Options, State } from 'recordrtc';
 import { SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
 import OpusMediaRecorder from 'opus-media-recorder';
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
@@ -91,10 +91,22 @@ export class AudioRecorder {
 
         const channel = new MessageChannel();
         const worker = new Worker('/dist/vadWorker.js');
-        worker.onmessage = (ev: MessageEvent<VoiceActivityChanged[]>) => {
-            for (const vadEvent of ev.data) {
-                console.log(vadEvent);
+        worker.onmessage = (ev: MessageEvent<VoiceActivityChanged>) => {
+            const vadEvent = ev.data;
+            const recording = this.recording;
+
+            if (recording !== null) {
+                const state = recording.recorder.getState()
+                console.log(state);
+
+                if (vadEvent.kind === 'end') {
+                    this._queue.pause();
+                }
+                else {
+                    this._queue.resume();
+                }
             }
+            console.log(vadEvent);
         };
         worker.postMessage({ topic: 'init-port' }, [channel.port1]);
 
@@ -196,7 +208,9 @@ export class AudioRecorder {
 
         let recording = this.recording;
         this.recording = null;
+
         if (recording !== null) {
+            await recording.context.close();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
             await recording.recorder["stopRecordingAsync"]();

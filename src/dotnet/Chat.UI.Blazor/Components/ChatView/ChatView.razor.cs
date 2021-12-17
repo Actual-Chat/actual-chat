@@ -93,8 +93,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var result = VirtualListData.New(
             chatMessageModels,
             m => m.Entry.Id.ToString(CultureInfo.InvariantCulture),
-            startId == chatIdRange.Start,
-            endId == chatIdRange.End);
+            startId <= chatIdRange.Start,
+            endId + 1 >= chatIdRange.End);
         return result;
     }
 }

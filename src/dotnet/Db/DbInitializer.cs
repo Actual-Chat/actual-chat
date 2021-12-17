@@ -24,9 +24,16 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         if (db.IsInMemory())
             return;
 
-        if (DbInfo.ShouldRecreateDb)
+        if (DbInfo.ShouldRecreateDb) {
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-        await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else if (DbInfo.ShouldMigrateDb) {
+            // await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
+            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else
+            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 
         var databaseName = db.GetDbConnection().Database;
         await dbContext.Database

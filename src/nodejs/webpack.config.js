@@ -171,6 +171,13 @@ module.exports = (env, args) => {
           generator: {
             filename: 'fonts/[name][ext][query]'
           }
+        },
+        {
+          test: /feeder-node\.(worker|worklet)\.js$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: '[name][ext][query]'
+          }
         }
       ],
     },
@@ -210,6 +217,7 @@ module.exports = (env, args) => {
       }
     },
     output: {
+      clean: true,
       path: outputPath,
       globalObject: 'globalThis',
       filename: '[name].js',

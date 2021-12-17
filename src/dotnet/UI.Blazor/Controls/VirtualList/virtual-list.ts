@@ -3,11 +3,15 @@ import './virtual-list.css';
 const LogScope: string = 'VirtualList'
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
-const SizeEpsilon: number = 0.6;
-const StickyEdgeEpsilon: number = 4;
+const DebugModeUpdateClientSideStateTimeout: number = 2000;
+const SizeEpsilon: number = 1;
+const ItemSizeEpsilon: number = 2;
+const MoveSizeEpsilon: number = 16;
+const StickyEdgeEpsilon: number = 8;
 
 export class VirtualList {
     private readonly _debugMode: boolean = false;
+    private readonly _isEndAligned: boolean = false;
     /** ref to div.virtual-list */
     private readonly _elementRef: HTMLElement;
     private readonly _blazorRef: DotNet.DotNetObject;
@@ -23,15 +27,22 @@ export class VirtualList {
     private _onScrollStoppedTimeout: any = null;
 
     private _updateClientSideStateTimeout: any = null;
-    private _updateClientSideStateTask: Promise<unknown> | null = null;
+    private _updateClientSideStateTasks: Promise<unknown>[] = [];
     private _blazorRenderIndex: number = -1;
 
-    public static create(elementRef: HTMLElement, backendRef: DotNet.DotNetObject, debugMode: boolean) {
-        return new VirtualList(elementRef, backendRef, debugMode);
+    public static create(
+        elementRef: HTMLElement, backendRef: DotNet.DotNetObject,
+        isEndAligned: boolean, debugMode: boolean)
+    {
+        return new VirtualList(elementRef, backendRef, isEndAligned, debugMode);
     }
 
-    public constructor(elementRef: HTMLElement, backendRef: DotNet.DotNetObject, debugMode: boolean) {
+    public constructor(
+        elementRef: HTMLElement, backendRef: DotNet.DotNetObject,
+        isEndAligned: boolean, debugMode: boolean)
+    {
         this._debugMode = debugMode;
+        this._isEndAligned = isEndAligned;
         this._elementRef = elementRef;
         this._blazorRef = backendRef;
         this._abortController = new AbortController();
@@ -72,31 +83,49 @@ export class VirtualList {
     public afterRender(renderState: Required<IRenderState>) {
         if (this._debugMode)
             console.log(`${LogScope}.afterRender, renderIndex = #${renderState.renderIndex}, renderState = `, renderState);
-        if (renderState.mustScroll && Math.abs(renderState.scrollTop - this._elementRef.scrollTop) > SizeEpsilon) {
+
+        let spacerSize = this._spacerRef.getBoundingClientRect().height;
+        let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
+        let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
+        let scrollHeight = this._elementRef.scrollHeight;
+        let clientHeight = this._elementRef.getBoundingClientRect().height;
+        let computedScrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+        let scrollTop = this._elementRef.scrollTop;
+
+        if (renderState.mustScroll && Math.abs(renderState.scrollTop - scrollTop) > SizeEpsilon) {
+            scrollTop = renderState.scrollTop;
             if (this._debugMode)
-                console.log(`${LogScope}.afterRender: scrolling to ${renderState.scrollTop}`)
-            this._elementRef.scrollTop = renderState.scrollTop;
+                console.warn(`${LogScope}.afterRender: scrolling to ${renderState.scrollTop}`)
+            this._elementRef.scrollTop = scrollTop;
         }
 
         if (this._debugMode) {
             // Render consistency checks
-            let spacerSize = this._spacerRef.getBoundingClientRect().height;
-            let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
-            let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
-            let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+            let reportDetails = false;
+            if (Math.abs(renderState.scrollTop - scrollTop) > MoveSizeEpsilon) {
+                console.warn(`${LogScope}.afterRender: scrollTop mismatch: actual ${scrollTop} != ${renderState.scrollTop}`);
+                reportDetails = true;
+            }
             if (Math.abs(renderState.scrollHeight - scrollHeight) > SizeEpsilon) {
-                console.warn(`${LogScope}.afterRender: scrollHeight doesn't match the expected one!`);
+                console.warn(`${LogScope}.afterRender: scrollHeight mismatch: actual ${scrollHeight} != ${renderState.scrollHeight}`);
+                reportDetails = true;
+            }
+            if (Math.abs(renderState.scrollHeight - computedScrollHeight) > SizeEpsilon) {
+                console.warn(`${LogScope}.afterRender: computedScrollHeight mismatch: actual ${scrollHeight} != ${renderState.scrollHeight}`);
+                reportDetails = true;
+            }
+            if (reportDetails) {
                 if (Math.abs(renderState.spacerSize - spacerSize) > SizeEpsilon)
-                    console.log(`! spacerSize: actual ${spacerSize} != ${renderState.spacerSize}`);
+                    console.warn(`! spacerSize: actual ${spacerSize} != ${renderState.spacerSize}`);
                 if (Math.abs(renderState.endSpacerSize - endSpacerSize) > SizeEpsilon)
-                    console.log(`! endSpacerSize: actual ${endSpacerSize} != ${renderState.endSpacerSize}`);
+                    console.warn(`! endSpacerSize: actual ${endSpacerSize} != ${renderState.endSpacerSize}`);
                 let items = this._elementRef.querySelectorAll(".items-displayed .item").values() as IterableIterator<HTMLElement>;
                 for (let item of items) {
                     let key = item.dataset["key"];
                     let knownSize = renderState.itemSizes[key];
                     let size = item.getBoundingClientRect().height;
                     if (Math.abs(size - knownSize) > SizeEpsilon)
-                        console.log(`! item key = ${key} size: actual ${size} != ${knownSize}`);
+                        console.warn(`! item key = ${key} size: actual ${size} != ${knownSize}`);
                 }
             }
         }
@@ -133,19 +162,26 @@ export class VirtualList {
                 setTimeout(() => {
                     this._updateClientSideStateTimeout = null;
                     let _ = this.updateClientSideState();
-                }, UpdateClientSideStateTimeout)
+                }, this._debugMode ? DebugModeUpdateClientSideStateTimeout : UpdateClientSideStateTimeout)
         }
     }
 
     protected updateClientSideState() {
-        let prevTask = this._updateClientSideStateTask;
-        let nextTask = (async () => {
-            if (prevTask != null)
-                await prevTask.then(v => v, _ => null);
-            await this.updateClientSideStateImpl();
+        let queue = this._updateClientSideStateTasks;
+        let lastTask = queue.length > 0 ? queue[queue.length - 1] : null;
+        if (queue.length >= 2)
+            return lastTask;
+        let newTask = (async () => {
+            try {
+                if (lastTask != null)
+                    await lastTask.then(v => v, _ => null);
+                await this.updateClientSideStateImpl();
+            }
+            finally {
+                let _ = queue.shift();
+            }
         })();
-        this._updateClientSideStateTask = nextTask;
-        return nextTask;
+        queue.push(newTask)
     }
 
     protected async updateClientSideStateImpl() {
@@ -170,8 +206,10 @@ export class VirtualList {
         let spacerSize = this._spacerRef.getBoundingClientRect().height;
         let endSpacerSize = this._endSpacerRef.getBoundingClientRect().height;
         let displayedItemsSize = this._displayedItemsRef.getBoundingClientRect().height;
-        let scrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
-        let trueScrollHeight = this._elementRef.scrollHeight;
+        let scrollHeight = this._elementRef.scrollHeight;
+        let clientHeight = this._elementRef.getBoundingClientRect().height;
+        let computedScrollHeight = spacerSize + endSpacerSize + displayedItemsSize;
+        let scrollTop = this._elementRef.scrollTop;
 
         let state: Required<IClientSideState> = {
             renderIndex: rs.renderIndex,
@@ -181,8 +219,8 @@ export class VirtualList {
             scrollHeight: scrollHeight,
             itemSizes: {}, // Will be updated further
 
-            scrollTop: this._elementRef.scrollTop,
-            clientHeight: this._elementRef.getBoundingClientRect().height,
+            scrollTop: scrollTop,
+            clientHeight: clientHeight,
 
             isSafeToScroll: this._isSafeToScroll,
             isListResized: this._listResizeEventCount > 1, // First is always an initial measure event
@@ -208,15 +246,15 @@ export class VirtualList {
             let key = item.dataset["key"];
             let knownSize = rs.itemSizes[key];
             let size = item.getBoundingClientRect().height;
-            if (Math.abs(size - knownSize) > SizeEpsilon) {
+            if (Math.abs(size - knownSize) > ItemSizeEpsilon) {
                 state.itemSizes[key] = size;
                 gotResizedItems = true;
             }
         }
 
-        let isScrollTopChanged = Math.abs(state.scrollTop - rs.scrollTop) > SizeEpsilon;
-        let isScrollHeightChanged = Math.abs(state.scrollHeight - rs.scrollHeight) > SizeEpsilon;
-        let isClientHeightChanged = Math.abs(state.clientHeight - rs.clientHeight) > SizeEpsilon;
+        let isScrollTopChanged = Math.abs(state.scrollTop - rs.scrollTop) > MoveSizeEpsilon;
+        let isScrollHeightChanged = Math.abs(state.scrollHeight - rs.scrollHeight) > MoveSizeEpsilon;
+        let isClientHeightChanged = Math.abs(state.clientHeight - rs.clientHeight) > MoveSizeEpsilon;
         state.isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isClientHeightChanged;
 
         let wasAtTheEnd = Math.abs(rs.scrollTop + rs.clientHeight - rs.scrollHeight) <= StickyEdgeEpsilon;
@@ -240,7 +278,7 @@ export class VirtualList {
                     ` ${rs.scrollTop} + ${rs.clientHeight} == ${rs.scrollHeight}]` +
                     (isAtTheEnd ? " [is @ end," : " [isn't @ end,") +
                     ` ${state.scrollTop} + ${state.clientHeight} == ${state.scrollHeight}],`+
-                    ` [trueScrollHeight = ${(trueScrollHeight)}]`);
+                    ` [computedScrollHeight = ${(computedScrollHeight)}]`);
         }
 
         let mustUpdateClientSideState =

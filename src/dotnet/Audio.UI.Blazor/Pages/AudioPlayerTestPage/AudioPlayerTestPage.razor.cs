@@ -11,31 +11,27 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [Inject]
     private ILogger<AudioPlayerTestPage> Log { get; set; } = null!;
     [Inject]
-    private IHttpClientFactory HttpClientFactory { get; set; } = null!;
-    [Inject]
-    private ILoggerFactory LoggerFactory { get; set; } = null!;
+    private IServiceProvider Services { get; set; } = null!;
     [Inject]
     private IJSRuntime JS { get; set; } = null!;
 
-    protected bool IsOgvCompatible { get; set; }
     private bool _isPlaying;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private int? _prevMediaElementReadyState;
     private double _offset;
-    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FNWWY0A0VJY3B15VFXA5CGTD/0000.webm";
+    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQ109DMZC9YC9FCW6YNW6Y31/0002.webm";
+    private const bool DebugMode = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) {
-            IsOgvCompatible = await JS.InvokeAsync<bool>(
-                $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.isOgvCompatible").ConfigureAwait(true);
             StateHasChanged();
         }
         await base.OnAfterRenderAsync(firstRender).ConfigureAwait(true);
     }
 
-    public async Task OnClick()
+    public async Task OnClick(bool isMsePlayer)
     {
         if (_isPlaying) {
             Log.LogInformation("Stop playing");
@@ -51,13 +47,12 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
-            const bool debugMode = true;
-            var audioDownloader = new AudioDownloader(HttpClientFactory, LoggerFactory);
+            var audioDownloader = new AudioDownloader(Services);
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                _cts.Token, blazorRef, debugMode
+                $"{AudioBlazorUIModule.ImportName}.{(isMsePlayer ? "MseAudioPlayer" : "AudioContextAudioPlayer")}.create",
+                _cts.Token, blazorRef, DebugMode
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
@@ -109,6 +104,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 offset,
                 ToMediaElementReadyState(readyState)
             );
+            StateHasChanged();
         }
         return Task.CompletedTask;
     }
@@ -132,10 +128,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             errorCode,
             errorMessage
         );
+        _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
             await _registration.DisposeAsync().ConfigureAwait(true);
         }
-        _cts?.CancelAndDisposeSilently();
     }
 
     [JSInvokable]

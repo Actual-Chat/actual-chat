@@ -1,4 +1,4 @@
-namespace ActualChat;
+namespace ActualChat.Collections;
 
 public static class ArrayExt
 {

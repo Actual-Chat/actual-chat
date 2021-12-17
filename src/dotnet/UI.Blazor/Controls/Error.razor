@@ -1,5 +1,5 @@
 @if (!_isClosed) {
-    <div class="@Class">
+    <div class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">
         <div>@Title</div>
         <div>@ChildContent</div>
         <button @onclick="Close">✖</button>
@@ -7,10 +7,11 @@
 }
 
 @code {
+    private static string? _typeClass;
     private bool _isClosed;
 
     [Parameter]
-    public string Class { get; set; } = CssClasses.Default[typeof(Error)];
+    public string Class { get; set; } = "";
     [Parameter]
     public string Title { get; set; } = "Error:";
     [Parameter]

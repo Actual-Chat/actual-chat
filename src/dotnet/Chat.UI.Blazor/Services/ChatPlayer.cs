@@ -27,7 +27,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     public bool IsRealTimePlayer { get; init; }
 
     // This should be approximately 2.5 x ping time
-    public TimeSpan RealtimeNowOffset { get; init; } = TimeSpan.Zero;
+    public TimeSpan RealtimeNowOffset { get; init; } = TimeSpan.FromMilliseconds(-50);
     // Once enqueued, playback loop continues, so the larger is this gap, the higher is the chance
     // to enqueue the next entry on time.
     public TimeSpan EnqueueToPlaybackGap { get; init; } = TimeSpan.FromSeconds(3);
@@ -215,7 +215,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         PlaybackState.Value = Playback;
     }
 
-    private async Task<Symbol> EnqueueEntry(
+    private async ValueTask EnqueueEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
@@ -226,9 +226,10 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
-            return audioEntry.IsStreaming
-                ? await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false)
-                : await EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
+            if (audioEntry.IsStreaming)
+                await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
+            else
+                await EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e,
@@ -240,33 +241,35 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         }
     }
 
-    private async Task<Symbol> EnqueueStreamingEntry(
+    private async ValueTask EnqueueStreamingEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug(
-            "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}",
-            audioEntry.ChatId,
-            audioEntry.Id,
-            audioEntry.StreamId);
-        var trackId = GetAudioTrackId(audioEntry);
-        var audio = await AudioSourceStreamer
-            .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
-            .ConfigureAwait(false);
-        await playback.AddMediaTrack(trackId,
-                playAt,
-                audioEntry.BeginsAt,
-                audio,
-                skipTo,
-                cancellationToken)
-            .ConfigureAwait(false);
-        return trackId;
+        try {
+            DebugLog?.LogDebug(
+                "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}",
+                audioEntry.ChatId,
+                audioEntry.Id,
+                audioEntry.StreamId);
+            var trackId = GetAudioTrackId(audioEntry);
+            var audio = await AudioSourceStreamer
+                .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
+                .ConfigureAwait(false);
+            await playback.AddMediaTrack(trackId,
+                    playAt,
+                    audioEntry.BeginsAt,
+                    audio,
+                    skipTo,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
     }
 
-    private async Task<Symbol> EnqueueNonStreamingEntry(
+    private async ValueTask EnqueueNonStreamingEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
@@ -290,6 +293,5 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 skipTo,
                 cancellationToken)
             .ConfigureAwait(false);
-        return trackId;
     }
 }

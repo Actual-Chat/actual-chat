@@ -1,12 +1,14 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class">
+<div class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">
     @ChildContent
 </div>
 
 @code {
+    private static string? _typeClass;
+
     [Parameter]
-    public string Class { get; set; } = CssClasses.Default[typeof(SkeletonContainer)];
+    public string Class { get; set; } = "";
     [Parameter]
     public RenderFragment ChildContent { get; set; } = null!;
 

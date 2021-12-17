@@ -3,15 +3,15 @@ namespace ActualChat.Audio;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class AudioDownloader
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly ILogger _log;
+    private IServiceProvider Services { get; }
+    private IHttpClientFactory HttpClientFactory { get; }
+    private ILogger Log { get; }
 
-    public AudioDownloader(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory)
+    public AudioDownloader(IServiceProvider services)
     {
-        _loggerFactory = loggerFactory;
-        _log = loggerFactory.CreateLogger(GetType());
-        _httpClientFactory = httpClientFactory;
+        Services = services;
+        Log = services.LogFor(GetType());
+        HttpClientFactory = services.GetRequiredService<IHttpClientFactory>();
     }
 
     public virtual async Task<AudioSource> Download(
@@ -20,7 +20,7 @@ public class AudioDownloader
         CancellationToken cancellationToken)
     {
         var blobStream = DownloadBlobStream(audioUri, cancellationToken);
-        var audioLog = _loggerFactory.CreateLogger<AudioSource>();
+        var audioLog = Services.LogFor<AudioSource>();
         var audio = new AudioSource(blobStream, skipTo, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
@@ -29,5 +29,5 @@ public class AudioDownloader
     public IAsyncEnumerable<BlobPart> DownloadBlobStream(
         Uri audioUri,
         CancellationToken cancellationToken = default)
-        => _httpClientFactory.DownloadBlobStream(audioUri, _log, cancellationToken);
+        => HttpClientFactory.DownloadBlobStream(audioUri, Log, cancellationToken);
 }

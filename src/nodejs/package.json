@@ -26,6 +26,7 @@
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
+    "audio-feeder": "^0.5.0",
     "denque": "^2.0.1",
     "moving-averages": "^4.0.6",
     "ogv": "^1.8.4",

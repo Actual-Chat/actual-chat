@@ -6,16 +6,6 @@ import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
 import wasmSimdPath from 'onnxruntime-web/dist/ort-wasm-simd.wasm';
 import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 
-export class Boundary {
-    public start: number;
-    public end: number;
-
-    constructor(start: number, end: number) {
-        this.start = start;
-        this.end = end;
-    }
-}
-
 export type VoiceActivityKind = 'start' | 'end';
 
 export class VoiceActivityChanged {
@@ -32,20 +22,16 @@ export class VoiceActivityChanged {
     }
 }
 
-export function adjustToSeconds(data: Boundary[], sampleRate: number = 16000): Boundary[] {
-    return data.map(b => new Boundary(b.start / sampleRate, b.end / sampleRate));
-}
-
 export function adjustChangeEventsToSeconds(data: VoiceActivityChanged[], sampleRate: number = 16000): VoiceActivityChanged[] {
     return data.map(vac => new VoiceActivityChanged(vac.kind, vac.offset / sampleRate, vac.speechProb, vac.duration === null ? null : vac.duration / sampleRate));
 }
 
 const SamplesPerWindow = 4000;
 const BytesPerSample = 4;
-const AccumulativePeriod = 50;
+const AccumulativePeriodStart = 50;
+const AccumulativePeriodEnd = 200;
 
 export class VoiceActivityDetector {
-
     private readonly _modelUri: URL;
     private readonly _buffer: ArrayBuffer;
     private readonly _tensorBuffer: ArrayBuffer;
@@ -56,7 +42,7 @@ export class VoiceActivityDetector {
     private _sampleCount: number;
     private _lastActivityEvent: VoiceActivityChanged;
     private _endOffset: number = null;
-    private _totalSteps = 0;
+    private _speechSteps = 0;
     private _speechProbabilityTrigger = 0.26;
     private _silenceProbabilityTrigger = 0.15;
 
@@ -79,100 +65,6 @@ export class VoiceActivityDetector {
             'ort-wasm-simd.wasm': wasmSimdPath,
             'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
         };
-    }
-
-    public async getBoundaries(monoPcm: Float32Array): Promise<Boundary[]> {
-        const session = await ort.InferenceSession.create(this._modelUri.toString(), {
-            enableCpuMemArena: false,
-            executionMode: 'parallel',
-            graphOptimizationLevel: 'basic',
-            executionProviders: ['wasm']
-        });
-
-        const batchSize = 200;
-        const stepCount = 8;
-        const step = SamplesPerWindow / stepCount;
-
-        const buffer = new ArrayBuffer(monoPcm.buffer.byteLength + SamplesPerWindow * BytesPerSample);
-        const extendedPcm = new Float32Array(buffer);
-        extendedPcm.set(monoPcm, 0);
-
-        const tensorBuffer = new ArrayBuffer(BytesPerSample * batchSize * SamplesPerWindow);
-        const tensorSource = new Float32Array(tensorBuffer, 0, batchSize * SamplesPerWindow);
-        const batches: Float32Array[] = [];
-        const results = [];
-        for (let i = 0; i < monoPcm.length; i += step) {
-            let chunk = new Float32Array(buffer, i * 4, SamplesPerWindow);
-            batches.push(chunk);
-            if (batches.length >= batchSize) {
-                for (let j = 0; j < batches.length; j++) {
-                    tensorSource.set(batches[j], j * SamplesPerWindow);
-                }
-                const tensor = new ort.Tensor(tensorSource, [batchSize, SamplesPerWindow]);
-                const feeds = { input: tensor };
-                const result = await session.run(feeds);
-                results.push(result);
-                batches.length = 0;
-            }
-        }
-
-        if (batches.length) {
-            for (let j = 0; j < batches.length; j++) {
-                tensorSource.set(batches[j], j * SamplesPerWindow);
-            }
-            const remainTensorSource = tensorSource.subarray(0, batches.length * SamplesPerWindow);
-            const tensor = new ort.Tensor('float32', remainTensorSource, [batches.length, SamplesPerWindow]);
-            const feeds = { input: tensor };
-            const result = await session.run(feeds);
-            results.push(result);
-        }
-
-        const speechProbabilities = new Float32Array(batchSize * results.length);
-        let probIndex = 0;
-        for (let i = 0; i < results.length; i++) {
-            const resultData = results[i].output.data as Float32Array;
-            for (let j = 1; j < resultData.length; j += 2) {
-                speechProbabilities[probIndex++] = resultData[j];
-            }
-        }
-        let trigSum = this._speechProbabilityTrigger;
-        let negTrigSum = this._silenceProbabilityTrigger;
-        const minSilenceSamples = 500;
-        const minSpeechSamples = 10000;
-
-        const speeches = [];
-        let tempEnd = 0;
-        let triggered = false;
-        let currentSpeech = new Boundary(0, 0);
-        const smoothedProbs = dma(speechProbabilities, 1 / stepCount, false);
-        for (let i = 0; i < smoothedProbs.length; i++) {
-            const smoothedProb = smoothedProbs[i];
-            if (smoothedProb >= trigSum && tempEnd > 0) {
-                tempEnd = 0;
-            }
-            if (smoothedProb >= trigSum && !triggered) {
-                triggered = true;
-                currentSpeech.start = step * Math.max(0, i - stepCount);
-                continue;
-            }
-            if (smoothedProb < negTrigSum && triggered) {
-                if (tempEnd == 0) {
-                    tempEnd = step * i;
-                }
-                if (step * i - tempEnd < minSilenceSamples) {
-
-                } else {
-                    currentSpeech.end = tempEnd;
-                    if (currentSpeech.end - currentSpeech.start > minSpeechSamples) {
-                        speeches.push(currentSpeech);
-                        tempEnd = 0;
-                        currentSpeech = new Boundary(0, 0);
-                        triggered = false;
-                    }
-                }
-            }
-        }
-        return speeches;
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged[]> {
@@ -226,9 +118,9 @@ export class VoiceActivityDetector {
                 speechProbabilities[probIndex++] = resultData[j];
             }
         }
-        const minSilenceSamples = 500;
-        const minSpeechSamples = 10000;
-        const padSamples = 1000;
+        const minSilenceSamples = 64000;
+        const minSpeechSamples = 12000;
+        const padSamples = 500;
 
         let trigSum = this._speechProbabilityTrigger;
         let negTrigSum = this._silenceProbabilityTrigger;
@@ -236,31 +128,42 @@ export class VoiceActivityDetector {
         const voiceActivityChangeEvents = new Array<VoiceActivityChanged>();
         const smoothedProbs = this._movingAverages.appendChunk(speechProbabilities);
         let currentEvent = this._lastActivityEvent;
+        let endResetCounter = 0;
 
         for (let i = 0; i < smoothedProbs.length; i++) {
             const prob = speechProbabilities[i];
             const smoothedProb = smoothedProbs[i];
-            // const smoothedProb = speechProbabilities.sort()[speechProbabilities.length - 1];
             const currentOffset = this._sampleCount + step * i;
-            const probMedian = this._streamedMedian.push(prob);
 
-            if (this._totalSteps++ >= AccumulativePeriod) {
+            if (this._speechSteps++ >= AccumulativePeriodStart) {
                 // enough statistics to adjust trigSum \ negTrigSum
 
-                trigSum = Math.max(0.30, 0.89 * probMedian + 0.08); // 0.08 when median is zero, 0.97 when median is 1
-                negTrigSum = Math.min(0.10, 0.6 * probMedian);
+                const probMedian = this._streamedMedian.median;
+                trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
+                negTrigSum = 0.3 * probMedian;
+
             }
 
             if (smoothedProb >= trigSum && this._endOffset > 0) {
-                this._endOffset = null; // silence period is too short
+                if (endResetCounter++ > 5) {
+                    // silence period is too short
+                    this._endOffset = null;
+                    endResetCounter = 0;
+                }
             }
 
-            if (smoothedProb >= trigSum && currentEvent.kind === 'end') {
-                currentEvent = new VoiceActivityChanged('start', Math.max(0, currentOffset - padSamples), smoothedProb);
+            if ((smoothedProb >= trigSum || prob > 0.95) && currentEvent.kind === 'end') {
+                const offset = Math.max(0, currentOffset - padSamples);
+                const duration = offset - currentEvent.offset;
+                currentEvent = new VoiceActivityChanged('start', offset, smoothedProb, duration);
                 voiceActivityChangeEvents.push(currentEvent);
+                if (this._speechSteps++ < AccumulativePeriodEnd) {
+                    this._streamedMedian.push(prob);
+                }
                 continue;
             }
             if (smoothedProb < negTrigSum && currentEvent.kind === 'start') {
+                endResetCounter = 0;
                 if (this._endOffset === null) {
                     this._endOffset = currentOffset;
                 }
@@ -269,7 +172,9 @@ export class VoiceActivityDetector {
                 } else {
                     const currentSpeechSamples = currentOffset - currentEvent.offset;
                     if (currentSpeechSamples > minSpeechSamples) {
-                        currentEvent = new VoiceActivityChanged('end', this._endOffset + padSamples, smoothedProb);
+                        const offset = this._endOffset + padSamples;
+                        const duration = offset - currentEvent.offset
+                        currentEvent = new VoiceActivityChanged('end', offset, smoothedProb, duration);
                         voiceActivityChangeEvents.push(currentEvent);
                         this._endOffset = null;
                     } else {
@@ -289,18 +194,7 @@ export class VoiceActivityDetector {
         this._sampleCount += monoPcm.length;
         this._lastActivityEvent = currentEvent;
 
-        const result = new Array<VoiceActivityChanged>();
-        for (let index = 0; index < voiceActivityChangeEvents.length - 1; index++) {
-            const event = voiceActivityChangeEvents[index];
-            const nextEvent = voiceActivityChangeEvents[index];
-            const hasDuration = new VoiceActivityChanged(event.kind, event.offset, event.speechProb, nextEvent.offset - event.offset);
-            result.push(hasDuration);
-        }
-        if (voiceActivityChangeEvents.length > 0) {
-            result.push(voiceActivityChangeEvents.pop());
-        }
-
-        return result;
+        return [...voiceActivityChangeEvents];
     }
 }
 

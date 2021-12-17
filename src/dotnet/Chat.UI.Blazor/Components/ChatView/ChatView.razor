@@ -3,7 +3,8 @@
 
 <VirtualList
     Class="@(this.DefaultClass())"
-    SpacerSize="6000" LoadZoneSize="6000" BufferZoneSize="12000"
+    PreferredTrackingEdge="VirtualListEdge.End"
+    LoadZoneSize="6000" BufferZoneSize="12000" SpacerSize="24000"
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
