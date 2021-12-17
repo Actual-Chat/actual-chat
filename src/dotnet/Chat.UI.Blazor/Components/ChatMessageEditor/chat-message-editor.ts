@@ -2,33 +2,34 @@ export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
     private _input: HTMLDivElement;
-    private _post: HTMLButtonElement;
+    private _postButton: HTMLButtonElement;
     private _audioRecorder: HTMLSpanElement;
-    private _recorder: HTMLButtonElement;
+    private _recordButton: HTMLButtonElement;
+    private _isTextMode: boolean = false;
 
     static create(input: HTMLDivElement, post: HTMLButtonElement, audioRecorder: HTMLSpanElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(input, post, audioRecorder, backendRef);
     }
 
-    constructor(input: HTMLDivElement, post: HTMLButtonElement, audioRecorder: HTMLSpanElement, backendRef: DotNet.DotNetObject) {
+    constructor(input: HTMLDivElement, post: HTMLButtonElement, audioRecorder: HTMLSpanElement, blazorRef: DotNet.DotNetObject) {
         if (input == null )
             throw new Error("input element is undefined");
         if (post == null)
             throw new Error("post element is undefined");
         if (audioRecorder == null)
             throw new Error("audioRecorder element is undefined")
-        if (backendRef == null)
+        if (blazorRef == null)
             throw new Error("dotnet backend object is undefined");
         this._input = input;
-        this._post = post;
+        this._postButton = post;
         this._audioRecorder = audioRecorder;
-        this._blazorRef = backendRef;
-        this._recorder = this._audioRecorder.querySelector("button");
+        this._blazorRef = blazorRef;
+        this._recordButton = this._audioRecorder.querySelector("button");
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
             let _ = this.updateClientSideState();
-            this.updateButtonVisibility();
+            this.changeMode();
         });
         this._input.addEventListener('keydown', (event: KeyboardEvent & { target: HTMLDivElement; }) => {
             if (event.key != 'Enter' || event.shiftKey)
@@ -36,52 +37,36 @@ export class ChatMessageEditor {
             event.preventDefault();
             this._blazorRef.invokeMethodAsync("Post", this.getText());
         });
-        this._post.addEventListener('click', (event: Event & { target: HTMLButtonElement; }) => {
+        this._postButton.addEventListener('click', (event: Event & { target: HTMLButtonElement; }) => {
             this._input.focus();
-            this.updateButtonVisibility();
+            this.changeMode();
         })
+        this.changeMode();
     }
 
-    public updateButtonVisibility() {
-        let input = this._input;
-        if (input.innerText != "") {
-            this.hideRecordButton();
-        } else {
-            this.hidePostButton();
-        }
-    }
-
-    public hideRecordButton() {
-        if (this._recorder.classList.contains('hidden'))
+    public changeMode() {
+        let isTextMode = this._input.innerText != "";
+        if (this._isTextMode == isTextMode)
             return;
-        let post = this._post;
-        let rec = this._recorder;
-        rec.style.transform = "translateX(-1.5rem) scale(.05)";
-        post.style.transform = "translateX(-1.5rem) scale(.05)";
+        this._isTextMode = isTextMode;
+        let postButton = this._postButton;
+        let recordButton = this._recordButton;
+        recordButton.style.transform = "translateX(-0.5rem) scale(.05)";
+        postButton.style.transform = "translateX(-0.5rem) scale(.05)";
         setTimeout(() => {
-            rec.classList.add("hidden");
-            post.classList.remove('hidden');
-            post.style.opacity = "1";
+            if (isTextMode) {
+                recordButton.classList.add("hidden");
+                postButton.classList.remove('hidden');
+                postButton.style.opacity = "1";
+            } else {
+                postButton.classList.add("hidden");
+                recordButton.classList.remove('hidden');
+                recordButton.style.opacity = "1";
+            }
         }, 25);
         setTimeout(() => {
-            post.style.transform = 'translateX(0px) scale(1)';
-        }, 50)
-    }
-
-    public hidePostButton() {
-        if (this._post.classList.contains('hidden'))
-            return;
-        let post = this._post;
-        let rec = this._recorder;
-        rec.style.transform = "translateX(-1.5rem) scale(.05)";
-        post.style.transform = "translateX(-1.5rem) scale(.05)";
-        setTimeout(() => {
-            post.classList.add("hidden");
-            rec.classList.remove('hidden');
-            rec.style.opacity = "1";
-        }, 25);
-        setTimeout(() => {
-            rec.style.transform = 'translateX(0px) scale(1)';
+            postButton.style.transform = 'translateX(0px) scale(1)';
+            recordButton.style.transform = 'translateX(0px) scale(1)';
         }, 50)
     }
 
@@ -91,7 +76,7 @@ export class ChatMessageEditor {
 
     public setText(text: string) {
         this._input.innerText = text;
-        this.updateButtonVisibility();
+        this.changeMode();
         let _ = this.updateClientSideState();
     }
 
