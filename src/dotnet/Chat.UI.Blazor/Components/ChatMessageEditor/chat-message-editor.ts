@@ -48,36 +48,45 @@ export class ChatMessageEditor {
 
     public buttonHandler() {
         let input = this._input;
+        if (input.innerText != "") {
+            this.hideRecordButton();
+        } else {
+            this.hidePostButton();
+        }
+    }
+
+    public hideRecordButton() {
+        if (this._recorder.classList.contains('hidden'))
+            return;
         let post = this._post;
         let rec = this._recorder;
-        if (input.innerText != "") {
-            if (rec.classList.contains('hidden'))
-                return;
-            rec.style.transform = "translateX(-1.5rem) scale(.05)";
-            post.style.transform = "translateX(-1.5rem) scale(.05)";
-            setTimeout(() => {
-                rec.classList.add("hidden");
-                post.classList.remove('hidden');
-                post.style.opacity = "1";
-            }, 25);
-            setTimeout(() => {
-                post.style.transform = 'translateX(0px) scale(1)';
-            }, 50)
+        rec.style.transform = "translateX(-1.5rem) scale(.05)";
+        post.style.transform = "translateX(-1.5rem) scale(.05)";
+        setTimeout(() => {
+            rec.classList.add("hidden");
+            post.classList.remove('hidden');
+            post.style.opacity = "1";
+        }, 25);
+        setTimeout(() => {
+            post.style.transform = 'translateX(0px) scale(1)';
+        }, 50)
+    }
 
-        } else {
-            if (post.classList.contains('hidden'))
-                return;
-            rec.style.transform = "translateX(-1.5rem) scale(.05)";
-            post.style.transform = "translateX(-1.5rem) scale(.05)";
-            setTimeout(() => {
-                post.classList.add("hidden");
-                rec.classList.remove('hidden');
-                rec.style.opacity = "1";
-            }, 25);
-            setTimeout(() => {
-                rec.style.transform = 'translateX(0px) scale(1)';
-            }, 50)
-        }
+    public hidePostButton() {
+        if (this._post.classList.contains('hidden'))
+            return;
+        let post = this._post;
+        let rec = this._recorder;
+        rec.style.transform = "translateX(-1.5rem) scale(.05)";
+        post.style.transform = "translateX(-1.5rem) scale(.05)";
+        setTimeout(() => {
+            post.classList.add("hidden");
+            rec.classList.remove('hidden');
+            rec.style.opacity = "1";
+        }, 25);
+        setTimeout(() => {
+            rec.style.transform = 'translateX(0px) scale(1)';
+        }, 50)
     }
 
     public getText(): string {
