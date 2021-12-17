@@ -9,24 +9,29 @@
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 
-<div class="@(_class ??= this.DefaultClass())">
+<div class="@(_class ??= this.DefaultClass()) sticky bottom-0 pb-0.5 self-end bg-secondary w-full">
     <div class="flex flex-row justify-between mx-3 my-2">
         @if (RealtimePlayer != null) {
             <ChatPlayerToggle Player="RealtimePlayer"/>
         }
-        <button class="plus-button">
-                <svg class="plus-button-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+        <button class="block py-2 px-4 ml-1 md:ml-2 md:pr-3 rounded-l-full outline-none hover:cursor-pointer bg-accent text-primary">
+            <svg class="fill-current h-4 w-4 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                 <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
-                </svg>
+            </svg>
         </button>
-        <div @ref="Ref" class="message-input" autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list" aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">        </div>
-        <div class="flex flex-row h-full px-1 justify-center justify-items-center">
-            <button @onclick="_ => Post()" class="post-message">
-                <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="-2 -2 28 28">
+        <div @ref="Ref" class="message-input block overflow-y-auto max-h-12 break-words flex-1 md:pl-2 py-2 outline-none hover:cursor-text bg-accent text-primary focus:text-secondary"
+             autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
+             aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">
+        </div>
+        <div class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-r-full mr-2 md:mr-8 pl-2">
+            <button @onclick="_ => Post()" @ref="PostRef" class="post-message outline-none py-2 pr-3 text-secondary rounded-r-full bg-transparent max-h-12 hidden transition-all duration-150">
+                <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="-1 -2 28 28">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
-            <AudioRecorder ChatId="@Chat.Id"/>
+            <span @ref="RecorderRef">
+                <AudioRecorder ChatId="@Chat.Id"/>
+            </span>
         </div>
     </div>
 </div>
@@ -36,6 +41,8 @@
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
     private ElementReference Ref { get; set; }
+    private ElementReference PostRef { get; set; }
+    private ElementReference RecorderRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private ChatPlayer? RealtimePlayer { get; set; }
@@ -63,7 +70,7 @@
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                Ref, BlazorRef
+                Ref, PostRef, RecorderRef, BlazorRef
                 ).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("setText", Text).ConfigureAwait(true);
         }
