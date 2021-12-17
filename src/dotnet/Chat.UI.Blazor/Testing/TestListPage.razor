@@ -6,7 +6,7 @@
 <h1>VirtualList Test Page</h1>
 
 <VirtualList style="height: 600px;"
-             PreferredTrackingEdge="@(EndAligned ? VirtualListEdge.End : VirtualListEdge.Start)"
+             PreferredTrackingEdge="@(IsEndAligned ? VirtualListEdge.End : VirtualListEdge.Start)"
              SpacerSize="1000"
              LoadZoneSize="200" BufferZoneSize="400"
              DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">
@@ -22,7 +22,7 @@
 
 @code {
     [Parameter, SupplyParameterFromQuery]
-    public bool EndAligned { get; set; } = false;
+    public bool IsEndAligned { get; set; } = false;
     [Parameter, SupplyParameterFromQuery]
     public int? RangeSeed { get; set; } = null;
     [Parameter, SupplyParameterFromQuery]
@@ -31,5 +31,5 @@
     private Task<VirtualListData<TestListItemRef>> GetVirtualListItems(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
-        => _listService.GetItemKeys(query, RangeSeed, ContentSeed, EndAligned, cancellationToken);
+        => _listService.GetItemKeys(query, RangeSeed, ContentSeed, IsEndAligned, cancellationToken);
 }

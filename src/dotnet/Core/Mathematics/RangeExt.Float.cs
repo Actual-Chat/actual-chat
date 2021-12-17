@@ -17,13 +17,21 @@ public static partial class RangeExt
         return range.Resize(maxSize).ScrollInto(fitRange);
     }
 
-    public static Range<float> ScrollInto(this Range<float> range, Range<float> fitRange)
+    public static Range<float> ScrollInto(this Range<float> range, Range<float> fitRange, bool isEndAligned = false)
     {
         var size = range.Size();
-        if (range.End > fitRange.End)
-            range = (fitRange.End - size, fitRange.End);
-        if (range.Start < fitRange.Start)
-            range = (fitRange.Start, size);
+        if (isEndAligned) {
+            if (range.Start < fitRange.Start)
+                range = (fitRange.Start, size);
+            if (range.End > fitRange.End)
+                range = (fitRange.End - size, fitRange.End);
+        }
+        else {
+            if (range.End > fitRange.End)
+                range = (fitRange.End - size, fitRange.End);
+            if (range.Start < fitRange.Start)
+                range = (fitRange.Start, size);
+        }
         return range;
     }
 }
