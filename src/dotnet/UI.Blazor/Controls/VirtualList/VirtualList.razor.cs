@@ -35,10 +35,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public string Style { get; set; } = "";
     [Parameter, EditorRequired] public RenderFragment<KeyValuePair<string, TItem>> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
-    [Parameter] public int SkeletonCount { get; set; } = 100;
-    [Parameter] public double SpacerSize { get; set; } = 8640;
-    [Parameter] public double LoadZoneSize { get; set; } = 1080;
-    [Parameter] public double BufferZoneSize { get; set; } = 2160;
+    [Parameter] public int SkeletonCount { get; set; } = 32;
+    [Parameter] public double SpacerSize { get; set; } = 10000;
+    [Parameter] public double LoadZoneSize { get; set; } = 2160;
+    [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxExpectedExpansion { get; set; } = 1_000_000;
     [Parameter] public VirtualListEdge PreferredTrackingEdge { get; set; } = VirtualListEdge.End;
 
@@ -95,7 +95,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             ScrollHeight = plan.FullRange.Size(),
             ItemSizes = plan.DisplayedItems.ToDictionary(i => i.Key, i => i.Range.Size(), StringComparer.Ordinal),
 
-            ScrollTop = plan.Viewport.Start + Plan.SpacerSize,
+            ScrollTop = plan.ScrollTop,
             ClientHeight = plan.Viewport.Size(),
 
             MustMeasure = plan.UnmeasuredItems.Count != 0,
