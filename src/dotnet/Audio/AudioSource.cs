@@ -193,6 +193,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 break;
             case WebMReadResultKind.Block:
                 var block = (Block)webMReader.ReadResult;
+                var prevBlockOffsetMs = blockOffsetMs;
 
                 if (blockOffsetMs == 0 && clusterOffsetMs == 0) {
                     if (block.TimeCode > 60 && skipTo == TimeSpan.Zero) { // audio segment with an offset, 60 is the largest opus frame duration
@@ -201,6 +202,16 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     }
                 }
                 blockOffsetMs = block.TimeCode;
+                if (blockOffsetMs - prevBlockOffsetMs > 65) {
+                    if (blockOffsetMs != 0) {
+                        skipAdjustmentBlockMs = (short)(blockOffsetMs - prevBlockOffsetMs - 20);
+                        skipAdjustmentClusterMs = clusterOffsetMs;
+                        if (skipTo == TimeSpan.Zero) {
+                            skipTo = TimeSpan.FromMilliseconds(1);
+                            skipToMs = 1;
+                        }
+                    }
+                }
 
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
                     var frameOffset = TimeSpan.FromTicks( // To avoid floating-point errors
