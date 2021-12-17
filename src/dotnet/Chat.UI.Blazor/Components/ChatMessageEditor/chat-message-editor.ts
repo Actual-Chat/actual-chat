@@ -11,18 +11,14 @@ export class ChatMessageEditor {
     }
 
     constructor(input: HTMLDivElement, post: HTMLButtonElement, audioRecorder: HTMLSpanElement, backendRef: DotNet.DotNetObject) {
-        if (input === undefined || input === null ) {
+        if (input == null )
             throw new Error("input element is undefined");
-        }
-        if (post === undefined || post === null) {
+        if (post == null)
             throw new Error("post element is undefined");
-        }
-        if (audioRecorder === undefined || audioRecorder === null) {
+        if (audioRecorder == null)
             throw new Error("audioRecorder element is undefined")
-        }
-        if (backendRef === undefined || backendRef === null) {
+        if (backendRef == null)
             throw new Error("dotnet backend object is undefined");
-        }
         this._input = input;
         this._post = post;
         this._audioRecorder = audioRecorder;
@@ -32,7 +28,7 @@ export class ChatMessageEditor {
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
             let _ = this.updateClientSideState();
-            this.buttonHandler();
+            this.updateButtonVisibility();
         });
         this._input.addEventListener('keydown', (event: KeyboardEvent & { target: HTMLDivElement; }) => {
             if (event.key != 'Enter' || event.shiftKey)
@@ -42,11 +38,11 @@ export class ChatMessageEditor {
         });
         this._post.addEventListener('click', (event: Event & { target: HTMLButtonElement; }) => {
             this._input.focus();
-            this.buttonHandler();
+            this.updateButtonVisibility();
         })
     }
 
-    public buttonHandler() {
+    public updateButtonVisibility() {
         let input = this._input;
         if (input.innerText != "") {
             this.hideRecordButton();
@@ -95,7 +91,7 @@ export class ChatMessageEditor {
 
     public setText(text: string) {
         this._input.innerText = text;
-        this.buttonHandler();
+        this.updateButtonVisibility();
         let _ = this.updateClientSideState();
     }
 
