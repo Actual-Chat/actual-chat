@@ -27,7 +27,7 @@ export class VirtualList {
     private _onScrollStoppedTimeout: any = null;
 
     private _updateClientSideStateTimeout: any = null;
-    private _updateClientSideStateTasks: Promise<unknown>[] = [];
+    private _updateClientSideStateTask: Promise<unknown> | null = null;
     private _blazorRenderIndex: number = -1;
 
     public static create(
@@ -167,21 +167,14 @@ export class VirtualList {
     }
 
     protected updateClientSideState() {
-        let queue = this._updateClientSideStateTasks;
-        let lastTask = queue.length > 0 ? queue[queue.length - 1] : null;
-        if (queue.length >= 2)
-            return lastTask;
-        let newTask = (async () => {
-            try {
-                if (lastTask != null)
-                    await lastTask.then(v => v, _ => null);
-                await this.updateClientSideStateImpl();
-            }
-            finally {
-                let _ = queue.shift();
-            }
+        let prevTask = this._updateClientSideStateTask;
+        let nextTask = (async () => {
+            if (prevTask != null)
+                await prevTask.then(v => v, _ => null);
+            await this.updateClientSideStateImpl();
         })();
-        queue.push(newTask)
+        this._updateClientSideStateTask = nextTask;
+        return nextTask;
     }
 
     protected async updateClientSideStateImpl() {
