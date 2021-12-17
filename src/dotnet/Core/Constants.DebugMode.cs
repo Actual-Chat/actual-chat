@@ -15,7 +15,8 @@ public static partial class Constants
         public static bool AudioPlaybackPlayMyOwnAudio => HostInfo.IsDevelopmentInstance;
         public static bool AudioRecording { get; } = false;
         public static bool AudioRecordingBlobStream { get; } = false;
-        public static bool GoogleTranscriber { get; } = true;
+        public static bool Transcription { get; } = false;
+        public static bool GoogleTranscriber { get; } = false;
         public static bool WebMReader { get; } = false;
     }
 }

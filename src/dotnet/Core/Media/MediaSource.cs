@@ -2,6 +2,7 @@ namespace ActualChat.Media;
 
 public interface IMediaSource
 {
+    bool IsCancelled { get; }
     MediaFormat Format { get; }
     TimeSpan Duration { get; }
     Task WhenFormatAvailable { get; }
@@ -21,7 +22,9 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     protected Task<TFormat> FormatTask { get; }
     protected Task<TimeSpan> DurationTask { get; }
     protected ILogger Log { get; }
+    protected abstract TFormat DefaultFormat { get; }
 
+    public bool IsCancelled => FormatTask.IsCanceled;
     MediaFormat IMediaSource.Format => Format;
 #pragma warning disable VSTHRD002
     public TFormat Format => FormatTask.IsCompleted
@@ -98,12 +101,14 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         IAsyncEnumerable<IMediaStreamPart> mediaStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var isEmpty = true;
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
         try {
             await foreach (var mediaStreamPart in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 // ReSharper disable once HeapView.PossibleBoxingAllocation
+                isEmpty = false;
                 var part = (TStreamPart) mediaStreamPart;
                 var (format, frame) = (part.Format, part.Frame);
                 if (FormatTask.IsCompleted) {
@@ -116,11 +121,8 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
                     else
                         throw new InvalidOperationException("MediaStreamPart doesn't have any properties set.");
                 }
-                else {
-                    if (format == null)
-                        throw new InvalidOperationException("Format part is expected first.");
-                    formatTaskSource.SetResult(format);
-                }
+                else
+                    formatTaskSource.SetResult(format ?? DefaultFormat);
             }
             durationTaskSource.SetResult(duration);
         }
@@ -130,10 +132,20 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
                 durationTaskSource.TrySetCanceled(cancellationToken);
             }
             else {
-                if (!FormatTask.IsCompleted)
-                    formatTaskSource.TrySetException(new InvalidOperationException("MediaSource.Parse: Format wasn't parsed."));
-                if (!DurationTask.IsCompleted)
-                    durationTaskSource.TrySetException(new InvalidOperationException("MediaSource.Parse: Duration wasn't parsed."));
+                if (!FormatTask.IsCompleted) {
+                    if (isEmpty)
+                        formatTaskSource.TrySetCanceled(cancellationToken);
+                    else
+                        formatTaskSource.TrySetException(
+                            new InvalidOperationException("MediaSource.Parse: Format wasn't parsed."));
+                }
+                if (!DurationTask.IsCompleted) {
+                    if (isEmpty)
+                        durationTaskSource.TrySetCanceled(cancellationToken);
+                    else
+                        durationTaskSource.TrySetException(
+                            new InvalidOperationException("MediaSource.Parse: Duration wasn't parsed."));
+                }
             }
         }
     }

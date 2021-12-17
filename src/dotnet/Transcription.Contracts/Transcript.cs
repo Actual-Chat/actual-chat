@@ -1,42 +1,147 @@
-using System.ComponentModel.DataAnnotations;
+using System.Numerics;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Cysharp.Text;
 using Stl.Internal;
 
 namespace ActualChat.Transcription;
 
 [DataContract]
-public sealed record Transcript
+public sealed class Transcript
 {
-    public const double TextToTimeMapTextPrecision = 0.5d;
-    public const double TextToTimeMapTimePrecision = 0.1d;
-    public static LinearMap EmptyMap { get; } = new(new[] { 0d, 0 }, new[] { 0d, 0d });
+    private static readonly Regex StartRegex = new("^\\s*", RegexOptions.Compiled);
+    private static readonly Regex EndRegex = new("\\s*$", RegexOptions.Compiled);
+
+    public const float TextToTimeMapTextPrecision = 0.5f;
+    public const float TextToTimeMapTimePrecision = 0.1f;
+    public static LinearMap EmptyMap { get; } = new(Vector2.Zero, Vector2.Zero);
+    public static Transcript Empty { get; } = new();
+    public static Transcript EmptyStable { get; } = new("", EmptyMap, true);
 
     [DataMember(Order = 0)]
-    public string Text { get; init; } = "";
+    public string Text { get; }
     [DataMember(Order = 1)]
-    public LinearMap TextToTimeMap { get; init; } = EmptyMap;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Range<double> TextRange => TextToTimeMap.SourceRange;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public Range<double> TimeRange => TextToTimeMap.TargetRange;
+    public LinearMap TextToTimeMap { get; }
+    [DataMember(Order = 2)]
+    public TranscriptFlags Flags { get; }
 
-    public Transcript() { }
-    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Range<int> TextRange { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public Range<float> TimeRange { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public int Length => Text.Length;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public float Duration => TimeRange.Size();
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsStable => 0 != (Flags & TranscriptFlags.Stable);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    public bool IsDiff => 0 != (Flags & TranscriptFlags.Diff);
+
+    public Transcript()
+        : this("", EmptyMap, default(TranscriptFlags)) { }
+
     public Transcript(string text, LinearMap textToTimeMap)
+        : this(text, textToTimeMap, default(TranscriptFlags)) { }
+
+    public Transcript(string text, LinearMap textToTimeMap, bool isStable)
+        : this(text, textToTimeMap, isStable ? TranscriptFlags.Stable : 0) { }
+
+    public Transcript(string text, LinearMap textToTimeMap, bool isStable, bool isDiff)
+        : this(text, textToTimeMap, (isStable ? TranscriptFlags.Stable : 0) | (isDiff ? TranscriptFlags.Diff : 0)) { }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public Transcript(string text, LinearMap textToTimeMap, TranscriptFlags flags)
     {
         Text = text;
         TextToTimeMap = textToTimeMap;
+        var textRange = TextToTimeMap.XRange;
+        TextRange = ((int) textRange.Start, (int) textRange.End);
+        if (TextRange.Size() != Text.Length)
+            throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
+        TimeRange = TextToTimeMap.YRange;
+        Flags = flags;
     }
 
-    public TranscriptUpdate GetUpdateTo(Transcript updated)
+    public override string ToString()
+        => $"{(IsDiff ? "diff: " : "")}{(IsStable ? "" : "~")}'{Text}' & {TextToTimeMap}";
+
+    public Transcript WithFlags(TranscriptFlags flags)
+        => new(Text, TextToTimeMap, flags);
+
+    public int GetContentStart()
     {
+        var match = StartRegex.Match(Text);
+        return TextRange.Start + (match.Success ? match.Length : 0);
+    }
+
+    public int GetContentEnd()
+    {
+        var match = EndRegex.Match(Text);
+        return TextRange.End - (match.Success ? match.Length : 0);
+    }
+
+    public float GetContentStartTime()
+        => TextToTimeMap.Map(GetContentStart());
+
+    public float GetContentEndTime()
+        => TextToTimeMap.Map(Math.Max(TextRange.Start, GetContentEnd() - 0.01f));
+
+    public Transcript GetPrefix(int length, float timeOverlap = 0)
+        => Split(length, true, false, timeOverlap).Prefix;
+
+    public Transcript GetSuffix(int start, float timeOverlap = 0)
+        => Split(start, false, true, timeOverlap).Suffix;
+
+    public (Transcript Prefix, Transcript Suffix) Split(int start, float timeOverlap = 0)
+        => Split(start, true, true, timeOverlap);
+
+    public (Transcript Prefix, Transcript Suffix) Split(int start, bool needPrefix, bool needSuffix, float timeOverlap = 0)
+    {
+        if (start == TextRange.Start)
+            return (new Transcript("", EmptyMap.Move(TextToTimeMap[0])), this);
+        if (start == TextRange.End)
+            return (this, new Transcript("", EmptyMap.Move(TextToTimeMap[0])));
+
         var map = TextToTimeMap;
+        if (start < TextRange.Start)
+            throw new ArgumentOutOfRangeException(nameof(start));
+        var mapStart = map.Points.IndexOfGreaterOrEqualX(start - 0.1f);
+        if (mapStart < 0)
+            throw new ArgumentOutOfRangeException(nameof(start));
+
+        var textStart = start - TextRange.Start;
+        var timeStart = map.Map(start);
+        var overlappingTimeStart = Math.Max(TimeRange.Start, timeStart - timeOverlap);
+
+        Transcript? prefix = null, suffix = null;
+        if (needPrefix) {
+            var prefixText = Text[..textStart];
+            var prefixMap = map[..mapStart]
+                .AppendOrUpdateTail(new LinearMap(start, timeStart), TextToTimeMapTextPrecision);
+            prefix = new Transcript(prefixText, prefixMap, Flags);
+        }
+        if (needSuffix) {
+            var suffixText = Text[textStart..];
+            var suffixMap = new LinearMap(start, overlappingTimeStart)
+                .AppendOrUpdateTail(map[mapStart..], TextToTimeMapTextPrecision);
+            suffix = new Transcript(suffixText, suffixMap, Flags);
+        }
+        return (prefix!, suffix!);
+    }
+
+    public Transcript DiffWith(Transcript @base, bool noDiffFlag = false)
+    {
+        if (IsDiff || @base.IsDiff)
+            throw new InvalidOperationException("Can't compute diff for diffs.");
         var text = Text;
-        var updatedMap = updated.TextToTimeMap;
-        var updatedText = updated.Text;
-        if (Math.Abs(map.SourceRange.Min - updatedMap.SourceRange.Min) > 0.1)
-            return new TranscriptUpdate(updated); // Start differs
+        var map = TextToTimeMap;
+        var baseText = @base.Text;
+        var baseMap = @base.TextToTimeMap;
+        var d = map[0] - baseMap[0];
+        if (Math.Abs(d.X) > 1e-6 || Math.Abs(d.Y) > 1e-6)
+            return this;
+        var textRangeStart = TextRange.Start;
 
         // The logic below is fairly complex, but overall:
         // - We find the max. common part of the map and the text
@@ -44,96 +149,72 @@ public sealed record Transcript
         // - Try to augment commonMap with one extra point - (commonTextEnd, itsTime)
         // - Compute the updated map as (commonText, commonMap) + suffix from (updatedText, updatedMap)
 
-        var commonMapPrefixLength = Math.Min(
-            map.SourcePoints.CommonPrefixLength(updatedMap.SourcePoints),
-            map.TargetPoints.CommonPrefixLength(updatedMap.TargetPoints));
+        var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points);
         if (commonMapPrefixLength == 0)
-            return new TranscriptUpdate(updated);
-        var commonTextPrefixLengthBasedOnMap = (int) map.SourcePoints[commonMapPrefixLength - 1];
+            return this;
+        var commonTextPrefixLengthBasedOnMap = (int) baseMap.Points[commonMapPrefixLength - 1].X - textRangeStart;
+        var commonTextPrefixLength = baseText.AsSpan(0, commonTextPrefixLengthBasedOnMap)
+            .CommonPrefixLength(text.AsSpan(0, commonTextPrefixLengthBasedOnMap));
+        commonMapPrefixLength = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength + textRangeStart);
+        if (commonMapPrefixLength <= 0)
+            return this;
+        // Here commonMapPrefixLength points to a map point that lies before commonTextPrefixLength,
+        // and moreover, commonMapPrefixLength lies in the common part of the map too
 
-        var commonTextPrefixLength = text.AsSpan().CommonPrefixLength(updatedText.AsSpan());
-        var lastCommonMapPointIndex = map.SourcePoints.IndexOfLowerOrEqual(commonTextPrefixLength - 0.5);
-        if (lastCommonMapPointIndex < 0)
-            return new TranscriptUpdate(updated);
-        var commonMapPrefixLengthBasedOnText = lastCommonMapPointIndex + 1;
-
-        var textPrefix = text[..Math.Min(commonTextPrefixLength, commonTextPrefixLengthBasedOnMap)];
-        var mapPrefix = map[..Math.Min(commonMapPrefixLength, commonMapPrefixLengthBasedOnText)];
+        var mapPrefix = baseMap[..commonMapPrefixLength];
         if (mapPrefix.IsEmpty)
-            return new TranscriptUpdate(updated);
-        var mapSuffix = updatedMap[mapPrefix.Length..];
-        updatedMap = mapPrefix
-            .TryAppend(textPrefix.Length, map.Map(textPrefix.Length)!.Value, TextToTimeMapTextPrecision)
-            .AppendOrUpdateTail(mapSuffix, TextToTimeMapTextPrecision);
+            return this;
+        var textPrefix = baseText[..commonTextPrefixLength];
 
-        var transcript = new Transcript(updatedText, updatedMap);
-        transcript.Validate(); // TODO(AY): Remove this call once we see everything is fine
-        return new TranscriptUpdate(transcript);
+        var textSuffix = text[textPrefix.Length..];
+        var textPrefixRangeEnd = textPrefix.Length + textRangeStart;
+        var mapSuffix = new LinearMap(textPrefixRangeEnd, map.Map(textPrefixRangeEnd))
+            .AppendOrUpdateTail(map[mapPrefix.Length..], TextToTimeMapTextPrecision);
+
+        var diff = new Transcript(textSuffix, mapSuffix, IsStable, !noDiffFlag);
+        diff.AssertValid(); // TODO(AY): Remove this call once we see everything is fine
+        return diff;
     }
 
-    public Transcript WithSuffix(string suffix, double suffixEndTime)
+    public Transcript WithSuffix(string suffix, float suffixEndTime, bool? suffixIsStable = null)
     {
         var suffixTextToTimeMap = new LinearMap(
-            new [] { (double) Text.Length, Text.Length + suffix.Length },
-            new [] { TimeRange.End, suffixEndTime }
+            new Vector2(TextRange.End, TimeRange.End),
+            new Vector2(TextRange.End + suffix.Length, suffixEndTime)
         ).TrySimplifyToPoint();
-        return WithSuffix(suffix, suffixTextToTimeMap);
+        return WithSuffix(suffix, suffixTextToTimeMap, suffixIsStable ?? IsStable);
     }
 
-    public Transcript WithSuffix(string suffix, LinearMap suffixTextToTimeMap)
+    public Transcript WithSuffix(string suffix, LinearMap suffixTextToTimeMap, bool? suffixIsStable = null)
     {
         var updatedText = ZString.Concat(Text, suffix);
         var updatedMap = TextToTimeMap.AppendOrUpdateTail(suffixTextToTimeMap, TextToTimeMapTextPrecision);
-        return new Transcript(updatedText, updatedMap);
+        return new Transcript(updatedText, updatedMap, suffixIsStable ?? IsStable);
     }
 
-    public Transcript WithUpdate(TranscriptUpdate update)
+    public Transcript WithDiff(Transcript? diff)
     {
-        var updatedPart = update.UpdatedPart;
-        if (updatedPart == null)
-            return this;
+        if (diff == null) return this;
+        if (!diff.IsDiff)
+            return diff;
 
-        var updatedPartMap = updatedPart.TextToTimeMap;
-        var cutIndex = (int) updatedPartMap.SourceRange.Min;
-        var retainedText = Text;
+        var diffMap = diff.TextToTimeMap;
+        var cutIndex = diff.TextRange.Start - TextRange.Start;
+        var retainedText = "";
         if (cutIndex > Text.Length)
-            retainedText += new string(' ', cutIndex - retainedText.Length);
-        else
-            retainedText = retainedText[..cutIndex];
-        return new Transcript() {
-            Text = retainedText + updatedPart.Text,
-            TextToTimeMap = TextToTimeMap.AppendOrUpdateTail(updatedPartMap, TextToTimeMapTextPrecision),
-        };
+            retainedText = Text + new string(' ', cutIndex - Text.Length);
+        else if (cutIndex > 0)
+            retainedText = Text[..cutIndex];
+
+        var newText = retainedText + diff.Text;
+        var newTextToTimeMap = TextToTimeMap.AppendOrUpdateTail(diffMap, TextToTimeMapTextPrecision);
+        return new Transcript(newText, newTextToTimeMap, diff.IsStable);
     }
 
-    public async Task<Transcript> WithUpdates(
-        IAsyncEnumerable<TranscriptUpdate> transcriptStream,
-        CancellationToken cancellationToken)
+    public void AssertValid()
     {
-        var transcript = this;
-        await foreach (var update in transcriptStream.WithCancellation(cancellationToken).ConfigureAwait(false))
-            transcript = transcript.WithUpdate(update);
-        return transcript;
+        TextToTimeMap.AssertValid();
+        if (TextRange.Size() != Text.Length)
+            throw Errors.InternalError("TextRange.Size() != Text.Length.");
     }
-
-    public void Validate()
-    {
-        if (Text.Length == 0) {
-            if (!TextToTimeMap.IsEmpty)
-                throw Errors.InternalError("TextToTimeMap must be empty.");
-        }
-        else {
-            TextToTimeMap.Validate();
-            if (TextToTimeMap.SourcePoints[0] != 0)
-                throw Errors.InternalError("TextToTimeMap start must be 0.");
-            if (Text.Length != (int) TextToTimeMap.SourcePoints[^1])
-                throw Errors.InternalError("TextToTimeMap end must match Text's end.");
-        }
-    }
-
-    // This record relies on referential equality
-    public bool Equals(Transcript? other)
-        => ReferenceEquals(this, other);
-    public override int GetHashCode()
-        => RuntimeHelpers.GetHashCode(this);
 }

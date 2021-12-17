@@ -1,21 +1,22 @@
 using ActualChat.Audio;
+using ActualChat.Transcription.Google;
 using Stl.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
 public class GoogleTranscriberTest : TestBase
 {
-    private readonly ILogger<GoogleTranscriber> _logger;
+    private ILogger<GoogleTranscriber> Log { get; }
 
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> logger) : base(@out)
-        => _logger = logger;
+    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
+        => Log = log;
 
     [Theory]
     [InlineData("file.webm")]
     // [InlineData("large-file.webm")]
     public async Task TranscribeTest(string fileName)
     {
-        var transcriber = new GoogleTranscriber(_logger);
+        var transcriber = new GoogleTranscriber(Log);
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -23,14 +24,11 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var transcriptStream = transcriber.Transcribe(options, audio.GetStream(default), default);
+        var diffs = await transcriber.Transcribe(options, audio.GetStream(default), default).ToListAsync();
 
-        var transcript = new Transcript();
-        await foreach (var update in transcriptStream) {
-            transcript = transcript.WithUpdate(update);
-            Out.WriteLine(update.UpdatedPart?.TextToTimeMap.ToString() ?? "[\\]");
-            Out.WriteLine(update?.UpdatedPart?.Text ?? "");
-        }
+        foreach (var diff in diffs)
+            Out.WriteLine(diff.ToString());
+        var transcript = diffs.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
     }
 
@@ -38,7 +36,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";
-        var transcriber = new GoogleTranscriber(_logger);
+        var transcriber = new GoogleTranscriber(Log);
         var options = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
@@ -46,14 +44,11 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var transcriptStream = transcriber.Transcribe(options, audio.GetStream(default), default);
+        var diffs = await transcriber.Transcribe(options, audio.GetStream(default), default).ToListAsync();
 
-        var transcript = new Transcript();
-        await foreach (var update in transcriptStream) {
-            transcript = transcript.WithUpdate(update);
-            Out.WriteLine(update.UpdatedPart?.TextToTimeMap.ToString() ?? "[\\]");
-            Out.WriteLine(update?.UpdatedPart?.Text ?? "");
-        }
+        foreach (var diff in diffs)
+            Out.WriteLine(diff.ToString());
+        var transcript = diffs.ApplyDiffs().Last();
         Out.WriteLine(transcript.ToString());
     }
 

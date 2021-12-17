@@ -64,17 +64,17 @@ public class AudioClient : HubClientBase,
         Log.LogDebug("RecordSourceAudio: Exited; Record = {Record}", record);
     }
 
-    public async IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
+    public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         string streamId,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        Log.LogDebug("GetTranscriptStream: StreamId = {StreamId}", streamId);
+        Log.LogDebug("GetTranscriptDiffStream: StreamId = {StreamId}", streamId);
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
         var updates = HubConnection
-            .StreamAsync<TranscriptUpdate>("GetTranscriptStream", streamId, cancellationToken)
+            .StreamAsync<Transcript>("GetTranscriptDiffStream", streamId, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
         await foreach (var update in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
             yield return update;
-        Log.LogDebug("GetTranscriptStream: Exited; StreamId = {StreamId}", streamId);
+        Log.LogDebug("GetTranscriptDiffStream: Exited; StreamId = {StreamId}", streamId);
     }
 }

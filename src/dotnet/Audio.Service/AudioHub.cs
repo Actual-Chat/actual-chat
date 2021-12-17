@@ -31,10 +31,10 @@ public class AudioHub : Hub
     public IAsyncEnumerable<BlobPart> GetAudioBlobStream(string streamId, CancellationToken cancellationToken)
         => _audioStreamer.GetAudioBlobStream(streamId, cancellationToken);
 
-    public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(
+    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         string streamId,
         CancellationToken cancellationToken)
-        => _transcriptStreamer.GetTranscriptStream(streamId, cancellationToken);
+        => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
     public Task RecordSourceAudio(
             Session session,

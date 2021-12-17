@@ -2,5 +2,5 @@ namespace ActualChat.Transcription;
 
 public interface ITranscriptStreamer
 {
-    public IAsyncEnumerable<TranscriptUpdate> GetTranscriptStream(string streamId, CancellationToken cancellationToken);
+    public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(string streamId, CancellationToken cancellationToken);
 }

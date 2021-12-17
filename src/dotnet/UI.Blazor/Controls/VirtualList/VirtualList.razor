@@ -5,38 +5,43 @@
     LastPlan = Plan;
     // Log.LogInformation("Rendering: RenderIndex = {RenderIndex}", Plan.RenderIndex);
     // Log.LogInformation("Rendering: {Plan}", JsonFormatter.Format(Plan));
+    var flexBase = "flex flex-nowrap items-stretch";
+    var flexDir = Plan.IsEndAligned ? "flex-col-reverse" : "flex-col";
+    var scrollContainerFlexClass = $"{flexBase} {flexDir}";
+    var flexClass = $"{flexBase} flex-col";
+    var invFlexClass = $"{flexBase} flex-col-reverse";
 }
 
 @* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
-<div @ref="Ref" class="@Class virtual-list overflow-y-scroll h-full"
+<div @ref="Ref" class="virtual-list overflow-y-scroll h-full @scrollContainerFlexClass @Class @(CssClasses.Default[GetType()])"
      style="@Style"
      data-render-index="@Plan.RenderIndex">
-    <div class="content relative">
-        <div class="items items-unmeasured flex flex-col flex-nowrap items-stretch overflow-y-hidden h-0 invisible">
+    <div class="content relative @flexBase flex-col">
+        <div class="items items-unmeasured @flexClass overflow-y-hidden h-0 invisible">
             @foreach (var e in Plan.UnmeasuredItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
                     @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
-        <div class="spacer spacer-start overflow-y-hidden flex flex-col-reverse flex-nowrap items-stretch"
-             style="height: @(Plan.SpacerSize)px">
-            <SkeletonContainer>
-                @for (var i = SkeletonCount; i > 0; --i) {
-                    @Skeleton(-i)
+        <div class="spacer spacer-start overflow-y-hidden @invFlexClass"
+              style="height: @(Plan.SpacerSize)px">
+            <SkeletonContainer Class="@flexClass">
+                @for (var i = -SkeletonCount; i < 0; i++) {
+                    @Skeleton(i)
                 }
             </SkeletonContainer>
         </div>
-        <div class="items items-displayed flex flex-col flex-nowrap items-stretch">
+        <div class="items items-displayed @flexClass">
             @foreach (var e in Plan.DisplayedItems) {
                 <div @key="e.Key" class="item" data-key="@e.Key">
                     @Item(KeyValuePair.Create(e.Key, e.Item))
                 </div>
             }
         </div>
-        <div class="spacer spacer-end overflow-y-hidden flex flex-col flex-nowrap items-stretch"
+        <div class="spacer spacer-end overflow-y-hidden @flexClass"
              style="height: @(Plan.EndSpacerSize)px">
-            <SkeletonContainer>
+            <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     @Skeleton(i)
                 }

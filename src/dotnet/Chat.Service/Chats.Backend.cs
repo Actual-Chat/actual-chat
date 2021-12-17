@@ -7,6 +7,8 @@ namespace ActualChat.Chat;
 
 public partial class Chats
 {
+    private readonly LruCache<Symbol, long> _maxIdCache = new(16384);
+
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
     {
@@ -282,15 +284,7 @@ public partial class Chats
         var entryType = entry.Type;
         DbChatEntry dbEntry;
         if (isNew) {
-            var dbChatId = entry.ChatId.Value;
-            var maxId = await dbContext.ChatEntries.ForUpdate() // To serialize inserts
-                .Where(e => e.ChatId == dbChatId && e.Type == entryType)
-                .OrderByDescending(e => e.Id)
-                .Select(e => e.Id)
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
-            var idSequenceKey = $"{dbChatId}:{entryType:D}";
-            var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
+            var id = await NextChatEntryId(dbContext, entry.ChatId, entryType, cancellationToken).ConfigureAwait(false);
             entry = entry with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
@@ -315,5 +309,32 @@ public partial class Chats
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbEntry;
+    }
+
+    public async Task<long> NextChatEntryId(
+        object dbContext,
+        string chatId,
+        ChatEntryType entryType,
+        CancellationToken cancellationToken)
+    {
+        long maxId;
+        var idSequenceKey = new Symbol($"{chatId}:{entryType:D}");
+        lock (_maxIdCache)
+            maxId = _maxIdCache.GetValueOrDefault(idSequenceKey);
+
+        if (maxId == 0) {
+            var chatDbContext = (ChatDbContext) dbContext;
+            maxId = await chatDbContext.ChatEntries.ForUpdate() // To serialize inserts
+                .Where(e => e.ChatId == chatId && e.Type == entryType)
+                .OrderByDescending(e => e.Id)
+                .Select(e => e.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
+
+        lock (_maxIdCache)
+            _maxIdCache[idSequenceKey] = id;
+        return id;
     }
 }

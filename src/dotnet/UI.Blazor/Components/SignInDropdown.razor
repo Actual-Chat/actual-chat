@@ -9,7 +9,7 @@
 
 <AuthorizeView>
   <NotAuthorized>
-      <div class="flex-shrink-0 flex select-none @Class">
+      <div class="flex-shrink-0 flex select-none @Class @(_typeClass ??= CssClasses.Default[GetType()])">
             <div class="flex items-center">
                 <div class="relative">
                     <div class="relative">
@@ -36,8 +36,10 @@
 </AuthorizeView>
 
 @code {
+    private static string? _typeClass;
+
     [Parameter]
-    public string Class { get; set; } = CssClasses.Default[typeof(SignInDropdown)];
+    public string Class { get; set; } = "";
     [Parameter]
     public string Why { get; set; } = "";
 

@@ -46,6 +46,7 @@ public class DbModule : HostModule<DbSettings>
             ConnectionString = connectionString,
             ShouldRecreateDb = Settings.ShouldRecreateDb,
             ShouldVerifyDb = Settings.ShouldVerifyDb,
+            ShouldMigrateDb = Settings.ShouldMigrateDb,
         };
 
         // Adding services

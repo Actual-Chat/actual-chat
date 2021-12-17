@@ -11,6 +11,13 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
+    protected override AudioFormat DefaultFormat => new AudioFormat {
+        CodecSettings = "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwH/////////FUmpZrMq17GD"
+            + "D0JATYCTb3B1cy1tZWRpYS1yZWNvcmRlcldBk29wdXMtbWVkaWEtcmVjb3JkZXIWVK5rv66914EB"
+            + "c8WHtvVVEG3dyIOBAoaGQV9PUFVTY6KTT3B1c0hlYWQBAQAAgLsAAAAAAOGNtYRHO4AAn4EBYmSB"
+            + "IB9DtnUB/////////+eBAA==",
+    };
+
     public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
@@ -37,6 +44,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
+        var actualSkipTo = skipTo;
         var clusterOffsetMs = 0;
         short blockOffsetMs = 0;
         var skipAdjustmentBlockMs = short.MinValue;
@@ -67,7 +75,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     state.IsEmpty
                         ? new WebMReader(readBuffer.Span)
                         : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
-                    skipTo,
+                    ref actualSkipTo,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
                     ref skipAdjustmentClusterMs,
@@ -129,7 +137,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
     private WebMReader.State FillFrameBuffer(
         List<AudioFrame> frameBuffer,
         WebMReader webMReader,
-        TimeSpan skipTo,
+        ref TimeSpan skipTo,
         ref int clusterOffsetMs,
         ref short blockOffsetMs,
         ref int skipAdjustmentClusterMs,
@@ -138,7 +146,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var prevPosition = 0;
         var framesStart = 0;
         var skipToMs = (int)skipTo.TotalMilliseconds;
-        short currentBlockOffsetMs = 0;
         EBML? ebml = null;
         Segment? segment = null;
 
@@ -169,21 +176,35 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     framesStart = state.Position;
                 }
                 else {
-                    clusterOffsetMs = (int)cluster.Timestamp;
+                    if (cluster.Timestamp - (ulong)clusterOffsetMs > 32768) { // max block offset within the cluster, probably we have a gap
+                        clusterOffsetMs += blockOffsetMs;
+                        clusterOffsetMs += 20; // hardcoded!!! it makes sense to calculate average block duration
+                        cluster.Timestamp = (ulong)clusterOffsetMs;
+                    }
+                    else
+                        clusterOffsetMs = (int)cluster.Timestamp;
 
                     if (skipAdjustmentBlockMs > 0) {
                         cluster.Timestamp -= (ulong)skipAdjustmentBlockMs;
                         webMWriter.Write(cluster);
                     }
                 }
-                currentBlockOffsetMs = 0;
+                blockOffsetMs = 0;
                 break;
             case WebMReadResultKind.Block:
                 var block = (Block)webMReader.ReadResult;
-                currentBlockOffsetMs = Math.Max(currentBlockOffsetMs, block.TimeCode);
+
+                if (blockOffsetMs == 0 && clusterOffsetMs == 0) {
+                    if (block.TimeCode > 60 && skipTo == TimeSpan.Zero) { // audio segment with an offset, 60 is the largest opus frame duration
+                        skipTo = TimeSpan.FromMilliseconds(1);
+                        skipToMs = 1;
+                    }
+                }
+                blockOffsetMs = block.TimeCode;
+
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
                     var frameOffset = TimeSpan.FromTicks( // To avoid floating-point errors
-                        TimeSpan.TicksPerMillisecond * (clusterOffsetMs + currentBlockOffsetMs));
+                        TimeSpan.TicksPerMillisecond * (clusterOffsetMs + blockOffsetMs));
 
                     AudioFrame? mediaFrame = null;
                     if (skipToMs <= 0) {
@@ -197,7 +218,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         // Complex case: we may need to skip this frame
                         if (frameOffset - skipTo >= TimeSpan.Zero) {
                             if (skipAdjustmentBlockMs == short.MinValue) {
-                                skipAdjustmentBlockMs = currentBlockOffsetMs;
+                                skipAdjustmentBlockMs = blockOffsetMs;
                                 skipAdjustmentClusterMs = clusterOffsetMs;
                                 simpleBlock.TimeCode = 0;
                             }
@@ -221,7 +242,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                     if (mediaFrame != null)
                         frameBuffer.Add(mediaFrame);
                     framesStart = state.Position;
-                    blockOffsetMs = currentBlockOffsetMs;
                 }
                 break;
             case WebMReadResultKind.BlockGroup:
@@ -234,7 +254,12 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         if (framesStart != prevPosition)
             throw new InvalidOperationException("Unexpected WebM structure.");
 
-        blockOffsetMs = currentBlockOffsetMs;
+        if (!FormatTask.IsCompleted) {
+            var formatTaskSource = TaskSource.For(FormatTask);
+            var format = CreateMediaFormat(ebml!, segment!, webMReader.Span);
+            formatTaskSource.SetResult(format);
+        }
+
         return webMReader.GetState();
     }
 

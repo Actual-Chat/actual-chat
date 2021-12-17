@@ -18,7 +18,7 @@ public static class BlobStreamExt
         this IHttpClientFactory httpClientFactory,
         Uri blobUri,
         ILogger log,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
         HttpResponseMessage response;
@@ -27,6 +27,7 @@ public static class BlobStreamExt
             if (OSInfo.IsWebAssembly) {
                 request.SetBrowserResponseStreamingEnabled(true);
                 request.SetBrowserRequestMode(BrowserRequestMode.Cors);
+                request.SetBrowserRequestCache(BrowserRequestCache.ForceCache);
             }
             response = await httpClient
                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)

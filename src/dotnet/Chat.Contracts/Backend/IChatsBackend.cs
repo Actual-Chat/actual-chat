@@ -43,4 +43,12 @@ public interface IChatsBackend
     public record CreateChatCommand(Chat Chat) : ICommand<Chat>, IBackendCommand;
     public record CreateAudioEntryCommand(ChatEntry AudioEntry) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
     public record UpsertEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>, IBackendCommand;
+
+    // Misc. low-level helpers
+
+    Task<long> NextChatEntryId(
+        object dbContext,
+        string chatId,
+        ChatEntryType entryType,
+        CancellationToken cancellationToken);
 }
