@@ -1,6 +1,28 @@
 import Denque from "denque";
 
-export class SendingQueue {
+export interface ISendingQueue {
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    enqueue(data: Uint8Array): void;
+    flushAsync(): Promise<void>;
+    // TODO: remove unused code with sequenceNumbers
+    resendAsync(sequenceNumber: number): Promise<void>;
+}
+
+export interface ISendingQueueCleaningStrategy {
+    cleanAsync(chunks: Map<number, Uint8Array>, currentSequenceNumber: number): Promise<void>;
+}
+
+export interface ISendingQueueOptions {
+    chunkSize: number;
+    minChunkSize: number;
+    maxFillBufferTimeMs: number;
+    sendAsync: (data: Uint8Array) => Promise<void>;
+    cleaningStrategy: ISendingQueueCleaningStrategy;
+    debugMode: boolean;
+}
+
+export class SendingQueue implements ISendingQueue {
     private _state: 'running' | 'paused';
     private _buffer: Uint8Array;
     private _bufferOffset: number;
@@ -27,7 +49,7 @@ export class SendingQueue {
         if (this._bufferOffset > 0) {
             await this.sendBufferAsync(true);
         }
-        this._buffer.set([0,0,0,0], 0)
+        this._buffer.set([0, 0, 0, 0], 0);
         this._bufferOffset = 4;
         await this.sendBufferAsync(true);
     }
@@ -36,7 +58,7 @@ export class SendingQueue {
         if (this._state === "running")
             return;
 
-        this._buffer.set([1,1,1,1], 0)
+        this._buffer.set([1, 1, 1, 1], 0);
         this._bufferOffset = 4;
         await this.sendBufferAsync(true);
 
@@ -52,7 +74,7 @@ export class SendingQueue {
         this._state = "running";
     }
 
-    public enqueue(data: Uint8Array) {
+    public enqueue(data: Uint8Array): void {
         if (this._options.debugMode) {
             this.log(`enqueue: ${data.length} byte(s)`);
         }
@@ -68,11 +90,11 @@ export class SendingQueue {
         const chunkSize = this._options.chunkSize;
         let freeBufferLength = chunkSize - this._bufferOffset;
         while (data.length >= freeBufferLength) {
-            let dataPrefix = data.subarray(0, freeBufferLength);
-            data = data.subarray(freeBufferLength)
+            const dataPrefix = data.subarray(0, freeBufferLength);
+            data = data.subarray(freeBufferLength);
             this._buffer.set(dataPrefix, this._bufferOffset);
             this._bufferOffset += freeBufferLength;
-            let _ = this.sendBufferAsync();
+            const _ = this.sendBufferAsync();
             freeBufferLength = chunkSize - this._bufferOffset; // Actually always chunkSize
         }
         if (data.length > 0) {
@@ -82,11 +104,11 @@ export class SendingQueue {
         }
 
         if (this._bufferOffset >= this._options.minChunkSize) {
-            let _ = this.sendBufferAsync();
+            const _ = this.sendBufferAsync();
         } else {
             this.log(`enqueue: ${this._bufferOffset} byte(s) were left in buffer`);
         }
-        this.ensureSendTimeout();
+        this.ensureSendByTimeout();
     }
 
     public async flushAsync(): Promise<void> {
@@ -112,13 +134,13 @@ export class SendingQueue {
         console.error(`[${new Date(Date.now()).toISOString()}] SendingQueue: ${message}`);
     }
 
-    private ensureSendTimeout() {
+    private ensureSendByTimeout() {
         if (this._sendBufferTimeout === null) {
             this._sendBufferTimeout = setTimeout(() => {
                 if (this._options.debugMode) {
                     this.log(`Send timeout is fired, sending buffer with ${this._bufferOffset} data bytes, seqNum: ${this._seqNum}.`);
                 }
-                let _ = this.sendBufferAsync();
+                const _ = this.sendBufferAsync();
             }, this._options.maxFillBufferTimeMs);
         }
     }
@@ -130,10 +152,10 @@ export class SendingQueue {
         }
     }
 
-    private async sendBufferAsync(override: boolean = false): Promise<void> {
+    private async sendBufferAsync(ignorePause: boolean = false): Promise<void> {
         this.clearSendTimeout();
 
-        if (this._state === "paused" && !override)
+        if (this._state === "paused" && !ignorePause)
             return;
 
         const bufferLength = this._bufferOffset;
@@ -168,19 +190,6 @@ export class SendingQueue {
             }
         }
     }
-}
-
-export interface ISendingQueueOptions {
-    chunkSize: number;
-    minChunkSize: number;
-    maxFillBufferTimeMs: number;
-    sendAsync: (data: Uint8Array) => Promise<void>;
-    cleaningStrategy: ISendingQueueCleaningStrategy;
-    debugMode: boolean;
-}
-
-export interface ISendingQueueCleaningStrategy {
-    cleanAsync(chunks: Map<number, Uint8Array>, currentSequenceNumber: number): Promise<void>;
 }
 
 export class TimeoutCleaningStrategy implements ISendingQueueCleaningStrategy {

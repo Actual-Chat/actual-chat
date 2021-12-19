@@ -1,0 +1,91 @@
+using ActualChat.Audio.UI.Blazor.Module;
+
+namespace ActualChat.Audio.UI.Blazor.Pages;
+
+#pragma warning disable CS0162 // for if (false) { logging }
+#pragma warning disable MA0040
+#pragma warning disable CA1822
+
+public partial class AudioRecorderTestPage : ComponentBase, IDisposable
+{
+    [Inject]
+    private ILogger<AudioRecorderTestPage> Log { get; set; } = null!;
+    [Inject]
+    private IJSRuntime JS { get; set; } = null!;
+
+    private CancellationTokenSource? _cts;
+    private CancellationTokenRegistration _registration;
+    private IJSObjectReference? _jsRef = null;
+    private ElementReference _recordsRef;
+    private int _recordNumber = 0;
+
+    protected bool DebugMode { get; set; } = true;
+    protected bool IsRecording { get; set; }
+
+    public async Task ToggleRecording()
+    {
+        if (!IsRecording) {
+            Log.LogInformation("Recording was started");
+            _cts = new CancellationTokenSource();
+            var blazorRef = DotNetObjectReference.Create(this);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{AudioBlazorUIModule.ImportName}.AudioRecorderTestPage.createObj",
+                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++
+                ).ConfigureAwait(true);
+#pragma warning disable VSTHRD101, MA0040
+            // ReSharper disable once AsyncVoidLambda
+            _registration = _cts.Token.Register(async () => {
+                Log.LogInformation("Recording was cancelled");
+                try {
+                    await _jsRef.InvokeVoidAsync("stopRecording").ConfigureAwait(true);
+                    await _jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
+                    await _jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
+                    if (_registration != default) {
+                        await _registration.DisposeAsync().ConfigureAwait(true);
+                    }
+                    blazorRef.Dispose();
+                }
+                catch (Exception ex) {
+                    Log.LogError(ex, "Unhandled exception during cancelling recording.");
+                }
+                finally {
+                    IsRecording = false;
+                    _registration = default;
+                    _jsRef = null;
+                    StateHasChanged();
+                }
+            });
+            await _jsRef.InvokeVoidAsync("startRecording").ConfigureAwait(true);
+            IsRecording = true;
+        }
+        else {
+            _cts.CancelAndDisposeSilently();
+            _cts = null;
+            await _registration.DisposeAsync().ConfigureAwait(true);
+            IsRecording = false;
+        }
+    }
+
+    [JSInvokable]
+    public void OnStartRecording()
+    {
+    }
+    [JSInvokable]
+    public Task OnAudioData(byte[] _) => Task.CompletedTask;
+
+    [JSInvokable]
+    public void OnRecordingStopped()
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        if (_registration != default) {
+            _registration.Dispose();
+            _registration = default;
+        }
+        _cts?.CancelAndDisposeSilently();
+        GC.SuppressFinalize(this);
+    }
+}
