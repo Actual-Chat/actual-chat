@@ -1,5 +1,5 @@
 import RecordRTC, { MediaStreamRecorder, Options, State } from 'recordrtc';
-import { SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
+import { ISendingQueue, SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
 import OpusMediaRecorder from 'opus-media-recorder';
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
 import { VoiceActivityChanged } from './audio-vad';
@@ -22,30 +22,18 @@ self["OpusMediaRecorder"] = OpusMediaRecorderWrapper;
 self.MediaRecorder = OpusMediaRecorderWrapper;
 
 export class AudioRecorder {
-    private readonly _debugMode: boolean;
-    private readonly isMicrophoneAvailable: boolean;
-    private readonly _blazorRef: DotNet.DotNetObject;
-    private recording: { recorder: RecordRTC, stream: MediaStream; context: AudioContext; };
-    private _queue: SendingQueue;
+    protected readonly _debugMode: boolean;
+    protected readonly _blazorRef: DotNet.DotNetObject;
+    protected readonly isMicrophoneAvailable: boolean;
+    protected recording: { recorder: RecordRTC, stream: MediaStream; context: AudioContext; };
+    protected _queue: ISendingQueue;
 
-    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: ISendingQueue) {
         this._blazorRef = blazorRef;
         this._debugMode = debugMode;
         this.recording = null;
         this.isMicrophoneAvailable = false;
-        this._queue = new SendingQueue({
-            debugMode: debugMode,
-            minChunkSize: 64,
-            chunkSize: 1020,
-            maxFillBufferTimeMs: 400,
-            cleaningStrategy: new TimeoutCleaningStrategy(60_000),
-            sendAsync: async (packet: Uint8Array): Promise<void> => {
-                if (this._debugMode) {
-                    console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Send to blazor side data size: ${packet.length}`);
-                }
-                await this._blazorRef.invokeMethodAsync('OnAudioData', packet);
-            },
-        });
+        this._queue = queue;
 
         if (blazorRef === undefined || blazorRef === null) {
             console.error(`${LogScope}.constructor.error: blazorRef is undefined`);
@@ -64,7 +52,20 @@ export class AudioRecorder {
     }
 
     public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
-        return new AudioRecorder(blazorRef, debugMode);
+        const queue: ISendingQueue = new SendingQueue({
+            debugMode: debugMode,
+            minChunkSize: 64,
+            chunkSize: 1020,
+            maxFillBufferTimeMs: 400,
+            cleaningStrategy: new TimeoutCleaningStrategy(60_000),
+            sendAsync: async (packet: Uint8Array): Promise<void> => {
+                if (debugMode) {
+                    console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Send to blazor side data size: ${packet.length}`);
+                }
+                await blazorRef.invokeMethodAsync('OnAudioData', packet);
+            },
+        });
+        return new AudioRecorder(blazorRef, debugMode, queue);
     }
 
     public static changeMediaRecorder(useStandardMediaRecorder: boolean) {
@@ -96,7 +97,7 @@ export class AudioRecorder {
             const recording = this.recording;
 
             if (recording !== null) {
-                const state = recording.recorder.getState()
+                const state = recording.recorder.getState();
                 console.log(state);
 
                 if (vadEvent.kind === 'end') {

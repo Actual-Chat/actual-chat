@@ -23,14 +23,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQ109DMZC9YC9FCW6YNW6Y31/0002.webm";
     private const bool DebugMode = true;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender) {
-            StateHasChanged();
-        }
-        await base.OnAfterRenderAsync(firstRender).ConfigureAwait(true);
-    }
-
     public async Task OnClick(bool isMsePlayer)
     {
         if (_isPlaying) {
@@ -62,8 +54,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     await jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
                     await jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
                     if (_registration != default) {
-                        var reg = _registration;
-                        await reg.DisposeAsync().ConfigureAwait(true);
+                        await _registration.DisposeAsync().ConfigureAwait(true);
                     }
                 }
                 catch (Exception ex) {
