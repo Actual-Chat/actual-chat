@@ -17,6 +17,8 @@
 - [Edge](https://www.microsoft.com/en-us/edge#platform)
   or [Chrome](https://chromeenterprise.google/browser/download/)
 - [Playwright](https://playwright.dev/docs/intro/#installation)
+- [Configure GCP service key](https://www.notion.so/actual-chat/GCP-service-keys-d4cbb93a014644fba636e35aad45f94d)
+  ensure time and timezone are configured correctly on a machine
 
 Recommended IDEs:
 - [Rider](https://www.jetbrains.com/rider/)
@@ -41,7 +43,7 @@ Useful commands:
 ## Conventions
 
 We use:
-- [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
+- [Conventional commits](C)
 - Standard .NET naming & style guidelines. Exceptions:
     - Place `{` on the same line for `if`, `for`, and
       any other code inside method body
