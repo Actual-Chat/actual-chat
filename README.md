@@ -27,17 +27,15 @@ Recommended IDEs:
 First time:
 ```
 Docker-Start-DBs.cmd
-cd src/nodejs
-npm install
-cd ../..
+Npm-Install.cmd
 dotnet build
 ```
 
 Useful commands:
 
 - `Docker-Start-DBs.cmd` starts Docker containers w/ DBs used for local development (PostgreSQL, Redis)
-- `Run-NpmInstall.cmd` installs `npm` packages
-- `Run-NpmWatch.cmd` rebuilds Webpack bundle on any change in TS/JS/CSS
+- `Npm-Install.cmd` installs `npm` packages
+- `Npm-Watch.cmd` rebuilds Webpack bundle on any change in TS/JS/CSS
 - `Run-Watch.cmd` does what `Run-NpmWatch` does + hot reloads the server.
 
 ## Conventions
