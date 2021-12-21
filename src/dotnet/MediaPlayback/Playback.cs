@@ -20,9 +20,10 @@ public sealed class Playback : AsyncProcessBase, IHasServices
     private Channel<PlaybackCommand> Commands { get; set; }
 
     public IServiceProvider Services { get; }
-    public bool IsStopped => RunningTask is { IsCompleted: true };
-    public ImmutableList<TrackPlaybackState> PlayingTracks { get; private set; } = ImmutableList<TrackPlaybackState>.Empty;
     public IMutableState<ImmutableList<TrackPlaybackState>> PlayingTracksState { get; }
+    public ImmutableList<TrackPlaybackState> PlayingTracks => PlayingTracksState.Value;
+    public IMutableState<bool> IsStoppedState { get; }
+    public bool IsStopped => IsStoppedState.Value;
     public event Action<TrackPlaybackState>? TrackStarted;
     public event Action<TrackPlaybackState>? TrackStopped;
     public event Action<Playback>? Stopped;
@@ -40,7 +41,9 @@ public sealed class Playback : AsyncProcessBase, IHasServices
                 AllowSynchronousContinuations = true,
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
-        PlayingTracksState = Services.StateFactory().NewMutable(PlayingTracks);
+        var stateFactory = Services.StateFactory();
+        PlayingTracksState = stateFactory.NewMutable(ImmutableList<TrackPlaybackState>.Empty);
+        IsStoppedState = stateFactory.NewMutable(false);
         _disposeDelegate = Dispose;
         DisposeMonitor.Disposed += _disposeDelegate;
         if (start)
@@ -165,6 +168,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
                 if (trackPlayers.TryRemove(command, trackPlayer))
                     trackPlayer.StateChanged -= trackPlayerStateChanged; // Just in case
             }
+            IsStoppedState.Value = true;
             Stopped?.Invoke(this);
             DebugLog?.LogDebug("#{PlaybackIndex} ended ({StopReason})", playbackIndex, debugStopReason);
         }
@@ -185,14 +189,14 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         ActivePlaybackInfo.RegisterStateChange(lastState, state);
         if (!lastState.IsStarted && state.IsStarted) {
             lock (Lock) {
-                PlayingTracks = PlayingTracks.Insert(0, state);
+                PlayingTracksState.Value = PlayingTracks.Insert(0, state);
             }
             PlayingTracksState.Value = PlayingTracks;
             TrackStarted?.Invoke(state);
         }
         else if (state.IsCompleted && !lastState.IsCompleted) {
             lock (Lock) {
-                PlayingTracks = PlayingTracks.RemoveAll(s => s.Command.TrackId == state.Command.TrackId);
+                PlayingTracksState.Value = PlayingTracks.RemoveAll(s => s.Command.TrackId == state.Command.TrackId);
             }
             PlayingTracksState.Value = PlayingTracks;
             TrackStopped?.Invoke(state);

@@ -32,7 +32,8 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     // to enqueue the next entry on time.
     public TimeSpan EnqueueToPlaybackGap { get; init; } = TimeSpan.FromSeconds(3);
 
-    public IMutableState<Playback?> Playback { get; }
+    public IMutableState<Playback?> PlaybackState { get; }
+    public Playback? Playback => PlaybackState.Value;
     public bool IsDisposeStarted { get; private set; }
 
     public ChatPlayer(IServiceProvider services)
@@ -45,7 +46,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         MediaResolver = Services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = Services.GetRequiredService<AudioDownloader>();
         AudioSourceStreamer = Services.GetRequiredService<IAudioSourceStreamer>();
-        Playback = Services.StateFactory().NewMutable<Playback?>();
+        PlaybackState = Services.StateFactory().NewMutable<Playback?>();
     }
 
     public ValueTask DisposeAsync()
@@ -57,20 +58,20 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             if (IsDisposeStarted)
                 return ValueTask.CompletedTask;
             IsDisposeStarted = true;
-            playback = Playback.Value;
+            playback = Playback;
         }
         return playback?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 
     public Task Complete()
     {
-        var playback = Playback.Value;
+        var playback = Playback;
         return playback == null ? Task.CompletedTask : playback.Complete();
     }
 
     public Task Stop()
     {
-        var playback = Playback.Value;
+        var playback = Playback;
         return playback == null ? Task.CompletedTask : playback.Stop();
     }
 
@@ -78,14 +79,14 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     {
         Playback? playback;
         while (true) {
-            playback = Playback.Value;
+            playback = Playback;
             if (playback is { IsStopped: false })
                 await playback.Stop().ConfigureAwait(false);
             lock (Lock) {
-                if (Playback.Value is { IsStopped: false })
+                if (Playback is { IsStopped: false })
                     continue;
                 playback = new Playback(Services, false);
-                Playback.Value = playback;
+                PlaybackState.Value = playback;
                 break;
             }
         }
