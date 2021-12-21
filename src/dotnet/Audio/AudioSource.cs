@@ -235,8 +235,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                             }
                             else if (skipAdjustmentClusterMs >= clusterOffsetMs)
                                 simpleBlock.TimeCode -= skipAdjustmentBlockMs;
-                            var outputFrameOffset = frameOffset.Subtract(
-                                TimeSpan.FromMilliseconds(skipAdjustmentClusterMs + skipAdjustmentBlockMs));
+                            var outputFrameOffset = frameOffset -
+                                TimeSpan.FromMilliseconds(skipAdjustmentClusterMs + skipAdjustmentBlockMs);
                             DebugLog?.LogDebug(
                                 "Rewriting audio frame offset: {FrameOffset}s -> {OutputFrameOffset}s",
                                 frameOffset.TotalSeconds, outputFrameOffset.TotalSeconds);

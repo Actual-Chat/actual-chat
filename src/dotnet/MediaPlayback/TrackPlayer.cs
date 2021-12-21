@@ -4,8 +4,12 @@ namespace ActualChat.MediaPlayback;
 
 public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 {
+    private const int FrameDebugInfoPerEvery = 10;
+    private const double MaxRealtimeDelay = 5d;
+
     private volatile TrackPlaybackState _state;
     private readonly TaskSource<Unit> _whenCompletedSource;
+    private int _onPlayedToCallIndex;
     private ILogger? _log;
 
     protected ILogger Log => _log ??= Services.LogFor(GetType());
@@ -44,30 +48,34 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("Track #{TrackId}: started, Command = {Command}", Command.TrackId, Command);
+        var delay = GetRealtimeDelay(0, TimeSpan.Zero);
+        DebugLog?.LogDebug("Track #{TrackId}{Delay}: started, Command = {Command}", Command.TrackId, delay, Command);
         Exception? error = null;
         var isStarted = false;
         try {
             // Actual playback
             var frames = Source.GetFramesUntyped(cancellationToken);
+            var frameIndex = 0;
             await foreach (var frame in frames.ConfigureAwait(false)) {
                 if (!isStarted) {
-                    DebugLog?.LogDebug("Track #{TrackId}: first frame", Command.TrackId);
+                    delay = GetRealtimeDelay(0, TimeSpan.Zero);
+                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: first frame", Command.TrackId, delay);
                     // We do this here because we want to start buffering as early as possible
                     isStarted = true;
                     await Clocks.CpuClock.Delay(Command.PlayAt, cancellationToken).ConfigureAwait(false);
                     OnPlayedTo(TimeSpan.Zero);
-                    DebugLog?.LogDebug("Track #{TrackId}: [+] StartPlaybackCommand", Command.TrackId);
+                    delay = GetRealtimeDelay(0, TimeSpan.Zero);
+                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: StartPlaybackCommand", Command.TrackId, delay);
                     await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
-                    DebugLog?.LogDebug("Track #{TrackId}: [-] StartPlaybackCommand", Command.TrackId);
                 }
-                DebugLog?.LogDebug("Track #{TrackId}: [+] ProcessMediaFrame", Command.TrackId);
+                delay = GetRealtimeDelay(frameIndex, frame.Offset);
+                if (delay.Length != 0)
+                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: ProcessMediaFrame", Command.TrackId, delay);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
-                DebugLog?.LogDebug("Track #{TrackId}: [-] ProcessMediaFrame", Command.TrackId);
+                frameIndex++;
             }
-            DebugLog?.LogDebug("Track #{TrackId}: [+] StopPlaybackCommand", Command.TrackId);
+            DebugLog?.LogDebug("Track #{TrackId}: StopPlaybackCommand", Command.TrackId);
             await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
-            DebugLog?.LogDebug("Track #{TrackId}: [-] StopPlaybackCommand", Command.TrackId);
             await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException e) {
@@ -121,14 +129,33 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     }
 
     protected virtual void OnPlayedTo(TimeSpan offset)
-        => UpdateState(offset, (o, s) => s with {
-            IsStarted = true,
-            PlayingAt = TimeSpanExt.Max(s.PlayingAt, s.Command.SkipTo + o),
+    {
+        UpdateState(offset, (o, s) => {
+            var delay = GetRealtimeDelay(_onPlayedToCallIndex++, offset);
+            if (delay.Length != 0)
+                DebugLog?.LogDebug("Track #{TrackId}{Delay}: OnPlayedTo({Offset})", Command.TrackId, delay, offset);
+            return s with {
+                IsStarted = true,
+                PlayingAt = TimeSpanExt.Max(s.PlayingAt, s.Command.SkipTo + o),
+            };
         });
+    }
 
     protected virtual void OnStopped(Exception? error = null)
         => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
 
     protected virtual void OnVolumeSet(double volume)
         => UpdateState(volume, (v, s) => s with { Volume = v });
+
+    protected string GetRealtimeDelay(int frameIndex, TimeSpan frameOffset)
+    {
+        if (DebugLog == null || frameIndex % FrameDebugInfoPerEvery != 0)
+            return "";
+        var recordingOffset = Command.RecordingStartedAt + Command.SkipTo + frameOffset;
+        var now = Clocks.SystemClock.Now;
+        var realtimeDelay = (now - recordingOffset).TotalSeconds;
+        if (realtimeDelay > MaxRealtimeDelay)
+            return "";
+        return $" frame #{frameIndex} delay={realtimeDelay * 1000:N1}ms";
+    }
 }
