@@ -43,7 +43,7 @@ Useful commands:
 ## Conventions
 
 We use:
-- [Conventional commits](C)
+- [Conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
 - Standard .NET naming & style guidelines. Exceptions:
     - Place `{` on the same line for `if`, `for`, and
       any other code inside method body
