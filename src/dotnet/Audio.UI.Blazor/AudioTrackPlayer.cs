@@ -54,7 +54,6 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         return Task.CompletedTask;
     }
 
-
     [JSInvokable]
     public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
