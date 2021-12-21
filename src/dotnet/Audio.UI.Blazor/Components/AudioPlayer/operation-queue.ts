@@ -16,21 +16,8 @@ export class OperationQueue {
         this._queue = new Denque<Operation>();
     }
 
-    public abort() {
-        if (this._debugMode)
-            this.log("Enqueue 'Abort' operation.");
-        this._queue.unshift({
-            execute: () => { this._queue.clear(); return Promise.resolve(); },
-            onSuccess: () => {
-                if (this._debugMode)
-                    this.log("Aborted.");
-            },
-            onStart: () => { },
-            onError: error => {
-                if (this._debugMode)
-                    this.logWarn(`Can't abort operations in queue. Error: ${error.message}, ${error.stack}`);
-            }
-        });
+    public clear(): void {
+        this._queue.clear();
     }
 
     public append(operation: Operation): void {

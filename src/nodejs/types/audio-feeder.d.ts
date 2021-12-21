@@ -97,6 +97,7 @@ declare module "audio-feeder" {
         bufferData(sampleData: Float32Array[]);
         /**
          * Get an object with information about the current playback state.
+         * Can throw something like `TypeError: Cannot read properties of undefined (reading 'out_time') `
          */
         getPlaybackState(): PlaybackState;
         /** Asynchronous callback when we're running low on buffered data. */
@@ -117,7 +118,10 @@ declare module "audio-feeder" {
          * remain buffered, and can be continued with another call to start().
          */
         stop(): void;
-        /** Flush any queued data out of the system. */
+        /**
+         * Flush any queued data out of the system.
+         * Can throw something like `TypeError: Cannot read properties of undefined (reading 'out_time') `
+         */
         flush(): void;
         /** Close out the audio channel. The AudioFeeder instance will no longer be usable after closing. */
         close(): void;
