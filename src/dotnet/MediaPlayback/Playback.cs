@@ -143,16 +143,17 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         }
         catch (OperationCanceledException) {
             debugStopReason = "cancellation";
+            _ = TryStop(true);
             throw;
         }
         catch (Exception e) {
             debugStopReason = "error";
             Log.LogError(e, "#{PlaybackIndex} failed", playbackIndex);
+            _ = TryStop(true);
             throw;
         }
         finally {
             DisposeMonitor.Disposed -= _disposeDelegate;
-            _ = TryStop(true);
             DebugLog?.LogDebug("#{PlaybackIndex} waiting for track players to stop", playbackIndex);
             // ~= await Task.WhenAll(unfinishedPlayTasks).ConfigureAwait(false);
             while (true) {
