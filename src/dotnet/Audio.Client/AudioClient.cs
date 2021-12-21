@@ -42,7 +42,7 @@ public class AudioClient : HubClientBase,
         var blobParts = HubConnection
             .StreamAsync<BlobPart>("GetAudioBlobStream", streamId, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false))
+        await foreach (var blobPart in blobParts.ConfigureAwait(false))
             yield return blobPart;
         Log.LogDebug("GetAudioBlobStream: Exited; StreamId = {StreamId}", streamId);
     }
@@ -73,7 +73,7 @@ public class AudioClient : HubClientBase,
         var updates = HubConnection
             .StreamAsync<Transcript>("GetTranscriptDiffStream", streamId, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        await foreach (var update in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
+        await foreach (var update in updates.ConfigureAwait(false))
             yield return update;
         Log.LogDebug("GetTranscriptDiffStream: Exited; StreamId = {StreamId}", streamId);
     }

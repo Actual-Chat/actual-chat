@@ -25,21 +25,19 @@
     [Parameter]
     public ChatPlayer Player { get; set; } = null!;
 
-    protected override void ConfigureState(ComputedState<Playback?>.Options options) {
-        options.UpdateDelayer = UpdateDelayer.MinDelay;
-        options.InitialOutputFactory = _ => null;
-    }
+    protected override ComputedState<Playback?>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override Task<Playback?> ComputeState(CancellationToken cancellationToken)
-        => Player.PlaybackState.Use(cancellationToken).AsTask();
+        => Player.Playback.Use(cancellationToken).AsTask();
 
     private Task Toggle() {
-        var isPlaying = Player.Playback is { IsStopped: false };
+        var isPlaying = Player.Playback.Value is { IsStopped: false };
         return isPlaying ? Stop() : Play();
     }
 
     private Task Play() {
-        return Player.Play();
+        return Player.Play(_clocks.SystemClock.Now);
     }
 
     private Task Stop() {

@@ -128,4 +128,30 @@ public static class BlobStreamExt
                 await target.DisposeAsync().ConfigureAwait(false);
         }
     }
+
+    // Misc. helpers
+
+    public static async IAsyncEnumerable<BlobPart> SkipBytes(
+        this IAsyncEnumerable<BlobPart> blobParts,
+        int byteCount,
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        var index = 0;
+        await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (byteCount >= blobPart.Data.Length) {
+                byteCount -= blobPart.Data.Length;
+                continue;
+            }
+            if (byteCount == 0)
+                yield return blobPart with { Index = index++ };
+            else {
+                yield return blobPart with {
+                    Index = index++,
+                    Data = blobPart.Data[byteCount..],
+                };
+                byteCount = 0;
+            }
+        }
+    }
 }
