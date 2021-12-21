@@ -541,15 +541,15 @@ export class AudioContextAudioPlayer {
     }
 
     private log(message: string) {
-        console.debug(`[${new Date(Date.now()).toISOString()}] AudioContextAudioPlayer: ${message}`);
+        console.debug(`AudioContextAudioPlayer: ${message}`);
     }
 
     private logWarn(message: string) {
-        console.warn(`[${new Date(Date.now()).toISOString()}] AudioContextAudioPlayer: ${message}`);
+        console.warn(`AudioContextAudioPlayer: ${message}`);
     }
 
     private logError(message: string) {
-        console.error(`[${new Date(Date.now()).toISOString()}] AudioContextAudioPlayer: ${message}`);
+        console.error(`AudioContextAudioPlayer: ${message}`);
     }
 }
 

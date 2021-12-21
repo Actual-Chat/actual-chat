@@ -1,5 +1,7 @@
 import Denque from "denque";
 
+const LogScope = 'SendingQueue';
+
 export interface ISendingQueue {
     pause(): Promise<void>;
     resume(): Promise<void>;
@@ -126,14 +128,6 @@ export class SendingQueue implements ISendingQueue {
         await this._options.sendAsync(chunk);
     }
 
-    private log(message: string) {
-        console.debug(`[${new Date(Date.now()).toISOString()}] SendingQueue: ${message}`);
-    }
-
-    private logError(message: string) {
-        console.error(`[${new Date(Date.now()).toISOString()}] SendingQueue: ${message}`);
-    }
-
     private ensureSendByTimeout() {
         if (this._sendBufferTimeout === null) {
             this._sendBufferTimeout = setTimeout(() => {
@@ -189,6 +183,14 @@ export class SendingQueue implements ISendingQueue {
                 this.logError(`Couldn't send ${bufferLength - 4} (${bufferLength}) data bytes, seqNum: ${seqNum}, error: ${error}`);
             }
         }
+    }
+
+    private log(message: string) {
+        console.debug(`${LogScope}: ${message}`);
+    }
+
+    private logError(message: string) {
+        console.error(`${LogScope}: ${message}`);
     }
 }
 

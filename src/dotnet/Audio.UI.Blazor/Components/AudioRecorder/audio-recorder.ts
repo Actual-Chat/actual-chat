@@ -35,9 +35,8 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
         this._queue = queue;
 
-        if (blazorRef === undefined || blazorRef === null) {
-            console.error(`${LogScope}.constructor.error: blazorRef is undefined`);
-        }
+        if (blazorRef == null)
+            console.error(`${LogScope}.constructor: blazorRef == null`);
 
         // Temporarily
         if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
@@ -53,15 +52,14 @@ export class AudioRecorder {
 
     public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         const queue: ISendingQueue = new SendingQueue({
-            debugMode: debugMode,
+            debugMode: debugMode && false,
             minChunkSize: 64,
             chunkSize: 1020,
             maxFillBufferTimeMs: 400,
             cleaningStrategy: new TimeoutCleaningStrategy(60_000),
             sendAsync: async (packet: Uint8Array): Promise<void> => {
-                if (debugMode) {
-                    console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Send to blazor side data size: ${packet.length}`);
-                }
+                if (debugMode)
+                    console.log(`AudioRecorder.queue.sendAsync: sending ${packet.length} bytes`);
                 await blazorRef.invokeMethodAsync('OnAudioData', packet);
             },
         });
@@ -98,7 +96,8 @@ export class AudioRecorder {
 
             if (recording !== null) {
                 const state = recording.recorder.getState();
-                console.log(state);
+                if (this._debugMode)
+                    console.log(`${LogScope}.startRecording: state = ${state}`);
 
                 if (vadEvent.kind === 'end') {
                     this._queue.pause();
@@ -107,7 +106,8 @@ export class AudioRecorder {
                     this._queue.resume();
                 }
             }
-            console.log(vadEvent);
+            if (this._debugMode)
+                console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
         };
         worker.postMessage({ topic: 'init-port' }, [channel.port1]);
 
@@ -203,9 +203,8 @@ export class AudioRecorder {
     public async stopRecording(): Promise<void> {
         if (!this.isRecording())
             return;
-        if (this._debugMode) {
-            console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: Received stop recording`);
-        }
+        if (this._debugMode)
+            console.log(`${LogScope}.stopRecording: started`);
 
         let recording = this.recording;
         this.recording = null;
@@ -218,10 +217,8 @@ export class AudioRecorder {
         }
         await this._queue.flushAsync();
         await this._blazorRef.invokeMethodAsync('OnRecordingStopped');
-        if (this._debugMode) {
-            console.log(`[${new Date(Date.now()).toISOString()}] AudioRecorder: OnRecordingStopped interop call is done`);
-        }
-
+        if (this._debugMode)
+            console.log(`${LogScope}.stopRecording: completed`);
     }
 
     private isRecording() {
