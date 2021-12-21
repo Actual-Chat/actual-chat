@@ -293,14 +293,14 @@ export class MseAudioPlayer {
     }
 
     private log(message: string) {
-        console.debug(`[${new Date(Date.now()).toISOString()}] AudioPlayer: ${message}`);
+        console.debug(`AudioPlayer: ${message}`);
     }
 
     private logWarn(message: string) {
-        console.warn(`[${new Date(Date.now()).toISOString()}] AudioPlayer: ${message}`);
+        console.warn(`AudioPlayer: ${message}`);
     }
 
     private logError(message: string) {
-        console.error(`[${new Date(Date.now()).toISOString()}] AudioPlayer: ${message}`);
+        console.error(`AudioPlayer: ${message}`);
     }
 }

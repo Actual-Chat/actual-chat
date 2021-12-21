@@ -64,12 +64,12 @@ export class OperationQueue {
     }
 
     private log(message: string) {
-        console.debug(`[${new Date(Date.now()).toISOString()}] OperationQueue: ${message}`);
+        console.debug(`OperationQueue: ${message}`);
     }
     private logWarn(message: string) {
-        console.warn(`[${new Date(Date.now()).toISOString()}] OperationQueue: ${message}`);
+        console.warn(`OperationQueue: ${message}`);
     }
     private logError(message: string) {
-        console.error(`[${new Date(Date.now()).toISOString()}] OperationQueue: ${message}`);
+        console.error(`OperationQueue: ${message}`);
     }
 }
