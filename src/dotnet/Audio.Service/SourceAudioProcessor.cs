@@ -114,7 +114,8 @@ public class SourceAudioProcessor : AsyncProcessBase
     {
         var audioStream = audioSegment.Audio.GetStream(cancellationToken);
         var transcriptionOptions = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = audioSegment.AudioRecord.Language,
+            AltLanguages = Array.Empty<string>(),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
