@@ -126,11 +126,11 @@ export class AudioContextAudioPlayer {
     private readonly _debugFeederStats: boolean;
 
     private _demuxer?: Demuxer;
-    private _demuxerReady: Promise<Demuxer>;
+    private readonly _demuxerReady: Promise<Demuxer>;
     private _decoder?: Decoder;
-    private _decoderReady: Promise<Decoder>;
+    private readonly _decoderReady: Promise<Decoder>;
     private _audioContext: AudioContext;
-    private _feeder?: AudioFeeder;
+    private readonly _feeder?: AudioFeeder;
     private _queue: OperationQueue;
     private _nextProcessingTickTimer: number | null;
     private _isProcessing: boolean;
@@ -189,8 +189,9 @@ export class AudioContextAudioPlayer {
         if (this._audioContext === null) {
             this._audioContext = new AudioContext({ sampleRate: 48000 });
         }
-        if (this._audioContext.state === "suspended")
-            this._audioContext.resume();
+        if (this._audioContext.state === "suspended") {
+            let _ = this._audioContext.resume();
+        }
         this._feeder = new AudioFeeder({
             // we have 960 samples in opus frame (if it was recorded by our wasm recorder)
             // bufferSize must be power of 2, so 512 (10ms-20ms) or 1024 (20ms+)
@@ -203,9 +204,9 @@ export class AudioContextAudioPlayer {
                 this._feeder.onstarved = null;
                 if (debugMode)
                     this.log(`audio ended.`);
-                this.onUpdateOffsetTick();
+                let _1 = this.onUpdateOffsetTick();
                 this.dispose();
-                this.invokeOnPlaybackEnded();
+                let _2 = this.invokeOnPlaybackEnded();
                 return;
             }
             this.unblockQueue('onstarved');
@@ -371,7 +372,7 @@ export class AudioContextAudioPlayer {
                 onError: _ => { }
             };
             this._queue.append(operation);
-            this.onProcessingTick();
+            let _ = this.onProcessingTick();
             return Promise.resolve();
         }
         finally {
@@ -404,7 +405,9 @@ export class AudioContextAudioPlayer {
                 clearTimeout(this._nextProcessingTickTimer);
                 this._nextProcessingTickTimer = null;
             }
-            while (await this._queue.executeNext());
+            while (await this._queue.executeNext()) {
+                // Intended
+            }
         }
         finally {
             this._isProcessing = false;
@@ -432,7 +435,7 @@ export class AudioContextAudioPlayer {
             },
             onError: _ => { }
         });
-        this.onProcessingTick();
+        let _ = this.onProcessingTick();
 
     }
 
@@ -441,7 +444,7 @@ export class AudioContextAudioPlayer {
             this.log(`stop(error:${error})`);
         this._isPlaying = false;
         this._queue.abort();
-        this.onProcessingTick();
+        let _ = this.onProcessingTick();
     }
 
     public dispose(): void {
@@ -521,7 +524,7 @@ export class AudioContextAudioPlayer {
             if (this._debugOperations)
                 this.logWarn(`[${source}]: Unblocking queue`);
             unblock();
-            this.invokeOnChangeReadiness(true, this._feeder.playbackPosition, 2);
+            let _ = this.invokeOnChangeReadiness(true, this._feeder.playbackPosition, 2);
         }
     }
 
