@@ -23,7 +23,13 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQ109DMZC9YC9FCW6YNW6Y31/0002.webm";
     private const bool DebugMode = true;
 
-    public async Task OnClick(bool isMsePlayer)
+    public Task OnBlockMainThread(int milliseconds)
+    {
+        _ = JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.blockMainThread", milliseconds);
+        return Task.CompletedTask;
+    }
+
+    public async Task OnToggleClick(bool isMsePlayer)
     {
         if (_isPlaying) {
             Log.LogInformation("Stop playing");
