@@ -24,19 +24,50 @@ Recommended IDEs:
 
 ## Build
 
-First time:
-```
-Docker-Start-DBs.cmd
-Npm-Install.cmd
-dotnet build
+First of all you should get google cloud credentials to transcribe audio.  
+You should place `key.json` at `~/.gcp/key.json` (where `~` is a home for the user) and specify
+`GOOGLE_APPLICATION_CREDENTIALS` env variable to that file.
+
+To build & run the project:
+
+```bash
+# run necessary Docker containers with db, redis etc
+docker-compose up
+# install dependencies and run watch (dotnet watch + webpack watch)
+dotnet run --project build -- restore-tools npm-install watch
 ```
 
-Useful commands:
+If you got something like:
 
-- `Docker-Start-DBs.cmd` starts Docker containers w/ DBs used for local development (PostgreSQL, Redis)
-- `Npm-Install.cmd` installs `npm` packages
-- `Npm-Watch.cmd` rebuilds Webpack bundle on any change in TS/JS/CSS
-- `Run-Watch.cmd` does what `Run-NpmWatch` does + hot reloads the server.
+```
+Grpc.Core.RpcException
+  HResult=0x80131500
+  Message=Status(StatusCode="Unauthenticated", Detail="Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential
+  ...
+```
+Check your time & timezone settings.  
+
+
+Other useful commands:
+
+```powershell
+# help of the build project
+dotnet run --project build -- --help 
+# list all available targets (you can combine them)
+dotnet run --project build -- --list-targets
+# run with observability services (opentelemetry collector + jaeger) locally:
+docker-compose -f docker-compose.observability.yml -f docker-compose.yml up
+# this for pwsh, specify env variable where you want or specify this setting inside your appsettings.local.json
+$env:HostSettings__OpenTelemetryEndpoint="localhost"
+docker run --project build -- watch
+```
+
+It's also useful to have [alias](https://github.com/vchirikov/dotfiles/blob/7f280e9287ceba6fd508577fb0665fc19e4d9b29/Microsoft.PowerShell_profile.ps1#L231-L249) to run build system (to run commands like `bs watch`).
+
+
+p.s. we also have some shortcuts in `*.cmd` for now, you can use them if you want.  
+
+p.p.s. we use [Bullseye](https://github.com/adamralph/bullseye) so you can add your targets (as C# code), check the code in `./build/Program.cs`  
 
 ## Conventions
 
@@ -53,6 +84,7 @@ We use:
 Read [Nerdbank.GitVersioning docs](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/nbgv-cli.md)  
 
 ```bash
+# might not work, see https://github.com/dotnet/Nerdbank.GitVersioning/issues/685
 nbgv prepare-release beta
 ```
 
