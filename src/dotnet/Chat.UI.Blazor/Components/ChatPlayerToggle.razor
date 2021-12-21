@@ -1,16 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<Playback?>
+@inherits ComputedStateComponent<bool>
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 @inject MomentClockSet _clocks
 
 @{
-    var playback = State.ValueOrDefault;
-    var isPlaying = playback is { IsStopped: false };
-    var cls = "toggle-button";
-    if (isPlaying) {
-        cls += "-on";
-    }
+    var isPlaying = State.ValueOrDefault;
+    var cls = $"toggle-button{(isPlaying ? "-on" : "")}";
 }
 <button onclick="@Toggle"
         class="@(_class ??= this.DefaultClass()) block outline-none md:px-2 py-2 text-justify bg-secondary rounded-full md:ml-2">
@@ -25,14 +21,19 @@
     [Parameter]
     public ChatPlayer Player { get; set; } = null!;
 
-    protected override ComputedState<Playback?>.Options GetStateOptions()
+    protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override Task<Playback?> ComputeState(CancellationToken cancellationToken)
-        => Player.Playback.Use(cancellationToken).AsTask();
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        if (playback == null)
+            return false;
+        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
+        return !isStopped;
+    }
 
     private Task Toggle() {
-        var isPlaying = Player.Playback.Value is { IsStopped: false };
+        var isPlaying = Player.PlaybackState.Value is { IsStopped: false };
         return isPlaying ? Stop() : Play();
     }
 
