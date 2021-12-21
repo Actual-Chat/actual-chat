@@ -2,7 +2,7 @@ import OGVDecoderAudioOpusW from 'ogv/dist/ogv-decoder-audio-opus-wasm';
 import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm';
 import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
-import AudioFeeder from 'audio-feeder';
+import AudioFeeder, { PlaybackState } from 'audio-feeder';
 import { OperationQueue, Operation } from './operation-queue';
 
 /** Adapter class for ogv.js player */
@@ -190,7 +190,7 @@ export class AudioContextAudioPlayer {
             this._audioContext = new AudioContext({ sampleRate: 48000 });
         }
         if (this._audioContext.state === "suspended") {
-            let _ = this._audioContext.resume();
+            const _ = this._audioContext.resume();
         }
         this._feeder = new AudioFeeder({
             // we have 960 samples in opus frame (if it was recorded by our wasm recorder)
@@ -204,9 +204,9 @@ export class AudioContextAudioPlayer {
                 this._feeder.onstarved = null;
                 if (debugMode)
                     this.log(`audio ended.`);
-                let _1 = this.onUpdateOffsetTick();
+                const _ = this.onUpdateOffsetTick();
                 this.dispose();
-                let _2 = this.invokeOnPlaybackEnded();
+                const __ = this.invokeOnPlaybackEnded();
                 return;
             }
             this.unblockQueue('onstarved');
@@ -372,7 +372,7 @@ export class AudioContextAudioPlayer {
                 onError: _ => { }
             };
             this._queue.append(operation);
-            let _ = this.onProcessingTick();
+            const _ = this.onProcessingTick();
             return Promise.resolve();
         }
         finally {
@@ -384,11 +384,14 @@ export class AudioContextAudioPlayer {
         const feeder = this._feeder;
         if (feeder === null || this._isDisposed)
             return;
-        const state = feeder.getPlaybackState();
-        if (state?.playbackPosition === null)
+        let state: PlaybackState | null = null;
+        try {
+            state = feeder.getPlaybackState();
+        }
+        catch { /* feeder.getPlaybackState can try to read properties of undefined */ }
+        if (state === null || state.playbackPosition === null)
             return;
         await this.invokeOnPlaybackTimeChanged(state.playbackPosition);
-
         if (this._isPlaying) {
             self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);
         }
@@ -435,7 +438,7 @@ export class AudioContextAudioPlayer {
             },
             onError: _ => { }
         });
-        let _ = this.onProcessingTick();
+        const _ = this.onProcessingTick();
 
     }
 
@@ -443,8 +446,42 @@ export class AudioContextAudioPlayer {
         if (this._debugMode)
             this.log(`stop(error:${error})`);
         this._isPlaying = false;
-        this._queue.abort();
-        let _ = this.onProcessingTick();
+        if (this._debugMode)
+            this.log("Enqueue 'Abort' operation.");
+        this._queue.prepend({
+            execute: () => {
+                if (this._feeder !== null) {
+                    try {
+                        this._feeder.muted = true;
+                        this._feeder.stop();
+                        this._feeder.flush();
+                    }
+                    catch { /* feeder._tempoChanger.flush can throw */ }
+                }
+                this._queue.clear();
+                if (this._demuxer != null) {
+                    return new Promise<void>(resolve => {
+                        this._demuxer.flush(() => {
+                            if (this._feeder !== null)
+                                this._feeder.muted = false;
+                            resolve();
+                        });
+                    });
+                }
+                if (this._feeder !== null)
+                    this._feeder.muted = false;
+            },
+            onSuccess: () => {
+                if (this._debugMode)
+                    this.log("Aborted.");
+            },
+            onStart: () => { },
+            onError: error => {
+                if (this._debugMode)
+                    this.logWarn(`Can't stop playing. Error: ${error.message}, ${error.stack}`);
+            }
+        });
+        const _ = this.onProcessingTick();
     }
 
     public dispose(): void {
@@ -454,7 +491,7 @@ export class AudioContextAudioPlayer {
         if (this._debugMode)
             this.logWarn(`dispose()`);
 
-        this._queue.abort();
+        this.stop();
         this._demuxer?.flush(() => { this._demuxer?.close(); this._demuxer = null; });
         this._decoder?.close();
         this._decoder = null;
@@ -524,7 +561,7 @@ export class AudioContextAudioPlayer {
             if (this._debugOperations)
                 this.logWarn(`[${source}]: Unblocking queue`);
             unblock();
-            let _ = this.invokeOnChangeReadiness(true, this._feeder.playbackPosition, 2);
+            const _ = this.invokeOnChangeReadiness(true, this._feeder.playbackPosition, 2);
         }
     }
 
