@@ -50,7 +50,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
         try {
             // Actual playback
             var frames = Source.GetFramesUntyped(cancellationToken);
-            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var frame in frames.ConfigureAwait(false)) {
                 if (!isStarted) {
                     DebugLog?.LogDebug("Track #{TrackId}: first frame", Command.TrackId);
                     // We do this here because we want to start buffering as early as possible

@@ -85,7 +85,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         if (Constants.DebugMode.AudioRecordingBlobStream)
             blobStream = blobStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
         var openSegments = AudioSplitter.GetSegments(record, blobStream, cancellationToken);
-        await foreach (var openSegment in openSegments.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
             var beginsAt = ClockSet.CpuClock.UtcNow;
             DebugLog?.LogDebug(
                 "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",

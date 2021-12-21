@@ -208,22 +208,3 @@ public class AudioSourceTest
         return stream.WriteBlobStream(source.GetBlobStream(default), true);
     }
 }
-
-public static class BlobStreamExt
-{
-    public static async IAsyncEnumerable<BlobPart> SkipBytes(
-        this IAsyncEnumerable<BlobPart> that,
-        int bytes,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken)
-    {
-        await foreach (var blobPart in that.WithCancellation(cancellationToken))
-            if (bytes >= blobPart.Data.Length)
-                bytes -= blobPart.Data.Length;
-            else {
-                yield return blobPart with { Data = blobPart.Data[bytes..] };
-
-                bytes = 0;
-            }
-    }
-}

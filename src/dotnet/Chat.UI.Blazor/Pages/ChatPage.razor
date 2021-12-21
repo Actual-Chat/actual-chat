@@ -9,7 +9,7 @@
 
 @{
     var error = State.Error;
-    var model = State.LatestNonErrorValue;
+    var model = State.LatestNonErrorValue ?? new();
     if (model.IsUnavailable)
         _nav.Unavailable("chat");
     if (model.MustLogin)

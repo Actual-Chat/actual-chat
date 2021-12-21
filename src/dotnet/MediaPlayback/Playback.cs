@@ -40,7 +40,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
                 AllowSynchronousContinuations = true,
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
-        PlayingTracksState = Services.StateFactory().NewMutable(Result.New(PlayingTracks));
+        PlayingTracksState = Services.StateFactory().NewMutable(PlayingTracks);
         _disposeDelegate = Dispose;
         DisposeMonitor.Disposed += _disposeDelegate;
         if (start)
@@ -50,17 +50,6 @@ public sealed class Playback : AsyncProcessBase, IHasServices
     public Task Complete()
     {
         Commands.Writer.TryComplete();
-        return RunningTask ?? Task.CompletedTask;
-    }
-
-    public new Task Stop()
-        => Stop(null);
-
-    public Task Stop(Exception? error)
-    {
-        error ??= new OperationCanceledException("Playback is stopped.");
-        Commands.Writer.TryComplete(error);
-        base.Stop(); // This stops the playback immediately
         return RunningTask ?? Task.CompletedTask;
     }
 
@@ -98,7 +87,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         var trackPlayerStateChanged = TrackPlayerStateChanged; // Just to cache the delegate
         try {
             var commands = Commands.Reader.ReadAllAsync(cancellationToken);
-            await foreach (var command in commands.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var command in commands.ConfigureAwait(false)) {
                 DebugLog?.LogDebug("Playback #{PlaybackIndex}: command {Command}", playbackIndex, command);
                 var whenProcessedTaskSource = TaskSource.For(command.WhenProcessed);
                 try {
@@ -128,10 +117,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
                         await Task.WhenAll(volumeTasks).ConfigureAwait(false);
                         break;
                     case StopCommand stopCommand:
-                        var stopTasks = trackPlayers.Values
-                            .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, true)).AsTask())
-                            .ToArray();
-                        await Task.WhenAll(stopTasks).ConfigureAwait(false);
+                        await TryStop(true);
                         break;
                     default:
                         throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
@@ -166,6 +152,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         }
         finally {
             DisposeMonitor.Disposed -= _disposeDelegate;
+            _ = TryStop(true);
             DebugLog?.LogDebug("#{PlaybackIndex} waiting for track players to stop", playbackIndex);
             // ~= await Task.WhenAll(unfinishedPlayTasks).ConfigureAwait(false);
             while (true) {
@@ -179,6 +166,13 @@ public sealed class Playback : AsyncProcessBase, IHasServices
             }
             Stopped?.Invoke(this);
             DebugLog?.LogDebug("#{PlaybackIndex} ended ({StopReason})", playbackIndex, debugStopReason);
+        }
+
+        Task TryStop(bool immediately) {
+            var stopTasks = trackPlayers.Values
+                .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, immediately)).AsTask())
+                .ToArray();
+            return Task.WhenAll(stopTasks);
         }
     }
 

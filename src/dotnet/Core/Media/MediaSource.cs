@@ -83,7 +83,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         if (!WhenDurationAvailable.IsCompleted)
             await WhenFormatAvailable.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         yield return new TStreamPart { Format = Format };
-        await foreach (var frame in GetFrames(cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false))
+        await foreach (var frame in GetFrames(cancellationToken).ConfigureAwait(false))
             yield return new TStreamPart { Frame = frame };
     }
 

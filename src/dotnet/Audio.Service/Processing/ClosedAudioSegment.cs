@@ -25,7 +25,7 @@ public class ClosedAudioSegment
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var parts = AudioWithOffset.GetStream(cancellationToken);
-        await foreach (var part in parts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var part in parts.ConfigureAwait(false)) {
             if (part.Format != null)
                 yield return part;
             else if (part.Frame != null) {
