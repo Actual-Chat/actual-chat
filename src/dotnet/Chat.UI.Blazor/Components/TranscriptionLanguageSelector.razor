@@ -1,0 +1,32 @@
+@namespace ActualChat.UI.Blazor.Components
+@using System.Reflection
+@using ActualChat.Chat.UI.Blazor.Services
+@inject BlazorCircuitContext _circuitContext
+
+<span class="@(_class ??= this.DefaultClass()) select-none cursor-pointer duration-500 ease-in-out group"
+     @onclick="Toogle">
+    @if (_circuitContext.IsPrerendering) {
+        <span>"Loading..."</span>
+    } else {
+        <span>Language: <b>@GetActiveText()</b></span>
+    }
+</span>
+
+@code {
+    [Inject] private TranscriptionLanguagePreferences TranscriptionLanguagePreferences { get; set; } = null!;
+
+    private static string? _class;
+
+    private bool IsRussianLanguage => Language == "ru-Ru";
+
+    public string Language => TranscriptionLanguagePreferences.Language;
+
+    private string GetActiveText()
+        => IsRussianLanguage ? "Russian (Russia)" : "English (USA)";
+
+    private async Task Toogle()
+    {
+        var newLanguage = IsRussianLanguage ? "en-US" : "ru-Ru";
+        TranscriptionLanguagePreferences.Language = newLanguage;
+    }
+}
