@@ -4,6 +4,7 @@ import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import AudioFeeder, { PlaybackState } from 'audio-feeder';
 import { OperationQueue, Operation } from './operation-queue';
+import { nextTick } from './next-tick';
 
 /** Adapter class for ogv.js player */
 export class AudioContextAudioPlayer {
@@ -108,7 +109,10 @@ export class AudioContextAudioPlayer {
      * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
      * should be in sync with audio-feeder bufferSize
      */
-    private readonly _bufferEnoughThreshold = 0.150;
+    private readonly _bufferEnoughThreshold = 0.170;
+
+    /** How many milliseconds can we block the main thread for processing */
+    private readonly _processingThresholdMs = 10;
     /**
      * How much seconds do we have in the buffer before unblocking the queue,
      * must be less than _bufferTooMuchThreshold
@@ -147,8 +151,8 @@ export class AudioContextAudioPlayer {
         const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
-            this._debugAppendAudioCalls = debugMode && true;
-            this._debugOperations = debugMode && true;
+            this._debugAppendAudioCalls = debugMode && false;
+            this._debugOperations = debugMode && false;
             this._debugDecoder = debugMode && false;
             this._debugFeeder = debugMode && false;
             this._debugFeederStats = this._debugFeeder && false;
@@ -194,8 +198,11 @@ export class AudioContextAudioPlayer {
         }
         this._feeder = new AudioFeeder({
             // we have 960 samples in opus frame (if it was recorded by our wasm recorder)
-            // bufferSize must be power of 2, so 512 (10ms-20ms) or 1024 (20ms+)
-            bufferSize: 2048,
+            // bufferSize must be power of 2, so 256, 512 (10ms-20ms), 1024 (21ms+) , 2048 (42ms+),
+            // 4096(85ms), 8192(170ms), 16384(341ms). You can read about it at the webaudio spec
+            // https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-createscriptprocessor-buffersize-numberofinputchannels-numberofoutputchannels-buffersize
+            // so we can block js main thread max up to 85ms without glitches
+            bufferSize: 4096,
             audioContext: this._audioContext,
         });
         this._feeder.onbufferlow = () => this.unblockQueue('onbufferlow');
@@ -408,8 +415,19 @@ export class AudioContextAudioPlayer {
                 clearTimeout(this._nextProcessingTickTimer);
                 this._nextProcessingTickTimer = null;
             }
-            while (await this._queue.executeNext()) {
-                // Intended
+            const start = new Date().getTime();
+            let hasMore: boolean = await this._queue.executeNext();
+            const threshold = this._processingThresholdMs;
+            while (hasMore) {
+                const elapsed = new Date().getTime() - start;
+                if (elapsed > threshold && hasMore) {
+                    // let's give a chance to process browser events
+                    if (this._debugOperations)
+                        this.log(`Planning processing at the next tick, because we were working for ${elapsed} ms`);
+                    nextTick(this.onProcessingTick);
+                    break;
+                }
+                hasMore = await this._queue.executeNext();
             }
         }
         finally {
