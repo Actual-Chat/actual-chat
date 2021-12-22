@@ -5,9 +5,10 @@ import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import AudioFeeder, { PlaybackState } from 'audio-feeder';
 import { OperationQueue, Operation } from './operation-queue';
 import { nextTick } from './next-tick';
+import { IAudioPlayer } from './IAudioPlayer';
 
 /** Adapter class for ogv.js player */
-export class AudioContextAudioPlayer {
+export class AudioContextAudioPlayer implements IAudioPlayer {
 
     public static debug?: {
         debugMode: boolean;
@@ -103,6 +104,9 @@ export class AudioContextAudioPlayer {
         return OGVDecoderAudioOpusW(AudioContextAudioPlayer.getEmscriptenLoaderOptions()) as Promise<Decoder>;
     }
 
+    public onStartPlaying?: () => void = null;
+    public onInitialized?: () => void = null;
+
     /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
     private readonly _bufferTooMuchThreshold = 20.0;
     /**
@@ -154,8 +158,8 @@ export class AudioContextAudioPlayer {
             this._debugAppendAudioCalls = debugMode && false;
             this._debugOperations = debugMode && false;
             this._debugDecoder = debugMode && false;
-            this._debugFeeder = debugMode && false;
-            this._debugFeederStats = this._debugFeeder && false;
+            this._debugFeeder = debugMode && true;
+            this._debugFeederStats = this._debugFeeder && true;
         }
         else {
             this._debugMode = debugOverride.debugMode;
@@ -252,6 +256,8 @@ export class AudioContextAudioPlayer {
             await this.appendAudioAsync(byteArray, -1);
             if (this._debugMode)
                 this.log(`initialize: done. found codec: ${this._demuxer.audioCodec}`);
+            if (this.onInitialized !== null)
+                this.onInitialized();
         } catch (error) {
             this.logError(`initialize: error ${error} ${error.stack}`);
         }
@@ -332,6 +338,8 @@ export class AudioContextAudioPlayer {
                                 }
                                 if (bufferedSpan >= this._bufferEnoughThreshold) {
                                     if (!this._isPlaying) {
+                                        if (this.onStartPlaying !== null)
+                                            this.onStartPlaying();
                                         this._feeder.start();
                                         this._isPlaying = true;
                                         self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);

@@ -1,3 +1,5 @@
+import { IAudioPlayer } from "./IAudioPlayer";
+
 class AudioUpdate {
     public played: () => void;
     public chunk: Uint8Array;
@@ -12,7 +14,11 @@ class AudioUpdate {
 class AudioEnd {
 }
 
-export class MseAudioPlayer {
+export class MseAudioPlayer implements IAudioPlayer {
+
+    public onStartPlaying?: () => void = null;
+    public onInitialized?: () => void = null;
+
     private readonly _debugMode: boolean;
     private readonly _audio: HTMLAudioElement;
     private readonly _blazorRef: DotNet.DotNetObject;
@@ -85,6 +91,8 @@ export class MseAudioPlayer {
         this._audio.addEventListener('loadeddata', async _ => {
             const audio = this._audio;
             if (audio.readyState >= 2) {
+                if (this.onStartPlaying !== null)
+                    this.onStartPlaying();
                 await audio.play();
             }
         });
@@ -123,6 +131,8 @@ export class MseAudioPlayer {
                 if (this._debugMode)
                     this.log(`initialize: header has been appended with a delay`);
             }
+            if (this.onInitialized !== null)
+                this.onInitialized();
         } catch (error) {
             this.logError(`initialize: error ${error} ${error.stack}`);
         }

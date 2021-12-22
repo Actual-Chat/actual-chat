@@ -15,18 +15,28 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [Inject]
     private IJSRuntime JS { get; set; } = null!;
 
+    protected double StartPlayingDelay;
+    protected double InitializeDelay;
     private bool _isPlaying;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private int? _prevMediaElementReadyState;
     private double _offset;
-    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQ109DMZC9YC9FCW6YNW6Y31/0002.webm";
-    private const bool DebugMode = true;
+    private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQEXRGK4DA5BACTDTAGMF0D7/0000.webm";
 
     public Task OnBlockMainThread(int milliseconds)
     {
         _ = JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.blockMainThread", milliseconds);
         return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public void OnStartPlaying(AudioPlayerTestPageStats statistics)
+    {
+        Log.LogInformation("OnStartPlaying called");
+        InitializeDelay = statistics.InitializeEndTime - statistics.InitializeStartTime;
+        StartPlayingDelay = statistics.PlayingStartTime - statistics.InitializeStartTime;
+        StateHasChanged();
     }
 
     public async Task OnToggleClick(bool isMsePlayer)
@@ -42,6 +52,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             Log.LogInformation("Start playing");
             _isPlaying = true;
             _offset = 0d;
+            InitializeDelay = 0;
+            StartPlayingDelay = 0;
             _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
@@ -49,9 +61,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{AudioBlazorUIModule.ImportName}.{(isMsePlayer ? "MseAudioPlayer" : "AudioContextAudioPlayer")}.create",
-                _cts.Token, blazorRef, DebugMode
-                ).ConfigureAwait(true);
+                $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
+                _cts.Token, isMsePlayer, blazorRef
+            ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
@@ -72,8 +84,13 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     StateHasChanged();
                 }
             });
-            await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
+            // we want to wait when the first frame will be available, after this we'll start count delays
+            bool isFirstFrame = true;
             await foreach (var frame in audioSource.GetFrames(_cts.Token).ConfigureAwait(true)) {
+                if (isFirstFrame) {
+                    await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
+                    isFirstFrame = false;
+                }
                 if (false) {
                     Log.LogInformation(
                         "Send the frame data to js side (bytes: {FrameBytes}, offset sec: {FrameOffset}, duration sec: {FrameDuration})",
@@ -151,4 +168,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         _cts?.CancelAndDisposeSilently();
         GC.SuppressFinalize(this);
     }
+
+    public record AudioPlayerTestPageStats(long InitializeStartTime, long InitializeEndTime, long PlayingStartTime);
 }
