@@ -96,7 +96,6 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         playback.Start();
 
         var cancellationToken = playback.StopToken;
-        var clock = Clocks.CpuClock;
         var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var nowOffset = IsRealTimePlayer ? RealtimeNowOffset : TimeSpan.Zero;
         var chatAuthor = (ChatAuthor?) null;
@@ -112,7 +111,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
                 .ConfigureAwait(false);
             idRange = (startEntry?.Id ?? idRange.Start, idRange.End);
-            var now = clock.Now + nowOffset;
+            var now = Clocks.SystemClock.Now + nowOffset;
             var realtimeOffset = IsRealTimePlayer ? TimeSpan.Zero : now - startAt;
             var realtimeBlockEnd = now;
 
@@ -126,7 +125,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
 
-                now = clock.Now + nowOffset;
+                now = Clocks.SystemClock.Now + nowOffset;
                 if (IsRealTimePlayer) {
                     startAt = now;
                     realtimeBlockEnd = now;
@@ -158,7 +157,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 var playAt = entryBeginsAt + realtimeOffset;
                 var enqueueDelay = playAt - now - EnqueueToPlaybackGap;
                 if (enqueueDelay > TimeSpan.Zero)
-                    await clock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
+                    await Clocks.CpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
                 await EnqueueEntry(playback, playAt - nowOffset, entry, entrySkipTo, cancellationToken)
                     .ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
