@@ -1,5 +1,7 @@
 import Denque from "denque";
 
+const LogScope = 'RecordingEventQueue';
+
 export enum RecordingEventType {
     Data = 1,
     Pause,
@@ -64,7 +66,7 @@ export class ResumeRecordingEvent implements IRecordingEvent {
     public readonly type: RecordingEventType;
 
     constructor() {
-        this.type = RecordingEventType.Pause;
+        this.type = RecordingEventType.Resume;
     }
 
     serialize(buffer: Uint8Array, offset: number): number {
@@ -209,12 +211,13 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         await this.sendTopmostBuffer();
     }
 
+
     private log(message: string) {
-        console.debug(`[${new Date(Date.now()).toISOString()}] SendingQueue: ${message}`);
+        console.debug(`${LogScope}: ${message}`);
     }
 
     private logError(message: string) {
-        console.error(`[${new Date(Date.now()).toISOString()}] SendingQueue: ${message}`);
+        console.error(`${LogScope}: ${message}`);
     }
 
     private ensureSentByTimeout() {
