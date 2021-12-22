@@ -12,10 +12,12 @@
     <input id="navbar-toggle" class="hidden" type="checkbox" />
     <nav id="navbar-links" class="bg-primary text-primary z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition duration-200 ease-in-out p-3">
         <div class="flex-1 flex flex-col overflow-y-auto">
-            <div class="hidden md:flex flex-row flex-nowrap justify-center">
+            <div class="hidden md:flex md:mb-4 flex-row flex-nowrap justify-center">
                 <NavbarLogo />
             </div>
-            <NavbarIcon/>
+            <div class="md:hidden flex flex-row h-10 mb-4">
+                <NavbarIcon/>
+            </div>
             <div class="flex-1 flex flex-col overflow-y-auto">
                 <NavbarLinks />
             </div>
