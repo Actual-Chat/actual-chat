@@ -26,7 +26,7 @@ public abstract class HubClientBase
 
     protected HubConnection CreateHubConnection()
     {
-        Log.LogDebug("CreateHubConnection: Time: {Time}", Clocks.CpuClock.UtcNow.TimeOfDay);
+        Log.LogDebug("CreateHubConnection: Time: {Time}", Clocks.SystemClock.UtcNow.TimeOfDay);
         try {
             var builder = new HubConnectionBuilder()
                 .WithUrl(
@@ -49,7 +49,7 @@ public abstract class HubClientBase
             return builder.Build();
         }
         finally {
-            Log.LogDebug("CreateHubConnection: Exited; Time: {Time}", Clocks.CpuClock.UtcNow.TimeOfDay);
+            Log.LogDebug("CreateHubConnection: Exited; Time: {Time}", Clocks.SystemClock.UtcNow.TimeOfDay);
         }
     }
 
