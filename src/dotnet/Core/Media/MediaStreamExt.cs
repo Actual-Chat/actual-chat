@@ -2,27 +2,29 @@ namespace ActualChat.Media;
 
 public static class MediaStreamExt
 {
-    public static async IAsyncEnumerable<BlobPart> ToBlobStream<TMediaStreamPart>(
+    public static async IAsyncEnumerable<byte[]> ToBlobStream<TMediaStreamPart>(
         this IAsyncEnumerable<TMediaStreamPart> mediaStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
         where TMediaStreamPart : IMediaStreamPart
     {
-        BlobPart? header = null;
-        var index = 0;
-        await foreach (var part in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (part.Format != null) {
-                if (header != null)
-                    throw new InvalidOperationException("Format part can't repeat.");
-                header = part.Format.ToBlobPart(); // We'll yield it w/ the first BlobPart
-            }
-            else if (part.Frame != null) {
-                if (header == null)
+        byte[]? header = null;
+        var first = true;
+        await foreach (var part in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false))
+            if (first) {
+                if (part.Format == null)
                     throw new InvalidOperationException("Format part should be the first one.");
-                var blobPart = part.Frame.ToBlobPart(index++);
-                if (index == 1) // First BlobPart must include header
-                    blobPart = new BlobPart(0, header.Data, blobPart.Data);
-                yield return blobPart;
+
+                header = part.Format.Serialize(); // We'll yield it w/ the first Blob
+                yield return header;
+                first = false;
             }
-        }
+            else {
+                if (header != null && part.Format != null)
+                    throw new InvalidOperationException("Format part can't repeat.");
+                if (part.Frame == null)
+                    throw new InvalidOperationException("Frame should be specified for all parts except the first one.");
+
+                yield return part.Frame.Data;
+            }
     }
 }

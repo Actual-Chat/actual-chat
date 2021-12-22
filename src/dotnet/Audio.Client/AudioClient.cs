@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.SignalR.Client;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -6,7 +7,6 @@ namespace ActualChat.Audio.Client;
 
 public class AudioClient : HubClientBase,
     ISourceAudioRecorder,
-    IAudioStreamer,
     IAudioSourceStreamer,
     ITranscriptStreamer
 {
@@ -33,24 +33,10 @@ public class AudioClient : HubClientBase,
         return audio;
     }
 
-    public async IAsyncEnumerable<BlobPart> GetAudioBlobStream(
-        string streamId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        Log.LogDebug("GetAudioBlobStream: StreamId = {StreamId}", streamId);
-        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var blobParts = HubConnection
-            .StreamAsync<BlobPart>("GetAudioBlobStream", streamId, cancellationToken)
-            .WithBuffer(StreamBufferSize, cancellationToken);
-        await foreach (var blobPart in blobParts.ConfigureAwait(false))
-            yield return blobPart;
-        Log.LogDebug("GetAudioBlobStream: Exited; StreamId = {StreamId}", streamId);
-    }
-
     public async Task RecordSourceAudio(
         Session session,
         AudioRecord record,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken)
     {
         Log.LogDebug("RecordSourceAudio: Record = {Record}", record);
@@ -58,7 +44,7 @@ public class AudioClient : HubClientBase,
         await HubConnection.SendAsync("RecordSourceAudio",
                 session,
                 record,
-                blobStream.WithBuffer(StreamBufferSize, cancellationToken),
+                recordingStream.WithBuffer(StreamBufferSize, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
         Log.LogDebug("RecordSourceAudio: Exited; Record = {Record}", record);
