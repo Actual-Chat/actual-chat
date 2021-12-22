@@ -1,28 +1,29 @@
-import { AudioRecorder } from "../../Components/AudioRecorder/audio-recorder";
-import { IRecordingEventQueue } from "../../Components/AudioRecorder/recording-event-queue";
+import {AudioRecorder} from "../../Components/AudioRecorder/audio-recorder";
+import {
+    IRecordingEventQueue,
+    RecordingEvent,
+    RecordingEventType
+} from "../../Components/AudioRecorder/recording-event-queue";
 
 class DataUrlSendingQueue implements IRecordingEventQueue {
+    private readonly _buffer: Uint8Array = new Uint8Array(10*1024);
     private _data: ArrayBuffer[] = [];
-    public pause(): Promise<void> {
-        return Promise.resolve();
-    }
-    public resume(): Promise<void> {
-        return Promise.resolve();
-    }
-    public enqueue(data: Uint8Array): void {
-        this._data.push(data.buffer);
-    }
     public flushAsync(): Promise<void> {
         return Promise.resolve();
-    }
-    public resendAsync(sequenceNumber: number): Promise<void> {
-        throw new Error("Shouldn't be used");
     }
     public getBlob(): Blob {
         return new Blob(this._data);
     }
     public reset(): void {
         this._data = [];
+    }
+
+    append(command: RecordingEvent): void {
+        if (command.type != RecordingEventType.Data) {
+            return;
+        }
+        const length = command.serialize(this._buffer, 0);
+        this._data.push(this._buffer.slice(0, length));
     }
 }
 
