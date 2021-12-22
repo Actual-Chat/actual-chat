@@ -1,6 +1,8 @@
 @namespace ActualChat.Audio.UI.Blazor.Components
 @implements IAudioRecorderBackend
 @using ActualChat.Audio.UI.Blazor.Module
+@using ActualChat.Media
+@using System.Buffers.Binary
 @implements IAsyncDisposable
 @inject Session _session
 @inject IJSRuntime _js
@@ -30,9 +32,8 @@
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
-    private Channel<BlobPart>? AudioChannel { get; set; }
+    private Channel<RecordingPart>? AudioChannel { get; set; }
     private int Index { get; set; }
-    private uint LastSeqNum { get; set; } = 0;
     private bool IsRecording => AudioChannel != null;
 
     [Parameter]
@@ -65,7 +66,7 @@
         if (AudioChannel != null)
             return;
 
-        AudioChannel = Channel.CreateBounded<BlobPart>(
+        AudioChannel = Channel.CreateBounded<RecordingPart>(
             new BoundedChannelOptions(128) {
                 SingleWriter = true,
                 SingleReader = true,
@@ -118,19 +119,14 @@
     }
 
     [JSInvokable]
-    public async Task OnAudioData(byte[] chunk) {
+    public async Task OnAudioEventChunk(byte[] chunk) {
         if (AudioChannel == null)
             return;
 
-        var seqNum = Unsafe.As<byte, uint>(ref chunk[0]);
-
-        if (seqNum != 0 && (seqNum - 1) != LastSeqNum)
-            Log.LogError("OnAudioData: SeqNum mismatch, current = {SeqNum}, last: {LastSeqNum}", seqNum, LastSeqNum);
-
-        LastSeqNum = seqNum;
-        var blobPart = new BlobPart(Index++, chunk[4..]);
-        DebugLog?.LogDebug("OnAudioData: got packet #{SeqNum}: {BlobPart}", seqNum, blobPart);
-        await AudioChannel.Writer.WriteAsync(blobPart);
+        foreach (var part in ParseEventChunk(chunk)) {
+            await AudioChannel.Writer.WriteAsync(part);
+        }
+        DebugLog?.LogDebug("OnAudioEventChunk: got packet {Chunk}", chunk);
     }
 
     [JSInvokable]
@@ -148,26 +144,34 @@
         StateHasChanged();
     }
 
-    [JSInvokable]
-    public void OnPauseRecording() {
-        DebugLog?.LogDebug("OnPauseRecording: current AudioChannel status is {AudioChannelStatus}",
-            AudioChannel == null ? "closed" : "opened"
-        );
-        if (AudioChannel == null) return;
-
-        var blobPart = new BlobPart(Index++, new byte [] { 0, 0, 0, 0 });
-        AudioChannel.Writer.WriteAsync(blobPart);
-    }
-
-    [JSInvokable]
-    public void OnResumeRecording() {
-        DebugLog?.LogDebug("OnResumeRecording: current AudioChannel status is {AudioChannelStatus}",
-            AudioChannel == null ? "closed" : "opened"
-        );
-
-        if (AudioChannel == null) return;
-
-        var blobPart = new BlobPart(Index++, new byte [] { 1, 1, 1, 1 });
-        AudioChannel.Writer.WriteAsync(blobPart);
+    private IEnumerable<RecordingPart> ParseEventChunk(byte[] chunk) {
+        var offset = 0;
+        while (offset < chunk.Length) {
+            var type = (RecordingEventType)chunk[offset++];
+            var length = BinaryPrimitives.ReadUInt16LittleEndian(chunk[offset..]);
+            offset += 2;
+            var startData = offset;
+            offset += length;
+            yield return type switch
+            {
+                RecordingEventType.Data => new() {
+                    Data = chunk[startData..(startData + length)].ToArray(),
+                },
+                RecordingEventType.Pause => new() {
+                    Command = RecordingCommand.Pause,
+                },
+                RecordingEventType.Resume => new() {
+                    Command = RecordingCommand.Resume,
+                },
+                RecordingEventType.Voice => new() {
+                    VoiceProbability = BinaryPrimitives.ReadSingleLittleEndian(chunk[startData..]),
+                },
+                RecordingEventType.Timestamp => new() {
+                    UtcTicks = BinaryPrimitives.ReadInt64LittleEndian(chunk[startData..]),
+                },
+                _ => throw new ArgumentOutOfRangeException(),
+            };
+        }
     }
 }
+

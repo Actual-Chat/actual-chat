@@ -26,7 +26,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private int? _prevMediaElementReadyState;
     private double _offset;
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQEXRGK4DA5BACTDTAGMF0D7/0000.webm";
-    private AsyncMemoizer<BlobPart>? _audioBlobStream;
+    private AsyncMemoizer<byte[]>? _audioBlobStream;
     private string _audioBlobStreamUri = "";
 
     public Task OnBlockMainThread(int milliseconds)
@@ -91,7 +91,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
             });
             var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
-            await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
+            await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.Serialize()).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {

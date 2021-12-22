@@ -2,6 +2,6 @@ namespace ActualChat.Media;
 
 public static class MediaStreamPartExt
 {
-    public static BlobPart ToBlobPart(this IMediaStreamPart mediaStreamPart)
-        => mediaStreamPart.Format?.ToBlobPart() ?? mediaStreamPart.Frame!.ToBlobPart();
+    public static byte[] Serialize(this IMediaStreamPart mediaStreamPart)
+        => mediaStreamPart.Format?.Serialize() ?? mediaStreamPart.Frame!.Data;
 }

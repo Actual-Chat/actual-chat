@@ -1,6 +1,7 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Host;
+using ActualChat.Media;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using Stl.IO;
@@ -29,7 +30,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        _ = sourceAudioRecorder.RecordSourceAudio(session, recordingSpec, AsyncEnumerable.Empty<BlobPart>(), CancellationToken.None);
+        _ = sourceAudioRecorder.RecordSourceAudio(session, recordingSpec, AsyncEnumerable.Empty<RecordingPart>(), CancellationToken.None);
 
         var record = await dequeueTask;
         record.Should()
@@ -147,7 +148,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
     {
         var streamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
         var audio = await audioStreamer.GetAudio(streamId, default, CancellationToken.None);
-        var header = audio.Format.ToBlobPart().Data;
+        var header = audio.Format.Serialize();
 
         var sum = header.Length;
         await foreach (var audioFrame in audio.GetFrames(default))
@@ -170,16 +171,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var filePath = GetAudioFilePath("file.webm");
         var fileSize = (int) filePath.GetFileInfo().Length;
         var blobStream = filePath.ReadBlobStream();
-        await sourceAudioRecorder.RecordSourceAudio(session, record, blobStream, CancellationToken.None);
+        await sourceAudioRecorder.RecordSourceAudio(session, record, blobStream.ToRecordingStream(), CancellationToken.None);
         return fileSize;
-    }
-
-    private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
-    {
-        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(1024, cancellationToken);
-        var audio = new AudioSource(blobStream, default, null, cancellationToken);
-        await audio.WhenFormatAvailable.ConfigureAwait(false);
-        return audio;
     }
 
     private static FilePath GetAudioFilePath(FilePath fileName)

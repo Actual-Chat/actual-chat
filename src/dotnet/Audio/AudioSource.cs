@@ -6,20 +6,22 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio;
 
-public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
+public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart, AudioMetadata>
 {
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
-    protected override AudioFormat DefaultFormat => new AudioFormat {
+    protected override AudioFormat DefaultFormat => new (){
         CodecSettings = "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwH/////////FUmpZrMq17GD"
             + "D0JATYCTb3B1cy1tZWRpYS1yZWNvcmRlcldBk29wdXMtbWVkaWEtcmVjb3JkZXIWVK5rv66914EB"
             + "c8WHtvVVEG3dyIOBAoaGQV9PUFVTY6KTT3B1c0hlYWQBAQAAgLsAAAAAAOGNtYRHO4AAn4EBYmSB"
             + "IB9DtnUB/////////+eBAA==",
     };
 
-    public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
-        : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
+    public AudioSource(IAsyncEnumerable<byte[]> blobStream, AudioMetadata metadata, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
+        : base(blobStream, metadata, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
+    public AudioSource(IAsyncEnumerable<RecordingPart> recordingStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
+        : base(recordingStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
         : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
 
@@ -29,21 +31,26 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             throw new ArgumentOutOfRangeException(nameof(skipTo));
         if (skipTo == TimeSpan.Zero)
             return this;
-        var blobStream = GetBlobStream(cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, Log, cancellationToken);
+
+        var recordingStream = GetFrames(cancellationToken).ToRecordingStream(FormatTask, cancellationToken);
+        var audio = new AudioSource(recordingStream, skipTo, Log, cancellationToken);
         return audio;
     }
 
     // Protected & private methods
-
     protected override IAsyncEnumerable<AudioFrame> Parse(
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
+        AudioMetadata? metadata,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
+        var metaDataTaskSource = TaskSource.For(MetadataTask);
+        var metaDataEntries = new List<AudioMetadataEntry>();
+        var existingMetadataMap = metadata?.Entries.ToDictionary(e => e.Offset)
+            ?? new Dictionary<TimeSpan, AudioMetadataEntry>();
         var actualSkipTo = skipTo;
         var clusterOffsetMs = 0;
         short blockOffsetMs = 0;
@@ -64,25 +71,47 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-        var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
-            async blobPart => {
-                var (_, data) = blobPart;
-
-                AppendData(ref readBuffer, ref state, data);
-                frameBuffer.Clear();
-                state = FillFrameBuffer(
-                    frameBuffer,
-                    state.IsEmpty
-                        ? new WebMReader(readBuffer.Span)
-                        : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
-                    ref actualSkipTo,
-                    ref clusterOffsetMs,
-                    ref blockOffsetMs,
-                    ref skipAdjustmentClusterMs,
-                    ref skipAdjustmentBlockMs);
+        long? utcTicks = null;
+        float? voiceProbability = null;
+        var parseTask = BackgroundTask.Run(() => recordingStream.ForEachAwaitAsync(
+            async recordingPart => {
+                if (recordingPart.UtcTicks != null)
+                    utcTicks = recordingPart.UtcTicks;
+                else if (recordingPart.VoiceProbability != null)
+                    voiceProbability = recordingPart.VoiceProbability;
+                else if (recordingPart.Data != null) {
+                    var data = recordingPart.Data;
+                    AppendData(ref readBuffer, ref state, data);
+                    frameBuffer.Clear();
+                    state = FillFrameBuffer(
+                        frameBuffer,
+                        state.IsEmpty
+                            ? new WebMReader(readBuffer.Span)
+                            : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
+                        existingMetadataMap,
+                        ref actualSkipTo,
+                        ref clusterOffsetMs,
+                        ref blockOffsetMs,
+                        ref skipAdjustmentClusterMs,
+                        ref skipAdjustmentBlockMs);
+                }
 
                 foreach (var frame in frameBuffer) {
+                    if (utcTicks != null || voiceProbability != null) {
+                        frame.Metadata = new FrameMetadata {
+                            UtcTicks = utcTicks,
+                            VoiceProbability = voiceProbability,
+                        };
+                        utcTicks = null;
+                        voiceProbability = null;
+                    }
                     duration = frame.Offset + frame.Duration;
+                    if (frame.Metadata?.UtcTicks != null || frame.Metadata?.VoiceProbability != null)
+                        metaDataEntries.Add(new AudioMetadataEntry {
+                            Offset = frame.Offset,
+                            UtcTicks = frame.Metadata?.UtcTicks,
+                            VoiceProbability = frame.Metadata?.VoiceProbability,
+                        });
                     await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
                 }
             }, cancellationToken), cancellationToken);
@@ -90,16 +119,19 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         var _ = BackgroundTask.Run(async () => {
             try {
                 await parseTask.ConfigureAwait(false);
+                metaDataTaskSource.SetResult(new AudioMetadata { Entries = metaDataEntries.AsReadOnly() });
                 durationTaskSource.SetResult(duration);
             }
             catch (OperationCanceledException e) {
                 target.Writer.TryComplete(e);
                 if (cancellationToken.IsCancellationRequested) {
                     formatTaskSource.TrySetCanceled(cancellationToken);
+                    metaDataTaskSource.TrySetCanceled(cancellationToken);
                     durationTaskSource.TrySetCanceled(cancellationToken);
                 }
                 else {
                     formatTaskSource.TrySetCanceled();
+                    metaDataTaskSource.TrySetCanceled();
                     durationTaskSource.TrySetCanceled();
                 }
                 throw;
@@ -108,6 +140,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 Log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
+                metaDataTaskSource.TrySetException(e);
                 durationTaskSource.TrySetException(e);
                 throw;
             }
@@ -115,6 +148,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                 target.Writer.TryComplete();
                 if (!FormatTask.IsCompleted)
                     formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
+                if (!MetadataTask.IsCompleted)
+                    metaDataTaskSource.TrySetException(new InvalidOperationException("Metadata wasn't parsed."));
                 if (!DurationTask.IsCompleted)
                     durationTaskSource.TrySetException(new InvalidOperationException("Duration wasn't parsed."));
                 readBuffer.Release();
@@ -122,6 +157,78 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         }, CancellationToken.None);
 
         return target.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    protected override async IAsyncEnumerable<AudioFrame> Parse(
+        IAsyncEnumerable<IMediaStreamPart> mediaStream,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var isEmpty = true;
+        var duration = TimeSpan.Zero;
+        var metaDataEntries = new List<AudioMetadataEntry>();
+        var formatTaskSource = TaskSource.For(FormatTask);
+        var durationTaskSource = TaskSource.For(DurationTask);
+        var metaDataTaskSource = TaskSource.For(MetadataTask);
+        try {
+            await foreach (var mediaStreamPart in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                // ReSharper disable once HeapView.PossibleBoxingAllocation
+                isEmpty = false;
+                var part = (AudioStreamPart) mediaStreamPart;
+                var (format, frame) = (part.Format, part.Frame);
+                if (FormatTask.IsCompleted) {
+                    if (format != null)
+                        throw new InvalidOperationException("Format part must be the first one.");
+                    if (frame != null) {
+                        duration = frame.Offset + frame.Duration;
+
+                        if (frame.Metadata?.UtcTicks != null || frame.Metadata?.VoiceProbability != null)
+                            metaDataEntries.Add(new AudioMetadataEntry {
+                                Offset = frame.Offset,
+                                UtcTicks = frame.Metadata?.UtcTicks,
+                                VoiceProbability = frame.Metadata?.VoiceProbability,
+                            });
+
+                        yield return frame;
+                    }
+                    else
+                        throw new InvalidOperationException("MediaStreamPart doesn't have any properties set.");
+                }
+                else
+                    formatTaskSource.SetResult(format ?? DefaultFormat);
+            }
+            metaDataTaskSource.SetResult(new AudioMetadata{ Entries = metaDataEntries.AsReadOnly() });
+            durationTaskSource.SetResult(duration);
+        }
+        finally {
+            if (cancellationToken.IsCancellationRequested) {
+                formatTaskSource.TrySetCanceled(cancellationToken);
+                metaDataTaskSource.TrySetCanceled(cancellationToken);
+                durationTaskSource.TrySetCanceled(cancellationToken);
+            }
+            else {
+                if (!FormatTask.IsCompleted) {
+                    if (isEmpty)
+                        formatTaskSource.TrySetCanceled(cancellationToken);
+                    else
+                        formatTaskSource.TrySetException(
+                            new InvalidOperationException("MediaSource.Parse: Format wasn't parsed."));
+                }
+                if (!MetadataTask.IsCompleted) {
+                    if (isEmpty)
+                        metaDataTaskSource.TrySetCanceled(cancellationToken);
+                    else
+                        metaDataTaskSource.TrySetException(
+                            new InvalidOperationException("MediaSource.Parse: Metadata wasn't parsed."));
+                }
+                if (!DurationTask.IsCompleted) {
+                    if (isEmpty)
+                        durationTaskSource.TrySetCanceled(cancellationToken);
+                    else
+                        durationTaskSource.TrySetException(
+                            new InvalidOperationException("MediaSource.Parse: Duration wasn't parsed."));
+                }
+            }
+        }
     }
 
     private void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)
@@ -137,6 +244,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
     private WebMReader.State FillFrameBuffer(
         List<AudioFrame> frameBuffer,
         WebMReader webMReader,
+        Dictionary<TimeSpan, AudioMetadataEntry> existingMetadataMap,
         ref TimeSpan skipTo,
         ref int clusterOffsetMs,
         ref short blockOffsetMs,
@@ -250,8 +358,14 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
                         }
                     }
 
-                    if (mediaFrame != null)
+                    if (mediaFrame != null) {
+                        if (existingMetadataMap.TryGetValue(frameOffset, out var metadataEntry))
+                            mediaFrame.Metadata = new FrameMetadata {
+                                UtcTicks = metadataEntry.UtcTicks,
+                                VoiceProbability = metadataEntry.VoiceProbability,
+                            };
                         frameBuffer.Add(mediaFrame);
+                    }
                     framesStart = state.Position;
                 }
                 break;

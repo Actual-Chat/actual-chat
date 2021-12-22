@@ -2,7 +2,13 @@ import RecordRTC, { MediaStreamRecorder, Options, State } from 'recordrtc';
 import OpusMediaRecorder from 'opus-media-recorder';
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
 import { AudioContextPool } from 'audio-context-pool';
-import { ISendingQueue, SendingQueue, TimeoutCleaningStrategy } from './sending-queue';
+import {
+    DataRecordingEvent,
+    IRecordingEventQueue,
+    PauseRecordingEvent,
+    RecordingEventQueue,
+    ResumeRecordingEvent
+} from './recording-event-queue';
 import { VoiceActivityChanged } from './audio-vad';
 
 const LogScope = 'AudioRecorder';
@@ -33,9 +39,9 @@ export class AudioRecorder {
         vadWorkletNode: AudioWorkletNode,
         mediaStreamAudioSourceNode?: MediaStreamAudioSourceNode,
     };
-    protected _queue: ISendingQueue;
+    protected _queue: IRecordingEventQueue;
 
-    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: ISendingQueue) {
+    public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: IRecordingEventQueue) {
         this._blazorRef = blazorRef;
         this._debugMode = debugMode;
         this.recording = null;
@@ -58,16 +64,15 @@ export class AudioRecorder {
     }
 
     public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
-        const queue: ISendingQueue = new SendingQueue({
+        const queue: IRecordingEventQueue = new RecordingEventQueue({
             debugMode: debugMode && false,
             minChunkSize: 64,
-            chunkSize: 1020,
+            chunkSize: 1024,
             maxFillBufferTimeMs: 400,
-            cleaningStrategy: new TimeoutCleaningStrategy(60_000),
             sendAsync: async (packet: Uint8Array): Promise<void> => {
                 if (debugMode)
                     console.log(`AudioRecorder.queue.sendAsync: sending ${packet.length} bytes`);
-                await blazorRef.invokeMethodAsync('OnAudioData', packet);
+                await blazorRef.invokeMethodAsync('OnAudioEventChunk', packet);
             },
         });
         return new AudioRecorder(blazorRef, debugMode, queue);
@@ -107,10 +112,10 @@ export class AudioRecorder {
                     console.log(`${LogScope}.startRecording: state = ${state}`);
 
                 if (vadEvent.kind === 'end') {
-                    this._queue.pause();
+                    this._queue.append(new PauseRecordingEvent());
                 }
                 else {
-                    this._queue.resume();
+                    this._queue.append(new ResumeRecordingEvent());
                 }
             }
             if (this._debugMode)
@@ -159,7 +164,7 @@ export class AudioRecorder {
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
-                        this._queue.enqueue(chunk);
+                        this._queue.append(new DataRecordingEvent(chunk));
                     } catch (e) {
                         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
                     }

@@ -1,10 +1,9 @@
+using ActualChat.Media;
+
 namespace ActualChat.Audio.Processing;
 
 public class AudioSplitter
 {
-    private static readonly byte[] _pauseSignature = { 0,0,0,0 };
-    private static readonly byte[] _resumeSignature = { 1,1,1,1 };
-
     private IServiceProvider Services { get; }
 
     public AudioSplitter(IServiceProvider services)
@@ -12,13 +11,13 @@ public class AudioSplitter
 
     public IAsyncEnumerable<OpenAudioSegment> GetSegments(
         AudioRecord audioRecord,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken)
     {
         var openSegmentChannel =
             Channel.CreateUnbounded<OpenAudioSegment>(new UnboundedChannelOptions { SingleWriter = true });
 
-        _ = Task.Run(() => WriteSegments(audioRecord, blobStream, openSegmentChannel, cancellationToken),
+        _ = Task.Run(() => WriteSegments(audioRecord, recordingStream, openSegmentChannel, cancellationToken),
             cancellationToken);
 
         return openSegmentChannel.Reader.ReadAllAsync(cancellationToken);
@@ -26,7 +25,7 @@ public class AudioSplitter
 
     private async Task WriteSegments(
         AudioRecord audioRecord,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
         ChannelWriter<OpenAudioSegment> writer,
         CancellationToken cancellationToken)
     {
@@ -34,27 +33,31 @@ public class AudioSplitter
         var firstSegmentFormatSource = new TaskCompletionSource<AudioFormat>();
         var audioLog = Services.LogFor<AudioSource>();
         var index = 0;
-        var blobIndex = 0;
-        var channel = Channel.CreateUnbounded<BlobPart>(new UnboundedChannelOptions{ SingleWriter = true });
+        var channel = Channel.CreateUnbounded<RecordingPart>(
+            new UnboundedChannelOptions{ SingleWriter = true, SingleReader = true }
+        );
         try {
             await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
 
-            await foreach (var blobPart in blobStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                if (blobPart.Data.SequenceEqual(_pauseSignature)) {
-                    channel.Writer.Complete();
-                    blobIndex = 0;
-                    continue;
+            await foreach (var recordingPart in recordingStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                switch (recordingPart.Command)
+                {
+                    case RecordingCommand.Pause:
+                        channel.Writer.Complete();
+                        continue;
+                    case RecordingCommand.Resume:
+                    {
+                        channel = Channel.CreateUnbounded<RecordingPart>(new UnboundedChannelOptions { SingleWriter = true });
+                        var format = await firstSegmentFormatSource.Task.ConfigureAwait(false);
+                        var formatPart = new RecordingPart { Data = Convert.FromBase64String(format.CodecSettings) };
+                        await channel.Writer.WriteAsync(formatPart, cancellationToken).ConfigureAwait(false);
+                        await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
+                        continue;
+                    }
+                    default:
+                        await channel.Writer.WriteAsync(recordingPart, cancellationToken).ConfigureAwait(false);
+                        break;
                 }
-                if (blobPart.Data.SequenceEqual(_resumeSignature)) {
-                    channel = Channel.CreateUnbounded<BlobPart>(new UnboundedChannelOptions { SingleWriter = true });
-                    var format = await firstSegmentFormatSource.Task.ConfigureAwait(false);
-                    var formatBlob = new BlobPart(blobIndex++, Convert.FromBase64String(format.CodecSettings));
-                    await channel.Writer.WriteAsync(formatBlob, cancellationToken).ConfigureAwait(false);
-                    await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
-                    continue;
-                }
-                var reindexedBlob = new BlobPart(blobIndex++, blobPart.Data);
-                await channel.Writer.WriteAsync(reindexedBlob, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception e) {
@@ -65,10 +68,10 @@ public class AudioSplitter
             writer.TryComplete(error);
         }
 
-        async ValueTask StartNewSegment(IAsyncEnumerable<BlobPart> segmentBlobStream)
+        async ValueTask StartNewSegment(IAsyncEnumerable<RecordingPart> segmentRecordingStream)
         {
-            var audio = new AudioSource(segmentBlobStream, TimeSpan.Zero, audioLog, cancellationToken);
-            var openAudioSegment = new OpenAudioSegment(index++, audioRecord, audio, TimeSpan.Zero, cancellationToken);
+            var audio = new AudioSource(segmentRecordingStream, TimeSpan.Zero, audioLog, cancellationToken);
+            var openAudioSegment = new OpenAudioSegment(index++, audioRecord, audio);
             _ = Task.Run(async () => {
                 try {
                     await audio.WhenFormatAvailable.ConfigureAwait(false);

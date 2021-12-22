@@ -87,7 +87,7 @@ public class AudioSourceTest
         var clusterOffsetMs = 0;
         var blockOffsetMs = -1;
         var state = ValidateWebMSequence(
-            new WebMReader(audio.Format.ToBlobPart().Data),
+            new WebMReader(audio.Format.Serialize()),
             ref clusterOffsetMs,
             ref blockOffsetMs);
         await foreach (var frame in audio.GetFrames(default)) {
@@ -113,7 +113,7 @@ public class AudioSourceTest
         var clusterOffsetMs = 0;
         var blockOffsetMs = -1;
         var state = ValidateWebMSequence(
-            new WebMReader(audio.Format.ToBlobPart().Data),
+            new WebMReader(audio.Format.Serialize()),
             ref clusterOffsetMs,
             ref blockOffsetMs);
         await foreach (var frame in audio.GetFrames(default)) {
@@ -192,7 +192,7 @@ public class AudioSourceTest
         var blobStream = GetAudioFilePath(fileName)
             .ReadBlobStream(blobSize, cancellationToken)
             .SkipBytes(skipBytes, cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, _logger, cancellationToken);
+        var audio = new AudioSource(blobStream, new AudioMetadata(), skipTo, _logger, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

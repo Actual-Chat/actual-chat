@@ -1,3 +1,5 @@
+using ActualChat.Media;
+
 namespace ActualChat.Audio;
 
 public interface ISourceAudioRecorder
@@ -5,6 +7,6 @@ public interface ISourceAudioRecorder
     Task RecordSourceAudio(
         Session session,
         AudioRecord record,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken);
 }

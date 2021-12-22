@@ -185,7 +185,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
         try {
             await foreach (var part in audioStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(part.ToBlobPart().Data),
+                    AudioContent = ByteString.CopyFrom(part.Serialize()),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }

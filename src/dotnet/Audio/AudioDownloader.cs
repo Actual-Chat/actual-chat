@@ -16,18 +16,14 @@ public class AudioDownloader
 
     public virtual async Task<AudioSource> Download(
         Uri audioUri,
+        AudioMetadata metadata,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var blobStream = DownloadBlobStream(audioUri, cancellationToken);
+        var blobStream = HttpClientFactory.DownloadBlobStream(audioUri, Log, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(blobStream, skipTo, audioLog, cancellationToken);
+        var audio = new AudioSource(blobStream, metadata, skipTo, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
-
-    public IAsyncEnumerable<BlobPart> DownloadBlobStream(
-        Uri audioUri,
-        CancellationToken cancellationToken = default)
-        => HttpClientFactory.DownloadBlobStream(audioUri, Log, cancellationToken);
 }

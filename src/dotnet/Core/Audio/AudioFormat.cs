@@ -15,6 +15,6 @@ public record AudioFormat : MediaFormat
     [DataMember(Order = 3)]
     public int SampleRate { get; init; } = 48_000;
 
-    public override BlobPart ToBlobPart(int index = 0)
-        => new(index, Convert.FromBase64String(CodecSettings));
+    public override byte[] Serialize(int index = 0)
+        => Convert.FromBase64String(CodecSettings);
 }

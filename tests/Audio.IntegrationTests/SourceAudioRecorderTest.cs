@@ -1,5 +1,6 @@
 using ActualChat.Audio.Db;
 using ActualChat.Host;
+using ActualChat.Media;
 using ActualChat.Testing.Host;
 using Stl.IO;
 using Stl.Redis;
@@ -26,7 +27,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
 
         var recordTask = sourceAudioRecorder.DequeueSourceAudio(CancellationToken.None);
-        _ = sourceAudioRecorder.RecordSourceAudio(session, recordSpec, AsyncEnumerable.Empty<BlobPart>(), CancellationToken.None);
+        _ = sourceAudioRecorder.RecordSourceAudio(session, recordSpec, AsyncEnumerable.Empty< RecordingPart>(), CancellationToken.None);
 
         var record = await recordTask.ConfigureAwait(false);
         record.Should().Be(recordSpec with {
@@ -34,7 +35,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
             AuthorId = record.AuthorId
         });
 
-        var audioStream = sourceAudioRecorder.GetSourceAudioBlobStream(record.Id, CancellationToken.None);
+        var audioStream = sourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, CancellationToken.None);
         await foreach (var _ in audioStream) {}
     }
 
@@ -52,45 +53,12 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var writtenSize = await UploadRecording(session, "1", sourceAudioRecorder);
 
         var record = await recordTask;
-        var blobStream = sourceAudioRecorder.GetSourceAudioBlobStream(record.Id, CancellationToken.None);
+        var blobStream = sourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, CancellationToken.None);
         var readSize = (long) await blobStream.SumAsync(p => p.Data.Length);
 
         readSize.Should().Be(writtenSize);
     }
 
-    [Fact]
-    public async Task StreamTest()
-    {
-        using var appHost = await NewAppHost();
-        var services = appHost.Services;
-        var audioStreamer = services.GetRequiredService<AudioStreamer>();
-
-        var streamId = (string)"test-stream-id";
-        var audioRedisDb = services.GetRequiredService<RedisDb<AudioContext>>();
-        var audioStreamsDb = audioRedisDb.WithKeyPrefix("audio-streams");
-        var streamer = audioStreamsDb.GetStreamer<BlobPart>(streamId);
-        await streamer.Remove();
-
-        var filePath = GetAudioFilePath();
-
-        var blobStream = filePath.ReadBlobStream();
-        var publishTask =  audioStreamer.Publish(streamId, blobStream, CancellationToken.None);
-        var readTask = ReadAudioStream(streamId, audioStreamer);
-
-        await readTask;
-        await publishTask;
-
-        var readSize = await readTask;
-        readSize.Should().Be(filePath.GetFileInfo().Length);
-    }
-
-    private static async Task<long> ReadAudioStream(
-        string streamId,
-        IAudioStreamer audioStreamer)
-    {
-        var blobStream = audioStreamer.GetAudioBlobStream(streamId, CancellationToken.None);
-        return await blobStream.SumAsync(p => p.Data.Length);
-    }
 
     private static async Task<long> UploadRecording(Session session, string chatId, ISourceAudioRecorder sourceAudioRecorder)
     {
@@ -101,7 +69,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var filePath = GetAudioFilePath();
         var blobStream = filePath.ReadBlobStream();
-        await sourceAudioRecorder.RecordSourceAudio(session, recording, blobStream, CancellationToken.None);
+        await sourceAudioRecorder.RecordSourceAudio(session, recording, blobStream.ToRecordingStream(), CancellationToken.None);
         return filePath.GetFileInfo().Length;
     }
 
