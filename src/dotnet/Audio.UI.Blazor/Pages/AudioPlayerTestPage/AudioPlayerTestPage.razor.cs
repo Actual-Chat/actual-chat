@@ -84,13 +84,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     StateHasChanged();
                 }
             });
-            // we want to wait when the first frame will be available, after this we'll start count delays
-            bool isFirstFrame = true;
-            await foreach (var frame in audioSource.GetFrames(_cts.Token).ConfigureAwait(true)) {
-                if (isFirstFrame) {
-                    await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
-                    isFirstFrame = false;
-                }
+            var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
+            await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
+            foreach (var frame in frames) {
                 if (false) {
                     Log.LogInformation(
                         "Send the frame data to js side (bytes: {FrameBytes}, offset sec: {FrameOffset}, duration sec: {FrameDuration})",
