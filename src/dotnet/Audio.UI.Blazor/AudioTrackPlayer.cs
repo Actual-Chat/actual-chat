@@ -22,7 +22,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         JS = Services.GetRequiredService<IJSRuntime>();
-        Header = AudioSource.Format.ToBlobPart().Data;
+        Header = AudioSource.Format.Serialize();
         UpdateBufferReadyState(true);
     }
 

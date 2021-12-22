@@ -1,5 +1,6 @@
 using ActualChat.Audio.Db;
 using ActualChat.Chat;
+using ActualChat.Media;
 using Stl.Redis;
 
 namespace ActualChat.Audio;
@@ -34,7 +35,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     public async Task RecordSourceAudio(
         Session session,
         AudioRecord record,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken)
     {
         Log.LogInformation("RecordSourceAudio: Record = {Record}", record);
@@ -44,12 +45,12 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
             AuthorId = author.Id,
         };
 
-        var streamer = RedisDb.GetStreamer<BlobPart>(record.Id);
+        var streamer = RedisDb.GetStreamer<RecordingPart>(record.Id);
         // streamer.Log = DebugLog;
-        if (Constants.DebugMode.AudioRecordingBlobStream)
-            blobStream = blobStream.WithLog(Log, "RecordSourceAudio", cancellationToken);
+        if (Constants.DebugMode.AudioRecordingStream)
+            recordingStream = recordingStream.WithLog(Log, "RecordSourceAudio", cancellationToken);
         await streamer.Write(
-                blobStream,
+                recordingStream,
                 _ => NewRecordQueue.Enqueue(record).ToValueTask(),
                 cancellationToken)
             .ConfigureAwait(false);
@@ -67,9 +68,9 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     public Task<AudioRecord> DequeueSourceAudio(CancellationToken cancellationToken)
         => NewRecordQueue.Dequeue(cancellationToken);
 
-    public IAsyncEnumerable<BlobPart> GetSourceAudioBlobStream(string audioRecordId, CancellationToken cancellationToken)
+    public IAsyncEnumerable<RecordingPart> GetSourceAudioRecordingStream(string audioRecordId, CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<BlobPart>(audioRecordId);
+        var streamer = RedisDb.GetStreamer<RecordingPart>(audioRecordId);
         // streamer.Log = DebugLog;
         return streamer.Read(cancellationToken).Memoize().Replay(cancellationToken);
     }

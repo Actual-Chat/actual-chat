@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using Cysharp.Text;
@@ -251,6 +254,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
     }
 
+    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<ActualChat.Audio.AudioMetadata>(string, System.Text.Json.JsonSerializerOptions?)")]
     private async ValueTask EnqueueNonStreamingEntry(
         Playback playback,
         Moment playAt,
@@ -262,9 +266,12 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
             audioEntry.ChatId,
             audioEntry.Id);
+        var metaData = audioEntry.Metadata.IsNullOrEmpty()
+            ? new AudioMetadata()
+            : JsonSerializer.Deserialize<AudioMetadata>(audioEntry.Metadata);
         var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
         var audio = await AudioDownloader
-            .Download(audioBlobUri, skipTo, cancellationToken)
+            .Download(audioBlobUri, metaData, skipTo, cancellationToken)
             .ConfigureAwait(false);
         var trackId = GetAudioTrackId(audioEntry);
         await playback.AddMediaTrack(

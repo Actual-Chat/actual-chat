@@ -10,8 +10,8 @@ public abstract class MediaFrame
     [DataMember(Order = 2)]
     public byte[] Data { get; init; } = Array.Empty<byte>();
 
-    public abstract bool IsKeyFrame { get; }
+    [DataMember(Order = 3)]
+    public FrameMetadata? Metadata { get; set; }
 
-    public virtual BlobPart ToBlobPart(int index = 0)
-        => new(index, Data);
+    public abstract bool IsKeyFrame { get; }
 }

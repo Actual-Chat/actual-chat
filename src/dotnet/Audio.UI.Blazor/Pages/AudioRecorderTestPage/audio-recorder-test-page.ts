@@ -1,7 +1,7 @@
 import { AudioRecorder } from "../../Components/AudioRecorder/audio-recorder";
-import { ISendingQueue } from "../../Components/AudioRecorder/sending-queue";
+import { IRecordingEventQueue } from "../../Components/AudioRecorder/recording-event-queue";
 
-class DataUrlSendingQueue implements ISendingQueue {
+class DataUrlSendingQueue implements IRecordingEventQueue {
     private _data: ArrayBuffer[] = [];
     public pause(): Promise<void> {
         return Promise.resolve();
