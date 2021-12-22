@@ -1,32 +1,39 @@
 @namespace ActualChat.UI.Blazor.Components
-@using System.Reflection
-@using ActualChat.Chat.UI.Blazor.Services
-@inject BlazorCircuitContext _circuitContext
+@using ActualChat.Chat
+@inherits ComputedStateComponent<string>
+
+@inject Session _session
+@inject IChatUserConfigurations _configuration
+@inject UICommandRunner _cmd
 
 <span class="@(_class ??= this.DefaultClass()) select-none cursor-pointer duration-500 ease-in-out group"
      @onclick="Toogle">
-    @if (_circuitContext.IsPrerendering) {
-        <span>"Loading..."</span>
-    } else {
-        <span>Language: <b>@GetActiveText()</b></span>
-    }
+    <span>Language: <b>@GetActiveText()</b></span>
 </span>
 
 @code {
-    [Inject] private TranscriptionLanguagePreferences TranscriptionLanguagePreferences { get; set; } = null!;
-
     private static string? _class;
 
-    private bool IsRussianLanguage => Language == "ru-Ru";
+    [Parameter]
+    public string ChatId { get; set; } = "";
 
-    public string Language => TranscriptionLanguagePreferences.Language;
+    private bool IsRussianLanguage => LanguageName == "ru-RU";
+
+    public string LanguageName => State.LatestNonErrorValue;
 
     private string GetActiveText()
         => IsRussianLanguage ? "Russian (Russia)" : "English (USA)";
 
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken)
+    {
+        var languageName = await _configuration.GetTranscriptionLanguage(_session, ChatId, cancellationToken);
+        return languageName;
+    }
+
     private async Task Toogle()
     {
-        var newLanguage = IsRussianLanguage ? "en-US" : "ru-Ru";
-        TranscriptionLanguagePreferences.Language = newLanguage;
+        var newLanguage = IsRussianLanguage ? "en-US" : "ru-RU";
+
+        var (_, ce) = await _cmd.Run(new IChatUserConfigurations.SetTranscriptionLanguageCommand(_session, ChatId, newLanguage)).ConfigureAwait(true);
     }
 }

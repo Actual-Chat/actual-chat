@@ -28,7 +28,5 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Scoped / Blazor Circuit services
         services.TryAddScoped<ChatPlayers>();
-
-        services.TryAddScoped<TranscriptionLanguagePreferences>();
     }
 }
