@@ -15,7 +15,7 @@ public class AudioController : ControllerBase
     public async Task<FileStreamResult> Download(string blobId, CancellationToken cancellationToken)
     {
         var blobStorage = _blobs.GetBlobStorage(BlobScope.AudioRecord);
-        var blobStream = await blobStorage.OpenReadAsync(blobId, cancellationToken);
-        return File(blobStream, "audio/webm");
+        var byteStream = await blobStorage.OpenReadAsync(blobId, cancellationToken);
+        return File(byteStream, "audio/webm");
     }
 }

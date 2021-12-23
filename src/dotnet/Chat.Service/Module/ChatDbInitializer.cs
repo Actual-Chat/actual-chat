@@ -279,12 +279,12 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         CancellationToken cancellationToken)
     {
         var filePath = GetAudioDataDir() & fileName;
-        var sourceBlobStream = filePath.ReadBlobStream(1024, cancellationToken).Memoize();
+        var sourceBlobStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
         var audioLog = Services.LogFor<AudioSource>();
         var audio = new AudioSource(sourceBlobStream.Replay(cancellationToken), new AudioMetadata(), TimeSpan.Zero, audioLog, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
         // NOTE(AY): Shouldn't we simply write source blob stream here?
-        await blobs.UploadBlobStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+        await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
 
         static FilePath GetAudioDataDir()
             => new FilePath(Path.GetDirectoryName(typeof(ChatDbInitializer).Assembly.Location)) & "data";

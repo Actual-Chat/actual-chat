@@ -123,7 +123,7 @@
         if (AudioChannel == null)
             return;
 
-        foreach (var part in ParseEventChunk(chunk)) {
+        foreach (var part in DeserializeRecordingData(chunk)) {
             await AudioChannel.Writer.WriteAsync(part);
         }
         DebugLog?.LogDebug("OnAudioEventChunk: got packet {Chunk}", chunk);
@@ -144,32 +144,31 @@
         StateHasChanged();
     }
 
-    private IEnumerable<RecordingPart> ParseEventChunk(byte[] chunk) {
+    private IEnumerable<RecordingPart> DeserializeRecordingData(byte[] data) {
         var offset = 0;
-        while (offset < chunk.Length) {
-            var type = (RecordingEventType)chunk[offset++];
-            var length = BinaryPrimitives.ReadUInt16LittleEndian(chunk[offset..]);
+        while (offset < data.Length) {
+            var type = (RecordingEventType)data[offset++];
+            var length = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
             offset += 2;
             var startData = offset;
             offset += length;
-            yield return type switch
-            {
+            yield return type switch {
                 RecordingEventType.Data => new() {
-                    Data = chunk[startData..(startData + length)].ToArray(),
+                    Data = data[startData..(startData + length)].ToArray(),
                 },
                 RecordingEventType.Pause => new() {
-                    Command = RecordingCommand.Pause,
+                    EventKind = RecordingEventKind.Pause,
                 },
                 RecordingEventType.Resume => new() {
-                    Command = RecordingCommand.Resume,
+                    EventKind = RecordingEventKind.Resume,
                 },
                 RecordingEventType.Voice => new() {
-                    VoiceProbability = BinaryPrimitives.ReadSingleLittleEndian(chunk[startData..]),
+                    VoiceProbability = BinaryPrimitives.ReadSingleLittleEndian(data[startData..]),
                 },
                 RecordingEventType.Timestamp => new() {
-                    UtcTicks = BinaryPrimitives.ReadInt64LittleEndian(chunk[startData..]),
+                    RecordedAt = new Moment(BinaryPrimitives.ReadInt64LittleEndian(data[startData..])),
                 },
-                _ => throw new ArgumentOutOfRangeException(),
+                _ => throw new NotSupportedException($"Unsupported RecordingEventType: {type}."),
             };
         }
     }

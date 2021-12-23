@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Transcription;
@@ -172,7 +170,6 @@ public class SourceAudioProcessor : AsyncProcessBase
         return entry;
     }
 
-    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<ActualChat.Audio.AudioMetadata>(ActualChat.Audio.AudioMetadata, System.Text.Json.JsonSerializerOptions?)")]
     private async Task FinalizeAudioEntry(
         OpenAudioSegment audioSegment,
         ChatEntry audioEntry,
@@ -184,7 +181,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             Content = audioBlobId ?? "",
             StreamId = Symbol.Empty,
             EndsAt = audioEntry.BeginsAt + closedSegment.Duration,
-            Metadata = JsonSerializer.Serialize(closedSegment.Metadata),
+            Metadata = SystemJsonSerializer.Default.Write(closedSegment.Metadata),
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
         await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);

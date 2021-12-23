@@ -14,7 +14,7 @@ public static class BlobStreamExt
 
     // Download
 
-    public static async IAsyncEnumerable<byte[]> DownloadBlobStream(
+    public static async IAsyncEnumerable<byte[]> DownloadByteStream(
         this IHttpClientFactory httpClientFactory,
         Uri blobUri,
         ILogger log,
@@ -37,8 +37,8 @@ public static class BlobStreamExt
         try {
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
-            var blobStream = stream.ReadBlobStream(false, 1024, cancellationToken);
-            await foreach (var blobPart in blobStream.ConfigureAwait(false))
+            var byteStream = stream.ReadByteStream(false, 1024, cancellationToken);
+            await foreach (var blobPart in byteStream.ConfigureAwait(false))
                 yield return blobPart;
         }
         finally {
@@ -49,16 +49,16 @@ public static class BlobStreamExt
 
     // Upload
 
-    public static async Task<long> UploadBlobStream(
+    public static async Task<long> UploadByteStream(
         this IBlobStorage target,
         string blobId,
-        IAsyncEnumerable<byte[]> blobStream,
+        IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken)
     {
         var stream = MemoryStreamManager.GetStream();
         await using var _ = stream.ConfigureAwait(false);
 
-        var bytesWritten = await stream.WriteBlobStream(blobStream, false, cancellationToken).ConfigureAwait(false);
+        var bytesWritten = await stream.WriteByteStream(byteStream, false, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
         await target.WriteAsync(blobId, stream, false, cancellationToken).ConfigureAwait(false);
         return bytesWritten;
@@ -66,16 +66,16 @@ public static class BlobStreamExt
 
     // Read
 
-    public static IAsyncEnumerable<byte[]> ReadBlobStream(
+    public static IAsyncEnumerable<byte[]> ReadByteStream(
         this FilePath sourceFilePath,
         int blobSize = 1024,
         CancellationToken cancellationToken = default)
     {
         var inputStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read);
-        return inputStream.ReadBlobStream(true, blobSize, cancellationToken);
+        return inputStream.ReadByteStream(true, blobSize, cancellationToken);
     }
 
-    public static async IAsyncEnumerable<byte[]> ReadBlobStream(
+    public static async IAsyncEnumerable<byte[]> ReadByteStream(
         this Stream source,
         bool mustDisposeSource,
         int blobSize = 1024,
@@ -107,15 +107,15 @@ public static class BlobStreamExt
 
     // Write
 
-    public static async Task<long> WriteBlobStream(
+    public static async Task<long> WriteByteStream(
         this Stream target,
-        IAsyncEnumerable<byte[]> blobStream,
+        IAsyncEnumerable<byte[]> byteStream,
         bool mustDisposeTarget,
         CancellationToken cancellationToken = default)
     {
         try {
             var bytesWritten = 0L;
-            await foreach (var blobPart in blobStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var blobPart in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 await target.WriteAsync(blobPart, cancellationToken).ConfigureAwait(false);
                 bytesWritten += blobPart.Length;
             }
@@ -130,12 +130,12 @@ public static class BlobStreamExt
     // Misc. helpers
 
     public static async IAsyncEnumerable<byte[]> SkipBytes(
-        this IAsyncEnumerable<byte[]> blobParts,
+        this IAsyncEnumerable<byte[]> byteStream,
         int byteCount,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
     {
-        await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var blobPart in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             if (byteCount >= blobPart.Length) {
                 byteCount -= blobPart.Length;
                 continue;

@@ -1,11 +1,10 @@
 namespace ActualChat.Media;
 
 [DataContract]
-public class FrameMetadata
+public class MediaFrameMetadata
 {
     [DataMember(Order = 0)]
-    public long? UtcTicks { get; init; }
-
+    public Moment? RecordedAt { get; init; }
     [DataMember(Order = 1)]
     public float? VoiceProbability { get; init; }
 }

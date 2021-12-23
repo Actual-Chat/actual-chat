@@ -2,7 +2,7 @@ namespace ActualChat.Media;
 
 public static class MediaStreamExt
 {
-    public static async IAsyncEnumerable<byte[]> ToBlobStream<TMediaStreamPart>(
+    public static async IAsyncEnumerable<byte[]> ToByteStream<TMediaStreamPart>(
         this IAsyncEnumerable<TMediaStreamPart> mediaStream,
         [EnumeratorCancellation] CancellationToken cancellationToken)
         where TMediaStreamPart : IMediaStreamPart
