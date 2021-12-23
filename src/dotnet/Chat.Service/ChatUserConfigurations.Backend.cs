@@ -68,7 +68,7 @@ public partial class ChatUserConfigurations
         return dbChatAuthorOptions.ToModel();
     }
 
-    public virtual async Task Update(IChatUserConfigurationsBackend.UpdateCommand command, CancellationToken cancellationToken)
+    public virtual async Task SetLanguage(IChatUserConfigurationsBackend.SetLanguageCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
             _ = Get(command.UserId, command.ChatId, default);
@@ -78,12 +78,11 @@ public partial class ChatUserConfigurations
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbChatAuthorOptions = await dbContext.ChatUserConfigurations
+        var dbChatUserConfiguration = await dbContext.ChatUserConfigurations
             .ForUpdate()
             .SingleAsync(s => s.ChatId == command.ChatId && s.UserId == command.UserId, cancellationToken)
             .ConfigureAwait(false);
-        dbChatAuthorOptions.Options = dbChatAuthorOptions.Options
-            .Set(command.Option.Key, command.Option.Value);
+        dbChatUserConfiguration.Language = command.Language ?? "";
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
