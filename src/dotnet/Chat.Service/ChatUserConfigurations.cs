@@ -66,8 +66,7 @@ public partial class ChatUserConfigurations : DbServiceBase<ChatDbContext>, ICha
     public virtual async Task<string?> GetTranscriptionLanguageFromUserConfiguration(string userId, string chatId, CancellationToken cancellationToken)
     {
         var chatAuthorOptions = await Get(userId, chatId, cancellationToken).ConfigureAwait(false);
-        var langauge = chatAuthorOptions?.Options["transcriptionLanguage"] as string;
-        return langauge;
+        return chatAuthorOptions?.Language;
     }
 
     protected virtual async Task SetTranscriptionLanguageInSessionInfo(Session session, string chatId, string language, CancellationToken cancellationToken)
@@ -79,7 +78,7 @@ public partial class ChatUserConfigurations : DbServiceBase<ChatDbContext>, ICha
     protected virtual async Task<Unit> SetTranscriptionLanguageInUserConfiguration(string userId, string chatId, string language, CancellationToken cancellationToken)
     {
         _ = await GetOrCreate(userId, chatId, cancellationToken).ConfigureAwait(false);
-        var updateOptionCommand = new IChatUserConfigurationsBackend.UpdateCommand(userId, chatId, new("transcriptionLanguage", language));
+        var updateOptionCommand = new IChatUserConfigurationsBackend.SetLanguageCommand(userId, chatId, language);
         return await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

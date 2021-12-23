@@ -13,9 +13,9 @@ public interface IChatUserConfigurationsBackend
     Task<ChatUserConfiguration> Create(CreateCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task Update(UpdateCommand command, CancellationToken cancellationToken);
+    Task SetLanguage(SetLanguageCommand command, CancellationToken cancellationToken);
 
     public record CreateCommand(string UserId, string ChatId) : ICommand<ChatUserConfiguration>, IBackendCommand { }
 
-    public record UpdateCommand(string UserId, string ChatId, KeyValuePair<string, string> Option) : ICommand<Unit>, IBackendCommand;
+    public record SetLanguageCommand(string UserId, string ChatId, string Language) : ICommand<Unit>, IBackendCommand;
 }
