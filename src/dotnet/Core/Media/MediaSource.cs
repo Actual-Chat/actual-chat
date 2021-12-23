@@ -10,7 +10,7 @@ public interface IMediaSource
 
     IAsyncEnumerable<MediaFrame> GetFramesUntyped(CancellationToken cancellationToken);
     IAsyncEnumerable<IMediaStreamPart> GetStreamUntyped(CancellationToken cancellationToken);
-    IAsyncEnumerable<byte[]> GetBlobStream(CancellationToken cancellationToken);
+    IAsyncEnumerable<byte[]> GetByteStream(CancellationToken cancellationToken);
 }
 
 public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMediaSource
@@ -46,7 +46,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
 
 #pragma warning disable MA0056
     protected MediaSource(
-        IAsyncEnumerable<byte[]> blobStream,
+        IAsyncEnumerable<RecordingPart> recordingStream,
         TMetadata metadata,
         TimeSpan skipTo,
         ILogger log,
@@ -58,7 +58,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
         MetadataTask =  TaskSource.New<TMetadata>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor
         var parsedFrames = Parse(
-            blobStream.Select(blob => new RecordingPart { Data = blob }),
+            recordingStream,
             metadata,
             skipTo,
             cancellationToken);
@@ -114,8 +114,8 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
             yield return new TStreamPart { Frame = frame };
     }
 
-    public IAsyncEnumerable<byte[]> GetBlobStream(CancellationToken cancellationToken)
-        => GetStream(cancellationToken).ToBlobStream(cancellationToken);
+    public IAsyncEnumerable<byte[]> GetByteStream(CancellationToken cancellationToken)
+        => GetStream(cancellationToken).ToByteStream(cancellationToken);
 
     // Protected & private methods
 

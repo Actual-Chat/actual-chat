@@ -53,8 +53,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var writtenSize = await UploadRecording(session, "1", sourceAudioRecorder);
 
         var record = await recordTask;
-        var blobStream = sourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, CancellationToken.None);
-        var readSize = (long) await blobStream.SumAsync(p => p.Data.Length);
+        var byteStream = sourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, CancellationToken.None);
+        var readSize = (long) await byteStream.SumAsync(p => p.Data!.Length);
 
         readSize.Should().Be(writtenSize);
     }
@@ -68,8 +68,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var filePath = GetAudioFilePath();
-        var blobStream = filePath.ReadBlobStream();
-        await sourceAudioRecorder.RecordSourceAudio(session, recording, blobStream.ToRecordingStream(), CancellationToken.None);
+        var byteStream = filePath.ReadByteStream();
+        await sourceAudioRecorder.RecordSourceAudio(session, recording, byteStream.ToRecordingStream(), CancellationToken.None);
         return filePath.GetFileInfo().Length;
     }
 

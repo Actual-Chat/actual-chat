@@ -54,8 +54,8 @@ public class GoogleTranscriberTest : TestBase
 
     private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
     {
-        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(1024, cancellationToken);
-        var audio = new AudioSource(blobStream, new AudioMetadata(), default, null, cancellationToken);
+        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, cancellationToken);
+        var audio = new AudioSource(byteStream, new AudioMetadata(), default, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
