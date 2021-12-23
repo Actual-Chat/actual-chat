@@ -10,7 +10,7 @@
 @inject IJSRuntime _js
 
 <div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full">
-    <div class="flex flex-row justify-between mx-3 my-1">
+    <div class="flex flex-row justify-between px-3 my-1">
         @if (RealtimePlayer != null) {
             <ChatPlayerToggle Player="RealtimePlayer"/>
         }
