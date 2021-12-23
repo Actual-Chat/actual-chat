@@ -281,7 +281,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var filePath = GetAudioDataDir() & fileName;
         var sourceBlobStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(sourceBlobStream.Replay(cancellationToken), new AudioMetadata(), TimeSpan.Zero, audioLog, CancellationToken.None);
+        var audio = new AudioSource(sourceBlobStream.Replay(cancellationToken), TimeSpan.Zero, audioLog, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
         // NOTE(AY): Shouldn't we simply write source blob stream here?
         await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);

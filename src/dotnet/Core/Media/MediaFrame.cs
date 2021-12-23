@@ -9,8 +9,5 @@ public abstract class MediaFrame
     public TimeSpan Duration { get; init; }
     [DataMember(Order = 2)]
     public byte[] Data { get; init; } = Array.Empty<byte>();
-    [DataMember(Order = 3)]
-    public MediaFrameMetadata? Metadata { get; set; }
-
     public abstract bool IsKeyFrame { get; }
 }

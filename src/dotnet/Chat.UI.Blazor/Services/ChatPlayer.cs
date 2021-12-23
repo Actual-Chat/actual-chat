@@ -264,12 +264,9 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
             audioEntry.ChatId,
             audioEntry.Id);
-        var metadata = audioEntry.Metadata.IsNullOrEmpty()
-            ? new AudioMetadata()
-            : SystemJsonSerializer.Default.Read<AudioMetadata>(audioEntry.Metadata)!;
         var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
         var audio = await AudioDownloader
-            .Download(audioBlobUri, metadata, skipTo, cancellationToken)
+            .Download(audioBlobUri, skipTo, cancellationToken)
             .ConfigureAwait(false);
         var trackId = GetAudioTrackId(audioEntry);
         await playback.AddMediaTrack(

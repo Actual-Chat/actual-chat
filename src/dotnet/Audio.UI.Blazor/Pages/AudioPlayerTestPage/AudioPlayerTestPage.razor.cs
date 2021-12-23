@@ -26,7 +26,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private int? _prevMediaElementReadyState;
     private double _offset;
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQEXRGK4DA5BACTDTAGMF0D7/0000.webm";
-    private AsyncMemoizer<byte[]>? _audioBlobStream;
+    private AudioSource? _audioSource;
     private string _audioBlobStreamUri = "";
 
     public Task OnBlockMainThread(int milliseconds)
@@ -112,14 +112,13 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
     {
         var audioLog = Services.LogFor<AudioSource>();
-        if (_audioBlobStream == null || _audioBlobStreamUri != audioUri) {
+        if (_audioSource == null || _audioBlobStreamUri != audioUri) {
             var audioDownloader = new AudioDownloader(Services);
-            _audioBlobStream = audioDownloader.DownloadBlobStream(new Uri(audioUri), cancellationToken).Memoize();
+            _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioUri;
         }
-        var audio = new AudioSource(_audioBlobStream.Replay(cancellationToken), TimeSpan.Zero, audioLog, cancellationToken);
-        await audio.WhenFormatAvailable.ConfigureAwait(true);
-        return audio;
+        await _audioSource.WhenFormatAvailable.ConfigureAwait(true);
+        return _audioSource;
     }
 
     [JSInvokable]

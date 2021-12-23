@@ -5,6 +5,4 @@ public enum RecordingEventType : byte
     Data = 1,
     Pause,
     Resume,
-    Voice,
-    Timestamp,
 }
