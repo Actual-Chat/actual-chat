@@ -21,9 +21,9 @@
                 </svg>
             </button>
         </div>
-        <div @ref="Ref" class="message-input block overflow-y-auto max-h-36 break-words flex-1 py-2 outline-none hover:cursor-text bg-accent text-primary focus:text-secondary"
+        <div @ref="Ref" class="message-input block overflow-y-auto max-h-36 break-words flex-1 py-2 outline-none hover:cursor-text bg-accent text-primary"
              autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
-             aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox">
+             aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="Message #@(Chat.Title)">
         </div>
         <div class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-r-3xl mr-2 md:mr-8 pl-2 items-end">
             <button @onclick="_ => Post()" @ref="PostRef" class="post-message outline-none py-2 pr-3 text-secondary rounded-r-full bg-transparent max-h-12 hidden transition-all duration-150">
