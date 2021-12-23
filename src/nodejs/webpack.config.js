@@ -2,8 +2,6 @@
 'use strict';
 
 const path = require('path');
-const fs = require('fs');
-
 /**
  * @param {string} file
  */
@@ -15,8 +13,6 @@ function _(file) {
 // https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
 class WatchRunPlugin {
   apply(compiler) {
-    const srcDotnet = _('./../dotnet/');
-
     const /** @type {import('webpack').Compilation} */ compilation = null;
 
     compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
@@ -81,7 +77,7 @@ module.exports = (env, args) => {
     },
     resolve: {
       extensions: ['.ts', '.js', '...'],
-      modules: [_('./node_modules')],
+      modules: [_('./node_modules'), _('./src/')],
       roots: [],
       fallback: {
         "path": false,
@@ -93,13 +89,6 @@ module.exports = (env, args) => {
     // another type of inlined source maps
     //devtool: args.mode === 'development' ? 'eval' : false,
     plugins: [
-      // new FilterWatchIgnorePlugin(filepath => {
-      //  // if (fs.statSync(filepath).isDirectory())
-      //  //   return true;
-      //  // console.log(`Called with path: ${filepath}`);
-      //  //return false;
-      //  return false;
-      // }),
       // @ts-ignore
       new MiniCssExtractPlugin({
         filename: '[name].css',
@@ -172,16 +161,18 @@ module.exports = (env, args) => {
             filename: 'fonts/[name][ext][query]'
           }
         },
-        {
-          test: /feeder-node\.(worker|worklet)\.js$/i,
-          type: 'asset/resource',
-          generator: {
-            filename: '[name][ext][query]'
-          }
-        }
       ],
     },
     entry: {
+      feederWorklet: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
       vadWorklet: {
         import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts',
         chunkLoading: false,
