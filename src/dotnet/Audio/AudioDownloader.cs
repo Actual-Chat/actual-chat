@@ -16,13 +16,12 @@ public class AudioDownloader
 
     public virtual async Task<AudioSource> Download(
         Uri audioUri,
-        AudioMetadata metadata,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var byteStream = HttpClientFactory.DownloadByteStream(audioUri, Log, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(byteStream, metadata, skipTo, audioLog, cancellationToken);
+        var audio = new AudioSource(byteStream, skipTo, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

@@ -112,10 +112,10 @@ export class AudioRecorder {
                     console.log(`${LogScope}.startRecording: state = ${state}`);
 
                 if (vadEvent.kind === 'end') {
-                    this._queue.append(new PauseRecordingEvent());
+                    this._queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
                 }
                 else {
-                    this._queue.append(new ResumeRecordingEvent());
+                    this._queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
                 }
             }
             if (this._debugMode)
@@ -198,6 +198,8 @@ export class AudioRecorder {
         this.recording.mediaStreamAudioSourceNode = this.recording.context.createMediaStreamSource(this.recording.stream);
         this.recording.mediaStreamAudioSourceNode.connect(this.recording.vadWorkletNode);
         this.recording.vadWorkletNode.port.postMessage({ topic: 'init-port' }, [channel.port2]);
+
+	this._queue.append(new ResumeRecordingEvent(Date.now(), 0));
         this.recording.recorder.startRecording();
         await this._blazorRef.invokeMethodAsync('OnStartRecording');
     }

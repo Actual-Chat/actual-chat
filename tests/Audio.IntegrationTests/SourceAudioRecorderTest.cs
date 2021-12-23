@@ -54,7 +54,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
 
         var record = await recordTask;
         var byteStream = sourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, CancellationToken.None);
-        var readSize = (long) await byteStream.SumAsync(p => p.Data!.Length);
+        var readSize = (long) await byteStream.SumAsync(p => p.Data?.Length ?? 0);
 
         readSize.Should().Be(writtenSize);
     }

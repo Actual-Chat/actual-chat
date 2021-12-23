@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio;
 
-public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart, AudioMetadata>
+public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 {
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
@@ -18,12 +18,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
             + "IB9DtnUB/////////+eBAA==",
     };
 
-    public AudioSource(IAsyncEnumerable<byte[]> byteStream, AudioMetadata metadata, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
-        : base(byteStream.ToRecordingStream(metadata, cancellationToken), metadata, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
-    public AudioSource(IAsyncEnumerable<RecordingPart> recordingStream, AudioMetadata metadata, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
-        : base(recordingStream, metadata, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
-    public AudioSource(IAsyncEnumerable<RecordingPart> recordingStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
-        : base(recordingStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
+    public AudioSource(IAsyncEnumerable<byte[]> byteStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
+        : base(byteStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
     public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
         : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
 
@@ -34,25 +30,20 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
         if (skipTo == TimeSpan.Zero)
             return this;
 
-        var recordingStream = GetFrames(cancellationToken).ToRecordingStream(FormatTask, cancellationToken);
+        var recordingStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
         var audio = new AudioSource(recordingStream, skipTo, Log, cancellationToken);
         return audio;
     }
 
     // Protected & private methods
     protected override IAsyncEnumerable<AudioFrame> Parse(
-        IAsyncEnumerable<RecordingPart> recordingStream,
-        AudioMetadata? metadata,
+        IAsyncEnumerable<byte[]> recordingStream,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
-        var metadataTaskSource = TaskSource.For(MetadataTask);
-        var metadataEntries = new List<AudioMetadataEntry>();
-        var existingMetadataMap = metadata?.Entries.ToDictionary(e => e.Offset)
-            ?? new Dictionary<TimeSpan, AudioMetadataEntry>();
         var actualSkipTo = skipTo;
         var clusterOffsetMs = 0;
         short blockOffsetMs = 0;
@@ -73,47 +64,25 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-        Moment? recordedAt = null;
-        float? voiceProbability = null;
         var parseTask = BackgroundTask.Run(() => recordingStream.ForEachAwaitAsync(
-            async recordingPart => {
-                if (recordingPart.RecordedAt != null)
-                    recordedAt = recordingPart.RecordedAt;
-                else if (recordingPart.VoiceProbability != null)
-                    voiceProbability = recordingPart.VoiceProbability;
-                else if (recordingPart.Data != null) {
-                    var data = recordingPart.Data;
-                    AppendData(ref readBuffer, ref state, data);
-                    frameBuffer.Clear();
-                    state = FillFrameBuffer(
-                        frameBuffer,
-                        state.IsEmpty
-                            ? new WebMReader(readBuffer.Span)
-                            : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
-                        existingMetadataMap,
-                        ref actualSkipTo,
-                        ref clusterOffsetMs,
-                        ref blockOffsetMs,
-                        ref skipAdjustmentClusterMs,
-                        ref skipAdjustmentBlockMs);
-                }
+            async chunk => {
+
+                var data = chunk;
+                AppendData(ref readBuffer, ref state, data);
+                frameBuffer.Clear();
+                state = FillFrameBuffer(
+                    frameBuffer,
+                    state.IsEmpty
+                        ? new WebMReader(readBuffer.Span)
+                        : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
+                    ref actualSkipTo,
+                    ref clusterOffsetMs,
+                    ref blockOffsetMs,
+                    ref skipAdjustmentClusterMs,
+                    ref skipAdjustmentBlockMs);
 
                 foreach (var frame in frameBuffer) {
-                    if (recordedAt != null || voiceProbability != null) {
-                        frame.Metadata = new MediaFrameMetadata {
-                            RecordedAt = recordedAt,
-                            VoiceProbability = voiceProbability,
-                        };
-                        recordedAt = null;
-                        voiceProbability = null;
-                    }
                     duration = frame.Offset + frame.Duration;
-                    if (frame.Metadata?.RecordedAt != null || frame.Metadata?.VoiceProbability != null)
-                        metadataEntries.Add(new AudioMetadataEntry {
-                            Offset = frame.Offset,
-                            RecordedAt = frame.Metadata?.RecordedAt,
-                            VoiceProbability = frame.Metadata?.VoiceProbability,
-                        });
                     await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
                 }
             }, cancellationToken), cancellationToken);
@@ -121,19 +90,16 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
         var _ = BackgroundTask.Run(async () => {
             try {
                 await parseTask.ConfigureAwait(false);
-                metadataTaskSource.SetResult(new AudioMetadata { Entries = metadataEntries.ToImmutableArray() });
                 durationTaskSource.SetResult(duration);
             }
             catch (OperationCanceledException e) {
                 target.Writer.TryComplete(e);
                 if (cancellationToken.IsCancellationRequested) {
                     formatTaskSource.TrySetCanceled(cancellationToken);
-                    metadataTaskSource.TrySetCanceled(cancellationToken);
                     durationTaskSource.TrySetCanceled(cancellationToken);
                 }
                 else {
                     formatTaskSource.TrySetCanceled();
-                    metadataTaskSource.TrySetCanceled();
                     durationTaskSource.TrySetCanceled();
                 }
                 throw;
@@ -142,7 +108,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
                 Log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
-                metadataTaskSource.TrySetException(e);
                 durationTaskSource.TrySetException(e);
                 throw;
             }
@@ -150,8 +115,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
                 target.Writer.TryComplete();
                 if (!FormatTask.IsCompleted)
                     formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
-                if (!MetadataTask.IsCompleted)
-                    metadataTaskSource.TrySetException(new InvalidOperationException("Metadata wasn't parsed."));
                 if (!DurationTask.IsCompleted)
                     durationTaskSource.TrySetException(new InvalidOperationException("Duration wasn't parsed."));
                 readBuffer.Release();
@@ -167,10 +130,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
     {
         var isEmpty = true;
         var duration = TimeSpan.Zero;
-        var metadataEntries = new List<AudioMetadataEntry>();
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);
-        var metaDataTaskSource = TaskSource.For(MetadataTask);
         try {
             await foreach (var mediaStreamPart in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 // ReSharper disable once HeapView.PossibleBoxingAllocation
@@ -182,14 +143,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
                         throw new InvalidOperationException("Format part must be the first one.");
                     if (frame != null) {
                         duration = frame.Offset + frame.Duration;
-
-                        if (frame.Metadata?.RecordedAt != null || frame.Metadata?.VoiceProbability != null)
-                            metadataEntries.Add(new AudioMetadataEntry {
-                                Offset = frame.Offset,
-                                RecordedAt = frame.Metadata?.RecordedAt,
-                                VoiceProbability = frame.Metadata?.VoiceProbability,
-                            });
-
                         yield return frame;
                     }
                     else
@@ -198,13 +151,11 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
                 else
                     formatTaskSource.SetResult(format ?? DefaultFormat);
             }
-            metaDataTaskSource.SetResult(new AudioMetadata{ Entries = metadataEntries.ToImmutableArray() });
             durationTaskSource.SetResult(duration);
         }
         finally {
             if (cancellationToken.IsCancellationRequested) {
                 formatTaskSource.TrySetCanceled(cancellationToken);
-                metaDataTaskSource.TrySetCanceled(cancellationToken);
                 durationTaskSource.TrySetCanceled(cancellationToken);
             }
             else {
@@ -214,13 +165,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
                     else
                         formatTaskSource.TrySetException(
                             new InvalidOperationException("MediaSource.Parse: Format wasn't parsed."));
-                }
-                if (!MetadataTask.IsCompleted) {
-                    if (isEmpty)
-                        metaDataTaskSource.TrySetCanceled(cancellationToken);
-                    else
-                        metaDataTaskSource.TrySetException(
-                            new InvalidOperationException("MediaSource.Parse: Metadata wasn't parsed."));
                 }
                 if (!DurationTask.IsCompleted) {
                     if (isEmpty)
@@ -246,7 +190,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
     private WebMReader.State FillFrameBuffer(
         List<AudioFrame> frameBuffer,
         WebMReader webMReader,
-        Dictionary<TimeSpan, AudioMetadataEntry> existingMetadataMap,
         ref TimeSpan skipTo,
         ref int clusterOffsetMs,
         ref short blockOffsetMs,
@@ -360,14 +303,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart,
                         }
                     }
 
-                    if (mediaFrame != null) {
-                        if (existingMetadataMap.TryGetValue(frameOffset, out var metadataEntry))
-                            mediaFrame.Metadata = new MediaFrameMetadata {
-                                RecordedAt = metadataEntry.RecordedAt,
-                                VoiceProbability = metadataEntry.VoiceProbability,
-                            };
+                    if (mediaFrame != null)
                         frameBuffer.Add(mediaFrame);
-                    }
                     framesStart = state.Position;
                 }
                 break;

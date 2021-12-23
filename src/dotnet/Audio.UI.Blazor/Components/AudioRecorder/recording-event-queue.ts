@@ -6,8 +6,6 @@ export enum RecordingEventType {
     Data = 1,
     Pause,
     Resume,
-    Voice,
-    Timestamp
 }
 
 export interface IRecordingEvent {
@@ -40,83 +38,53 @@ export class DataRecordingEvent implements IRecordingEvent {
     }
 }
 
-export class PauseRecordingEvent implements IRecordingEvent {
+class CommandRecordingEvent implements IRecordingEvent {
+    private readonly ticks: bigint;
+    private readonly offset: number;
+
     public readonly type: RecordingEventType;
 
-    constructor() {
-        this.type = RecordingEventType.Pause;
+    constructor(type: RecordingEventType, now: number, offset: number) {
+        this.type = type;
+        this.ticks = BigInt(now * 1e4);
+        this.offset = offset;
     }
 
     serialize(buffer: Uint8Array, offset: number): number {
         const bufferLength = buffer.length;
-        const length = 4;
+        const length = 15;
         const remaining = bufferLength - offset - length;
         if (remaining < 0)
             return remaining;
 
         const dataView = new DataView(buffer.buffer, offset);
         dataView.setUint8(0, this.type);
-        dataView.setUint16(1, 1, true);
-        dataView.setUint8(3, 0);
+        dataView.setUint16(1, 12, true);
+        dataView.setBigUint64(3, this.ticks, true);
+        dataView.setFloat32(11, this.offset, true);
         return length;
     }
 }
 
-export class ResumeRecordingEvent implements IRecordingEvent {
-    public readonly type: RecordingEventType;
-
-    constructor() {
-        this.type = RecordingEventType.Resume;
-    }
-
-    serialize(buffer: Uint8Array, offset: number): number {
-        const bufferLength = buffer.length;
-        const length = 4;
-        const remaining = bufferLength - offset - length;
-        if (remaining < 0)
-            return remaining;
-
-        const dataView = new DataView(buffer.buffer, offset);
-        dataView.setUint8(0, this.type);
-        dataView.setUint16(1, 1, true);
-        dataView.setUint8(3, 1);
-        return length;
+export class PauseRecordingEvent extends CommandRecordingEvent {
+    constructor(now: number, offset: number) {
+        super(RecordingEventType.Pause, now, offset);
     }
 }
 
-export class TimestampRecordingEvent implements IRecordingEvent {
-    private readonly _ticks: bigint;
-
-    public readonly type: RecordingEventType;
-
-    constructor(now: number, timeSlice: number) {
-        this.type = RecordingEventType.Pause;
-        this._ticks = BigInt((Date.now() - timeSlice) * 1e4 + 621355968e9);
-    }
-
-    serialize(buffer: Uint8Array, offset: number): number {
-        const bufferLength = buffer.length;
-        const length = 11;
-        const remaining = bufferLength - offset - length;
-        if (remaining < 0)
-            return remaining;
-
-        const dataView = new DataView(buffer.buffer, offset);
-        dataView.setUint8(0, this.type);
-        dataView.setUint16(1, 8, true);
-        dataView.setBigUint64(3, this._ticks);
-        return length;
+export class ResumeRecordingEvent extends CommandRecordingEvent {
+    constructor(now: number, offset: number) {
+        super(RecordingEventType.Resume, now, offset);
     }
 }
 
 export type RecordingEvent =
     DataRecordingEvent |
     PauseRecordingEvent |
-    ResumeRecordingEvent |
-    TimestampRecordingEvent;
+    ResumeRecordingEvent;
 
 export interface IRecordingEventQueue {
-    append(command: RecordingEvent): void;
+    append(event: RecordingEvent): void;
     flushAsync(): Promise<void>;
 }
 
@@ -129,88 +97,124 @@ export interface IRecordingEventQueueOptions {
 }
 
 export class RecordingEventQueue implements IRecordingEventQueue {
-    private _state: 'running' | 'paused';
-    private _buffer: Uint8Array;
-    private _bufferOffset: number;
-    private readonly _lastBlocks: Denque<Uint8Array>;
-    private readonly _bufferQueue: Denque<Uint8Array>;
-    private readonly _options: IRecordingEventQueueOptions;
-    private _sendBufferTimeout?: ReturnType<typeof setTimeout>;
+    private state: 'running' | 'paused';
+    private bufferOffset: number;
+    private readonly lastEvents: Denque<DataRecordingEvent>;
+    private readonly bufferQueue: Denque<Uint8Array>;
+    private readonly options: IRecordingEventQueueOptions;
+    private sendBufferTimeout?: ReturnType<typeof setTimeout>;
 
     constructor(options: IRecordingEventQueueOptions) {
-        this._options = options;
-        this._buffer = new Uint8Array(this._options.chunkSize);
-        this._bufferOffset = 0;
-        this._sendBufferTimeout = null;
-        this._state = 'running';
-        this._lastBlocks = new Denque<Uint8Array>();
-        this._bufferQueue = new Denque<Uint8Array>();
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
-        this._bufferQueue.push(new Uint8Array(1024));
+        this.options = options;
+        this.bufferOffset = 0;
+        this.sendBufferTimeout = null;
+        this.state = 'paused';
+        this.lastEvents = new Denque<DataRecordingEvent>();
+        this.bufferQueue = new Denque<Uint8Array>();
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
+        this.bufferQueue.push(new Uint8Array(1024));
     }
 
-    append(command: IRecordingEvent): void {
-        if (this._options.debugMode) {
-            this.log(`append: ${command.type}`);
+    append(event: RecordingEvent): void {
+        if (this.options.debugMode) {
+            this.log(`append: ${event.type}`);
         }
 
         let sendImmediately = false;
-        switch (command.type) {
+        switch (event.type) {
             case RecordingEventType.Pause:
-                this._state = "paused";
+                if (this.state === 'paused')
+                    return;
+
+                this.state = "paused";
                 sendImmediately = true;
                 break;
             case RecordingEventType.Resume:
-                if (this._state === "running")
+                if (this.state === "running")
                     return;
-
-                sendImmediately = true;
-                this._state = "running";
                 break;
             case RecordingEventType.Data:
-            case RecordingEventType.Voice:
-            case RecordingEventType.Timestamp:
+                if (this.state === "paused") {
+                    const queueLength = this.lastEvents.push(event as DataRecordingEvent);
+                    if (queueLength > 5) {
+                        this.lastEvents.shift();
+                    }
+                    return;
+                }
                 break;
         }
 
-        if (this._bufferQueue.length == 0) {
-            this._bufferQueue.push(new Uint8Array(1024));
-        }
-        let commandLength = command.serialize(this._bufferQueue.peekFront(), this._bufferOffset);
-        if (sendImmediately || commandLength < 0) {
-            const _ = this.sendTopmostBuffer();
-        }
-        if (commandLength < 0) {
-            commandLength = command.serialize(this._bufferQueue.peekFront(), this._bufferOffset);
-            if (sendImmediately) {
-                const _ = this.sendTopmostBuffer();
-            }
-        }
-        this._bufferOffset += commandLength;
+        if (event.type == RecordingEventType.Resume) {
+            this.appendInternal(event, false);
 
-        if (this._bufferOffset >= this._options.minChunkSize) {
-            const _ = this.sendTopmostBuffer();
-        } else {
-            if (this._options.debugMode) {
-                this.log(`enqueue: ${this._bufferOffset} byte(s) were left in buffer`);
+            if (this.lastEvents.length) {
+                while (this.lastEvents.length > 1) {
+                    const lastEvent = this.lastEvents.shift();
+                    this.appendInternal(lastEvent, false);
+                }
+                this.appendInternal(this.lastEvents.shift(), true);
+            }
+
+            this.state = "running";
+        }
+        else {
+            if (this.lastEvents.length) {
+                while (this.lastEvents.length > 1) {
+                    const lastEvent = this.lastEvents.shift();
+                    this.appendInternal(lastEvent, false);
+                }
+                this.appendInternal(this.lastEvents.shift(), false);
+            }
+
+            this.appendInternal(event, sendImmediately);
+            if (!sendImmediately) {
+                this.ensureSentByTimeout();
             }
         }
-        this.ensureSentByTimeout();
     }
 
     public async flushAsync(): Promise<void> {
-        if (this._options.debugMode) {
+        if (this.options.debugMode) {
             this.log(`flushAsync is called`);
         }
         await this.sendTopmostBuffer();
     }
 
+    private appendInternal(event: RecordingEvent, sendImmediately: boolean): void {
+        if (this.bufferQueue.length == 0) {
+            this.bufferQueue.push(new Uint8Array(1024));
+        }
+        let commandLength = event.serialize(this.bufferQueue.peekFront(), this.bufferOffset);
+        if (commandLength > 0)         {
+            this.bufferOffset += commandLength;
+        }
+        if (sendImmediately || commandLength < 0) {
+            const _ = this.sendTopmostBuffer();
+        }
+        if (commandLength < 0) {
+            commandLength = event.serialize(this.bufferQueue.peekFront(), this.bufferOffset);
+            if (commandLength > 0)         {
+                this.bufferOffset += commandLength;
+            }
+            if (sendImmediately) {
+                const _ = this.sendTopmostBuffer();
+            }
+        }
+
+        if (this.bufferOffset >= this.options.minChunkSize) {
+            const _ = this.sendTopmostBuffer();
+        } else {
+            if (this.options.debugMode) {
+                this.log(`enqueue: ${this.bufferOffset} byte(s) were left in buffer`);
+            }
+        }
+    }
 
     private log(message: string) {
         console.debug(`${LogScope}: ${message}`);
@@ -221,54 +225,54 @@ export class RecordingEventQueue implements IRecordingEventQueue {
     }
 
     private ensureSentByTimeout() {
-        if (this._sendBufferTimeout === null) {
-            this._sendBufferTimeout = setTimeout(() => {
-                if (this._options.debugMode) {
-                    this.log(`Send timeout is fired, sending buffer with ${this._bufferOffset} data bytes.`);
+        if (this.state === "paused")
+            return;
+
+        if (this.sendBufferTimeout === null) {
+            this.sendBufferTimeout = setTimeout(() => {
+                if (this.options.debugMode) {
+                    this.log(`Send timeout is fired, sending buffer with ${this.bufferOffset} data bytes.`);
                 }
                 const _ = this.sendTopmostBuffer();
-            }, this._options.maxFillBufferTimeMs);
+            }, this.options.maxFillBufferTimeMs);
         }
     }
 
     private clearSendTimeout() {
-        if (this._sendBufferTimeout !== null) {
-            clearTimeout(this._sendBufferTimeout);
-            this._sendBufferTimeout = null;
+        if (this.sendBufferTimeout !== null) {
+            clearTimeout(this.sendBufferTimeout);
+            this.sendBufferTimeout = null;
         }
     }
 
     private async sendTopmostBuffer(): Promise<void> {
-        const currentDataLength = this._bufferOffset;
+        const currentDataLength = this.bufferOffset;
         if (currentDataLength == 0)
             return;
 
-        this._bufferOffset = 0;
-        const buffer = await this.sendBufferAsync(this._bufferQueue.shift(), currentDataLength);
-        this._bufferQueue.push(buffer);
+        this.bufferOffset = 0;
+        const buffer = await this.sendBufferAsync(this.bufferQueue.shift(), currentDataLength);
+        this.bufferQueue.push(buffer);
     }
 
     private async sendBufferAsync(buffer: Uint8Array, length: number): Promise<Uint8Array> {
         this.clearSendTimeout();
 
-        if (this._state === "paused")
-            return buffer;
-
         if (length === 0) {
-            if (this._options.debugMode) {
+            if (this.options.debugMode) {
                 this.log(`Buffer is empty.`);
             }
             return buffer;
         }
         const packetBytes = buffer.subarray(0, length);
         try {
-            await this._options.sendAsync(packetBytes);
-            if (this._options.debugMode) {
+            await this.options.sendAsync(packetBytes);
+            if (this.options.debugMode) {
                 this.log(`Sent ${length} data bytes`);
             }
         }
         catch (error) {
-            if (this._options.debugMode) {
+            if (this.options.debugMode) {
                 this.logError(`Couldn't send ${length} data bytes, error: ${error}`);
             }
         }

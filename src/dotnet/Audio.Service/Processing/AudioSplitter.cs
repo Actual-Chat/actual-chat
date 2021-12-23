@@ -33,29 +33,42 @@ public class AudioSplitter
         var firstSegmentFormatSource = new TaskCompletionSource<AudioFormat>();
         var audioLog = Services.LogFor<AudioSource>();
         var index = 0;
-        var channel = Channel.CreateUnbounded<RecordingPart>(
+        var channel = Channel.CreateUnbounded<byte[]>(
             new UnboundedChannelOptions{ SingleWriter = true, SingleReader = true }
         );
         try {
-            await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
+            var currentSegment = await StartNewSegment(index, channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
 
             await foreach (var recordingPart in recordingStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 switch (recordingPart.EventKind)
                 {
                     case RecordingEventKind.Pause:
+                        if (recordingPart.Offset is {} offset)
+                            currentSegment.SetSilenceOffset(offset);
                         channel.Writer.Complete();
                         continue;
                     case RecordingEventKind.Resume:
                     {
-                        channel = Channel.CreateUnbounded<RecordingPart>(new UnboundedChannelOptions { SingleWriter = true });
-                        var format = await firstSegmentFormatSource.Task.ConfigureAwait(false);
-                        var formatPart = new RecordingPart { Data = Convert.FromBase64String(format.CodecSettings) };
-                        await channel.Writer.WriteAsync(formatPart, cancellationToken).ConfigureAwait(false);
-                        await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
+                        if (index > 0) {
+                            channel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
+                                { SingleWriter = true, SingleReader = true });
+                            var format = await firstSegmentFormatSource.Task.ConfigureAwait(false);
+                            var formatChunk = Convert.FromBase64String(format.CodecSettings);
+                            await channel.Writer.WriteAsync(formatChunk, cancellationToken).ConfigureAwait(false);
+                            currentSegment = await StartNewSegment(index, channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
+                        }
+                        if (recordingPart.RecordedAt is {} recordedAt)
+                            currentSegment.SetRecordedAt(recordedAt, recordingPart.Offset);
+
+                        index++;
                         continue;
                     }
                     default:
-                        await channel.Writer.WriteAsync(recordingPart, cancellationToken).ConfigureAwait(false);
+                        if (recordingPart.Data == null)
+                            audioLog.LogWarning("WriteSegments: empty recording data");
+                        else
+                            await channel.Writer.WriteAsync(recordingPart.Data, cancellationToken)
+                                .ConfigureAwait(false);
                         break;
                 }
             }
@@ -68,10 +81,10 @@ public class AudioSplitter
             writer.TryComplete(error);
         }
 
-        async ValueTask StartNewSegment(IAsyncEnumerable<RecordingPart> segmentRecordingStream)
+        async ValueTask<OpenAudioSegment> StartNewSegment(int segmentIndex, IAsyncEnumerable<byte[]> segmentRecordingStream)
         {
             var audio = new AudioSource(segmentRecordingStream, TimeSpan.Zero, audioLog, cancellationToken);
-            var openAudioSegment = new OpenAudioSegment(index++, audioRecord, audio);
+            var openAudioSegment = new OpenAudioSegment(segmentIndex, audioRecord, audio);
             _ = Task.Run(async () => {
                 try {
                     await audio.WhenFormatAvailable.ConfigureAwait(false);
@@ -86,6 +99,7 @@ public class AudioSplitter
                 }
             }, CancellationToken.None);
             await writer.WriteAsync(openAudioSegment, cancellationToken).ConfigureAwait(false);
+            return openAudioSegment;
         }
     }
 }
