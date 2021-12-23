@@ -1,5 +1,6 @@
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
+using Storage.NetCore.Blobs;
 
 namespace ActualChat.Audio.UI.Blazor.Pages;
 
@@ -23,6 +24,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private int? _prevMediaElementReadyState;
     private double _offset;
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQEXRGK4DA5BACTDTAGMF0D7/0000.webm";
+    private AsyncMemoizer<BlobPart>? _audioBlobStream;
+    private string _audioBlobStreamUri = "";
 
     public Task OnBlockMainThread(int milliseconds)
     {
@@ -57,8 +60,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
-            var audioDownloader = new AudioDownloader(Services);
-            var audioSource = await audioDownloader.Download(new Uri(_uri), TimeSpan.Zero, _cts.Token).ConfigureAwait(true);
+            var audioSource = await CreateAudioSource(_uri, _cts.Token);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
@@ -100,6 +102,19 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             if (!_cts.Token.IsCancellationRequested)
                 await jsRef.InvokeVoidAsync("endOfStream", _cts.Token).ConfigureAwait(true);
         }
+    }
+
+    private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
+    {
+        var audioLog = Services.LogFor<AudioSource>();
+        if (_audioBlobStream == null || _audioBlobStreamUri != audioUri) {
+            var audioDownloader = new AudioDownloader(Services);
+            _audioBlobStream = audioDownloader.DownloadBlobStream(new Uri(audioUri), cancellationToken).Memoize();
+            _audioBlobStreamUri = audioUri;
+        }
+        var audio = new AudioSource(_audioBlobStream.Replay(cancellationToken), TimeSpan.Zero, audioLog, cancellationToken);
+        await audio.WhenFormatAvailable.ConfigureAwait(true);
+        return audio;
     }
 
     [JSInvokable]
