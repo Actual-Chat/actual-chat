@@ -19,11 +19,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        var blobStream = GetAudioFilePath("file.webm").ReadBlobStream();
+        var byteStream = GetAudioFilePath("file.webm").ReadByteStream();
 
         var services = new ServiceCollection().BuildServiceProvider();
         var audioSplitter = new AudioSplitter(services);
-        var openAudioSegments = audioSplitter.GetSegments(record, blobStream.ToRecordingStream(), default);
+        var openAudioSegments = audioSplitter.GetSegments(record, byteStream.ToRecordingStream(), default);
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
             openAudioSegment.AudioRecord.Should().Be(record);
@@ -46,11 +46,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
-        var blobStream = audioFilePath.ReadBlobStream();
+        var byteStream = audioFilePath.ReadByteStream();
 
         var services = new ServiceCollection().BuildServiceProvider();
         var audioSplitter = new AudioSplitter(services);
-        var openAudioSegments = audioSplitter.GetSegments(record, blobStream.ToRecordingStream(), default);
+        var openAudioSegments = audioSplitter.GetSegments(record, byteStream.ToRecordingStream(), default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -80,11 +80,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
-        var blobStream = audioFilePath.ReadBlobStream();
+        var byteStream = audioFilePath.ReadByteStream();
 
         var services = new ServiceCollection().BuildServiceProvider();
         var audioSplitter = new AudioSplitter(services);
-        var openAudioSegments = audioSplitter.GetSegments(record, blobStream.ToRecordingStream(), default);
+        var openAudioSegments = audioSplitter.GetSegments(record, byteStream.ToRecordingStream(), default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -114,8 +114,8 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
-        var blobStream = audioFilePath.ReadBlobStream();
-        var blobStreamWithBoundaries = InsertSpeechBoundaries(blobStream.ToRecordingStream());
+        var byteStream = audioFilePath.ReadByteStream();
+        var blobStreamWithBoundaries = InsertSpeechBoundaries(byteStream.ToRecordingStream());
         var services = new ServiceCollection().BuildServiceProvider();
         var audioActivityExtractor = new AudioSplitter(services);
         var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
@@ -153,13 +153,13 @@ public class AudioActivityPeriodExtractorTest : TestBase
             await foreach (var recordingPart in rs) {
                 if (i++ == 20) {
                     var nextBlockStartsAt = recordingPart.Data
-                        .Select((b, i) => (b == 0xA3 && recordingPart.Data[i + 3] == 0x81, i))
+                        .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
                     yield return new RecordingPart { Data = recordingPart.Data[..nextBlockStartsAt]};
-                    yield return new RecordingPart { Command = RecordingCommand.Pause };
+                    yield return new RecordingPart { EventKind = RecordingEventKind.Pause };
 
-                    yield return new RecordingPart { Command = RecordingCommand.Resume };
+                    yield return new RecordingPart { EventKind = RecordingEventKind.Resume };
 
                     yield return new RecordingPart { Data = recordingPart.Data[nextBlockStartsAt..]};
                 }
@@ -181,8 +181,8 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
-        var blobStream = audioFilePath.ReadBlobStream();
-        var blobStreamWithBoundaries = InsertSpeechBoundaries(blobStream.ToRecordingStream());
+        var byteStream = audioFilePath.ReadByteStream();
+        var blobStreamWithBoundaries = InsertSpeechBoundaries(byteStream.ToRecordingStream());
         var services = new ServiceCollection().BuildServiceProvider();
         var audioActivityExtractor = new AudioSplitter(services);
         var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
@@ -220,20 +220,20 @@ public class AudioActivityPeriodExtractorTest : TestBase
                 i++;
                 if (i == 20) {
                     var nextBlockStartsAt = recordingPart.Data
-                        .Select((b, i) => (b == 0xA3 && recordingPart.Data[i + 3] == 0x81, i))
+                        .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
                     yield return new RecordingPart { Data = recordingPart.Data[..nextBlockStartsAt]};
-                    yield return new RecordingPart { Command = RecordingCommand.Pause };
+                    yield return new RecordingPart { EventKind = RecordingEventKind.Pause };
 
                 }
                 else if (i is > 20 and <= 23) {}
                 else if (i == 24) {
                     var nextBlockStartsAt = recordingPart.Data
-                        .Select((b, i) => (b == 0xA3 && recordingPart.Data[i + 3] == 0x81, i))
+                        .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
-                    yield return new RecordingPart { Command = RecordingCommand.Resume };
+                    yield return new RecordingPart { EventKind = RecordingEventKind.Resume };
                     yield return new RecordingPart { Data = recordingPart.Data[nextBlockStartsAt..]};
 
                 }
@@ -256,8 +256,8 @@ public class AudioActivityPeriodExtractorTest : TestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
-        var blobStream = audioFilePath.ReadBlobStream();
-        var blobStreamWithBoundaries = InsertSpeechBoundaries(blobStream.ToRecordingStream());
+        var byteStream = audioFilePath.ReadByteStream();
+        var blobStreamWithBoundaries = InsertSpeechBoundaries(byteStream.ToRecordingStream());
         var services = new ServiceCollection().BuildServiceProvider();
         var audioActivityExtractor = new AudioSplitter(services);
         var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
@@ -295,7 +295,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
                 i++;
                 if (i == 20) {
                     var nextBlockStartsAt = recordingPart.Data
-                        .Select((b, i) => (b == 0xA3 && recordingPart.Data[i + 3] == 0x81, i))
+                        .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
                     yield return new RecordingPart { Data = recordingPart.Data[..nextBlockStartsAt]};
@@ -304,7 +304,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
                 else if (i is > 20 and <= 23) {}
                 else if (i == 24) {
                     var nextBlockStartsAt = recordingPart.Data
-                        .Select((b, i) => (b == 0xA3 && recordingPart.Data[i + 3] == 0x81, i))
+                        .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
                     yield return new RecordingPart { Data = recordingPart.Data[nextBlockStartsAt..]};
@@ -318,8 +318,9 @@ public class AudioActivityPeriodExtractorTest : TestBase
 
     private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
     {
-        var blobStream = GetAudioFilePath(fileName).ReadBlobStream(1024, cancellationToken);
-        var audio = new AudioSource(blobStream, new AudioMetadata(), default, null, cancellationToken);
+        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, cancellationToken);
+        var metadata = new AudioMetadata();
+        var audio = new AudioSource(byteStream, new AudioMetadata(), default, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

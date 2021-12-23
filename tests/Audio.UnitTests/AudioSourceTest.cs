@@ -189,10 +189,10 @@ public class AudioSourceTest
         int skipBytes = 0,
         CancellationToken cancellationToken = default)
     {
-        var blobStream = GetAudioFilePath(fileName)
-            .ReadBlobStream(blobSize, cancellationToken)
+        var byteStream = GetAudioFilePath(fileName)
+            .ReadByteStream(blobSize, cancellationToken)
             .SkipBytes(skipBytes, cancellationToken);
-        var audio = new AudioSource(blobStream, new AudioMetadata(), skipTo, _logger, cancellationToken);
+        var audio = new AudioSource(byteStream, new AudioMetadata(), skipTo, _logger, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
@@ -205,6 +205,6 @@ public class AudioSourceTest
     private static Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName)
     {
         var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        return stream.WriteBlobStream(source.GetBlobStream(default), true);
+        return stream.WriteByteStream(source.GetByteStream(default), true);
     }
 }

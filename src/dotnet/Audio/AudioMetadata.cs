@@ -4,8 +4,5 @@ namespace ActualChat.Audio;
 public class AudioMetadata
 {
     [DataMember(Order = 0)]
-    public IReadOnlyList<AudioMetadataEntry> Entries { get; init; }
-
-    public AudioMetadata()
-        => Entries = new List<AudioMetadataEntry>();
+    public ImmutableArray<AudioMetadataEntry> Entries { get; init; } = ImmutableArray<AudioMetadataEntry>.Empty;
 }

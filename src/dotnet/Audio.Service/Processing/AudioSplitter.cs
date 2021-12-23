@@ -40,12 +40,12 @@ public class AudioSplitter
             await StartNewSegment(channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
 
             await foreach (var recordingPart in recordingStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                switch (recordingPart.Command)
+                switch (recordingPart.EventKind)
                 {
-                    case RecordingCommand.Pause:
+                    case RecordingEventKind.Pause:
                         channel.Writer.Complete();
                         continue;
-                    case RecordingCommand.Resume:
+                    case RecordingEventKind.Resume:
                     {
                         channel = Channel.CreateUnbounded<RecordingPart>(new UnboundedChannelOptions { SingleWriter = true });
                         var format = await firstSegmentFormatSource.Task.ConfigureAwait(false);

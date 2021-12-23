@@ -170,8 +170,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
 
         var filePath = GetAudioFilePath("file.webm");
         var fileSize = (int) filePath.GetFileInfo().Length;
-        var blobStream = filePath.ReadBlobStream();
-        await sourceAudioRecorder.RecordSourceAudio(session, record, blobStream.ToRecordingStream(), CancellationToken.None);
+        var byteStream = filePath.ReadByteStream();
+        await sourceAudioRecorder.RecordSourceAudio(session, record, byteStream.ToRecordingStream(), CancellationToken.None);
         return fileSize;
     }
 
