@@ -38,6 +38,7 @@ module.exports = ctx => {
             'secondary-muted': 'var(--text-color-secondary-muted)',
             'accent': 'var(--text-color-accent)',
             'accent-muted': 'var(--text-color-accent-muted)',
+            'placeholder': 'var(--text-color-placeholder)',
             'success': 'var(--button-color-success)',
             'toggle-off': 'var(--text-color-toggle-off)',
             'toggle-on': 'var(--text-color-toggle-on)',
