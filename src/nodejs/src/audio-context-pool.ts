@@ -59,6 +59,7 @@ export class AudioContextPool {
         AudioContextPool.removeInitListeners();
         AudioContextPool._audioContexts.forEach(async (obj, key) => {
             obj.audioContext = await obj.factory();
+            console.debug(`AudioContext "${key}" is initialized.`);
         });
     };
 }
