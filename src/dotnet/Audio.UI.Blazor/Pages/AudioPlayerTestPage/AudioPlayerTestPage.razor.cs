@@ -98,7 +98,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     .ConfigureAwait(true);
             }
             if (!_cts.Token.IsCancellationRequested)
-                _ = jsRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
+                await jsRef.InvokeVoidAsync("endOfStream", _cts.Token).ConfigureAwait(true);
         }
     }
 
