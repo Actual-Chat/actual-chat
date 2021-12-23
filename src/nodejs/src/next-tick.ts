@@ -20,3 +20,8 @@ export function nextTick(callback: () => void) {
     callbacks.push(callback);
     channel.port2.postMessage(null);
 }
+
+/** This method is used to break up long running operations */
+export function nextTickAsync(): Promise<void> {
+    return new Promise<void>(resolve => nextTick(resolve));
+}
