@@ -16,6 +16,7 @@ onmessage = (ev) => {
         case 'init-port':
             workletPort = ev.ports[0];
             workletPort.onmessage = onWorkletMessage;
+            queue.clear();
             break;
         default:
             break;

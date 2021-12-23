@@ -3,10 +3,10 @@ import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm'
 import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import AudioFeeder, { PlaybackState } from 'audio-feeder';
+import { nextTick } from 'next-tick';
+import { AudioContextPool } from 'audio-context-pool';
 import { OperationQueue, Operation } from './operation-queue';
-import { nextTick } from './next-tick';
 import { IAudioPlayer } from './IAudioPlayer';
-
 /** Adapter class for ogv.js player */
 export class AudioContextAudioPlayer implements IAudioPlayer {
 
@@ -19,64 +19,12 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         debugFeederStats: boolean;
     } = null;
 
-    public static sharedAudioContext: AudioContext | null = null;
-    /**
-     * Helps to decrease initialization latency by creation the audio context as soon as we could,
-     * but browsers don't allow to create it without user interaction.
-     */
-    public static initSharedAudioContext() {
-        self.addEventListener('onkeydown', AudioContextAudioPlayer._initEventListener);
-        self.addEventListener('mousedown', AudioContextAudioPlayer._initEventListener);
-        self.addEventListener('pointerdown', AudioContextAudioPlayer._initEventListener);
-        self.addEventListener('pointerup', AudioContextAudioPlayer._initEventListener);
-        self.addEventListener('touchstart', AudioContextAudioPlayer._initEventListener);
-    }
-
     public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         const player = new AudioContextAudioPlayer(blazorRef, debugMode);
         if (debugMode) {
             self["_player"] = player;
         }
         return player;
-    }
-
-    /** We're only allowed to have 4 contexts on many browsers and there's no way to discard them */
-    private static getOrCreateSharedAudioContext(): AudioContext | null {
-        if (AudioContextAudioPlayer.sharedAudioContext === null) {
-            if (AudioFeeder.isSupported()) {
-                // We're only allowed 4 contexts on many browsers
-                // and there's no way to discard them (!)...
-                const context = new AudioContext({ sampleRate: 48000 });
-
-                let node: ScriptProcessorNode | null = null;
-                if (context.createScriptProcessor) {
-                    node = context.createScriptProcessor(1024, 0, 2);
-                } else if (context["createJavaScriptNode"]) {
-                    node = context["createJavaScriptNode"](1024, 0, 2);
-                } else {
-                    throw new Error("Bad version of web audio API?");
-                }
-
-                // Don't actually run any audio, just start & stop the node
-                node.connect(context.destination);
-                node.disconnect();
-
-                AudioContextAudioPlayer.sharedAudioContext = context;
-            }
-        }
-        return AudioContextAudioPlayer.sharedAudioContext;
-    }
-    private static _initEventListener = () => {
-        AudioContextAudioPlayer.removeInitListeners();
-        AudioContextAudioPlayer.getOrCreateSharedAudioContext();
-    };
-
-    private static removeInitListeners() {
-        self.removeEventListener('onkeydown', AudioContextAudioPlayer._initEventListener);
-        self.removeEventListener('mousedown', AudioContextAudioPlayer._initEventListener);
-        self.removeEventListener('pointerdown', AudioContextAudioPlayer._initEventListener);
-        self.removeEventListener('pointerup', AudioContextAudioPlayer._initEventListener);
-        self.removeEventListener('touchstart', AudioContextAudioPlayer._initEventListener);
     }
 
     private static getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
@@ -114,7 +62,14 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
      * should be in sync with audio-feeder bufferSize
      */
     private readonly _bufferEnoughThreshold = 0.170;
-
+    /**
+     * We have 960 samples in opus frame (if it was recorded by our wasm recorder)
+     * bufferSize must be power of 2, so 256, 512 (10ms-20ms), 1024 (21ms+) , 2048 (42ms+),
+     * 4096(85ms), 8192(170ms), 16384(341ms). You can read about it at the webaudio spec
+     * https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-createscriptprocessor-buffersize-numberofinputchannels-numberofoutputchannels-buffersize
+     * so we can block js main thread max up to 85ms without glitches
+     */
+    private readonly _audioContextBufferSize = 4096;
     /** How many milliseconds can we block the main thread for processing */
     private readonly _processingThresholdMs = 10;
     /**
@@ -138,7 +93,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     private _decoder?: Decoder;
     private readonly _decoderReady: Promise<Decoder>;
     private _audioContext: AudioContext;
-    private readonly _feeder?: AudioFeeder;
+    private _feeder?: AudioFeeder;
     private _queue: OperationQueue;
     private _nextProcessingTickTimer: number | null;
     private _isProcessing: boolean;
@@ -193,42 +148,30 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 this._decoder = decoder;
                 resolve(this._decoder);
             })));
-        this._audioContext = AudioContextAudioPlayer.getOrCreateSharedAudioContext();
-        if (this._audioContext === null) {
-            this._audioContext = new AudioContext({ sampleRate: 48000 });
-        }
-        if (this._audioContext.state === "suspended") {
-            const _ = this._audioContext.resume();
-        }
-        this._feeder = new AudioFeeder({
-            // we have 960 samples in opus frame (if it was recorded by our wasm recorder)
-            // bufferSize must be power of 2, so 256, 512 (10ms-20ms), 1024 (21ms+) , 2048 (42ms+),
-            // 4096(85ms), 8192(170ms), 16384(341ms). You can read about it at the webaudio spec
-            // https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-createscriptprocessor-buffersize-numberofinputchannels-numberofoutputchannels-buffersize
-            // so we can block js main thread max up to 85ms without glitches
-            bufferSize: 4096,
-            audioContext: this._audioContext,
-        });
-        this._feeder.onbufferlow = () => this.unblockQueue('onbufferlow');
-        this._feeder.onstarved = () => {
-            if (this._isPlaying && this._isEndOfStreamReached) {
-                this._feeder.onstarved = null;
-                if (debugMode)
-                    this.log(`audio ended.`);
-                const _ = this.onUpdateOffsetTick();
-                this.dispose();
-                const __ = this.invokeOnPlaybackEnded();
-                return;
-            }
-            this.unblockQueue('onstarved');
-        };
-
     }
 
     public async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
             this.log(`initialize(header: ${byteArray.length} bytes)`);
         try {
+            this._audioContext = await AudioContextPool.get("main") as AudioContext;
+            this._feeder = new AudioFeeder({
+                bufferSize: this._audioContextBufferSize,
+                audioContext: this._audioContext,
+            });
+            this._feeder.onbufferlow = () => this.unblockQueue('onbufferlow');
+            this._feeder.onstarved = () => {
+                if (this._isPlaying && this._isEndOfStreamReached) {
+                    this._feeder.onstarved = null;
+                    if (this._debugMode)
+                        this.log(`audio ended.`);
+                    const _ = this.onUpdateOffsetTick();
+                    this.dispose();
+                    const __ = this.invokeOnPlaybackEnded();
+                    return;
+                }
+                this.unblockQueue('onstarved');
+            };
             this._feeder.init(1, 48000);
             this._feeder.bufferThreshold = this._bufferUnblockThreshold;
             if (this._demuxer === null) {
@@ -524,10 +467,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         this._feeder.flush();
         this._feeder.close();
         this._isPlaying = false;
-        if (this._audioContext !== AudioContextAudioPlayer.sharedAudioContext) {
-            this._audioContext.suspend()
-                .then(() => this._audioContext.close().then(() => { this._audioContext = null; }));
-        }
     }
 
     private demuxEnqueue(buffer: ArrayBuffer): Promise<void> {
@@ -615,5 +554,3 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         console.error(`AudioContextAudioPlayer: ${message}`);
     }
 }
-
-AudioContextAudioPlayer.initSharedAudioContext();

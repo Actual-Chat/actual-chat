@@ -1,8 +1,8 @@
 /**
- * https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate
- * polyfill
+ * Something like polyfill of [setImmediate](https://developer.mozilla.org/en-US/docs/Web/API/Window/setImmediate)
+ * Do not use webpack's polyfill of setImmediate, because it's implemented using
+ * setTimeout which will be throttled in background tabs.
  */
-
 const channel = new MessageChannel();
 const callbacks = [];
 
