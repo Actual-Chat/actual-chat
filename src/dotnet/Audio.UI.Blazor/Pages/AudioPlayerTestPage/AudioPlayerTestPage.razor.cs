@@ -16,8 +16,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [Inject]
     private IJSRuntime JS { get; set; } = null!;
 
-    protected double StartPlayingDelay;
-    protected double InitializeDelay;
+    protected long ObjectCreationDelay;
+    protected long InitializeDelay;
+    protected long StartPlayingDelay;
+    protected long InitializeDuration;
     private bool _isPlaying;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
@@ -37,8 +39,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public void OnStartPlaying(AudioPlayerTestPageStats statistics)
     {
         Log.LogInformation("OnStartPlaying called");
-        InitializeDelay = statistics.InitializeEndTime - statistics.InitializeStartTime;
-        StartPlayingDelay = statistics.PlayingStartTime - statistics.InitializeStartTime;
+        InitializeDelay = statistics.InitializeEndTime - statistics.ConstructorStartTime;
+        StartPlayingDelay = statistics.PlayingStartTime - statistics.ConstructorStartTime;
+        ObjectCreationDelay = statistics.ConstructorEndTime - statistics.ConstructorStartTime;
         StateHasChanged();
     }
 
@@ -62,6 +65,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _cts = new CancellationTokenSource();
             var audioSource = await CreateAudioSource(_uri, _cts.Token);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+            var stopWatch = Stopwatch.StartNew();
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
                 _cts.Token, isMsePlayer, blazorRef
@@ -88,6 +92,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             });
             var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
             await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.ToBlobPart().Data).ConfigureAwait(true);
+            InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {
                     Log.LogInformation(
@@ -180,5 +185,11 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         GC.SuppressFinalize(this);
     }
 
-    public record AudioPlayerTestPageStats(long InitializeStartTime, long InitializeEndTime, long PlayingStartTime);
+    public record AudioPlayerTestPageStats(
+        long ConstructorStartTime,
+        long ConstructorEndTime,
+        long InitializeStartTime,
+        long InitializeEndTime,
+        long PlayingStartTime
+    );
 }

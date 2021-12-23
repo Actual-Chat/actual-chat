@@ -5,6 +5,8 @@ import { MseAudioPlayer } from "../../Components/AudioPlayer/mse-audio-player";
 
 export class AudioPlayerTestPage implements IAudioPlayer {
     private _stats = {
+        constructorStartTime: 0,
+        constructorEndTime: 0,
         initializeStartTime: 0,
         initializeEndTime: 0,
         playingStartTime: 0,
@@ -28,6 +30,7 @@ export class AudioPlayerTestPage implements IAudioPlayer {
     private readonly _player: IAudioPlayer;
 
     constructor(isMsePlayer: boolean, blazorRef: DotNet.DotNetObject) {
+        this._stats.constructorStartTime = new Date().getTime();
         this._player = isMsePlayer
             ? new MseAudioPlayer(blazorRef, true)
             : new AudioContextAudioPlayer(blazorRef, true);
@@ -37,6 +40,7 @@ export class AudioPlayerTestPage implements IAudioPlayer {
             console.warn("onStartPlaying called", this._stats);
             const _ = blazorRef.invokeMethodAsync("OnStartPlaying", this.getStats());
         };
+        this._stats.constructorEndTime = new Date().getTime();
     }
 
     public getStats() {
