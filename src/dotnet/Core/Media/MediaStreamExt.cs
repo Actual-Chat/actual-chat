@@ -27,4 +27,17 @@ public static class MediaStreamExt
                 yield return part.Frame.Data;
             }
     }
+
+    public static async IAsyncEnumerable<byte[]> ToByteStream<TMediaFormat>(
+        this IAsyncEnumerable<MediaFrame> mediaStream,
+        Task<TMediaFormat> formatTask,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+        where TMediaFormat: MediaFormat
+    {
+        var format = await formatTask.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
+        yield return format.Serialize();
+
+        await foreach (var frame in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false))
+            yield return frame.Data;
+    }
 }

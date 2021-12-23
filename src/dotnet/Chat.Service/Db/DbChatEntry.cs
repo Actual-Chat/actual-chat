@@ -69,9 +69,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
                 ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
                 : default
                 : default,
-            Metadata = Type == ChatEntryType.Text
-                ? null
-                : TextToTimeMap,
 #pragma warning restore IL2026
         };
 
@@ -95,9 +92,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 #pragma warning disable IL2026
         TextToTimeMap = !model.TextToTimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TextToTimeMap)
-            : Type != ChatEntryType.Text
-                ? model.Metadata
-                : null;
+            : null;
 #pragma warning restore IL2026
     }
 

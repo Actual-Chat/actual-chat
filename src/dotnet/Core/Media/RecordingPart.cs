@@ -2,7 +2,8 @@ namespace ActualChat.Media;
 
 public enum RecordingEventKind : byte
 {
-    Pause = 0,
+    Data = 0,
+    Pause,
     Resume,
 }
 
@@ -10,11 +11,15 @@ public enum RecordingEventKind : byte
 public class RecordingPart
 {
     [DataMember(Order = 0)]
-    public byte[]? Data { get; init; }
+    public RecordingEventKind EventKind { get; init; }
+
     [DataMember(Order = 1)]
-    public Moment? RecordedAt { get; init; }
+    public byte[]? Data { get; init; }
     [DataMember(Order = 2)]
-    public float? VoiceProbability { get; init; }
+    public Moment? RecordedAt { get; init; }
     [DataMember(Order = 3)]
-    public RecordingEventKind? EventKind { get; init; }
+    public TimeSpan? Offset { get; init; }
+
+    public RecordingPart(RecordingEventKind eventKind)
+        => EventKind = eventKind;
 }

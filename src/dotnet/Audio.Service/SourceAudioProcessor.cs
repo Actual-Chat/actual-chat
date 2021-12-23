@@ -181,7 +181,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             Content = audioBlobId ?? "",
             StreamId = Symbol.Empty,
             EndsAt = audioEntry.BeginsAt + closedSegment.Duration,
-            Metadata = SystemJsonSerializer.Default.Write(closedSegment.Metadata),
+            // TODO(AK): write actual voice duration + client recordedAt
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
         await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);

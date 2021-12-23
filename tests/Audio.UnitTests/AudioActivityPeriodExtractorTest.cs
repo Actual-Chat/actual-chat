@@ -149,6 +149,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
 
         async IAsyncEnumerable<RecordingPart> InsertSpeechBoundaries(IAsyncEnumerable<RecordingPart> rs)
         {
+            yield return new RecordingPart(RecordingEventKind.Resume) {
+                RecordedAt = SystemClock.Now,
+                Offset = TimeSpan.FromSeconds(0),
+            };
+
             var i = 0;
             await foreach (var recordingPart in rs) {
                 if (i++ == 20) {
@@ -156,15 +161,21 @@ public class AudioActivityPeriodExtractorTest : TestBase
                         .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
-                    yield return new RecordingPart { Data = recordingPart.Data[..nextBlockStartsAt]};
-                    yield return new RecordingPart { EventKind = RecordingEventKind.Pause };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data[..nextBlockStartsAt]};
+                    yield return new RecordingPart(RecordingEventKind.Pause) {
+                        RecordedAt = SystemClock.Now,
+                        Offset = TimeSpan.FromSeconds(10),
+                    };
 
-                    yield return new RecordingPart { EventKind = RecordingEventKind.Resume };
+                    yield return new RecordingPart(RecordingEventKind.Resume) {
+                        RecordedAt = SystemClock.Now,
+                        Offset = TimeSpan.FromSeconds(10),
+                    };
 
-                    yield return new RecordingPart { Data = recordingPart.Data[nextBlockStartsAt..]};
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data[nextBlockStartsAt..]};
                 }
                 else
-                    yield return new RecordingPart { Data = recordingPart.Data };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data };
             }
         }
     }
@@ -213,8 +224,14 @@ public class AudioActivityPeriodExtractorTest : TestBase
         }
         size.Should().BeLessThan(fileSize + 161 - (3 * 300)); // + format of next segment
 
+
         async IAsyncEnumerable<RecordingPart> InsertSpeechBoundaries(IAsyncEnumerable<RecordingPart> rs)
         {
+            yield return new RecordingPart(RecordingEventKind.Resume) {
+                RecordedAt = SystemClock.Now,
+                Offset = TimeSpan.FromSeconds(0),
+            };
+
             var i = 0;
             await foreach (var recordingPart in rs) {
                 i++;
@@ -223,8 +240,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
                         .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
-                    yield return new RecordingPart { Data = recordingPart.Data[..nextBlockStartsAt]};
-                    yield return new RecordingPart { EventKind = RecordingEventKind.Pause };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data[..nextBlockStartsAt]};
+                    yield return new RecordingPart(RecordingEventKind.Pause) {
+                        RecordedAt = SystemClock.Now,
+                        Offset = TimeSpan.FromSeconds(10),
+                    };
 
                 }
                 else if (i is > 20 and <= 23) {}
@@ -233,12 +253,15 @@ public class AudioActivityPeriodExtractorTest : TestBase
                         .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
-                    yield return new RecordingPart { EventKind = RecordingEventKind.Resume };
-                    yield return new RecordingPart { Data = recordingPart.Data[nextBlockStartsAt..]};
+                    yield return new RecordingPart(RecordingEventKind.Resume) {
+                        RecordedAt = SystemClock.Now,
+                        Offset = TimeSpan.FromSeconds(10),
+                    };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data[nextBlockStartsAt..]};
 
                 }
                 else
-                    yield return new RecordingPart { Data = recordingPart.Data };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data };
             }
         }
     }
@@ -290,6 +313,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
 
         async IAsyncEnumerable<RecordingPart> InsertSpeechBoundaries(IAsyncEnumerable<RecordingPart> rs)
         {
+            yield return new RecordingPart(RecordingEventKind.Resume) {
+                RecordedAt = SystemClock.Now,
+                Offset = TimeSpan.FromSeconds(0),
+            };
+
             var i = 0;
             await foreach (var recordingPart in rs) {
                 i++;
@@ -298,7 +326,11 @@ public class AudioActivityPeriodExtractorTest : TestBase
                         .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
-                    yield return new RecordingPart { Data = recordingPart.Data[..nextBlockStartsAt]};
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data[..nextBlockStartsAt]};
+                    yield return new RecordingPart(RecordingEventKind.Pause) {
+                        RecordedAt = SystemClock.Now,
+                        Offset = TimeSpan.FromSeconds(10),
+                    };
 
                 }
                 else if (i is > 20 and <= 23) {}
@@ -307,11 +339,15 @@ public class AudioActivityPeriodExtractorTest : TestBase
                         .Select((b, i) => (b == 0xA3 && recordingPart.Data![i + 3] == 0x81, i))
                         .First(x => x.Item1).i;
 
-                    yield return new RecordingPart { Data = recordingPart.Data[nextBlockStartsAt..]};
+                    yield return new RecordingPart(RecordingEventKind.Resume) {
+                        RecordedAt = SystemClock.Now,
+                        Offset = TimeSpan.FromSeconds(10.2),
+                    };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data[nextBlockStartsAt..]};
 
                 }
                 else
-                    yield return new RecordingPart { Data = recordingPart.Data };
+                    yield return new RecordingPart(RecordingEventKind.Data) { Data = recordingPart.Data };
             }
         }
     }
@@ -319,8 +355,7 @@ public class AudioActivityPeriodExtractorTest : TestBase
     private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, cancellationToken);
-        var metadata = new AudioMetadata();
-        var audio = new AudioSource(byteStream, new AudioMetadata(), default, null, cancellationToken);
+        var audio = new AudioSource(byteStream, default, null, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

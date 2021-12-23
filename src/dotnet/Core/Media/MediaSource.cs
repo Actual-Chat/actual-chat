@@ -13,16 +13,14 @@ public interface IMediaSource
     IAsyncEnumerable<byte[]> GetByteStream(CancellationToken cancellationToken);
 }
 
-public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMediaSource
+public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     where TFormat : MediaFormat
     where TFrame : MediaFrame
     where TStreamPart : class, IMediaStreamPart<TFormat, TFrame>, new()
-    where TMetadata : class
 {
     protected AsyncMemoizer<TFrame> MemoizedFrames { get; }
     protected Task<TFormat> FormatTask { get; }
     protected Task<TimeSpan> DurationTask { get; }
-    protected Task<TMetadata> MetadataTask { get; }
     protected ILogger Log { get; }
     protected abstract TFormat DefaultFormat { get; }
 
@@ -35,9 +33,6 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
     public TimeSpan Duration => DurationTask.IsCompleted
         ? DurationTask.Result
         : throw new InvalidOperationException("Duration isn't parsed yet.");
-    public TMetadata Metadata => MetadataTask.IsCompleted
-        ? MetadataTask.Result
-        : throw new InvalidOperationException("Metadata weren't parsed yet.");
 #pragma warning restore VSTHRD002
     public Task WhenFormatAvailable => FormatTask;
     public Task WhenDurationAvailable => DurationTask;
@@ -46,8 +41,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
 
 #pragma warning disable MA0056
     protected MediaSource(
-        IAsyncEnumerable<RecordingPart> recordingStream,
-        TMetadata metadata,
+        IAsyncEnumerable<byte[]> recordingStream,
         TimeSpan skipTo,
         ILogger log,
         CancellationToken cancellationToken)
@@ -55,28 +49,8 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
         Log = log;
         FormatTask = TaskSource.New<TFormat>(true).Task;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
-        MetadataTask =  TaskSource.New<TMetadata>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor
-        var parsedFrames = Parse(
-            recordingStream,
-            metadata,
-            skipTo,
-            cancellationToken);
-        MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
-    }
-
-    protected MediaSource(
-        IAsyncEnumerable<RecordingPart> recordingStream,
-        TimeSpan skipTo,
-        ILogger log,
-        CancellationToken cancellationToken)
-    {
-        Log = log;
-        FormatTask = TaskSource.New<TFormat>(true).Task;
-        DurationTask = TaskSource.New<TimeSpan>(true).Task;
-        MetadataTask = TaskSource.New<TMetadata>(true).Task;
-        // ReSharper disable once VirtualMemberCallInConstructor
-        var parsedFrames = Parse(recordingStream, null, skipTo, cancellationToken);
+        var parsedFrames = Parse(recordingStream, skipTo, cancellationToken);
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
     }
 
@@ -88,7 +62,6 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
         Log = log;
         FormatTask = TaskSource.New<TFormat>(true).Task;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
-        MetadataTask = TaskSource.New<TMetadata>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor
         var parsedFrames = Parse(mediaStream, cancellationToken);
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
@@ -120,8 +93,7 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart, TMetadata> : IMe
     // Protected & private methods
 
     protected abstract IAsyncEnumerable<TFrame> Parse(
-        IAsyncEnumerable<RecordingPart> recordingStream,
-        TMetadata? metadata,
+        IAsyncEnumerable<byte[]> recordingStream,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 

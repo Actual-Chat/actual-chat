@@ -18,7 +18,6 @@ public record ChatEntry : IHasId<long>, IHasVersion<long>
     public long? AudioEntryId { get; init; }
     public long? VideoEntryId { get; init; }
     public LinearMap TextToTimeMap { get; init; }
-    public string? Metadata { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double? Duration

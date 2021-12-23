@@ -192,7 +192,7 @@ public class AudioSourceTest
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken)
             .SkipBytes(skipBytes, cancellationToken);
-        var audio = new AudioSource(byteStream, new AudioMetadata(), skipTo, _logger, cancellationToken);
+        var audio = new AudioSource(byteStream, skipTo, _logger, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
