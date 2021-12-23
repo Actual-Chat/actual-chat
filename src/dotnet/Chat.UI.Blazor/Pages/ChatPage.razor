@@ -20,7 +20,7 @@
         PageLayout.Header = @<span>Loading...</span>;
         PageLayout.Footer = null;
     } else {
-        PageLayout.Header = @<div class="w-full"><span class="float-left mt-1">@chat.Title</span><span><NavbarIcon/></span></div>;
+        PageLayout.Header = @<div class="w-full justify-items-center"><span class="float-right mr-2 md:float-left md:ml-2">@chat.Title</span><span><NavbarIcon/></span></div>;
         PageLayout.Footer = @<ChatMessageEditor Chat="@chat" />;
     }
 }
