@@ -112,14 +112,13 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     private async Task TranscribeAudio(OpenAudioSegment audioSegment, ChatEntry audioEntry, CancellationToken cancellationToken)
     {
-        var audioStream = audioSegment.Audio.GetStream(cancellationToken);
         var transcriptionOptions = new TranscriptionOptions() {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
         };
-        var allTranscripts = Transcriber.Transcribe(transcriptionOptions, audioStream, cancellationToken);
+        var allTranscripts = Transcriber.Transcribe(transcriptionOptions, audioSegment.Audio, cancellationToken);
         var segments = TranscriptSplitter.GetSegments(audioSegment, allTranscripts, cancellationToken);
         var segmentTasks = new Queue<Task>();
         await foreach (var segment in segments.ConfigureAwait(false)) {
