@@ -1,11 +1,13 @@
 export class ExponentialMovingAverage {
-    private readonly _window: number;
+    private readonly window: number;
 
-    private _lastMovingAverage: number;
+    private lastMovingAverage: number;
+    private simpleSum: number = 0;
+    private simpleCount: number = 0;
 
     constructor(window: number) {
-        this._window = window;
-        this._lastMovingAverage = NaN;
+        this.window = window;
+        this.lastMovingAverage = NaN;
 
         if (window < 1 || window > 2000) {
             throw new Error("window should be in range [1;2000]");
@@ -13,26 +15,47 @@ export class ExponentialMovingAverage {
     }
 
     public get lastAverage(): number {
-        return this._lastMovingAverage;
+        return this.lastMovingAverage;
+    }
+
+    public append(value: number): number {
+        const { window, lastMovingAverage, simpleSum, simpleCount } = this;
+        const smoothingFactor = 2 / (window + 1);
+
+        if (isNaN(lastMovingAverage)) {
+            this.simpleSum = simpleSum + value;
+            this.simpleCount++;
+            const average = this.simpleSum / simpleCount;
+            if (simpleCount >= window) {
+                this.lastMovingAverage = average;
+            }
+            return average;
+        }
+
+        const previousEma = lastMovingAverage;
+        const currentEma = (value - previousEma) * smoothingFactor + previousEma;
+        this.lastMovingAverage = currentEma;
+
+        return currentEma;
     }
 
     public appendChunk(values: Float32Array): Float32Array {
-        if (!values || values.length < this._window) {
+        if (!values || values.length < this.window) {
             throw new Error("values should not be null, undefined, empty or less than configured window");
         }
 
-        const window = this._window;
+        const window = this.window;
         const length = values.length;
         const smoothingFactor = 2 / (window + 1);
 
         const exponentialMovingAverages = new Float32Array(length);
         let startIndex = window;
-        if (isNaN(this._lastMovingAverage)) {
+        if (isNaN(this.lastMovingAverage)) {
             const sma = simpleMovingAverage(values, window);
             exponentialMovingAverages.set(sma, 0);
         }
         else {
-            exponentialMovingAverages[0] = this._lastMovingAverage;
+            exponentialMovingAverages[0] = this.lastMovingAverage;
             startIndex = 1;
         }
 
@@ -42,7 +65,7 @@ export class ExponentialMovingAverage {
             const currentEma = (value - previousEma) * smoothingFactor + previousEma;
             exponentialMovingAverages[index] = currentEma;
         }
-        this._lastMovingAverage = exponentialMovingAverages[exponentialMovingAverages.length - 1];
+        this.lastMovingAverage = exponentialMovingAverages[exponentialMovingAverages.length - 1];
 
         return exponentialMovingAverages;
     }

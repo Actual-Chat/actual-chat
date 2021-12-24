@@ -1,13 +1,13 @@
 import { RingBuffer } from "./ring-buffer";
 import { VadMessage } from "../audio-vad.message";
 
-const SamplesPerWindow = 4000;
+const SamplesPerWindow = 512;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
-    private _buffer: RingBuffer;
-    private _bufferDeque: ArrayBuffer[];
+    private buffer: RingBuffer;
+    private bufferDeque: ArrayBuffer[];
 
-    private _workerPort: MessagePort;
+    private workerPort: MessagePort;
 
     static get parameterDescriptors() {
         return [];
@@ -22,8 +22,8 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
             switch (topic) {
                 case 'init-port':
                     this.init();
-                    this._workerPort = ev.ports[0];
-                    this._workerPort.onmessage = this.onWorkerMessage.bind(this);
+                    this.workerPort = ev.ports[0];
+                    this.workerPort.onmessage = this.onWorkerMessage.bind(this);
                     break;
                 default:
                     break;
@@ -32,12 +32,12 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private init(): void {
-        this._buffer = new RingBuffer(8192, 1);
-        this._bufferDeque = [];
-        this._bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this._bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this._bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this._bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
+        this.buffer = new RingBuffer(2048, 1);
+        this.bufferDeque = [];
+        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
@@ -56,24 +56,24 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
             outputChannel.set(inputChannel);
         }
 
-        this._buffer.push(input);
-        if (this._buffer.framesAvailable >= SamplesPerWindow) {
+        this.buffer.push(input);
+        if (this.buffer.framesAvailable >= SamplesPerWindow) {
             const vadBuffer = [];
-            let vadArrayBuffer = this._bufferDeque.shift();
+            let vadArrayBuffer = this.bufferDeque.shift();
             if (vadArrayBuffer === undefined) {
                 vadArrayBuffer = new ArrayBuffer(SamplesPerWindow * 4);
             }
 
             vadBuffer.push(new Float32Array(vadArrayBuffer, 0, SamplesPerWindow));
 
-            if (this._buffer.pull(vadBuffer)) {
-                if (this._workerPort !== undefined) {
-                    this._workerPort.postMessage({ topic: 'buffer', buffer: vadArrayBuffer }, [vadArrayBuffer]);
+            if (this.buffer.pull(vadBuffer)) {
+                if (this.workerPort !== undefined) {
+                    this.workerPort.postMessage({ topic: 'buffer', buffer: vadArrayBuffer }, [vadArrayBuffer]);
                 } else {
                     console.log('worklet port is still undefined');
                 }
             } else {
-                this._bufferDeque.unshift(vadArrayBuffer);
+                this.bufferDeque.unshift(vadArrayBuffer);
             }
         }
 
@@ -85,7 +85,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
 
         switch (topic) {
             case 'buffer':
-                this._bufferDeque.push(buffer);
+                this.bufferDeque.push(buffer);
             default:
                 break;
         }

@@ -46,7 +46,7 @@ export class AudioRecorderTestPage extends AudioRecorder {
         const result = super.stopRecording();
         const audio = document.createElement('audio');
         const source = document.createElement('source');
-        const blob = (this._queue as DataUrlSendingQueue).getBlob();
+        const blob = (this.queue as DataUrlSendingQueue).getBlob();
         audio.className = "block";
         audio.controls = true;
         source.src = URL.createObjectURL(blob);
