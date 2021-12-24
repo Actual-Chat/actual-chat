@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio;
 
-public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
+public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 {
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
@@ -20,8 +20,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
 
     public AudioSource(IAsyncEnumerable<byte[]> byteStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
         : base(byteStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
-    public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
-        : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
+
+    public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frameStream, ILogger log, CancellationToken cancellationToken)
+        : base(formatTask, frameStream, log, cancellationToken) { }
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -122,59 +123,6 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
         }, CancellationToken.None);
 
         return target.Reader.ReadAllAsync(cancellationToken);
-    }
-
-    protected override async IAsyncEnumerable<AudioFrame> Parse(
-        IAsyncEnumerable<IMediaStreamPart> mediaStream,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var isEmpty = true;
-        var duration = TimeSpan.Zero;
-        var formatTaskSource = TaskSource.For(FormatTask);
-        var durationTaskSource = TaskSource.For(DurationTask);
-        try {
-            await foreach (var mediaStreamPart in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                // ReSharper disable once HeapView.PossibleBoxingAllocation
-                isEmpty = false;
-                var part = (AudioStreamPart) mediaStreamPart;
-                var (format, frame) = (part.Format, part.Frame);
-                if (FormatTask.IsCompleted) {
-                    if (format != null)
-                        throw new InvalidOperationException("Format part must be the first one.");
-                    if (frame != null) {
-                        duration = frame.Offset + frame.Duration;
-                        yield return frame;
-                    }
-                    else
-                        throw new InvalidOperationException("MediaStreamPart doesn't have any properties set.");
-                }
-                else
-                    formatTaskSource.SetResult(format ?? DefaultFormat);
-            }
-            durationTaskSource.SetResult(duration);
-        }
-        finally {
-            if (cancellationToken.IsCancellationRequested) {
-                formatTaskSource.TrySetCanceled(cancellationToken);
-                durationTaskSource.TrySetCanceled(cancellationToken);
-            }
-            else {
-                if (!FormatTask.IsCompleted) {
-                    if (isEmpty)
-                        formatTaskSource.TrySetCanceled(cancellationToken);
-                    else
-                        formatTaskSource.TrySetException(
-                            new InvalidOperationException("MediaSource.Parse: Format wasn't parsed."));
-                }
-                if (!DurationTask.IsCompleted) {
-                    if (isEmpty)
-                        durationTaskSource.TrySetCanceled(cancellationToken);
-                    else
-                        durationTaskSource.TrySetException(
-                            new InvalidOperationException("MediaSource.Parse: Duration wasn't parsed."));
-                }
-            }
-        }
     }
 
     private void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)

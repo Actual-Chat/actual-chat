@@ -1,6 +1,5 @@
 using System.Numerics;
 using ActualChat.Audio;
-using ActualChat.Media;
 using Cysharp.Text;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1P1Beta1;
@@ -16,18 +15,18 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     private bool DebugMode => Constants.DebugMode.GoogleTranscriber;
 
     private TranscriptionOptions Options { get; }
-    private IAsyncEnumerable<AudioStreamPart> AudioStream { get; }
+    private AudioSource AudioSource { get; }
     private TranscriberState State { get; }
     private Channel<Transcript> Transcripts { get; }
 
     public GoogleTranscriberProcess(
         TranscriptionOptions options,
-        IAsyncEnumerable<AudioStreamPart> audioStream,
+        AudioSource audioSource,
         ILogger? log = null)
     {
         Log = log ?? NullLogger.Instance;
         Options = options;
-        AudioStream = audioStream;
+        AudioSource = audioSource;
         State = new();
         Transcripts = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions() {
             SingleWriter = true,
@@ -42,9 +41,9 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         try {
-            var (format, frames) = await AudioStream.ToFormatAndFrames(cancellationToken).ConfigureAwait(false);
-            await using var __ = frames.ConfigureAwait(false);
-
+            await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
+            var format = AudioSource.Format;
+            var frames = AudioSource.GetFrames(cancellationToken);
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
             var config = new RecognitionConfig {
@@ -81,8 +80,10 @@ public class GoogleTranscriberProcess : AsyncProcessBase
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>) recognizeRequests.GetResponseStream();
 
-            var audioStream = Audio.AudioStream.New(format, frames.AsEnumerableOnce(true), cancellationToken);
-            _ = PushAudio(audioStream, recognizeRequests, cancellationToken);
+            _ = BackgroundTask.Run(() => PushAudio(format, frames, recognizeRequests),
+                Log,
+                $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
+                cancellationToken);
 
             await ProcessResponses(recognizeResponses, cancellationToken).ConfigureAwait(false);
         }
@@ -178,14 +179,19 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     }
 
     private async Task PushAudio(
-        IAsyncEnumerable<AudioStreamPart> audioStream,
-        SpeechClient.StreamingRecognizeStream recognizeRequests,
-        CancellationToken cancellationToken)
+        AudioFormat format,
+        IAsyncEnumerable<AudioFrame> audioStream,
+        SpeechClient.StreamingRecognizeStream recognizeRequests)
     {
         try {
-            await foreach (var part in audioStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            var formatRequest = new StreamingRecognizeRequest {
+                AudioContent = ByteString.CopyFrom(format.Serialize()),
+            };
+            await recognizeRequests.WriteAsync(formatRequest).ConfigureAwait(false);
+
+            await foreach (var part in audioStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(part.Serialize()),
+                    AudioContent = ByteString.CopyFrom(part.Data),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }

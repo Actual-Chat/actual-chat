@@ -1,5 +1,6 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
+using ActualChat.Media;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
@@ -205,6 +206,6 @@ public class AudioSourceTest
     private static Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName)
     {
         var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        return stream.WriteByteStream(source.GetByteStream(default), true);
+        return stream.WriteByteStream(source.GetFrames(CancellationToken.None).ToByteStream(source.GetFormatTask(),default), true);
     }
 }

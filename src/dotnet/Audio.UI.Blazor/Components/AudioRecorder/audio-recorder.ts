@@ -148,7 +148,7 @@ export class AudioRecorder {
                 mimeType: 'audio/webm;codecs=opus',
                 recorderType: MediaStreamRecorder,
                 disableLogs: false,
-                timeSlice: 20,
+                timeSlice: 60,
                 checkForInactiveTracks: true,
                 sampleRate: sampleRate,
                 desiredSampleRate: sampleRate,
