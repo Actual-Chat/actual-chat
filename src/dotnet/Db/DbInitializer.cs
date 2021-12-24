@@ -29,8 +29,9 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
             await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
-            // await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
-            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            //var pendingMigrations = await db.GetPendingMigrationsAsync();
+            //var appliedMigrations = await db.GetAppliedMigrationsAsync();
+            await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
         }
         else
             await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);

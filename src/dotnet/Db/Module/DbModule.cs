@@ -1,4 +1,4 @@
-﻿using ActualChat.Configuration;
+using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
@@ -57,8 +57,11 @@ public class DbModule : HostModule<DbSettings>
                 builder.UseInMemoryDatabase(connectionString);
                 builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
             }
-            else
-                builder.UseNpgsql(connectionString);
+            else {
+                builder.UseNpgsql(
+                    connectionString,
+                    o => o.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration"));
+            }
 
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
