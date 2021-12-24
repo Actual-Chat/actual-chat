@@ -31,6 +31,8 @@ export class MseAudioPlayer implements IAudioPlayer {
     private readonly _sourceBufferCreatingPromise: Promise<SourceBuffer>;
     private readonly _maxBufferSizeSeconds = 5;
     private _isBufferReady: boolean;
+    private isInitialized: boolean = false;
+    private initializationReady?: Promise<void> = null;
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._debugMode = debugMode;
@@ -116,7 +118,7 @@ export class MseAudioPlayer implements IAudioPlayer {
         return new MseAudioPlayer(blazorRef, debugMode);
     }
 
-    public async initialize(byteArray: Uint8Array): Promise<void> {
+    private async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
             this.log(`initialize(header: ${byteArray.length} bytes)`);
 
@@ -136,6 +138,7 @@ export class MseAudioPlayer implements IAudioPlayer {
         } catch (error) {
             this.logError(`initialize: error ${error} ${error.stack}`);
         }
+        this.isInitialized = true;
     }
 
     public dispose(): void {
@@ -144,7 +147,11 @@ export class MseAudioPlayer implements IAudioPlayer {
         this.stop(null);
     }
 
-    public async appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
+    public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
+
+        if (!this.isInitialized) {
+            await this.initialize(byteArray);
+        }
 
         if (this._debugMode)
             this.log(`.appendAudio(size: ${byteArray.length}, offset: ${offset})`);
@@ -191,6 +198,7 @@ export class MseAudioPlayer implements IAudioPlayer {
             this.logError(`appendAudio: error ${error} ${error.stack}`);
             throw error;
         }
+
     }
 
     public endOfStream(): void {

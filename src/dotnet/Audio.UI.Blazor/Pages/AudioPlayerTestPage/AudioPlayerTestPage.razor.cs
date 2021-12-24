@@ -91,7 +91,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
             });
             var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
-            await jsRef.InvokeVoidAsync("initialize", _cts.Token, audioSource.Format.Serialize()).ConfigureAwait(true);
+            await jsRef.InvokeVoidAsync("appendAudio", _cts.Token, _cts.Token, audioSource.Format.Serialize(), -1).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {
@@ -101,7 +101,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = jsRef.InvokeVoidAsync("appendAudioAsync", _cts.Token, frame.Data, frame.Offset.TotalSeconds)
+                _ = jsRef.InvokeVoidAsync("appendAudio", _cts.Token, frame.Data, frame.Offset.TotalSeconds)
                     .ConfigureAwait(true);
             }
             if (!_cts.Token.IsCancellationRequested)

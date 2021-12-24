@@ -27,15 +27,16 @@ export class AudioPlayerTestPage implements IAudioPlayer {
         return new AudioPlayerTestPage(isMsePlayer, blazorRef);
     }
 
-    private readonly _player: IAudioPlayer;
+    private readonly player: IAudioPlayer;
+    private isFirstAppendAudioCall: boolean = true;
 
     constructor(isMsePlayer: boolean, blazorRef: DotNet.DotNetObject) {
         this._stats.constructorStartTime = new Date().getTime();
-        this._player = isMsePlayer
+        this.player = isMsePlayer
             ? new MseAudioPlayer(blazorRef, true)
             : new AudioContextAudioPlayer(blazorRef, true);
-        this._player.onInitialized = () => this._stats.initializeEndTime = new Date().getTime();
-        this._player.onStartPlaying = () => {
+        this.player.onInitialized = () => this._stats.initializeEndTime = new Date().getTime();
+        this.player.onStartPlaying = () => {
             this._stats.playingStartTime = new Date().getTime();
             console.warn("onStartPlaying called", this._stats);
             const _ = blazorRef.invokeMethodAsync("OnStartPlaying", this.getStats());
@@ -48,40 +49,39 @@ export class AudioPlayerTestPage implements IAudioPlayer {
     }
 
     public get onStartPlaying(): () => void | null {
-        return this._player.onStartPlaying;
+        return this.player.onStartPlaying;
     }
 
     public get onInitialized(): () => void | null {
-        return this._player.onInitialized;
+        return this.player.onInitialized;
     }
 
     public set onStartPlaying(value: () => void | null) {
-        this._player.onStartPlaying = value;
+        this.player.onStartPlaying = value;
     }
 
     public set onInitialized(value: () => void | null) {
-        this._player.onInitialized = value;
-    }
-
-    public initialize(byteArray: Uint8Array): Promise<void> {
-        this._stats.initializeStartTime = new Date().getTime();
-        this._stats.initializeEndTime = 0;
-        this._stats.playingStartTime = 0;
-        return this._player.initialize(byteArray);
+        this.player.onInitialized = value;
     }
 
     public dispose(): void {
-        this._player.dispose();
+        this.player.dispose();
     }
 
-    public appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
-        return this._player.appendAudioAsync(byteArray, offset);
+    public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
+        if (this.isFirstAppendAudioCall) {
+            this._stats.initializeStartTime = new Date().getTime();
+            this._stats.initializeEndTime = 0;
+            this._stats.playingStartTime = 0;
+            this.isFirstAppendAudioCall = false;
+        }
+        return this.player.appendAudio(byteArray, offset);
     }
 
     public endOfStream(): void {
-        this._player.endOfStream();
+        this.player.endOfStream();
     }
     public stop(error: EndOfStreamError | null = null): void {
-        this._player.stop(error);
+        this.player.stop(error);
     }
 }
