@@ -142,7 +142,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
             case RecordingEventType.Data:
                 if (this.state === "paused") {
                     const queueLength = this.lastEvents.push(event as DataRecordingEvent);
-                    if (queueLength > 5) {
+                    if (queueLength > 2) {
                         this.lastEvents.shift();
                     }
                     return;

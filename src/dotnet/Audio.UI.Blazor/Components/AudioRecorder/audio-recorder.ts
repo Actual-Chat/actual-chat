@@ -29,8 +29,8 @@ self["OpusMediaRecorder"] = OpusMediaRecorderWrapper;
 self.MediaRecorder = OpusMediaRecorderWrapper;
 
 export class AudioRecorder {
-    protected readonly _debugMode: boolean;
-    protected readonly _blazorRef: DotNet.DotNetObject;
+    protected readonly debugMode: boolean;
+    protected readonly blazorRef: DotNet.DotNetObject;
     protected readonly isMicrophoneAvailable: boolean;
     protected recording: {
         recorder: RecordRTC,
@@ -39,14 +39,14 @@ export class AudioRecorder {
         vadWorkletNode: AudioWorkletNode,
         mediaStreamAudioSourceNode?: MediaStreamAudioSourceNode,
     };
-    protected _queue: IRecordingEventQueue;
+    protected queue: IRecordingEventQueue;
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: IRecordingEventQueue) {
-        this._blazorRef = blazorRef;
-        this._debugMode = debugMode;
+        this.blazorRef = blazorRef;
+        this.debugMode = debugMode;
         this.recording = null;
         this.isMicrophoneAvailable = false;
-        this._queue = queue;
+        this.queue = queue;
 
         if (blazorRef == null)
             console.error(`${LogScope}.constructor: blazorRef == null`);
@@ -108,17 +108,17 @@ export class AudioRecorder {
 
             if (recording !== null) {
                 const state = recording.recorder.getState();
-                if (this._debugMode)
+                if (this.debugMode)
                     console.log(`${LogScope}.startRecording: state = ${state}`);
 
                 if (vadEvent.kind === 'end') {
-                    this._queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
+                    this.queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
                 }
                 else {
-                    this._queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
+                    this.queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
                 }
             }
-            if (this._debugMode)
+            if (this.debugMode)
                 console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
         };
         worker.postMessage({ topic: 'init-port' }, [channel.port1]);
@@ -164,7 +164,7 @@ export class AudioRecorder {
                     try {
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
-                        this._queue.append(new DataRecordingEvent(chunk));
+                        this.queue.append(new DataRecordingEvent(chunk));
                     } catch (e) {
                         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
                     }
@@ -199,15 +199,15 @@ export class AudioRecorder {
         this.recording.mediaStreamAudioSourceNode.connect(this.recording.vadWorkletNode);
         this.recording.vadWorkletNode.port.postMessage({ topic: 'init-port' }, [channel.port2]);
 
-	this._queue.append(new ResumeRecordingEvent(Date.now(), 0));
+	this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
         this.recording.recorder.startRecording();
-        await this._blazorRef.invokeMethodAsync('OnStartRecording');
+        await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
     public async stopRecording(): Promise<void> {
         if (!this.isRecording())
             return;
-        if (this._debugMode)
+        if (this.debugMode)
             console.log(`${LogScope}.stopRecording: started`);
 
         const recording = this.recording;
@@ -221,9 +221,9 @@ export class AudioRecorder {
             recording.stream.getVideoTracks().forEach(t => t.stop());
             await recording.recorder["stopRecordingAsync"]();
         }
-        await this._queue.flushAsync();
-        await this._blazorRef.invokeMethodAsync('OnRecordingStopped');
-        if (this._debugMode)
+        await this.queue.flushAsync();
+        await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
+        if (this.debugMode)
             console.log(`${LogScope}.stopRecording: completed`);
     }
 
