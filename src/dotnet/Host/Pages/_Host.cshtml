@@ -63,6 +63,12 @@
     </div>
 </div>
 
+<div id="components-reconnect-modal">
+    <div class="loading">
+        <div class="loading-caption">Unable to connect to server. Reconnecting...</div>
+        <div class="loading-progress-ring"></div>
+    </div>
+</div>
 
 @if (isCloseWindowRequest)
 {
@@ -86,6 +92,7 @@ else
     @if(isServerSideBlazor)
     {
         <script src="_framework/blazor.server.js" autostart="false"></script>
+        <environment exclude="Development">
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 Blazor.start({
@@ -96,22 +103,41 @@ else
                 });
             });
         </script>
-        @* TODO: check https://github.com/dotnet/aspnetcore/issues/29991 *@
-        @* https://github.com/dotnet/aspnetcore/blob/main/src/Components/Web.JS/src/Platform/Circuits/DefaultReconnectionHandler.ts *@
-        @*
+        </environment>
         <environment include="Development">
         <script>
-            document.addEventListener('readystatechange', event => {
-                if (event.target.readyState === 'complete'){
-                    Blazor.defaultReconnectionHandler.onConnectionDown = function () {
-                        console.warn("[onConnectionDown]: Can't reconnect to restore state, force reload after 5 sec.");
-                        setTimeout(function () {location.reload(); }, 5000);
+            (function () {
+                async function attemptReload() {
+                    try{
+                        await fetch('');
+                        location.reload();
                     }
+                    catch{}
                 }
+                const observer = new MutationObserver((mutations, observer) => {
+                    mutations.forEach(mutation => {
+                        const classList = mutation.target.classList;
+                        if (classList.contains('components-reconnect-rejected')) {
+                            attemptReload();
+                            setInterval(attemptReload, 2000);
+                            observer.disconnect();
+                        }
+                    });
+                });
+                const reconnectModal = document.getElementById('components-reconnect-modal');
+                if (reconnectModal !== null) {
+                    observer.observe(reconnectModal, { attributes: true, subtree: true });
+                }
+            }());
+
+            Blazor.start({
+                reconnectionOptions: {
+                     maxRetries: 15768000,
+                     retryIntervalMilliseconds: 2000
+                },
             });
-        </script>
+            </script>
         </environment>
-        *@
     }
     else
     {
