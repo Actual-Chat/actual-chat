@@ -30,7 +30,7 @@
                 </svg>
             </button>
             <span @ref="RecorderRef">
-                <AudioRecorder ChatId="@Chat.Id"/>
+                <AudioRecorderWrapper ChatId="@Chat.Id" />
             </span>
         </div>
     </div>
@@ -53,9 +53,12 @@
     public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
-        => RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
+    {
+        RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
+    }
 
-    public async ValueTask DisposeAsync() {
+    public async ValueTask DisposeAsync()
+    {
         if (JSRef != null!)
             await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
     // ReSharper disable once ConstantConditionalAccessQualifier

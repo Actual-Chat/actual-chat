@@ -1,0 +1,9 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="mt-1"><span class="float-left">@Chat.Title</span><span><NavbarIcon/></span></div>
+<div class="mt-1"><TranscriptionLanguageSelector ChatId="@Chat.Id" /></div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Chat.Chat Chat { get; set; }
+}

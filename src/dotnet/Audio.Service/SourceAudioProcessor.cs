@@ -113,7 +113,8 @@ public class SourceAudioProcessor : AsyncProcessBase
     private async Task TranscribeAudio(OpenAudioSegment audioSegment, ChatEntry audioEntry, CancellationToken cancellationToken)
     {
         var transcriptionOptions = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = audioSegment.AudioRecord.Language,
+            AltLanguages = Array.Empty<string>(),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,

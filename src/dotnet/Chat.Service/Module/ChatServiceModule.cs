@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat.Db;
+using ActualChat.Chat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -73,5 +73,14 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<ChatAuthors>();
         services.AddSingleton<IChatAuthors>(c => c.GetRequiredService<ChatAuthors>());
         services.AddSingleton<IChatAuthorsBackend>(c => c.GetRequiredService<ChatAuthors>());
+
+        // ChatAuthorOptionsService
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
+            return chatRedisDb.GetSequenceSet<ChatUserConfiguration>("seq." + nameof(ChatUserConfiguration));
+        });
+        fusion.AddComputeService<ChatUserConfigurations>();
+        services.AddSingleton<IChatUserConfigurations>(c => c.GetRequiredService<ChatUserConfigurations>());
+        services.AddSingleton<IChatUserConfigurationsBackend>(c => c.GetRequiredService<ChatUserConfigurations>());
     }
 }

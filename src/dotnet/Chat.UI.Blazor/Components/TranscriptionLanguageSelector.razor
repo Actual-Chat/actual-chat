@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Chat
+@inherits ComputedStateComponent<string>
+
+@inject Session _session
+@inject IChatUserConfigurations _configuration
+@inject UICommandRunner _cmd
+
+<span class="@(_class ??= this.DefaultClass()) select-none cursor-pointer duration-500 ease-in-out group"
+     @onclick="Toogle">
+    <span>Language: <b>@GetActiveText()</b></span>
+</span>
+
+@code {
+    private static string? _class;
+
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    private bool IsRussianLanguage => LanguageName == "ru-RU";
+
+    public string LanguageName => State.LatestNonErrorValue;
+
+    private string GetActiveText()
+        => IsRussianLanguage ? "Russian (Russia)" : "English (USA)";
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken)
+    {
+        var languageName = await _configuration.GetTranscriptionLanguage(_session, ChatId, cancellationToken);
+        return languageName;
+    }
+
+    private async Task Toogle()
+    {
+        var newLanguage = IsRussianLanguage ? "en-US" : "ru-RU";
+
+        var (_, ce) = await _cmd.Run(new IChatUserConfigurations.SetTranscriptionLanguageCommand(_session, ChatId, newLanguage)).ConfigureAwait(true);
+    }
+}
