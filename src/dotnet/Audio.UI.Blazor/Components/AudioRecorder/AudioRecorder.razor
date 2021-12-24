@@ -39,6 +39,9 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
+    [Parameter]
+    public string Language { get; set; } = "ru-RU";
+
     public async ValueTask DisposeAsync() {
         await StopRecording().ConfigureAwait(true);
         await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
@@ -111,7 +114,7 @@
             SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
-        var audioRecord = new AudioRecord(ChatId, audioFormat, "RU-ru", clientStartOffset);
+        var audioRecord = new AudioRecord(ChatId, audioFormat, Language, clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
         _ = BackgroundTask.Run(
             () => _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None),

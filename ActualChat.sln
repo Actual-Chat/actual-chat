@@ -44,9 +44,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Contracts", "src\dotn
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.UI.Blazor", "src\dotnet\Users.UI.Blazor\Users.UI.Blazor.csproj", "{1409E3BF-67D7-46A5-866C-A9F25DA925ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignalR.Client", "src\dotnet\SignalR.Client\SignalR.Client.csproj", "{8721EEF6-719E-4A07-B5F0-F21C2C6FE0D7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SignalR.Client", "src\dotnet\SignalR.Client\SignalR.Client.csproj", "{8721EEF6-719E-4A07-B5F0-F21C2C6FE0D7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis", "src\dotnet\Redis\Redis.csproj", "{BC0AE38C-2C67-453E-A618-5C6D84D98525}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Redis", "src\dotnet\Redis\Redis.csproj", "{BC0AE38C-2C67-453E-A618-5C6D84D98525}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.Contracts", "src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj", "{8804C7E0-6EE9-42CA-A1CD-B9B93A2C2A9A}"
 EndProject
@@ -64,7 +64,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio.IntegrationTests", "t
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.UnitTests", "tests\Core.UnitTests\Core.UnitTests.csproj", "{02A9CB5F-A696-4EFF-97CC-E590484C91AF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Transcription.IntegrationTests", "tests\Transcription.IntegrationTests\Transcription.IntegrationTests.csproj", "{5A88AA44-0AA7-402E-9185-8A7991FAF66C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.IntegrationTests", "tests\Transcription.IntegrationTests\Transcription.IntegrationTests.csproj", "{5A88AA44-0AA7-402E-9185-8A7991FAF66C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.IntegrationTests", "tests\UI.Blazor.IntegrationTests\UI.Blazor.IntegrationTests.csproj", "{D511789B-6EB9-4CC9-9069-8B05FA10D6B9}"
 EndProject
@@ -83,27 +83,31 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audio", "src\dotnet\Audio\Audio.csproj", "{D66CB283-D965-4AB5-A796-33931246D297}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Audio", "src\dotnet\Audio\Audio.csproj", "{D66CB283-D965-4AB5-A796-33931246D297}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaPlayback", "src\dotnet\MediaPlayback\MediaPlayback.csproj", "{43E54532-23A6-4BFE-AE54-777D865BC954}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaPlayback", "src\dotnet\MediaPlayback\MediaPlayback.csproj", "{43E54532-23A6-4BFE-AE54-777D865BC954}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.IntegrationTests", "tests\Redis.IntegrationTests\Redis.IntegrationTests.csproj", "{C5FD17CE-66A9-4CDF-A3E1-793668707583}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Redis.IntegrationTests", "tests\Redis.IntegrationTests\Redis.IntegrationTests.csproj", "{C5FD17CE-66A9-4CDF-A3E1-793668707583}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.UnitTests", "tests\UI.Blazor.UnitTests\UI.Blazor.UnitTests.csproj", "{B253C7E1-0E79-46A1-AAB6-5017D06405D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.UnitTests", "tests\UI.Blazor.UnitTests\UI.Blazor.UnitTests.csproj", "{B253C7E1-0E79-46A1-AAB6-5017D06405D2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.UI.Blazor.UnitTests", "tests\Chat.UI.Blazor.UnitTests\Chat.UI.Blazor.UnitTests.csproj", "{ED7D0179-0B73-45B2-B4C7-EF1DC643EBD4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor.UnitTests", "tests\Chat.UI.Blazor.UnitTests\Chat.UI.Blazor.UnitTests.csproj", "{ED7D0179-0B73-45B2-B4C7-EF1DC643EBD4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.UnitTests", "tests\Users.UnitTests\Users.UnitTests.csproj", "{DAC510C4-610E-4974-B7CB-AF005E58496F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.UnitTests", "tests\Users.UnitTests\Users.UnitTests.csproj", "{DAC510C4-610E-4974-B7CB-AF005E58496F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat", "src\dotnet\Chat\Chat.csproj", "{1C6B1BD4-89D8-4C56-992D-26CE4C73F8F5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat", "src\dotnet\Chat\Chat.csproj", "{1C6B1BD4-89D8-4C56-992D-26CE4C73F8F5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.Contracts", "src\dotnet\Chat.Contracts\Chat.Contracts.csproj", "{457A3CA8-D1AD-4064-98B3-3A9058BCF3BB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Contracts", "src\dotnet\Chat.Contracts\Chat.Contracts.csproj", "{457A3CA8-D1AD-4064-98B3-3A9058BCF3BB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.Client", "src\dotnet\Chat.Client\Chat.Client.csproj", "{AA48E558-3F0A-4DD1-ABCE-DC7B67120207}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Client", "src\dotnet\Chat.Client\Chat.Client.csproj", "{AA48E558-3F0A-4DD1-ABCE-DC7B67120207}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.UnitTests", "tests\Chat.UnitTests\Chat.UnitTests.csproj", "{54296ED7-29EA-47CB-9D6A-4621D4E80E87}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UnitTests", "tests\Chat.UnitTests\Chat.UnitTests.csproj", "{54296ED7-29EA-47CB-9D6A-4621D4E80E87}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.IntegrationTests", "tests\Chat.IntegrationTests\Chat.IntegrationTests.csproj", "{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.IntegrationTests", "tests\Chat.IntegrationTests\Chat.IntegrationTests.csproj", "{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Service.Migration", "src\dotnet\Chat.Service.Migration\Chat.Service.Migration.csproj", "{EB6F6C89-32E9-4EBD-B599-32159A87E481}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service.Migration", "src\dotnet\Users.Service.Migration\Users.Service.Migration.csproj", "{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -267,6 +271,14 @@ Global
 		{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB6F6C89-32E9-4EBD-B599-32159A87E481}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB6F6C89-32E9-4EBD-B599-32159A87E481}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB6F6C89-32E9-4EBD-B599-32159A87E481}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB6F6C89-32E9-4EBD-B599-32159A87E481}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -312,6 +324,8 @@ Global
 		{AA48E558-3F0A-4DD1-ABCE-DC7B67120207} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{54296ED7-29EA-47CB-9D6A-4621D4E80E87} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{EB6F6C89-32E9-4EBD-B599-32159A87E481} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

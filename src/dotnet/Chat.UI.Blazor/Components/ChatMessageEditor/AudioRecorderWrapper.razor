@@ -1,0 +1,21 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+@inherits ComputedStateComponent<string>
+
+@inject Session _session
+@inject IChatUserConfigurations _configuration
+
+<AudioRecorder ChatId="@ChatId" Language="@LanguageName"/>
+
+@code {
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    public string LanguageName => State.LatestNonErrorValue;
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken)
+    {
+        var languageName = await _configuration.GetTranscriptionLanguage(_session, ChatId, cancellationToken);
+        return languageName;
+    }
+}
