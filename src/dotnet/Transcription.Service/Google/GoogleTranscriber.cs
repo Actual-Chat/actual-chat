@@ -12,10 +12,10 @@ public class GoogleTranscriber : ITranscriber
 
     public IAsyncEnumerable<Transcript> Transcribe(
         TranscriptionOptions options,
-        IAsyncEnumerable<AudioStreamPart> audioStream,
+        AudioSource audioSource,
         CancellationToken cancellationToken)
     {
-        var process = new GoogleTranscriberProcess(options, audioStream, Log);
+        var process = new GoogleTranscriberProcess(options, audioSource, Log);
         process.Run(cancellationToken).ContinueWith(_ => process.DisposeAsync(), TaskScheduler.Default);
         return process.GetTranscripts(cancellationToken);
     }

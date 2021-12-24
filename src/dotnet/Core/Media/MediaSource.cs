@@ -1,22 +1,8 @@
 namespace ActualChat.Media;
 
-public interface IMediaSource
-{
-    bool IsCancelled { get; }
-    MediaFormat Format { get; }
-    TimeSpan Duration { get; }
-    Task WhenFormatAvailable { get; }
-    Task WhenDurationAvailable { get; }
-
-    IAsyncEnumerable<MediaFrame> GetFramesUntyped(CancellationToken cancellationToken);
-    IAsyncEnumerable<IMediaStreamPart> GetStreamUntyped(CancellationToken cancellationToken);
-    IAsyncEnumerable<byte[]> GetByteStream(CancellationToken cancellationToken);
-}
-
-public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
+public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     where TFormat : MediaFormat
     where TFrame : MediaFrame
-    where TStreamPart : class, IMediaStreamPart<TFormat, TFrame>, new()
 {
     protected AsyncMemoizer<TFrame> MemoizedFrames { get; }
     protected Task<TFormat> FormatTask { get; }
@@ -54,19 +40,19 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
     }
 
+#pragma warning restore MA0056
+
     protected MediaSource(
-        IAsyncEnumerable<IMediaStreamPart> mediaStream,
+        Task<TFormat> formatTask,
+        IAsyncEnumerable<TFrame> frameStream,
         ILogger log,
         CancellationToken cancellationToken)
     {
         Log = log;
-        FormatTask = TaskSource.New<TFormat>(true).Task;
+        FormatTask = formatTask;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
-        // ReSharper disable once VirtualMemberCallInConstructor
-        var parsedFrames = Parse(mediaStream, cancellationToken);
-        MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
+        MemoizedFrames = new AsyncMemoizer<TFrame>(IterateThrough(frameStream, cancellationToken), cancellationToken);
     }
-#pragma warning restore MA0056
 
     // Public methods
 
@@ -75,20 +61,8 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
     public IAsyncEnumerable<TFrame> GetFrames(CancellationToken cancellationToken)
         => MemoizedFrames.Replay(cancellationToken);
 
-    IAsyncEnumerable<IMediaStreamPart> IMediaSource.GetStreamUntyped(CancellationToken cancellationToken)
-        => GetStream(cancellationToken);
-    public async IAsyncEnumerable<TStreamPart> GetStream(
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        if (!WhenFormatAvailable.IsCompleted)
-            await WhenFormatAvailable.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
-        yield return new TStreamPart { Format = Format };
-        await foreach (var frame in GetFrames(cancellationToken).ConfigureAwait(false))
-            yield return new TStreamPart { Frame = frame };
-    }
-
-    public IAsyncEnumerable<byte[]> GetByteStream(CancellationToken cancellationToken)
-        => GetStream(cancellationToken).ToByteStream(cancellationToken);
+    public Task<TFormat> GetFormatTask()
+        => FormatTask;
 
     // Protected & private methods
 
@@ -97,8 +71,33 @@ public abstract class MediaSource<TFormat, TFrame, TStreamPart> : IMediaSource
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 
-    protected abstract IAsyncEnumerable<TFrame> Parse(
-        IAsyncEnumerable<IMediaStreamPart> mediaStream,
-        CancellationToken cancellationToken);
-
+    private async IAsyncEnumerable<TFrame> IterateThrough(
+        IAsyncEnumerable<TFrame> frames,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var isEmpty = true;
+        var duration = TimeSpan.Zero;
+        var durationTaskSource = TaskSource.For(DurationTask);
+        try {
+            await foreach (var frame in frames.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                isEmpty = false;
+                duration = frame.Offset + frame.Duration;
+                yield return frame;
+            }
+            durationTaskSource.SetResult(duration);
+        }
+        finally {
+            if (cancellationToken.IsCancellationRequested)
+                durationTaskSource.TrySetCanceled(cancellationToken);
+            else {
+                if (!DurationTask.IsCompleted) {
+                    if (isEmpty)
+                        durationTaskSource.TrySetCanceled(cancellationToken);
+                    else
+                        durationTaskSource.TrySetException(
+                            new InvalidOperationException("MediaSource.IterateThrough: Duration wasn't parsed."));
+                }
+            }
+        }
+    }
 }

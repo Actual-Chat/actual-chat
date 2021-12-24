@@ -27,7 +27,8 @@ public class AudioClient : HubClientBase,
             .StreamAsync<AudioStreamPart>("GetAudioStream", streamId, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(audioStream, audioLog, cancellationToken);
+        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
+        var audio = new AudioSource(formatTask, frames, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         Log.LogDebug("GetAudio: Exited; StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
         return audio;

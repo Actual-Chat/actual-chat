@@ -24,7 +24,7 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio.GetStream(default), default).ToListAsync();
+        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());
@@ -44,7 +44,7 @@ public class GoogleTranscriberTest : TestBase
             MaxSpeakerCount = 1,
         };
         var audio = await GetAudio(fileName);
-        var diffs = await transcriber.Transcribe(options, audio.GetStream(default), default).ToListAsync();
+        var diffs = await transcriber.Transcribe(options, audio, default).ToListAsync();
 
         foreach (var diff in diffs)
             Out.WriteLine(diff.ToString());
