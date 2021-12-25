@@ -7,8 +7,9 @@
 @inject NavigationManager _nav
 
 @{
+    _renderedModel = State.LatestNonErrorValue ?? new();
+    var model = _renderedModel;
     var error = State.Error;
-    var model = State.LatestNonErrorValue ?? new();
     if (model.IsUnavailable)
         _nav.Unavailable("chat");
     if (model.MustLogin)
@@ -38,6 +39,8 @@
 }
 
 @code {
+    private Model? _renderedModel;
+
     public record Model {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
@@ -47,14 +50,23 @@
     [Parameter]
     public string ChatId { get; set; } = "";
 
+    protected override bool ShouldRender()
+        => ReferenceEquals(_renderedModel, null)
+            || !ReferenceEquals(_renderedModel, State.LatestNonErrorValue);
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var user = await _auth.GetSessionUser(_session, cancellationToken).ConfigureAwait(false);
-        var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetSessionUser(_session, cancellationToken).ConfigureAwait(true);
+        var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
         if (!user.IsAuthenticated && !chat.IsPublic)
             return new () { MustLogin = true };
+
+        // We want to return the same Chat instance while it stays unchanged
+        var renderedChat = _renderedModel?.Chat;
+        if (renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version)
+            return _renderedModel!;
         return new () { Chat = chat };
     }
 }
