@@ -54,17 +54,17 @@ export class ChatMessageEditor {
         let postButton = this._postButton;
         let recordButton = this._recordButton;
         let languageButton = this._languageButton;
-        recordButton.style.transform = "translateX(-0.5rem) scale(.05)";
         postButton.style.transform = "translateX(-0.5rem) scale(.05)";
+        recordButton.style.transform = "translateX(-0.5rem) scale(.05)";
         setTimeout(() => {
             if (isTextMode) {
+                postButton.classList.remove('hidden');
                 recordButton.classList.add("hidden");
                 languageButton.classList.add("hidden");
-                postButton.classList.remove('hidden');
             } else {
+                postButton.classList.add("hidden");
                 recordButton.classList.remove('hidden');
                 languageButton.classList.remove("hidden");
-                postButton.classList.add("hidden");
             }
         }, 25);
         setTimeout(() => {
