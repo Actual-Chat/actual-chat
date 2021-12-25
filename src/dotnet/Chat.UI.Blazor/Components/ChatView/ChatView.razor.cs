@@ -18,14 +18,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private ILogger<ChatView> Log { get; set; } = default!;
     private ChatPlayer? RealtimePlayer { get; set; }
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
     public ValueTask DisposeAsync()
         => ChatPlayers.DisposePlayers(Chat.Id);
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,

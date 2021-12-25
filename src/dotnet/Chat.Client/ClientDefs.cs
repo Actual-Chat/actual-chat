@@ -53,11 +53,11 @@ public interface IChatAuthorsClientDef
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
 }
 
-[BasePath("chatUserConfigurations")]
-public interface IChatUserConfigurationsClientDef
+[BasePath("chatUserSettings")]
+public interface IChatUserSettingsClientDef
 {
-    [Get(nameof(GetTranscriptionLanguage))]
-    Task<string> GetTranscriptionLanguage(Session session, string chatId, CancellationToken cancellationToken);
-    [Post(nameof(SetTranscriptionLanguage))]
-    Task<Unit> SetTranscriptionLanguage([Body] IChatUserConfigurations.SetTranscriptionLanguageCommand command, CancellationToken cancellationToken);
+    [Get(nameof(GetLanguage))]
+    Task<LanguageId> GetLanguage(Session session, string chatId, CancellationToken cancellationToken);
+    [Post(nameof(SetLanguage))]
+    Task<Unit> SetLanguage([Body] IChatUserSettings.SetLanguageCommand command, CancellationToken cancellationToken);
 }

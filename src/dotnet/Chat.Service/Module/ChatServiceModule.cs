@@ -77,10 +77,10 @@ public class ChatServiceModule : HostModule<ChatSettings>
         // ChatAuthorOptionsService
         services.AddSingleton(c => {
             var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
-            return chatRedisDb.GetSequenceSet<ChatUserConfiguration>("seq." + nameof(ChatUserConfiguration));
+            return chatRedisDb.GetSequenceSet<ChatUserSettings>("seq." + nameof(ChatUserSettings));
         });
-        fusion.AddComputeService<ChatUserConfigurations>();
-        services.AddSingleton<IChatUserConfigurations>(c => c.GetRequiredService<ChatUserConfigurations>());
-        services.AddSingleton<IChatUserConfigurationsBackend>(c => c.GetRequiredService<ChatUserConfigurations>());
+        fusion.AddComputeService<ChatUserSettingsService>();
+        services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
+        services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
     }
 }
