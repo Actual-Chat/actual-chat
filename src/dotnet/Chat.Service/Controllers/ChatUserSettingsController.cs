@@ -17,18 +17,18 @@ public class ChatUserSettingsController : ControllerBase, IChatUserSettings
     }
 
     [HttpGet, Publish]
-    public Task<LanguageId> GetLanguage(Session? session, string chatId, CancellationToken cancellationToken)
+    public Task<ChatUserSettings?> Get(Session? session, string chatId, CancellationToken cancellationToken)
     {
         session ??= _sessionResolver.Session;
-        return _service.GetLanguage(session, chatId, cancellationToken);
+        return _service.Get(session, chatId, cancellationToken);
     }
 
     // Commands
 
     [HttpPost]
-    public Task<Unit> SetLanguage([FromBody] IChatUserSettings.SetLanguageCommand command, CancellationToken cancellationToken)
+    public Task<Unit> Set([FromBody] IChatUserSettings.SetCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
-        return _service.SetLanguage(command, cancellationToken);
+        return _service.Set(command, cancellationToken);
     }
 }

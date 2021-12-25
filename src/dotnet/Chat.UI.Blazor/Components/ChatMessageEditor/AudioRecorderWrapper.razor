@@ -4,17 +4,18 @@
 @inject Session _session
 @inject IChatUserSettings _chatUserSettings
 
-<AudioRecorder ChatId="@ChatId" Language="@LanguageName"/>
+@{
+    var language = State.LatestNonErrorValue;
+}
+<AudioRecorder @key="language" ChatId="@ChatId" Language="@language"/>
 
 @code {
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    public string LanguageName => State.LatestNonErrorValue;
-
     protected override async Task<string> ComputeState(CancellationToken cancellationToken)
     {
-        var languageName = await _chatUserSettings.GetLanguage(_session, ChatId, cancellationToken);
-        return languageName;
+        var settings = await _chatUserSettings.Get(_session, ChatId, cancellationToken);
+        return settings?.Language.ValidOrDefault() ?? LanguageId.Default.Value;
     }
 }

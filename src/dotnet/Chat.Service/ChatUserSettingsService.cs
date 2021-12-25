@@ -1,7 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
-using Stl.Redis;
 
 namespace ActualChat.Chat;
 
@@ -21,60 +20,36 @@ public partial class ChatUserSettingsService : DbServiceBase<ChatDbContext>, ICh
     }
 
     // [ComputeMethod]
-    public virtual async Task<LanguageId> GetLanguage(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
-        LanguageId language;
         if (user.IsAuthenticated)
-            language = await GetChatUserSettingsLanguage(user.Id, chatId, cancellationToken).ConfigureAwait(false);
-        else
-            language = await GetSessionInfoLanguage(session, chatId, cancellationToken).ConfigureAwait(false);
-        return language.ValidOrDefault();
+            return await Get(user.Id, chatId, cancellationToken).ConfigureAwait(false);
+
+        var sessionInfo = await _auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
+        var serializedSettings = sessionInfo.Options[$"{chatId}::settings"] as string;
+        return serializedSettings.IsNullOrEmpty()
+            ? null
+            : SystemJsonSerializer.Default.Read<ChatUserSettings>(serializedSettings);
     }
 
     // [CommandHandler]
-    public virtual async Task<Unit> SetLanguage(IChatUserSettings.SetLanguageCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Unit> Set(IChatUserSettings.SetCommand command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) {
-            return default!;
-        }
+        if (Computed.IsInvalidating()) return default!;
 
-        var (session, chatId, language) = command;
-
+        var (session, chatId, settings) = command;
         var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
-            await SetSessionInfoLanguage(session, chatId, language, cancellationToken).ConfigureAwait(false);
-        else
-            await SetChatUserSettingsLanguage(user.Id, chatId, language, cancellationToken).ConfigureAwait(false);
+        if (user.IsAuthenticated) {
+            var command1 = new IChatUserSettingsBackend.UpsertCommand(user.Id, chatId, settings);
+            await _commander.Call(command1, true, cancellationToken).ConfigureAwait(false);
+        }
+        else {
+            var serializedSettings = SystemJsonSerializer.Default.Write(settings);
+            var updatedPair = KeyValuePair.Create($"{chatId}::settings", serializedSettings);
+            var command2 = new ISessionOptionsBackend.UpdateCommand(session, updatedPair);
+            await _commander.Call(command2, true, cancellationToken).ConfigureAwait(false);
+        }
         return default!;
-    }
-
-    [ComputeMethod]
-    public virtual async Task<LanguageId> GetChatUserSettingsLanguage(string userId, string chatId, CancellationToken cancellationToken)
-    {
-        var settings = await Get(userId, chatId, cancellationToken).ConfigureAwait(false);
-        return settings?.Language ?? LanguageId.None;
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<LanguageId> GetSessionInfoLanguage(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        var sessionInfo = await _auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        var language = sessionInfo.Options[$"{chatId}::language"] as string ?? "";
-        return new LanguageId(language).ValidOrDefault();
-    }
-
-    protected virtual async Task<Unit> SetChatUserSettingsLanguage(string userId, string chatId, LanguageId language, CancellationToken cancellationToken)
-    {
-        _ = await GetOrCreate(userId, chatId, cancellationToken).ConfigureAwait(false);
-        var updateOptionCommand = new IChatUserSettingsBackend.SetLanguageCommand(userId, chatId, language);
-        return await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    protected virtual async Task SetSessionInfoLanguage(Session session, string chatId, LanguageId language, CancellationToken cancellationToken)
-    {
-        var update = KeyValuePair.Create($"{chatId}::language", language.Value);
-        var updateOptionCommand = new ISessionOptionsBackend.UpdateCommand(session, update);
-        await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

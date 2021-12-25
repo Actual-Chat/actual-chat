@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<LanguageId>
+@inherits ComputedStateComponent<ChatUserSettings?>
 @inject Session _session
 @inject IChatUserSettings _chatUserSettings
 @inject UICommandRunner _cmd
 
 @{
-    var language = State.LatestNonErrorValue.ValidOrDefault();
+    var language = (State.LatestNonErrorValue?.Language ?? default).ValidOrDefault();
 }
 <span class="@(_class ??= this.DefaultClass()) select-none cursor-pointer duration-500 ease-in-out group"
      @onclick="Toggle">
@@ -18,16 +18,17 @@
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    protected override async Task<LanguageId> ComputeState(CancellationToken cancellationToken)
-    {
-        var language = await _chatUserSettings.GetLanguage(_session, Chat.Id, cancellationToken);
-        return language.ValidOrDefault();
-    }
+    protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
+        => await _chatUserSettings.Get(_session, Chat.Id, cancellationToken);
 
     private async Task Toggle()
     {
-        var language = State.LatestNonErrorValue.ValidOrDefault();
-        var command = new IChatUserSettings.SetLanguageCommand(_session, Chat.Id, language.Next());
+        var settings = State.Value ?? new() { Language = LanguageId.Default };
+        settings = settings with { Language = settings.Language.Next() };
+        var command = new IChatUserSettings.SetCommand(_session, Chat.Id, settings);
         await _cmd.Run(command).ConfigureAwait(true);
     }
 }
