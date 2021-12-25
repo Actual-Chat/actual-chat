@@ -11,10 +11,9 @@ public class DbChatUserSettings : IHasId<string>
 {
     [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
-
-    [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
     public string UserId { get; set; } = null!;
+    [ConcurrencyCheck] public long Version { get; set; }
 
     public string Language { get; set; } = "";
 
@@ -24,10 +23,14 @@ public class DbChatUserSettings : IHasId<string>
     public ChatUserSettings ToModel()
         => new() {
             Version = Version,
-            ChatId = ChatId,
-            UserId = UserId,
-            Language = Language,
+            Language = new LanguageId(Language).ValidOrDefault(),
         };
+
+    public void UpdateFrom(ChatUserSettings model)
+    {
+        Version = model.Version;
+        Language = model.Language;
+    }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatUserSettings>
     {

@@ -17,14 +17,14 @@ public partial struct LanguageId
         => Value switch {
             "en-US" => "English",
             "ru-RU" => "Russian",
-            _ => throw InvalidLanguageIdError(),
+            _ => "Unknown",
         };
 
     public LanguageId Next()
         => Value switch {
             "en-US" => Russian,
             "ru-RU" => English,
-            _ => throw InvalidLanguageIdError(),
+            _ => Default,
         };
 
     public LanguageId ValidOrDefault()

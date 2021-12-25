@@ -56,8 +56,8 @@ public interface IChatAuthorsClientDef
 [BasePath("chatUserSettings")]
 public interface IChatUserSettingsClientDef
 {
-    [Get(nameof(GetLanguage))]
-    Task<LanguageId> GetLanguage(Session session, string chatId, CancellationToken cancellationToken);
-    [Post(nameof(SetLanguage))]
-    Task<Unit> SetLanguage([Body] IChatUserSettings.SetLanguageCommand command, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [Post(nameof(Set))]
+    Task<Unit> Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
 }

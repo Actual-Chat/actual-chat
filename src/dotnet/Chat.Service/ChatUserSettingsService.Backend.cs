@@ -18,64 +18,45 @@ public partial class ChatUserSettingsService
         var dbSettings = await dbContext.ChatUserSettings
             .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
-        var settings = dbSettings?.ToModel();
-        return settings;
-    }
-
-    // Not a [ComputeMethod]!
-    public virtual async Task<ChatUserSettings> GetOrCreate(string userId, string chatId, CancellationToken cancellationToken)
-    {
-        var result = await Get(userId, chatId, cancellationToken).ConfigureAwait(false);
-        if (result != null)
-            return result;
-
-        var command = new IChatUserSettingsBackend.CreateCommand(chatId, userId);
-        result = await _commander.Call(command, true, cancellationToken).ConfigureAwait(false);
-        return result;
+        return dbSettings?.ToModel();
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatUserSettings> Create(
-        IChatUserSettingsBackend.CreateCommand command, CancellationToken cancellationToken)
+    public virtual async Task<ChatUserSettings> Upsert(
+        IChatUserSettingsBackend.UpsertCommand command,
+        CancellationToken cancellationToken)
     {
-        var (chatId, userId) = command;
+        var (userId, chatId, settings) = command;
         if (Computed.IsInvalidating()) {
             _ = Get(userId, chatId, default);
             return default!;
         }
 
-        var dbSettings = new DbChatUserSettings {
-            Id = DbChatUserSettings.ComposeId(chatId, userId),
-            Version = VersionGenerator.NextVersion(),
-            ChatId = chatId,
-            UserId = userId,
-        };
-
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        dbContext.Add(dbSettings);
+        var id = DbChatUserSettings.ComposeId(chatId, userId);
+        var originalVersion = settings.Version;
+        settings = settings with { Version = VersionGenerator.NextVersion(originalVersion) };
+
+        DbChatUserSettings dbSettings;
+        if (originalVersion != 0) {
+            dbSettings = await dbContext.ChatUserSettings
+                .SingleAsync(e => e.Id == id && e.Version == originalVersion, cancellationToken)
+                .ConfigureAwait(false);
+            dbSettings.UpdateFrom(settings);
+            dbContext.ChatUserSettings.Update(dbSettings);
+        } else {
+            dbSettings = new DbChatUserSettings {
+                Id = id,
+                ChatId = chatId,
+                UserId = userId,
+            };
+            dbSettings.UpdateFrom(settings);
+            dbContext.ChatUserSettings.Add(dbSettings);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbSettings.ToModel();
-    }
-
-    public virtual async Task SetLanguage(IChatUserSettingsBackend.SetLanguageCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating()) {
-            _ = Get(command.UserId, command.ChatId, default);
-            return;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbSettings = await dbContext.ChatUserSettings
-            .ForUpdate()
-            .SingleAsync(s => s.ChatId == command.ChatId && s.UserId == command.UserId, cancellationToken)
-            .ConfigureAwait(false);
-        dbSettings.Language = command.Language;
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
