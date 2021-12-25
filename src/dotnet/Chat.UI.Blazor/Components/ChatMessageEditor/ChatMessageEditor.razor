@@ -49,13 +49,11 @@
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
-    {
-        RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
-    }
+        => RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
 
     public async ValueTask DisposeAsync()
     {
@@ -64,9 +62,6 @@
     // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
     }
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
