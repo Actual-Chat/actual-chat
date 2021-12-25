@@ -20,6 +20,13 @@ public partial struct LanguageId
             _ => "Unknown",
         };
 
+    public string Shortcut
+        => Value switch {
+            "en-US" => "EN",
+            "ru-RU" => "RU",
+            _ => "?",
+        };
+
     public LanguageId Next()
         => Value switch {
             "en-US" => Russian,
