@@ -30,7 +30,8 @@
                 </svg>
             </button>
             <span @ref="RecorderRef">
-                <AudioRecorderWrapper ChatId="@Chat.Id" />
+                <ChatLanguageToggle />@*
+                *@<AudioRecorderWrapper ChatId="@Chat.Id" />
             </span>
         </div>
     </div>

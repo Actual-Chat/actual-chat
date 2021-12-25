@@ -7,10 +7,10 @@
 @{
     var language = (State.LatestNonErrorValue?.Language ?? default).ValidOrDefault();
 }
-<span class="@(_class ??= this.DefaultClass()) select-none cursor-pointer duration-500 ease-in-out group"
-     @onclick="Toggle">
-    <span>Language: <b>@language.Title</b></span>
-</span>
+<button class="@(_class ??= this.DefaultClass()) align-top py-3 px-0 outline-none text-secondary hover:text-toggle-on rounded-r-full bg-transparent max-h-12 transition-all duration-150"
+        @onclick="Toggle">
+    @language.Shortcut
+</button>
 
 @code {
     private static string? _class;
