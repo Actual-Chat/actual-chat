@@ -15,7 +15,7 @@ public partial class ChatUserSettingsService
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         // TODO(AY): Upgrade this code to use entity resolver
-        var dbSettings = await dbContext.ChatUserConfigurations
+        var dbSettings = await dbContext.ChatUserSettings
             .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         var settings = dbSettings?.ToModel();
@@ -68,7 +68,7 @@ public partial class ChatUserSettingsService
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbSettings = await dbContext.ChatUserConfigurations
+        var dbSettings = await dbContext.ChatUserSettings
             .ForUpdate()
             .SingleAsync(s => s.ChatId == command.ChatId && s.UserId == command.UserId, cancellationToken)
             .ConfigureAwait(false);

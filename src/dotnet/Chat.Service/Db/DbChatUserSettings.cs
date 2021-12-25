@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Chat.Db;
 
-[Table("ChatUserConfiguration")]
+[Table("ChatUserSettings")]
 [Index(nameof(ChatId), nameof(UserId))]
 public class DbChatUserSettings : IHasId<string>
 {
