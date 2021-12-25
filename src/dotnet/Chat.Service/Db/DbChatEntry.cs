@@ -17,7 +17,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     private DateTime? _endsAt;
 
     public DbChatEntry() { }
-
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
     // (ChatId, Type, Id)
@@ -74,8 +73,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
     public void UpdateFrom(ChatEntry model)
     {
-        if (model.Id == 0)
-            throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
         CompositeId = GetCompositeId(model.ChatId, model.Type, model.Id);
         ChatId = model.ChatId;
         Type = model.Type;

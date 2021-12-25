@@ -47,7 +47,7 @@ public partial class ChatUserSettingsService
             dbSettings.UpdateFrom(settings);
             dbContext.ChatUserSettings.Update(dbSettings);
         } else {
-            dbSettings = new DbChatUserSettings {
+            dbSettings = new DbChatUserSettings() {
                 Id = id,
                 ChatId = chatId,
                 UserId = userId,
