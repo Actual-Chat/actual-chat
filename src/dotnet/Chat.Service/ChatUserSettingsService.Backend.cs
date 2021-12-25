@@ -53,7 +53,9 @@ public partial class ChatUserSettingsService
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        await dbContext.AddAsync(dbSettings, cancellationToken).ConfigureAwait(false);
+
+        dbContext.Add(dbSettings);
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbSettings.ToModel();
     }
@@ -73,6 +75,7 @@ public partial class ChatUserSettingsService
             .SingleAsync(s => s.ChatId == command.ChatId && s.UserId == command.UserId, cancellationToken)
             .ConfigureAwait(false);
         dbSettings.Language = command.Language;
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
