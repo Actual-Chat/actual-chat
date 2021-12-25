@@ -21,7 +21,7 @@
 } else if (chat != null) {
     <CascadingValue Value="chat">
         @* @key=... ensures child components are recreated on navigation to another chat *@
-        <PageWithHeaderAndFooter @key="chat" Class="@this.DefaultClass()">
+        <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
             <Header>
                 <ChatHeader />
             </Header>
