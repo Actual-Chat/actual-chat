@@ -24,7 +24,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
 
             // Creating admin user
             var adminIdentity = new UserIdentity("internal", "admin");
-            await dbContext.Users.AddAsync(new DbUser() {
+            dbContext.Users.Add(new DbUser() {
                 Id = UserConstants.Admin.UserId,
                 Name = "Admin",
                 Identities = {
@@ -34,13 +34,19 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                         Secret = "",
                     },
                 },
-            }, cancellationToken).ConfigureAwait(false);
-            await dbContext.UserAuthors.AddAsync(new DbUserAuthor() {
+            });
+            dbContext.UserAuthors.Add(new DbUserAuthor() {
                 UserId = UserConstants.Admin.UserId,
                 Name = UserConstants.Admin.Name,
                 Picture = UserConstants.Admin.Picture,
-            }, cancellationToken).ConfigureAwait(false);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            });
+            try {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException) {
+                // Looks like we're starting w/ existing DB
+                dbContext.ChangeTracker.Clear();
+            }
 
             // Signing in to admin session
             var session = sessionFactory.CreateSession();
