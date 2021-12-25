@@ -16,7 +16,8 @@ public class DbUserRepository : DbUserRepo<UsersDbContext, DbUser, string>
             Name = user.Name,
         };
         dbUserAuthor.UpdateFrom(userAuthor);
-        await dbContext.AddAsync(dbUserAuthor, cancellationToken).ConfigureAwait(false);
+        dbContext.Add(dbUserAuthor);
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbUser;
     }

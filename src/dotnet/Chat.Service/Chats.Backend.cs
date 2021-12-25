@@ -160,8 +160,8 @@ public partial class Chats
             CreatedAt = Clocks.SystemClock.Now,
         };
         dbContext.Add(dbChat);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;
