@@ -49,7 +49,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         },
                     },
             };
-            await dbContext.Chats.AddAsync(dbChat, cancellationToken).ConfigureAwait(false);
+            dbContext.Chats.Add(dbChat);
 
             var dbAuthor = new DbChatAuthor() {
                 Id = DbChatAuthor.ComposeId(defaultChatId, 1),
@@ -61,8 +61,15 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 IsAnonymous = false,
                 UserId = adminUserId,
             };
-            await dbContext.ChatAuthors.AddAsync(dbAuthor, cancellationToken).ConfigureAwait(false);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            dbContext.ChatAuthors.Add(dbAuthor);
+
+            try {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException) {
+                // Looks like we're starting w/ existing DB
+                dbContext.ChangeTracker.Clear();
+            }
 
             await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
                 .ConfigureAwait(false);

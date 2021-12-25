@@ -1,7 +1,6 @@
 @page "/chat"
 @page "/chat/{ChatId}"
 @inherits ComputedStateComponent<ChatPage.Model>
-@layout PageLayout
 @inject Session _session
 @inject IAuth _auth
 @inject IChats _chats
@@ -15,21 +14,25 @@
     if (model.MustLogin)
         _nav.Login("to view this chat");
     var chat = model.Chat;
-
-    if (error != null || chat == null) {
-        PageLayout.Header = @<span>Loading...</span>;
-        PageLayout.Footer = null;
-    } else {
-        PageLayout.Header = @<ChatHeader Chat="@chat" />;
-        PageLayout.Footer = @<ChatMessageEditor Chat="@chat" />;
-    }
 }
 
 @if (error != null) {
     <WhenError Error="error"/>
 } else if (chat != null) {
-    @* @key=... ensures ChatView is recreated on navigation to another chat *@
-    <ChatView @key="@chat.Id.ToString()" Chat="@chat" />
+    <CascadingValue Value="chat">
+        @* @key=... ensures child components are recreated on navigation to another chat *@
+        <PageWithHeaderAndFooter @key="chat" Class="@this.DefaultClass()">
+            <Header>
+                <ChatHeader />
+            </Header>
+            <Body>
+                <ChatView />
+            </Body>
+            <Footer>
+                <ChatMessageEditor />
+            </Footer>
+        </PageWithHeaderAndFooter>
+    </CascadingValue>
 } else {
     <div>Loading...</div>
 }
@@ -40,8 +43,6 @@
         public bool MustLogin { get; init; }
         public Chat? Chat { get; init; }
     }
-
-    [Inject] private PageLayoutModel PageLayout { get; set; } = null!;
 
     [Parameter]
     public string ChatId { get; set; } = "";

@@ -5,35 +5,33 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Chat.Db;
 
-[Table("ChatUserConfiguration")]
+[Table("ChatUserSettings")]
 [Index(nameof(ChatId), nameof(UserId))]
-public class DbChatUserConfiguration : IHasId<string>
+public class DbChatUserSettings : IHasId<string>
 {
     [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
 
+    [ConcurrencyCheck] public long Version { get; set; }
     public string ChatId { get; set; } = null!;
-    public long LocalId { get; set; }
-
-    public long Version { get; set; }
     public string UserId { get; set; } = null!;
 
     public string Language { get; set; } = "";
 
-    public static string ComposeId(string chatId, long localId)
-        => $"{chatId}:{localId.ToString(CultureInfo.InvariantCulture)}";
+    public static string ComposeId(string chatId, string userId)
+        => $"{chatId}:{userId}";
 
-    public ChatUserConfiguration ToModel()
-        => new ChatUserConfiguration() {
-            Id = Id,
+    public ChatUserSettings ToModel()
+        => new() {
+            Version = Version,
             ChatId = ChatId,
             UserId = UserId,
-            Language = Language
+            Language = Language,
         };
 
-    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatUserConfiguration>
+    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatUserSettings>
     {
-        public void Configure(EntityTypeBuilder<DbChatUserConfiguration> builder)
+        public void Configure(EntityTypeBuilder<DbChatUserSettings> builder)
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();
