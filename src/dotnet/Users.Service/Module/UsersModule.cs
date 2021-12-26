@@ -12,6 +12,7 @@ using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
 using Stl.Plugins;
+using Stl.Redis;
 
 namespace ActualChat.Users.Module;
 
@@ -114,5 +115,14 @@ public class UsersModule : HostModule<UsersSettings>
             .AddCommandService<AuthServiceCommandFilters>();
         services.AddSingleton<ClaimMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepository>());
+
+        // ChatUserSettings
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<UsersDbContext>>();
+            return chatRedisDb.GetSequenceSet<ChatUserSettings>("seq." + nameof(ChatUserSettings));
+        });
+        fusion.AddComputeService<ChatUserSettingsService>();
+        services.AddSingleton<IChatUserSettings>(c => c.GetRequiredService<ChatUserSettingsService>());
+        services.AddSingleton<IChatUserSettingsBackend>(c => c.GetRequiredService<ChatUserSettingsService>());
     }
 }
