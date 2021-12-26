@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace ActualChat.Chat.Db;
+namespace ActualChat.Users.Db;
 
 [Table("ChatUserSettings")]
 [Index(nameof(ChatId), nameof(UserId))]

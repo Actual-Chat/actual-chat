@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server;
 
-namespace ActualChat.Chat.Controllers;
+namespace ActualChat.Users.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController, JsonifyErrors]

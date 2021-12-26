@@ -1,8 +1,7 @@
-using ActualChat.Chat.Db;
+using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Users;
 
 public partial class ChatUserSettingsService
 {

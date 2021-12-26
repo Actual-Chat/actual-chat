@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Users;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 

@@ -1,10 +1,9 @@
-using ActualChat.Chat.Db;
-using ActualChat.Users;
+using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Users;
 
-public partial class ChatUserSettingsService : DbServiceBase<ChatDbContext>, IChatUserSettings, IChatUserSettingsBackend
+public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IChatUserSettings, IChatUserSettingsBackend
 {
     private readonly IAuth _auth;
     private readonly ICommander _commander;
