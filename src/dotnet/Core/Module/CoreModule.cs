@@ -1,4 +1,4 @@
-﻿using ActualChat.Blobs.Internal;
+using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using Stl.Extensibility;
 using Stl.Fusion.Extensions;
@@ -31,5 +31,11 @@ public class CoreModule : HostModule<CoreSettings>
             services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
         else
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
+
+        // TracingCommandHandler
+        if (!services.HasService<TracingCommandHandler>()) {
+            services.AddSingleton<TracingCommandHandler>();
+            services.AddCommander().AddHandlers<TracingCommandHandler>();
+        }
     }
 }
