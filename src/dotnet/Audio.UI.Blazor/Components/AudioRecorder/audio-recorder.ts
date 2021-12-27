@@ -10,6 +10,7 @@ import {
     ResumeRecordingEvent
 } from './recording-event-queue';
 import { VoiceActivityChanged } from './audio-vad';
+import { toHexString } from "./to-hex-string";
 
 const LogScope = 'AudioRecorder';
 const sampleRate = 48000;
@@ -71,7 +72,7 @@ export class AudioRecorder {
             maxFillBufferTimeMs: 400,
             sendAsync: async (packet: Uint8Array): Promise<void> => {
                 if (debugMode)
-                    console.log(`AudioRecorder.queue.sendAsync: sending ${packet.length} bytes`);
+                    console.log(`AudioRecorder.queue.sendAsync: sending ${packet.length} bytes - ${toHexString(packet.slice(0, 10))}`);
                 await blazorRef.invokeMethodAsync('OnAudioEventChunk', packet);
             },
         });
@@ -104,13 +105,10 @@ export class AudioRecorder {
         const worker = new Worker('/dist/vadWorker.js');
         worker.onmessage = (ev: MessageEvent<VoiceActivityChanged>) => {
             const vadEvent = ev.data;
-            const recording = this.recording;
+            if (this.debugMode)
+                console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
 
-            if (recording !== null) {
-                const state = recording.recorder.getState();
-                if (this.debugMode)
-                    console.log(`${LogScope}.startRecording: state = ${state}`);
-
+            if (this.isRecording()) {
                 if (vadEvent.kind === 'end') {
                     this.queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
                 }
@@ -118,8 +116,6 @@ export class AudioRecorder {
                     this.queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
                 }
             }
-            if (this.debugMode)
-                console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
         };
         worker.postMessage({ topic: 'init-port' }, [channel.port1]);
 
@@ -199,7 +195,7 @@ export class AudioRecorder {
         this.recording.mediaStreamAudioSourceNode.connect(this.recording.vadWorkletNode);
         this.recording.vadWorkletNode.port.postMessage({ topic: 'init-port' }, [channel.port2]);
 
-	this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
+        this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
         this.recording.recorder.startRecording();
         await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }

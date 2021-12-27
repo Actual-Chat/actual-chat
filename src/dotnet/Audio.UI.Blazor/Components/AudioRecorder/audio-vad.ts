@@ -144,7 +144,7 @@ export class VoiceActivityDetector {
             }
         }
         this.sampleCount += monoPcm.length;
-        if (this.lastActivityEvent == currentEvent) {
+        if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind) {
             return null;
         }
 
