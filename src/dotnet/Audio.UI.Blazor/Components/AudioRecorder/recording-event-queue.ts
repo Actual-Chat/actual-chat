@@ -96,8 +96,10 @@ export interface IRecordingEventQueueOptions {
     debugMode: boolean;
 }
 
+type QueueState = 'running' | 'paused';
+
 export class RecordingEventQueue implements IRecordingEventQueue {
-    private state: 'running' | 'paused';
+    private state: QueueState;
     private bufferOffset: number;
     private readonly lastEvents: Denque<DataRecordingEvent>;
     private readonly bufferQueue: Denque<Uint8Array>;
@@ -142,7 +144,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
             case RecordingEventType.Data:
                 if (this.state === "paused") {
                     const queueLength = this.lastEvents.push(event as DataRecordingEvent);
-                    if (queueLength > 2) {
+                    if (queueLength > 10) {
                         this.lastEvents.shift();
                     }
                     return;
@@ -151,9 +153,12 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         }
 
         if (event.type == RecordingEventType.Resume) {
-            this.appendInternal(event, false);
+            this.appendInternal(event, this.lastEvents.length == 0);
 
             if (this.lastEvents.length) {
+                while (this.lastEvents.length > 3) { // keep 3 last events on resume
+                    this.lastEvents.shift();
+                }
                 while (this.lastEvents.length > 1) {
                     const lastEvent = this.lastEvents.shift();
                     this.appendInternal(lastEvent, false);
@@ -183,7 +188,15 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         if (this.options.debugMode) {
             this.log(`flushAsync is called`);
         }
-        await this.sendTopmostBuffer();
+
+        this.lastEvents.clear();
+
+        if (this.state == 'running') {
+            await this.sendTopmostBuffer();
+        }
+        else {
+            this.bufferOffset = 0;
+        }
     }
 
     private appendInternal(event: RecordingEvent, sendImmediately: boolean): void {
