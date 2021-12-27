@@ -25,7 +25,7 @@
              autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
              aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="Message #@(Chat.Title)">
         </div>
-        <div class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-r-full mr-2 md:mr-8 pl-2">
+        <div class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-r-full mr-2 md:mr-8 pl-2 items-end">
             <span @ref="ButtonSpanRef">
                 <button class="post-message outline-none py-2 pr-3 text-secondary rounded-r-full bg-transparent max-h-12 hidden transition-all duration-150"
                         @onclick="_ => Post()">
@@ -33,8 +33,8 @@
                         <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                     </svg>
                 </button>
-                <ChatLanguageToggle />@*
-                *@<AudioRecorderWrapper ChatId="@Chat.Id" />
+                <ChatLanguageToggle />
+                <AudioRecorderWrapper ChatId="@Chat.Id" />
             </span>
         </div>
     </div>
