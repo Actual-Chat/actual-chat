@@ -1,5 +1,6 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
+using ActualChat.Media;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
@@ -87,7 +88,7 @@ public class AudioSourceTest
         var clusterOffsetMs = 0;
         var blockOffsetMs = -1;
         var state = ValidateWebMSequence(
-            new WebMReader(audio.Format.ToBlobPart().Data),
+            new WebMReader(audio.Format.Serialize()),
             ref clusterOffsetMs,
             ref blockOffsetMs);
         await foreach (var frame in audio.GetFrames(default)) {
@@ -113,7 +114,7 @@ public class AudioSourceTest
         var clusterOffsetMs = 0;
         var blockOffsetMs = -1;
         var state = ValidateWebMSequence(
-            new WebMReader(audio.Format.ToBlobPart().Data),
+            new WebMReader(audio.Format.Serialize()),
             ref clusterOffsetMs,
             ref blockOffsetMs);
         await foreach (var frame in audio.GetFrames(default)) {
@@ -189,10 +190,10 @@ public class AudioSourceTest
         int skipBytes = 0,
         CancellationToken cancellationToken = default)
     {
-        var blobStream = GetAudioFilePath(fileName)
-            .ReadBlobStream(blobSize, cancellationToken)
+        var byteStream = GetAudioFilePath(fileName)
+            .ReadByteStream(blobSize, cancellationToken)
             .SkipBytes(skipBytes, cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, _logger, cancellationToken);
+        var audio = new AudioSource(byteStream, skipTo, _logger, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
@@ -205,6 +206,6 @@ public class AudioSourceTest
     private static Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName)
     {
         var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        return stream.WriteBlobStream(source.GetBlobStream(default), true);
+        return stream.WriteByteStream(source.GetFrames(CancellationToken.None).ToByteStream(source.GetFormatTask(),default), true);
     }
 }

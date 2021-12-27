@@ -4,15 +4,15 @@
   <PropertyGroup>
     <AspNetCoreVersion>6.0.0</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>$(AspNetCoreVersion)</MicrosoftExtensionsVersion>
-    <EntityFrameworkCoreVersion>$(AspNetCoreVersion)</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>6.0.1</EntityFrameworkCoreVersion>
     <NpgsqlVersion>6.0.0</NpgsqlVersion>
-    <EntityFrameworkCoreNpgsqlVersion>6.0.1</EntityFrameworkCoreNpgsqlVersion>
-    <EntityFrameworkCoreInMemoryVersion>6.0.1</EntityFrameworkCoreInMemoryVersion>
-    <OpenTelemetryNpgsqlVersion>6.0.1</OpenTelemetryNpgsqlVersion>
+    <EntityFrameworkCoreNpgsqlVersion>6.0.2</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
+    <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
     <BlazorVersion>6.0.1</BlazorVersion>
     <SignalRVersion>6.0.1</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.1.7</StlFusionVersion>
+    <StlFusionVersion>2.1.18</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
@@ -52,6 +52,7 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)"/>
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.1.*"/>
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)"/>
     <PackageReference Update="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)"/>
@@ -117,7 +118,7 @@
     <PackageReference Update="Microsoft.Playwright" Version="1.17.3"/>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.244" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="bunit" Version="1.3.42"/>
+    <PackageReference Update="bunit" Version="1.4.15"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="1.2.0" />
 
     <!-- Analyzers -->

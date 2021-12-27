@@ -22,7 +22,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         JS = Services.GetRequiredService<IJSRuntime>();
-        Header = AudioSource.Format.ToBlobPart().Data;
+        Header = AudioSource.Format.Serialize();
         UpdateBufferReadyState(true);
     }
 
@@ -93,7 +93,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                             BlazorRef, DebugMode
                             ).ConfigureAwait(true);
-                        await JSRef!.InvokeVoidAsync("initialize", Header).ConfigureAwait(true);
+                        _ = JSRef.InvokeVoidAsync("appendAudio", Header, -1).ConfigureAwait(true);
                         break;
                     case StopPlaybackCommand stop:
                         if (JSRef == null)
@@ -120,7 +120,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 
                 var chunk = frame.Data;
                 var offset = frame.Offset.TotalSeconds;
-                _ = JSRef.InvokeVoidAsync("appendAudioAsync", cancellationToken, chunk, offset);
+                _ = JSRef.InvokeVoidAsync("appendAudio", cancellationToken, chunk, offset);
                 try {
                     await WhenBufferReady.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }

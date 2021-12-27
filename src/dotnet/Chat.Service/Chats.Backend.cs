@@ -154,14 +154,15 @@ public partial class Chats
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chat = command.Chat with { Id = Ulid.NewUlid().ToString() };
-        var dbChat = new DbChat(chat) {
+        var chat = command.Chat with {
+            Id = Ulid.NewUlid().ToString(),
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
         };
+        var dbChat = new DbChat(chat);
         dbContext.Add(dbChat);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;

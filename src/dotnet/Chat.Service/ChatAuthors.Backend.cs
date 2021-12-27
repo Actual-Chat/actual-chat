@@ -117,8 +117,8 @@ public partial class ChatAuthors
         dbChatAuthor.LocalId = await _idSequences.Next(chatId, maxLocalId).ConfigureAwait(false);
         dbChatAuthor.Id = DbChatAuthor.ComposeId(chatId, dbChatAuthor.LocalId);
         dbChatAuthor.UserId = userId.NullIfEmpty();
+        dbContext.Add(dbChatAuthor);
 
-        await dbContext.AddAsync(dbChatAuthor, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbChatAuthor.ToModel();
     }

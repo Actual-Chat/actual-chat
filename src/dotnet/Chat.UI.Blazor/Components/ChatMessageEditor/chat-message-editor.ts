@@ -2,29 +2,19 @@ export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
     private _input: HTMLDivElement;
+    private _buttonSpan: HTMLSpanElement;
     private _postButton: HTMLButtonElement;
-    private _audioRecorder: HTMLSpanElement;
-    private _recordButton: HTMLButtonElement;
     private _isTextMode: boolean = false;
 
-    static create(input: HTMLDivElement, post: HTMLButtonElement, audioRecorder: HTMLSpanElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(input, post, audioRecorder, backendRef);
+    static create(input: HTMLDivElement, buttonSpan: HTMLSpanElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(input, buttonSpan, backendRef);
     }
 
-    constructor(input: HTMLDivElement, post: HTMLButtonElement, audioRecorder: HTMLSpanElement, blazorRef: DotNet.DotNetObject) {
-        if (input == null )
-            throw new Error("input element is undefined");
-        if (post == null)
-            throw new Error("post element is undefined");
-        if (audioRecorder == null)
-            throw new Error("audioRecorder element is undefined")
-        if (blazorRef == null)
-            throw new Error("dotnet backend object is undefined");
+    constructor(input: HTMLDivElement, buttonSpan: HTMLSpanElement, blazorRef: DotNet.DotNetObject) {
         this._input = input;
-        this._postButton = post;
-        this._audioRecorder = audioRecorder;
+        this._buttonSpan = buttonSpan;
         this._blazorRef = blazorRef;
-        this._recordButton = this._audioRecorder.querySelector("button");
+        this._postButton = buttonSpan.querySelector("button.post-message");
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
@@ -50,18 +40,19 @@ export class ChatMessageEditor {
             return;
         this._isTextMode = isTextMode;
         let postButton = this._postButton;
-        let recordButton = this._recordButton;
-        recordButton.style.transform = "translateX(-0.5rem) scale(.05)";
+        let recordButton = this._buttonSpan.querySelector("button.audio-recorder") as HTMLButtonElement;
+        let languageButton = this._buttonSpan.querySelector("button.chat-language-toggle") as HTMLButtonElement;
         postButton.style.transform = "translateX(-0.5rem) scale(.05)";
+        recordButton.style.transform = "translateX(-0.5rem) scale(.05)";
         setTimeout(() => {
             if (isTextMode) {
-                recordButton.classList.add("hidden");
                 postButton.classList.remove('hidden');
-                postButton.style.opacity = "1";
+                recordButton.classList.add("hidden");
+                languageButton.classList.add("hidden");
             } else {
                 postButton.classList.add("hidden");
                 recordButton.classList.remove('hidden');
-                recordButton.style.opacity = "1";
+                languageButton.classList.remove("hidden");
             }
         }, 25);
         setTimeout(() => {

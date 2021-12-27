@@ -8,5 +8,5 @@ public abstract record MediaFormat
     [DataMember(Order = 0)]
     public int ChannelCount { get; init; } = 1;
 
-    public abstract BlobPart ToBlobPart(int index = 0);
+    public abstract byte[] Serialize(int index = 0);
 }

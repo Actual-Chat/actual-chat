@@ -149,7 +149,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
                 response.Items.LastOrDefault().Key,
                 response.HasAllItems ? "all" : response.HasVeryFirstItem ? "start" : "end");
         }
-        catch (Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
             throw;
         }

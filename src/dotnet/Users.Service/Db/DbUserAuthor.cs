@@ -19,6 +19,9 @@ public class DbUserAuthor : IHasId<string>
     public string Picture { get; set; } = "";
     public bool IsAnonymous { get; set; }
 
+    public DbUserAuthor() { }
+    public DbUserAuthor(UserAuthor model) => UpdateFrom(model);
+
     public UserAuthor ToModel()
         => new() {
             Id = UserId,
@@ -30,8 +33,6 @@ public class DbUserAuthor : IHasId<string>
 
     public void UpdateFrom(UserAuthor model)
     {
-        if (model.Id.IsEmpty)
-            throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
         UserId = model.Id;
         Version = model.Version;
         Name = model.Name;

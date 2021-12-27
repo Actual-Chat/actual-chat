@@ -30,6 +30,7 @@ public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOpti
             .ConfigureAwait(false);
         dbSession.Options = dbSession.Options
             .Set(command.Option.Key, command.Option.Value);
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }

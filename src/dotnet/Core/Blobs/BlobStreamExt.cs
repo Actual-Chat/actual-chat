@@ -14,7 +14,7 @@ public static class BlobStreamExt
 
     // Download
 
-    public static async IAsyncEnumerable<BlobPart> DownloadBlobStream(
+    public static async IAsyncEnumerable<byte[]> DownloadByteStream(
         this IHttpClientFactory httpClientFactory,
         Uri blobUri,
         ILogger log,
@@ -37,8 +37,8 @@ public static class BlobStreamExt
         try {
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
-            var blobStream = stream.ReadBlobStream(false, 1024, cancellationToken);
-            await foreach (var blobPart in blobStream.ConfigureAwait(false))
+            var byteStream = stream.ReadByteStream(false, 1024, cancellationToken);
+            await foreach (var blobPart in byteStream.ConfigureAwait(false))
                 yield return blobPart;
         }
         finally {
@@ -49,16 +49,16 @@ public static class BlobStreamExt
 
     // Upload
 
-    public static async Task<long> UploadBlobStream(
+    public static async Task<long> UploadByteStream(
         this IBlobStorage target,
         string blobId,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<byte[]> byteStream,
         CancellationToken cancellationToken)
     {
         var stream = MemoryStreamManager.GetStream();
         await using var _ = stream.ConfigureAwait(false);
 
-        var bytesWritten = await stream.WriteBlobStream(blobStream, false, cancellationToken).ConfigureAwait(false);
+        var bytesWritten = await stream.WriteByteStream(byteStream, false, cancellationToken).ConfigureAwait(false);
         stream.Position = 0;
         await target.WriteAsync(blobId, stream, false, cancellationToken).ConfigureAwait(false);
         return bytesWritten;
@@ -66,16 +66,16 @@ public static class BlobStreamExt
 
     // Read
 
-    public static IAsyncEnumerable<BlobPart> ReadBlobStream(
+    public static IAsyncEnumerable<byte[]> ReadByteStream(
         this FilePath sourceFilePath,
         int blobSize = 1024,
         CancellationToken cancellationToken = default)
     {
         var inputStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read);
-        return inputStream.ReadBlobStream(true, blobSize, cancellationToken);
+        return inputStream.ReadByteStream(true, blobSize, cancellationToken);
     }
 
-    public static async IAsyncEnumerable<BlobPart> ReadBlobStream(
+    public static async IAsyncEnumerable<byte[]> ReadByteStream(
         this Stream source,
         bool mustDisposeSource,
         int blobSize = 1024,
@@ -89,11 +89,9 @@ public static class BlobStreamExt
             var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
             var memory = buffer.AsMemory();
             try {
-                var blobIndex = 0;
                 var bytesRead = await source.ReadAsync(memory[..blobSize], cancellationToken).ConfigureAwait(false);
                 while (bytesRead != 0) {
-                    var blobPart = new BlobPart(blobIndex++, buffer[..bytesRead]);
-                    yield return blobPart;
+                    yield return buffer[..bytesRead];
                     bytesRead = await source.ReadAsync(memory[..blobSize], cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -109,17 +107,17 @@ public static class BlobStreamExt
 
     // Write
 
-    public static async Task<long> WriteBlobStream(
+    public static async Task<long> WriteByteStream(
         this Stream target,
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<byte[]> byteStream,
         bool mustDisposeTarget,
         CancellationToken cancellationToken = default)
     {
         try {
             var bytesWritten = 0L;
-            await foreach (var blobPart in blobStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                await target.WriteAsync(blobPart.Data, cancellationToken).ConfigureAwait(false);
-                bytesWritten += blobPart.Data.Length;
+            await foreach (var blobPart in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                await target.WriteAsync(blobPart, cancellationToken).ConfigureAwait(false);
+                bytesWritten += blobPart.Length;
             }
             return bytesWritten;
         }
@@ -131,26 +129,22 @@ public static class BlobStreamExt
 
     // Misc. helpers
 
-    public static async IAsyncEnumerable<BlobPart> SkipBytes(
-        this IAsyncEnumerable<BlobPart> blobParts,
+    public static async IAsyncEnumerable<byte[]> SkipBytes(
+        this IAsyncEnumerable<byte[]> byteStream,
         int byteCount,
         [EnumeratorCancellation]
         CancellationToken cancellationToken)
     {
-        var index = 0;
-        await foreach (var blobPart in blobParts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            if (byteCount >= blobPart.Data.Length) {
-                byteCount -= blobPart.Data.Length;
+        await foreach (var blobPart in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (byteCount >= blobPart.Length) {
+                byteCount -= blobPart.Length;
                 continue;
             }
             if (byteCount == 0)
-                yield return blobPart with { Index = index++ };
+                yield return blobPart;
             else {
-                yield return blobPart with {
-                    Index = index++,
-                    Data = blobPart.Data[byteCount..],
-                };
-                byteCount = 0;
+                yield return blobPart[byteCount..];
+                 byteCount = 0;
             }
         }
     }

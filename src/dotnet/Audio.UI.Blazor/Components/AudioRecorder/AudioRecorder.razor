@@ -1,6 +1,8 @@
 @namespace ActualChat.Audio.UI.Blazor.Components
 @implements IAudioRecorderBackend
 @using ActualChat.Audio.UI.Blazor.Module
+@using ActualChat.Media
+@using System.Buffers.Binary
 @implements IAsyncDisposable
 @inject Session _session
 @inject IJSRuntime _js
@@ -15,7 +17,8 @@
     }
 }
 
-<button @onclick="ToggleRecording" class="@(_class ??= this.DefaultClass()) outline-none py-2 pr-3 rounded-r-full bg-transparent max-h-12 transition-all duration-150">
+<button class="@(_class ??= this.DefaultClass()) align-top py-2 pr-3 outline-none rounded-r-full bg-transparent max-h-12 transition-all duration-150"
+        @onclick="ToggleRecording" >
     <svg class="items-center fill-current @cls" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="-2 -2 28 28">
         <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z"/>
     </svg>
@@ -30,13 +33,14 @@
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
-    private Channel<BlobPart>? AudioChannel { get; set; }
+    private Channel<RecordingPart>? AudioChannel { get; set; }
     private int Index { get; set; }
-    private uint LastSeqNum { get; set; } = 0;
     private bool IsRecording => AudioChannel != null;
 
     [Parameter]
     public string ChatId { get; set; } = "";
+    [Parameter]
+    public string Language { get; set; } = "ru-RU";
 
     public async ValueTask DisposeAsync() {
         await StopRecording().ConfigureAwait(true);
@@ -65,7 +69,7 @@
         if (AudioChannel != null)
             return;
 
-        AudioChannel = Channel.CreateBounded<BlobPart>(
+        AudioChannel = Channel.CreateBounded<RecordingPart>(
             new BoundedChannelOptions(128) {
                 SingleWriter = true,
                 SingleReader = true,
@@ -110,7 +114,7 @@
             SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
-        var audioRecord = new AudioRecord(ChatId, audioFormat, "RU-ru", clientStartOffset);
+        var audioRecord = new AudioRecord(ChatId, audioFormat, Language, clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
         _ = BackgroundTask.Run(
             () => _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None),
@@ -118,19 +122,14 @@
     }
 
     [JSInvokable]
-    public async Task OnAudioData(byte[] chunk) {
+    public async Task OnAudioEventChunk(byte[] chunk) {
         if (AudioChannel == null)
             return;
 
-        var seqNum = Unsafe.As<byte, uint>(ref chunk[0]);
-
-        if (seqNum != 0 && (seqNum - 1) != LastSeqNum)
-            Log.LogError("OnAudioData: SeqNum mismatch, current = {SeqNum}, last: {LastSeqNum}", seqNum, LastSeqNum);
-
-        LastSeqNum = seqNum;
-        var blobPart = new BlobPart(Index++, chunk[4..]);
-        DebugLog?.LogDebug("OnAudioData: got packet #{SeqNum}: {BlobPart}", seqNum, blobPart);
-        await AudioChannel.Writer.WriteAsync(blobPart);
+        foreach (var part in DeserializeRecordingData(chunk)) {
+            await AudioChannel.Writer.WriteAsync(part);
+        }
+        DebugLog?.LogDebug("OnAudioEventChunk: got packet {Chunk}", chunk);
     }
 
     [JSInvokable]
@@ -148,26 +147,29 @@
         StateHasChanged();
     }
 
-    [JSInvokable]
-    public void OnPauseRecording() {
-        DebugLog?.LogDebug("OnPauseRecording: current AudioChannel status is {AudioChannelStatus}",
-            AudioChannel == null ? "closed" : "opened"
-        );
-        if (AudioChannel == null) return;
-
-        var blobPart = new BlobPart(Index++, new byte [] { 0, 0, 0, 0 });
-        AudioChannel.Writer.WriteAsync(blobPart);
-    }
-
-    [JSInvokable]
-    public void OnResumeRecording() {
-        DebugLog?.LogDebug("OnResumeRecording: current AudioChannel status is {AudioChannelStatus}",
-            AudioChannel == null ? "closed" : "opened"
-        );
-
-        if (AudioChannel == null) return;
-
-        var blobPart = new BlobPart(Index++, new byte [] { 1, 1, 1, 1 });
-        AudioChannel.Writer.WriteAsync(blobPart);
+    private IEnumerable<RecordingPart> DeserializeRecordingData(byte[] data) {
+        var offset = 0;
+        while (offset < data.Length) {
+            var type = (RecordingEventType)data[offset++];
+            var length = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
+            offset += 2;
+            var startData = offset;
+            offset += length;
+            yield return type switch {
+                RecordingEventType.Data => new(RecordingEventKind.Data) {
+                    Data = data[startData..(startData + length)].ToArray(),
+                },
+                RecordingEventType.Pause => new(RecordingEventKind.Pause) {
+                    RecordedAt = new Moment(BinaryPrimitives.ReadInt64LittleEndian(data[startData..])),
+                    Offset = TimeSpan.FromSeconds(BinaryPrimitives.ReadSingleLittleEndian(data[(startData + 8)..])),
+                },
+                RecordingEventType.Resume => new(RecordingEventKind.Resume) {
+                    RecordedAt = new Moment(BinaryPrimitives.ReadInt64LittleEndian(data[startData..])),
+                    Offset = TimeSpan.FromSeconds(BinaryPrimitives.ReadSingleLittleEndian(data[(startData + 8)..])),
+                },
+                _ => throw new NotSupportedException($"Unsupported RecordingEventType: {type}."),
+            };
+        }
     }
 }
+

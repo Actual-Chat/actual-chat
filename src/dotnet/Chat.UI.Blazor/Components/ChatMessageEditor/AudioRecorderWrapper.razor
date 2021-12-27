@@ -1,0 +1,24 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+@inherits ComputedStateComponent<string>
+@inject Session _session
+@inject IChatUserSettings _chatUserSettings
+
+@{
+    var language = State.LatestNonErrorValue;
+}
+<AudioRecorder @key="language" ChatId="@ChatId" Language="@language"/>
+
+@code {
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken)
+    {
+        var settings = await _chatUserSettings.Get(_session, ChatId, cancellationToken);
+        return settings?.Language.ValidOrDefault() ?? LanguageId.Default.Value;
+    }
+}

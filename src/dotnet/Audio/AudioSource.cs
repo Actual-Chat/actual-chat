@@ -6,22 +6,23 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio;
 
-public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
+public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 {
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
-    protected override AudioFormat DefaultFormat => new AudioFormat {
+    protected override AudioFormat DefaultFormat => new (){
         CodecSettings = "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwH/////////FUmpZrMq17GD"
             + "D0JATYCTb3B1cy1tZWRpYS1yZWNvcmRlcldBk29wdXMtbWVkaWEtcmVjb3JkZXIWVK5rv66914EB"
             + "c8WHtvVVEG3dyIOBAoaGQV9PUFVTY6KTT3B1c0hlYWQBAQAAgLsAAAAAAOGNtYRHO4AAn4EBYmSB"
             + "IB9DtnUB/////////+eBAA==",
     };
 
-    public AudioSource(IAsyncEnumerable<BlobPart> blobStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
-        : base(blobStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
-    public AudioSource(IAsyncEnumerable<IMediaStreamPart> mediaStream, ILogger? log, CancellationToken cancellationToken)
-        : base(mediaStream, log ?? NullLogger.Instance, cancellationToken) { }
+    public AudioSource(IAsyncEnumerable<byte[]> byteStream, TimeSpan skipTo, ILogger? log, CancellationToken cancellationToken)
+        : base(byteStream, skipTo, log ?? NullLogger.Instance, cancellationToken) { }
+
+    public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frameStream, ILogger log, CancellationToken cancellationToken)
+        : base(formatTask, frameStream, log, cancellationToken) { }
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -29,15 +30,15 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             throw new ArgumentOutOfRangeException(nameof(skipTo));
         if (skipTo == TimeSpan.Zero)
             return this;
-        var blobStream = GetBlobStream(cancellationToken);
-        var audio = new AudioSource(blobStream, skipTo, Log, cancellationToken);
+
+        var recordingStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
+        var audio = new AudioSource(recordingStream, skipTo, Log, cancellationToken);
         return audio;
     }
 
     // Protected & private methods
-
     protected override IAsyncEnumerable<AudioFrame> Parse(
-        IAsyncEnumerable<BlobPart> blobStream,
+        IAsyncEnumerable<byte[]> recordingStream,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -64,10 +65,10 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame, AudioStreamPart>
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-        var parseTask = BackgroundTask.Run(() => blobStream.ForEachAwaitAsync(
-            async blobPart => {
-                var (_, data) = blobPart;
+        var parseTask = BackgroundTask.Run(() => recordingStream.ForEachAwaitAsync(
+            async chunk => {
 
+                var data = chunk;
                 AppendData(ref readBuffer, ref state, data);
                 frameBuffer.Clear();
                 state = FillFrameBuffer(
