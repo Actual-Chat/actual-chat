@@ -17,7 +17,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     private DateTime? _endsAt;
 
     public DbChatEntry() { }
-
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
     // (ChatId, Type, Id)
@@ -64,16 +63,16 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
 #pragma warning disable IL2026
-            TextToTimeMap = TextToTimeMap != null
+            TextToTimeMap = Type == ChatEntryType.Text
+                ? TextToTimeMap != null
                 ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
+                : default
                 : default,
 #pragma warning restore IL2026
         };
 
     public void UpdateFrom(ChatEntry model)
     {
-        if (model.Id == 0)
-            throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
         CompositeId = GetCompositeId(model.ChatId, model.Type, model.Id);
         ChatId = model.ChatId;
         Type = model.Type;

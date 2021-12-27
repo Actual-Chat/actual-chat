@@ -120,7 +120,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
                         await Task.WhenAll(volumeTasks).ConfigureAwait(false);
                         break;
                     case StopCommand stopCommand:
-                        await TryStop(true);
+                        await TryStop(true).ConfigureAwait(false);
                         break;
                     default:
                         throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");

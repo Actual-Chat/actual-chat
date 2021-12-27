@@ -14,6 +14,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbUserAuthor> UserAuthors { get; protected set; } = null!;
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
+    public DbSet<DbChatUserSettings> ChatUserSettings { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public UsersDbContext(DbContextOptions options) : base(options) { }

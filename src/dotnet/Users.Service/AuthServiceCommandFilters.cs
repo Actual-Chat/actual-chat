@@ -175,8 +175,8 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             userState = new DbUserState() { UserId = userId };
             dbContext.Add(userState);
         }
-
         userState.OnlineCheckInAt = Clocks.SystemClock.Now;
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

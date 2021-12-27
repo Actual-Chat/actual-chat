@@ -81,12 +81,12 @@ public class SourceAudioProcessor : AsyncProcessBase
     internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
-        var blobStream = SourceAudioRecorder.GetSourceAudioBlobStream(record.Id, cancellationToken);
-        if (Constants.DebugMode.AudioRecordingBlobStream)
-            blobStream = blobStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
-        var openSegments = AudioSplitter.GetSegments(record, blobStream, cancellationToken);
+        var recordingStream = SourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, cancellationToken);
+        if (Constants.DebugMode.AudioRecordingStream)
+            recordingStream = recordingStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
+        var openSegments = AudioSplitter.GetSegments(record, recordingStream, cancellationToken);
         await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
-            var beginsAt = ClockSet.CpuClock.UtcNow;
+            var beginsAt = ClockSet.SystemClock.UtcNow;
             DebugLog?.LogDebug(
                 "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
                 record.Id, openSegment.Index, openSegment.StreamId);
@@ -112,14 +112,14 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     private async Task TranscribeAudio(OpenAudioSegment audioSegment, ChatEntry audioEntry, CancellationToken cancellationToken)
     {
-        var audioStream = audioSegment.Audio.GetStream(cancellationToken);
         var transcriptionOptions = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = audioSegment.AudioRecord.Language,
+            AltLanguages = Array.Empty<string>(),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
         };
-        var allTranscripts = Transcriber.Transcribe(transcriptionOptions, audioStream, cancellationToken);
+        var allTranscripts = Transcriber.Transcribe(transcriptionOptions, audioSegment.Audio, cancellationToken);
         var segments = TranscriptSplitter.GetSegments(audioSegment, allTranscripts, cancellationToken);
         var segmentTasks = new Queue<Task>();
         await foreach (var segment in segments.ConfigureAwait(false)) {
@@ -181,6 +181,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             Content = audioBlobId ?? "",
             StreamId = Symbol.Empty,
             EndsAt = audioEntry.BeginsAt + closedSegment.Duration,
+            // TODO(AK): write actual voice duration + client recordedAt
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
         await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);

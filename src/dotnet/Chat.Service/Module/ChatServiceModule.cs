@@ -1,4 +1,4 @@
-﻿using ActualChat.Chat.Db;
+using ActualChat.Chat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;

@@ -1,3 +1,5 @@
+import { IAudioPlayer } from "./IAudioPlayer";
+
 class AudioUpdate {
     public played: () => void;
     public chunk: Uint8Array;
@@ -12,7 +14,11 @@ class AudioUpdate {
 class AudioEnd {
 }
 
-export class MseAudioPlayer {
+export class MseAudioPlayer implements IAudioPlayer {
+
+    public onStartPlaying?: () => void = null;
+    public onInitialized?: () => void = null;
+
     private readonly _debugMode: boolean;
     private readonly _audio: HTMLAudioElement;
     private readonly _blazorRef: DotNet.DotNetObject;
@@ -25,6 +31,8 @@ export class MseAudioPlayer {
     private readonly _sourceBufferCreatingPromise: Promise<SourceBuffer>;
     private readonly _maxBufferSizeSeconds = 5;
     private _isBufferReady: boolean;
+    private isInitialized: boolean = false;
+    private initializationReady?: Promise<void> = null;
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this._debugMode = debugMode;
@@ -85,6 +93,8 @@ export class MseAudioPlayer {
         this._audio.addEventListener('loadeddata', async _ => {
             const audio = this._audio;
             if (audio.readyState >= 2) {
+                if (this.onStartPlaying !== null)
+                    this.onStartPlaying();
                 await audio.play();
             }
         });
@@ -108,7 +118,7 @@ export class MseAudioPlayer {
         return new MseAudioPlayer(blazorRef, debugMode);
     }
 
-    public async initialize(byteArray: Uint8Array): Promise<void> {
+    private async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
             this.log(`initialize(header: ${byteArray.length} bytes)`);
 
@@ -123,9 +133,12 @@ export class MseAudioPlayer {
                 if (this._debugMode)
                     this.log(`initialize: header has been appended with a delay`);
             }
+            if (this.onInitialized !== null)
+                this.onInitialized();
         } catch (error) {
             this.logError(`initialize: error ${error} ${error.stack}`);
         }
+        this.isInitialized = true;
     }
 
     public dispose(): void {
@@ -134,7 +147,11 @@ export class MseAudioPlayer {
         this.stop(null);
     }
 
-    public async appendAudioAsync(byteArray: Uint8Array, offset: number): Promise<void> {
+    public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
+
+        if (!this.isInitialized) {
+            await this.initialize(byteArray);
+        }
 
         if (this._debugMode)
             this.log(`.appendAudio(size: ${byteArray.length}, offset: ${offset})`);
@@ -181,6 +198,7 @@ export class MseAudioPlayer {
             this.logError(`appendAudio: error ${error} ${error.stack}`);
             throw error;
         }
+
     }
 
     public endOfStream(): void {

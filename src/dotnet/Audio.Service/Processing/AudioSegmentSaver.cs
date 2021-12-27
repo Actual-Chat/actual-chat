@@ -25,10 +25,11 @@ public sealed class AudioSegmentSaver
             $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".webm");
 
-        var audioStream = closedAudioSegment.GetSegmentStream(cancellationToken);
-        var blobStream = audioStream.ToBlobStream(cancellationToken);
+        var audioSource = closedAudioSegment.Audio;
+        var audioStream = audioSource.GetFrames(cancellationToken);
+        var byteStream = audioStream.ToByteStream(audioSource.Format, cancellationToken);
         var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        await blobStorage.UploadBlobStream(blobId, blobStream, cancellationToken).ConfigureAwait(false);
+        await blobStorage.UploadByteStream(blobId, byteStream, cancellationToken).ConfigureAwait(false);
         return blobId;
     }
 }

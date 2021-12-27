@@ -1,7 +1,7 @@
 import Denque from 'denque';
 import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
 import { VadMessage } from "../audio-vad.message";
-import OnnxModel from '../vad-model-mini.onnx';
+import OnnxModel from '../vad.onnx';
 
 const voiceDetector = new VoiceActivityDetector(OnnxModel);
 const queue = new Denque<ArrayBuffer>();
@@ -16,6 +16,7 @@ onmessage = (ev) => {
         case 'init-port':
             workletPort = ev.ports[0];
             workletPort.onmessage = onWorkletMessage;
+            queue.clear();
             break;
         default:
             break;
@@ -30,13 +31,14 @@ const onWorkletMessage = async (ev: MessageEvent<VadMessage>) => {
     switch (topic) {
         case 'buffer':
             vadBuffer = buffer;
+            break;
         default:
             break;
     }
     if (vadBuffer.byteLength !== 0) {
         queue.push(buffer);
 
-        processQueue();
+        const _ = processQueue();
     }
 };
 
@@ -54,10 +56,10 @@ async function processQueue(): Promise<void> {
 
         const buffer = queue.pop();
         const monoPcm = new Float32Array(buffer);
-        const vadEvents = await voiceDetector.appendChunk(monoPcm);
-        if (vadEvents.length) {
-            const adjustedVadEvents = adjustChangeEventsToSeconds(vadEvents);
-            sendResult(adjustedVadEvents[adjustedVadEvents.length - 1]);
+        const vadEvent = await voiceDetector.appendChunk(monoPcm);
+        if (vadEvent) {
+            const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
+            sendResult(adjustedVadEvent);
         }
         workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
 
@@ -69,7 +71,7 @@ async function processQueue(): Promise<void> {
     }
 
 
-    processQueue();
+    const _ = processQueue();
 }
 
 

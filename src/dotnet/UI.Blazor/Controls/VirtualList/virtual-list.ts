@@ -3,6 +3,7 @@ import './virtual-list.css';
 const LogScope: string = 'VirtualList'
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 200;
+const AfterRenderUpdateClientSideStateTimeout: number = 20;
 const DebugModeUpdateClientSideStateTimeout: number = 2000;
 const SizeEpsilon: number = 1;
 const ItemSizeEpsilon: number = 2;
@@ -142,7 +143,9 @@ export class VirtualList {
         }
         let isRenderIndexMatching = Math.abs(this._blazorRenderIndex - renderState.renderIndex) < 0.1;
         let immediately = renderState.mustMeasure || isRenderIndexMatching;
-        this.updateClientSideStateDebounced(immediately);
+        setTimeout(() => {
+            this.updateClientSideStateDebounced(immediately);
+        }, AfterRenderUpdateClientSideStateTimeout);
     }
 
     protected updateClientSideStateDebounced(immediately: boolean = false)
