@@ -2,21 +2,31 @@
 
 @{
     var author = Model.Author;
+    var showHeader = Model.IsBlockStart;
+    var showPicture = showHeader;
+    var marginClass = Model.IsBlockEnd ? "mb-4" : "mb-2";
     var entry = Model.Entry;
     var picture = string.IsNullOrWhiteSpace(author.Picture)
         ? $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg"
         : author.Picture;
 }
 
-<div class="@(_class ??= this.DefaultClass()) antialiased sm:subpixel-antialiased md:antialiased flex items-start mb-4 text-sm text-current break-words">
-    <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-secondary" alt="@author.Name"/>
+<div class="@(_class ??= this.DefaultClass()) antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words @marginClass">
+    @if (showPicture) {
+        <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-secondary" alt="@author.Name"/>
+    }
+    else {
+        <div class="w-10 mr-3" />
+    }
     <div class="flex-1 overflow-hidden">
-        <div class="header">
-            <span class="font-bold text-secondary bg-primary rounded px-1">@author.Name</span>
-            <span class="text-secondary text-xs">@entry.BeginsAt.ToString("HH:mm")</span>
-            &nbsp;
-            <span class="text-accent-muted text-xxs">id=@entry.Id</span>
-        </div>
+        @if (showHeader) {
+            <div class="header">
+                    <span class="font-bold text-secondary bg-primary rounded px-1">@author.Name</span>
+                <span class="text-secondary text-xs">@entry.BeginsAt.ToString("HH:mm")</span>
+                &nbsp;
+                <span class="text-accent-muted text-xxs">id=@entry.Id</span>
+            </div>
+        }
         <div class="content">
             @if (entry.IsStreaming) {
                 <ChatMessageTranscript Model="@Model"/>
