@@ -5,7 +5,7 @@
     var timestamp = @State.LatestNonErrorValue;
 }
 
-<span class="text-secondary text-xs has-tooltip">@timestamp
+<span class="@(_class ??= this.DefaultClass()) text-secondary text-xs has-tooltip">@timestamp
     <span class="tooltip z-10 py-2 px-3 text-xs text-gray-900 bg-white rounded-lg border border-gray-200 shadow-sm">@tooltip</span>
 </span>
 
@@ -14,6 +14,7 @@
 @*TODO (@iqmulator, @Vladimir Chirikov): improve tooltip  *@
 
 @code {
+    private static string? _class;
     private string tooltip = "";
     private DateTime localTime;
 
