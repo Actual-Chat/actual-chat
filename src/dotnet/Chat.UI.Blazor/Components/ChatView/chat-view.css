@@ -65,7 +65,7 @@ a {
 }
 
 [contenteditable=true]:empty:not(:focus):before{
-    @apply text-placeholder;
+    @apply text-placeholder truncate text-xs md:text-sm;
     content:attr(data-text)
 }
 
