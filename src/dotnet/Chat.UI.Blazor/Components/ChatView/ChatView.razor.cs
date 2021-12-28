@@ -24,7 +24,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public ValueTask DisposeAsync()
         => ChatPlayers.DisposePlayers(Chat.Id);
 
-    private async Task<VirtualListData<ChatMessageModel>> GetMessages(
+    private async Task<VirtualListData<IChatViewItemModel>> GetMessages(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
@@ -38,12 +38,12 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                     (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture)),
             };
 
-        var startId = long.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var startId = long.Parse(ExtractRealId(query.InclusiveRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
         startId = Math.Clamp(startId, chatIdRange.Start, chatIdRange.End);
 
-        var endId = long.Parse(query.InclusiveRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var endId = long.Parse(ExtractRealId(query.InclusiveRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
         endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
@@ -85,12 +85,20 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .Where(a => a != null)
             .ToDictionary(a => a!.Id);
 
-        var chatMessageModels = ChatMessageModelsBuilder.Build(chatEntries, authors);
+        var chatMessageModels = ChatViewItemModelsBuilder.Build(chatEntries, authors);
         var result = VirtualListData.New(
             chatMessageModels,
-            m => m.Entry.Id.ToString(CultureInfo.InvariantCulture),
+            m => m.Id,
             startId <= chatIdRange.Start,
             endId + 1 >= chatIdRange.End);
         return result;
+    }
+
+    private string ExtractRealId(string id)
+    {
+        var separatorIndex = id.IndexOf(';');
+        if (separatorIndex >= 0)
+            id = id.Substring(0, separatorIndex);
+        return id;
     }
 }
