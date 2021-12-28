@@ -1,6 +1,4 @@
-import RecordRTC, { MediaStreamRecorder, Options, State } from 'recordrtc';
-import OpusMediaRecorder from 'opus-media-recorder';
-import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
+import { OpusMediaRecorder } from './opus-media-recorder';
 import { AudioContextPool } from 'audio-context-pool';
 import {
     DataRecordingEvent,
@@ -15,26 +13,17 @@ import { toHexString } from "./to-hex-string";
 const LogScope = 'AudioRecorder';
 const sampleRate = 48000;
 
-const opusWorkerOptions = {
-    encoderWorkerFactory: _ => new Worker('/dist/encoderWorker.js'),
-    WebMOpusEncoderWasmPath: WebMOpusWasm
-};
-
-const OpusMediaRecorderWrapper = Object.assign(function (stream: MediaStream, options?: MediaRecorderOptions) {
-    return new OpusMediaRecorder(stream, options, opusWorkerOptions);
-}, OpusMediaRecorder);
-
 self["StandardMediaRecorder"] = self.MediaRecorder;
-self["OpusMediaRecorder"] = OpusMediaRecorderWrapper;
+self["OpusMediaRecorder"] = OpusMediaRecorder;
 
-self.MediaRecorder = OpusMediaRecorderWrapper;
+// self.MediaRecorder = OpusMediaRecorder;
 
 export class AudioRecorder {
     protected readonly debugMode: boolean;
     protected readonly blazorRef: DotNet.DotNetObject;
     protected readonly isMicrophoneAvailable: boolean;
     protected recording: {
-        recorder: RecordRTC,
+        recorder: MediaRecorder,
         stream: MediaStream,
         context: AudioContext,
         vadWorkletNode: AudioWorkletNode,
@@ -138,41 +127,45 @@ export class AudioRecorder {
                 },
                 video: false
             });
-            const options: Options = {
-                type: 'audio',
+            const options: MediaRecorderOptions = {
                 // @ts-ignore
                 mimeType: 'audio/webm;codecs=opus',
-                recorderType: MediaStreamRecorder,
-                disableLogs: false,
-                timeSlice: 60,
-                checkForInactiveTracks: true,
-                sampleRate: sampleRate,
-                desiredSampleRate: sampleRate,
-                bufferSize: 16384,
                 bitsPerSecond: 32000,
                 audioBitsPerSecond: 32000,
-                audioBitrateMode: "constant",
-                numberOfAudioChannels: 1,
 
+                // // as soon as the stream is available
+                // ondataavailable: async (blob: Blob) => {
+                //     try {
+                //         let buffer = await blob.arrayBuffer();
+                //         let chunk = new Uint8Array(buffer);
+                //         this.queue.append(new DataRecordingEvent(chunk));
+                //     } catch (e) {
+                //         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
+                //     }
+                // }
+            };
 
-                // as soon as the stream is available
-                ondataavailable: async (blob: Blob) => {
+            const mainAudioContext = await AudioContextPool.get("main") as AudioContext;
+            let recorder = new OpusMediaRecorder(stream, options, mainAudioContext);
+            recorder.ondataavailable = async (be: BlobEvent) => {
                     try {
+                        const blob = be.data;
                         let buffer = await blob.arrayBuffer();
                         let chunk = new Uint8Array(buffer);
                         this.queue.append(new DataRecordingEvent(chunk));
                     } catch (e) {
                         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
                     }
-                }
+                };
+
+            recorder.onerror = async (errorEvent: MediaRecorderErrorEvent) => {
+                console.error(`${LogScope}.onerror: ${errorEvent}`);
             };
-            let recorder: RecordRTC = new RecordRTC(stream, options);
 
-            recorder["stopRecordingAsync"] = (): Promise<void> =>
-                new Promise((resolve, _) => recorder.stopRecording(() => resolve()));
+            // recorder["stopRecordingAsync"] = (): Promise<void> =>
+            //     new Promise((resolve, _) => recorder.stopRecording(() => resolve()));
 
-            const audioContext = await AudioContextPool.get("vad") as AudioContext;
-
+            const vadAudioContext = await AudioContextPool.get("vad") as AudioContext;
             const audioWorkletOptions: AudioWorkletNodeOptions = {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
@@ -180,12 +173,12 @@ export class AudioRecorder {
                 channelInterpretation: 'speakers',
                 channelCountMode: 'explicit',
             };
-            const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad.worklet-processor', audioWorkletOptions);
+            const vadWorkletNode = new AudioWorkletNode(vadAudioContext, 'audio-vad.worklet-processor', audioWorkletOptions);
 
             this.recording = {
                 recorder: recorder,
                 stream: stream,
-                context: audioContext,
+                context: vadAudioContext,
                 vadWorkletNode: vadWorkletNode,
                 mediaStreamAudioSourceNode: null,
             };
@@ -196,7 +189,7 @@ export class AudioRecorder {
         this.recording.vadWorkletNode.port.postMessage({ topic: 'init-port' }, [channel.port2]);
 
         this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
-        this.recording.recorder.startRecording();
+        this.recording.recorder.start(60);
         await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
@@ -215,7 +208,8 @@ export class AudioRecorder {
             recording.vadWorkletNode.disconnect();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
-            await recording.recorder["stopRecordingAsync"]();
+            // await recording.recorder["stopRecordingAsync"]();
+            recording.recorder.stop();
         }
         await this.queue.flushAsync();
         await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -224,6 +218,6 @@ export class AudioRecorder {
     }
 
     private isRecording() {
-        return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.getState() === 'recording';
+        return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.state === 'recording';
     }
 }
