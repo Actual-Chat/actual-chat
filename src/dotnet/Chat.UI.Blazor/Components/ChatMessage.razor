@@ -6,6 +6,7 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-4" : "mb-2";
     var entry = Model.Entry;
+    var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
     var picture = string.IsNullOrWhiteSpace(author.Picture)
         ? $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg"
         : author.Picture;
@@ -16,7 +17,9 @@
         <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-secondary" alt="@author.Name"/>
     }
     else {
-        <div class="w-10 mr-3" />
+        <div class="w-10 mr-3">
+            <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
+        </div>
     }
     <div class="flex-1 overflow-hidden">
         @if (showHeader) {
