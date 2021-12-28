@@ -69,8 +69,9 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     private readonly sampleRate: number = 48000;
     private readonly context: AudioContext;
     private workerState: WorkerState = 'inactive';
-    private _ondataavailable: ((ev: BlobEvent) => any) | null;
-    private _onerror: ((ev: MediaRecorderErrorEvent) => any) | null;
+    private source: MediaStreamAudioSourceNode = null;
+    private processor: ScriptProcessorNode = null;
+    private stopResolve: () => void = null;
 
     public readonly stream: MediaStream;
     public readonly videoBitsPerSecond: number = NaN;
@@ -79,12 +80,12 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     public state: RecordingState = 'inactive';
 
+    public ondataavailable: ((ev: BlobEvent) => any) | null;
+    public onerror: ((ev: MediaRecorderErrorEvent) => any) | null;
     public onpause: ((ev: Event) => any) | null;
     public onresume: ((ev: Event) => any) | null;
     public onstart: ((ev: Event) => any) | null;
     public onstop: ((ev: Event) => any) | null;
-    private source: MediaStreamAudioSourceNode = null;
-    private processor: ScriptProcessorNode = null;
 
     constructor(stream: MediaStream, options: MediaRecorderOptions, audioContext: AudioContext) {
         super();
@@ -101,41 +102,45 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.audioBitsPerSecond = options.audioBitsPerSecond;
     }
 
-    get ondataavailable(): ((ev: BlobEvent) => any) | null {
-        return this._ondataavailable;
+
+    public override dispatchEvent(event: Event): boolean {
+        const { type } = event;
+        switch (type) {
+            case 'dataavailable':
+                if (this.ondataavailable) {
+                    this.ondataavailable(event as BlobEvent);
+                }
+                break;
+            case 'error':
+                if (this.onerror) {
+                    this.onerror(event as MediaRecorderErrorEvent);
+                }
+                break;
+            case 'pause':
+                if (this.onpause) {
+                    this.onpause(event);
+                }
+                break;
+            case 'resume':
+                if (this.onresume) {
+                    this.onresume(event);
+                }
+                break;
+            case 'start':
+                if (this.onstart) {
+                    this.onstart(event);
+                }
+                break;
+            case 'stop':
+                if (this.onstop) {
+                    this.onstop(event);
+                }
+                break;
+        }
+        return super.dispatchEvent(event);
     }
 
-    set ondataavailable(value: ((ev: BlobEvent) => any) | null) {
-        if (this._ondataavailable) {
-            super.removeEventListener('dataavailable', value);
-        }
-
-        this._ondataavailable = value;
-
-        if (this._ondataavailable) {
-            super.addEventListener('dataavailable', this._ondataavailable)
-        }
-    }
-
-    get onerror(): ((ev: MediaRecorderErrorEvent) => any) | null {
-        return this._onerror;
-    }
-
-    set onerror(value: ((ev: MediaRecorderErrorEvent) => any) | null) {
-        if (this._onerror) {
-            super.removeEventListener('error', value);
-        }
-
-        this._onerror = value;
-
-        if (this._onerror) {
-            super.addEventListener('error', this._onerror)
-        }
-
-    }
-
-
-    pause(): void {
+    public pause(): void {
         if (this.state === 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
         }
@@ -149,7 +154,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.state = 'paused';
     }
 
-    requestData(): void {
+    public requestData(): void {
         if (this.state === 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
         }
@@ -158,7 +163,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.postMessageToWorker(new GetEncodedDataCommand());
     }
 
-    resume(): void {
+    public resume(): void {
         if (this.state === 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
         }
@@ -172,7 +177,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.state = 'recording';
     }
 
-    start(timeslice?: number): void {
+    public start(timeslice?: number): void {
         if (this.state !== 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must be inactive.');
         }
@@ -183,7 +188,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         // Check worker is closed (usually by stop()) and init.
         if (this.workerState === 'closed') {
-            this.spawnWorker();
+            this.workerState = 'readyToInit';
         }
 
         // Get channel count and sampling rate
@@ -210,7 +215,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
     }
 
-    stop(): void {
+    public stop(): void {
         if (this.state === 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
         }
@@ -227,8 +232,11 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.state = 'inactive';
     }
 
-    private spawnWorker () {
-
+    public stopAsync(): Promise<void> {
+        return new Promise(resolve => {
+            this.stopResolve = resolve;
+            this.stop();
+        });
     }
 
     private enableAudioProcessCallback (timeslice: number) {
@@ -328,6 +336,11 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                     this.dispatchEvent(eventToPush);
 
                     this.workerState = 'closed';
+                    if (this.stopResolve) {
+                        const resolve = this.stopResolve;
+                        this.stopResolve = null;
+                        resolve();
+                    }
                 }
                 break;
 
