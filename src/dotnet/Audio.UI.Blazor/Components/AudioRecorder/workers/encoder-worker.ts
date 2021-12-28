@@ -1,11 +1,11 @@
 const WebMOpusEncoder = require('opus-media-recorder/WebMOpusEncoder.js');
 let encoder;
 
-self.onmessage = function (e) {
-  const { command } = e.data;
+self.onmessage = (ev: MessageEvent) => {
+  const { command } = ev.data;
   switch (command) {
     case 'loadEncoder':
-      const { mimeType, wasmPath } = e.data;
+      const { mimeType, wasmPath } = ev.data;
       // Setting encoder module
       const mime = mimeType.toLowerCase();
       let encoderModule;
@@ -28,12 +28,12 @@ self.onmessage = function (e) {
       break;
 
     case 'init':
-      const { sampleRate, channelCount, bitsPerSecond } = e.data;
+      const { sampleRate, channelCount, bitsPerSecond } = ev.data;
       encoder.init(sampleRate, channelCount, bitsPerSecond);
       break;
 
     case 'pushInputData':
-      const { channelBuffers, length, duration } = e.data; // eslint-disable-line
+      const { channelBuffers, length, duration } = ev.data; // eslint-disable-line
       encoder.encode(channelBuffers);
       break;
 
