@@ -91,7 +91,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         super();
 
         this.stream = stream;
-        this.worker = new Worker('/dist/encoderWorker.js');
+        this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = (e) => this.onWorkerMessage(e);
         this.worker.onerror = (e) => this.onWorkerError(e);
 

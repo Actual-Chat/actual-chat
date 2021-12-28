@@ -174,7 +174,7 @@ module.exports = (env, args) => {
         }
       },
       vadWorklet: {
-        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts',
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-module.ts',
         chunkLoading: false,
         asyncChunks: false,
         runtime: false,
@@ -183,7 +183,7 @@ module.exports = (env, args) => {
         }
       },
       vadWorker: {
-        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts',
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts',
         chunkLoading: false,
         asyncChunks: false,
         runtime: false,
@@ -191,8 +191,8 @@ module.exports = (env, args) => {
           type: 'module',
         }
       },
-      encoderWorker: {
-        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoder-worker.ts',
+      opusEncoderWorker: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts',
         chunkLoading: false,
         asyncChunks: false,
         runtime: false,
