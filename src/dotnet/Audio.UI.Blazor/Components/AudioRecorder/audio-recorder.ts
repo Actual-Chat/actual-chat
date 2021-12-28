@@ -157,7 +157,7 @@ export class AudioRecorder {
                 channelInterpretation: 'speakers',
                 channelCountMode: 'explicit',
             };
-            const vadWorkletNode = new AudioWorkletNode(vadAudioContext, 'audio-vad.worklet-processor', audioWorkletOptions);
+            const vadWorkletNode = new AudioWorkletNode(vadAudioContext, 'audio-vad-worklet-processor', audioWorkletOptions);
 
             this.recording = {
                 recorder: recorder,

@@ -88,7 +88,7 @@ AudioContextPool.register("vad", async () => {
         channelInterpretation: 'speakers',
         channelCountMode: 'explicit',
     };
-    const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad.worklet-processor', audioWorkletOptions);
+    const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad-worklet-processor', audioWorkletOptions);
     vadWorkletNode.connect(audioContext.destination);
     vadWorkletNode.disconnect();
     return audioContext;
