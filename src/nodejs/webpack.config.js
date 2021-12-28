@@ -192,6 +192,15 @@ module.exports = (env, args) => {
         }
       },
       opusEncoderWorker: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worklet.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
+      opusEncoderWorker: {
         import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts',
         chunkLoading: false,
         asyncChunks: false,
