@@ -69,6 +69,8 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     private readonly sampleRate: number = 48000;
     private readonly context: AudioContext;
     private workerState: WorkerState = 'inactive';
+    private _ondataavailable: ((ev: BlobEvent) => any) | null;
+    private _onerror: ((ev: MediaRecorderErrorEvent) => any) | null;
 
     public readonly stream: MediaStream;
     public readonly videoBitsPerSecond: number = NaN;
@@ -77,12 +79,10 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     public state: RecordingState = 'inactive';
 
-    public ondataavailable: ((this: MediaRecorder, ev: BlobEvent) => any) | null;
-    public onerror: ((this: MediaRecorder, ev: MediaRecorderErrorEvent) => any) | null;
-    public onpause: ((this: MediaRecorder, ev: Event) => any) | null;
-    public onresume: ((this: MediaRecorder, ev: Event) => any) | null;
-    public onstart: ((this: MediaRecorder, ev: Event) => any) | null;
-    public onstop: ((this: MediaRecorder, ev: Event) => any) | null;
+    public onpause: ((ev: Event) => any) | null;
+    public onresume: ((ev: Event) => any) | null;
+    public onstart: ((ev: Event) => any) | null;
+    public onstop: ((ev: Event) => any) | null;
     private source: MediaStreamAudioSourceNode = null;
     private processor: ScriptProcessorNode = null;
 
@@ -96,13 +96,44 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         this.postMessageToWorker(new LoadEncoderCommand(WebMOpusWasm));
 
-        // this.postMessageToWorker('loadEncoder',
-        //     { mimeType: this._mimeType,
-        //         wasmPath: this._wasmPath });
         this.context = audioContext;
         this.sampleRate = this.context.sampleRate;
         this.audioBitsPerSecond = options.audioBitsPerSecond;
     }
+
+    get ondataavailable(): ((ev: BlobEvent) => any) | null {
+        return this._ondataavailable;
+    }
+
+    set ondataavailable(value: ((ev: BlobEvent) => any) | null) {
+        if (this._ondataavailable) {
+            super.removeEventListener('dataavailable', value);
+        }
+
+        this._ondataavailable = value;
+
+        if (this._ondataavailable) {
+            super.addEventListener('dataavailable', this._ondataavailable)
+        }
+    }
+
+    get onerror(): ((ev: MediaRecorderErrorEvent) => any) | null {
+        return this._onerror;
+    }
+
+    set onerror(value: ((ev: MediaRecorderErrorEvent) => any) | null) {
+        if (this._onerror) {
+            super.removeEventListener('error', value);
+        }
+
+        this._onerror = value;
+
+        if (this._onerror) {
+            super.addEventListener('error', this._onerror)
+        }
+
+    }
+
 
     pause(): void {
         if (this.state === 'inactive') {
