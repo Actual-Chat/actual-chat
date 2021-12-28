@@ -22,7 +22,7 @@
         @if (showHeader) {
             <div class="header">
                     <span class="font-bold text-secondary bg-primary rounded px-1">@author.Name</span>
-                <span class="text-secondary text-xs">@entry.BeginsAt.ToString("HH:mm")</span>
+                <ChatMessageTimestamp Value="entry.BeginsAt" />
                 &nbsp;
                 <span class="text-accent-muted text-xxs">id=@entry.Id</span>
             </div>
