@@ -1,12 +1,12 @@
 import Denque from 'denque';
-import { RingBuffer } from "./ring-buffer";
+import { AudioRingBuffer } from "./audio-ring-buffer";
 
 const SamplesPerWindow = 1920;
 
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
     private readonly timeslice: number;
 
-    private buffer: RingBuffer;
+    private buffer: AudioRingBuffer;
     private bufferDeque: Denque;
 
     private workerPort: MessagePort;
@@ -33,7 +33,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private init(): void {
-        this.buffer = new RingBuffer(8192, 1);
+        this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferDeque = new Denque<ArrayBuffer>();
         this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));

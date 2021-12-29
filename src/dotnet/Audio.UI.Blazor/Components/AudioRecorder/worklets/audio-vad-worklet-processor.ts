@@ -1,10 +1,10 @@
-import { RingBuffer } from "./ring-buffer";
+import { AudioRingBuffer } from "./audio-ring-buffer";
 import { VadMessage } from "../audio-vad-message";
 
 const SamplesPerWindow = 512;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
-    private buffer: RingBuffer;
+    private buffer: AudioRingBuffer;
     private bufferDeque: ArrayBuffer[];
 
     private workerPort: MessagePort;
@@ -28,7 +28,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private init(): void {
-        this.buffer = new RingBuffer(2048, 1);
+        this.buffer = new AudioRingBuffer(2048, 1);
         this.bufferDeque = [];
         this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
