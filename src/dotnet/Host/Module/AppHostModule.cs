@@ -15,9 +15,11 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Stl.CommandR.Diagnostics;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
+using Stl.Fusion.Diagnostics;
 using Stl.Fusion.Server;
 using Stl.Plugins;
 
@@ -164,6 +166,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 // .AddAspNetCoreInstrumentation()
                 .AddMeter(AppMeter.Name)
+                .AddMeter(FusionDiagnostics.FusionMeter.Name)
+                .AddMeter(CommanderDiagnostics.CommanderMeter.Name)
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Simple;
                     cfg.Protocol = OtlpExportProtocol.Grpc;
@@ -175,6 +179,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 .SetErrorStatusOnException()
                 .AddSource(AppTrace.Name)
+                .AddSource(FusionDiagnostics.FusionTrace.Name)
+                .AddSource(CommanderDiagnostics.CommanderTrace.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",

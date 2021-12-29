@@ -13,8 +13,8 @@ public class SessionOptionsBackendController : ControllerBase, ISessionOptionsBa
         => _service = service;
 
     [HttpPost]
-    public Task Update(
-        [FromBody] ISessionOptionsBackend.UpdateCommand command,
+    public Task Upsert(
+        [FromBody] ISessionOptionsBackend.UpsertCommand command,
         CancellationToken cancellationToken)
-        => _service.Update(command, cancellationToken);
+        => _service.Upsert(command, cancellationToken);
 }
