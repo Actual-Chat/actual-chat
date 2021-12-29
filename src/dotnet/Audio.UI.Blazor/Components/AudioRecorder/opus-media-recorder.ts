@@ -1,65 +1,16 @@
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
 import { AudioContextPool } from 'audio-context-pool';
+import {
+    DoneCommand,
+    EncoderCommand,
+    GetEncodedDataCommand,
+    InitCommand,
+    LoadEncoderCommand,
+    PushInputDataCommand,
+    EncoderMessage,
+} from "./opus-media-recorder-messages";
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding'|'closed';
-
-type EncoderCommandType = 'loadEncoder' | 'init' | 'pushInputData' | 'getEncodedData' | 'done';
-
-interface IEncoderCommand {
-    command: EncoderCommandType;
-}
-
-class LoadEncoderCommand implements IEncoderCommand {
-    public readonly command: EncoderCommandType = 'loadEncoder';
-    public readonly mimeType = mimeType;
-    public readonly wasmPath: string;
-
-    constructor(wasmPath: string) {
-        this.wasmPath = wasmPath;
-    }
-}
-
-class InitCommand implements IEncoderCommand {
-    public readonly command: EncoderCommandType = 'init';
-    public sampleRate: number = 48000;
-    public channelCount: number = 1;
-    public bitsPerSecond: number = 32000;
-
-    constructor(sampleRate: number, channelCount: number, bitsPerSecond: number) {
-        this.sampleRate = sampleRate;
-        this.channelCount = channelCount;
-        this.bitsPerSecond = bitsPerSecond;
-    }
-}
-
-class PushInputDataCommand implements IEncoderCommand {
-    public readonly command: EncoderCommandType = 'pushInputData';
-    public channelBuffers: Float32Array[];
-
-    constructor(channelBuffers: Float32Array[]) {
-        this.channelBuffers = channelBuffers;
-    }
-}
-
-class GetEncodedDataCommand implements IEncoderCommand {
-    public readonly command: EncoderCommandType = 'getEncodedData';
-}
-
-class DoneCommand implements IEncoderCommand {
-    public readonly command: EncoderCommandType = 'done';
-}
-
-type EncoderCommand =
-    LoadEncoderCommand |
-    InitCommand |
-    PushInputDataCommand |
-    GetEncodedDataCommand |
-    DoneCommand;
-
-interface EncoderMessage {
-    command: 'readyToInit' | 'lastEncodedData' | 'encodedData';
-    buffers: ArrayBuffer[];
-}
 
 const mimeType: string = 'audio/webm';
 const BUFFER_SIZE = 4096;
