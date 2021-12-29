@@ -37,11 +37,9 @@
         return isPlaying ? Stop() : Play();
     }
 
-    private Task Play() {
-        return Player.Play(_clocks.SystemClock.Now);
-    }
+    private Task Play()
+        => Player.Play(_clocks.SystemClock.Now);
 
-    private Task Stop() {
-        return Player.Stop();
-    }
+    private Task Stop()
+        => Player.Stop();
 }
