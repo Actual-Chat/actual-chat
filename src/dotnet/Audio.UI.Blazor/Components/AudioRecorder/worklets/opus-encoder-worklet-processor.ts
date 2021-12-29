@@ -1,28 +1,34 @@
 import Denque from 'denque';
-import { AudioRingBuffer } from "./audio-ring-buffer";
+import {AudioRingBuffer} from "./audio-ring-buffer";
 
-const SamplesPerWindow = 1920;
+const SamplesPerMs = 48;
 
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
-    private readonly timeslice: number;
-
-    private buffer: AudioRingBuffer;
-    private bufferDeque: Denque;
+    private readonly samplesPerWindow: number;
+    private readonly buffer: AudioRingBuffer;
+    private readonly bufferDeque: Denque;
 
     private workerPort: MessagePort;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         const { timeslice } = options.processorOptions;
-        this.timeslice = timeslice;
+        if (timeslice != 20 && timeslice != 40 && timeslice != 60 && timeslice != 80) {
+            throw new Error('OpusEncoderWorkletProcessor supports only 20, 40, 60, 80 timeslice argument');
+        }
 
-        this.init();
+        this.samplesPerWindow = timeslice * SamplesPerMs;
+        this.buffer = new AudioRingBuffer(8192, 1);
+        this.bufferDeque = new Denque<ArrayBuffer>();
+        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.port.onmessage = (ev) => {
             const { topic } = ev.data;
 
             switch (topic) {
                 case 'init-port':
-                    this.init();
                     this.workerPort = ev.ports[0];
                     this.workerPort.onmessage = this.onWorkerMessage.bind(this);
                     break;
@@ -31,16 +37,6 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             }
         };
     }
-
-    private init(): void {
-        this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferDeque = new Denque<ArrayBuffer>();
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-    }
-
     public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
         try {
             if (inputs == null
@@ -59,14 +55,14 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             }
 
             this.buffer.push(input);
-            if (this.buffer.framesAvailable >= SamplesPerWindow) {
+            if (this.buffer.framesAvailable >= this.samplesPerWindow) {
                 const audioBuffer = [];
                 let audioArrayBuffer = this.bufferDeque.shift();
                 if (audioArrayBuffer === undefined) {
-                    audioArrayBuffer = new ArrayBuffer(SamplesPerWindow * 4);
+                    audioArrayBuffer = new ArrayBuffer(this.samplesPerWindow * 4);
                 }
 
-                audioBuffer.push(new Float32Array(audioArrayBuffer, 0, SamplesPerWindow));
+                audioBuffer.push(new Float32Array(audioArrayBuffer, 0, this.samplesPerWindow));
 
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.workerPort !== undefined) {
