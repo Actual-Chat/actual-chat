@@ -35,8 +35,6 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
             state: "stop",
         };
         this.port.postMessage(msg);
-
-
     }
 
     public feed(samples: Float32Array) {
@@ -82,6 +80,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
             console.error(`Feeder node: callback with id '${message.id}' is not found.`);
             return;
         }
+        this.callbacks.delete(message.id);
         const result: PlaybackState = {
             playbackTime: message.playbackTime / 1000.0,
             bufferedDuration: message.sampleCount / 48000.0
