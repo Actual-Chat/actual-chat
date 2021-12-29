@@ -28,15 +28,6 @@ export class InitCommand implements IEncoderCommand {
     }
 }
 
-export class PushInputDataCommand implements IEncoderCommand {
-    public readonly command: EncoderCommandType = 'pushInputData';
-    public channelBuffers: Float32Array[];
-
-    constructor(channelBuffers: Float32Array[]) {
-        this.channelBuffers = channelBuffers;
-    }
-}
-
 export class GetEncodedDataCommand implements IEncoderCommand {
     public readonly command: EncoderCommandType = 'getEncodedData';
 }
@@ -48,11 +39,15 @@ export class DoneCommand implements IEncoderCommand {
 export type EncoderCommand =
     LoadEncoderCommand |
     InitCommand |
-    PushInputDataCommand |
     GetEncodedDataCommand |
     DoneCommand;
 
 export interface EncoderMessage {
     command: 'readyToInit' | 'lastEncodedData' | 'encodedData';
     buffers: ArrayBuffer[];
+}
+
+export interface EncoderWorkletMessage {
+    topic: 'init-port' | 'buffer';
+    buffer: ArrayBuffer;
 }

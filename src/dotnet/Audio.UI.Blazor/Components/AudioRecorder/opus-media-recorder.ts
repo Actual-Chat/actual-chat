@@ -1,26 +1,28 @@
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
+import {AudioContextPool} from 'audio-context-pool';
+
 import {
     DoneCommand,
     EncoderCommand,
+    EncoderMessage,
     GetEncodedDataCommand,
     InitCommand,
     LoadEncoderCommand,
-    PushInputDataCommand,
-    EncoderMessage,
 } from "./opus-media-recorder-message";
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding'|'closed';
 
 const mimeType: string = 'audio/webm';
-const BUFFER_SIZE = 4096;
 export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     private readonly worker: Worker;
     private readonly channelCount: number = 1;
-    private readonly sampleRate: number = 48000;
-    private readonly context: AudioContext;
+    private readonly workerChannel: MessageChannel;
+
+    private sampleRate: number = 48000;
+    private context: AudioContext = null;
     private workerState: WorkerState = 'inactive';
     private source: MediaStreamAudioSourceNode = null;
-    private processor: ScriptProcessorNode = null;
+    private encoderWorklet: AudioWorkletNode = null;
     private stopResolve: () => void = null;
 
     public readonly stream: MediaStream;
@@ -37,19 +39,18 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     public onstart: ((ev: Event) => any) | null;
     public onstop: ((ev: Event) => any) | null;
 
-    constructor(stream: MediaStream, options: MediaRecorderOptions, audioContext: AudioContext) {
+    constructor(stream: MediaStream, options: MediaRecorderOptions) {
         super();
 
         this.stream = stream;
+        this.audioBitsPerSecond = options.audioBitsPerSecond;
+
+        this.workerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = (e) => this.onWorkerMessage(e);
         this.worker.onerror = (e) => this.onWorkerError(e);
 
         this.postMessageToWorker(new LoadEncoderCommand(WebMOpusWasm));
-
-        this.context = audioContext;
-        this.sampleRate = this.context.sampleRate;
-        this.audioBitsPerSecond = options.audioBitsPerSecond;
     }
 
 
@@ -97,7 +98,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         // Stop stream first
         this.source.disconnect();
-        this.processor.disconnect();
+        this.encoderWorklet.disconnect();
 
         let event = new Event('pause');
         this.dispatchEvent(event);
@@ -119,8 +120,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
 
         // Restart streaming data
-        this.source.connect(this.processor);
-        this.processor.connect(this.context.destination);
+        this.source.connect(this.encoderWorklet);
 
         let event = new Event('resume');
         this.dispatchEvent(event);
@@ -134,7 +134,6 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         if (timeslice < 0) {
             throw new TypeError('invalid arguments, timeslice should be 0 or higher.');
         }
-        timeslice /= 1000; // Convert milliseconds to seconds
 
         // Check worker is closed (usually by stop()) and init.
         if (this.workerState === 'closed') {
@@ -148,14 +147,11 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         if (!tracks[0]) {
             throw new Error('DOMException: UnkownError, media track not found.');
         }
-        /** @type {MediaStreamAudioSourceNode} */
-        this.source = this.context.createMediaStreamSource(this.stream);
-        /** @type {ScriptProcessorNode} */
-        this.processor = this.context.createScriptProcessor(BUFFER_SIZE, this.channelCount, this.channelCount);
 
         // Start recording
-        this.state = 'recording';
-        this.enableAudioProcessCallback(timeslice);
+        this.initialize(timeslice).then(() => {
+            this.state = 'recording';
+        })
 
         // If the worker is already loaded then start
         if (this.workerState === 'readyToInit') {
@@ -172,7 +168,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         // Stop stream first
         this.source.disconnect();
-        this.processor.disconnect();
+        this.encoderWorklet.disconnect();
         // this.context.close();
         // this.context.
 
@@ -189,36 +185,29 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         });
     }
 
-    private enableAudioProcessCallback (timeslice: number) {
-        // pass frame buffers to the worker
-        let elapsedTime = 0;
-        this.processor.onaudioprocess = (e) => {
-            const { inputBuffer, playbackTime } = e; // eslint-disable-line
-            const { sampleRate, length, duration, numberOfChannels } = inputBuffer; // eslint-disable-line
-
-            // Create channel buffers to pass to the worker
-            const channelBuffers = new Array(numberOfChannels);
-            for (let i = 0; i < numberOfChannels; i++) {
-                channelBuffers[i] = inputBuffer.getChannelData(i);
-            }
-
-            // Pass data to the worker
-            this.postMessageToWorker(new PushInputDataCommand(channelBuffers));
-
-            // Calculate time
-            elapsedTime += duration;
-            if (elapsedTime >= timeslice) {
-                this.postMessageToWorker(new GetEncodedDataCommand());
-                elapsedTime = 0;
+    private async initialize(timeslice: number): Promise<void> {
+        this.context = await AudioContextPool.get("main") as AudioContext;
+        this.sampleRate = this.context.sampleRate;
+        this.source = this.context.createMediaStreamSource(this.stream);
+        const encoderWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+            processorOptions: {
+                timeslice: timeslice
             }
         };
+        this.encoderWorklet = new AudioWorkletNode(this.context, 'opus-encoder-worklet-processor', encoderWorkletOptions);
+        this.encoderWorklet.port.postMessage({ topic: 'init-port' }, [this.workerChannel.port2]);
     }
 
     private postMessageToWorker (encoderCommand: EncoderCommand) {
         const { command } = encoderCommand;
         switch (command) {
             case 'loadEncoder':
-                this.worker.postMessage(encoderCommand);
+                this.worker.postMessage(encoderCommand, [this.workerChannel.port1]);
                 break;
 
             case 'init':
@@ -227,16 +216,9 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 this.workerState = 'encoding';
 
                 // Start streaming
-                this.source.connect(this.processor);
-                this.processor.connect(this.context.destination);
+                this.source.connect(this.encoderWorklet);
                 let eventToPush = new Event('start');
                 this.dispatchEvent(eventToPush);
-                break;
-
-            case 'pushInputData':
-                // Pass input audio buffer to the encoder to encode.
-                // The worker MAY trigger 'encodedData'.
-                this.worker.postMessage(encoderCommand); // TODO: Add transferables
                 break;
 
             case 'getEncodedData':
@@ -256,7 +238,6 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 throw new Error('Internal Error: Incorrect postMessage requested.');
         }
     }
-
 
     private onWorkerMessage(ev: MessageEvent<EncoderMessage>) {
         const { command, buffers } = ev.data;
@@ -302,10 +283,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     onWorkerError (error) {
         // Stop stream first
         this.source.disconnect();
-        this.processor.disconnect();
-
-        // this.worker.terminate();
-        // this.workerState = 'closed';
+        this.encoderWorklet.disconnect();
 
         this.workerState = 'readyToInit'
 

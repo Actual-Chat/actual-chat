@@ -174,7 +174,7 @@ module.exports = (env, args) => {
         }
       },
       vadWorklet: {
-        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-module.ts',
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts',
         chunkLoading: false,
         asyncChunks: false,
         runtime: false,

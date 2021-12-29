@@ -132,8 +132,7 @@ export class AudioRecorder {
                 audioBitsPerSecond: 32000,
             };
 
-            const mainAudioContext = await AudioContextPool.get("main") as AudioContext;
-            let recorder = new OpusMediaRecorder(stream, options, mainAudioContext);
+            let recorder = new OpusMediaRecorder(stream, options);
             recorder.ondataavailable = async (be: BlobEvent) => {
                     try {
                         const blob = be.data;
