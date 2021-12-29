@@ -9,33 +9,39 @@
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 
-<div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full">
-    <div class="flex flex-row justify-between px-2 md:px-3 my-1">
-        <div class="block flex flex-row justify-center justify-items-center py-2 px-2 md:px-4 ml-2 rounded-l-2xl outline-none bg-accent items-end">
-            <button class="outline-none text-secondary bg-transparent hover:cursor-pointer text-primary py-1">
-                <svg class="fill-current h-5 w-5 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+<div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full p-2">
+    <div class="flex flex-row justify-between px-2 md:px-3">
+        <div @ref="InputRef" class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-lg items-end w-full mr-1 overflow-hidden mr-2">
+            <button class="attach-button sticky bottom-0 flex outline-none text-secondary hover:cursor-pointer text-primary px-3 py-2">
+                <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
                 </svg>
             </button>
-        </div>
-        <div @ref="Ref" class="message-input block overflow-y-auto max-h-36 break-words flex-1 py-2 outline-none hover:cursor-text bg-accent text-primary rounded-r-2xl"
-             autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
-             aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
-        </div>
-        <div @ref="ButtonDivRef" class="block flex flex-row justify-center justify-items-center rounded-r-2xl outline-none bg-accent md:mr-8 pl-2 items-end hidden">
-            <button class="post-message outline-none py-2 pr-3 text-secondary rounded-r-2xl bg-transparent max-h-12 transition-all duration-150"
+            <div class="message-input block flex-1 overflow-y-auto max-h-36 break-words py-2 pr-2 outline-none hover:cursor-text text-primary"
+                 autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
+                 aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
+            </div>
+            <button class="post-message hidden sticky bottom-0 flex outline-none text-secondary transition-all duration-150 p-1"
                     @onclick="_ => Post()">
-                <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="-1 -2 28 28">
+                <svg class="items-center fill-current h-8 w-8" xmlns="http://www.w3.org/2000/svg" viewBox="1 -2 28 28">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
         </div>
-        <div class="w-8/24 md:w-4/24 px-1 block flex flex-row justify-center outline-none bg-accent rounded-2xl mx-2 items-end">
-            <ChatLanguageToggle />
-            <AudioRecorderWrapper ChatId="@Chat.Id" />
-            @if (RealtimePlayer != null) {
-                <ChatPlayerToggle Player="RealtimePlayer"/>
-            }
+        <div class="block flex flex-1 flex-row justify-center outline-none items-end">
+            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-secondary rounded-lg py-2">
+                <div class="chat-control-button language-button mr-1 p-1 w-1/2 border border-accent hidden">
+                    <ChatLanguageToggle/>
+                </div>
+                <div class="chat-control-button recorder-button w-1/2 border border-accent flex">
+                    <AudioRecorderWrapper ChatId="@Chat.Id"/>
+                </div>
+                @if (RealtimePlayer != null) {
+                    <div class="chat-control-button player-button ml-1 w-1/2 border border-accent flex">
+                        <ChatPlayerToggle Player="RealtimePlayer"/>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </div>
@@ -44,8 +50,8 @@
     private static string? _class;
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
-    private ElementReference Ref { get; set; }
-    private ElementReference ButtonDivRef { get; set; }
+    private ElementReference InputRef { get; set; }
+    private ElementReference ChatControlRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
@@ -71,7 +77,7 @@
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                Ref, ButtonDivRef, BlazorRef
+                InputRef, ChatControlRef, BlazorRef
                 ).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("setText", Text).ConfigureAwait(true);
         }
