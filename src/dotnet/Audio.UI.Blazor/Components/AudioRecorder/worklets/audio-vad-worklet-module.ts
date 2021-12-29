@@ -1,4 +1,2 @@
 import { VadAudioWorkletProcessor } from "./audio-vad-worklet-processor";
-// @ts-ignore // TODO: fix the type definition here
-registerProcessor('audio-vad-worklet-processor', VadAudioWorkletProcessor);
-
+registerProcessor('audio-vad-worklet-processor', VadAudioWorkletProcessor as unknown as AudioWorkletProcessorConstructor);
