@@ -147,7 +147,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     protected virtual void OnVolumeSet(double volume)
         => UpdateState(volume, (v, s) => s with { Volume = v });
 
-    protected string GetRealtimeDelay(int frameIndex, TimeSpan frameOffset)
+    protected virtual string GetRealtimeDelay(int frameIndex, TimeSpan frameOffset)
     {
         if (DebugLog == null || frameIndex % FrameDebugInfoPerEvery != 0)
             return "";
