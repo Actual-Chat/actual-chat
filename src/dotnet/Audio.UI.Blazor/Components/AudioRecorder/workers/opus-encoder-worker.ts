@@ -5,7 +5,7 @@ import {
     InitCommand,
     LoadEncoderCommand,
     PushInputDataCommand
-} from "../opus-media-recorder-messages";
+} from "../opus-media-recorder-message";
 
 interface Encoder {
     init(inputSampleRate: number, channelCount: number, bitsPerSecond: number): void;
