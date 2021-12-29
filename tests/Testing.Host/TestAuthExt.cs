@@ -24,7 +24,7 @@ public static class TestAuthExt
         var command = new SignInCommand(session, user, userIdentity);
         await authBackend.SignIn(command, cancellationToken).ConfigureAwait(false);
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        sessionInfo.MustBeAuthenticated();
+        sessionInfo = sessionInfo.MustBeAuthenticated();
         user = (await authBackend.GetUser(sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
         return user;
     }

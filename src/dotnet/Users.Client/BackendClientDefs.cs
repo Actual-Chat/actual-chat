@@ -7,7 +7,7 @@ namespace ActualChat.Users.Client;
 [BasePath("sessionOptionsBackend")]
 public interface ISessionOptionsBackendClientDef
 {
-    [Post(nameof(Update))]
-    Task Update([Body] ISessionOptionsBackend.UpdateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Upsert))]
+    Task Upsert([Body] ISessionOptionsBackend.UpsertCommand command, CancellationToken cancellationToken);
 }
 

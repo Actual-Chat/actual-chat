@@ -21,7 +21,7 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
     // [ComputeMethod]
     public virtual async Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user.IsAuthenticated)
             return await Get(user.Id, chatId, cancellationToken).ConfigureAwait(false);
 
@@ -38,7 +38,7 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
         if (Computed.IsInvalidating()) return default!;
 
         var (session, chatId, settings) = command;
-        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user.IsAuthenticated) {
             var command1 = new IChatUserSettingsBackend.UpsertCommand(user.Id, chatId, settings);
             await _commander.Call(command1, true, cancellationToken).ConfigureAwait(false);
@@ -46,7 +46,7 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
         else {
             var serializedSettings = SystemJsonSerializer.Default.Write(settings);
             var updatedPair = KeyValuePair.Create($"{chatId}::settings", serializedSettings);
-            var command2 = new ISessionOptionsBackend.UpdateCommand(session, updatedPair);
+            var command2 = new ISessionOptionsBackend.UpsertCommand(session, updatedPair);
             await _commander.Call(command2, true, cancellationToken).ConfigureAwait(false);
         }
         return default!;

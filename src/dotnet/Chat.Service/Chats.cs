@@ -121,7 +121,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, title) = command;
-        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         user.MustBeAuthenticated();
 
         var chat = new Chat() {
