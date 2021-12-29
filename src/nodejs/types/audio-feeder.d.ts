@@ -8,7 +8,6 @@ declare module "audio-feeder" {
         audioContext?: AudioContext;
         output?: AudioDestinationNode;
         backendFactory?: (numChannels: number, sampleRate: number, options: AudioFeederOptions) => WebAudioBackend;
-
     }
 
     interface PlaybackState {
@@ -70,6 +69,12 @@ declare module "audio-feeder" {
          *
          */
         muted: boolean;
+
+        /**
+         * Backend reference
+         */
+        _backend: any;
+
         /**
          * Force initialization of the default Web Audio API context, if applicable.
          *

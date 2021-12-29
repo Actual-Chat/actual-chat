@@ -347,26 +347,19 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             this.log("Enqueue 'Abort' operation.");
         this._queue.prepend({
             execute: () => {
+                this._queue.clear();
                 if (this.feeder !== null) {
                     try {
-                        this.feeder.muted = true;
+                        this.feeder._backend._node.onaudioprocess = null;
+                        this.feeder._backend._node.disconnect();
                         this.feeder.stop();
                         this.feeder.flush();
                     }
-                    catch { /* feeder._tempoChanger.flush can throw */ }
+                    catch {
+                        // Intended
+                    }
                 }
-                this._queue.clear();
-                if (this.demuxer != null) {
-                    return new Promise<void>(resolve => {
-                        this.demuxer.flush(() => {
-                            if (this.feeder !== null)
-                                this.feeder.muted = false;
-                            resolve();
-                        });
-                    });
-                }
-                if (this.feeder !== null)
-                    this.feeder.muted = false;
+                return new Promise<void>(resolve => this.demuxer.flush(resolve));
             },
             onSuccess: () => {
                 if (this._debugMode)
