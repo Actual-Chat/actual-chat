@@ -20,21 +20,26 @@
 @code {
     private static string? _class;
 
-    [Parameter]
-    public ChatPlayer Player { get; set; } = null!;
+    [CascadingParameter]
+    public Chat Chat { get; set; } = null!;
+    [Inject]
+    private ChatPlayers ChatPlayers { get; set; } = null!;
+    private ChatPlayer HistoricalPlayer { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => HistoricalPlayer = await ChatPlayers.GetHistoricalPlayer(Chat.Id).ConfigureAwait(true);
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var playback = await HistoricalPlayer.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playback == null)
             return false;
         var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
         return !isStopped;
     }
 
-    private Task Stop() {
-        return Player.Stop();
-    }
+    private Task Stop()
+        => HistoricalPlayer.Stop();
 }

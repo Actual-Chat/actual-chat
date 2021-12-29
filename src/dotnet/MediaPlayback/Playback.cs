@@ -191,14 +191,12 @@ public sealed class Playback : AsyncProcessBase, IHasServices
             lock (Lock) {
                 PlayingTracksState.Value = PlayingTracks.Insert(0, state);
             }
-            PlayingTracksState.Value = PlayingTracks;
             TrackStarted?.Invoke(state);
         }
         else if (state.IsCompleted && !lastState.IsCompleted) {
             lock (Lock) {
                 PlayingTracksState.Value = PlayingTracks.RemoveAll(s => s.Command.TrackId == state.Command.TrackId);
             }
-            PlayingTracksState.Value = PlayingTracks;
             TrackStopped?.Invoke(state);
         }
     }
