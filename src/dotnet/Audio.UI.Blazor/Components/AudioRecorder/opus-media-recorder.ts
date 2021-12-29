@@ -1,5 +1,4 @@
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
-import { AudioContextPool } from 'audio-context-pool';
 import {
     DoneCommand,
     EncoderCommand,
@@ -8,7 +7,7 @@ import {
     LoadEncoderCommand,
     PushInputDataCommand,
     EncoderMessage,
-} from "./opus-media-recorder-messages";
+} from "./opus-media-recorder-message";
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding'|'closed';
 
