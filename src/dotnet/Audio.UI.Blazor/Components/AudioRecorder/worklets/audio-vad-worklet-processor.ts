@@ -1,5 +1,5 @@
 import { RingBuffer } from "./ring-buffer";
-import { VadMessage } from "../audio-vad.message";
+import { VadMessage } from "../audio-vad-message";
 
 const SamplesPerWindow = 512;
 
@@ -8,10 +8,6 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private bufferDeque: ArrayBuffer[];
 
     private workerPort: MessagePort;
-
-    static get parameterDescriptors() {
-        return [];
-    }
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -90,8 +86,12 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
         switch (topic) {
             case 'buffer':
                 this.bufferDeque.push(buffer);
+                break;
             default:
                 break;
         }
     }
 }
+
+// @ts-ignore
+registerProcessor('audio-vad-worklet-processor', VadAudioWorkletProcessor);

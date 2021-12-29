@@ -1,6 +1,6 @@
 import Denque from 'denque';
 import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
-import { VadMessage } from "../audio-vad.message";
+import { VadMessage } from "../audio-vad-message";
 import OnnxModel from '../vad.onnx';
 
 const voiceDetector = new VoiceActivityDetector(OnnxModel);

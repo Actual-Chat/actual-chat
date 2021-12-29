@@ -1,10 +1,11 @@
 import WebMOpusEncoder from 'opus-media-recorder/WebMOpusEncoder';
+import Denque from 'denque';
 import {
     EncoderCommand,
     EncoderMessage,
     InitCommand,
     LoadEncoderCommand,
-    PushInputDataCommand
+    EncoderWorkletMessage
 } from "../opus-media-recorder-message";
 
 interface Encoder {
@@ -14,14 +15,23 @@ interface Encoder {
     close(): void;
 }
 
-let encoder: Encoder;
+type WorkerState = 'inactive'|'readyToInit'|'encoding'|'closed';
+
+const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
+let state: WorkerState = 'inactive';
+let workletPort: MessagePort = null;
+let encoder: Encoder;
+let isEncoding: boolean = false;
 
 worker.onmessage = (ev: MessageEvent) => {
     const {command}: EncoderCommand = ev.data;
     switch (command) {
         case 'loadEncoder':
             const {mimeType, wasmPath}: LoadEncoderCommand = ev.data;
+            workletPort = ev.ports[0];
+            workletPort.onmessage = onWorkletMessage;
+
             // Setting encoder module
             const mime = mimeType.toLowerCase();
             let encoderModule;
@@ -39,32 +49,34 @@ worker.onmessage = (ev: MessageEvent) => {
             encoderModule(moduleOverrides).then(Module => {
                 encoder = Module;
                 // Notify the host ready to accept 'init' message.
-                self.postMessage({command: 'readyToInit'});
+                worker.postMessage({command: 'readyToInit'});
+                state = 'readyToInit';
             });
             break;
 
         case 'init':
             const {sampleRate, channelCount, bitsPerSecond}: InitCommand = ev.data;
             encoder.init(sampleRate, channelCount, bitsPerSecond);
-            break;
-
-        case 'pushInputData':
-            const {channelBuffers}: PushInputDataCommand = ev.data; // eslint-disable-line
-            encoder.encode(channelBuffers);
+            state = 'encoding';
             break;
 
         case 'getEncodedData':
         case 'done':
             if (command === 'done') {
-                encoder.close();
+                if (encoder) {
+                    encoder.close();
+                }
+                state = 'closed';
             }
 
-            const buffers = encoder.flush();
-            const message: EncoderMessage = {
-                command: command === 'done' ? 'lastEncodedData' : 'encodedData',
-                buffers
-            };
-            worker.postMessage(message, buffers);
+            if (encoder) {
+                const buffers = encoder.flush();
+                const message: EncoderMessage = {
+                    command: command === 'done' ? 'lastEncodedData' : 'encodedData',
+                    buffers
+                };
+                worker.postMessage(message, buffers);
+            }
 
             break;
 
@@ -73,3 +85,57 @@ worker.onmessage = (ev: MessageEvent) => {
             break;
     }
 };
+
+const onWorkletMessage = async (ev: MessageEvent<EncoderWorkletMessage>) => {
+    const { topic, buffer }: EncoderWorkletMessage = ev.data;
+
+    let audioBuffer: ArrayBuffer;
+    switch (topic) {
+        case 'buffer':
+            audioBuffer = buffer;
+            break;
+        default:
+            break;
+    }
+    if (audioBuffer.byteLength !== 0 && state === 'encoding') {
+        queue.push(buffer);
+
+        const _ = processQueue();
+    }
+};
+
+async function processQueue(): Promise<void> {
+    if (queue.isEmpty()) {
+        return;
+    }
+
+    if (isEncoding) {
+        return;
+    }
+
+    try {
+        isEncoding = true;
+
+        const buffer = queue.pop();
+        const monoPcm = new Float32Array(buffer);
+        encoder.encode([monoPcm]);
+
+        const workletMessage: EncoderWorkletMessage = { topic: "buffer", buffer: buffer };
+        workletPort.postMessage(workletMessage, [buffer]);
+
+        const buffers = encoder.flush();
+        const message: EncoderMessage = {
+            command: 'encodedData',
+            buffers
+        };
+        worker.postMessage(message, buffers);
+
+    } catch (error) {
+        isEncoding = false;
+        throw error;
+    } finally {
+        isEncoding = false;
+    }
+
+    const _ = processQueue();
+}
