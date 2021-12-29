@@ -1,4 +1,4 @@
-import Denque from 'Denque';
+import Denque from 'denque';
 import { NodeMessage, DataNodeMessage, ChangeStateNodeMessage, StateChangedProcessorMessage, StateProcessorMessage, GetStateNodeMessage } from './feeder-audio-worklet-message';
 
 /** Part of the feeder that lives in AudioWorkletGlobalScope */
