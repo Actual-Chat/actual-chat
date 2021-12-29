@@ -160,9 +160,10 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             const string version = ThisAssembly.AssemblyInformationalVersion;
             services.AddOpenTelemetryMetrics(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
-                // gcloud exporter doesn't support some of metrics yet https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
+                // gcloud exporter doesn't support some of metrics yet:
+                // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 // .AddAspNetCoreInstrumentation()
-                .AddMeter(Tracer.Metric.Name)
+                .AddMeter(AppMeter.Name)
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Simple;
                     cfg.Protocol = OtlpExportProtocol.Grpc;
@@ -173,7 +174,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             services.AddOpenTelemetryTracing(builder => builder
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 .SetErrorStatusOnException()
-                .AddSource(Tracer.Span.Name)
+                .AddSource(AppTrace.Name)
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",
