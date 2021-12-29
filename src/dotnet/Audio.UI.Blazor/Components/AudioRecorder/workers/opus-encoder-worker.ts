@@ -1,11 +1,26 @@
-const WebMOpusEncoder = require('opus-media-recorder/WebMOpusEncoder.js');
-let encoder;
+import WebMOpusEncoder from 'opus-media-recorder/WebMOpusEncoder';
+import {
+    EncoderCommand,
+    EncoderMessage,
+    InitCommand,
+    LoadEncoderCommand,
+    PushInputDataCommand
+} from "../opus-media-recorder-messages";
+
+interface Encoder {
+    init(inputSampleRate: number, channelCount: number, bitsPerSecond: number): void;
+    encode(channelBuffers: Float32Array[]): void;
+    flush(): ArrayBuffer[];
+    close(): void;
+}
+let encoder: Encoder;
+let self: Worker;
 
 self.onmessage = (ev: MessageEvent) => {
-  const { command } = ev.data;
+  const { command } : EncoderCommand = ev.data;
   switch (command) {
     case 'loadEncoder':
-      const { mimeType, wasmPath } = ev.data;
+      const { mimeType, wasmPath }: LoadEncoderCommand = ev.data;
       // Setting encoder module
       const mime = mimeType.toLowerCase();
       let encoderModule;
@@ -28,12 +43,12 @@ self.onmessage = (ev: MessageEvent) => {
       break;
 
     case 'init':
-      const { sampleRate, channelCount, bitsPerSecond } = ev.data;
+      const { sampleRate, channelCount, bitsPerSecond }: InitCommand = ev.data;
       encoder.init(sampleRate, channelCount, bitsPerSecond);
       break;
 
     case 'pushInputData':
-      const { channelBuffers, length, duration } = ev.data; // eslint-disable-line
+      const { channelBuffers } : PushInputDataCommand = ev.data; // eslint-disable-line
       encoder.encode(channelBuffers);
       break;
 
@@ -44,14 +59,12 @@ self.onmessage = (ev: MessageEvent) => {
       }
 
       const buffers = encoder.flush();
-      self.postMessage({
-        command: command === 'done' ? 'lastEncodedData' : 'encodedData',
-        buffers
-      }, buffers);
+      const message: EncoderMessage = {
+          command: command === 'done' ? 'lastEncodedData' : 'encodedData',
+          buffers
+      };
+      self.postMessage(message, buffers);
 
-      if (command === 'done') {
-        self.close();
-      }
       break;
 
     default:
