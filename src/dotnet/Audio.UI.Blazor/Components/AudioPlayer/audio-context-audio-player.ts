@@ -1,13 +1,18 @@
+// TODO: implement better audio context pool + cache nodes
+// TODO: move the command queue processing inside a web worker
+// TODO: combine demuxer / decoder / recorder wasm modules into one
+
 import OGVDecoderAudioOpusW from 'ogv/dist/ogv-decoder-audio-opus-wasm';
 import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm';
 import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
-import AudioFeeder, { PlaybackState } from 'audio-feeder';
-import { nextTick, nextTickAsync } from 'next-tick';
+import { nextTickAsync } from 'next-tick';
 import { AudioContextPool } from 'audio-context-pool';
 import { OperationQueue, Operation } from './operation-queue';
 import { IAudioPlayer } from './IAudioPlayer';
-/** Adapter class for ogv.js player */
+import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
+
+
 export class AudioContextAudioPlayer implements IAudioPlayer {
 
     public static debug?: {
@@ -62,21 +67,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
      * should be in sync with audio-feeder bufferSize
      */
     private readonly _bufferEnoughThreshold = 0.60;
-    /**
-     * We have 960 samples in opus frame (if it was recorded by our wasm recorder)
-     * bufferSize must be power of 2, so 256, 512 (10ms-20ms), 1024 (21ms+) , 2048 (42ms+),
-     * 4096(85ms), 8192(170ms), 16384(341ms). You can read about it at the webaudio spec
-     * https://webaudio.github.io/web-audio-api/#dom-baseaudiocontext-createscriptprocessor-buffersize-numberofinputchannels-numberofoutputchannels-buffersize
-     * so we can block js main thread max up to 85ms without glitches
-     */
-    private readonly _audioContextBufferSize = 512;
     /** How many milliseconds can we block the main thread for processing */
     private readonly _processingThresholdMs = 10;
-    /**
-     * How much seconds do we have in the buffer before unblocking the queue,
-     * must be less than _bufferTooMuchThreshold
-     */
-    private readonly _bufferUnblockThreshold = this._bufferTooMuchThreshold - 5;
     /** How often send offset update event to the blazor, in milliseconds */
     private readonly _updateOffsetMs = 200;
 
@@ -93,7 +85,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     private decoder?: Decoder;
     private readonly _decoderReady: Promise<Decoder>;
     private audioContext: AudioContext;
-    private feeder?: AudioFeeder = null;
+    private feederNode?: FeederAudioWorkletNode = null;
     private _queue: OperationQueue;
     private _nextProcessingTickTimer: number | null;
     private _isProcessing: boolean;
@@ -156,14 +148,22 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                     this.log(`initialize(header: ${byteArray.length} bytes)`);
                 }
                 this.audioContext = await AudioContextPool.get("main") as AudioContext;
-                this.feeder = new AudioFeeder({
-                    bufferSize: this._audioContextBufferSize,
-                    audioContext: this.audioContext,
-                });
-                this.feeder.onbufferlow = () => this.unblockQueue('onbufferlow');
-                this.feeder.onstarved = () => {
+                const feederNodeOptions: AudioWorkletNodeOptions = {
+                    channelCount: 1,
+                    channelCountMode: 'explicit',
+                    numberOfInputs: 0,
+                    numberOfOutputs: 1,
+                    outputChannelCount: [1],
+                };
+                this.feederNode = new FeederAudioWorkletNode(
+                    this.audioContext,
+                    'feederWorklet',
+                    feederNodeOptions
+                );
+                this.feederNode.onBufferLow = () => this.unblockQueue('onBufferLow');
+                this.feederNode.onStarving = () => {
                     if (this._isPlaying && this._isEndOfStreamReached) {
-                        this.feeder.onstarved = null;
+                        this.feederNode.onStarving = null;
                         if (this._debugMode)
                             this.log(`audio ended.`);
                         const _ = this.onUpdateOffsetTick();
@@ -171,10 +171,9 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                         const __ = this.invokeOnPlaybackEnded();
                         return;
                     }
-                    this.unblockQueue('onstarved');
+                    this.unblockQueue('onStarving');
                 };
-                this.feeder.init(1, 48000);
-                this.feeder.bufferThreshold = this._bufferUnblockThreshold;
+                this.feederNode.connect(this.audioContext.destination);
                 if (this.demuxer === null) {
                     if (this._debugMode)
                         this.log("initialize: awaiting creation of demuxer");
@@ -189,11 +188,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                     if (this._debugMode)
                         this.log("initialize: decoder header has been created");
                 }
-                if (this._debugMode)
-                    this.log("initialize: awaiting creation of feeder");
-                await this.feederReady();
-                if (this._debugMode)
-                    this.log("initialize: feeder has been created");
 
                 if (this._debugMode)
                     this.log("initialize: start processing headers");
@@ -216,10 +210,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             onError: error => { this.logError(`initialize: error ${error} ${error.stack}`); }
         };
         this._queue.append(operation);
-    }
-
-    private feederReady(): Promise<void> {
-        return new Promise<void>(resolve => this.feeder.waitUntilReady(resolve));
     }
 
     private get _isMetadataLoaded(): boolean {
@@ -267,17 +257,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     }
 
     private onUpdateOffsetTick = async () => {
-        const feeder = this.feeder;
+        const feeder = this.feederNode;
         if (feeder === null || this._isDisposed)
             return;
-        let state: PlaybackState | null = null;
-        try {
-            state = feeder.getPlaybackState();
-        }
-        catch { /* feeder.getPlaybackState can try to read properties of undefined */ }
-        if (state === null || state.playbackPosition === null)
-            return;
-        await this.invokeOnPlaybackTimeChanged(state.playbackPosition);
+        let state: PlaybackState = await feeder.getState();
+        await this.invokeOnPlaybackTimeChanged(state.playbackTime);
         if (this._isPlaying) {
             self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);
         }
@@ -347,19 +331,16 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             this.log("Enqueue 'Abort' operation.");
         this._queue.prepend({
             execute: () => {
-                this._queue.clear();
-                if (this.feeder !== null) {
-                    try {
-                        this.feeder._backend._node.onaudioprocess = null;
-                        this.feeder._backend._node.disconnect();
-                        this.feeder.stop();
-                        this.feeder.flush();
-                    }
-                    catch {
-                        // Intended
-                    }
+                if (this.feederNode !== null) {
+                    this.feederNode.stop();
+                    this.feederNode.clear();
                 }
-                return new Promise<void>(resolve => this.demuxer.flush(resolve));
+                this._queue.clear();
+                if (this.demuxer != null) {
+                    return new Promise<void>(resolve => {
+                        this.demuxer.flush(() => resolve());
+                    });
+                }
             },
             onSuccess: () => {
                 if (this._debugMode)
@@ -385,13 +366,12 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         this.demuxer?.flush(() => { this.demuxer?.close(); this.demuxer = null; });
         this.decoder?.close();
         this.decoder = null;
-        this.feeder.flush();
-        this.feeder.close();
+        this.feederNode.disconnect();
         this._isPlaying = false;
     }
 
     private async processPacket(byteArray: Uint8Array, offset: number): Promise<void> {
-        const { demuxer, feeder } = this;
+        const { demuxer, feederNode: feeder } = this;
         try {
             if (this._debugAppendAudioCalls) {
                 this.log(`processPacket(size: ${byteArray.length}, `
@@ -424,35 +404,28 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                     }
                     if (samples === null)
                         continue;
-                    feeder.bufferData(samples);
-                    const playbackState = this.feeder.getPlaybackState();
-                    const durationBuffered = playbackState.samplesQueued / this.feeder.targetRate;
-                    const bufferedSpan = durationBuffered - playbackState.playbackPosition;
-
+                    feeder.feed(samples[0]);
+                    const playbackState = await this.feederNode.getState();
                     if (this._debugFeederStats) {
                         this.log("Feeder stats: "
-                            + `playbackPosition: ${playbackState.playbackPosition}, `
-                            + `durationBuffered: ${durationBuffered}, `
-                            + `bufferedSpan: ${bufferedSpan}, `
-                            + `playbackState: ${JSON.stringify(playbackState)} `);
+                            + `playbackTime: ${playbackState.playbackTime}, `
+                            + `bufferedDuration: ${playbackState.bufferedDuration}`);
                     }
-                    if (bufferedSpan >= this._bufferEnoughThreshold) {
+                    if (playbackState.bufferedDuration >= this._bufferEnoughThreshold) {
                         if (!this._isPlaying) {
                             if (this.onStartPlaying !== null)
                                 this.onStartPlaying();
-                            this.feeder.start();
+                            this.feederNode.play();
                             this._isPlaying = true;
                             self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);
                             if (this._debugFeeder) {
-                                this.log("Feeder start playing, "
-                                    + `bufferDuration: ${this.feeder.durationBuffered}, `
-                                    + `playbackState: ${JSON.stringify(this.feeder.getPlaybackState())}`);
+                                this.log("Feeder start playing");
                             }
                         }
                     }
                     // we buffered enough data, tell to blazor about it and block the operation queue
-                    if (bufferedSpan >= this._bufferTooMuchThreshold) {
-                        await this.invokeOnChangeReadiness(false, playbackState.playbackPosition, 4);
+                    if (playbackState.bufferedDuration >= this._bufferTooMuchThreshold) {
+                        await this.invokeOnChangeReadiness(false, playbackState.playbackTime, 4);
                         const blocker = new Promise<void>(resolve => this._unblockQueue = resolve);
                         this._queue.prepend({
                             execute: () => blocker,
@@ -463,7 +436,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                             onStart: () => {
                                 if (this._debugOperations) {
                                     this.logWarn("Start blocking operation queue, "
-                                        + `bufferedSpan: ${bufferedSpan}`);
+                                        + `bufferedDuration: ${playbackState.bufferedDuration}`);
                                 }
                             },
                             onError: _ => { }
@@ -527,14 +500,14 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         });
     }
 
-    private unblockQueue(source: string) {
+    private unblockQueue(source: string): void {
         const unblock = this._unblockQueue;
         this._unblockQueue = null;
         if (unblock !== null) {
             if (this._debugOperations)
                 this.logWarn(`[${source}]: Unblocking queue`);
             unblock();
-            const _ = this.invokeOnChangeReadiness(true, this.feeder.playbackPosition, 2);
+            const _ = this.invokeOnChangeReadiness(true, /* isn't used */-1, 2);
         }
     }
 
