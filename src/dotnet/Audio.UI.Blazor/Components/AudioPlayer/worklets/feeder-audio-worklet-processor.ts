@@ -193,6 +193,5 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         }
     }
 }
-
-registerProcessor('feederWorklet', FeederAudioWorkletProcessor as unknown as AudioWorkletProcessorConstructor);
-
+// @ts-ignore
+registerProcessor('feederWorklet', FeederAudioWorkletProcessor);
