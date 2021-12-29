@@ -7,9 +7,9 @@
 @{
     var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
-<button class="@(_class ??= this.DefaultClass()) hidden m-auto w-1/3 text-2xl font-semibold w-1/3 inline-flex justify-center outline-none text-secondary hover:text-toggle-on rounded-l-2xl max-h-12 transition-all duration-150"
+<button class="@(_class ??= this.DefaultClass()) relative h-8 w-8 p-1 rounded-full text-md font-semibold text-secondary hover:text-toggle-on transition-all duration-150"
         @onclick="Toggle">
-    @language.Shortcut
+        @language.Shortcut
 </button>
 
 @code {

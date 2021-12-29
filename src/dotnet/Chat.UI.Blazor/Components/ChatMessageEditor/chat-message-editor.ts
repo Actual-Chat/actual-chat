@@ -1,20 +1,30 @@
 export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
+    private _inputDiv: HTMLDivElement;
+    private _attachButton: HTMLButtonElement;
     private _input: HTMLDivElement;
-    private _buttonDiv: HTMLDivElement;
     private _postButton: HTMLButtonElement;
+    private _controlDiv: HTMLDivElement;
+    private _langButtonDiv: HTMLDivElement;
+    private _recordButtonDiv: HTMLDivElement;
+    private _playerButtonDiv: HTMLDivElement;
     private _isTextMode: boolean = false;
 
-    static create(input: HTMLDivElement, buttonDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(input, buttonDiv, backendRef);
+    static create(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(inputDiv, controlDiv, backendRef);
     }
 
-    constructor(input: HTMLDivElement, buttonDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
-        this._input = input;
-        this._buttonDiv = buttonDiv;
+    constructor(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this._inputDiv = inputDiv;
+        this._attachButton = this._inputDiv.querySelector('button.attach-button');
+        this._input = this._inputDiv.querySelector('div.message-input');
+        this._postButton = this._inputDiv.querySelector('button.post-message');
         this._blazorRef = blazorRef;
-        this._postButton = buttonDiv.querySelector("button.post-message");
+        this._controlDiv = controlDiv;
+        this._langButtonDiv = this._controlDiv.querySelector('div.language-button');
+        this._recordButtonDiv = this._controlDiv.querySelector('div.recorder-button');
+        this._playerButtonDiv = this._controlDiv.querySelector('div.player-button');
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
@@ -40,30 +50,27 @@ export class ChatMessageEditor {
             return;
         this._isTextMode = isTextMode;
         let postButton = this._postButton;
-        let buttonDiv = this._buttonDiv;
+        let recordButton = this._recordButtonDiv;
+        let playerButton = this._playerButtonDiv;
         postButton.style.transform = "translateX(-0.5rem) scale(.05)";
         setTimeout(() => {
             if (isTextMode) {
-                buttonDiv.classList.replace('hidden', 'md:hidden');
+                postButton.classList.replace('hidden', 'md:hidden');
+                recordButton.classList.add('hidden');
+                recordButton.classList.replace('flex', 'md:flex');
+                playerButton.classList.replace('w-1/2', 'w-full');
+                console.log('record button styles text mode: ' + recordButton.classList);
             } else {
-                buttonDiv.classList.replace("md:hidden", 'hidden');
+                postButton.classList.replace("md:hidden", 'hidden');
+                recordButton.classList.remove('hidden');
+                recordButton.classList.replace('md:flex', 'flex');
+                playerButton.classList.replace('w-full', 'w-1/2');
+                console.log('record button styles record mode: ' + recordButton.classList);
             }
-        }, 25);
-        setTimeout(() => {
-            this.changeInputBorder(buttonDiv);
         }, 25);
         setTimeout(() => {
             postButton.style.transform = 'translateX(0px) scale(1)';
         }, 50)
-    }
-
-    public changeInputBorder(buttonDiv : HTMLDivElement) {
-        let input = this._input;
-        let postButtonDisplay = window.getComputedStyle(buttonDiv).display;
-        if (postButtonDisplay != 'none' && buttonDiv.classList.contains('md:hidden'))
-            input.classList.replace('rounded-r-2xl', 'rounded-none');
-        else
-            input.classList.replace('rounded-none', 'rounded-r-2xl');
     }
 
     public getText(): string {
