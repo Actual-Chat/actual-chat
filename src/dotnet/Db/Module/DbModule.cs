@@ -58,9 +58,12 @@ public class DbModule : HostModule<DbSettings>
                 builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
             }
             else {
-                builder.UseNpgsql(
-                    connectionString,
-                    o => o.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration"));
+                builder.UseNpgsql(connectionString, npgsql => {
+                    npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
+                    npgsql.MaxBatchSize(1);
+                });
+                // To be enabled later (requires migrations):
+                // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
             }
 
             if (IsDevelopmentInstance)
