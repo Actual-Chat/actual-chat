@@ -1,10 +1,22 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
 
 <div class="px-2">
     <span class="float-left">@Chat.Title</span>
+    @if (HistoricalPlayer != null) {
+        <ChatPlayerStopButton Player="HistoricalPlayer"/>
+    }
 </div>
 
 @code {
+    
+    private ChatPlayer? HistoricalPlayer { get; set; }
+
+    [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
+
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => HistoricalPlayer = await ChatPlayers.GetHistoricalPlayer(Chat.Id);
 }
