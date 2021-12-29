@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat;
@@ -25,12 +20,11 @@ public class TracingCommandHandler : ICommandHandler<ICommand>
     {
         if (ShouldTrace(command, context)) {
             var commandType = command.GetType();
-            var name = commandType.FullName;
-            using var activity = Tracer.StartActivity(activityName: name);
+            var activityName = commandType.FullName ?? "UnknownCommand";
+            using var activity = AppTrace.StartActivity(activityName);
             if (activity != null) {
-                var tags = new ActivityTagsCollection();
-                tags.Add("command", command.ToString());
-                var activityEvent = Tracer.CreateEvent(eventName: "command_event:" + name , tags: tags);
+                var tags = new ActivityTagsCollection { { "command", command.ToString() } };
+                var activityEvent = new ActivityEvent($"command_event:{activityName}", tags: tags);
                 activity.AddEvent(activityEvent);
             }
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
@@ -42,16 +36,15 @@ public class TracingCommandHandler : ICommandHandler<ICommand>
 
     private bool ShouldTrace(ICommand command, CommandContext context)
     {
-        // do not trace meta commands.
+        // Do not trace meta commands
         if (command is IMetaCommand)
             return false;
-        // do not trace commands executed from completion in invalidating mode.
-        // Normally they should contain only invalidation logic and be extremely short.
+
+        // Do not trace commands executed from completion in invalidating mode -
+        // they should contain only invalidation logic and be extremely short.
         if (Computed.IsInvalidating())
             return false;
-        // do not trace fusion commands for cleanliness
-        //if (command.GetType().FullName.StartsWith("Stl.Fusion"))
-        //    return false;
+
         return true;
     }
 }
