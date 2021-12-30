@@ -7,7 +7,7 @@ namespace ActualChat.Audio;
 
 public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 {
-    private ILogger<SourceAudioRecorder> Log { get; }
+    protected ILogger<SourceAudioRecorder> Log { get; }
     protected bool DebugMode => Constants.DebugMode.AudioProcessing;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 

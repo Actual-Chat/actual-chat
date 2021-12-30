@@ -2,6 +2,32 @@ namespace ActualChat;
 
 public static class TaskExt
 {
+    private static readonly UncompletedTaskException UncompletedTaskError = new();
+
+    public static Result<T> ToResult<T>(this Task<T> task)
+    {
+        if (!task.IsCompleted)
+            return new Result<T>(default!, UncompletedTaskError);
+#pragma warning disable VSTHRD002
+        return task.IsCompletedSuccessfully
+            ? new Result<T>(task.Result, null)
+            : new Result<T>(default!, task.Exception);
+#pragma warning restore VSTHRD002
+    }
+
+    public static Result<T> ToResult<T>(this ValueTask<T> task)
+    {
+        if (!task.IsCompleted)
+            return new Result<T>(default!, UncompletedTaskError);
+#pragma warning disable VSTHRD002
+        return task.IsCompletedSuccessfully
+            ? new Result<T>(task.Result, null)
+            : new Result<T>(default!, task.AsTask().Exception);
+#pragma warning restore VSTHRD002
+    }
+
+    // Suppress
+
     public static Task Suppress<TException>(this Task task)
         where TException : Exception
     {

@@ -47,6 +47,7 @@ public static class Program
             .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
             .AddFilter("ActualChat", LogLevel.Debug)
             .AddFilter("ActualChat.Audio", LogLevel.Debug)
+            .AddFilter("ActualChat.Audio.UI.Blazor", LogLevel.Debug)
             .AddFilter("ActualChat.Chat", LogLevel.Debug)
             .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
             .AddFilter("ActualChat.Audio.Client", LogLevel.Debug)

@@ -25,8 +25,8 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
         if (user.IsAuthenticated)
             return await Get(user.Id, chatId, cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = await _auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        var serializedSettings = sessionInfo.Options[$"{chatId}::settings"] as string;
+        var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        var serializedSettings = options[$"{chatId}::settings"] as string;
         return serializedSettings.IsNullOrEmpty()
             ? null
             : SystemJsonSerializer.Default.Read<ChatUserSettings>(serializedSettings);
