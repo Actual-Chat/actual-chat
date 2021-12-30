@@ -90,7 +90,7 @@ export class VoiceActivityDetector {
         this.h0 = hn;
         this.c0 = cn;
 
-        const minSilenceSamples = 32000;
+        const minSilenceSamples = 64000;
         const minSpeechSamples = 8000;
         const padSamples = 512;
 

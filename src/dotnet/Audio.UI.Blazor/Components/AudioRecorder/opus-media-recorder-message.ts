@@ -43,8 +43,8 @@ export type EncoderCommand =
     DoneCommand;
 
 export interface EncoderMessage {
-    command: 'readyToInit' | 'lastEncodedData' | 'encodedData';
-    buffers: ArrayBuffer[];
+    command: 'readyToInit' | 'initCompleted' | 'lastEncodedData' | 'encodedData';
+    buffers?: ArrayBuffer[];
 }
 
 export interface EncoderWorkletMessage {

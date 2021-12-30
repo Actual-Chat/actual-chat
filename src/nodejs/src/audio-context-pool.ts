@@ -82,10 +82,15 @@ AudioContextPool.register("main", async () => {
     });
     const feederWorklet = await getWorklet('/dist/feederWorklet.js');
     await audioContext.audioWorklet.addModule(feederWorklet);
+    return audioContext;
+});
+AudioContextPool.register("recorder", async () => {
+    const audioContext = new AudioContext({ sampleRate: 48000 });
     const opusEncoderWorklet = await getWorklet('/dist/opusEncoderWorklet.js');
     await audioContext.audioWorklet.addModule(opusEncoderWorklet);
     return audioContext;
 });
+
 // TODO: try to use OfflineAudioContext for VAD
 AudioContextPool.register("vad", async () => {
     const audioContext = new AudioContext({
