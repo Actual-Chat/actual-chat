@@ -23,21 +23,22 @@
             </div>
             <button class="post-message hidden sticky bottom-0 flex outline-none text-secondary transition-all duration-150 p-1"
                     @onclick="_ => Post()">
-                <svg class="items-center fill-current h-8 w-8" xmlns="http://www.w3.org/2000/svg" viewBox="1 -2 28 28">
-                    <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
+                <svg class="w-8 h-8 text-secondary fill-current" viewBox="2 2 28 28" id="icon" xmlns="http://www.w3.org/2000/svg"><defs><style>.cls-1{fill:none;}
+                </style></defs><title>send</title><path d="M27.45,15.11l-22-11a1,1,0,0,0-1.08.12,1,1,0,0,0-.33,1L7,16,4,26.74A1,1,0,0,0,5,28a1,1,0,0,0,.45-.11l22-11a1,1,0,0,0,0-1.78Zm-20.9,10L8.76,17H18V15H8.76L6.55,6.89,24.76,16Z"/>
+                <rect id="_Transparent_Rectangle_" data-name="&lt;Transparent Rectangle&gt;" class="cls-1" width="32" height="32"/>
                 </svg>
             </button>
         </div>
         <div class="block flex flex-1 flex-row justify-center outline-none items-end">
-            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-secondary rounded-lg py-2">
-                <div class="chat-control-button language-button mr-1 p-1 w-1/2 border border-accent hidden">
+            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-lg py-2 border border-accent">
+                <div class="chat-control-button language-button p-1 w-1/2 hidden">
                     <ChatLanguageToggle/>
                 </div>
-                <div class="chat-control-button recorder-button w-1/2 border border-accent flex">
+                <div class="chat-control-button recorder-button w-1/2 flex">
                     <AudioRecorderWrapper ChatId="@Chat.Id"/>
                 </div>
                 @if (RealtimePlayer != null) {
-                    <div class="chat-control-button player-button ml-1 w-1/2 border border-accent flex">
+                    <div class="chat-control-button player-button w-1/2 flex">
                         <ChatPlayerToggle Player="RealtimePlayer"/>
                     </div>
                 }

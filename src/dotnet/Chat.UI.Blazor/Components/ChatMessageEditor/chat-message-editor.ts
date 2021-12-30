@@ -8,8 +8,10 @@ export class ChatMessageEditor {
     private _controlDiv: HTMLDivElement;
     private _langButtonDiv: HTMLDivElement;
     private _recordButtonDiv: HTMLDivElement;
+    private _recordButton: HTMLButtonElement;
     private _playerButtonDiv: HTMLDivElement;
     private _isTextMode: boolean = false;
+    private _isRecordOn: boolean = false;
 
     static create(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(inputDiv, controlDiv, backendRef);
@@ -25,6 +27,7 @@ export class ChatMessageEditor {
         this._langButtonDiv = this._controlDiv.querySelector('div.language-button');
         this._recordButtonDiv = this._controlDiv.querySelector('div.recorder-button');
         this._playerButtonDiv = this._controlDiv.querySelector('div.player-button');
+        this._recordButton = this._recordButtonDiv.querySelector('button');
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
@@ -41,7 +44,32 @@ export class ChatMessageEditor {
             this._input.focus();
             this.changeMode();
         })
+        this._recordButton.addEventListener('click', (event: Event & {target: HTMLButtonElement; }) => {
+            this.languageToggle();
+        })
         this.changeMode();
+    }
+
+    public languageToggle() {
+        let recordIcon = this._recordButton.querySelector('svg');
+        let isRecordOn = recordIcon.classList.contains('not-recording');
+        if (this._isRecordOn == isRecordOn)
+            return;
+        this._isRecordOn = isRecordOn;
+        let languageButton = this._langButtonDiv;
+        languageButton.style.transform = "translateX(1rem) scale(.05)";
+        setTimeout(() => {
+            if (isRecordOn){
+                languageButton.classList.replace('hidden', 'flex')
+                this._input.setAttribute('contenteditable', 'false');
+            } else {
+                languageButton.classList.replace('flex', 'hidden');
+                this._input.setAttribute('contenteditable', 'true');
+            }
+        }, 25);
+        setTimeout(() => {
+            languageButton.style.transform = 'translateX(0px) scale(1)';
+        }, 50)
     }
 
     public changeMode() {
@@ -59,13 +87,11 @@ export class ChatMessageEditor {
                 recordButton.classList.add('hidden');
                 recordButton.classList.replace('flex', 'md:flex');
                 playerButton.classList.replace('w-1/2', 'w-full');
-                console.log('record button styles text mode: ' + recordButton.classList);
             } else {
                 postButton.classList.replace("md:hidden", 'hidden');
                 recordButton.classList.remove('hidden');
                 recordButton.classList.replace('md:flex', 'flex');
                 playerButton.classList.replace('w-full', 'w-1/2');
-                console.log('record button styles record mode: ' + recordButton.classList);
             }
         }, 25);
         setTimeout(() => {

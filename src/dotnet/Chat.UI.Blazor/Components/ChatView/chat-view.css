@@ -90,10 +90,10 @@ a {
 }
 
 .chat-control-button {
-    @apply outline-none justify-center bg-accent rounded-lg md:transition md:duration-300 md:ease-in-out;
+    @apply outline-none justify-center bg-accent rounded-lg transition-all duration-150 ease-in-out;
 }
 
 .chat-control-button:hover {
-    @apply md:bg-primary md:transition md:duration-300 md:ease-in-out;
+    @apply md:bg-primary transition-all duration-150 ease-in-out;
 }
 
