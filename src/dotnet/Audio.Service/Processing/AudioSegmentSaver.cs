@@ -3,19 +3,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio.Processing;
 
-public sealed class AudioSegmentSaver
+public sealed class AudioSegmentSaver : AudioProcessorBase
 {
     private IBlobStorageProvider Blobs { get; }
-    // ReSharper disable once UnusedAutoPropertyAccessor.Local
-    private ILogger<AudioSegmentSaver> Log { get; }
 
-    public AudioSegmentSaver(
-        IBlobStorageProvider blobs,
-        ILogger<AudioSegmentSaver>? log = null)
-    {
-        Blobs = blobs;
-        Log = log ?? NullLogger<AudioSegmentSaver>.Instance;
-    }
+    public AudioSegmentSaver(IServiceProvider services) : base(services)
+        => Blobs = Services.GetRequiredService<IBlobStorageProvider>();
 
     public async Task<string> Save(
         ClosedAudioSegment closedAudioSegment,

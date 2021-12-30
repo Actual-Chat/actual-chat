@@ -57,17 +57,14 @@
                 BlazorRef, DebugMode
                 ).ConfigureAwait(true);
         }
-        DebugLog?.LogDebug(
-            "OnAfterRender: Chat #{ChatId}, firstRender = {FirstRender}",
-            ChatId, firstRender);
     }
 
     private Task ToggleRecording()
         => IsRecording ? StopRecording() : StartRecording();
 
     private async Task StartRecording() {
-        if (AudioChannel != null)
-            return;
+        if (AudioChannel != null) return;
+        DebugLog?.LogDebug(nameof(StartRecording));
 
         AudioChannel = Channel.CreateBounded<RecordingPart>(
             new BoundedChannelOptions(128) {
@@ -78,16 +75,12 @@
         StateHasChanged();
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("startRecording");
-        DebugLog?.LogDebug("StartRecording");
     }
 
     private async Task StopRecording() {
-        DebugLog?.LogDebug("StopRecording, current AudioChannel status is {AudioChannelStatus}",
-            AudioChannel == null ? "closed" : "opened"
-        );
+        if (AudioChannel == null) return;
+        DebugLog?.LogDebug(nameof(StopRecording));
 
-        if (AudioChannel == null)
-            return;
         try {
             if (JSRef != null)
                 await JSRef.InvokeVoidAsync("stopRecording");
@@ -105,8 +98,8 @@
 
     [JSInvokable]
     public void OnStartRecording() {
-        if (AudioChannel == null)
-            return;
+        if (AudioChannel == null) return;
+        DebugLog?.LogDebug(nameof(OnStartRecording));
 
         var audioFormat = new AudioFormat {
             CodecKind = AudioCodecKind.Opus,
@@ -123,24 +116,19 @@
 
     [JSInvokable]
     public async Task OnAudioEventChunk(byte[] chunk) {
-        if (AudioChannel == null)
-            return;
+        if (AudioChannel == null) return;
+        DebugLog?.LogDebug(nameof(OnAudioEventChunk) + ": got {ChunkLength} byte(s)", chunk.Length);
 
-        foreach (var part in DeserializeRecordingData(chunk)) {
+        foreach (var part in DeserializeRecordingData(chunk))
             await AudioChannel.Writer.WriteAsync(part);
-        }
-        DebugLog?.LogDebug("OnAudioEventChunk: got packet {Chunk}", chunk);
     }
 
     [JSInvokable]
     public void OnRecordingStopped() {
-        DebugLog?.LogDebug("OnRecordingStopped: current AudioChannel status is {AudioChannelStatus}",
-            AudioChannel == null ? "closed" : "opened"
-        );
         // Does the same as StopRecording; we assume here that recording
         // might be recognized as stopped by JS backend as well
-        if (AudioChannel == null)
-            return;
+        if (AudioChannel == null) return;
+        DebugLog?.LogDebug(nameof(OnRecordingStopped));
 
         AudioChannel.Writer.Complete();
         AudioChannel = null;
@@ -167,7 +155,7 @@
                     RecordedAt = new Moment(BinaryPrimitives.ReadInt64LittleEndian(data[startData..])),
                     Offset = TimeSpan.FromSeconds(BinaryPrimitives.ReadSingleLittleEndian(data[(startData + 8)..])),
                 },
-                _ => throw new NotSupportedException($"Unsupported RecordingEventType: {type}."),
+                _ => throw new NotSupportedException($"Unsupported {nameof(RecordingEventKind)}: {type}."),
             };
         }
     }
