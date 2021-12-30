@@ -7,6 +7,7 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
+[Index(nameof(ChatId), nameof(Type), nameof(IsRemoved), nameof(Id))] // For GetEntryCount queries
 [Index(nameof(ChatId), nameof(Type), nameof(Id))]
 [Index(nameof(ChatId), nameof(Type), nameof(BeginsAt), nameof(EndsAt))]
 [Index(nameof(ChatId), nameof(Type), nameof(EndsAt), nameof(BeginsAt))]
@@ -15,6 +16,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
     private DateTime _beginsAt;
     private DateTime? _endsAt;
+    private DateTime? _contentEndsAt;
 
     public DbChatEntry() { }
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
@@ -24,6 +26,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public string ChatId { get; set; } = "";
     public long Id { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
+    public bool IsRemoved { get; set; }
 
     public string AuthorId { get; set; } = null!;
 
@@ -35,6 +38,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public DateTime? EndsAt {
         get => _endsAt?.DefaultKind(DateTimeKind.Utc);
         set => _endsAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    public DateTime? ContentEndsAt {
+        get => _contentEndsAt?.DefaultKind(DateTimeKind.Utc);
+        set => _contentEndsAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public double Duration { get; set; }
@@ -55,9 +63,13 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             ChatId = ChatId,
             Type = Type,
             Id = Id,
+            Version = Version,
+            IsRemoved = IsRemoved,
+
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
             EndsAt = EndsAt,
+            ContentEndsAt = ContentEndsAt,
             Content = Content,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
@@ -78,9 +90,12 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         Type = model.Type;
         Id = model.Id;
         Version = model.Version;
+        IsRemoved = IsRemoved;
+
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
         EndsAt = model.EndsAt;
+        ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         Content = model.Content;
         StreamId = model.StreamId;

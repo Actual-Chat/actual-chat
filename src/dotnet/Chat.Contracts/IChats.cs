@@ -21,6 +21,7 @@ public interface IChats
         ChatEntryType entryType,
         CancellationToken cancellationToken);
 
+    // Client-side method always skips entries with IsRemoved flag
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatTile> GetTile(
         Session session,
@@ -41,7 +42,10 @@ public interface IChats
     Task<Chat> CreateChat(CreateChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatEntry> CreateEntry(CreateEntryCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
     public record CreateChatCommand(Session Session, string Title) : ISessionCommand<Chat>;
     public record CreateEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>;
+    public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
 }

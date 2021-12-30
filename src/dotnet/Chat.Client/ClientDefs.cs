@@ -42,6 +42,8 @@ public interface IChatsClientDef
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateEntry))]
     Task<ChatEntry> CreateEntry([Body] IChats.CreateEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(RemoveTextEntry))]
+    Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatAuthors")]
@@ -59,5 +61,5 @@ public interface IChatUserSettingsClientDef
     [Get(nameof(Get))]
     Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken);
     [Post(nameof(Set))]
-    Task<Unit> Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
+    Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
 }

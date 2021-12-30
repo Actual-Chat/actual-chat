@@ -26,7 +26,7 @@ public class ChatUserSettingsController : ControllerBase, IChatUserSettings
     // Commands
 
     [HttpPost]
-    public Task<Unit> Set([FromBody] IChatUserSettings.SetCommand command, CancellationToken cancellationToken)
+    public Task Set([FromBody] IChatUserSettings.SetCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _service.Set(command, cancellationToken);

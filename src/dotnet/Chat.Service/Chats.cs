@@ -1,3 +1,4 @@
+using System.Security;
 using ActualChat.Chat.Db;
 using Stl.Fusion.EntityFramework;
 using Stl.Redis;
@@ -53,7 +54,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetTile(chatId, entryType, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await GetTile(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -66,7 +67,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     {
         var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntryCount(chatId, entryType, idTileRange, cancellationToken).ConfigureAwait(false);
+        return await GetEntryCount(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!
@@ -93,6 +94,24 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [CommandHandler]
+    public virtual async Task<Chat> CreateChat(IChats.CreateChatCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, title) = command;
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        user.MustBeAuthenticated();
+
+        var chat = new Chat() {
+            Title = title,
+            OwnerIds = ImmutableArray.Create(user.Id),
+        };
+        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
+        return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task<ChatEntry> CreateEntry(
         IChats.CreateEntryCommand command,
         CancellationToken cancellationToken)
@@ -115,20 +134,23 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<Chat> CreateChat(IChats.CreateChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
+            return; // It just spawns other commands, so nothing to do here
 
-        var (session, title) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
+        var (session, chatId, entryId) = command;
+        var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(chatId, author.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
-        var chat = new Chat() {
-            Title = title,
-            OwnerIds = ImmutableArray.Create(user.Id),
-        };
-        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
-        return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+        var idTile = IdTileStack.FirstLayer.GetTile(entryId);
+        var tile = await GetTile(session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken).ConfigureAwait(false);
+        var chatEntry = tile.Entries.Single(e => e.Id == entryId);
+        if (chatEntry.AuthorId != author.Id)
+            throw new SecurityException("You can delete only your own messages.");
+
+        chatEntry = chatEntry with { IsRemoved = true };
+        var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
+        await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }
