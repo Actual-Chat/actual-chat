@@ -33,9 +33,9 @@
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
-    private Channel<RecordingPart>? AudioChannel { get; set; }
+    private Channel<RecordingPart> AudioChannel { get; set; } = null!;
     private int Index { get; set; }
-    private bool IsRecording => AudioChannel != null;
+    private bool IsRecording => AudioChannel != null!;
 
     [Parameter]
     public string ChatId { get; set; } = "";
@@ -63,7 +63,7 @@
         => IsRecording ? StopRecording() : StartRecording();
 
     private async Task StartRecording() {
-        if (AudioChannel != null) return;
+        if (IsRecording) return;
         DebugLog?.LogDebug(nameof(StartRecording));
 
         AudioChannel = Channel.CreateBounded<RecordingPart>(
@@ -78,27 +78,27 @@
     }
 
     private async Task StopRecording() {
-        if (AudioChannel == null) return;
+        if (!IsRecording) return;
         DebugLog?.LogDebug(nameof(StopRecording));
 
-        try {
-            if (JSRef != null)
-                await JSRef.InvokeVoidAsync("stopRecording");
-        }
-        finally {
-            if (AudioChannel != null) {
-                AudioChannel.Writer.Complete();
-                AudioChannel = null;
-                StateHasChanged();
-            }
-        }
+        var audioChannel = AudioChannel;
+        _ = Task.Run(async () => {
+            await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(true);
+            if (AudioChannel != audioChannel)
+                return; // We don't want to stop the next recording here :)
+
+            Log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
+            OnRecordingStopped();
+        });
+        if (JSRef != null)
+            await JSRef.InvokeVoidAsync("stopRecording");
     }
 
     // JS backend callback handlers
 
     [JSInvokable]
     public void OnStartRecording() {
-        if (AudioChannel == null) return;
+        if (!IsRecording) return;
         DebugLog?.LogDebug(nameof(OnStartRecording));
 
         var audioFormat = new AudioFormat {
@@ -116,8 +116,8 @@
 
     [JSInvokable]
     public async Task OnAudioEventChunk(byte[] chunk) {
-        if (AudioChannel == null) return;
-        DebugLog?.LogDebug(nameof(OnAudioEventChunk) + ": got {ChunkLength} byte(s)", chunk.Length);
+        if (!IsRecording) return;
+        // DebugLog?.LogDebug(nameof(OnAudioEventChunk) + ": got {ChunkLength} byte(s)", chunk.Length);
 
         foreach (var part in DeserializeRecordingData(chunk))
             await AudioChannel.Writer.WriteAsync(part);
@@ -127,11 +127,11 @@
     public void OnRecordingStopped() {
         // Does the same as StopRecording; we assume here that recording
         // might be recognized as stopped by JS backend as well
-        if (AudioChannel == null) return;
+        if (!IsRecording) return;
         DebugLog?.LogDebug(nameof(OnRecordingStopped));
 
         AudioChannel.Writer.Complete();
-        AudioChannel = null;
+        AudioChannel = null!;
         StateHasChanged();
     }
 
