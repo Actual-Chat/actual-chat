@@ -33,9 +33,9 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
     }
 
     // [CommandHandler]
-    public virtual async Task<Unit> Set(IChatUserSettings.SetCommand command, CancellationToken cancellationToken)
+    public virtual async Task Set(IChatUserSettings.SetCommand command, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating()) return default!;
+        if (Computed.IsInvalidating()) return;
 
         var (session, chatId, settings) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
@@ -49,6 +49,5 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
             var command2 = new ISessionOptionsBackend.UpsertCommand(session, updatedPair);
             await _commander.Call(command2, true, cancellationToken).ConfigureAwait(false);
         }
-        return default!;
     }
 }

@@ -7,10 +7,12 @@ public interface IChatsBackend
     [ComputeMethod(KeepAliveTime = 1)]
     Task<long> GetEntryCount(
         string chatId, ChatEntryType entryType, Range<long>? idTileRange,
+        bool includeRemoved,
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatTile> GetTile(
         string chatId, ChatEntryType entryType, Range<long> idTileRange,
+        bool includeRemoved,
         CancellationToken cancellationToken);
     // Note that it returns (firstId, lastId + 1) range!
     [ComputeMethod(KeepAliveTime = 1)]
@@ -46,7 +48,7 @@ public interface IChatsBackend
 
     // Misc. low-level helpers
 
-    Task<long> NextChatEntryId(
+    Task<long> DbNextEntryId(
         object dbContext,
         string chatId,
         ChatEntryType entryType,

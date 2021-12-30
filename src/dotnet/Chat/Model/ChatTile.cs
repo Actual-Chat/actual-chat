@@ -6,6 +6,7 @@ public class ChatTile
 {
     public Range<long> IdTileRange { get; init; }
     public Range<long> IdRange { get; init; }
+    public bool IncludesRemoved { get; init; }
     public Range<Moment> BeginsAtRange { get; init; }
     public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
@@ -13,7 +14,7 @@ public class ChatTile
 
     public ChatTile() { }
 
-    public ChatTile(Range<long> idTileRange, ImmutableArray<ChatEntry> entries)
+    public ChatTile(Range<long> idTileRange, bool includesRemoved, ImmutableArray<ChatEntry> entries)
     {
         var idRange = new Range<long>(long.MaxValue, long.MinValue);
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
@@ -23,12 +24,13 @@ public class ChatTile
         }
 
         IdTileRange = idTileRange;
+        IncludesRemoved = includesRemoved;
         Entries = entries;
         IdRange = idRange;
         BeginsAtRange = beginsAtRange;
     }
 
-    public ChatTile(IEnumerable<ChatTile> tiles)
+    public ChatTile(IEnumerable<ChatTile> tiles, bool includesRemoved)
     {
         var entries = new List<ChatEntry>();
         var idTile = new Range<long>(long.MaxValue, long.MinValue);
@@ -43,6 +45,7 @@ public class ChatTile
         }
 
         IdTileRange = idTile;
+        IncludesRemoved = includesRemoved;
         IdRange = idRange;
         BeginsAtRange = beginsAtRange;
         Entries = entries.ToImmutableArray();

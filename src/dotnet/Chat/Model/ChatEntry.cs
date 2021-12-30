@@ -9,9 +9,11 @@ public record ChatEntry : IHasId<long>, IHasVersion<long>
     public ChatEntryType Type { get; init; }
     public long Id { get; init; }
     public long Version { get; init; }
+    public bool IsRemoved { get; init; }
     public Symbol AuthorId { get; init; }
     public Moment BeginsAt { get; init; }
     public Moment? EndsAt { get; init; }
+    public Moment? ContentEndsAt { get; init; }
     public string Content { get; init; } = "";
 
     public Symbol StreamId { get; init; } = "";
