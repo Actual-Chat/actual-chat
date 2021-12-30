@@ -58,6 +58,10 @@ worker.onmessage = (ev: MessageEvent) => {
             const {sampleRate, channelCount, bitsPerSecond}: InitCommand = ev.data;
             encoder.init(sampleRate, channelCount, bitsPerSecond);
             state = 'encoding';
+            const message: EncoderMessage = {
+                command: 'initCompleted',
+            };
+            worker.postMessage(message);
             break;
 
         case 'getEncodedData':
