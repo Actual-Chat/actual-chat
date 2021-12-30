@@ -30,7 +30,10 @@
                 <ChatView />
             </Body>
             <Footer>
-                <ChatMessageEditor />
+                <div class="flex flex-col w-full">
+                    <HistoricalPlaybackPanel />
+                    <ChatMessageEditor />
+                </div>
             </Footer>
         </PageWithHeaderAndFooter>
     </CascadingValue>

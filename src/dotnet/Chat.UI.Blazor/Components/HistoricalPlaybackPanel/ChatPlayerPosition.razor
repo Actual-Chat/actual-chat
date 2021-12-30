@@ -1,0 +1,53 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<Model>
+@using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
+@inject IActivePlaybackInfo _activePlaybackInfo
+@using Model = ChatPlayerPosition.Model;
+
+@{
+    var model = State.Value;
+    var ts = model.Timestamp;
+    var position = ts>DateTime.MinValue ?  ts.ToShortDateString() + " " + ts.ToLongTimeString() : "--:--:--";
+}
+
+<div class="@(_class ??= this.DefaultClass())">
+    <span class="ml-2">@position</span>
+</div>
+
+@code {
+    public class Model
+    {
+        public static readonly Model None = new ();
+
+        public DateTime Timestamp { get; init; }
+        public string Author { get; init; }
+    }
+
+    private static string? _class;
+
+    [Parameter]
+    public ChatPlayer Player { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.None };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        if (playback == null)
+            return Model.None;
+        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
+        if (isStopped)
+            return Model.None;
+        var tracksState = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
+        var activeTrack = tracksState.LastOrDefault();
+        if (activeTrack == null)
+            return Model.None;
+        activeTrack = await _activePlaybackInfo.GetTrackPlaybackState(activeTrack.Command.TrackId, cancellationToken);
+        if (activeTrack==null)
+            return Model.None;
+        var ts = activeTrack.Command.RecordingStartedAt.ToDateTime().ToLocalTime() + activeTrack.PlayingAt;
+        return new Model { Timestamp = ts };
+    }
+}

@@ -1,0 +1,35 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<bool>
+@using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
+
+@{
+    var isPlaying = State.ValueOrDefault;
+    var cls = $"toggle-button{(isPlaying ? "-on" : "")}";
+}
+<div class="@(_class ??= this.DefaultClass()) block flex flex-row outline-none py-2 text-justify bg-secondary rounded-full mx-2">
+    <svg class="self-start fill-current w-4 h-4 mr-1 @cls" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M24 12c0 6.627-5.373 12-12 12s-12-5.373-12-12h2c0 5.514 4.486 10 10 10s10-4.486 10-10-4.486-10-10-10c-2.777 0-5.287 1.141-7.099 2.977l2.061 2.061-6.962 1.354 1.305-7.013 2.179 2.18c2.172-2.196 5.182-3.559 8.516-3.559 6.627 0 12 5.373 12 12zm-13-6v8h7v-2h-5v-6h-2z"/>
+    </svg>
+    <svg class="fill-current w-7 h-7 @cls" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M5 17h-5v-10h5v10zm2-10v10l9 5v-20l-9 5zm17 4h-5v2h5v-2zm-1.584-6.232l-4.332 2.5 1 1.732 4.332-2.5-1-1.732zm1 12.732l-4.332-2.5-1 1.732 4.332 2.5 1-1.732z"/>
+    </svg>
+</div>
+
+@code {
+    private static string? _class;
+
+    [Parameter]
+    public ChatPlayer Player { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        if (playback == null)
+            return false;
+        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
+        return !isStopped;
+    }
+}
