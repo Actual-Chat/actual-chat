@@ -20,19 +20,19 @@ export class AudioRecorder {
     private readonly debugMode: boolean;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
-    private readonly queue: IRecordingEventQueue;
+    protected readonly queue: IRecordingEventQueue;
     private readonly recorder: OpusMediaRecorder;
     private readonly vadWorker: Worker;
     private readonly vadChannel: MessageChannel;
 
     private context: {
-        vadContext: AudioContext,
+        recorderContext: AudioContext,
         vadWorkletNode: AudioWorkletNode,
     };
 
     private recording: {
         stream: MediaStream,
-        vadStreamNode: MediaStreamAudioSourceNode,
+        streamNode: MediaStreamAudioSourceNode,
     };
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: IRecordingEventQueue) {
@@ -134,7 +134,7 @@ export class AudioRecorder {
         }
 
         if (this.context == null) {
-            const vadAudioContext = await AudioContextPool.get("vad") as AudioContext;
+            const recorderContext = await AudioContextPool.get("recorder") as AudioContext;
             const audioWorkletOptions: AudioWorkletNodeOptions = {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
@@ -142,20 +142,20 @@ export class AudioRecorder {
                 channelInterpretation: 'speakers',
                 channelCountMode: 'explicit',
             };
-            const vadWorkletNode = new AudioWorkletNode(vadAudioContext, 'audio-vad-worklet-processor', audioWorkletOptions);
+            const vadWorkletNode = new AudioWorkletNode(recorderContext, 'audio-vad-worklet-processor', audioWorkletOptions);
             vadWorkletNode.port.postMessage({ topic: 'init-port' }, [this.vadChannel.port2]);
 
             this.context = {
-                vadContext: vadAudioContext,
+                recorderContext: recorderContext,
                 vadWorkletNode: vadWorkletNode,
             }
         }
 
         if (this.recording == null) {
-            let stream: MediaStream = await navigator.mediaDevices.getUserMedia({
+            const stream: MediaStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
-                    sampleRate: SampleRate,
+                    sampleRate: 32000,
                     sampleSize: 32,
                     // @ts-ignore
                     autoGainControl: {
@@ -172,12 +172,13 @@ export class AudioRecorder {
             });
 
             // TODO: refactor this after deleting recordrtc
-            const vadStreamNode = this.context.vadContext.createMediaStreamSource(stream);
-            vadStreamNode.connect(this.context.vadWorkletNode);
+            this.vadWorker.postMessage({ topic: 'init-new-stream' });
+            const streamNode = this.context.recorderContext.createMediaStreamSource(stream);
+            streamNode.connect(this.context.vadWorkletNode);
 
             this.recording = {
                 stream: stream,
-                vadStreamNode: vadStreamNode,
+                streamNode: streamNode,
             };
         }
 
@@ -197,8 +198,8 @@ export class AudioRecorder {
         this.recording = null;
 
         if (recording !== null) {
-            recording.vadStreamNode.disconnect();
-            recording.vadStreamNode = null;
+            recording.streamNode.disconnect();
+            recording.streamNode = null;
             this.context.vadWorkletNode.disconnect();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
