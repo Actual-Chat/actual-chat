@@ -2,6 +2,7 @@
 'use strict';
 
 const path = require('path');
+const webpack = require('webpack');
 /**
  * @param {string} file
  */
@@ -81,7 +82,8 @@ module.exports = (env, args) => {
       roots: [],
       fallback: {
         "path": false,
-        "fs": false
+        "fs": false,
+        "stream": require.resolve('readable-stream'),
       }
     },
     // to enable ts debug uncomment the line below
@@ -96,6 +98,9 @@ module.exports = (env, args) => {
         experimentalUseImportModule: true,
       }),
       new WatchRunPlugin(),
+      new webpack.ProvidePlugin({
+         Buffer: ['buffer', 'Buffer'],
+      }),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'
@@ -184,9 +189,8 @@ module.exports = (env, args) => {
       },
       vadWorker: {
         import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts',
-        chunkLoading: false,
-        asyncChunks: false,
-        runtime: false,
+        chunkLoading: 'import',
+        asyncChunks: true,
         library: {
           type: 'module',
         }
@@ -226,7 +230,7 @@ module.exports = (env, args) => {
     experiments: {
       /* https://github.com/webpack/webpack/issues/11382 */
       outputModule: true,
-    }
+    },
   };
   return config;
 };
