@@ -50,6 +50,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         short blockOffsetMs = 0;
         var skipAdjustmentBlockMs = short.MinValue;
         var skipAdjustmentClusterMs = int.MinValue;
+        EBML? ebml = null;
+        Segment? segment = null;
+        var formatBlocks = new List<byte[]>();
         var state = new WebMReader.State();
         var frameBuffer = new List<AudioFrame>();
         var readBuffer = ArrayBuffer<byte>.Lease(false, 32 * 1024);
@@ -76,6 +79,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                     state.IsEmpty
                         ? new WebMReader(readBuffer.Span)
                         : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
+                    formatBlocks,
+                    ref ebml,
+                    ref segment,
                     ref actualSkipTo,
                     ref clusterOffsetMs,
                     ref blockOffsetMs,
@@ -138,6 +144,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
     private WebMReader.State FillFrameBuffer(
         List<AudioFrame> frameBuffer,
         WebMReader webMReader,
+        List<byte[]> formatBlocks,
+        ref EBML? ebml,
+        ref Segment? segment,
         ref TimeSpan skipTo,
         ref int clusterOffsetMs,
         ref short blockOffsetMs,
@@ -147,10 +156,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         var prevPosition = 0;
         var framesStart = 0;
         var skipToMs = (int)skipTo.TotalMilliseconds;
-        EBML? ebml = null;
-        Segment? segment = null;
 
         using var writeBufferLease = MemoryPool<byte>.Shared.Rent(32 * 1024);
+        using var formatBufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
         var writeBuffer = writeBufferLease.Memory.Span;
         var webMWriter = new WebMWriter(writeBuffer);
 
@@ -172,7 +180,17 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                 var cluster = (Cluster)webMReader.ReadResult;
                 if (!FormatTask.IsCompleted) {
                     var formatTaskSource = TaskSource.For(FormatTask);
-                    var format = CreateMediaFormat(ebml!, segment!, webMReader.Span[..state.Position]);
+                    var formatBlocksLength = formatBlocks.Sum(b => b.Length);
+                    var beforeFramesStart = webMReader.Span[..state.Position];
+                    var formatBuffer = formatBufferLease.Memory.Span[..(formatBlocksLength + beforeFramesStart.Length)];
+                    var writtenAt = 0;
+                    foreach (var formatBlock in formatBlocks) {
+                        formatBlock.CopyTo(formatBuffer[writtenAt..]);
+                        writtenAt += formatBlock.Length;
+                    }
+                    beforeFramesStart.CopyTo(formatBuffer[writtenAt..]);
+
+                    var format = CreateMediaFormat(ebml!, segment!, formatBuffer);
                     formatTaskSource.SetResult(format);
                     framesStart = state.Position;
                 }
@@ -263,14 +281,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
             prevPosition = state.Position;
         }
 
-        if (framesStart != prevPosition)
-            throw new InvalidOperationException("Unexpected WebM structure.");
-
-        if (!FormatTask.IsCompleted) {
-            var formatTaskSource = TaskSource.For(FormatTask);
-            var format = CreateMediaFormat(ebml!, segment!, webMReader.Span);
-            formatTaskSource.SetResult(format);
-        }
+        if (!FormatTask.IsCompleted)
+            formatBlocks.Add(webMReader.Span.ToArray());
 
         return webMReader.GetState();
     }
