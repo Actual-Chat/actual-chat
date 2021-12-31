@@ -59,7 +59,7 @@ public class WebMReaderTest : TestBase
         entries[3].Should().BeOfType<SimpleBlock>();
     }
 
-    [Fact(Skip = "Fails, AK please check out this version of BrokenWasmReaderTest")]
+    [Fact]
     public async Task Read1ByteBufferTest()
     {
         await using var inputStream = new FileStream(

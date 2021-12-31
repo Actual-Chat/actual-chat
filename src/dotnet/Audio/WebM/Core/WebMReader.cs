@@ -57,22 +57,12 @@ public ref struct WebMReader
     public WebMReader WithNewSource(ReadOnlySpan<byte> span) => new (GetState(), span);
 
     public State GetState()
-    {
-        if (_containers.Count == 0)
-            return new State(
-                _resume,
-                0,
-                _spanReader.Length,
-                _entry,
-                _containers);
-
-        return new State(
+        => new (
             _resume,
             _spanReader.Position,
             _spanReader.Length - _spanReader.Position,
             _entry,
             _containers);
-    }
 
     public bool Read()
     {
@@ -83,10 +73,10 @@ public ref struct WebMReader
             DebugLog?.LogDebug("Read: resuming with ReadInternal()");
             return ReadInternal(true);
         }
+        var beginPosition = _spanReader.Position;
         var hasElement = ReadElement(_spanReader.Length);
         if (!hasElement) {
-            if (_spanReader.Position != _spanReader.Length - 1)
-                _resume = true;
+            _spanReader.Position = beginPosition;
             DebugLog?.LogDebug("Read: !hasElement, resume: {Resume} -> return false", _resume);
             return false;
         }
@@ -95,7 +85,7 @@ public ref struct WebMReader
             return false;
 
         var result = ReadInternal();
-        return result;
+        return result && ReadResultKind != WebMReadResultKind.None;
     }
 
     private bool ReadInternal(bool resume = false)
@@ -121,9 +111,12 @@ public ref struct WebMReader
                 _entry = container;
                 _element = containerElement;
                 _spanReader.Position = beginPosition;
-                if (_spanReader.Position == _spanReader.Length)
+                if (_spanReader.Position == _spanReader.Length) {
+                    if (container.Descriptor.Identifier.EncodedValue == MatroskaSpecification.Segment)
+                        _resume = true;
                     if (container.Descriptor.Identifier.EncodedValue == MatroskaSpecification.Cluster)
                         _resume = true;
+                }
                 if (_spanReader.Position < _spanReader.Length)
                     _resume = true;
                 else if (resume)
@@ -319,6 +312,7 @@ public ref struct WebMReader
             DebugLog?.LogDebug("ReadElement: position > EOF");
             if (idValue.EncodedValue != MatroskaSpecification.Cluster
                 && idValue.EncodedValue != MatroskaSpecification.Segment) {
+                // ?????? do we need this line at all???
                 _element = new EbmlElement(idValue, sizeValue, elementDescriptor!);
                 DebugLog?.LogDebug("ReadElement: position > EOF - OK for cluster -> returning false");
                 return false;
@@ -377,6 +371,6 @@ public ref struct WebMReader
         }
 
         // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-        public bool IsEmpty => Containers == null || Containers.Count == 0;
+        public bool IsEmpty => Containers == null && Position == 0 && Remaining == 0;
     }
 }
