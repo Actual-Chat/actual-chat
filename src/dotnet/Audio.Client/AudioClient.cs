@@ -12,9 +12,11 @@ public class AudioClient : HubClientBase,
 {
     private const int StreamBufferSize = 64;
 
+    private ILogger AudioSourceLog { get; }
+
     public AudioClient(IServiceProvider services)
         : base("api/hub/audio", services)
-    { }
+        => AudioSourceLog = Services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(
         string streamId,
@@ -26,9 +28,8 @@ public class AudioClient : HubClientBase,
         var audioStream = HubConnection
             .StreamAsync<AudioStreamPart>("GetAudioStream", streamId, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        var audioLog = Services.LogFor<AudioSource>();
         var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, audioLog, cancellationToken);
+        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         Log.LogDebug("GetAudio: Exited; StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
         return audio;
