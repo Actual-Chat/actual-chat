@@ -59,6 +59,34 @@ public class WebMReaderTest : TestBase
         entries[3].Should().BeOfType<SimpleBlock>();
     }
 
+    [Fact(Skip = "Fails, AK please check out this version of BrokenWasmReaderTest")]
+    public async Task Read1ByteBufferTest()
+    {
+        await using var inputStream = new FileStream(
+            Path.Combine(Environment.CurrentDirectory, "data", "file.webm"),
+            FileMode.Open,
+            FileAccess.Read);
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        var buffer = bufferLease.Memory;
+        var bytesRead = await inputStream.ReadAsync(buffer);
+        while (bytesRead < 4 * 1024)
+            bytesRead += await inputStream.ReadAsync(buffer[bytesRead..]);
+        bytesRead.Should().BeGreaterThanOrEqualTo(4 * 1024);
+
+        var buffers = new Memory<byte>[buffer.Length];
+        for (var i = 0; i < buffers.Length; i++)
+            buffers[i] = buffer.Slice(i, 1);
+        var entries = Parse(buffers).ToList();
+        entries.Should().HaveCount(13);
+        entries.Should().NotContainNulls();
+        entries[0].Should().BeOfType<EBML>();
+        entries[1].Should().BeOfType<Segment>();
+        entries[2].Should().BeOfType<Cluster>();
+        entries[2].As<Cluster>().SimpleBlocks.Should().HaveCount(10);
+        entries[2].As<Cluster>().SimpleBlocks.Should().NotContainNulls();
+        entries[3].Should().BeOfType<SimpleBlock>();
+    }
+
     [Fact]
     public async Task ReadHeaderAndOneBlockTest()
     {
@@ -144,7 +172,6 @@ public class WebMReaderTest : TestBase
         entries.Should().NotContainNulls();
         entries[0].Should().BeOfType<EBML>();
     }
-
 
     [Fact]
     public async Task SequentialBlockReaderTest()
