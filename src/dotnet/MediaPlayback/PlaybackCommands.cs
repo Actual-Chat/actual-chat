@@ -29,8 +29,7 @@ public sealed record PlayTrackCommand(
     Symbol TrackId,
     Moment PlayAt,
     Moment RecordingStartedAt,
-    IMediaSource Source,
-    TimeSpan SkipTo
+    IMediaSource Source
 ) : PlaybackCommand
 {
     // This record relies on referential equality

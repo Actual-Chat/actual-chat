@@ -13,12 +13,15 @@ public sealed class OpenAudioSegment
     public Task<Moment?> RecordedAtTask { get; }
     public Task<TimeSpan> AudibleDurationTask { get; }
     public Task<ClosedAudioSegment> ClosedSegmentTask { get; }
+    private ILogger Log { get; }
 
     public OpenAudioSegment(
         int index,
         AudioRecord audioRecord,
-        AudioSource audio)
+        AudioSource audio,
+        ILogger log)
     {
+        Log = log;
         Index = index;
         StreamId = GetStreamId(audioRecord.Id, index);
         AudioRecord = audioRecord;
@@ -29,10 +32,20 @@ public sealed class OpenAudioSegment
     }
 
     public void SetRecordedAt(Moment? recordedAt)
-        => TaskSource.For(RecordedAtTask).SetResult(recordedAt);
+    {
+        if (!TaskSource.For(RecordedAtTask).TrySetResult(recordedAt))
+            Log.LogWarning(
+                "SetRecordedAt came too late for OpenAudioSegment #{Index} of Stream #{StreamId}",
+                Index, StreamId);
+    }
 
     public void SetAudibleDuration(TimeSpan audibleDuration)
-        => TaskSource.For(AudibleDurationTask).SetResult(audibleDuration);
+    {
+        if (!TaskSource.For(AudibleDurationTask).TrySetResult(audibleDuration))
+            Log.LogWarning(
+                "SetAudibleDuration came too late for OpenAudioSegment #{Index} of Stream #{StreamId}",
+                Index, StreamId);
+    }
 
     public void Close(TimeSpan duration)
     {

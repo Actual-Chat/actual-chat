@@ -31,14 +31,14 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         if (skipTo == TimeSpan.Zero)
             return this;
 
-        var recordingStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
-        var audio = new AudioSource(recordingStream, skipTo, Log, cancellationToken);
+        var byteStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
+        var audio = new AudioSource(byteStream, skipTo, Log, cancellationToken);
         return audio;
     }
 
     // Protected & private methods
     protected override IAsyncEnumerable<AudioFrame> Parse(
-        IAsyncEnumerable<byte[]> recordingStream,
+        IAsyncEnumerable<byte[]> byteStream,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
@@ -68,7 +68,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-        var parseTask = BackgroundTask.Run(() => recordingStream.ForEachAwaitAsync(
+        var parseTask = BackgroundTask.Run(() => byteStream.ForEachAwaitAsync(
             async chunk => {
 
                 var data = chunk;

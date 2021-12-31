@@ -64,14 +64,12 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         Moment playAt,
         Moment recordingStartedAt,
         IMediaSource source,
-        TimeSpan skipTo,
         CancellationToken cancellationToken = default)
     {
         var command = new PlayTrackCommand(trackId,
             playAt,
             recordingStartedAt,
-            source,
-            skipTo);
+            source);
         return AddCommand(command, cancellationToken);
     }
 
