@@ -3,19 +3,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Audio.Processing;
 
-public sealed class AudioSegmentSaver
+public sealed class AudioSegmentSaver : AudioProcessorBase
 {
     private IBlobStorageProvider Blobs { get; }
-    // ReSharper disable once UnusedAutoPropertyAccessor.Local
-    private ILogger<AudioSegmentSaver> Log { get; }
 
-    public AudioSegmentSaver(
-        IBlobStorageProvider blobs,
-        ILogger<AudioSegmentSaver>? log = null)
-    {
-        Blobs = blobs;
-        Log = log ?? NullLogger<AudioSegmentSaver>.Instance;
-    }
+    public AudioSegmentSaver(IServiceProvider services) : base(services)
+        => Blobs = Services.GetRequiredService<IBlobStorageProvider>();
 
     public async Task<string> Save(
         ClosedAudioSegment closedAudioSegment,
@@ -25,10 +18,11 @@ public sealed class AudioSegmentSaver
             $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
         var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".webm");
 
-        var audioStream = closedAudioSegment.GetSegmentStream(cancellationToken);
-        var blobStream = audioStream.ToBlobStream(cancellationToken);
+        var audioSource = closedAudioSegment.Audio;
+        var audioStream = audioSource.GetFrames(cancellationToken);
+        var byteStream = audioStream.ToByteStream(audioSource.Format, cancellationToken);
         var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        await blobStorage.UploadBlobStream(blobId, blobStream, cancellationToken).ConfigureAwait(false);
+        await blobStorage.UploadByteStream(blobId, byteStream, cancellationToken).ConfigureAwait(false);
         return blobId;
     }
 }

@@ -1,7 +1,7 @@
 @inherits ComputedStateComponent<string>
 @inject IFusionTime _fusionTime
 
-<span class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">@State.Value</span>
+<span class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">@(State.Value ?? "")</span>
 
 @code {
     private static string? _typeClass;

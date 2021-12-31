@@ -9,9 +9,5 @@ public abstract class MediaFrame
     public TimeSpan Duration { get; init; }
     [DataMember(Order = 2)]
     public byte[] Data { get; init; } = Array.Empty<byte>();
-
     public abstract bool IsKeyFrame { get; }
-
-    public virtual BlobPart ToBlobPart(int index = 0)
-        => new(index, Data);
 }

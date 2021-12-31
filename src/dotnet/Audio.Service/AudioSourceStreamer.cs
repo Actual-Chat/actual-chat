@@ -1,22 +1,22 @@
 using ActualChat.Audio.Db;
-using ActualChat.Redis;
+using ActualChat.Audio.Processing;
+using ActualChat.Media;
 using Stl.Redis;
 
 namespace ActualChat.Audio;
 
-public class AudioSourceStreamer : IAudioSourceStreamer
+public class AudioSourceStreamer : AudioProcessorBase, IAudioSourceStreamer
 {
     private const int StreamBufferSize = 64;
     private const int MaxStreamDuration = 600;
 
-    private ILoggerFactory LoggerFactory { get; }
+    private ILogger AudioSourceLog { get; }
     private RedisDb RedisDb { get; }
 
-    public AudioSourceStreamer(
-        RedisDb<AudioContext> audioRedisDb,
-        ILoggerFactory loggerFactory)
+    public AudioSourceStreamer(IServiceProvider services) : base(services)
     {
-        LoggerFactory = loggerFactory;
+        AudioSourceLog = Services.LogFor<AudioSource>();
+        var audioRedisDb = Services.GetRequiredService<RedisDb<AudioContext>>();
         RedisDb = audioRedisDb.WithKeyPrefix("audio-sources");
     }
 
@@ -25,9 +25,12 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var audioStream = GetAudioStream(streamId, skipTo, cancellationToken);
-        var audioLog = LoggerFactory.CreateLogger<AudioSource>();
-        var audio = new AudioSource(audioStream, audioLog, cancellationToken);
+        // SkipTo via AudioSource is more efficient than SkipTo via GetAudioStream
+        var audioStream = GetAudioStream(streamId, TimeSpan.Zero, cancellationToken);
+        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
+        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
+        if (skipTo >= TimeSpan.Zero)
+            audio = audio.SkipTo(skipTo, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
@@ -44,20 +47,40 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         var audioStream = streamer
             .Read(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        if (skipTo == TimeSpan.Zero)
-            return audioStream;
-
-        var audioLog = LoggerFactory.CreateLogger<AudioSource>();
-        var audio = new AudioSource(audioStream, audioLog, cancellationToken);
-        return audio.SkipTo(skipTo, cancellationToken).GetStream(cancellationToken);
+        return SkipTo(audioStream, skipTo, cancellationToken);
     }
 
     public Task Publish(string streamId, AudioSource audio, CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId, new RedisStreamer<AudioStreamPart>.Options {
+        var streamer = RedisDb.GetStreamer(streamId, new RedisStreamer<AudioStreamPart>.Options {
             MaxStreamLength = 10 * 1024,
         });
-        var audioStream = audio.GetStream(cancellationToken);
+        var audioStream = ToAudioStream(audio.GetFormatTask(), audio.GetFrames(cancellationToken), cancellationToken);
         return streamer.Write(audioStream, cancellationToken);
+    }
+
+    private IAsyncEnumerable<AudioStreamPart> SkipTo(
+        IAsyncEnumerable<AudioStreamPart> audioStream,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        if (skipTo <= TimeSpan.Zero) return audioStream;
+
+        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
+        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
+        return ToAudioStream(formatTask,
+            audio.SkipTo(skipTo, cancellationToken).GetFrames(cancellationToken),
+            cancellationToken);
+    }
+
+    private async IAsyncEnumerable<AudioStreamPart> ToAudioStream(
+        Task<AudioFormat> formatTask,
+        IAsyncEnumerable<AudioFrame> frames,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var format = await formatTask.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
+        yield return new AudioStreamPart(format);
+        await foreach (var frame in frames.ConfigureAwait(false))
+            yield return new AudioStreamPart(frame);
     }
 }

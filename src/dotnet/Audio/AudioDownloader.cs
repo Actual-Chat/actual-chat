@@ -19,15 +19,10 @@ public class AudioDownloader
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var blobStream = DownloadBlobStream(audioUri, cancellationToken);
+        var byteStream = HttpClientFactory.DownloadByteStream(audioUri, Log, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(blobStream, skipTo, audioLog, cancellationToken);
+        var audio = new AudioSource(byteStream, skipTo, audioLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
-
-    public IAsyncEnumerable<BlobPart> DownloadBlobStream(
-        Uri audioUri,
-        CancellationToken cancellationToken = default)
-        => HttpClientFactory.DownloadBlobStream(audioUri, Log, cancellationToken);
 }

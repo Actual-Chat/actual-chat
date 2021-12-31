@@ -40,12 +40,12 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
-        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user.IsAuthenticated)
             return await GetByUserId(chatId, user.Id, false, cancellationToken).ConfigureAwait(false);
 
-        var sessionInfo = await _auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        var authorId = sessionInfo.Options[$"{chatId}::authorId"] as string;
+        var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        var authorId = options[$"{chatId}::authorId"] as string;
         if (authorId == null)
             return null;
         return await Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);

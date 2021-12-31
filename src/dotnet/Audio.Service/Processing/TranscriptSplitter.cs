@@ -2,20 +2,12 @@ using ActualChat.Transcription;
 
 namespace ActualChat.Audio.Processing;
 
-public class TranscriptSplitter
+public class TranscriptSplitter : TranscriptionProcessorBase
 {
     public static float SplitPauseDuration { get; set; } = 0.75f;
     public static float SplitOverlap { get; set; } = 0.25f;
 
-    private ILogger? _log;
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-    protected bool DebugMode => Constants.DebugMode.Transcription;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
-
-    protected IServiceProvider Services { get; }
-
-    public TranscriptSplitter(IServiceProvider services)
-        => Services = services;
+    public TranscriptSplitter(IServiceProvider services) : base(services) { }
 
     public async IAsyncEnumerable<TranscriptSegment> GetSegments(
         OpenAudioSegment audioSegment,

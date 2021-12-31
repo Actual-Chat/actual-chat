@@ -133,12 +133,12 @@
         }
     }
 
-    protected override void ConfigureState(ComputedState<(User, List<SessionModel>)>.Options options)
-        => options.InitialOutputFactory = _ => (new(""), new List<SessionModel>());
+    protected override ComputedState<(User User, List<SessionModel> Sessions)>.Options GetStateOptions()
+        => new() { InitialOutput = (new(""), new List<SessionModel>()) };
 
     protected override async Task<(User, List<SessionModel>)> ComputeState(CancellationToken cancellationToken)
     {
-        var user = await _auth.GetSessionUser(_session, cancellationToken);
+        var user = await _auth.GetUser(_session, cancellationToken);
         var sessions = await _auth.GetUserSessions(_session, cancellationToken).ConfigureAwait(false);
         var result = new List<SessionModel>();
 

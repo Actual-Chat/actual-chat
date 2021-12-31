@@ -49,7 +49,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                         },
                     },
             };
-            await dbContext.Chats.AddAsync(dbChat, cancellationToken).ConfigureAwait(false);
+            dbContext.Chats.Add(dbChat);
 
             var dbAuthor = new DbChatAuthor() {
                 Id = DbChatAuthor.ComposeId(defaultChatId, 1),
@@ -61,8 +61,15 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 IsAnonymous = false,
                 UserId = adminUserId,
             };
-            await dbContext.ChatAuthors.AddAsync(dbAuthor, cancellationToken).ConfigureAwait(false);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            dbContext.ChatAuthors.Add(dbAuthor);
+
+            try {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateException) {
+                // Looks like we're starting w/ existing DB
+                dbContext.ChangeTracker.Clear();
+            }
 
             await AddAudioBlob("0000.webm", "audio-record/01FKJ8FKQ9K5X84XQY3F7YN7NS/0000.webm", cancellationToken)
                 .ConfigureAwait(false);
@@ -74,23 +81,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
-            // Commented out OldLinearMap -> LinearMap conversion
-            /*
-            var dbChatEntries = await dbContext.ChatEntries
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-            foreach (var dbChatEntry in dbChatEntries) {
-                var textToTimeMap = dbChatEntry.TextToTimeMap;
-                if (textToTimeMap.IsNullOrEmpty())
-                    continue;
-                var newTextToTimeMap = ConvertOldTextToTimeMap(textToTimeMap);
-                if (ReferenceEquals(newTextToTimeMap, textToTimeMap))
-                    continue;
-                dbChatEntry.TextToTimeMap = newTextToTimeMap;
-                dbContext.Update(dbChatEntry);
-            }
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            */
+            // Post-migration upgrades
         }
 
         if (DbInfo.ShouldVerifyDb) {
@@ -162,7 +153,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
             lastBeginsAt = lastEndsAt;
             var id = await chatsBackend
-                .NextChatEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
+                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry() {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
@@ -187,7 +178,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastEndsAt = lastBeginsAt + duration;
 
             var id = await chatsBackend
-                .NextChatEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
+                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
                 .ConfigureAwait(false);
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,4,18,20,25,27,37,46,53,57,64,74,81,93,98],\"TargetPoints\":[0,1.8,2.4,3.2,3.4,4.2,4.3,5.4,5.5,6.9,7.4,7.6,8.9,9.9,10.5]}");
@@ -205,7 +196,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             dbContext.Add(audioEntry);
 
             id = await chatsBackend
-                .NextChatEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
+                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
@@ -236,7 +227,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}");
             var id = await chatsBackend
-                .NextChatEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
+                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
                 .ConfigureAwait(false);
             var audioEntry = new DbChatEntry {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Audio, id),
@@ -252,7 +243,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             dbContext.Add(audioEntry);
 
             id = await chatsBackend
-                .NextChatEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
+                .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
@@ -279,13 +270,12 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         CancellationToken cancellationToken)
     {
         var filePath = GetAudioDataDir() & fileName;
-        var sourceBlobStream = filePath.ReadBlobStream(1024, cancellationToken);
+        var sourceBlobStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
         var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(sourceBlobStream, TimeSpan.Zero, audioLog, CancellationToken.None);
+        var audio = new AudioSource(sourceBlobStream.Replay(cancellationToken), TimeSpan.Zero, audioLog, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        var audioBlobStream = audio.GetBlobStream(cancellationToken);
         // NOTE(AY): Shouldn't we simply write source blob stream here?
-        await blobs.UploadBlobStream(blobId, audioBlobStream, cancellationToken).ConfigureAwait(false);
+        await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
 
         static FilePath GetAudioDataDir()
             => new FilePath(Path.GetDirectoryName(typeof(ChatDbInitializer).Assembly.Location)) & "data";

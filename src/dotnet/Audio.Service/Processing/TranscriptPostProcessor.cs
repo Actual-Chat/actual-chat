@@ -3,23 +3,11 @@ using Cysharp.Text;
 
 namespace ActualChat.Audio.Processing;
 
-public class TranscriptPostProcessor
+public sealed class TranscriptPostProcessor : TranscriptionProcessorBase
 {
     public static TimeSpan TranscriptDebouncePeriod { get; set; } = TimeSpan.FromSeconds(0.2);
 
-    private ILogger? _log;
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-    protected bool DebugMode => Constants.DebugMode.Transcription;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
-
-    protected IServiceProvider Services { get; }
-    protected MomentClockSet Clocks { get; }
-
-    public TranscriptPostProcessor(IServiceProvider services)
-    {
-        Services = services;
-        Clocks = Services.Clocks();
-    }
+    public TranscriptPostProcessor(IServiceProvider services) : base(services) { }
 
     public async IAsyncEnumerable<Transcript> Apply(
         TranscriptSegment transcriptSegment,

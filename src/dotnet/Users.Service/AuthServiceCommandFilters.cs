@@ -117,7 +117,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             if (error != null)
                 throw error;
 
-            var user = await Auth.GetSessionUser(command.Session, cancellationToken).ConfigureAwait(false);
+            var user = await Auth.GetUser(command.Session, cancellationToken).ConfigureAwait(false);
             user = user.MustBeAuthenticated();
             var userId = user.Id;
 
@@ -175,8 +175,8 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             userState = new DbUserState() { UserId = userId };
             dbContext.Add(userState);
         }
-
         userState.OnlineCheckInAt = Clocks.SystemClock.Now;
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

@@ -1,10 +1,11 @@
 import { MseAudioPlayer } from './mse-audio-player';
 import { AudioContextAudioPlayer } from './audio-context-audio-player';
+import { IAudioPlayer } from './IAudioPlayer';
 
 export class AudioPlayer {
     private static _isMsePlayer = false;
 
-    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean): object {
+    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean): IAudioPlayer {
         return AudioPlayer._isMsePlayer
             ? MseAudioPlayer.create(blazorRef, debugMode)
             : AudioContextAudioPlayer.create(blazorRef, debugMode);

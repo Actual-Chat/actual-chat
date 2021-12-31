@@ -2,9 +2,12 @@
   "include": [
     "index.ts",
     "types/",
-    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad.worklet-module.ts",
-    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad.worker.ts",
-    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/encoder-worker.ts"
+    "src/",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts"
   ],
   "compilerOptions": {
     "alwaysStrict": true,
@@ -51,6 +54,7 @@
         "*",
         "../nodejs/node_modules/*",
         "../nodejs/node_modules/@types/*",
+        "../nodejs/src/*",
         "../nodejs/*"
       ]
     }

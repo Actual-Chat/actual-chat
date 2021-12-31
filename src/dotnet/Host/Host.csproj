@@ -26,8 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
+    <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\Chat.Client\Chat.Client.csproj" />

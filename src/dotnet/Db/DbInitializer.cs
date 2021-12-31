@@ -26,11 +26,13 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
 
         if (DbInfo.ShouldRecreateDb) {
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            // await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
-            // await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
-            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            // var pendingMigrations = await db.GetPendingMigrationsAsync();
+            // var appliedMigrations = await db.GetAppliedMigrationsAsync();
+            await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
         }
         else
             await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);

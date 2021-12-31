@@ -8,11 +8,19 @@
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
-        <ChatMessage Model="@context.Value" />
+        @if (context.Value is ChatMessageModel chatMessageModel) {
+            <ChatMessage Model="@chatMessageModel" />
+        }
+        else if (context.Value is ChatDateSeparatorModel chatDateSeparator) {
+            <ChatDateSeparator Model="@chatDateSeparator" />
+        }
+        else {
+
+        }
     </Item>
     <Skeleton>
         @{
-            var rnd = new Random(context);
+            var rnd = new Random(Random.Shared.Next());
         }
         <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
             <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>

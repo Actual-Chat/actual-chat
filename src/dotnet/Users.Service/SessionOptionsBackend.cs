@@ -7,17 +7,32 @@ namespace ActualChat.Users;
 public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOptionsBackend
 {
     private readonly IAuth _auth;
+    private readonly IAuthBackend _authBackend;
 
-    public SessionOptionsBackend(IAuth auth, IServiceProvider services) : base(services)
-        => _auth = auth;
-
-    // Backend
+    public SessionOptionsBackend(IAuth auth, IAuthBackend authBackend, IServiceProvider services) : base(services)
+    {
+        _auth = auth;
+        _authBackend = authBackend;
+    }
 
     // [CommandHandler]
-    public virtual async Task Update(ISessionOptionsBackend.UpdateCommand command, CancellationToken cancellationToken)
+    public virtual async Task Upsert(ISessionOptionsBackend.UpsertCommand command, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating()) return;
+
+        var sessionInfo = await _auth.GetSessionInfo(command.Session, cancellationToken).ConfigureAwait(false);
+        if (sessionInfo == null)
+            throw new KeyNotFoundException();
+
+        var options = sessionInfo.Options.Set(command.Option.Key, command.Option.Value);
+        await _authBackend.SetOptions(new(command.Session, options, sessionInfo.Version), cancellationToken)
+            .ConfigureAwait(false);
+
+        // Old implementation:
+        /*
         if (Computed.IsInvalidating()) {
             _ = _auth.GetSessionInfo(command.Session, default);
+            _ = _auth.GetOptions(command.Session, default);
             return;
         }
 
@@ -30,6 +45,8 @@ public class SessionOptionsBackend : DbServiceBase<UsersDbContext>, ISessionOpti
             .ConfigureAwait(false);
         dbSession.Options = dbSession.Options
             .Set(command.Option.Key, command.Option.Value);
+
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        */
     }
 }

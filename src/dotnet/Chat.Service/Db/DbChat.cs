@@ -12,17 +12,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>
     private DateTime _createdAt;
 
     public DbChat() { }
-    public DbChat(Chat chat)
-    {
-        Title = chat.Title;
-        CreatedAt = chat.CreatedAt;
-        IsPublic = chat.IsPublic;
-        Id = chat.Id;
-        Owners = chat.OwnerIds.Select(x => new DbChatOwner() {
-            ChatId = chat.Id,
-            UserId = x.Value,
-        }).ToList();
-    }
+    public DbChat(Chat model) => UpdateFrom(model);
 
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
@@ -39,11 +29,25 @@ public class DbChat : IHasId<string>, IHasVersion<long>
     public Chat ToModel()
         => new() {
             Id = Id,
+            Version = Version,
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
             OwnerIds = Owners.Select(o => (Symbol)o.UserId).ToImmutableArray(),
         };
+
+    public void UpdateFrom(Chat model)
+    {
+        Id = model.Id;
+        Version = model.Version;
+        Title = model.Title;
+        CreatedAt = model.CreatedAt;
+        IsPublic = model.IsPublic;
+        Owners = model.OwnerIds.Select(x => new DbChatOwner() {
+            ChatId = model.Id,
+            UserId = x.Value,
+        }).ToList();
+    }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChat>
     {

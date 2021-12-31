@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using Cysharp.Text;
@@ -32,8 +35,8 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     // to enqueue the next entry on time.
     public TimeSpan EnqueueToPlaybackGap { get; init; } = TimeSpan.FromSeconds(3);
 
-    public Playback? Playback { get; set; }
     public IMutableState<Playback?> PlaybackState { get; }
+    public Playback? Playback => PlaybackState.Value;
     public bool IsDisposeStarted { get; private set; }
 
     public ChatPlayer(IServiceProvider services)
@@ -46,7 +49,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         MediaResolver = Services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = Services.GetRequiredService<AudioDownloader>();
         AudioSourceStreamer = Services.GetRequiredService<IAudioSourceStreamer>();
-        PlaybackState = Services.StateFactory().NewMutable(Result.New<Playback?>(null));
+        PlaybackState = Services.StateFactory().NewMutable<Playback?>();
     }
 
     public ValueTask DisposeAsync()
@@ -59,12 +62,8 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 return ValueTask.CompletedTask;
             IsDisposeStarted = true;
             playback = Playback;
-            if (playback == null)
-                return ValueTask.CompletedTask;
         }
-        Playback = null;
-        PlaybackState.Value = null;
-        return playback.DisposeAsync();
+        return playback?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 
     public Task Complete()
@@ -73,35 +72,30 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         return playback == null ? Task.CompletedTask : playback.Complete();
     }
 
-    public Task Stop(Exception? error = null)
+    public Task Stop()
     {
         var playback = Playback;
-        return playback == null ? Task.CompletedTask : playback.Stop(error);
+        return playback == null ? Task.CompletedTask : playback.Stop();
     }
-
-    public Task Play()
-        => Play(Clocks.CpuClock.Now);
 
     public async Task Play(Moment startAt)
     {
         Playback? playback;
         while (true) {
             playback = Playback;
-            if (playback != null)
+            if (playback is { IsStopped: false })
                 await playback.Stop().ConfigureAwait(false);
             lock (Lock) {
-                if (Playback != null)
+                if (Playback is { IsStopped: false })
                     continue;
                 playback = new Playback(Services, false);
-                playback.Stopped += OnStopped;
-                PlaybackState.Value = Playback = playback;
+                PlaybackState.Value = playback;
                 break;
             }
         }
         playback.Start();
 
-        var cancellationToken = Playback.StopToken;
-        var clock = Clocks.CpuClock;
+        var cancellationToken = playback.StopToken;
         var infDuration = 2 * Constants.Chat.MaxEntryDuration;
         var nowOffset = IsRealTimePlayer ? RealtimeNowOffset : TimeSpan.Zero;
         var chatAuthor = (ChatAuthor?) null;
@@ -117,7 +111,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
                 .ConfigureAwait(false);
             idRange = (startEntry?.Id ?? idRange.Start, idRange.End);
-            var now = clock.Now + nowOffset;
+            var now = Clocks.SystemClock.Now + nowOffset;
             var realtimeOffset = IsRealTimePlayer ? TimeSpan.Zero : now - startAt;
             var realtimeBlockEnd = now;
 
@@ -125,13 +119,13 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 ? entryReader.ReadAllWaitingForNew(idRange.Start, cancellationToken)
                 : entryReader.ReadAll(idRange, cancellationToken))
                 .Where(e => e.Type == ChatEntryType.Audio);
-            await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var entry in entries.ConfigureAwait(false)) {
                 if (entry.EndsAt < startAt) // We're normally starting @ (startAt - ChatConstants.MaxEntryDuration),
                     // so we need to skip a few entries.
                     // Note that streaming entries have EndsAt == null, so we don't skip them.
                     continue;
 
-                now = clock.Now + nowOffset;
+                now = Clocks.SystemClock.Now + nowOffset;
                 if (IsRealTimePlayer) {
                     startAt = now;
                     realtimeBlockEnd = now;
@@ -163,12 +157,12 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
                 var playAt = entryBeginsAt + realtimeOffset;
                 var enqueueDelay = playAt - now - EnqueueToPlaybackGap;
                 if (enqueueDelay > TimeSpan.Zero)
-                    await clock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
+                    await Clocks.CpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
                 await EnqueueEntry(playback, playAt - nowOffset, entry, entrySkipTo, cancellationToken)
                     .ConfigureAwait(false);
                 realtimeBlockEnd = Moment.Max(realtimeBlockEnd, entryEndsAt + realtimeOffset);
             }
-            await Playback.Complete().ConfigureAwait(false);
+            await playback.Complete().ConfigureAwait(false);
             debugStopReason = "no more entries";
         }
         catch (OperationCanceledException) {
@@ -179,7 +173,7 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             debugStopReason = "error";
             Log.LogError(e, "Play #{PlayId}: failed", playId);
             try {
-                await Playback.Stop(e).ConfigureAwait(false);
+                await playback.Stop().ConfigureAwait(false);
             }
             catch {
                 // Intended
@@ -204,16 +198,6 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     }
 
     // Private  methods
-
-    private void OnStopped(Playback playback)
-    {
-        lock (Lock) {
-            if (playback != Playback)
-                return;
-            Playback = null;
-        }
-        PlaybackState.Value = Playback;
-    }
 
     private async ValueTask EnqueueEntry(
         Playback playback,

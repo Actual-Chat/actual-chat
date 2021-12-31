@@ -18,6 +18,14 @@ a {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
+.chat-message:hover {
+    @apply bg-gray-200;
+}
+
+.chat-message:hover .chat-message-timestamp-secondary {
+    @apply visible;
+}
+
 .chat-message-markup .playable {
     @apply cursor-pointer;
     transition: color 300ms ease-in, text-shadow 300ms ease-in;
@@ -65,6 +73,7 @@ a {
 }
 
 [contenteditable=true]:empty:not(:focus):before{
+    @apply text-placeholder truncate text-xs md:text-sm;
     content:attr(data-text)
 }
 

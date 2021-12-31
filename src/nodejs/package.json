@@ -7,7 +7,6 @@
     "watch": "webpack --mode development --watch"
   },
   "devDependencies": {
-    "@types/audioworklet": "^0.0.22",
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
     "@types/recordrtc": "^5.6.8",
@@ -26,7 +25,6 @@
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
-    "audio-feeder": "^0.5.0",
     "denque": "^2.0.1",
     "moving-averages": "^4.0.6",
     "ogv": "^1.8.4",

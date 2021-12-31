@@ -58,14 +58,14 @@ public partial class ChatAuthors
         if (chatAuthor != null)
             return chatAuthor;
 
-        var user = await _auth.GetSessionUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         var userId = user.IsAuthenticated ? user.Id : Symbol.Empty;
 
         var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
         chatAuthor = await _commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
         if (!user.IsAuthenticated) {
-            var updateOptionCommand = new ISessionOptionsBackend.UpdateCommand(
+            var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new($"{chatId}::authorId", chatAuthor.Id));
             await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
@@ -117,8 +117,8 @@ public partial class ChatAuthors
         dbChatAuthor.LocalId = await _idSequences.Next(chatId, maxLocalId).ConfigureAwait(false);
         dbChatAuthor.Id = DbChatAuthor.ComposeId(chatId, dbChatAuthor.LocalId);
         dbChatAuthor.UserId = userId.NullIfEmpty();
+        dbContext.Add(dbChatAuthor);
 
-        await dbContext.AddAsync(dbChatAuthor, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbChatAuthor.ToModel();
     }

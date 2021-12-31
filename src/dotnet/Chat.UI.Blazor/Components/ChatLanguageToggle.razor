@@ -1,0 +1,34 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatUserSettings?>
+@inject Session _session
+@inject IChatUserSettings _chatUserSettings
+@inject UICommandRunner _cmd
+
+@{
+    var language = (State.LatestNonErrorValue?.Language ?? default).ValidOrDefault();
+}
+<button class="@(_class ??= this.DefaultClass()) align-top pt-2.5 py-0 outline-none text-secondary hover:text-toggle-on rounded-r-full bg-transparent max-h-12 transition-all duration-150"
+        @onclick="Toggle">
+    @language.Shortcut
+</button>
+
+@code {
+    private static string? _class;
+
+    [CascadingParameter]
+    public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
+    protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
+        => await _chatUserSettings.Get(_session, Chat.Id, cancellationToken);
+
+    private async Task Toggle()
+    {
+        var settings = State.Value ?? new() { Language = LanguageId.Default };
+        settings = settings with { Language = settings.Language.Next() };
+        var command = new IChatUserSettings.SetCommand(_session, Chat.Id, settings);
+        await _cmd.Run(command).ConfigureAwait(true);
+    }
+}

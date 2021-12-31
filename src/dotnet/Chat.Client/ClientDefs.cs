@@ -1,4 +1,4 @@
-﻿using ActualChat.Users;
+using ActualChat.Users;
 using RestEase;
 
 namespace ActualChat.Chat.Client;
@@ -42,6 +42,8 @@ public interface IChatsClientDef
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateEntry))]
     Task<ChatEntry> CreateEntry([Body] IChats.CreateEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(RemoveTextEntry))]
+    Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatAuthors")]
@@ -51,4 +53,13 @@ public interface IChatAuthorsClientDef
     Task<ChatAuthor?> GetSessionChatAuthor(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthor))]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+}
+
+[BasePath("chatUserSettings")]
+public interface IChatUserSettingsClientDef
+{
+    [Get(nameof(Get))]
+    Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken);
+    [Post(nameof(Set))]
+    Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
 }

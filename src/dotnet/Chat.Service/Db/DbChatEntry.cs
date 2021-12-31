@@ -7,6 +7,7 @@ using Stl.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
+[Index(nameof(ChatId), nameof(Type), nameof(IsRemoved), nameof(Id))] // For GetEntryCount queries
 [Index(nameof(ChatId), nameof(Type), nameof(Id))]
 [Index(nameof(ChatId), nameof(Type), nameof(BeginsAt), nameof(EndsAt))]
 [Index(nameof(ChatId), nameof(Type), nameof(EndsAt), nameof(BeginsAt))]
@@ -14,10 +15,11 @@ namespace ActualChat.Chat.Db;
 public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
     private DateTime _beginsAt;
+    private DateTime? _clientSideBeginsAt;
     private DateTime? _endsAt;
+    private DateTime? _contentEndsAt;
 
     public DbChatEntry() { }
-
     public DbChatEntry(ChatEntry model) => UpdateFrom(model);
 
     // (ChatId, Type, Id)
@@ -25,6 +27,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public string ChatId { get; set; } = "";
     public long Id { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
+    public bool IsRemoved { get; set; }
 
     public string AuthorId { get; set; } = null!;
 
@@ -33,9 +36,19 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
         set => _beginsAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
+    public DateTime? ClientSideBeginsAt {
+        get => _clientSideBeginsAt?.DefaultKind(DateTimeKind.Utc);
+        set => _clientSideBeginsAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
     public DateTime? EndsAt {
         get => _endsAt?.DefaultKind(DateTimeKind.Utc);
         set => _endsAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    public DateTime? ContentEndsAt {
+        get => _contentEndsAt?.DefaultKind(DateTimeKind.Utc);
+        set => _contentEndsAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public double Duration { get; set; }
@@ -56,32 +69,41 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
             ChatId = ChatId,
             Type = Type,
             Id = Id,
+            Version = Version,
+            IsRemoved = IsRemoved,
+
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
+            ClientSideBeginsAt = ClientSideBeginsAt,
             EndsAt = EndsAt,
+            ContentEndsAt = ContentEndsAt,
             Content = Content,
             StreamId = StreamId ?? "",
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
 #pragma warning disable IL2026
-            TextToTimeMap = TextToTimeMap != null
+            TextToTimeMap = Type == ChatEntryType.Text
+                ? TextToTimeMap != null
                 ? JsonSerializer.Deserialize<LinearMap>(TextToTimeMap)
+                : default
                 : default,
 #pragma warning restore IL2026
         };
 
     public void UpdateFrom(ChatEntry model)
     {
-        if (model.Id == 0)
-            throw new ArgumentOutOfRangeException(Invariant($"{nameof(model)}.{nameof(model.Id)}"));
         CompositeId = GetCompositeId(model.ChatId, model.Type, model.Id);
         ChatId = model.ChatId;
         Type = model.Type;
         Id = model.Id;
         Version = model.Version;
+        IsRemoved = IsRemoved;
+
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
+        ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;
+        ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         Content = model.Content;
         StreamId = model.StreamId;

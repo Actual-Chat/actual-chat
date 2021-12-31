@@ -5,9 +5,9 @@ public interface ISessionOptionsBackend
     // Commands
 
     [CommandHandler]
-    Task Update(UpdateCommand command, CancellationToken cancellationToken);
+    Task Upsert(UpsertCommand command, CancellationToken cancellationToken);
 
-    public record UpdateCommand(
+    public record UpsertCommand(
             Session Session,
             KeyValuePair<string, string> Option
         ) : ISessionCommand<Unit>, IBackendCommand;

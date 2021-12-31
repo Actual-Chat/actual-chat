@@ -25,7 +25,7 @@ public class SourceAudioProcessor : AsyncProcessBase
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
     public IChatsBackend ChatsBackend { get; }
-    public MomentClockSet ClockSet { get; }
+    public MomentClockSet Clocks { get; }
 
     public SourceAudioProcessor(
         Options settings,
@@ -38,7 +38,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         TranscriptPostProcessor transcriptPostProcessor,
         TranscriptStreamer transcriptStreamer,
         IChatsBackend chatsBackend,
-        MomentClockSet clockSet,
+        MomentClockSet clocks,
         ILogger<SourceAudioProcessor> log)
     {
         Log = log;
@@ -52,7 +52,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         TranscriptPostProcessor = transcriptPostProcessor;
         TranscriptStreamer = transcriptStreamer;
         ChatsBackend = chatsBackend;
-        ClockSet = clockSet;
+        Clocks = clocks;
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
@@ -81,19 +81,18 @@ public class SourceAudioProcessor : AsyncProcessBase
     internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
-        var blobStream = SourceAudioRecorder.GetSourceAudioBlobStream(record.Id, cancellationToken);
-        if (Constants.DebugMode.AudioRecordingBlobStream)
-            blobStream = blobStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
-        var openSegments = AudioSplitter.GetSegments(record, blobStream, cancellationToken);
-        await foreach (var openSegment in openSegments.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-            var beginsAt = ClockSet.CpuClock.UtcNow;
+        var recordingStream = SourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, cancellationToken);
+        if (Constants.DebugMode.AudioRecordingStream)
+            recordingStream = recordingStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
+        var openSegments = AudioSplitter.GetSegments(record, recordingStream, cancellationToken);
+        await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
             DebugLog?.LogDebug(
                 "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
                 record.Id, openSegment.Index, openSegment.StreamId);
             var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
             var saveAudioTask = SaveAudio(openSegment, cancellationToken);
-            var audioEntry = await CreateAudioEntry(openSegment, beginsAt, cancellationToken).ConfigureAwait(false);
-            var transcribeTask = TranscribeAudio(openSegment, audioEntry, cancellationToken);
+            var audioEntryTask = CreateAudioEntry(openSegment, cancellationToken);
+            var transcribeTask = TranscribeAudio(openSegment, audioEntryTask, cancellationToken);
 
             _ = BackgroundTask.Run(FinalizeAudioProcessing,
                 Log, $"{nameof(FinalizeAudioProcessing)} failed",
@@ -103,6 +102,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             {
                 // TODO(AY): We should make sure finalization happens no matter what (later)!
                 await publishAudioTask.ConfigureAwait(false);
+                var audioEntry = await audioEntryTask.ConfigureAwait(false);
                 var audioBlobId = await saveAudioTask.ConfigureAwait(false);
                 await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, cancellationToken).ConfigureAwait(false);
                 await transcribeTask.ConfigureAwait(false);
@@ -110,20 +110,20 @@ public class SourceAudioProcessor : AsyncProcessBase
         }
     }
 
-    private async Task TranscribeAudio(OpenAudioSegment audioSegment, ChatEntry audioEntry, CancellationToken cancellationToken)
+    private async Task TranscribeAudio(OpenAudioSegment audioSegment, Task<ChatEntry> audioEntryTask, CancellationToken cancellationToken)
     {
-        var audioStream = audioSegment.Audio.GetStream(cancellationToken);
         var transcriptionOptions = new TranscriptionOptions() {
-            Language = "ru-RU",
+            Language = audioSegment.AudioRecord.Language,
+            AltLanguages = Array.Empty<string>(),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
         };
-        var allTranscripts = Transcriber.Transcribe(transcriptionOptions, audioStream, cancellationToken);
+        var allTranscripts = Transcriber.Transcribe(transcriptionOptions, audioSegment.Audio, cancellationToken);
         var segments = TranscriptSplitter.GetSegments(audioSegment, allTranscripts, cancellationToken);
         var segmentTasks = new Queue<Task>();
         await foreach (var segment in segments.ConfigureAwait(false)) {
-            var segmentTask = ProcessTranscriptSegment(audioSegment, audioEntry, segment, cancellationToken);
+            var segmentTask = ProcessTranscriptSegment(audioSegment, audioEntryTask, segment, cancellationToken);
             segmentTasks.Enqueue(segmentTask);
             while (segmentTasks.Peek().IsCompleted)
                 await segmentTasks.Dequeue().ConfigureAwait(false);
@@ -133,7 +133,7 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     private async Task ProcessTranscriptSegment(
         OpenAudioSegment audioSegment,
-        ChatEntry audioEntry,
+        Task<ChatEntry> audioEntryTask,
         TranscriptSegment segment,
         CancellationToken cancellationToken)
     {
@@ -141,6 +141,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         var transcripts = TranscriptPostProcessor.Apply(segment, cancellationToken);
         var diffs = transcripts.GetDiffs(cancellationToken).Memoize(); // Should
         var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
+        var audioEntry = await audioEntryTask.ConfigureAwait(false);
         await CreateTextEntry(audioEntry, streamId, diffs.Replay(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await publishTask.ConfigureAwait(false);
@@ -154,9 +155,20 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     private async Task<ChatEntry> CreateAudioEntry(
         OpenAudioSegment audioSegment,
-        Moment beginsAt,
         CancellationToken cancellationToken)
     {
+        var now = Clocks.SystemClock.Now;
+        DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
+        var beginsAt = now;
+        var recordedAtOpt = await audioSegment.RecordedAtTask
+            .WithTimeout(TimeSpan.FromSeconds(0.1), cancellationToken) // Any delay here contribs to the overall delay
+            .ConfigureAwait(false);
+        var recordedAt = (recordedAtOpt.IsSome(out var v) ? v : null) ?? beginsAt;
+        if (recordedAt + TimeSpan.FromSeconds(3) >= beginsAt) // We're ok with max. 3s delta
+            beginsAt = Moment.Min(beginsAt, recordedAt);
+        var delay = now - recordedAt;
+        DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
+
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry() {
             ChatId = audioSegment.AudioRecord.ChatId,
             Type = ChatEntryType.Audio,
@@ -164,10 +176,10 @@ public class SourceAudioProcessor : AsyncProcessBase
             Content = "",
             StreamId = audioSegment.StreamId,
             BeginsAt = beginsAt,
+            ClientSideBeginsAt = recordedAt,
         });
-        var entry = await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
-        DebugLog?.LogDebug("CreateAudioEntry: #{EntryId} is created in chat #{ChatId}", entry.Id, entry.ChatId);
-        return entry;
+        var audioEntry = await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
+        return audioEntry;
     }
 
     private async Task FinalizeAudioEntry(
@@ -181,6 +193,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             Content = audioBlobId ?? "",
             StreamId = Symbol.Empty,
             EndsAt = audioEntry.BeginsAt + closedSegment.Duration,
+            ContentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration,
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
         await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);

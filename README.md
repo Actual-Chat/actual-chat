@@ -7,6 +7,10 @@
 
 ## Prerequisites
 
+
+
+
+Install:
 - [Git](https://git-scm.com/downloads)
 - [.NET 6](https://dotnet.microsoft.com/download/dotnet/6.0)
 - `dotnet workload install wasm-tools`  
@@ -26,19 +30,44 @@ Recommended IDEs:
 
 ## Build
 
-First time:
-```
-Docker-Start-DBs.cmd
-Npm-Install.cmd
-dotnet build
+First, get Google Cloud credentials (`key.json` file) to make sure you can use Google Transcribe APIs. Copy the provided file to `~/.gcp/key.json` and ensure `GOOGLE_APPLICATION_CREDENTIALS` env. variable stores its path.
+
+To build & run the project:
+
+```bash
+# Start Docker containers for PostgreSQL, Redis etc.
+docker-compose up
+
+# Install dependencies and run watch (dotnet watch + webpack watch)
+dotnet run --project build -- restore-tools npm-install watch
 ```
 
-Useful commands:
+If you're getting `RpcException` with 
+`"Request had invalid authentication credentials."` message,
+make sure your time & time zone settings are correct.
 
-- `Docker-Start-DBs.cmd` starts Docker containers w/ DBs used for local development (PostgreSQL, Redis)
-- `Npm-Install.cmd` installs `npm` packages
-- `Npm-Watch.cmd` rebuilds Webpack bundle on any change in TS/JS/CSS
-- `Run-Watch.cmd` does what `Run-NpmWatch` does + hot reloads the server.
+Other useful commands:
+
+```powershell
+# What else build project can do?
+dotnet run --project build -- --help
+ 
+# List all available targets (you can combine them)
+dotnet run --project build -- --list-targets
+
+# Run with observability services (opentelemetry collector + jaeger) locally:
+docker-compose -f docker-compose.observability.yml -f docker-compose.yml up
+
+# Use either env. var or the matching option in your appsettings.local.json
+$env:HostSettings__OpenTelemetryEndpoint="localhost"
+docker run --project build -- watch
+```
+
+You can add your own targets (as C# code) to `./build/Program.cs`, which is actually a [Bullseye](https://github.com/adamralph/bullseye) build project written in C#.
+
+It's also useful to have an [alias](https://github.com/vchirikov/dotfiles/blob/7f280e9287ceba6fd508577fb0665fc19e4d9b29/Microsoft.PowerShell_profile.ps1#L231-L249) to run build system (to run commands like `bs watch`).
+
+There are some shortcuts in `*.cmd` files, you can use them too.  
 
 ## Conventions
 
@@ -55,8 +84,8 @@ We use:
 Read [Nerdbank.GitVersioning docs](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/nbgv-cli.md)  
 
 ```bash
+# might not work, see https://github.com/dotnet/Nerdbank.GitVersioning/issues/685
 nbgv prepare-release beta
 ```
 
-We use the `alpha` suffix in the `master` branch, `beta`,`rc-*` in release branches.  
-When a release branch drops the version suffix it becomes a production release.
+We use the `alpha` suffix in the `master` branch, `beta`,`rc-*` in release branches. When a release branch drops the version suffix it becomes a production release.

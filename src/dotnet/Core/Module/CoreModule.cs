@@ -19,6 +19,7 @@ public class CoreModule : HostModule<CoreSettings>
         services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder());
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
+        fusion.AddComputeService<ILiveTime, LiveTime>();
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);

@@ -2,6 +2,7 @@ using System.Security;
 using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
+using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
@@ -48,19 +49,22 @@ public partial class Chats
         string chatId,
         ChatEntryType entryType,
         Range<long>? idTileRange,
+        bool includeRemoved,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbEntries = dbContext.ChatEntries.AsQueryable()
-            .Where(m => m.ChatId == chatId && m.Type == entryType);
+            .Where(e => e.ChatId == chatId && e.Type == entryType);
+        if (!includeRemoved)
+            dbEntries = dbEntries.Where(e => !e.IsRemoved);
 
         if (idTileRange.HasValue) {
             var idRangeValue = idTileRange.GetValueOrDefault();
             IdTileStack.AssertIsTile(idRangeValue);
             dbEntries = dbEntries
-                .Where(m => m.Id >= idRangeValue.Start && m.Id < idRangeValue.End);
+                .Where(e => e.Id >= idRangeValue.Start && e.Id < idRangeValue.End);
         }
 
         return await dbEntries.LongCountAsync(cancellationToken).ConfigureAwait(false);
@@ -112,6 +116,7 @@ public partial class Chats
         string chatId,
         ChatEntryType entryType,
         Range<long> idTileRange,
+        bool includeRemoved,
         CancellationToken cancellationToken)
     {
         var idTile = IdTileStack.GetTile(idTileRange);
@@ -119,25 +124,31 @@ public partial class Chats
         if (smallerIdTiles.Length != 0) {
             var smallerChatTiles = new List<ChatTile>();
             foreach (var smallerIdTile in smallerIdTiles) {
-                var smallerChatTile = await GetTile(chatId, entryType, smallerIdTile.Range, cancellationToken)
+                var smallerChatTile = await GetTile(chatId, entryType, smallerIdTile.Range, includeRemoved, cancellationToken)
                     .ConfigureAwait(false);
                 smallerChatTiles.Add(smallerChatTile);
             }
-            return new ChatTile(smallerChatTiles);
+            return new ChatTile(smallerChatTiles, includeRemoved);
+        }
+        if (!includeRemoved) {
+            var fullTile = await GetTile(chatId, entryType, idTileRange, true, cancellationToken).ConfigureAwait(false);
+            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToImmutableArray());
         }
 
+        // If we're here, it's the smallest tile & includeRemoved = true
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbEntries = await dbContext.ChatEntries
-            .Where(m => m.ChatId == chatId
-                && m.Type == entryType
-                && m.Id >= idTile.Range.Start
-                && m.Id < idTile.Range.End)
-            .OrderBy(m => m.Id)
+            .Where(e => e.ChatId == chatId
+                && e.Type == entryType
+                && e.Id >= idTile.Range.Start
+                && e.Id < idTile.Range.End)
+            .OrderBy(e => e.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var entries = dbEntries.Select(m => m.ToModel()).ToImmutableArray();
-        return new ChatTile(idTileRange, entries);
+        var entries = dbEntries.Select(e => e.ToModel()).ToImmutableArray();
+        return new ChatTile(idTileRange, true, entries);
     }
 
     // Command handlers
@@ -154,14 +165,15 @@ public partial class Chats
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var chat = command.Chat with { Id = Ulid.NewUlid().ToString() };
-        var dbChat = new DbChat(chat) {
+        var chat = command.Chat with {
+            Id = Ulid.NewUlid().ToString(),
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
         };
+        var dbChat = new DbChat(chat);
         dbContext.Add(dbChat);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;
@@ -190,7 +202,7 @@ public partial class Chats
         var dbChatAuthor = await dbContext.ChatAuthors
             .SingleAsync(a => a.Id == entry.AuthorId.Value, cancellationToken)
             .ConfigureAwait(false);
-        var dbEntry = await DbAddOrUpdate(dbContext, entry, cancellationToken).ConfigureAwait(false);
+        var dbEntry = await DbUpsertEntry(dbContext, entry, cancellationToken).ConfigureAwait(false);
 
         entry = dbEntry.ToModel();
         context.Operation().Items.Set(entry);
@@ -227,7 +239,7 @@ public partial class Chats
             .SingleAsync(a => a.Id == audioEntry.AuthorId.Value, cancellationToken)
             .ConfigureAwait(false);
 
-        var dbAudioEntry = await DbAddOrUpdate(dbContext, audioEntry, cancellationToken).ConfigureAwait(false);
+        var dbAudioEntry = await DbUpsertEntry(dbContext, audioEntry, cancellationToken).ConfigureAwait(false);
         var textEntry = new ChatEntry() {
             ChatId = audioEntry.ChatId,
             AuthorId = audioEntry.AuthorId,
@@ -237,7 +249,7 @@ public partial class Chats
             AudioEntryId = dbAudioEntry.Id,
             BeginsAt = audioEntry.BeginsAt,
         };
-        var dbTextEntry = await DbAddOrUpdate(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
+        var dbTextEntry = await DbUpsertEntry(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
 
         audioEntry = dbAudioEntry.ToModel();
         textEntry = dbTextEntry.ToModel();
@@ -248,7 +260,7 @@ public partial class Chats
 
     // Protected methods
 
-    protected async Task<Unit> AssertHasPermissions(
+    protected async Task AssertHasPermissions(
         string chatId,
         string? authorId,
         ChatPermissions permissions,
@@ -257,22 +269,31 @@ public partial class Chats
         var chatPermissions = await GetPermissions(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if ((chatPermissions & permissions) != permissions)
             throw new SecurityException("Not enough permissions.");
-
-        return default;
     }
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
     {
-        if (!isUpdate)
-            _ = GetEntryCount(chatId, entryType, null, default);
+        if (!isUpdate) {
+            _ = GetEntryCount(chatId, entryType, null, false, default);
+            _ = GetEntryCount(chatId, entryType, null, true, default);
+        }
         foreach (var idTile in IdTileStack.GetAllTiles(entryId)) {
-            _ = GetTile(chatId, entryType, idTile.Range, default);
-            if (!isUpdate)
-                _ = GetEntryCount(chatId, entryType, idTile.Range, default);
+            if (idTile.Layer.Smaller == null) {
+                // Larger tiles are composed out of smaller tiles,
+                // so we have to invalidate just the smallest one.
+                // And the tile with includeRemoved == false is based on
+                // a tile with includeRemoved == true, so we have to invalidate
+                // just this tile.
+                _ = GetTile(chatId, entryType, idTile.Range, true, default);
+            }
+            if (!isUpdate) {
+                _ = GetEntryCount(chatId, entryType, idTile.Range, true, default);
+                _ = GetEntryCount(chatId, entryType, idTile.Range, false, default);
+            }
         }
     }
 
-    protected async Task<DbChatEntry> DbAddOrUpdate(
+    protected async Task<DbChatEntry> DbUpsertEntry(
         ChatDbContext dbContext,
         ChatEntry entry,
         CancellationToken cancellationToken)
@@ -284,7 +305,7 @@ public partial class Chats
         var entryType = entry.Type;
         DbChatEntry dbEntry;
         if (isNew) {
-            var id = await NextChatEntryId(dbContext, entry.ChatId, entryType, cancellationToken).ConfigureAwait(false);
+            var id = await DbNextEntryId(dbContext, entry.ChatId, entryType, cancellationToken).ConfigureAwait(false);
             entry = entry with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
@@ -295,11 +316,12 @@ public partial class Chats
         }
         else {
             var compositeId = DbChatEntry.GetCompositeId(entry.ChatId, entryType, entry.Id);
-            dbEntry = await dbContext.ChatEntries.ForUpdate()
-                    .FirstOrDefaultAsync(e => e.CompositeId == compositeId, cancellationToken)
-                    .ConfigureAwait(false)
-                ?? throw new InvalidOperationException(Invariant(
-                    $"Chat entry with key {entry.ChatId}, {entry.Id} is not found"));
+            dbEntry = await dbContext.ChatEntries
+                .FindAsync(ComposeKey(compositeId), cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new KeyNotFoundException();
+            if (dbEntry.Version != entry.Version)
+                throw new VersionMismatchException();
             entry = entry with {
                 Version = VersionGenerator.NextVersion(dbEntry.Version),
             };
@@ -311,7 +333,7 @@ public partial class Chats
         return dbEntry;
     }
 
-    public async Task<long> NextChatEntryId(
+    public async Task<long> DbNextEntryId(
         object dbContext,
         string chatId,
         ChatEntryType entryType,

@@ -68,4 +68,11 @@ public class ChatsController : ControllerBase, IChats
         command.UseDefaultSession(_sessionResolver);
         return _chats.CreateEntry(command, cancellationToken);
     }
+
+    [HttpPost]
+    public Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _chats.RemoveTextEntry(command, cancellationToken);
+    }
 }
