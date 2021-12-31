@@ -4,7 +4,10 @@ namespace ActualChat.Audio.Processing;
 
 public sealed class AudioSplitter : AudioProcessorBase
 {
-    public AudioSplitter(IServiceProvider services) : base(services) { }
+    private ILogger OpenAudioSegmentLog { get; }
+
+    public AudioSplitter(IServiceProvider services) : base(services)
+        => OpenAudioSegmentLog = Services.LogFor<OpenAudioSegment>();
 
     public IAsyncEnumerable<OpenAudioSegment> GetSegments(
         AudioRecord audioRecord,
@@ -79,7 +82,7 @@ public sealed class AudioSplitter : AudioProcessorBase
         async ValueTask<OpenAudioSegment> NewAudioSegment(int segmentIndex, IAsyncEnumerable<byte[]> segmentRecordingStream)
         {
             var audio = new AudioSource(segmentRecordingStream, TimeSpan.Zero, audioLog, cancellationToken);
-            var openAudioSegment = new OpenAudioSegment(segmentIndex, audioRecord, audio);
+            var openAudioSegment = new OpenAudioSegment(segmentIndex, audioRecord, audio, OpenAudioSegmentLog);
             _ = BackgroundTask.Run(async () => {
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(3.5));
                 using var linkedCts = timeoutCts.Token.LinkWith(cancellationToken);
@@ -91,7 +94,7 @@ public sealed class AudioSplitter : AudioProcessorBase
 
                     await audio.WhenDurationAvailable.WithFakeCancellation(linkedToken).ConfigureAwait(false);
                     await openAudioSegment.AudibleDurationTask
-                        .WithTimeout(TimeSpan.FromSeconds(5), linkedToken)
+                        .WithTimeout(TimeSpan.FromSeconds(1), linkedToken)
                         .ConfigureAwait(false);
                     openAudioSegment.Close(audio.Duration);
                 }

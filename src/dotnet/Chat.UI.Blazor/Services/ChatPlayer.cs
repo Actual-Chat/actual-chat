@@ -234,19 +234,16 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     {
         try {
             DebugLog?.LogDebug(
-                "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}",
-                audioEntry.ChatId,
-                audioEntry.Id,
-                audioEntry.StreamId);
+                "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}, skipTo={SkipTo:N}",
+                audioEntry.ChatId, audioEntry.Id, audioEntry.StreamId, skipTo.TotalSeconds);
             var trackId = GetAudioTrackId(audioEntry);
             var audio = await AudioSourceStreamer
                 .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
                 .ConfigureAwait(false);
             await playback.AddMediaTrack(trackId,
                     playAt,
-                    audioEntry.BeginsAt,
+                    audioEntry.BeginsAt + skipTo,
                     audio,
-                    skipTo,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -261,9 +258,8 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug(
-            "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}",
-            audioEntry.ChatId,
-            audioEntry.Id);
+            "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}, skipTo={SkipTo:N}s",
+            audioEntry.ChatId, audioEntry.Id, skipTo.TotalSeconds);
         var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
         var audio = await AudioDownloader
             .Download(audioBlobUri, skipTo, cancellationToken)
@@ -272,9 +268,8 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         await playback.AddMediaTrack(
                 trackId,
                 playAt,
-                audioEntry.BeginsAt,
+                audioEntry.BeginsAt + skipTo,
                 audio,
-                skipTo,
                 cancellationToken)
             .ConfigureAwait(false);
     }

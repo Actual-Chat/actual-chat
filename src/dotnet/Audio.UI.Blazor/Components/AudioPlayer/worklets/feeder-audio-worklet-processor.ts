@@ -125,23 +125,20 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
         const msg = ev.data;
         switch (msg.type) {
-            case 'data': {
-                this.onDataMessage(msg as DataNodeMessage);
-                break;
-            }
-            case 'clear': {
-                this.onClearMessage();
-                break;
-            }
-            case 'getState': {
-                this.onGetState(msg as GetStateNodeMessage);
-            }
-            case 'changeState': {
-                this.onChangeStateMessage(msg as ChangeStateNodeMessage);
-                break;
-            }
-            default:
-                throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
+        case 'data':
+            this.onDataMessage(msg as DataNodeMessage);
+            break;
+        case 'clear':
+            this.onClearMessage();
+            break;
+        case 'getState':
+            this.onGetState(msg as GetStateNodeMessage);
+            break;
+        case 'changeState':
+            this.onChangeStateMessage(msg as ChangeStateNodeMessage);
+            break;
+        default:
+            throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
         }
     };
 

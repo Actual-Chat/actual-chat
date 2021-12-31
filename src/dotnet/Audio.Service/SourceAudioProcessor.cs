@@ -92,7 +92,10 @@ public class SourceAudioProcessor : AsyncProcessBase
             var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
             var saveAudioTask = SaveAudio(openSegment, cancellationToken);
             var audioEntryTask = CreateAudioEntry(openSegment, cancellationToken);
-            var transcribeTask = TranscribeAudio(openSegment, audioEntryTask, cancellationToken);
+            var transcribeTask = BackgroundTask.Run(
+                () => TranscribeAudio(openSegment, audioEntryTask, cancellationToken),
+                Log, $"{nameof(TranscribeAudio)} failed",
+                CancellationToken.None);
 
             _ = BackgroundTask.Run(FinalizeAudioProcessing,
                 Log, $"{nameof(FinalizeAudioProcessing)} failed",
