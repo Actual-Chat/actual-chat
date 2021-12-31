@@ -158,7 +158,12 @@ public sealed class AsyncMemoizer<T>
                 try {
                     for (var i = skipCount; i < newBuffer.Items.Length; i++) {
                         var item = newBuffer.Items.Span[i];
-                        await target.WriteResultAsync(item, cancellationToken).ConfigureAwait(false);
+                        try {
+                            await target.WriteResultAsync(item, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (ChannelClosedException) {
+                            // Intended
+                        }
                     }
                 }
                 catch (ChannelClosedException) {

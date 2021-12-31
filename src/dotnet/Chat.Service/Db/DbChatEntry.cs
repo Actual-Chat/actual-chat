@@ -15,6 +15,7 @@ namespace ActualChat.Chat.Db;
 public class DbChatEntry : IHasId<long>, IHasVersion<long>
 {
     private DateTime _beginsAt;
+    private DateTime? _clientSideBeginsAt;
     private DateTime? _endsAt;
     private DateTime? _contentEndsAt;
 
@@ -33,6 +34,11 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     public DateTime BeginsAt {
         get => _beginsAt.DefaultKind(DateTimeKind.Utc);
         set => _beginsAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    public DateTime? ClientSideBeginsAt {
+        get => _clientSideBeginsAt?.DefaultKind(DateTimeKind.Utc);
+        set => _clientSideBeginsAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
     public DateTime? EndsAt {
@@ -68,6 +74,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
             AuthorId = AuthorId,
             BeginsAt = BeginsAt,
+            ClientSideBeginsAt = ClientSideBeginsAt,
             EndsAt = EndsAt,
             ContentEndsAt = ContentEndsAt,
             Content = Content,
@@ -94,6 +101,7 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
 
         AuthorId = model.AuthorId;
         BeginsAt = model.BeginsAt;
+        ClientSideBeginsAt = model.ClientSideBeginsAt;
         EndsAt = model.EndsAt;
         ContentEndsAt = model.ContentEndsAt;
         Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;

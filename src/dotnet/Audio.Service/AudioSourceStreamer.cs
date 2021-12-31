@@ -1,23 +1,22 @@
 using ActualChat.Audio.Db;
+using ActualChat.Audio.Processing;
 using ActualChat.Media;
-using ActualChat.Redis;
 using Stl.Redis;
 
 namespace ActualChat.Audio;
 
-public class AudioSourceStreamer : IAudioSourceStreamer
+public class AudioSourceStreamer : AudioProcessorBase, IAudioSourceStreamer
 {
     private const int StreamBufferSize = 64;
     private const int MaxStreamDuration = 600;
 
-    private ILoggerFactory LoggerFactory { get; }
+    private ILogger AudioSourceLog { get; }
     private RedisDb RedisDb { get; }
 
-    public AudioSourceStreamer(
-        RedisDb<AudioContext> audioRedisDb,
-        ILoggerFactory loggerFactory)
+    public AudioSourceStreamer(IServiceProvider services) : base(services)
     {
-        LoggerFactory = loggerFactory;
+        AudioSourceLog = Services.LogFor<AudioSource>();
+        var audioRedisDb = Services.GetRequiredService<RedisDb<AudioContext>>();
         RedisDb = audioRedisDb.WithKeyPrefix("audio-sources");
     }
 
@@ -26,10 +25,12 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        var audioStream = GetAudioStream(streamId, skipTo, cancellationToken);
-        var audioLog = LoggerFactory.CreateLogger<AudioSource>();
+        // SkipTo via AudioSource is more efficient than SkipTo via GetAudioStream
+        var audioStream = GetAudioStream(streamId, TimeSpan.Zero, cancellationToken);
         var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, audioLog, cancellationToken);
+        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
+        if (skipTo >= TimeSpan.Zero)
+            audio = audio.SkipTo(skipTo, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
@@ -46,13 +47,7 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         var audioStream = streamer
             .Read(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        if (skipTo == TimeSpan.Zero)
-            return audioStream;
-
-        var audioLog = LoggerFactory.CreateLogger<AudioSource>();
-        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, audioLog, cancellationToken);
-        return ToStream(formatTask, audio.SkipTo(skipTo, cancellationToken).GetFrames(cancellationToken), cancellationToken);
+        return SkipTo(audioStream, skipTo, cancellationToken);
     }
 
     public Task Publish(string streamId, AudioSource audio, CancellationToken cancellationToken)
@@ -60,11 +55,25 @@ public class AudioSourceStreamer : IAudioSourceStreamer
         var streamer = RedisDb.GetStreamer(streamId, new RedisStreamer<AudioStreamPart>.Options {
             MaxStreamLength = 10 * 1024,
         });
-        var audioStream = ToStream(audio.GetFormatTask(), audio.GetFrames(cancellationToken), cancellationToken);
+        var audioStream = ToAudioStream(audio.GetFormatTask(), audio.GetFrames(cancellationToken), cancellationToken);
         return streamer.Write(audioStream, cancellationToken);
     }
 
-    public async IAsyncEnumerable<AudioStreamPart> ToStream(
+    private IAsyncEnumerable<AudioStreamPart> SkipTo(
+        IAsyncEnumerable<AudioStreamPart> audioStream,
+        TimeSpan skipTo,
+        CancellationToken cancellationToken)
+    {
+        if (skipTo <= TimeSpan.Zero) return audioStream;
+
+        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
+        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
+        return ToAudioStream(formatTask,
+            audio.SkipTo(skipTo, cancellationToken).GetFrames(cancellationToken),
+            cancellationToken);
+    }
+
+    private async IAsyncEnumerable<AudioStreamPart> ToAudioStream(
         Task<AudioFormat> formatTask,
         IAsyncEnumerable<AudioFrame> frames,
         [EnumeratorCancellation] CancellationToken cancellationToken)

@@ -151,11 +151,11 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     {
         if (DebugLog == null || frameIndex % FrameDebugInfoPerEvery != 0)
             return "";
-        var recordingOffset = Command.RecordingStartedAt + Command.SkipTo + frameOffset;
+        var recordingTime = Command.RecordingStartedAt + Command.SkipTo + frameOffset;
         var now = Clocks.SystemClock.Now;
-        var realtimeDelay = (now - recordingOffset).TotalSeconds;
+        var realtimeDelay = (now - recordingTime).TotalSeconds;
         if (realtimeDelay > MaxRealtimeDelay)
             return "";
-        return $" frame #{frameIndex} delay={realtimeDelay * 1000:N1}ms";
+        return $" frame #{frameIndex} delay={realtimeDelay * 1000:N1}ms (skipTo={Command.SkipTo.TotalSeconds:N}s, offset={frameOffset.TotalSeconds:N}s)";
     }
 }
