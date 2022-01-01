@@ -66,7 +66,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
      * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
      * should be in sync with audio-feeder bufferSize
      */
-    private readonly _bufferEnoughThreshold = 0.60;
+    private readonly _bufferEnoughThreshold = 0.15;
     /** How many milliseconds can we block the main thread for processing */
     private readonly _processingThresholdMs = 10;
     /** How often send offset update event to the blazor, in milliseconds */
@@ -102,11 +102,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
-            this._debugAppendAudioCalls = debugMode && false;
-            this._debugOperations = debugMode && false;
-            this._debugDecoder = debugMode && false;
-            this._debugFeeder = debugMode && false;
-            this._debugFeederStats = this._debugFeeder && false;
+            this._debugAppendAudioCalls = debugMode && true;
+            this._debugOperations = debugMode && true;
+            this._debugDecoder = debugMode && true;
+            this._debugFeeder = debugMode && true;
+            this._debugFeederStats = this._debugFeeder && true;
         }
         else {
             this._debugMode = debugOverride.debugMode;

@@ -1,10 +1,9 @@
 using System.Reflection;
-using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 
-namespace ActualChat.Audio.UI.Blazor;
+namespace ActualChat.Audio.UI.Blazor.Components;
 
 public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
