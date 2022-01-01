@@ -64,9 +64,13 @@ public sealed class AudioSplitter : AudioProcessorBase
                     default:
                         if (recordingPart.Data == null)
                             audioLog.LogWarning("WriteSegments: empty recording data");
-                        else
-                            await channel.Writer.WriteAsync(recordingPart.Data, cancellationToken)
-                                .ConfigureAwait(false);
+                        else {
+                            var canWrite = await channel.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false);
+                            if (!canWrite)
+                                audioLog.LogWarning("WriteSegments: data came after Pause, but before Resume");
+                            else
+                                await channel.Writer.WriteAsync(recordingPart.Data, cancellationToken).ConfigureAwait(false);
+                        }
                         break;
                 }
             }
