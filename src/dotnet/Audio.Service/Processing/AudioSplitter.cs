@@ -42,6 +42,9 @@ public sealed class AudioSplitter : AudioProcessorBase
             var lastStartOffset = TimeSpan.FromSeconds(0);
 
             await foreach (var recordingPart in recordingStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                // TODO(AY): Make this thing more tolerant to exceptions.
+                // Right now it fails completely if it fails, i.e. no more segments will be produced,
+                // even though technically we can recover.
                 switch (recordingPart.EventKind) {
                     case RecordingEventKind.Pause:
                         if (recordingPart.Offset is {} offset1)
