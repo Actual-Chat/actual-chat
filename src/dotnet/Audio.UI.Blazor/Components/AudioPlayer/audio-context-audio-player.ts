@@ -102,11 +102,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
-            this._debugAppendAudioCalls = debugMode && false;
+            this._debugAppendAudioCalls = debugMode && true;
             this._debugOperations = debugMode && false;
             this._debugDecoder = debugMode && false;
-            this._debugFeeder = debugMode && false;
-            this._debugFeederStats = this._debugFeeder && false;
+            this._debugFeeder = debugMode && true;
+            this._debugFeederStats = this._debugFeeder && true;
         }
         else {
             this._debugMode = debugOverride.debugMode;
