@@ -46,7 +46,8 @@ public sealed class AudioSplitter : AudioProcessorBase
                     case RecordingEventKind.Pause:
                         if (recordingPart.Offset is {} offset1)
                             currentSegment.SetAudibleDuration(offset1 - lastStartOffset);
-                        channel.Writer.Complete();
+                        if (!channel.Writer.TryComplete())
+                            audioLog.LogWarning("WriteSegments: duplicate Pause?");
                         continue;
                     case RecordingEventKind.Resume:
                         if (index > 0) {
