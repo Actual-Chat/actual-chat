@@ -93,6 +93,8 @@ public sealed class AudioSplitter : AudioProcessorBase
                         firstSegmentFormatSource.SetResult(audio.Format);
 
                     await audio.WhenDurationAvailable.WithFakeCancellation(linkedToken).ConfigureAwait(false);
+                    // We don't want to wait for too long here to finalize the entry,
+                    // + it should actually come almost instantly
                     await openAudioSegment.AudibleDurationTask
                         .WithTimeout(TimeSpan.FromSeconds(1), linkedToken)
                         .ConfigureAwait(false);

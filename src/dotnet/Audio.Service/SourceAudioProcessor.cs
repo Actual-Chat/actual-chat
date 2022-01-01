@@ -163,8 +163,10 @@ public class SourceAudioProcessor : AsyncProcessBase
         var now = Clocks.SystemClock.Now;
         DebugLog?.LogDebug("CreateAudioEntry: started, waiting for RecordedAt");
         var beginsAt = now;
+        // Any delay here contributes to the overall delay,
+        // so we don't want to wait for too long for RecordedAtTask
         var recordedAtOpt = await audioSegment.RecordedAtTask
-            .WithTimeout(TimeSpan.FromSeconds(0.1), cancellationToken) // Any delay here contribs to the overall delay
+            .WithTimeout(TimeSpan.FromMilliseconds(25), cancellationToken)
             .ConfigureAwait(false);
         var recordedAt = (recordedAtOpt.IsSome(out var v) ? v : null) ?? beginsAt;
         if (recordedAt + TimeSpan.FromSeconds(3) >= beginsAt) // We're ok with max. 3s delta
