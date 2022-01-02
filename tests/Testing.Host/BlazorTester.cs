@@ -29,6 +29,7 @@ public class BlazorTester : TestContext, IWebTester
         Services.AddTransient(_ => ScopedAppServices.StateFactory());
     }
 
+
     protected override void Dispose(bool disposing)
     {
         if (!disposing)

@@ -45,9 +45,13 @@ public class WebClientTester : IWebClientTester
 
     public virtual void Dispose()
     {
-        if (_mustDisposeClientServices && _clientServicesLazy.IsValueCreated && ClientServices is IDisposable d)
+        if (!_mustDisposeClientServices || !_clientServicesLazy.IsValueCreated)
+            return;
+
+        if (ClientServices is IAsyncDisposable ad)
+            ad.DisposeAsync().AsTask().Wait();
+        else if (ClientServices is IDisposable d)
             d.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     protected virtual IServiceProvider CreateClientServices()
