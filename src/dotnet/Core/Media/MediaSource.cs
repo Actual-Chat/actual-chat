@@ -63,6 +63,8 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
 
     public Task<TFormat> GetFormatTask()
         => FormatTask;
+    public Task<TimeSpan> GetDurationTask()
+        => DurationTask;
 
     // Protected & private methods
 

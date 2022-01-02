@@ -195,17 +195,17 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 await this.processPacket(byteArray, -1);
 
                 if (this._debugMode)
-                    this.log(`initialize: done. found codec: ${this.demuxer.audioCodec}`);
+                    this.log(`initialize: done, found codec: ${this.demuxer.audioCodec}`);
             },
             onSuccess: () => {
                 if (this.onInitialized !== null)
                     this.onInitialized();
                 if (this._debugOperations)
-                    this.log("end of initialize operation");
+                    this.log("initialize: success");
             },
             onStart: () => {
                 if (this._debugOperations)
-                    this.log("Start initialize operation");
+                    this.log("initialize: start");
             },
             onError: error => { this.logError(`initialize: error ${error} ${error.stack}`); }
         };
@@ -225,12 +225,12 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
         if (this._isAppending) {
-            this.logError("Append called in wrong order");
+            this.logError("appendAudio: called in a wrong order");
         }
         this._isAppending = true;
         try {
             if (!this.isInitializeOperationAppended) {
-                const _ = this.enqueueInitializeOperation(byteArray);
+                this.enqueueInitializeOperation(byteArray);
                 this.isInitializeOperationAppended = true;
                 return Promise.resolve();
             }
@@ -239,11 +239,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 execute: () => this.processPacket(byteArray, offset),
                 onSuccess: () => {
                     if (this._debugOperations && this._debugAppendAudioCalls)
-                        this.log(`End appendAudio operation #${operationSequenceNumber}`);
+                        this.log(`appendAudio #${operationSequenceNumber}: success`);
                 },
                 onStart: () => {
                     if (this._debugOperations && this._debugAppendAudioCalls)
-                        this.log(`Start appendAudio operation #${operationSequenceNumber}`);
+                        this.log(`appendAudio #${operationSequenceNumber}: start`);
                 },
                 onError: _ => { }
             };
@@ -311,11 +311,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             },
             onSuccess: () => {
                 if (this._debugOperations)
-                    this.log("End endOfStream operation");
+                    this.log("endOfStream: success");
             },
             onStart: () => {
                 if (this._debugOperations)
-                    this.log("Start endOfStream operation");
+                    this.log("endOfStream: start");
             },
             onError: _ => { }
         });
@@ -344,7 +344,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             },
             onSuccess: () => {
                 if (this._debugMode)
-                    this.log("Aborted.");
+                    this.log("abort: success");
             },
             onStart: () => { },
             onError: error => {
