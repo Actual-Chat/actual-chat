@@ -36,7 +36,7 @@ public sealed class AudioSplitter : AudioProcessorBase
     private async Task WriteSegments(
         AudioRecord audioRecord,
         IAsyncEnumerable<RecordingPart> recordingStream,
-        ChannelWriter<OpenAudioSegment> writer,
+        ChannelWriter<OpenAudioSegment> segments,
         CancellationToken cancellationToken)
     {
         var totalDuration = TimeSpan.Zero;
@@ -95,6 +95,7 @@ public sealed class AudioSplitter : AudioProcessorBase
             }
         }
         finally {
+            segments.TryComplete();
             if (segment != null) {
                 channel.TryComplete();
                 try {
@@ -150,7 +151,7 @@ public sealed class AudioSplitter : AudioProcessorBase
                 }
             }, Log, $"{nameof(NewAudioSegment)} processing failed", CancellationToken.None);
 
-            await writer.WriteAsync(newSegment, cancellationToken).ConfigureAwait(false);
+            await segments.WriteAsync(newSegment, cancellationToken).ConfigureAwait(false);
             return (newSegment, newChannel);
         }
     }
