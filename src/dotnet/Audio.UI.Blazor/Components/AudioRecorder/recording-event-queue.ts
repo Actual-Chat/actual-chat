@@ -156,7 +156,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
             this.appendInternal(event, this.lastEvents.length == 0);
 
             if (this.lastEvents.length) {
-                while (this.lastEvents.length > 5) { // keep 5 last events on resume
+                while (this.lastEvents.length > 2) { // keep 2 last events on resume
                     this.lastEvents.shift();
                 }
                 while (this.lastEvents.length > 1) {
