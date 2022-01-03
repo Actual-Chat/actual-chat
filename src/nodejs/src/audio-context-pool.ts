@@ -93,25 +93,4 @@ AudioContextPool.register("recorder", async () => {
     return audioContext;
 });
 
-AudioContextPool.register("vad", async () => {
-    const audioContext = new AudioContext({
-        latencyHint: 'interactive',
-        sampleRate: 16000,
-    });
-    const vadWorklet = await getWorklet('/dist/vadWorklet.js');
-    await audioContext.audioWorklet.addModule(vadWorklet);
-    // warmup the audioContext nodes
-    const audioWorkletOptions: AudioWorkletNodeOptions = {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        channelCount: 1,
-        channelInterpretation: 'speakers',
-        channelCountMode: 'explicit',
-    };
-    const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad-worklet-processor', audioWorkletOptions);
-    vadWorkletNode.connect(audioContext.destination);
-    vadWorkletNode.disconnect();
-    return audioContext;
-});
-
 AudioContextPool.init();
