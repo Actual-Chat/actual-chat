@@ -19,14 +19,14 @@ export class ExponentialMovingAverage {
     }
 
     public append(value: number): number {
-        const { window, lastMovingAverage, simpleSum, simpleCount } = this;
+        const { window, lastMovingAverage } = this;
         const smoothingFactor = 2 / (window + 1);
 
         if (isNaN(lastMovingAverage)) {
-            this.simpleSum = simpleSum + value;
+            this.simpleSum += value;
             this.simpleCount++;
-            const average = this.simpleSum / simpleCount;
-            if (simpleCount >= window) {
+            const average = this.simpleSum / this.simpleCount;
+            if (this.simpleCount >= window) {
                 this.lastMovingAverage = average;
             }
             return average;
