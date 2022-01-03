@@ -1,7 +1,7 @@
 import { AudioRingBuffer } from "./audio-ring-buffer";
 import { VadMessage } from "../audio-vad-message";
 
-const SamplesPerWindow = 1536;
+const SamplesPerWindow = 768;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private buffer: AudioRingBuffer;

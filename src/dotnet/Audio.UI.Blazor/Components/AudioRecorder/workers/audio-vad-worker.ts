@@ -1,9 +1,11 @@
 import Denque from 'denque';
-import SoxrResampler, {SoxrResamplerTransform, SoxrDatatype} from 'wasm-audio-resampler';
-import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
-import { VadMessage } from "../audio-vad-message";
+import SoxrResampler, {SoxrDatatype, SoxrQuality} from 'wasm-audio-resampler';
+import {adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector} from "../audio-vad";
+import {VadMessage} from "../audio-vad-message";
 import OnnxModel from '../vad.onnx';
-import SoxrWasm  from 'wasm-audio-resampler/app/soxr_wasm.wasm';
+import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
+import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
+
 
 const voiceDetector = new VoiceActivityDetector(OnnxModel);
 const queue = new Denque<ArrayBuffer>();
@@ -12,7 +14,7 @@ const inRate = 48000;
 const outRate = 16000;
 const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
-const resampleBuffer = new Uint8Array(512 * 4);
+const resampleBuffer = new Uint8Array(512 * 4 * 2);
 
 let workletPort: MessagePort = null;
 let resampler: SoxrResampler = null;
@@ -33,9 +35,10 @@ onmessage = async (ev) => {
                 inRate,
                 outRate,
                 inputDatatype,
-                outputDatatype
+                outputDatatype,
+                SoxrQuality.SOXR_MQ
             );
-            await newResampler.init(SoxrWasm);
+            await newResampler.init(SoxrModule, { 'locateFile': (path:string, directory: string) => SoxrWasm });
             resampler = newResampler;
             break;
 
@@ -85,8 +88,7 @@ async function processQueue(): Promise<void> {
 
         workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
 
-        const monoPcm = new Float32Array(resampled);
-        // const monoPcm = new Float32Array(buffer);
+        const monoPcm = new Float32Array(resampled, 0, 512);
         const vadEvent = await voiceDetector.appendChunk(monoPcm);
         if (vadEvent) {
             const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
