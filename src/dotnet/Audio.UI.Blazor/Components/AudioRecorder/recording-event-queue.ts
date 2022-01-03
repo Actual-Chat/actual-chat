@@ -96,7 +96,7 @@ export interface IRecordingEventQueueOptions {
     debugMode: boolean;
 }
 
-type QueueState = 'running' | 'paused';
+type QueueState = 'inactive' | 'running' | 'paused';
 
 export class RecordingEventQueue implements IRecordingEventQueue {
     private state: QueueState;
@@ -110,7 +110,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         this.options = options;
         this.bufferOffset = 0;
         this.sendBufferTimeout = null;
-        this.state = 'paused';
+        this.state = 'inactive';
         this.lastEvents = new Denque<DataRecordingEvent>();
         this.bufferQueue = new Denque<Uint8Array>();
         this.bufferQueue.push(new Uint8Array(1024));
@@ -185,13 +185,16 @@ export class RecordingEventQueue implements IRecordingEventQueue {
     }
 
     public async flushAsync(): Promise<void> {
+        const origState = this.state;
+        this.state = 'inactive';
+
         if (this.options.debugMode) {
             this.log(`flushAsync is called`);
         }
 
         this.lastEvents.clear();
 
-        if (this.state == 'running') {
+        if (origState == 'running') {
             await this.sendTopmostBuffer();
         }
         else {
