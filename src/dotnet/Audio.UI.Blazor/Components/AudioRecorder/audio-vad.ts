@@ -1,5 +1,4 @@
 import * as ort from 'onnxruntime-web';
-import { dma } from 'moving-averages';
 import { ExponentialMovingAverage } from './streamed-moving-average';
 import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
 import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
@@ -141,7 +140,6 @@ export class VoiceActivityDetector {
         }
         this.sampleCount += monoPcm.length;
         if (this.lastActivityEvent == currentEvent || this.lastActivityEvent.kind == currentEvent.kind) {
-            console.log(prob + ' - ' + smoothedProb);
             return null;
         }
 
