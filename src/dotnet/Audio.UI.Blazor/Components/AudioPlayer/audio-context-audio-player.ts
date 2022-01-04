@@ -87,7 +87,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     private audioContext: AudioContext;
     private feederNode?: FeederAudioWorkletNode = null;
     private _queue: OperationQueue;
-    private _nextProcessingTickTimer: number | null;
     private _isProcessing: boolean;
     private _isAppending: boolean;
     private _isPlaying: boolean;
@@ -127,7 +126,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         this.decoder = null;
         this._unblockQueue = null;
         this._queue = new OperationQueue(this._debugOperations);
-        this._nextProcessingTickTimer = null;
         this._demuxerReady = AudioContextAudioPlayer.createDemuxer()
             .then(demuxer => new Promise<Demuxer>(resolve => demuxer.init(() => {
                 this.demuxer = demuxer;
@@ -210,6 +208,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             onError: error => { this.logError(`initialize: error ${error} ${error.stack}`); }
         };
         this._queue.append(operation);
+
+        const _ = this.onProcessingTick();
     }
 
     private get _isMetadataLoaded(): boolean {
@@ -248,6 +248,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 onError: _ => { }
             };
             this._queue.append(operation);
+
             const _ = this.onProcessingTick();
         }
         finally {
@@ -268,16 +269,16 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     };
 
     private onProcessingTick = async () => {
-        if (this._isProcessing) {
-            this._nextProcessingTickTimer = self.setTimeout(this.onProcessingTick, 5);
+        if (this._queue.length == 0) {
             return;
         }
+
+        if (this._isProcessing) {
+            return;
+        }
+
         this._isProcessing = true;
         try {
-            if (this._nextProcessingTickTimer !== null) {
-                clearTimeout(this._nextProcessingTickTimer);
-                this._nextProcessingTickTimer = null;
-            }
             let start = new Date().getTime();
             let hasMore: boolean = await this._queue.executeNext();
             const threshold = this._processingThresholdMs;
@@ -296,6 +297,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         finally {
             this._isProcessing = false;
         }
+
+        const _ = this.onProcessingTick();
     };
 
     public endOfStream(): void {
@@ -319,8 +322,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             },
             onError: _ => { }
         });
-        const _ = this.onProcessingTick();
 
+        const _ = this.onProcessingTick();
     }
 
     public stop(error: EndOfStreamError | null = null) {
@@ -352,6 +355,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                     this.logWarn(`Can't stop playing. Error: ${error.message}, ${error.stack}`);
             }
         });
+
         const _ = this.onProcessingTick();
     }
 
@@ -441,6 +445,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                             },
                             onError: _ => { }
                         });
+
+                        const _ = this.onProcessingTick();
                     }
                 }
             }
