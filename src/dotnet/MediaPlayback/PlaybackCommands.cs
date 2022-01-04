@@ -26,12 +26,13 @@ public sealed record StopCommand() : PlaybackCommand
 }
 
 public sealed record PlayTrackCommand(
-    Symbol TrackId,
-    Moment PlayAt,
-    Moment RecordingStartedAt,
+    TrackInfo TrackInfo,
     IMediaSource Source
 ) : PlaybackCommand
 {
+    public Symbol TrackId => TrackInfo.TrackId;
+    public Moment PlayAt { get; init; } // rel. to SystemClock.Now
+
     // This record relies on referential equality
     public bool Equals(PlayTrackCommand? other)
         => ReferenceEquals(this, other);

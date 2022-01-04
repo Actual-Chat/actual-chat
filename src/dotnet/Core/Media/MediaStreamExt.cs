@@ -7,8 +7,8 @@ public static class MediaStreamExt
         CancellationToken cancellationToken)
         where TMediaFormat: MediaFormat
     {
-        var format = new TaskCompletionSource<TMediaFormat>();
-        return (format.Task, ConvertToFrames(mediaStream, format, cancellationToken));
+        var formatTask = TaskSource.New<TMediaFormat>(true).Task;
+        return (formatTask, ConvertToFrames(mediaStream, formatTask, cancellationToken));
     }
 
     public static async IAsyncEnumerable<byte[]> ToByteStream<TMediaFormat>(
@@ -38,20 +38,20 @@ public static class MediaStreamExt
 
     private static async IAsyncEnumerable<TMediaFrame> ConvertToFrames<TMediaFormat, TMediaFrame>(
         IAsyncEnumerable<IMediaStreamPart<TMediaFormat, TMediaFrame>> mediaStream,
-        TaskCompletionSource<TMediaFormat> format,
+        Task<TMediaFormat> formatTask,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+
         var first = true;
         await foreach (var part in mediaStream.WithCancellation(cancellationToken).ConfigureAwait(false))
             if (first) {
                 if (part.Format == null)
                     throw new InvalidOperationException("Format part should be the first one.");
-
-                format.SetResult(part.Format);
+                TaskSource.For(formatTask).SetResult(part.Format);
                 first = false;
             }
             else {
-                if (format.Task.IsCompleted && part.Format != null)
+                if (formatTask.IsCompleted && part.Format != null)
                     throw new InvalidOperationException("Format part can't repeat.");
                 if (part.Frame == null)
                     throw new InvalidOperationException("Frame should be specified for all parts except the first one.");

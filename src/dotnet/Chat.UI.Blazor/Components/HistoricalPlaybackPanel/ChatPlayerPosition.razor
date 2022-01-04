@@ -37,17 +37,22 @@
         var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playback == null)
             return Model.None;
+
         var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
         if (isStopped)
             return Model.None;
-        var tracksState = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
-        var activeTrack = tracksState.LastOrDefault();
-        if (activeTrack == null)
+
+        var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackState = playbackStates.LastOrDefault();
+        if (playbackState == null)
             return Model.None;
-        activeTrack = await _activePlaybackInfo.GetTrackPlaybackState(activeTrack.Command.TrackId, cancellationToken);
-        if (activeTrack==null)
+
+        playbackState = await _activePlaybackInfo.GetTrackPlaybackState(playbackState.Command.TrackId, cancellationToken);
+        if (playbackState == null)
             return Model.None;
-        var ts = activeTrack.Command.RecordingStartedAt.ToDateTime().ToLocalTime() + activeTrack.PlayingAt;
-        return new Model { Timestamp = ts };
+
+        var trackInfo = playbackState.Command.TrackInfo;
+        var playingAt = trackInfo.RecordedAt.ToDateTime().ToLocalTime() + playbackState.PlayingAt;
+        return new Model { Timestamp = playingAt };
     }
 }

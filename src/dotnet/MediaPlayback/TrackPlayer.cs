@@ -6,6 +6,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 {
     private const int FrameDebugInfoPerEvery = 10;
     private const double MaxRealtimeDelay = 5d;
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(1);
 
     private volatile TrackPlaybackState _state;
     private readonly TaskSource<Unit> _whenCompletedSource;
@@ -92,13 +93,14 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
                 var immediately = cancellationToken.IsCancellationRequested || error != null;
                 var stopCommand = new StopPlaybackCommand(this, immediately);
                 try {
-                    await ProcessCommand(stopCommand).AsTask()
-                        .WithTimeout(TimeSpan.FromSeconds(3), default)
-                        .ConfigureAwait(false);
-                    OnStopped();
+                    await ProcessCommand(stopCommand).AsTask().WithTimeout(StopTimeout, default).ConfigureAwait(false);
+                    await WhenCompleted.WithTimeout(StopTimeout, default).ConfigureAwait(false);
+                    if (!WhenCompleted.IsCompleted)
+                        OnStopped();
                 }
                 catch (Exception e) {
-                    OnStopped(e);
+                    if (!WhenCompleted.IsCompleted)
+                        OnStopped(e);
                 }
             }
             // AY: It's a self-disposing thing
@@ -151,7 +153,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     {
         if (DebugLog == null || (eventIndex > 0 && eventIndex % FrameDebugInfoPerEvery != 0))
             return "";
-        var recordingTime = Command.RecordingStartedAt + frameOffset;
+        var recordingTime = Command.TrackInfo.RecordedAt + frameOffset;
         var now = Clocks.SystemClock.Now;
         var realtimeDelay = (now - recordingTime).TotalSeconds;
         if (realtimeDelay > MaxRealtimeDelay)

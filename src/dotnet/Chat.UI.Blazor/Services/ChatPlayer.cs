@@ -185,18 +185,6 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         }
     }
 
-    public static Symbol GetAudioTrackId(ChatEntry chatEntry)
-    {
-        var entryId = chatEntry.Type switch {
-            ChatEntryType.Text => chatEntry.AudioEntryId ?? -1,
-            ChatEntryType.Audio => chatEntry.Id,
-            _ => -1,
-        };
-        return entryId >= 0
-            ? ZString.Concat("audio:", chatEntry.ChatId, ":", entryId)
-            : throw new InvalidOperationException("Provided chat entry has no associated audio track.");
-    }
-
     // Private  methods
 
     private async ValueTask EnqueueEntry(
@@ -236,16 +224,13 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             DebugLog?.LogDebug(
                 "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}, skipTo={SkipTo:N}",
                 audioEntry.ChatId, audioEntry.Id, audioEntry.StreamId, skipTo.TotalSeconds);
-            var trackId = GetAudioTrackId(audioEntry);
             var audio = await AudioSourceStreamer
                 .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
                 .ConfigureAwait(false);
-            await playback.AddMediaTrack(trackId,
-                    playAt,
-                    audioEntry.BeginsAt + skipTo,
-                    audio,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            var trackInfo = new ChatAudioTrackInfo(audioEntry) {
+                RecordedAt = audioEntry.BeginsAt + skipTo,
+            };
+            await playback.AddMediaTrack(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
     }
@@ -264,13 +249,9 @@ public sealed class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         var audio = await AudioDownloader
             .Download(audioBlobUri, skipTo, cancellationToken)
             .ConfigureAwait(false);
-        var trackId = GetAudioTrackId(audioEntry);
-        await playback.AddMediaTrack(
-                trackId,
-                playAt,
-                audioEntry.BeginsAt + skipTo,
-                audio,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var trackInfo = new ChatAudioTrackInfo(audioEntry) {
+            RecordedAt = audioEntry.BeginsAt + skipTo,
+        };
+        await playback.AddMediaTrack(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 }
