@@ -60,16 +60,12 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         => Commands.Writer.WriteAsync(command, cancellationToken);
 
     public ValueTask AddMediaTrack(
-        Symbol trackId,
-        Moment playAt,
-        Moment recordingStartedAt,
+        TrackInfo trackInfo,
         IMediaSource source,
+        Moment playAt,
         CancellationToken cancellationToken = default)
     {
-        var command = new PlayTrackCommand(trackId,
-            playAt,
-            recordingStartedAt,
-            source);
+        var command = new PlayTrackCommand(trackInfo, source) { PlayAt = playAt };
         return AddCommand(command, cancellationToken);
     }
 

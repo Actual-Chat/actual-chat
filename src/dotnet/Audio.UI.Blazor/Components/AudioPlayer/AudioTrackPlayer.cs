@@ -35,14 +35,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 null);
             Log.LogError(error, "Playback stopped with an error");
         }
-
         OnStopped(error);
-
-        var jsRef = JSRef;
-        JSRef = null;
-
-        if (jsRef != null)
-            await jsRef.DisposeAsync().ConfigureAwait(true);
     }
 
     [JSInvokable]
@@ -98,10 +91,9 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         if (JSRef == null)
                             break;
 
-                        if (stop.Immediately)
-                            await JSRef.InvokeVoidAsync("stop", null).ConfigureAwait(true);
-                        else
-                            await JSRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
+                        _ = stop.Immediately
+                            ? JSRef.InvokeVoidAsync("stop", null)
+                            : JSRef.InvokeVoidAsync("endOfStream");
                         break;
                     case SetTrackVolumeCommand:
                         // TODO: Implement this
@@ -130,6 +122,27 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     throw;
                 }
             }).ConfigureAwait(false);
+
+    protected override void OnStopped(Exception? error = null)
+    {
+        base.OnStopped(error);
+        _ = CircuitInvoke(async () => {
+            var (jsRef, blazorRef) = (JSRef, BlazorRef);
+            (JSRef, BlazorRef) = (null, null);
+            try {
+                try {
+                    blazorRef?.Dispose();
+                }
+                finally {
+                    if (jsRef != null)
+                        await jsRef.DisposeAsync().ConfigureAwait(true);
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "OnStopped failed while disposing the references");
+            }
+        });
+    }
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
