@@ -21,11 +21,11 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     private context: AudioContext = null;
     private workerState: WorkerState = 'inactive';
-    private source: MediaStreamAudioSourceNode = null;
     private encoderWorklet: AudioWorkletNode = null;
     private stopResolve: () => void = null;
     // private startResolve: () => void = null;
 
+    public source?: MediaStreamAudioSourceNode = null;
     public stream: MediaStream;
     public readonly videoBitsPerSecond: number = NaN;
     public readonly audioBitsPerSecond: number;
@@ -53,12 +53,17 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.postMessageToWorker(new LoadEncoderCommand(WebMOpusWasm));
     }
 
-    public setStream(stream: MediaStream): void {
-        if (this.stream === stream) {
+    public setSource(source: MediaStreamAudioSourceNode): void {
+        if (this.source === source) {
             return;
         }
 
-        this.stream = stream;
+        if (this.source) {
+            this.source.disconnect();
+        }
+
+        this.source = source;
+        this.stream = source.mediaStream;
     }
 
     public override dispatchEvent(event: Event): boolean {
@@ -141,8 +146,8 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         if (timeslice < 0) {
             throw new TypeError('invalid arguments, timeslice should be 0 or higher.');
         }
-        if (this.stream == null) {
-            throw new Error('start: stream is not set');
+        if (this.source == null) {
+            throw new Error('start: streamNode is not set');
         }
 
         let tracks = this.stream.getAudioTracks();
@@ -162,11 +167,16 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
     }
 
-    public async startAsync(stream: MediaStream, timeslice: number): Promise<void> {
-        if (this.stream === stream)
+    public async startAsync(source: MediaStreamAudioSourceNode, timeslice: number): Promise<void> {
+        if (this.source === source)
             return;
 
-        this.stream = stream;
+        if (this.source) {
+            this.source.disconnect();
+        }
+
+        this.source = source;
+        this.stream = source.mediaStream;
 
         let tracks = this.stream.getAudioTracks();
         if (!tracks[0]) {
@@ -227,10 +237,6 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
             this.encoderWorklet = new AudioWorkletNode(this.context, 'opus-encoder-worklet-processor', encoderWorkletOptions);
             this.encoderWorklet.port.postMessage({ topic: 'init-port' }, [this.workerChannel.port2]);
         }
-        if (this.source) {
-            this.source.disconnect();
-        }
-        this.source = this.context.createMediaStreamSource(this.stream);
     }
 
     private postMessageToWorker (encoderCommand: EncoderCommand) {

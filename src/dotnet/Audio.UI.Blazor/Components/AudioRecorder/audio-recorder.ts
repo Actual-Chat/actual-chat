@@ -155,7 +155,7 @@ export class AudioRecorder {
             const stream: MediaStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
-                    sampleRate: 32000,
+                    sampleRate: 48000,
                     sampleSize: 32,
                     // @ts-ignore
                     autoGainControl: {
@@ -184,7 +184,7 @@ export class AudioRecorder {
 
 
         this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
-        await this.recorder.startAsync(this.recording.stream, 40);
+        await this.recorder.startAsync(this.recording.streamNode, 40);
         await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
