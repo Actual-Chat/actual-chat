@@ -16,6 +16,10 @@ export class OperationQueue {
         this._queue = new Denque<Operation>();
     }
 
+    public get length() {
+        return this._queue.length;
+    }
+
     public clear(): void {
         this._queue.clear();
     }
