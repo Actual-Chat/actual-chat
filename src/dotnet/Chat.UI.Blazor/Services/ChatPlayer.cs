@@ -155,8 +155,12 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
-            if (audioEntry.Duration is {} duration && skipTo.TotalSeconds > duration)
+            if (audioEntry.Duration is {} duration && skipTo.TotalSeconds > duration) {
+                DebugLog?.LogDebug(
+                    "EnqueueEntry: chat #{ChatId}, entry #{EntryId}: skipTo={SkipTo:N}s > duration={Duration:N}s",
+                    audioEntry.ChatId, audioEntry.Id, skipTo.TotalSeconds, duration);
                 return;
+            }
             if (audioEntry.IsStreaming)
                 await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
             else

@@ -49,7 +49,6 @@ public class AudioClient : HubClientBase,
                 recordingStream.WithBuffer(StreamBufferSize, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
-        Log.LogDebug("RecordSourceAudio: Exited; Record = {Record}", record);
     }
 
     public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(

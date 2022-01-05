@@ -24,7 +24,7 @@ public record ChatEntry : IHasId<long>, IHasVersion<long>
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public double? Duration
-        => EndsAt == null ? null : (EndsAt.Value - BeginsAt).TotalSeconds;
+        => EndsAt is {} endsAt ? (endsAt - BeginsAt).TotalSeconds : null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
