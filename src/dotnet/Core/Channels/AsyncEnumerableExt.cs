@@ -78,4 +78,25 @@ public static class AsyncEnumerableExt
             return Result.New<T>(default!, e);
         }
     }
+
+
+    /* This exists in Stl, though the impl. is different, so temp. keeping it here:
+
+    public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
+        CancellationToken cancellationToken = default)
+        => source.TrimOnCancellation(1, cancellationToken);
+
+    public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
+        int bufferSize,
+        CancellationToken cancellationToken = default)
+    {
+        var c = Channel.CreateBounded<T>(new BoundedChannelOptions(bufferSize) {
+            SingleReader = true,
+            SingleWriter = true,
+            AllowSynchronousContinuations = true,
+        });
+        _ = source.CopyTo(c, ChannelCompletionMode.PropagateCompletion | ChannelCompletionMode.PropagateError, cancellationToken);
+        return c.Reader.ReadAllAsync(cancellationToken);
+    }
+    */
 }
