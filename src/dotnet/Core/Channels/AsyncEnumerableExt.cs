@@ -79,7 +79,6 @@ public static class AsyncEnumerableExt
         }
     }
 
-
     /* This exists in Stl, though the impl. is different, so temp. keeping it here:
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
