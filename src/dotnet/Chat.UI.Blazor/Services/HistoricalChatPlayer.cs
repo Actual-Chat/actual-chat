@@ -12,7 +12,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
     protected override async Task PlayInternal(Moment startAt, Playback playback, CancellationToken cancellationToken)
     {
-        var clock = Clocks.CpuClock;
+        var cpuClock = Clocks.CpuClock;
 
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken)
             .ConfigureAwait(false);
@@ -20,7 +20,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         idRange = (startEntry?.Id ?? idRange.Start, idRange.End);
-        var playbackBlockEnd = clock.Now - TimeSpan.FromDays(1); // Any time in past
+        var playbackBlockEnd = cpuClock.Now - TimeSpan.FromDays(1); // Any time in past
         var playbackOffset = playbackBlockEnd - Moment.EpochStart; // now - playTime
 
         var entries = AudioEntryReader
@@ -34,7 +34,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
                 // so we need to skip a few entries.
                 continue;
 
-            var now = clock.Now;
+            var now = cpuClock.Now;
             var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
             var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + InfDuration;
             var skipTo = entryBeginsAt - entry.BeginsAt;
@@ -48,12 +48,13 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             }
 
             var playAt = entryBeginsAt + playbackOffset;
+            playbackBlockEnd = Moment.Max(playbackBlockEnd, entryEndsAt + playbackOffset);
+
             var enqueueDelay = playAt - now - EnqueueAheadDuration;
             if (enqueueDelay > TimeSpan.Zero)
-                await Clocks.CpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
+                await cpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
             await EnqueueEntry(playback, playAt, entry, skipTo, cancellationToken)
                 .ConfigureAwait(false);
-            playbackBlockEnd = Moment.Max(playbackBlockEnd, entryEndsAt + playbackOffset);
         }
     }
 }

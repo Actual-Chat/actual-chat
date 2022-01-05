@@ -49,29 +49,32 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var delay = GetDelayInfo(TimeSpan.Zero);
-        DebugLog?.LogDebug("Track #{TrackId}{Delay}: started, Command = {Command}", Command.TrackId, delay, Command);
+        var delayInfo = GetDelayInfo(TimeSpan.Zero);
+        DebugLog?.LogDebug("Track #{TrackId}{Delay}: started, Command = {Command}", Command.TrackId, delayInfo, Command);
         Exception? error = null;
         var isStarted = false;
         try {
             // Actual playback
+            var cpuClock = Clocks.CpuClock;
             var frames = Source.GetFramesUntyped(cancellationToken);
             var frameIndex = 0;
             await foreach (var frame in frames.ConfigureAwait(false)) {
                 if (!isStarted) {
-                    delay = GetDelayInfo(TimeSpan.Zero);
-                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: first frame", Command.TrackId, delay);
+                    delayInfo = GetDelayInfo(TimeSpan.Zero);
+                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: first frame", Command.TrackId, delayInfo);
                     // We do this here because we want to start buffering as early as possible
                     isStarted = true;
-                    await Clocks.CpuClock.Delay(Command.PlayAt, cancellationToken).ConfigureAwait(false);
+                    var playbackDelay = Command.PlayAt - cpuClock.Now;
+                    if (playbackDelay > TimeSpan.FromMilliseconds(10))
+                        await cpuClock.Delay(playbackDelay, cancellationToken).ConfigureAwait(false);
                     OnPlayedTo(TimeSpan.Zero);
-                    delay = GetDelayInfo(TimeSpan.Zero);
-                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: StartPlaybackCommand", Command.TrackId, delay);
+                    delayInfo = GetDelayInfo(TimeSpan.Zero);
+                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: StartPlaybackCommand", Command.TrackId, delayInfo);
                     await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
                 }
-                delay = GetDelayInfo(frame.Offset, frameIndex);
-                if (delay.Length != 0)
-                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: ProcessMediaFrame", Command.TrackId, delay);
+                delayInfo = GetDelayInfo(frame.Offset, frameIndex);
+                if (delayInfo.Length != 0)
+                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: ProcessMediaFrame", Command.TrackId, delayInfo);
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
                 frameIndex++;
             }
@@ -133,9 +136,9 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     protected virtual void OnPlayedTo(TimeSpan offset)
     {
         UpdateState(offset, (o, s) => {
-            var delay = GetDelayInfo(offset, _onPlayedToCallIndex++, 1);
-            if (delay.Length != 0)
-                DebugLog?.LogDebug("Track #{TrackId}{Delay}: OnPlayedTo({Offset})", Command.TrackId, delay, offset);
+            var delayInfo = GetDelayInfo(offset, _onPlayedToCallIndex++, 1);
+            if (delayInfo.Length != 0)
+                DebugLog?.LogDebug("Track #{TrackId}{Delay}: OnPlayedTo({Offset})", Command.TrackId, delayInfo, offset);
             return s with {
                 IsStarted = true,
                 PlayingAt = TimeSpanExt.Max(s.PlayingAt, o),

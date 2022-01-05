@@ -2,7 +2,6 @@
 @inherits ComputedStateComponent<bool>
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
-@inject MomentClockSet _clocks
 
 @{
     var isPlaying = State.ValueOrDefault;
@@ -18,8 +17,8 @@
 @code {
     private static string? _class;
 
-    [Parameter]
-    public ChatPlayer Player { get; set; } = null!;
+    [Inject] private MomentClockSet Clocks { get; set; } = null!;
+    [Parameter] public ChatPlayer Player { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
@@ -38,7 +37,7 @@
     }
 
     private Task Play()
-        => Player.Play(_clocks.SystemClock.Now);
+        => Player.Play(Clocks.SystemClock.Now);
 
     private Task Stop()
         => Player.Stop();
