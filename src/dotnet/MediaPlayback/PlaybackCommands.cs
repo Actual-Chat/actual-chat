@@ -31,7 +31,7 @@ public sealed record PlayTrackCommand(
 ) : PlaybackCommand
 {
     public Symbol TrackId => TrackInfo.TrackId;
-    public Moment PlayAt { get; init; } // rel. to SystemClock.Now
+    public Moment PlayAt { get; init; } // rel. to CpuClock.Now
 
     // This record relies on referential equality
     public bool Equals(PlayTrackCommand? other)

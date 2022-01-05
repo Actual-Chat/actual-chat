@@ -26,7 +26,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public async Task OnPlaybackEnded(int? errorCode, string? errorMessage)
+    public Task OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
         Exception? error = null;
         if (errorMessage != null) {
@@ -36,6 +36,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             Log.LogError(error, "Playback stopped with an error");
         }
         OnStopped(error);
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
