@@ -48,7 +48,7 @@
     private ElementReference ButtonSpanRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-    private ChatPlayer? RealtimePlayer { get; set; }
+    private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
 

@@ -4,14 +4,14 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
-    // This should be approximately 2.5*Ping
-    private static readonly TimeSpan SkipToOffset = TimeSpan.FromSeconds(0.1);
+    // Min. delay is ~ 2.5*Ping, so we can skip something
+    private static readonly TimeSpan StreamingSkipTo = TimeSpan.FromSeconds(0.05);
 
     public RealtimeChatPlayer(IServiceProvider services) : base(services) { }
 
     protected override async Task PlayInternal(Moment startAt, Playback playback, CancellationToken cancellationToken)
     {
-        var clock = Clocks.CpuClock;
+        var cpuClock = Clocks.CpuClock;
 
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
         var startEntry = await AudioEntryReader
@@ -35,9 +35,10 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                     continue;
             }
 
-            var entryBeginsAt = Moment.Max(entry.BeginsAt + SkipToOffset, startAt);
+            var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
+            var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
             var skipTo = entryBeginsAt - entry.BeginsAt;
-            await EnqueueEntry(playback, clock.Now, entry, skipTo, cancellationToken)
+            await EnqueueEntry(playback, cpuClock.Now, entry, skipTo, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
