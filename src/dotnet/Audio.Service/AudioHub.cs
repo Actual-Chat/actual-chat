@@ -36,5 +36,5 @@ public class AudioHub : Hub
             AudioRecord audioRecord,
             IAsyncEnumerable<RecordingPart> recordingStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, recordingStream, default);
+        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, recordingStream.TrimOnCancellation(), default);
 }

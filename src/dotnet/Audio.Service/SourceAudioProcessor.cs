@@ -144,22 +144,16 @@ public class SourceAudioProcessor : AsyncProcessBase
         CancellationToken cancellationToken)
     {
         var streamId = $"{audioSegment.StreamId}-{segment.Index:D}";
-        var transcripts = TranscriptPostProcessor.Apply(segment, cancellationToken);
+        var transcripts = TranscriptPostProcessor
+            .Apply(segment, cancellationToken)
+            .TrimOnCancellation(cancellationToken);
+
+        // Cancellation is "embedded" into transcripts at this point, so...
+        cancellationToken = CancellationToken.None;
         var diffs = transcripts.GetDiffs(cancellationToken).Memoize();
         var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
-        var nonEmptyTranscript = await diffs.Replay(cancellationToken)
-            .ApplyDiffs(cancellationToken)
-            .FirstOrDefaultAsync(t => NonEmptyRegex.IsMatch(t.Text), cancellationToken)
-            .ConfigureAwait(false);
-        if (nonEmptyTranscript == null) {
-            // TODO(AY): Maybe publish [Audio: ...] markup here
-            return;
-        }
-
-        var audioEntry = await audioEntryTask.ConfigureAwait(false);
-        await CreateTextEntry(audioEntry, streamId, diffs.Replay(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        await publishTask.ConfigureAwait(false);
+        var textEntryTask = CreateAndFinalizeTextEntry(audioEntryTask, streamId, diffs.Replay(cancellationToken), cancellationToken);
+        await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
 
     private async Task<string> SaveAudio(OpenAudioSegment openAudioSegment, CancellationToken cancellationToken)
@@ -214,20 +208,27 @@ public class SourceAudioProcessor : AsyncProcessBase
         await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task CreateTextEntry(
-        ChatEntry audioEntry,
+    private async Task CreateAndFinalizeTextEntry(
+        Task<ChatEntry> audioEntryTask,
         string transcriptStreamId,
         IAsyncEnumerable<Transcript> diffs,
         CancellationToken cancellationToken)
     {
         Transcript? transcript = null;
+        ChatEntry? audioEntry = null;
         ChatEntry? textEntry = null;
         await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             if (transcript != null) {
                 transcript = transcript.WithDiff(diff);
-                continue;
+                if (textEntry != null)
+                    continue;
             }
             transcript = diff;
+            if (!NonEmptyRegex.IsMatch(transcript.Text))
+                continue;
+
+            // Got first non-empty transcript -> create text entry
+            audioEntry ??= await audioEntryTask.ConfigureAwait(false);
             textEntry = new ChatEntry() {
                 ChatId = audioEntry.ChatId,
                 Type = ChatEntryType.Text,
@@ -241,16 +242,23 @@ public class SourceAudioProcessor : AsyncProcessBase
                 .ConfigureAwait(false);
             DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}", textEntry.Id, textEntry.ChatId);
         }
-        if (transcript == null)
+        if (transcript == null || textEntry == null)
+            // TODO(AY): Maybe publish [Audio: ...] markup here
             return;
+
         var textToTimeMap = transcript.TextToTimeMap.Move(-transcript.TextRange.Start, 0);
-        textEntry = textEntry! with {
+        textEntry = textEntry with {
             Content = transcript.Text,
             StreamId = Symbol.Empty,
-            AudioEntryId = audioEntry.Id,
+            AudioEntryId = audioEntry!.Id,
             EndsAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.End),
             TextToTimeMap = textToTimeMap,
         };
+        if (!NonEmptyRegex.IsMatch(transcript.Text)) {
+            // Final transcript is empty -> remove text entry
+            // TODO(AY): Maybe publish [Audio: ...] markup here
+            textEntry = textEntry with { IsRemoved = true };
+        }
         await ChatsBackend
             .UpsertEntry(new IChatsBackend.UpsertEntryCommand(textEntry), cancellationToken)
             .ConfigureAwait(false);
