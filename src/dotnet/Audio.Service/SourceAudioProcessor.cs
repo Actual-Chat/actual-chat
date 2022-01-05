@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Transcription;
@@ -10,6 +11,8 @@ public class SourceAudioProcessor : AsyncProcessBase
     {
         public bool IsEnabled { get; init; } = true;
     }
+
+    private static readonly Regex NonEmptyRegex = new("\\S", RegexOptions.Compiled);
 
     protected ILogger<SourceAudioProcessor> Log { get; }
     protected bool DebugMode => Constants.DebugMode.AudioProcessing;
@@ -142,8 +145,17 @@ public class SourceAudioProcessor : AsyncProcessBase
     {
         var streamId = $"{audioSegment.StreamId}-{segment.Index:D}";
         var transcripts = TranscriptPostProcessor.Apply(segment, cancellationToken);
-        var diffs = transcripts.GetDiffs(cancellationToken).Memoize(); // Should
+        var diffs = transcripts.GetDiffs(cancellationToken).Memoize();
         var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
+        var nonEmptyTranscript = await diffs.Replay(cancellationToken)
+            .ApplyDiffs(cancellationToken)
+            .FirstOrDefaultAsync(t => NonEmptyRegex.IsMatch(t.Text), cancellationToken)
+            .ConfigureAwait(false);
+        if (nonEmptyTranscript == null) {
+            // TODO(AY): Maybe publish [Audio: ...] markup here
+            return;
+        }
+
         var audioEntry = await audioEntryTask.ConfigureAwait(false);
         await CreateTextEntry(audioEntry, streamId, diffs.Replay(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
