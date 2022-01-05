@@ -269,10 +269,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     };
 
     private onProcessingTick = async () => {
-        if (this._queue.length == 0) {
-            return;
-        }
-
         if (this._isProcessing) {
             return;
         }
@@ -297,8 +293,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         finally {
             this._isProcessing = false;
         }
-
-        const _ = this.onProcessingTick();
     };
 
     public endOfStream(): void {

@@ -52,6 +52,7 @@ export class OperationQueue {
                 return this._queue.length > 0;
             }
         }
+        return false;
     }
 
     private log(message: string) {
