@@ -66,7 +66,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
      * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
      * should be in sync with audio-feeder bufferSize
      */
-    private readonly _bufferEnoughThreshold = 0.15;
+    private readonly _bufferEnoughThreshold = 0.1;
     /** How many milliseconds can we block the main thread for processing */
     private readonly _processingThresholdMs = 10;
     /** How often send offset update event to the blazor, in milliseconds */

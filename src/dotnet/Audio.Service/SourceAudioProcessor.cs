@@ -169,8 +169,6 @@ public class SourceAudioProcessor : AsyncProcessBase
             .WithTimeout(TimeSpan.FromMilliseconds(25), cancellationToken)
             .ConfigureAwait(false);
         var recordedAt = (recordedAtOpt.IsSome(out var v) ? v : null) ?? beginsAt;
-        if (recordedAt + TimeSpan.FromSeconds(3) >= beginsAt) // We're ok with max. 3s delta
-            beginsAt = Moment.Min(beginsAt, recordedAt);
         var delay = now - recordedAt;
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 
