@@ -55,7 +55,7 @@ public static class Program
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
-        services.AddSingleton(c => new HostInfo {
+        services.AddSingleton(c => new HostInfo() {
             HostKind = HostKind.Blazor,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)

@@ -1,21 +1,26 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @{
-    string additionalCssClass = Data.Status switch {
-        NavbarLinkModelStatus.Online => "bg-online",
-        NavbarLinkModelStatus.Offline => "border border-primary-inverted",
-        NavbarLinkModelStatus.None => "",
+    var bulletClass = IsOnline switch {
+        {} v when v is true => "bg-online",
+        {} v when v is false => "border border-primary-inverted",
         _ => "",
     };
 }
 
-<div class="flex flex-row items-center mb-2 px-1">
-    <span class="rounded-full block w-2 h-2 mr-3 @additionalCssClass"></span>
-    <span class="text-primary-muted text-sm hover:text-primary;"><a href="@Data.Href">@Data.Name</a></span>
+<div class="flex flex-row items-center">
+    <span class="rounded-full block w-2 h-2 mr-2 @bulletClass"></span>
+    <span class="text-primary-muted text-sm hover:text-primary;">
+        @if (Url.IsNullOrEmpty()) {
+            @Title
+        } else {
+            <a href="@Url">@Title</a>
+        }
+    </span>
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public NavbarLinkModel Data { get; set; } = null!;
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string Url { get; set; } = "";
+    [Parameter] public bool? IsOnline { get; set; }
 }
-
