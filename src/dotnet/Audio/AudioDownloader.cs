@@ -3,9 +3,9 @@ namespace ActualChat.Audio;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class AudioDownloader
 {
-    private IServiceProvider Services { get; }
-    private IHttpClientFactory HttpClientFactory { get; }
-    private ILogger Log { get; }
+    protected IServiceProvider Services { get; init; }
+    protected IHttpClientFactory HttpClientFactory { get; init; }
+    protected ILogger Log { get; init; }
 
     public AudioDownloader(IServiceProvider services)
     {
