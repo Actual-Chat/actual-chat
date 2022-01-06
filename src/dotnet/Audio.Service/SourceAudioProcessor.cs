@@ -27,7 +27,7 @@ public class SourceAudioProcessor : AsyncProcessBase
     public TranscriptSplitter TranscriptSplitter { get; }
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
-    public IChatsBackend ChatsBackend { get; }
+    public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
 
     public SourceAudioProcessor(
@@ -41,6 +41,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         TranscriptPostProcessor transcriptPostProcessor,
         TranscriptStreamer transcriptStreamer,
         IChatsBackend chatsBackend,
+        ICommander commander,
         MomentClockSet clocks,
         ILogger<SourceAudioProcessor> log)
     {
@@ -54,7 +55,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         TranscriptSplitter = transcriptSplitter;
         TranscriptPostProcessor = transcriptPostProcessor;
         TranscriptStreamer = transcriptStreamer;
-        ChatsBackend = chatsBackend;
+        Commander = commander;
         Clocks = clocks;
     }
 
@@ -187,7 +188,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             BeginsAt = beginsAt,
             ClientSideBeginsAt = recordedAt,
         });
-        var audioEntry = await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
+        var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return audioEntry;
     }
 
@@ -205,7 +206,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             ContentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration,
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
-        await ChatsBackend.UpsertEntry(command, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task CreateAndFinalizeTextEntry(
@@ -217,6 +218,8 @@ public class SourceAudioProcessor : AsyncProcessBase
         Transcript? transcript = null;
         ChatEntry? audioEntry = null;
         ChatEntry? textEntry = null;
+        IChatsBackend.UpsertEntryCommand? command;
+
         await foreach (var diff in diffs.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             if (transcript != null) {
                 transcript = transcript.WithDiff(diff);
@@ -237,9 +240,8 @@ public class SourceAudioProcessor : AsyncProcessBase
                 StreamId = transcriptStreamId,
                 BeginsAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
             };
-            textEntry = await ChatsBackend
-                .UpsertEntry(new IChatsBackend.UpsertEntryCommand(textEntry), cancellationToken)
-                .ConfigureAwait(false);
+            command = new IChatsBackend.UpsertEntryCommand(textEntry);
+            textEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
             DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}", textEntry.Id, textEntry.ChatId);
         }
         if (transcript == null || textEntry == null)
@@ -259,8 +261,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             // TODO(AY): Maybe publish [Audio: ...] markup here
             textEntry = textEntry with { IsRemoved = true };
         }
-        await ChatsBackend
-            .UpsertEntry(new IChatsBackend.UpsertEntryCommand(textEntry), cancellationToken)
-            .ConfigureAwait(false);
+        command = new IChatsBackend.UpsertEntryCommand(textEntry);
+        await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 }
