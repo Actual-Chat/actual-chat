@@ -70,7 +70,7 @@ public class SourceAudioProcessor : AsyncProcessBase
                 var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
                 _ = BackgroundTask.Run(
                     () => ProcessSourceAudio(record, cancellationToken),
-                    e => Log.LogError(e, "Failed to process AudioRecord: {Record}", record),
+                    e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
                     cancellationToken);
             }
             catch (OperationCanceledException) {
