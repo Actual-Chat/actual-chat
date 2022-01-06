@@ -152,7 +152,7 @@ public class VirtualListRenderPlan<TItem>
             // Remember that all server-side offsets are relative to the first item's top / spacer top
             var viewport = GetViewport(ClientSideState);
             if (DebugMode && ClientSideState.IsUserScrollDetected) {
-                DebugLog?.LogDebug("User scroll: {VP} -> {NewVP}", Viewport, viewport);
+                DebugLog?.LogDebug("User scroll: {Viewport} -> {NewViewport}", Viewport, viewport);
                 if (Math.Abs(viewport.Start - Viewport.Start) > 3000)
                     DebugLog?.LogWarning("Suspicious scroll detected!");
             }
@@ -188,7 +188,7 @@ public class VirtualListRenderPlan<TItem>
             else
                 TrackingEdge = null;
 
-            DebugLog?.LogDebug("Location: {Location}, tracking edge: {TrackingEdge}",
+            DebugLog?.LogDebug("Location={Location}, TrackingEdge={TrackingEdge}",
                 (IsViewportAtStart() ? "start " : "") + (IsViewportAtEnd() ? "end" : ""),
                 TrackingEdge);
         }

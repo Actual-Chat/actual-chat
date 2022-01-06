@@ -51,7 +51,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
         DebugLog?.LogDebug(
-            "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
+            "bufferReady={BufferReadiness}, Offset={Offset}, mediaReadyState={MediaElementReadyState}",
             isBufferReady,
             offset,
             ToMediaElementReadyState(readyState));
@@ -118,7 +118,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 }
                 catch (TimeoutException) {
                     Log.LogError(
-                        "ProcessMediaFrame: ready-to-buffer wait timed out, frame: (offset: {FrameOffset})",
+                        "ProcessMediaFrame: ready-to-buffer wait timed out, frame: (offset={FrameOffset})",
                         frame.Offset);
                     throw;
                 }

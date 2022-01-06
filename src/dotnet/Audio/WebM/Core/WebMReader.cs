@@ -77,7 +77,7 @@ public ref struct WebMReader
         var hasElement = ReadElement(_spanReader.Length);
         if (!hasElement) {
             _spanReader.Position = beginPosition;
-            DebugLog?.LogDebug("Read: !hasElement, resume: {Resume} -> return false", _resume);
+            DebugLog?.LogDebug("Read: !hasElement, resume={Resume} -> return false", _resume);
             return false;
         }
 
@@ -124,7 +124,7 @@ public ref struct WebMReader
                 DebugLog?.LogDebug("ReadInternal: !canRead -> returning false");
                 return false;
             }
-            DebugLog?.LogDebug("ReadInternal: element Descriptor: {Descriptor}", _element.Descriptor);
+            DebugLog?.LogDebug("ReadInternal: element Descriptor={Descriptor}", _element.Descriptor);
 
             if (_element.Identifier.EncodedValue == MatroskaSpecification.Cluster) {
                 if (containerElement.Identifier.EncodedValue != MatroskaSpecification.Cluster)

@@ -98,17 +98,15 @@ public sealed class Transcript
 
     public (Transcript Prefix, Transcript Suffix) Split(int start, bool needPrefix, bool needSuffix, float timeOverlap = 0)
     {
-        if (start == TextRange.Start)
+        if (start <= TextRange.Start)
             return (new Transcript("", EmptyMap.Move(TextToTimeMap[0])), this);
-        if (start == TextRange.End)
-            return (this, new Transcript("", EmptyMap.Move(TextToTimeMap[0])));
+        if (start >= TextRange.End)
+            return (this, new Transcript("", EmptyMap.Move(TextToTimeMap[^1])));
 
         var map = TextToTimeMap;
-        if (start < TextRange.Start)
-            throw new ArgumentOutOfRangeException(nameof(start));
         var mapStart = map.Points.IndexOfGreaterOrEqualX(start - 0.1f);
         if (mapStart < 0)
-            throw new ArgumentOutOfRangeException(nameof(start));
+            throw new InvalidOperationException("Invalid TextToTimeMap (it doesn't contain start).");
 
         var textStart = start - TextRange.Start;
         var timeStart = map.Map(start);
