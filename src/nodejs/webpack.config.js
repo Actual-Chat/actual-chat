@@ -178,6 +178,14 @@ module.exports = (env, args) => {
           type: 'module',
         }
       },
+      opusDecoderWorker: {
+        import: './../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts',
+        chunkLoading: 'import',
+        asyncChunks: true,
+        library: {
+          type: 'module',
+        }
+      },
       vadWorklet: {
         import: './../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts',
         chunkLoading: false,
