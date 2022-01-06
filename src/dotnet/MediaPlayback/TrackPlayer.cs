@@ -50,7 +50,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        Log.LogDebug("Track #{TrackId}: started, Command={Command}, delay={Delay}",
+        Log.LogInformation("Track #{TrackId}: started, Command={Command}, delay={Delay}",
             Command.TrackId, Command, GetDelayInfo(TimeSpan.Zero));
         Exception? error = null;
         var isStarted = false;
@@ -67,17 +67,17 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
                         await cpuClock.Delay(playbackDelay, cancellationToken).ConfigureAwait(false);
                     OnPlayedTo(TimeSpan.Zero);
                     var startPlaybackTask = ProcessCommand(new StartPlaybackCommand(this));
-                    Log.LogDebug("Track #{TrackId}: StartPlaybackCommand, delay={Delay}",
+                    Log.LogInformation("Track #{TrackId}: StartPlaybackCommand, delay={Delay}",
                         Command.TrackId, GetDelayInfo(TimeSpan.Zero));
                     await startPlaybackTask.ConfigureAwait(false);
                 }
                 var processMediaFrameTask = ProcessMediaFrame(frame, cancellationToken);
                 GetDelayReportLog(ref _playbackDelayReportTime)
-                    ?.LogDebug("Track #{TrackId}: ProcessMediaFrame, delay={Delay}",
+                    ?.LogInformation("Track #{TrackId}: ProcessMediaFrame, delay={Delay}",
                         Command.TrackId, GetDelayInfo(frame.Offset));
                 await processMediaFrameTask.ConfigureAwait(false);
             }
-            Log.LogDebug("Track #{TrackId}: StopPlaybackCommand", Command.TrackId);
+            Log.LogInformation("Track #{TrackId}: StopPlaybackCommand", Command.TrackId);
             await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
             await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
@@ -137,7 +137,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
         UpdateState((offset, this), static (arg, s) => {
             var (offset1, self) = arg;
             self.GetDelayReportLog(ref self._playedToDelayReportTime)
-                ?.LogDebug("Track #{TrackId}: OnPlayedTo({Offset}), delay={Delay}",
+                ?.LogInformation("Track #{TrackId}: OnPlayedTo({Offset}), delay={Delay}",
                     self.Command.TrackId, offset1, self.GetDelayInfo(offset1));
             return s with {
                 IsStarted = true,
