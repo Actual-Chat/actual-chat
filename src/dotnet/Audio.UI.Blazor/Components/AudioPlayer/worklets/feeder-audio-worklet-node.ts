@@ -2,7 +2,9 @@ import { ChangeStateNodeMessage, DataNodeMessage, GetStateNodeMessage, NodeMessa
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
+    public onStartPlaying?: () => void = null;
     public onBufferLow?: () => void = null;
+    public onBufferTooMuch?: () => void = null;
     public onStarving?: () => void = null;
 
     private lastCallbackId: number = 0;
@@ -12,6 +14,14 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         super(context, name, options);
         this.onprocessorerror = this.onProcessorError;
         this.port.onmessage = this.onProcessorMessage;
+    }
+
+    public initWorkerPort(workerPort: MessagePort) {
+        const msg: NodeMessage = {
+            type: 'init-port'
+        };
+
+        this.port.postMessage(msg, [workerPort]);
     }
 
     public play(): void {
@@ -95,6 +105,12 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         }
         else if (message.state === 'starving' && this.onStarving !== null) {
             this.onStarving();
+        }
+        else if (message.state === 'playingWithTooMuchBuffer' && this.onBufferTooMuch !== null) {
+            this.onBufferTooMuch();
+        }
+        else if (message.state === 'playing' && this.onStartPlaying !== null) {
+            this.onStartPlaying();
         }
     }
 

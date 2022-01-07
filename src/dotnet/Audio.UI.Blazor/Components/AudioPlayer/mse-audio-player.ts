@@ -118,6 +118,10 @@ export class MseAudioPlayer implements IAudioPlayer {
         return new MseAudioPlayer(blazorRef, debugMode);
     }
 
+    public init(byteArray: Uint8Array): Promise<void> {
+        return this.initialize(byteArray);
+    }
+
     private async initialize(byteArray: Uint8Array): Promise<void> {
         if (this._debugMode)
             this.log(`initialize(header: ${byteArray.length} bytes)`);

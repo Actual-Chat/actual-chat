@@ -4,10 +4,12 @@ import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import Denque from 'denque';
 import {
-    DecoderCommand, DecoderMessage,
+    DecoderCommand,
+    DecoderMessage,
     DecoderWorkerMessage,
-    DecoderWorkletMessage, InitCommand,
-    PushDataCommand
+    DecoderWorkletMessage,
+    InitCommand,
+    PushDataCommand, StopCommand
 } from "./opus-decoder-worker-message";
 
 type WorkerState = 'inactive'|'readyToInit'|'decoding'|'closed';
@@ -16,7 +18,7 @@ type WorkerState = 'inactive'|'readyToInit'|'decoding'|'closed';
 const BufferTooMuchThreshold = 20.0;
 const SampleRate = 48000;
 
-const queue = new Denque<ArrayBuffer>();
+const queue = new Denque<ArrayBuffer | 'endOfStream'>();
 const worker = self as unknown as Worker;
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
@@ -36,7 +38,8 @@ worker.onmessage = async (ev: MessageEvent) => {
             const [dem, dec] = await Promise.all([demuxerPromise,decoderPromise]);
             demuxer = dem;
             decoder = dec;
-            worker.postMessage({ command: 'readyToInit' });
+            const readyToInitMessage: DecoderWorkerMessage = { topic: 'readyToInit' };
+            worker.postMessage(readyToInitMessage);
             state = 'readyToInit';
             break;
 
@@ -54,8 +57,8 @@ worker.onmessage = async (ev: MessageEvent) => {
                 }
             }
 
-            const initCompletedMessage: DecoderWorkerMessage = { topic: 'initCompleted', buffer: header };
-            worker.postMessage(initCompletedMessage, [header]);
+            const initCompletedMessage: DecoderWorkerMessage = { topic: 'initCompleted' };
+            worker.postMessage(initCompletedMessage);
             state = 'decoding';
             break;
 
@@ -68,7 +71,13 @@ worker.onmessage = async (ev: MessageEvent) => {
             }
             break;
 
-        case 'done':
+        case 'endOfStream':
+            queue.push('endOfStream');
+            break;
+
+        case 'stop':
+            await flushDemuxer();
+
             destroyDemuxer();
             destroyDecoder();
             state = 'readyToInit';
@@ -78,7 +87,7 @@ worker.onmessage = async (ev: MessageEvent) => {
 };
 
 const onWorkletMessage = async (ev: MessageEvent<DecoderWorkletMessage>) => {
-
+    // do nothing, we just receive buffer as transferable there for GC
 };
 
 async function processQueue(): Promise<void> {
@@ -93,11 +102,21 @@ async function processQueue(): Promise<void> {
     try {
         isDecoding = true;
 
-        const buffer = queue.pop();
-        await demuxEnqueue(buffer);
+        const queueItem = queue.pop();
+        if (queueItem == 'endOfStream') {
+            await flushDemuxer();
 
-        const workerMessage: DecoderWorkerMessage = { topic: "buffer", buffer: buffer };
-        worker.postMessage(workerMessage, [buffer]);
+            destroyDemuxer();
+            destroyDecoder();
+            state = 'readyToInit';
+
+            return;
+        }
+
+        await demuxEnqueue(queueItem);
+
+        // const workerMessage: DecoderWorkerMessage = { topic: "buffer", buffer: buffer };
+        // worker.postMessage(workerMessage, [buffer]);
 
         while (await demuxProcess()) {
             while (demuxer.audioPackets.length > 0) {
@@ -277,6 +296,12 @@ function createDemuxer(): Promise<Demuxer> {
 /** each time loads OGVDecoderAudioOpusWWasm with HTTP call, at least until it's cached by browser */
 function createDecoder():  Promise<Decoder> {
     return OGVDecoderAudioOpusW(getEmscriptenLoaderOptions()) as Promise<Decoder>;
+}
+
+function flushDemuxer(): Promise<void> {
+    return new Promise(resolve => {
+        demuxer.flush(resolve);
+    })
 }
 
 function initDemuxer(): Promise<void> {
