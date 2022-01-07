@@ -12,7 +12,7 @@ import {
     PushDataCommand, StopCommand
 } from "./workers/opus-decoder-worker-message";
 
-type PlayerState = 'inactive' | 'readyToInit' | 'playing' | 'endOfStream' ;
+type PlayerState = 'inactive' | 'readyToInit' | 'buffering' | 'playing' | 'endOfStream' ;
 
 /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
 const BufferTooMuchThreshold = 5.0;
@@ -102,7 +102,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
 
                 case 'initCompleted':
                     this.initResolve();
-                    this.state = 'playing';
+                    this.state = 'buffering';
                     break;
             }
         };
@@ -154,12 +154,14 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 const __ = this.invokeOnPlaybackEnded();
                 return;
             }
+            this.state = 'buffering';
             this.needMoreData('onStarving');
         };
         this.feederNode.onBufferTooMuch = () => {
             const _ = this.invokeOnChangeReadiness(false, BufferTooMuchThreshold, 4);
         }
         this.feederNode.onStartPlaying = () => {
+            this.state = 'playing'
             if (this.onStartPlaying !== null)
                 this.onStartPlaying();
             self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
@@ -172,7 +174,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
-        if (this.state !== 'playing') {
+        if (this.state === 'inactive' || this.state == 'readyToInit') {
             await this.initPromise;
         }
 
@@ -228,9 +230,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
 
         let state: PlaybackState = await feeder.getState();
         await this.invokeOnPlaybackTimeChanged(state.playbackTime);
-        if (this.state === 'playing') {
-            self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
-        }
+        self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
     };
 
     private needMoreData(source: string): void {
