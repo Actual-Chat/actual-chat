@@ -7,7 +7,7 @@
     var model = State.ValueOrDefault ?? Model.NotPlaying;
     var cssClass = _class ??= this.DefaultClass();
 }
-@if (model.IsPlaying) {
+@if (model != Model.NotPlaying) {
     <div class="@cssClass flex flex-row mx-3 my-1 items-center justify-center">
         <div class="flex flex-row rounded-2xl px-4 outline-none bg-accent items-center justify-center">
             @* Icons *@
@@ -18,8 +18,8 @@
                 </svg>
             </div>
             @* Position *@
-            <div class="c-position">
-                <span class="ml-1">@model.PlayingAt</span>
+            <div class="c-position text-sm">
+                <span class="ml-1">@(model.PlayingAt is {} playingAt ? playingAt.ToLocalTime().ToString("F") : "")</span>
             </div>
             @* Stop button *@
             <div class="c-stop ml-1 flex flex-row items-center">
@@ -38,9 +38,8 @@
     {
         public static readonly Model NotPlaying = new();
 
-        public bool IsPlaying => !ReferenceEquals(this, NotPlaying);
-        public DateTime PlayingAt { get; init; }
-        public string AuthorId { get; init; } = "";
+        public DateTime? PlayingAt { get; set; }
+        public List<string> AuthorIds { get; } = new();
     }
 
     private static string? _class;
@@ -69,16 +68,18 @@
             return Model.NotPlaying;
 
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
-        var playbackState = playbackStates.LastOrDefault();
-        if (playbackState == null)
-            return Model.NotPlaying;
-
-        playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.Command.TrackId, cancellationToken);
-        if (playbackState == null)
-            return Model.NotPlaying;
-
-        var trackInfo = playbackState.Command.TrackInfo;
-        var playingAt = trackInfo.RecordedAt.ToDateTime().ToLocalTime() + playbackState.PlayingAt;
-        return new Model { PlayingAt = playingAt };
+        var model = new Model();
+        var authorIds = model.AuthorIds;
+        foreach (var playbackState in playbackStates) {
+            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.Command.TrackId, cancellationToken);
+            if (actualPlaybackState == null)
+                continue;
+            var trackInfo = (ChatAudioTrackInfo) actualPlaybackState.Command.TrackInfo;
+            model.PlayingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
+            var authorId = trackInfo.AudioEntry.AuthorId;
+            if (!authorIds.Contains(authorId))
+                authorIds.Add(authorId);
+        }
+        return model;
     }
 }
