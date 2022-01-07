@@ -1,15 +1,26 @@
 import Denque from 'denque';
-import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
-import { VadMessage } from "../audio-vad-message";
+import SoxrResampler, {SoxrDatatype, SoxrQuality} from 'wasm-audio-resampler';
+import {adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector} from "../audio-vad";
+import {VadMessage} from "../audio-vad-message";
 import OnnxModel from '../vad.onnx';
+import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
+import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
+
 
 const voiceDetector = new VoiceActivityDetector(OnnxModel);
 const queue = new Denque<ArrayBuffer>();
+const channels = 1;
+const inRate = 48000;
+const outRate = 16000;
+const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
+const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
+const resampleBuffer = new Uint8Array(512 * 4 * 2);
 
 let workletPort: MessagePort = null;
+let resampler: SoxrResampler = null;
 let isVadRunning: boolean = false;
 
-onmessage = (ev) => {
+onmessage = async (ev) => {
     const { topic }: VadMessage = ev.data;
 
     switch (topic) {
@@ -18,6 +29,19 @@ onmessage = (ev) => {
             workletPort.onmessage = onWorkletMessage;
             queue.clear();
             break;
+        case 'init-new-stream':
+            const newResampler = new SoxrResampler(
+                channels,
+                inRate,
+                outRate,
+                inputDatatype,
+                outputDatatype,
+                SoxrQuality.SOXR_MQ
+            );
+            await newResampler.init(SoxrModule, { 'locateFile': (path:string, directory: string) => SoxrWasm });
+            resampler = newResampler;
+            break;
+
         default:
             break;
 
@@ -51,17 +75,25 @@ async function processQueue(): Promise<void> {
         return;
     }
 
+    if (resampler == null) {
+        return;
+    }
+
     try {
         isVadRunning = true;
 
         const buffer = queue.pop();
-        const monoPcm = new Float32Array(buffer);
+        const dataToResample = new Uint8Array(buffer);
+        const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
+
+        workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
+
+        const monoPcm = new Float32Array(resampled, 0, 512);
         const vadEvent = await voiceDetector.appendChunk(monoPcm);
         if (vadEvent) {
             const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
             sendResult(adjustedVadEvent);
         }
-        workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
 
     } catch (error) {
         isVadRunning = false;

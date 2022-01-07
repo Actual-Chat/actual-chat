@@ -12,7 +12,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 {
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode => Constants.DebugMode.GoogleTranscriber;
+    private bool DebugMode => Constants.DebugMode.TranscriptionGoogle || Constants.DebugMode.Transcription;
 
     private TranscriptionOptions Options { get; }
     private AudioSource AudioSource { get; }
@@ -107,18 +107,21 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 
     private void ProcessResponse(StreamingRecognizeResponse response)
     {
-        DebugLog?.LogDebug("Response: {Response}", response);
+        DebugLog?.LogDebug("Response={Response}", response);
         var error = response.Error;
         if (error != null)
             throw new TranscriptionException($"G{error.Code:D}", error.Message);
 
         Transcript transcript;
         var results = response.Results;
-        var isFinal = results.Any(r => r.IsFinal);
-        if (isFinal) {
-            var result = results.Single();
-            if (!TryParseFinal(result, out var text, out var textToTimeMap))
+        var hasFinal = results.Any(r => r.IsFinal);
+        if (hasFinal) {
+            var result = results.Single(r => r.IsFinal);
+            if (!TryParseFinal(result, out var text, out var textToTimeMap)) {
+                Log.LogWarning("Final transcript discarded. State.LastStable={LastStable}, Response={Response}",
+                    State.LastStable, response);
                 return;
+            }
             transcript = State.AppendStable(text, textToTimeMap);
         }
         else {
@@ -133,48 +136,56 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             var endTime = (float) results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
             transcript = State.AppendAlternative(text, endTime);
         }
-        DebugLog?.LogDebug("Transcript: {Transcript}", transcript);
+        DebugLog?.LogDebug("Transcript={Transcript}", transcript);
         Transcripts.Writer.TryWrite(transcript);
     }
 
     private bool TryParseFinal(StreamingRecognitionResult result,
         out string text, out LinearMap textToTimeMap)
     {
-        var alternative = result.Alternatives.Single();
-        var endTime = (float) result.ResultEndTime.ToTimeSpan().TotalSeconds;
-        text = alternative.Transcript;
-
         var lastStable = State.LastStable;
         var lastStableTextLength = lastStable.Text.Length;
         var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
-        var mapPoints = new List<Vector2> { new(lastStableTextLength, lastStableDuration) };
-        var lastWordOffset = 0;
-        var lastWordStartTime = -1d;
+
+        var alternative = result.Alternatives.Single();
+        var endTime = (float) result.ResultEndTime.ToTimeSpan().TotalSeconds;
+        text = alternative.Transcript;
+        if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
+            text = " " + text;
+
+        var mapPoints = new List<Vector2>();
+        var parsedOffset = 0;
+        var parsedDuration = lastStableDuration;
         foreach (var word in alternative.Words) {
             var wordStartTime = (float) word.StartTime.ToTimeSpan().TotalSeconds;
-            if (lastWordStartTime - 0.1 > wordStartTime) {
-                DebugLog?.LogDebug("Invalid response skipped, word: {Word}", word);
-                textToTimeMap = default;
-                return false;
-            }
-
-            lastWordStartTime = wordStartTime;
-            if (wordStartTime < lastStableDuration)
+            if (wordStartTime < parsedDuration)
                 continue;
-            var wordOffset = text.IndexOf(word.Word, lastWordOffset, StringComparison.InvariantCultureIgnoreCase);
-            if (wordOffset < 0)
-                continue;
-            lastWordOffset = wordOffset + word.Word.Length;
-            var stableTextWordOffset = lastStableTextLength + wordOffset;
-            if (mapPoints[^1].X >= stableTextWordOffset)
+            var wordStart = text.IndexOf(word.Word, parsedOffset, StringComparison.InvariantCultureIgnoreCase);
+            if (wordStart < 0)
                 continue;
 
-            mapPoints.Add(new Vector2(stableTextWordOffset, (float) word.StartTime.ToTimeSpan().TotalSeconds));
+            var wordEndTime = (float) word.EndTime.ToTimeSpan().TotalSeconds;
+            var wordEnd = wordStart + word.Word.Length;
+
+            mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTime));
+            mapPoints.Add(new Vector2(lastStableTextLength + wordEnd, wordEndTime));
+
+            parsedDuration = wordStartTime;
+            parsedOffset = wordStart + word.Word.Length;
         }
 
-        mapPoints.Add(new Vector2(lastStableTextLength + text.Length, endTime));
-        textToTimeMap = new LinearMap(mapPoints.ToArray())
-            .Simplify(Transcript.TextToTimeMapTimePrecision);
+        if (mapPoints.Count == 0) {
+            textToTimeMap = default;
+            return false;
+        }
+
+        var lastPoint = mapPoints[^1];
+        var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime);
+        if (Math.Abs(lastPoint.X - veryLastPoint.X) < 0.1)
+            mapPoints[^1] = veryLastPoint;
+        else
+            mapPoints.Add(veryLastPoint);
+        textToTimeMap = new LinearMap(mapPoints.ToArray()).Simplify(Transcript.TextToTimeMapTimePrecision);
         return true;
     }
 

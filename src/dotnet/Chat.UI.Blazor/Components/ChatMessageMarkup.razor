@@ -35,9 +35,10 @@
     }
 
     protected override async Task<TrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
-        if (Entry.AudioEntryId == null)
+        var audioEntryId = Entry.AudioEntryId;
+        if (audioEntryId == null)
             return null;
-        var trackId = ChatPlayer.GetAudioTrackId(Entry);
+        var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
         return await _activePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -50,7 +51,9 @@
             if (playbackState == null || playbackState.IsCompleted || partTimeRange.IsEmpty)
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 
-            var playingAt = playbackState.PlayingAt.TotalSeconds;
+            var trackInfo = (ChatAudioTrackInfo) playbackState.Command.TrackInfo;
+            var audioEntry = trackInfo.AudioEntry;
+            var playingAt = (trackInfo.RecordedAt + playbackState.PlayingAt - audioEntry.BeginsAt).TotalSeconds;
             var playingAtNearbyRange = new Range<double>(playingAt - 2, playingAt + 2);
             if (!playingAtNearbyRange.Overlaps(part.TimeRange))
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;

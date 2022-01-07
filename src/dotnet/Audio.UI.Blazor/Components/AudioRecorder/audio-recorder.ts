@@ -17,17 +17,23 @@ self["StandardMediaRecorder"] = self.MediaRecorder;
 self["OpusMediaRecorder"] = OpusMediaRecorder;
 
 export class AudioRecorder {
-    protected readonly debugMode: boolean;
-    protected readonly blazorRef: DotNet.DotNetObject;
-    protected readonly isMicrophoneAvailable: boolean;
-    protected recording: {
-        recorder: OpusMediaRecorder,
-        stream: MediaStream,
-        context: AudioContext,
+    private readonly debugMode: boolean;
+    private readonly blazorRef: DotNet.DotNetObject;
+    private readonly isMicrophoneAvailable: boolean;
+    protected readonly queue: IRecordingEventQueue;
+    private readonly recorder: OpusMediaRecorder;
+    private readonly vadWorker: Worker;
+    private readonly vadChannel: MessageChannel;
+
+    private context: {
+        recorderContext: AudioContext,
         vadWorkletNode: AudioWorkletNode,
-        mediaStreamAudioSourceNode?: MediaStreamAudioSourceNode,
     };
-    protected queue: IRecordingEventQueue;
+
+    private recording: {
+        stream: MediaStream,
+        streamNode: MediaStreamAudioSourceNode,
+    };
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: IRecordingEventQueue) {
         this.blazorRef = blazorRef;
@@ -35,6 +41,45 @@ export class AudioRecorder {
         this.recording = null;
         this.isMicrophoneAvailable = false;
         this.queue = queue;
+
+        const options: MediaRecorderOptions = {
+            // @ts-ignore
+            mimeType: 'audio/webm;codecs=opus',
+            bitsPerSecond: 32000,
+            audioBitsPerSecond: 32000,
+        };
+        this.recorder = new OpusMediaRecorder(options);
+        this.recorder.ondataavailable = async (be: BlobEvent) => {
+            try {
+                const blob = be.data;
+                let buffer = await blob.arrayBuffer();
+                let chunk = new Uint8Array(buffer);
+                this.queue.append(new DataRecordingEvent(chunk));
+            } catch (e) {
+                console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
+            }
+        };
+        this.recorder.onerror = async (errorEvent: MediaRecorderErrorEvent) => {
+            console.error(`${LogScope}.onerror: ${errorEvent}`);
+        };
+
+        this.vadWorker = new Worker('/dist/vadWorker.js');
+        this.vadChannel = new MessageChannel();
+        this.vadWorker.onmessage = (ev: MessageEvent<VoiceActivityChanged>) => {
+            const vadEvent = ev.data;
+            if (this.debugMode)
+                console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
+
+            if (this.isRecording()) {
+                if (vadEvent.kind === 'end') {
+                    this.queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
+                }
+                else {
+                    this.queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
+                }
+            }
+        };
+        this.vadWorker.postMessage({ topic: 'init-port' }, [this.vadChannel.port1]);
 
         if (blazorRef == null)
             console.error(`${LogScope}.constructor: blazorRef == null`);
@@ -88,29 +133,29 @@ export class AudioRecorder {
             return;
         }
 
-        const channel = new MessageChannel();
-        const worker = new Worker('/dist/vadWorker.js');
-        worker.onmessage = (ev: MessageEvent<VoiceActivityChanged>) => {
-            const vadEvent = ev.data;
-            if (this.debugMode)
-                console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
+        if (this.context == null) {
+            const recorderContext = await AudioContextPool.get("recorder") as AudioContext;
+            const audioWorkletOptions: AudioWorkletNodeOptions = {
+                numberOfInputs: 1,
+                numberOfOutputs: 1,
+                channelCount: 1,
+                channelInterpretation: 'speakers',
+                channelCountMode: 'explicit',
+            };
+            const vadWorkletNode = new AudioWorkletNode(recorderContext, 'audio-vad-worklet-processor', audioWorkletOptions);
+            vadWorkletNode.port.postMessage({ topic: 'init-port' }, [this.vadChannel.port2]);
 
-            if (this.isRecording()) {
-                if (vadEvent.kind === 'end') {
-                    this.queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
-                }
-                else {
-                    this.queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
-                }
+            this.context = {
+                recorderContext: recorderContext,
+                vadWorkletNode: vadWorkletNode,
             }
-        };
-        worker.postMessage({ topic: 'init-port' }, [channel.port1]);
+        }
 
-        if (this.recording === null) {
-            let stream: MediaStream = await navigator.mediaDevices.getUserMedia({
+        if (this.recording == null) {
+            const stream: MediaStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
-                    sampleRate: SampleRate,
+                    sampleRate: 48000,
                     sampleSize: 32,
                     // @ts-ignore
                     autoGainControl: {
@@ -125,54 +170,21 @@ export class AudioRecorder {
                 },
                 video: false
             });
-            const options: MediaRecorderOptions = {
-                // @ts-ignore
-                mimeType: 'audio/webm;codecs=opus',
-                bitsPerSecond: 32000,
-                audioBitsPerSecond: 32000,
-            };
 
-            let recorder = new OpusMediaRecorder(stream, options);
-            recorder.ondataavailable = async (be: BlobEvent) => {
-                    try {
-                        const blob = be.data;
-                        let buffer = await blob.arrayBuffer();
-                        let chunk = new Uint8Array(buffer);
-                        this.queue.append(new DataRecordingEvent(chunk));
-                    } catch (e) {
-                        console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
-                    }
-                };
-
-            recorder.onerror = async (errorEvent: MediaRecorderErrorEvent) => {
-                console.error(`${LogScope}.onerror: ${errorEvent}`);
-            };
-
-            const vadAudioContext = await AudioContextPool.get("vad") as AudioContext;
-            const audioWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
-                channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-            };
-            const vadWorkletNode = new AudioWorkletNode(vadAudioContext, 'audio-vad-worklet-processor', audioWorkletOptions);
+            // TODO: refactor this after deleting recordrtc
+            this.vadWorker.postMessage({ topic: 'init-new-stream' });
+            const streamNode = this.context.recorderContext.createMediaStreamSource(stream);
+            streamNode.connect(this.context.vadWorkletNode);
 
             this.recording = {
-                recorder: recorder,
                 stream: stream,
-                context: vadAudioContext,
-                vadWorkletNode: vadWorkletNode,
-                mediaStreamAudioSourceNode: null,
+                streamNode: streamNode,
             };
         }
-        // TODO: refactor this after deleting recordrtc
-        this.recording.mediaStreamAudioSourceNode = this.recording.context.createMediaStreamSource(this.recording.stream);
-        this.recording.mediaStreamAudioSourceNode.connect(this.recording.vadWorkletNode);
-        this.recording.vadWorkletNode.port.postMessage({ topic: 'init-port' }, [channel.port2]);
+
 
         this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
-        this.recording.recorder.start(40);
+        await this.recorder.startAsync(this.recording.streamNode, 40);
         await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
@@ -186,12 +198,12 @@ export class AudioRecorder {
         this.recording = null;
 
         if (recording !== null) {
-            recording.mediaStreamAudioSourceNode.disconnect();
-            recording.mediaStreamAudioSourceNode = null;
-            recording.vadWorkletNode.disconnect();
+            recording.streamNode.disconnect();
+            recording.streamNode = null;
+            this.context.vadWorkletNode.disconnect();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
-            await recording.recorder.stopAsync();
+            await this.recorder.stopAsync();
         }
         await this.queue.flushAsync();
         await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
@@ -200,6 +212,6 @@ export class AudioRecorder {
     }
 
     private isRecording() {
-        return this.recording !== null && this.recording.recorder !== null && this.recording.recorder.state === 'recording';
+        return this.recording !== null && this.recording.stream !== null;
     }
 }

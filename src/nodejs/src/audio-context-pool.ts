@@ -76,29 +76,20 @@ async function getWorklet(url: string): Promise<string> {
 }
 
 AudioContextPool.register("main", async () => {
-    const audioContext = new AudioContext({ sampleRate: 48000 });
+    const audioContext = new AudioContext({
+        latencyHint: 'interactive',
+        sampleRate: 48000,
+    });
     const feederWorklet = await getWorklet('/dist/feederWorklet.js');
     await audioContext.audioWorklet.addModule(feederWorklet);
-    const opusEncoderWorklet = await getWorklet('/dist/opusEncoderWorklet.js');
-    await audioContext.audioWorklet.addModule(opusEncoderWorklet);
     return audioContext;
 });
-// TODO: try to use OfflineAudioContext for VAD
-AudioContextPool.register("vad", async () => {
-    const audioContext = new AudioContext({ sampleRate: 16000, latencyHint: 'interactive' });
+AudioContextPool.register("recorder", async () => {
+    const audioContext = new AudioContext({ sampleRate: 48000 });
+    const opusEncoderWorklet = await getWorklet('/dist/opusEncoderWorklet.js');
+    await audioContext.audioWorklet.addModule(opusEncoderWorklet);
     const vadWorklet = await getWorklet('/dist/vadWorklet.js');
     await audioContext.audioWorklet.addModule(vadWorklet);
-    // warmup the audioContext nodes
-    const audioWorkletOptions: AudioWorkletNodeOptions = {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        channelCount: 1,
-        channelInterpretation: 'speakers',
-        channelCountMode: 'explicit',
-    };
-    const vadWorkletNode = new AudioWorkletNode(audioContext, 'audio-vad-worklet-processor', audioWorkletOptions);
-    vadWorkletNode.connect(audioContext.destination);
-    vadWorkletNode.disconnect();
     return audioContext;
 });
 

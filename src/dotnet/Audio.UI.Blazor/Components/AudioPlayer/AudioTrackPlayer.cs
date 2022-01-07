@@ -1,10 +1,9 @@
 using System.Reflection;
-using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
 
-namespace ActualChat.Audio.UI.Blazor;
+namespace ActualChat.Audio.UI.Blazor.Components;
 
 public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
@@ -27,7 +26,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public async Task OnPlaybackEnded(int? errorCode, string? errorMessage)
+    public Task OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
         Exception? error = null;
         if (errorMessage != null) {
@@ -36,14 +35,8 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 null);
             Log.LogError(error, "Playback stopped with an error");
         }
-
         OnStopped(error);
-
-        var jsRef = JSRef;
-        JSRef = null;
-
-        if (jsRef != null)
-            await jsRef.DisposeAsync().ConfigureAwait(true);
+        return Task.CompletedTask;
     }
 
     [JSInvokable]
@@ -58,7 +51,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
     {
         DebugLog?.LogDebug(
-            "bufferReady: {BufferReadiness}, Offset = {Offset}, mediaReadyState = {MediaElementReadyState}",
+            "bufferReady={BufferReadiness}, Offset={Offset}, mediaReadyState={MediaElementReadyState}",
             isBufferReady,
             offset,
             ToMediaElementReadyState(readyState));
@@ -99,10 +92,9 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         if (JSRef == null)
                             break;
 
-                        if (stop.Immediately)
-                            await JSRef.InvokeVoidAsync("stop", null).ConfigureAwait(true);
-                        else
-                            await JSRef.InvokeVoidAsync("endOfStream").ConfigureAwait(true);
+                        _ = stop.Immediately
+                            ? JSRef.InvokeVoidAsync("stop")
+                            : JSRef.InvokeVoidAsync("endOfStream");
                         break;
                     case SetTrackVolumeCommand:
                         // TODO: Implement this
@@ -126,11 +118,37 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 }
                 catch (TimeoutException) {
                     Log.LogError(
-                        "ProcessMediaFrame: ready-to-buffer wait timed out, frame: (offset: {FrameOffset})",
+                        "ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
                         frame.Offset);
-                    throw;
                 }
             }).ConfigureAwait(false);
+
+    protected override void OnStopped(Exception? error = null)
+    {
+        base.OnStopped(error);
+        _ = CircuitInvoke(async () => {
+            var (jsRef, blazorRef) = (JSRef, BlazorRef);
+            (JSRef, BlazorRef) = (null, null);
+            try {
+                try {
+                    if (jsRef != null)
+                        await jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
+                }
+                finally {
+                    try {
+                        if (jsRef != null)
+                            await jsRef.DisposeAsync().ConfigureAwait(true);
+                    }
+                    finally {
+                        blazorRef?.Dispose();
+                    }
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "OnStopped failed while disposing the references");
+            }
+        });
+    }
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });

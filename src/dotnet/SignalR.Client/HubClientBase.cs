@@ -5,6 +5,20 @@ namespace ActualChat.SignalR.Client;
 
 public abstract class HubClientBase
 {
+    private static readonly TimeSpan[] ReconnectDelays =
+        new[] {
+            TimeSpan.FromMilliseconds(10),
+            TimeSpan.FromMilliseconds(20),
+            TimeSpan.FromMilliseconds(40),
+            TimeSpan.FromMilliseconds(100),
+            TimeSpan.FromMilliseconds(500),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(4),
+            TimeSpan.FromSeconds(8),
+            TimeSpan.FromSeconds(15),
+            TimeSpan.FromSeconds(30),
+        }.Concat(Enumerable.Range(0, 60).Select(_ => TimeSpan.FromMinutes(1))).ToArray();
     private readonly Lazy<HubConnection> _hubConnectionLazy;
     private ILogger? _log;
 
@@ -26,30 +40,20 @@ public abstract class HubClientBase
 
     protected HubConnection CreateHubConnection()
     {
-        Log.LogDebug("CreateHubConnection: Time: {Time}", Clocks.SystemClock.UtcNow.TimeOfDay);
+        Log.LogDebug("CreateHubConnection: started");
         try {
             var builder = new HubConnectionBuilder()
-                .WithUrl(
-                    HubUrl,
-    options => {
-                        options.SkipNegotiation = true;
-                        options.Transports = HttpTransportType.WebSockets;
-                    })
-                .WithAutomaticReconnect(new[] {
-                    TimeSpan.FromMilliseconds(10d),
-                    TimeSpan.FromMilliseconds(20d),
-                    TimeSpan.FromMilliseconds(40d),
-                    TimeSpan.FromMilliseconds(100d),
-                    TimeSpan.FromMilliseconds(500d),
-                    TimeSpan.FromMilliseconds(1000d),
-                    TimeSpan.FromMilliseconds(2000d),
-                });
+                .WithUrl(HubUrl, options => {
+                    options.SkipNegotiation = true;
+                    options.Transports = HttpTransportType.WebSockets;
+                })
+                .WithAutomaticReconnect(ReconnectDelays);
             if (!Debugging.SignalR.DisableMessagePackProtocol)
                 builder = builder.AddMessagePackProtocol();
             return builder.Build();
         }
         finally {
-            Log.LogDebug("CreateHubConnection: Exited; Time: {Time}", Clocks.SystemClock.UtcNow.TimeOfDay);
+            Log.LogDebug("CreateHubConnection: completed");
         }
     }
 

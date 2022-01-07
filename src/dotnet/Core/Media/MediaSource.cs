@@ -27,7 +27,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
 
 #pragma warning disable MA0056
     protected MediaSource(
-        IAsyncEnumerable<byte[]> recordingStream,
+        IAsyncEnumerable<byte[]> byteStream,
         TimeSpan skipTo,
         ILogger log,
         CancellationToken cancellationToken)
@@ -36,7 +36,7 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
         FormatTask = TaskSource.New<TFormat>(true).Task;
         DurationTask = TaskSource.New<TimeSpan>(true).Task;
         // ReSharper disable once VirtualMemberCallInConstructor
-        var parsedFrames = Parse(recordingStream, skipTo, cancellationToken);
+        var parsedFrames = Parse(byteStream, skipTo, cancellationToken);
         MemoizedFrames = new AsyncMemoizer<TFrame>(parsedFrames, cancellationToken);
     }
 
@@ -63,11 +63,13 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
 
     public Task<TFormat> GetFormatTask()
         => FormatTask;
+    public Task<TimeSpan> GetDurationTask()
+        => DurationTask;
 
     // Protected & private methods
 
     protected abstract IAsyncEnumerable<TFrame> Parse(
-        IAsyncEnumerable<byte[]> recordingStream,
+        IAsyncEnumerable<byte[]> byteStream,
         TimeSpan skipTo,
         CancellationToken cancellationToken);
 

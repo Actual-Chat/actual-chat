@@ -163,7 +163,7 @@ public ref struct SpanReader
 
     public long? ReadLong(int size)
     {
-        if (Position + size >= _span.Length)
+        if (Position + size > _span.Length)
             return null;
 
         long result = _span[Position];
@@ -194,7 +194,7 @@ public ref struct SpanReader
     public decimal? ReadDecimal()
     {
         var length = sizeof(decimal);
-        if (Position + length >= _span.Length)
+        if (Position + length > _span.Length)
             return null;
 
         var buffer = _span.Slice(Position, length);
@@ -217,7 +217,7 @@ public ref struct SpanReader
 
     public byte[]? ReadBytes(int length)
     {
-        if (Position + length >= _span.Length)
+        if (Position + length > _span.Length)
             return null;
 
         var result = _span.Slice(Position, length).ToArray();
@@ -229,7 +229,7 @@ public ref struct SpanReader
 
     public int ReadBytes(Span<byte> span, int start, int length)
     {
-        if (Position + start + length >= _span.Length)
+        if (Position + start + length > _span.Length)
             return -1;
 
         _span.Slice(Position + start, length).CopyTo(span);
@@ -390,7 +390,7 @@ public ref struct SpanReader
         if (size == 0)
             return string.Empty;
 
-        if (Position + size >= _span.Length)
+        if (Position + size > _span.Length)
             return null;
 
         var result = decoder.GetString(_span.Slice(Position, size));

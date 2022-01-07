@@ -96,7 +96,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             foreach (var frame in frames) {
                 if (false) {
                     Log.LogInformation(
-                        "Send the frame data to js side (bytes: {FrameBytes}, offset sec: {FrameOffset}, duration sec: {FrameDuration})",
+                        "Send the frame data to js side ({FrameLength} bytes, offset={FrameOffset}s, duration={FrameDuration}s)",
                          frame.Data.Length,
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
@@ -127,11 +127,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         if (_prevMediaElementReadyState != readyState) {
             _prevMediaElementReadyState = readyState;
             Log.LogInformation(
-                "Playing offset~: {PlayingOffset} OnChangeReadiness(isBufferReady: {BufferReadiness}, offset: {Offset}, readyState: {MediaElementReadyState})",
-                _offset,
-                isBufferReady,
-                offset,
-                ToMediaElementReadyState(readyState)
+                "Playing offset={PlayingOffset}s OnChangeReadiness(isBufferReady={BufferReadiness}, offset={Offset}s, readyState={MediaElementReadyState})",
+                _offset, isBufferReady, offset, ToMediaElementReadyState(readyState)
             );
             StateHasChanged();
         }
@@ -153,10 +150,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public async Task OnPlaybackEnded(int? errorCode, string? errorMessage)
     {
         Log.LogInformation(
-            "OnPlaybackEnded(errorCode: {ErrorCode}, errorMessage: {ErrorMessage})",
-            errorCode,
-            errorMessage
-        );
+            "OnPlaybackEnded(errorCode={ErrorCode}, errorMessage={ErrorMessage})",
+            errorCode, errorMessage);
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
             await _registration.DisposeAsync().ConfigureAwait(true);
@@ -167,7 +162,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public Task OnPlaybackTimeChanged(double? offset)
     {
         if (false) {
-            Log.LogInformation("OnPlaybackTimeChanged(offset: {Offset})", offset);
+            Log.LogInformation("OnPlaybackTimeChanged(offset={Offset}s)", offset);
         }
         _offset = offset ?? 0d;
         StateHasChanged();

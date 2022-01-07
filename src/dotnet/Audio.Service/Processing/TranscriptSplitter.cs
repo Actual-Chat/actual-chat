@@ -30,9 +30,9 @@ public class TranscriptSplitter : TranscriptionProcessorBase
 
                 if (transcript.TextRange.End <= lastSentTranscript.TextRange.End || !lastSentTranscript.IsStable) {
                     // transcript is shorter than lastSentTranscript
-                    var suffix = transcript.GetSuffix(segment!.Prefix.Length);
+                    var suffix = transcript.GetSuffix(segment!.Prefix.TextRange.End);
                     DebugLog?.LogDebug("| {Suffix} (unstable)", suffix);
-                    segment!.Suffixes.Writer.TryWrite(suffix);
+                    segment.Suffixes.Writer.TryWrite(suffix);
                     lastSentTranscript = transcript;
                 }
                 else {

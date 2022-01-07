@@ -66,7 +66,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
      * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
      * should be in sync with audio-feeder bufferSize
      */
-    private readonly _bufferEnoughThreshold = 0.60;
+    private readonly _bufferEnoughThreshold = 0.1;
     /** How many milliseconds can we block the main thread for processing */
     private readonly _processingThresholdMs = 10;
     /** How often send offset update event to the blazor, in milliseconds */
@@ -87,7 +87,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     private audioContext: AudioContext;
     private feederNode?: FeederAudioWorkletNode = null;
     private _queue: OperationQueue;
-    private _nextProcessingTickTimer: number | null;
     private _isProcessing: boolean;
     private _isAppending: boolean;
     private _isPlaying: boolean;
@@ -102,11 +101,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
-            this._debugAppendAudioCalls = debugMode && false;
+            this._debugAppendAudioCalls = debugMode && true;
             this._debugOperations = debugMode && false;
             this._debugDecoder = debugMode && false;
-            this._debugFeeder = debugMode && false;
-            this._debugFeederStats = this._debugFeeder && false;
+            this._debugFeeder = debugMode && true;
+            this._debugFeederStats = this._debugFeeder && true;
         }
         else {
             this._debugMode = debugOverride.debugMode;
@@ -127,7 +126,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         this.decoder = null;
         this._unblockQueue = null;
         this._queue = new OperationQueue(this._debugOperations);
-        this._nextProcessingTickTimer = null;
         this._demuxerReady = AudioContextAudioPlayer.createDemuxer()
             .then(demuxer => new Promise<Demuxer>(resolve => demuxer.init(() => {
                 this.demuxer = demuxer;
@@ -195,21 +193,23 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 await this.processPacket(byteArray, -1);
 
                 if (this._debugMode)
-                    this.log(`initialize: done. found codec: ${this.demuxer.audioCodec}`);
+                    this.log(`initialize: done, found codec: ${this.demuxer.audioCodec}`);
             },
             onSuccess: () => {
                 if (this.onInitialized !== null)
                     this.onInitialized();
                 if (this._debugOperations)
-                    this.log("end of initialize operation");
+                    this.log("initialize: success");
             },
             onStart: () => {
                 if (this._debugOperations)
-                    this.log("Start initialize operation");
+                    this.log("initialize: start");
             },
             onError: error => { this.logError(`initialize: error ${error} ${error.stack}`); }
         };
         this._queue.append(operation);
+
+        const _ = this.onProcessingTick();
     }
 
     private get _isMetadataLoaded(): boolean {
@@ -225,12 +225,12 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
         if (this._isAppending) {
-            this.logError("Append called in wrong order");
+            this.logError("appendAudio: called in a wrong order");
         }
         this._isAppending = true;
         try {
             if (!this.isInitializeOperationAppended) {
-                const _ = this.enqueueInitializeOperation(byteArray);
+                this.enqueueInitializeOperation(byteArray);
                 this.isInitializeOperationAppended = true;
                 return Promise.resolve();
             }
@@ -239,15 +239,16 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                 execute: () => this.processPacket(byteArray, offset),
                 onSuccess: () => {
                     if (this._debugOperations && this._debugAppendAudioCalls)
-                        this.log(`End appendAudio operation #${operationSequenceNumber}`);
+                        this.log(`appendAudio #${operationSequenceNumber}: success`);
                 },
                 onStart: () => {
                     if (this._debugOperations && this._debugAppendAudioCalls)
-                        this.log(`Start appendAudio operation #${operationSequenceNumber}`);
+                        this.log(`appendAudio #${operationSequenceNumber}: start`);
                 },
                 onError: _ => { }
             };
             this._queue.append(operation);
+
             const _ = this.onProcessingTick();
         }
         finally {
@@ -269,15 +270,11 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
 
     private onProcessingTick = async () => {
         if (this._isProcessing) {
-            this._nextProcessingTickTimer = self.setTimeout(this.onProcessingTick, 5);
             return;
         }
+
         this._isProcessing = true;
         try {
-            if (this._nextProcessingTickTimer !== null) {
-                clearTimeout(this._nextProcessingTickTimer);
-                this._nextProcessingTickTimer = null;
-            }
             let start = new Date().getTime();
             let hasMore: boolean = await this._queue.executeNext();
             const threshold = this._processingThresholdMs;
@@ -311,16 +308,16 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             },
             onSuccess: () => {
                 if (this._debugOperations)
-                    this.log("End endOfStream operation");
+                    this.log("endOfStream: success");
             },
             onStart: () => {
                 if (this._debugOperations)
-                    this.log("Start endOfStream operation");
+                    this.log("endOfStream: start");
             },
             onError: _ => { }
         });
-        const _ = this.onProcessingTick();
 
+        const _ = this.onProcessingTick();
     }
 
     public stop(error: EndOfStreamError | null = null) {
@@ -344,7 +341,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             },
             onSuccess: () => {
                 if (this._debugMode)
-                    this.log("Aborted.");
+                    this.log("abort: success");
             },
             onStart: () => { },
             onError: error => {
@@ -352,6 +349,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                     this.logWarn(`Can't stop playing. Error: ${error.message}, ${error.stack}`);
             }
         });
+
         const _ = this.onProcessingTick();
     }
 
@@ -441,6 +439,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                             },
                             onError: _ => { }
                         });
+
+                        const _ = this.onProcessingTick();
                     }
                 }
             }

@@ -1,7 +1,7 @@
 import { AudioRingBuffer } from "./audio-ring-buffer";
 import { VadMessage } from "../audio-vad-message";
 
-const SamplesPerWindow = 512;
+const SamplesPerWindow = 768;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private buffer: AudioRingBuffer;
@@ -28,7 +28,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private init(): void {
-        this.buffer = new AudioRingBuffer(2048, 1);
+        this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferDeque = [];
         this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
@@ -37,15 +37,13 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
-
-        // if we are disconnected from input/output (node,channel) then we can be closed
         if (inputs == null
             || inputs.length === 0
             || inputs[0].length === 0
             || outputs == null
             || outputs.length === 0
             || outputs[0].length === 0)
-            return false;
+            return true;
 
         const input = inputs[0];
         const output = outputs[0];

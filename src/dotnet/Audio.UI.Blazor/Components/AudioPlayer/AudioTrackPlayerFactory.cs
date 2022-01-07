@@ -1,6 +1,6 @@
 using ActualChat.MediaPlayback;
 
-namespace ActualChat.Audio.UI.Blazor;
+namespace ActualChat.Audio.UI.Blazor.Components;
 
 public class AudioTrackPlayerFactory : ITrackPlayerFactory
 {

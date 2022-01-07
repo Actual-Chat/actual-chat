@@ -16,6 +16,10 @@ export class OperationQueue {
         this._queue = new Denque<Operation>();
     }
 
+    public get length() {
+        return this._queue.length;
+    }
+
     public clear(): void {
         this._queue.clear();
     }
@@ -48,6 +52,7 @@ export class OperationQueue {
                 return this._queue.length > 0;
             }
         }
+        return false;
     }
 
     private log(message: string) {

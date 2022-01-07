@@ -96,7 +96,7 @@ export interface IRecordingEventQueueOptions {
     debugMode: boolean;
 }
 
-type QueueState = 'running' | 'paused';
+type QueueState = 'inactive' | 'running' | 'paused';
 
 export class RecordingEventQueue implements IRecordingEventQueue {
     private state: QueueState;
@@ -110,7 +110,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
         this.options = options;
         this.bufferOffset = 0;
         this.sendBufferTimeout = null;
-        this.state = 'paused';
+        this.state = 'inactive';
         this.lastEvents = new Denque<DataRecordingEvent>();
         this.bufferQueue = new Denque<Uint8Array>();
         this.bufferQueue.push(new Uint8Array(1024));
@@ -144,7 +144,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
             case RecordingEventType.Data:
                 if (this.state === "paused") {
                     const queueLength = this.lastEvents.push(event as DataRecordingEvent);
-                    if (queueLength > 10) {
+                    if (queueLength > 20) {
                         this.lastEvents.shift();
                     }
                     return;
@@ -156,7 +156,7 @@ export class RecordingEventQueue implements IRecordingEventQueue {
             this.appendInternal(event, this.lastEvents.length == 0);
 
             if (this.lastEvents.length) {
-                while (this.lastEvents.length > 3) { // keep 3 last events on resume
+                while (this.lastEvents.length > 2) { // keep 2 last events on resume
                     this.lastEvents.shift();
                 }
                 while (this.lastEvents.length > 1) {
@@ -185,13 +185,16 @@ export class RecordingEventQueue implements IRecordingEventQueue {
     }
 
     public async flushAsync(): Promise<void> {
+        const origState = this.state;
+        this.state = 'inactive';
+
         if (this.options.debugMode) {
             this.log(`flushAsync is called`);
         }
 
         this.lastEvents.clear();
 
-        if (this.state == 'running') {
+        if (origState == 'running') {
             await this.sendTopmostBuffer();
         }
         else {

@@ -5,8 +5,8 @@ public class ChatPlayers : IAsyncDisposable
 {
     private ILogger? _log;
 
-    private Dictionary<Symbol, ChatPlayer> RealtimePlayers { get; } = new();
-    private Dictionary<Symbol, ChatPlayer> HistoricalPlayers { get; } = new();
+    private Dictionary<Symbol, RealtimeChatPlayer> RealtimePlayers { get; } = new();
+    private Dictionary<Symbol, HistoricalChatPlayer> HistoricalPlayers { get; } = new();
 
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private IServiceProvider Services { get; }
@@ -22,7 +22,8 @@ public class ChatPlayers : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        var players = RealtimePlayers.Values.Concat(HistoricalPlayers.Values).ToList();
+        var players = RealtimePlayers.Values.Cast<ChatPlayer>()
+            .Concat(HistoricalPlayers.Values).ToList();
         RealtimePlayers.Clear();
         HistoricalPlayers.Clear();
         foreach (var player in players.OrderBy(p => p.ChatId)) {
@@ -35,15 +36,14 @@ public class ChatPlayers : IAsyncDisposable
         }
     }
 
-    public ValueTask<ChatPlayer> GetRealtimePlayer(
+    public ValueTask<RealtimeChatPlayer> GetRealtimePlayer(
         Symbol chatId, CancellationToken cancellationToken = default)
     {
         var player = RealtimePlayers.GetValueOrDefault(chatId);
         if (player is { IsDisposeStarted: false })
             return ValueTask.FromResult(player);
 
-        player = new ChatPlayer(Services) {
-            IsRealTimePlayer = true,
+        player = new RealtimeChatPlayer(Services) {
             ChatId = chatId,
             Session = Session,
         };
@@ -51,15 +51,14 @@ public class ChatPlayers : IAsyncDisposable
         return ValueTask.FromResult(player);
     }
 
-    public ValueTask<ChatPlayer> GetHistoricalPlayer(
+    public ValueTask<HistoricalChatPlayer> GetHistoricalPlayer(
         Symbol chatId, CancellationToken cancellationToken = default)
     {
         var player = HistoricalPlayers.GetValueOrDefault(chatId);
         if (player is { IsDisposeStarted: false })
             return ValueTask.FromResult(player);
 
-        player = new ChatPlayer(Services) {
-            IsRealTimePlayer = false,
+        player = new HistoricalChatPlayer(Services) {
             ChatId = chatId,
             Session = Session,
         };
@@ -69,11 +68,11 @@ public class ChatPlayers : IAsyncDisposable
 
     public async ValueTask DisposePlayers(string chatId)
     {
-        var player = RealtimePlayers.GetValueOrDefault(chatId);
-        if (player != null)
-            await player.DisposeAsync().ConfigureAwait(false);
-        player = HistoricalPlayers.GetValueOrDefault(chatId);
-        if (player != null)
-            await player.DisposeAsync().ConfigureAwait(false);
+        var chatPlayer = (ChatPlayer?) RealtimePlayers.GetValueOrDefault(chatId);
+        if (chatPlayer != null)
+            await chatPlayer.DisposeAsync().ConfigureAwait(false);
+        chatPlayer = HistoricalPlayers.GetValueOrDefault(chatId);
+        if (chatPlayer != null)
+            await chatPlayer.DisposeAsync().ConfigureAwait(false);
     }
 }

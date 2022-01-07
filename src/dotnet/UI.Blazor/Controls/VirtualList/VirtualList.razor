@@ -3,7 +3,7 @@
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
     LastPlan = Plan;
-    // Log.LogInformation("Rendering: RenderIndex = {RenderIndex}", Plan.RenderIndex);
+    // Log.LogInformation("Rendering: RenderIndex={RenderIndex}", Plan.RenderIndex);
     // Log.LogInformation("Rendering: {Plan}", JsonFormatter.Format(Plan));
     var flexBase = "flex flex-nowrap items-stretch";
     var flexDir = Plan.IsEndAligned ? "flex-col-reverse" : "flex-col";

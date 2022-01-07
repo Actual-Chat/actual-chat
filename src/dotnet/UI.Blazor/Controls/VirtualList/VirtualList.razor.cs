@@ -143,7 +143,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         VirtualListData<TItem> response;
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
-            DebugLog?.LogDebug("ComputeState: {Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
+            DebugLog?.LogDebug("ComputeState: query={Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
                 query,
                 response.Items.FirstOrDefault().Key,
                 response.Items.LastOrDefault().Key,
@@ -207,7 +207,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
         var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
-        DebugLog?.LogDebug("GetDataQuery: startGap: {StartGap}, endGap: {EndGap}", startGap, endGap);
+        DebugLog?.LogDebug("GetDataQuery: startGap={StartGap}, endGap={EndGap}", startGap, endGap);
 
         var expectedStartExpansion = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxExpectedExpansion);
         var expectedEndExpansion = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxExpectedExpansion);
@@ -224,7 +224,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         };
 
         DebugLog?.LogDebug(
-            "GetDataQuery: itemSize: {ItemSize}, responseFulfillmentRatio = {ResponseFulfillmentRatio}, query = {Query}",
+            "GetDataQuery: itemSize={ItemSize}, responseFulfillmentRatio={ResponseFulfillmentRatio}, query={Query}",
             itemSize, responseFulfillmentRatio, query);
         return query;
     }

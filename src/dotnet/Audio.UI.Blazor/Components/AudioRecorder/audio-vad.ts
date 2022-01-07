@@ -1,5 +1,4 @@
 import * as ort from 'onnxruntime-web';
-import { dma } from 'moving-averages';
 import { ExponentialMovingAverage } from './streamed-moving-average';
 import wasmPath from 'onnxruntime-web/dist/ort-wasm.wasm';
 import wasmThreadedPath from 'onnxruntime-web/dist/ort-wasm-threaded.wasm';
@@ -34,6 +33,7 @@ export class VoiceActivityDetector {
     private readonly modelUri: URL;
     private readonly movingAverages: ExponentialMovingAverage;
     private readonly streamedMedian: StreamedMedian;
+    private initPromise: Promise<void>;
 
     private session: ort.InferenceSession = null;
     private sampleCount: number = 0;
@@ -65,18 +65,14 @@ export class VoiceActivityDetector {
             'ort-wasm-simd.wasm': wasmSimdPath,
             'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
         };
+
+        this.initPromise = this.init();
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged> {
         const { movingAverages, streamedMedian, h0, c0 } = this;
-
-        if (this.session === null) {
-            this.session = await ort.InferenceSession.create(this.modelUri.toString(), {
-                enableCpuMemArena: false,
-                executionMode: 'parallel',
-                graphOptimizationLevel: 'basic',
-                executionProviders: ['wasm']
-            });
+        if (this.session == null) {
+            await this.initPromise;
         }
 
         if (monoPcm.length !== SamplesPerWindow) {
@@ -90,7 +86,7 @@ export class VoiceActivityDetector {
         this.h0 = hn;
         this.c0 = cn;
 
-        const minSilenceSamples = 32000;
+        const minSilenceSamples = 64000;
         const minSpeechSamples = 8000;
         const padSamples = 512;
 
@@ -107,7 +103,6 @@ export class VoiceActivityDetector {
             const probMedian = streamedMedian.median;
             trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
             negTrigSum = 0.3 * probMedian;
-
         }
 
         if (smoothedProb >= trigSum && this.endOffset > 0) {
@@ -151,6 +146,20 @@ export class VoiceActivityDetector {
         this.lastActivityEvent = currentEvent;
         return currentEvent;
     }
+
+    public async init(): Promise<void> {
+        let session = this.session;
+        if (session === null) {
+            session = await ort.InferenceSession.create(this.modelUri.toString(), {
+                enableCpuMemArena: false,
+                executionMode: 'parallel',
+                graphOptimizationLevel: 'basic',
+                executionProviders: ['wasm']
+            });
+        }
+        this.session = session;
+    }
+
 }
 
 class StreamedMedian {

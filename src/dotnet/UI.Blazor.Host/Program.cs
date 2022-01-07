@@ -48,6 +48,7 @@ public static class Program
             .AddFilter("ActualChat", LogLevel.Debug)
             .AddFilter("ActualChat.Audio", LogLevel.Debug)
             .AddFilter("ActualChat.Audio.UI.Blazor", LogLevel.Debug)
+            .AddFilter("ActualChat.Audio.UI.Blazor.Components", LogLevel.Debug)
             .AddFilter("ActualChat.Chat", LogLevel.Debug)
             .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
             .AddFilter("ActualChat.Audio.Client", LogLevel.Debug)
@@ -55,7 +56,7 @@ public static class Program
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
-        services.AddSingleton(c => new HostInfo {
+        services.AddSingleton(c => new HostInfo() {
             HostKind = HostKind.Blazor,
             RequiredServiceScopes = ImmutableHashSet<Symbol>.Empty
                 .Add(ServiceScope.Client)

@@ -4,104 +4,155 @@ namespace ActualChat.Audio.Processing;
 
 public sealed class AudioSplitter : AudioProcessorBase
 {
-    public AudioSplitter(IServiceProvider services) : base(services) { }
+    private static readonly TimeSpan MaxSegmentProcessingDuration = TimeSpan.FromMinutes(3.5);
+    private static readonly TimeSpan SegmentCancellationDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan AudibleDurationWaitDelay = TimeSpan.FromSeconds(1);
+    private ILogger OpenAudioSegmentLog { get; }
+    private ILogger AudioSourceLog { get; }
+
+    public AudioSplitter(IServiceProvider services) : base(services)
+    {
+        OpenAudioSegmentLog = Services.LogFor<OpenAudioSegment>();
+        AudioSourceLog = Services.LogFor<AudioSource>();
+    }
 
     public IAsyncEnumerable<OpenAudioSegment> GetSegments(
         AudioRecord audioRecord,
         IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken)
     {
-        var openSegmentChannel =
-            Channel.CreateUnbounded<OpenAudioSegment>(new UnboundedChannelOptions { SingleWriter = true });
+        var openSegments = Channel.CreateUnbounded<OpenAudioSegment>(new UnboundedChannelOptions {
+            SingleWriter = true,
+            SingleReader = true,
+        });
 
         _ = BackgroundTask.Run(
-            () => WriteSegments(audioRecord, recordingStream, openSegmentChannel, cancellationToken),
+            () => WriteSegments(audioRecord, recordingStream, openSegments, cancellationToken),
             Log, $"{nameof(GetSegments)} failed.", CancellationToken.None);
 
-        return openSegmentChannel.Reader.ReadAllAsync(cancellationToken);
+        return openSegments.Reader.ReadAllAsync(cancellationToken);
     }
 
     private async Task WriteSegments(
         AudioRecord audioRecord,
         IAsyncEnumerable<RecordingPart> recordingStream,
-        ChannelWriter<OpenAudioSegment> writer,
+        ChannelWriter<OpenAudioSegment> segments,
         CancellationToken cancellationToken)
     {
-        Exception? error = null;
-        var firstSegmentFormatSource = new TaskCompletionSource<AudioFormat>();
-        var audioLog = Services.LogFor<AudioSource>();
-        var index = 0;
-        var channel = Channel.CreateUnbounded<byte[]>(
-            new UnboundedChannelOptions{ SingleWriter = true, SingleReader = true }
-        );
+        var totalDuration = TimeSpan.Zero;
+        var segmentIndex = 0;
+        var (segment, channel) = await NewAudioSegment(segmentIndex++).ConfigureAwait(false);
+        var firstSegment = segment;
+        var formatChunk = (byte[]?) null;
         try {
-            var currentSegment = await NewAudioSegment(index, channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
-            var lastStartOffset = TimeSpan.FromSeconds(0);
-
             await foreach (var recordingPart in recordingStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 switch (recordingPart.EventKind) {
-                    case RecordingEventKind.Pause:
-                        if (recordingPart.Offset is {} offset1)
-                            currentSegment.SetAudibleDuration(offset1 - lastStartOffset);
-                        channel.Writer.Complete();
-                        continue;
-                    case RecordingEventKind.Resume:
-                        if (index > 0) {
-                            channel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions
-                                { SingleWriter = true, SingleReader = true });
-                            var format = await firstSegmentFormatSource.Task.ConfigureAwait(false);
-                            var formatChunk = Convert.FromBase64String(format.CodecSettings);
-                            await channel.Writer.WriteAsync(formatChunk, cancellationToken).ConfigureAwait(false);
-                            currentSegment = await NewAudioSegment(index, channel.Reader.ReadAllAsync(cancellationToken)).ConfigureAwait(false);
-                        }
-                        currentSegment.SetRecordedAt(recordingPart.RecordedAt);
-                        lastStartOffset = recordingPart.Offset.GetValueOrDefault();
-                        index++;
-                        continue;
-                    default:
-                        if (recordingPart.Data == null)
-                            audioLog.LogWarning("WriteSegments: empty recording data");
-                        else
-                            await channel.Writer.WriteAsync(recordingPart.Data, cancellationToken)
-                                .ConfigureAwait(false);
+                case RecordingEventKind.Pause:
+                    if (segment == null) {
+                        Log.LogWarning("WriteSegments: duplicate Pause event");
                         break;
+                    }
+                    if (recordingPart.Offset is {} audibleDuration)
+                        segment.SetAudibleDuration(audibleDuration - totalDuration);
+                    channel.Complete();
+                    var duration = await segment.Audio.GetDurationTask().ConfigureAwait(false);
+                    if (!segment.AudibleDurationTask.IsCompleted)
+                        segment.SetAudibleDuration(duration);
+                    segment = null;
+                    totalDuration += duration;
+                    break;
+                case RecordingEventKind.Resume:
+                    if (segment == null)
+                        (segment, channel) = await NewAudioSegment(segmentIndex++).ConfigureAwait(false);
+                    if (segment != firstSegment) {
+                        // We need to "prepend" the data with formatChunk in this case,
+                        // since the audio stream contains just a single copy of it
+                        // (in the very beginning)
+                        if (formatChunk == null) {
+                            var format = await firstSegment.Audio.GetFormatTask().ConfigureAwait(false);
+                            formatChunk = Convert.FromBase64String(format.CodecSettings);
+                        }
+                        await channel.WriteAsync(formatChunk, cancellationToken).ConfigureAwait(false);
+                    }
+                    segment.SetRecordedAt(recordingPart.RecordedAt);
+                    if (recordingPart.Offset is {} segmentOffset)
+                        totalDuration = segmentOffset;
+                    break;
+                case RecordingEventKind.Data:
+                    if (segment == null) {
+                        Log.LogWarning("WriteSegments: missing Resume event");
+                        break;
+                    }
+                    if (recordingPart.Data == null || recordingPart.Data.Length == 0) {
+                        Log.LogWarning("WriteSegments: empty recording data");
+                        break;
+                    }
+                    await channel.WriteAsync(recordingPart.Data, cancellationToken).ConfigureAwait(false);
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported {nameof(RecordingEventKind)}.");
                 }
             }
         }
-        catch (Exception e) {
-            error = e;
-        }
         finally {
-            channel.Writer.TryComplete(error);
-            writer.TryComplete(error);
+            segments.TryComplete();
+            if (segment != null) {
+                channel.TryComplete();
+                try {
+                    var duration = await segment.Audio.GetDurationTask().ConfigureAwait(false);
+                    if (!segment.AudibleDurationTask.IsCompleted)
+                        segment.SetAudibleDuration(duration);
+                }
+                catch {
+                    // Intended
+                }
+            }
         }
 
-        async ValueTask<OpenAudioSegment> NewAudioSegment(int segmentIndex, IAsyncEnumerable<byte[]> segmentRecordingStream)
+        async ValueTask<(OpenAudioSegment Segment, ChannelWriter<byte[]> Channel)> NewAudioSegment(int segmentIndex1)
         {
-            var audio = new AudioSource(segmentRecordingStream, TimeSpan.Zero, audioLog, cancellationToken);
-            var openAudioSegment = new OpenAudioSegment(segmentIndex, audioRecord, audio);
+            var linkedCts = new LinkedTimeoutTokenSource(cancellationToken,
+                MaxSegmentProcessingDuration,
+                SegmentCancellationDelay);
+            var linkedToken = linkedCts.Token;
+
+            var newChannel = Channel.CreateUnbounded<byte[]>(
+                new UnboundedChannelOptions{
+                    SingleReader = true,
+                    SingleWriter = true,
+                }
+            );
+            var newChannelByteStream = newChannel.Reader.ReadAllAsync(linkedToken);
+            var audio = new AudioSource(newChannelByteStream, TimeSpan.Zero, AudioSourceLog, linkedToken);
+            var newSegment = new OpenAudioSegment(segmentIndex1, audioRecord, audio, OpenAudioSegmentLog);
+
             _ = BackgroundTask.Run(async () => {
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(3.5));
-                using var linkedCts = timeoutCts.Token.LinkWith(cancellationToken);
-                var linkedToken = linkedCts.Token;
                 try {
                     await audio.WhenFormatAvailable.WithFakeCancellation(linkedToken).ConfigureAwait(false);
-                    if (!firstSegmentFormatSource.Task.IsCompleted)
-                        firstSegmentFormatSource.SetResult(audio.Format);
-
                     await audio.WhenDurationAvailable.WithFakeCancellation(linkedToken).ConfigureAwait(false);
-                    await openAudioSegment.AudibleDurationTask
-                        .WithTimeout(TimeSpan.FromSeconds(5), linkedToken)
+                    // We don't want to wait for too long here to finalize the entry,
+                    // + it should actually come almost instantly
+                    await newSegment.AudibleDurationTask
+                        .WithTimeout(AudibleDurationWaitDelay, linkedToken)
                         .ConfigureAwait(false);
-                    openAudioSegment.Close(audio.Duration);
+                    newSegment.Close(audio.Duration);
                 }
                 catch (Exception e) {
-                    openAudioSegment.TryClose(e);
+                    // We're ok to close with OperationCancelledException here,
+                    // but notice that most likely this won't happen, because the
+                    // cancellation here is delayed, and the code "feeding" the
+                    // segment with the data will gracefully close it on its
+                    // own cancellation.
+                    newSegment.TryClose(e);
+                    throw;
                 }
-            }, Log, $"{nameof(NewAudioSegment)} processing failed");
+                finally {
+                    linkedCts.Dispose();
+                }
+            }, Log, $"{nameof(NewAudioSegment)} processing failed", CancellationToken.None);
 
-            await writer.WriteAsync(openAudioSegment, cancellationToken).ConfigureAwait(false);
-            return openAudioSegment;
+            await segments.WriteAsync(newSegment, cancellationToken).ConfigureAwait(false);
+            return (newSegment, newChannel);
         }
     }
 }

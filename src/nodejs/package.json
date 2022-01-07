@@ -25,10 +25,11 @@
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
+    "buffer": "^6.0.3",
     "denque": "^2.0.1",
-    "moving-averages": "^4.0.6",
     "ogv": "^1.8.4",
     "onnxruntime-web": "^1.9.0",
-    "recordrtc": "^5.6.2"
+    "readable-stream": "^3.6.0",
+    "wasm-audio-resampler": "^2.0.0"
   }
 }

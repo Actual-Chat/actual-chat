@@ -1,51 +1,26 @@
+@using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
-@{
-    var groups = new NavbarLinksGroupModel[]{
-        new("Navigation", new NavbarLinkModel[] {
-            new("Authentication", "/authentication", NavbarLinkModelStatus.None),
-        }),
-        new("Rooms", new NavbarLinkModel[] {
-            new("Chat", $"/chat/{Constants.Chat.DefaultChatId}", NavbarLinkModelStatus.None),
-        }),
-        new("Contacts", new NavbarLinkModel[] {
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Offline contact", "#", NavbarLinkModelStatus.Offline),
-            new("Online contact", "#",  NavbarLinkModelStatus.Online),
-            new("Last Offline contact", "#", NavbarLinkModelStatus.Offline),
-        }),
-    };
-}
+@inject HostInfo _hostInfo
 
-@for(int i = 0; i < groups.Length; ++i){
-    if(i != 0){
-        <NavbarLinksGroup Data="@groups[i]">
-            <Icons>
-                <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
-                </svg>
-            </Icons>
-        </NavbarLinksGroup>
-    }
-    else{
-        <NavbarLinksGroup Data="@groups[i]" />
-    }
+<NavbarGroup Title="Chats">
+    <NavbarLink Title="The Actual One" Url="@($"/chat/{Constants.Chat.DefaultChatId}")" />
+</NavbarGroup>
+<NavbarGroup Title="Contacts">
+    <Icons>
+        <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+            <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+        </svg>
+    </Icons>
+    <ChildContent>
+        <NavbarLink Title="Elon Musk" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Satoshi Nakamoto" Url="#" IsOnline="false"/>
+    </ChildContent>
+</NavbarGroup>
+@if (_hostInfo.IsDevelopmentInstance) {
+    <NavbarGroup Title="Test pages">
+        <NavbarLink Title="Virtual List" Url="/test/virtual-list" />
+        <NavbarLink Title="Audio Player" Url="/test/audio-player" />
+        <NavbarLink Title="Audio Recorder" Url="/test/audio-recorder" />
+        <NavbarLink Title="Authentication" Url="/test/auth" />
+    </NavbarGroup>
 }
-

@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="flex flex-col space-y-2 my-3">
+    <div class="flex justify-between items-center">
+        <div class="text-secondary-muted text-sm uppercase font-medium">@Title</div>
+        @Icons
+    </div>
+    @ChildContent
+</div>
+
+
+@code{
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? Icons { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

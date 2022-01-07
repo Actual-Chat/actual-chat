@@ -4,17 +4,19 @@ namespace ActualChat.MediaPlayback;
 
 public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 {
-    private const int FrameDebugInfoPerEvery = 10;
-    private const double MaxRealtimeDelay = 5d;
+    private static readonly TimeSpan MaxReportedDelay = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(1);
 
     private volatile TrackPlaybackState _state;
     private readonly TaskSource<Unit> _whenCompletedSource;
-    private int _onPlayedToCallIndex;
+    private Moment _playbackDelayReportTime;
+    private Moment _playedToDelayReportTime;
     private ILogger? _log;
 
     protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected bool DebugMode => Constants.DebugMode.AudioPlayback;
+    protected readonly TimeSpan DelayReportPeriod = TimeSpan.FromSeconds(2);
     protected MomentClockSet Clocks { get; }
 
     public IServiceProvider Services { get; }
@@ -48,33 +50,34 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var delay = GetRealtimeDelay(0, TimeSpan.Zero);
-        DebugLog?.LogDebug("Track #{TrackId}{Delay}: started, Command = {Command}", Command.TrackId, delay, Command);
+        Log.LogInformation("Track #{TrackId}: started, Command={Command}, delay={Delay}",
+            Command.TrackId, Command, GetDelayInfo(TimeSpan.Zero));
         Exception? error = null;
         var isStarted = false;
         try {
             // Actual playback
+            var cpuClock = Clocks.CpuClock;
             var frames = Source.GetFramesUntyped(cancellationToken);
-            var frameIndex = 0;
             await foreach (var frame in frames.ConfigureAwait(false)) {
                 if (!isStarted) {
-                    delay = GetRealtimeDelay(0, TimeSpan.Zero);
-                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: first frame", Command.TrackId, delay);
                     // We do this here because we want to start buffering as early as possible
                     isStarted = true;
-                    await Clocks.CpuClock.Delay(Command.PlayAt, cancellationToken).ConfigureAwait(false);
+                    var playbackDelay = Command.PlayAt - cpuClock.Now;
+                    if (playbackDelay > TimeSpan.FromMilliseconds(10))
+                        await cpuClock.Delay(playbackDelay, cancellationToken).ConfigureAwait(false);
                     OnPlayedTo(TimeSpan.Zero);
-                    delay = GetRealtimeDelay(0, TimeSpan.Zero);
-                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: StartPlaybackCommand", Command.TrackId, delay);
-                    await ProcessCommand(new StartPlaybackCommand(this)).ConfigureAwait(false);
+                    var startPlaybackTask = ProcessCommand(new StartPlaybackCommand(this));
+                    Log.LogInformation("Track #{TrackId}: StartPlaybackCommand, delay={Delay}",
+                        Command.TrackId, GetDelayInfo(TimeSpan.Zero));
+                    await startPlaybackTask.ConfigureAwait(false);
                 }
-                delay = GetRealtimeDelay(frameIndex, frame.Offset);
-                if (delay.Length != 0)
-                    DebugLog?.LogDebug("Track #{TrackId}{Delay}: ProcessMediaFrame", Command.TrackId, delay);
-                await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
-                frameIndex++;
+                var processMediaFrameTask = ProcessMediaFrame(frame, cancellationToken);
+                GetDelayReportLog(ref _playbackDelayReportTime)
+                    ?.LogInformation("Track #{TrackId}: ProcessMediaFrame, delay={Delay}",
+                        Command.TrackId, GetDelayInfo(frame.Offset));
+                await processMediaFrameTask.ConfigureAwait(false);
             }
-            DebugLog?.LogDebug("Track #{TrackId}: StopPlaybackCommand", Command.TrackId);
+            Log.LogInformation("Track #{TrackId}: StopPlaybackCommand", Command.TrackId);
             await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
             await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
@@ -92,13 +95,14 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
                 var immediately = cancellationToken.IsCancellationRequested || error != null;
                 var stopCommand = new StopPlaybackCommand(this, immediately);
                 try {
-                    await ProcessCommand(stopCommand).AsTask()
-                        .WithTimeout(TimeSpan.FromSeconds(3), default)
-                        .ConfigureAwait(false);
-                    OnStopped();
+                    await ProcessCommand(stopCommand).AsTask().WithTimeout(StopTimeout, default).ConfigureAwait(false);
+                    await WhenCompleted.WithTimeout(StopTimeout, default).ConfigureAwait(false);
+                    if (!WhenCompleted.IsCompleted)
+                        OnStopped();
                 }
                 catch (Exception e) {
-                    OnStopped(e);
+                    if (!WhenCompleted.IsCompleted)
+                        OnStopped(e);
                 }
             }
             // AY: It's a self-disposing thing
@@ -130,13 +134,14 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected virtual void OnPlayedTo(TimeSpan offset)
     {
-        UpdateState(offset, (o, s) => {
-            var delay = GetRealtimeDelay(_onPlayedToCallIndex++, offset);
-            if (delay.Length != 0)
-                DebugLog?.LogDebug("Track #{TrackId}{Delay}: OnPlayedTo({Offset})", Command.TrackId, delay, offset);
+        UpdateState((offset, this), static (arg, s) => {
+            var (offset1, self) = arg;
+            self.GetDelayReportLog(ref self._playedToDelayReportTime)
+                ?.LogInformation("Track #{TrackId}: OnPlayedTo({Offset}), delay={Delay}",
+                    self.Command.TrackId, offset1, self.GetDelayInfo(offset1));
             return s with {
                 IsStarted = true,
-                PlayingAt = TimeSpanExt.Max(s.PlayingAt, s.Command.SkipTo + o),
+                PlayingAt = TimeSpanExt.Max(s.PlayingAt, offset1),
             };
         });
     }
@@ -147,15 +152,29 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     protected virtual void OnVolumeSet(double volume)
         => UpdateState(volume, (v, s) => s with { Volume = v });
 
-    protected virtual string GetRealtimeDelay(int frameIndex, TimeSpan frameOffset)
+
+    // Delay reporting
+
+    protected ILogger? GetDelayReportLog(ref Moment delayReportTime)
     {
-        if (DebugLog == null || frameIndex % FrameDebugInfoPerEvery != 0)
-            return "";
-        var recordingTime = Command.RecordingStartedAt + Command.SkipTo + frameOffset;
+        var now = Clocks.CpuClock.Now;
+        if (now - delayReportTime < DelayReportPeriod)
+            return null;
+        delayReportTime = now;
+        return Log;
+    }
+
+    protected string GetDelayInfo(TimeSpan frameOffset)
+    {
+        var recordedAt =  Command.TrackInfo.RecordedAt + frameOffset;
+        var clientSideRecordedAt =  Command.TrackInfo.ClientSideRecordedAt + frameOffset;
         var now = Clocks.SystemClock.Now;
-        var realtimeDelay = (now - recordingTime).TotalSeconds;
-        if (realtimeDelay > MaxRealtimeDelay)
-            return "";
-        return $" frame #{frameIndex} delay={realtimeDelay * 1000:N1}ms (skipTo={Command.SkipTo.TotalSeconds:N}s, offset={frameOffset.TotalSeconds:N}s)";
+        var delay = now - recordedAt;
+        if (delay > MaxReportedDelay)
+            return "n/a";
+        if (clientSideRecordedAt == recordedAt)
+            return $"{delay.TotalMilliseconds:N1}ms @ {frameOffset.TotalSeconds:N}s";
+        var clientSideDelay = now - clientSideRecordedAt;
+        return $"{delay.TotalMilliseconds:N1}ms / {clientSideDelay.TotalMilliseconds:N1}ms @ {frameOffset.TotalSeconds:N}s";
     }
 }

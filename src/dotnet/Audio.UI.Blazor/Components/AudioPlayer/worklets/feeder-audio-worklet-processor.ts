@@ -13,7 +13,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
      */
     private readonly samplesLowThreshold: number = 480_000;
     private chunkOffset: number = 0;
-    private playStartTime: number = 0;
+    private firstProcessTime: number = 0;
     private lastProcessTime: number = 0;
     private isPlaying: boolean = false;
     private isStarving: boolean = false;
@@ -34,7 +34,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         }
         return result;
     }
-
 
     public process(
         _inputs: Float32Array[][],
@@ -60,9 +59,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             channel.fill(0);
             return true;
         }
-        if (this.playStartTime === 0) {
-            this.playStartTime = new Date().getTime();
-            this.lastProcessTime = this.playStartTime;
+        if (this.firstProcessTime === 0) {
+            this.firstProcessTime = new Date().getTime();
+            this.lastProcessTime = this.firstProcessTime;
         }
         for (let offset = 0; offset < channel.length;) {
             const chunk = chunks.peekFront();
@@ -125,23 +124,20 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
         const msg = ev.data;
         switch (msg.type) {
-            case 'data': {
-                this.onDataMessage(msg as DataNodeMessage);
-                break;
-            }
-            case 'clear': {
-                this.onClearMessage();
-                break;
-            }
-            case 'getState': {
-                this.onGetState(msg as GetStateNodeMessage);
-            }
-            case 'changeState': {
-                this.onChangeStateMessage(msg as ChangeStateNodeMessage);
-                break;
-            }
-            default:
-                throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
+        case 'data':
+            this.onDataMessage(msg as DataNodeMessage);
+            break;
+        case 'clear':
+            this.onClearMessage();
+            break;
+        case 'getState':
+            this.onGetState(msg as GetStateNodeMessage);
+            break;
+        case 'changeState':
+            this.onChangeStateMessage(msg as ChangeStateNodeMessage);
+            break;
+        default:
+            throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
         }
     };
 
@@ -164,7 +160,10 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             type: 'state',
             id: message.id,
             sampleCount: this.sampleCount,
-            playbackTime: Math.max(0, this.lastProcessTime - this.playStartTime),
+            // NOTE(AY): This is kinda hacky computation of playbackTime,
+            // we need to either account for starving periods here, or
+            // just skip them during the playback
+            playbackTime: Math.max(0, this.lastProcessTime - this.firstProcessTime),
         };
         if (debug)
             console.debug("Feeder processor: get state", msg);
@@ -187,7 +186,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         else if (!this.isPlaying && message.state === "play") {
             this.isStarving = true;
             this.isPlaying = true;
-            this.playStartTime = 0;
+            this.firstProcessTime = 0;
             if (debug)
                 console.debug("Feeder processor: start playing");
         }

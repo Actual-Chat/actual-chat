@@ -7,9 +7,9 @@ using Storage.NetCore.Blobs;
 
 namespace ActualChat.Blobs;
 
-public static class BlobStreamExt
+public static class ByteStreamExt
 {
-    private const int BufferSize = 128 * 1024;
+    private const int DefaultBufferSize = 1024;
     private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
     // Download
@@ -68,17 +68,28 @@ public static class BlobStreamExt
 
     public static IAsyncEnumerable<byte[]> ReadByteStream(
         this FilePath sourceFilePath,
-        int blobSize = 1024,
+        CancellationToken cancellationToken = default)
+        => sourceFilePath.ReadByteStream(DefaultBufferSize, cancellationToken);
+
+    public static IAsyncEnumerable<byte[]> ReadByteStream(
+        this FilePath sourceFilePath,
+        int bufferSize,
         CancellationToken cancellationToken = default)
     {
         var inputStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read);
-        return inputStream.ReadByteStream(true, blobSize, cancellationToken);
+        return inputStream.ReadByteStream(true, bufferSize, cancellationToken);
     }
+
+    public static IAsyncEnumerable<byte[]> ReadByteStream(
+        this Stream source,
+        bool mustDisposeSource,
+        CancellationToken cancellationToken = default)
+        => source.ReadByteStream(mustDisposeSource, DefaultBufferSize, cancellationToken);
 
     public static async IAsyncEnumerable<byte[]> ReadByteStream(
         this Stream source,
         bool mustDisposeSource,
-        int blobSize = 1024,
+        int bufferSize,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         try {
@@ -86,13 +97,13 @@ public static class BlobStreamExt
             // the low-level stream reading method in WASM is implemented
             // only for arrays:
             // - https://github.com/zwcloud/MonoWasm/blob/master/WasmHttpMessageHandler.cs#L349
-            var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
-            var memory = buffer.AsMemory();
+            var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            var memory = buffer.AsMemory(0, bufferSize);
             try {
-                var bytesRead = await source.ReadAsync(memory[..blobSize], cancellationToken).ConfigureAwait(false);
+                var bytesRead = await source.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
                 while (bytesRead != 0) {
                     yield return buffer[..bytesRead];
-                    bytesRead = await source.ReadAsync(memory[..blobSize], cancellationToken).ConfigureAwait(false);
+                    bytesRead = await source.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
                 }
             }
             finally {
