@@ -86,7 +86,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                             BlazorRef, DebugMode
                             ).ConfigureAwait(true);
-                        _ = JSRef.InvokeVoidAsync("appendAudio", Header, -1).ConfigureAwait(true);
+                        _ = JSRef.InvokeVoidAsync("init", Header).ConfigureAwait(true);
                         break;
                     case StopPlaybackCommand stop:
                         if (JSRef == null)

@@ -1,6 +1,6 @@
 /** Message that is used to communicate between the global scope and the audio worklet scope (node -> processor) */
 export interface NodeMessage {
-    type: "data" | "changeState" | "clear" | "getState";
+    type: "init-port" | "data" | "changeState" | "clear" | "getState";
 }
 
 /** Message that is used to communicate between the audio worklet scope and the global scope (processor -> node) */
@@ -30,5 +30,5 @@ export interface StateProcessorMessage extends ProcessorMessage {
 }
 
 export interface StateChangedProcessorMessage extends ProcessorMessage {
-    state: "playing" | "playingWithLowBuffer" | "starving" | "stopped";
+    state: "playing" | "playingWithLowBuffer" | "playingWithTooMuchBuffer" | "starving" | "stopped";
 }

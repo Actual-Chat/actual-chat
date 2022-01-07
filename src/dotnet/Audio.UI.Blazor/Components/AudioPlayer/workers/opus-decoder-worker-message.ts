@@ -1,5 +1,5 @@
 
-export type DecoderCommandType = 'loadDecoder' | 'init' | 'pushData' | 'getDecodedData' | 'done';
+export type DecoderCommandType = 'loadDecoder' | 'init' | 'pushData' | 'getDecodedData' | 'endOfStream' | 'stop';
 
 export interface IDecoderCommand {
     command: DecoderCommandType;
@@ -10,7 +10,8 @@ export type DecoderCommand =
     InitCommand |
     PushDataCommand |
     GetDecodedDataCommand |
-    DoneCommand;
+    EndOfStreamCommand |
+    StopCommand;
 
 export class LoadDecoderCommand implements IDecoderCommand {
     public readonly command: DecoderCommandType = 'loadDecoder';
@@ -38,8 +39,12 @@ export class GetDecodedDataCommand implements IDecoderCommand {
     public readonly command: DecoderCommandType = 'getDecodedData';
 }
 
-export class DoneCommand implements IDecoderCommand {
-    public readonly command: DecoderCommandType = 'done';
+export class EndOfStreamCommand implements IDecoderCommand {
+    public readonly command: DecoderCommandType = 'endOfStream';
+}
+
+export class StopCommand implements IDecoderCommand {
+    public readonly command: DecoderCommandType = 'stop';
 }
 
 export interface DecoderMessage {
@@ -50,11 +55,10 @@ export interface DecoderMessage {
 }
 
 export interface DecoderWorkerMessage {
-    topic: 'buffer' | 'initCompleted';
-    buffer: ArrayBuffer;
+    topic: 'readyToInit' | 'initCompleted';
 }
 
 export interface DecoderWorkletMessage {
-    topic: 'init-port' | 'buffer';
-    buffer?: ArrayBuffer;
+    topic: 'buffer';
+    buffer: ArrayBuffer;
 }
