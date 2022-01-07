@@ -32,42 +32,25 @@ worker.onmessage = async (ev: MessageEvent) => {
         case 'loadDecoder':
             workletPort = ev.ports[0];
             workletPort.onmessage = onWorkletMessage;
-
-            const demuxerPromise = createDemuxer();
-            const decoderPromise = createDecoder();
-            const [dem, dec] = await Promise.all([demuxerPromise,decoderPromise]);
-            demuxer = dem;
-            decoder = dec;
-            const readyToInitMessage: DecoderWorkerMessage = { topic: 'readyToInit' };
-            worker.postMessage(readyToInitMessage);
+            await loadDecoder();
             state = 'readyToInit';
             break;
 
-        case 'init':
-            const { header }: InitCommand = ev.data;
-            await Promise.all([initDemuxer(), initDecoder()]);
-
-            await demuxEnqueue(header);
-            while (await demuxProcess()) {
-                while (demuxer.audioPackets.length > 0) {
-                    const { packet } = await demuxDequeue();
-                    if (!isMetadataLoaded()) {
-                        await decodeHeaderProcess(packet);
-                    }
-                }
+        case 'init': {
+                const { buffer, offset, length }: InitCommand = ev.data;
+                await init(buffer, offset, length);
+                state = 'decoding';
             }
-
-            const initCompletedMessage: DecoderWorkerMessage = { topic: 'initCompleted' };
-            worker.postMessage(initCompletedMessage);
-            state = 'decoding';
             break;
 
-        case 'pushData':
-            const { buffer }: PushDataCommand = ev.data;
-            if (buffer.byteLength !== 0 && state === 'decoding') {
-                queue.push(buffer);
+        case 'pushData': {
+                const { buffer, offset, length }: PushDataCommand = ev.data;
+                if (buffer.byteLength !== 0 && state === 'decoding') {
+                    const data = buffer.slice(offset, offset + length);
+                    queue.push(data);
 
-                const _ = processQueue();
+                    const _ = processQueue();
+                }
             }
             break;
 
@@ -114,9 +97,6 @@ async function processQueue(): Promise<void> {
         }
 
         await demuxEnqueue(queueItem);
-
-        // const workerMessage: DecoderWorkerMessage = { topic: "buffer", buffer: buffer };
-        // worker.postMessage(workerMessage, [buffer]);
 
         while (await demuxProcess()) {
             while (demuxer.audioPackets.length > 0) {
@@ -166,67 +146,63 @@ async function processQueue(): Promise<void> {
                 const decoderMessage: DecoderMessage = {
                     topic: 'samples',
                     buffer: monoPcm.buffer,
-                    offset: offset,
-                    length: length,
+                    offset: offset * 4,
+                    length: length * 4,
                 };
                 workletPort.postMessage(decoderMessage, [monoPcm.buffer]);
-                // const playbackState = await this.feederNode.getState();
-                // if (this._debugFeederStats) {
-                //     this.log("Feeder stats: "
-                //         + `playbackTime: ${playbackState.playbackTime}, `
-                //         + `bufferedDuration: ${playbackState.bufferedDuration}`);
-                // }
-                // if (playbackState.bufferedDuration >= this._bufferEnoughThreshold) {
-                //     if (!this._isPlaying) {
-                //         if (this.onStartPlaying !== null)
-                //             this.onStartPlaying();
-                //         this.feederNode.play();
-                //         this._isPlaying = true;
-                //         self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);
-                //         if (this._debugFeeder) {
-                //             this.log("Feeder start playing");
-                //         }
-                //     }
-                // }
-                // we buffered enough data, tell to blazor about it and block the operation queue
-                // if (playbackState.bufferedDuration >= this._bufferTooMuchThreshold) {
-                //     await this.invokeOnChangeReadiness(false, playbackState.playbackTime, 4);
-                //     const blocker = new Promise<void>(resolve => this._unblockQueue = resolve);
-                //     this._queue.prepend({
-                //         execute: () => blocker,
-                //         onSuccess: () => {
-                //             if (this._debugOperations)
-                //                 this.logWarn("End blocking operation queue");
-                //         },
-                //         onStart: () => {
-                //             if (this._debugOperations) {
-                //                 this.logWarn("Start blocking operation queue, "
-                //                     + `bufferedDuration: ${playbackState.bufferedDuration}`);
-                //             }
-                //         },
-                //         onError: _ => {
-                //         }
-                //     });
-                //
-                //     const _ = this.onProcessingTick();
-                // }
+
             }
         }
-        // const buffers = encoder.flush();
-        // const message: DecoderM = {
-        //     command: 'encodedData',
-        //     buffers
-        // };
-        // worker.postMessage(message, buffers);
-
     } catch (error) {
         isDecoding = false;
+        console.error(error);
         throw error;
+
     } finally {
         isDecoding = false;
     }
 
     const _ = processQueue();
+}
+
+async function init(headerBuffer: ArrayBuffer, offset: number, length: number): Promise<void> {
+    try {
+        await Promise.all([initDemuxer(), initDecoder()]);
+
+        const header = headerBuffer.slice(offset, offset + length);
+        await demuxEnqueue(header);
+        while (await demuxProcess()) {
+            while (demuxer.audioPackets.length > 0) {
+                const {packet} = await demuxDequeue();
+                if (!isMetadataLoaded()) {
+                    await decodeHeaderProcess(packet);
+                }
+            }
+        }
+
+        const initCompletedMessage: DecoderWorkerMessage = {topic: 'initCompleted'};
+        worker.postMessage(initCompletedMessage);
+    }
+    catch (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
+async function loadDecoder(): Promise<void> {
+    try {
+        const demuxerPromise = createDemuxer();
+        const decoderPromise = createDecoder();
+        const [dem, dec] = await Promise.all([demuxerPromise,decoderPromise]);
+        demuxer = dem;
+        decoder = dec;
+        const readyToInitMessage: DecoderWorkerMessage = { topic: 'readyToInit' };
+        worker.postMessage(readyToInitMessage);
+    }
+    catch (error) {
+        console.error(error);
+        throw error;
+    }
 }
 
 function isMetadataLoaded(): boolean {

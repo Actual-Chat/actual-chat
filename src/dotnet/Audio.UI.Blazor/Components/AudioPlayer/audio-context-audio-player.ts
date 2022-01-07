@@ -15,7 +15,7 @@ import {
 type PlayerState = 'inactive' | 'readyToInit' | 'playing' | 'endOfStream' ;
 
 /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-const BufferTooMuchThreshold = 20.0;
+const BufferTooMuchThreshold = 5.0;
 /**
  * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
  * should be in sync with audio-feeder bufferSize
@@ -121,8 +121,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             await this.preInitPromise;
         }
 
-        // const init = new InitCommand(header.buffer, offset, length);
-        const init = new InitCommand(header.buffer);
+        const init = new InitCommand(header.buffer, header.byteOffset, header.byteLength);
         this.decoderWorker.postMessage(init, [header.buffer]);
 
         this.audioContext = await AudioContextPool.get("main") as AudioContext;
@@ -163,7 +162,6 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         this.feederNode.onStartPlaying = () => {
             if (this.onStartPlaying !== null)
                 this.onStartPlaying();
-            this.state = 'playing';
             self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
             if (this._debugFeeder) {
                 this.log("Feeder start playing");
@@ -178,7 +176,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             await this.initPromise;
         }
 
-        const pushData = new PushDataCommand(byteArray.buffer);
+        const pushData = new PushDataCommand(byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
         this.decoderWorker.postMessage(pushData, [byteArray.buffer]);
     }
 
