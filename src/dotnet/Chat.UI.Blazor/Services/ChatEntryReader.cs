@@ -137,9 +137,8 @@ public sealed class ChatEntryReader
             else
                 minId = midId + 1;
         }
-        entry = await GetFirst((minId, idRange.End), cancellationToken).ConfigureAwait(false);
-        if (entry == null || entry.BeginsAt < beginsAt)
-            return null;
+        entry = await GetFirst((minId, idRange.End), e => e.BeginsAt >= beginsAt, cancellationToken)
+            .ConfigureAwait(false);
         return entry;
     }
 }
