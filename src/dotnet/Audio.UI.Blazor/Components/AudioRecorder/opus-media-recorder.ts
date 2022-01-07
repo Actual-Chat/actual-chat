@@ -152,7 +152,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         let tracks = this.stream.getAudioTracks();
         if (!tracks[0]) {
-            throw new Error('DOMException: UnkownError, media track not found.');
+            throw new Error('DOMException: UnknownError, media track not found.');
         }
 
         const _ = this.initialize(timeSlice);
@@ -179,7 +179,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         let tracks = this.stream.getAudioTracks();
         if (!tracks[0]) {
-            throw new Error('DOMException: UnkownError, media track not found.');
+            throw new Error('DOMException: UnknownError, media track not found.');
         }
 
         // Start recording
