@@ -174,8 +174,10 @@ public class GoogleTranscriberProcess : AsyncProcessBase
             parsedOffset = wordStart + word.Word.Length;
         }
 
-        if (mapPoints.Count == 0)
+        if (mapPoints.Count == 0) {
+            textToTimeMap = default;
             return false;
+        }
 
         var lastPoint = mapPoints[^1];
         var veryLastPoint = new Vector2(lastStableTextLength + text.Length, endTime);

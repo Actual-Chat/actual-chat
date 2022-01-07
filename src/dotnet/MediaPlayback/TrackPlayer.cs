@@ -16,7 +16,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected bool DebugMode => Constants.DebugMode.AudioPlayback;
-    protected readonly TimeSpan DelayReportPeriod = TimeSpan.FromSeconds(Constants.DebugMode.AudioPlayback ? 0.5 : 2);
+    protected readonly TimeSpan DelayReportPeriod = TimeSpan.FromSeconds(2);
     protected MomentClockSet Clocks { get; }
 
     public IServiceProvider Services { get; }
