@@ -68,6 +68,10 @@ export class AudioPlayerTestPage implements IAudioPlayer {
         this.player.dispose();
     }
 
+    public init(byteArray: Uint8Array): Promise<void> {
+        return this.player.init(byteArray);
+    }
+
     public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
         if (this.isFirstAppendAudioCall) {
             this._stats.initializeStartTime = new Date().getTime();
