@@ -139,7 +139,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             if (bufferedDuration > tooMuchBuffered) {
                 const message: StateChangedProcessorMessage = {
                     type: 'stateChanged',
-                    state: 'playingWithLowBuffer',
+                    state: 'playingWithTooMuchBuffer',
                 };
                 this.port.postMessage(message);
             }
@@ -233,7 +233,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
         switch (topic) {
             case 'samples':
-                this.chunks.push(new Float32Array(buffer, offset*4, length ));
+                this.chunks.push(new Float32Array(buffer, offset, length / 4 ));
                 if (!this.isPlaying) {
                     const bufferedDuration =  this.sampleCount / 48000.0;
                     if (bufferedDuration >= this.enoughToStartPlaying) {
