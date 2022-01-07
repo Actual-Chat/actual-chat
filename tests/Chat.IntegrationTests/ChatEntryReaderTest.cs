@@ -14,18 +14,17 @@ public class ChatEntryReaderTest : AppHostTestBase
     {
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
+        var services = tester.ClientServices;
         var user = tester.SignIn(new User("", "reader-test-user")).ConfigureAwait(false);
         var session = tester.Session;
 
-        var chats = tester.ClientServices.GetRequiredService<IChats>();
-
+        var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, ChatId, CancellationToken.None);
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
         await AddChatEntries(chats, session, ChatId, CancellationToken.None);
         var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
-
         var chuckBerryId = idRange.End - 1;
         var nirvanaId = chuckBerryId - 1;
         var acDcId = nirvanaId - 1;
@@ -43,6 +42,48 @@ public class ChatEntryReaderTest : AppHostTestBase
         entry = await reader.Get(chuckBerryId, CancellationToken.None);
         entry.Should().NotBeNull();
         entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
+    }
+
+    [Fact]
+    public async Task FindByMinBeginsAtTest()
+    {
+        using var appHost = await TestHostFactory.NewAppHost();
+        using var tester = appHost.NewWebClientTester();
+        var services = tester.AppServices;
+        var user = tester.SignIn(new User("", "reader-test-user")).ConfigureAwait(false);
+        var session = tester.Session;
+        var clocks = services.Clocks().SystemClock;
+
+        var chats = services.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, ChatId, CancellationToken.None);
+        chat.Should().NotBeNull();
+        chat?.Title.Should().Be("The Actual One");
+
+        await AddChatEntries(chats, session, ChatId, CancellationToken.None);
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
+
+        var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
+        var entry = await reader.FindByMinBeginsAt(clocks.Now + TimeSpan.FromDays(1), idRange, CancellationToken.None);
+        entry.Should().BeNull();
+        entry = await reader.FindByMinBeginsAt(default, idRange, CancellationToken.None);
+        entry!.Id.Should().Be(idRange.Start);
+
+        for (var entryId = idRange.End - 3; entryId < idRange.End; entryId++) {
+            entry = await reader.Get(entryId, CancellationToken.None);
+            var beginsAt = entry!.BeginsAt;
+            var eCopy = await reader.FindByMinBeginsAt(beginsAt, idRange, CancellationToken.None);
+            eCopy!.Id.Should().Be(entryId);
+            eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.Id, entry.Id + 1), CancellationToken.None);
+            eCopy!.Id.Should().Be(entryId);
+            eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.Id, entry.Id + 2), CancellationToken.None);
+            eCopy!.Id.Should().Be(entryId);
+            eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.Id, entry.Id), CancellationToken.None);
+            eCopy.Should().BeNull();
+            eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.Id - 1, entry.Id), CancellationToken.None);
+            eCopy.Should().BeNull();
+            eCopy = await reader.FindByMinBeginsAt(entry.BeginsAt, (entry.Id - 2, entry.Id), CancellationToken.None);
+            eCopy.Should().BeNull();
+        }
     }
 
     private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken)
