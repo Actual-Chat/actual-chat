@@ -9,13 +9,11 @@ import {
     DecoderWorkerMessage,
     DecoderWorkletMessage,
     InitCommand,
-    PushDataCommand, StopCommand
+    PushDataCommand
 } from "./opus-decoder-worker-message";
 
 type WorkerState = 'inactive'|'readyToInit'|'decoding'|'closed';
 
-/** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-const BufferTooMuchThreshold = 20.0;
 const SampleRate = 48000;
 
 const queue = new Denque<ArrayBuffer | 'endOfStream'>();
@@ -130,18 +128,6 @@ async function processQueue(): Promise<void> {
                         monoPcm = monoPcm.subarray(offset, length);
                     }
                 }
-
-                // if (this._debugDecoder) {
-                //     if (samples !== null && samples.length > 0) {
-                //         this.log(`decodeProcess(${packet.byteLength} bytes, padding:${padding}) `
-                //             + `returned ${samples[0].byteLength} `
-                //             + `bytes / ${samples[0].length} samples, `
-                //             + `isMetadataLoaded: ${this._isMetadataLoaded}`);
-                //     } else {
-                //         this.log(`decodeProcess(${packet.byteLength} bytes, padding: ${padding}) ` +
-                //             "returned null");
-                //     }
-                // }
 
                 const decoderMessage: DecoderMessage = {
                     topic: 'samples',
