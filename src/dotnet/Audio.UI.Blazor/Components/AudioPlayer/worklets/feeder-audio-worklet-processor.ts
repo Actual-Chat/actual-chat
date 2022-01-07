@@ -1,5 +1,6 @@
 import Denque from 'denque';
 import { NodeMessage, DataNodeMessage, ChangeStateNodeMessage, StateChangedProcessorMessage, StateProcessorMessage, GetStateNodeMessage } from './feeder-audio-worklet-message';
+import {DecoderMessage, DecoderWorkletMessage} from "../workers/opus-decoder-worker-message";
 
 /** Part of the feeder that lives in AudioWorkletGlobalScope */
 // TODO: implement pause
@@ -12,14 +13,22 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
      * 480_000 samples at 48 kHz ~= 10_000 ms
      */
     private readonly samplesLowThreshold: number = 480_000;
+    private readonly enoughToStartPlaying: number;
+    private readonly tooMuchBuffered: number;
+    private workerPort: MessagePort;
     private chunkOffset: number = 0;
     private firstProcessTime: number = 0;
     private lastProcessTime: number = 0;
     private isPlaying: boolean = false;
     private isStarving: boolean = false;
 
+
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
+
+        const { enoughToStartPlaying, tooMuchBuffered } = options.processorOptions;
+        this.enoughToStartPlaying = enoughToStartPlaying;
+        this.tooMuchBuffered = tooMuchBuffered;
         this.port.onmessage = this.onNodeMessage;
     }
 
@@ -40,7 +49,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         outputs: Float32Array[][],
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
-        const { debug, chunks, isPlaying, samplesLowThreshold } = this;
+        const { debug, chunks, isPlaying, samplesLowThreshold, tooMuchBuffered } = this;
         let { chunkOffset } = this;
         // if we are disconnected from output (node,channel) then we can be closed
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
@@ -48,21 +57,25 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 console.warn('Feeder processor: empty outputs, stop processing');
             return false;
         }
+
         const output = outputs[0];
         // we only support mono output at the moment
         let channel = output[0];
         if (debug) {
             console.assert(channel.length === 128, "Feeder processor: WebAudio's render quantum size must be 128");
         }
+
         if (!isPlaying) {
             // write silence, because we don't playing
             channel.fill(0);
             return true;
         }
+
         if (this.firstProcessTime === 0) {
             this.firstProcessTime = new Date().getTime();
             this.lastProcessTime = this.firstProcessTime;
         }
+
         for (let offset = 0; offset < channel.length;) {
             const chunk = chunks.peekFront();
             if (chunk !== undefined) {
@@ -91,7 +104,10 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                     offset += remainingSamples.length;
 
                     chunkOffset = 0;
-                    chunks.shift();
+
+                    const removed = chunks.shift();
+                    const bufferMessage: DecoderWorkletMessage = { topic: 'buffer', buffer: removed.buffer };
+                    this.workerPort.postMessage(bufferMessage, [removed.buffer]);
                 }
             }
             // we don't have enough data to continue playing => starved
@@ -110,12 +126,23 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         this.chunkOffset = chunkOffset;
-        if (this.isPlaying && !this.isStarving && this.sampleCount <= samplesLowThreshold) {
-            const message: StateChangedProcessorMessage = {
-                type: 'stateChanged',
-                state: 'playingWithLowBuffer',
-            };
-            this.port.postMessage(message);
+        const sampleCount = this.sampleCount;
+        const bufferedDuration = sampleCount / 48000.0;
+        if (this.isPlaying && !this.isStarving) {
+            if (sampleCount <= samplesLowThreshold) {
+                const message: StateChangedProcessorMessage = {
+                    type: 'stateChanged',
+                    state: 'playingWithLowBuffer',
+                };
+                this.port.postMessage(message);
+            }
+            if (bufferedDuration > tooMuchBuffered) {
+                const message: StateChangedProcessorMessage = {
+                    type: 'stateChanged',
+                    state: 'playingWithLowBuffer',
+                };
+                this.port.postMessage(message);
+            }
         }
         this.lastProcessTime = new Date().getTime();
         return true;
@@ -124,20 +151,29 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
         const msg = ev.data;
         switch (msg.type) {
-        case 'data':
-            this.onDataMessage(msg as DataNodeMessage);
-            break;
-        case 'clear':
-            this.onClearMessage();
-            break;
-        case 'getState':
-            this.onGetState(msg as GetStateNodeMessage);
-            break;
-        case 'changeState':
-            this.onChangeStateMessage(msg as ChangeStateNodeMessage);
-            break;
-        default:
-            throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
+            case 'init-port':
+                this.workerPort = ev.ports[0];
+                this.workerPort.onmessage = this.onWorkerMessage.bind(this);
+                break;
+
+            case 'data':
+                this.onDataMessage(msg as DataNodeMessage);
+                break;
+
+            case 'clear':
+                this.onClearMessage();
+                break;
+
+            case 'getState':
+                this.onGetState(msg as GetStateNodeMessage);
+                break;
+
+            case 'changeState':
+                this.onChangeStateMessage(msg as ChangeStateNodeMessage);
+                break;
+
+            default:
+                throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
         }
     };
 
@@ -189,6 +225,27 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             this.firstProcessTime = 0;
             if (debug)
                 console.debug("Feeder processor: start playing");
+        }
+    }
+
+    private onWorkerMessage(ev: MessageEvent) {
+        const { topic, offset, length, buffer }: DecoderMessage = ev.data;
+
+        switch (topic) {
+            case 'samples':
+                this.chunks.push(new Float32Array(buffer, offset*4, length ));
+                if (!this.isPlaying) {
+                    const bufferedDuration =  this.sampleCount / 48000.0;
+                    if (bufferedDuration >= this.enoughToStartPlaying) {
+                        this.isStarving = true;
+                        this.isPlaying = true;
+                        this.firstProcessTime = 0;
+                    }
+                }
+                break;
+
+            default:
+                break;
         }
     }
 }
