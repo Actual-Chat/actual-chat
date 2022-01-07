@@ -19,19 +19,27 @@ export class LoadDecoderCommand implements IDecoderCommand {
 
 export class InitCommand implements IDecoderCommand {
     public readonly command: DecoderCommandType = 'init';
-    public readonly header: ArrayBuffer;
+    public readonly buffer: ArrayBuffer;
+    public readonly offset: number;
+    public readonly length: number;
 
-    constructor(header: ArrayBuffer) {
-        this.header = header;
+    constructor(buffer: ArrayBuffer, offset: number, length: number) {
+        this.buffer = buffer;
+        this.offset = offset;
+        this.length = length;
     }
 }
 
 export class PushDataCommand implements IDecoderCommand {
     public readonly command: DecoderCommandType = 'pushData';
     public readonly buffer: ArrayBuffer;
+    public readonly offset: number;
+    public readonly length: number;
 
-    constructor(buffer: ArrayBuffer) {
+    constructor(buffer: ArrayBuffer, offset: number, length: number) {
         this.buffer = buffer;
+        this.offset = offset;
+        this.length = length;
     }
 }
 
