@@ -128,6 +128,7 @@ export class AudioRecorder {
     public async startRecording(): Promise<void> {
         if (this.isRecording())
             return;
+        
         if (!this.isMicrophoneAvailable) {
             console.error(`${LogScope}.startRecording: microphone is unavailable.`);
             return;

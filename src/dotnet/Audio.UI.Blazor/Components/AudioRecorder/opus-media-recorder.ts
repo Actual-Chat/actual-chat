@@ -139,12 +139,12 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.state = 'recording';
     }
 
-    public start(timeslice?: number): void {
+    public start(timeSlice?: number): void {
         if (this.state !== 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must be inactive.');
         }
-        if (timeslice < 0) {
-            throw new TypeError('invalid arguments, timeslice should be 0 or higher.');
+        if (timeSlice < 0) {
+            throw new TypeError('invalid arguments, timeSlice should be 0 or higher.');
         }
         if (this.source == null) {
             throw new Error('start: streamNode is not set');
@@ -155,7 +155,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
             throw new Error('DOMException: UnkownError, media track not found.');
         }
 
-        const _ = this.initialize(timeslice);
+        const _ = this.initialize(timeSlice);
 
         this.state = 'recording';
 
@@ -167,13 +167,12 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
     }
 
-    public async startAsync(source: MediaStreamAudioSourceNode, timeslice: number): Promise<void> {
+    public async startAsync(source: MediaStreamAudioSourceNode, timeSlice: number): Promise<void> {
         if (this.source === source)
             return;
 
-        if (this.source) {
+        if (this.source)
             this.source.disconnect();
-        }
 
         this.source = source;
         this.stream = source.mediaStream;
@@ -184,7 +183,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
 
         // Start recording
-        await this.initialize(timeslice);
+        await this.initialize(timeSlice);
 
         this.state = 'recording';
 
@@ -218,7 +217,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         });
     }
 
-    private async initialize(timeslice: number): Promise<void> {
+    private async initialize(timeSlice: number): Promise<void> {
         if (this.context == null) {
             this.context = await AudioContextPool.get('recorder') as AudioContext;
             if (this.context.sampleRate != 48000) {
@@ -231,7 +230,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 channelInterpretation: 'speakers',
                 channelCountMode: 'explicit',
                 processorOptions: {
-                    timeslice: timeslice
+                    timeSlice: timeSlice
                 }
             };
             this.encoderWorklet = new AudioWorkletNode(this.context, 'opus-encoder-worklet-processor', encoderWorkletOptions);
