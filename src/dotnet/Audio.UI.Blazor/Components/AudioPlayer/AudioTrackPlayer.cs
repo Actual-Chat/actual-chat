@@ -93,7 +93,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                             break;
 
                         _ = stop.Immediately
-                            ? JSRef.InvokeVoidAsync("stop", null)
+                            ? JSRef.InvokeVoidAsync("stop")
                             : JSRef.InvokeVoidAsync("endOfStream");
                         break;
                     case SetTrackVolumeCommand:
@@ -118,9 +118,8 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 }
                 catch (TimeoutException) {
                     Log.LogError(
-                        "ProcessMediaFrame: ready-to-buffer wait timed out, frame: (offset={FrameOffset})",
+                        "ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
                         frame.Offset);
-                    throw;
                 }
             }).ConfigureAwait(false);
 
@@ -132,11 +131,17 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             (JSRef, BlazorRef) = (null, null);
             try {
                 try {
-                    blazorRef?.Dispose();
+                    if (jsRef != null)
+                        await jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
                 }
                 finally {
-                    if (jsRef != null)
-                        await jsRef.DisposeAsync().ConfigureAwait(true);
+                    try {
+                        if (jsRef != null)
+                            await jsRef.DisposeAsync().ConfigureAwait(true);
+                    }
+                    finally {
+                        blazorRef?.Dispose();
+                    }
                 }
             }
             catch (Exception e) {
