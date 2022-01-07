@@ -41,7 +41,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
             var now = cpuClock.Now;
             var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
-            var entryEndsAt = entry.ContentEndsAt ?? entry.EndsAt ?? entry.BeginsAt + InfDuration;
+            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + InfDuration;
+            entryEndsAt = Moment.Min(entryEndsAt, entry.ContentEndsAt ?? entryEndsAt);
             var skipTo = entryBeginsAt - entry.BeginsAt;
             if (playbackBlockEnd < entryBeginsAt + playbackOffset) {
                 // There is a gap between the currently playing "block" and the entry.

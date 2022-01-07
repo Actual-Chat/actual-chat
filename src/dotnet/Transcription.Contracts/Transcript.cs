@@ -9,8 +9,8 @@ namespace ActualChat.Transcription;
 [DataContract]
 public sealed class Transcript
 {
-    private static readonly Regex StartRegex = new("^\\s*", RegexOptions.Compiled);
-    private static readonly Regex EndRegex = new("\\s*$", RegexOptions.Compiled);
+    private static readonly Regex StartRegex = new("^\\s+", RegexOptions.Compiled);
+    private static readonly Regex EndRegex = new("\\s+$", RegexOptions.Compiled);
 
     public const float TextToTimeMapTextPrecision = 0.5f;
     public const float TextToTimeMapTimePrecision = 0.1f;
