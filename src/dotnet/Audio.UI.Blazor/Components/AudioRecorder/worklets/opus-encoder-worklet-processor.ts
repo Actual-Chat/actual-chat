@@ -12,12 +12,12 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        const { timeslice } = options.processorOptions;
-        if (timeslice != 20 && timeslice != 40 && timeslice != 60 && timeslice != 80) {
-            throw new Error('OpusEncoderWorkletProcessor supports only 20, 40, 60, 80 timeslice argument');
+        const { timeSlice } = options.processorOptions;
+        if (timeSlice != 20 && timeSlice != 40 && timeSlice != 60 && timeSlice != 80) {
+            throw new Error('OpusEncoderWorkletProcessor supports only 20, 40, 60, 80 timeSlice argument');
         }
 
-        this.samplesPerWindow = timeslice * SamplesPerMs;
+        this.samplesPerWindow = timeSlice * SamplesPerMs;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferDeque = new Denque<ArrayBuffer>();
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));

@@ -10,5 +10,4 @@ public class ChatAuthorSerialization
         };
         ca.PassThroughSystemJsonSerializer().Should().Be(ca);
     }
-
 }

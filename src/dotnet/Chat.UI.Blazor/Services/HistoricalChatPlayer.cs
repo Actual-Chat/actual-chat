@@ -19,10 +19,15 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         var startEntry = await AudioEntryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
-        idRange = (startEntry?.Id ?? idRange.Start, idRange.End);
+        if (startEntry == null) {
+            Log.LogWarning("Couldn't find start entry");
+            return;
+        }
+
         var playbackBlockEnd = cpuClock.Now - TimeSpan.FromDays(1); // Any time in past
         var playbackOffset = playbackBlockEnd - Moment.EpochStart; // now - playTime
 
+        idRange = (startEntry.Id, idRange.End);
         var entries = AudioEntryReader
             .ReadAll(idRange, cancellationToken)
             .Where(e => e.Type == ChatEntryType.Audio);
@@ -36,7 +41,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
             var now = cpuClock.Now;
             var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
-            var entryEndsAt = entry.ContentEndsAt ?? entry.EndsAt ?? entry.BeginsAt + InfDuration;
+            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + InfDuration;
+            entryEndsAt = Moment.Min(entryEndsAt, entry.ContentEndsAt ?? entryEndsAt);
             var skipTo = entryBeginsAt - entry.BeginsAt;
             if (playbackBlockEnd < entryBeginsAt + playbackOffset) {
                 // There is a gap between the currently playing "block" and the entry.

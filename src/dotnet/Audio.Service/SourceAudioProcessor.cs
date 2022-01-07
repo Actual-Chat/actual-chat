@@ -12,7 +12,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         public bool IsEnabled { get; init; } = true;
     }
 
-    private static readonly Regex NonEmptyRegex = new("\\S", RegexOptions.Compiled);
+    private static readonly Regex EmptyRegex = new("^\\s*$", RegexOptions.Compiled);
 
     protected ILogger<SourceAudioProcessor> Log { get; }
     protected bool DebugMode => Constants.DebugMode.AudioProcessing;
@@ -199,11 +199,14 @@ public class SourceAudioProcessor : AsyncProcessBase
         CancellationToken cancellationToken)
     {
         var closedSegment = await audioSegment.ClosedSegmentTask.ConfigureAwait(false);
+        var endsAt = audioEntry.BeginsAt + closedSegment.Duration;
+        var contentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration;
+        contentEndsAt = Moment.Min(endsAt, contentEndsAt);
         audioEntry = audioEntry with {
             Content = audioBlobId ?? "",
             StreamId = Symbol.Empty,
-            EndsAt = audioEntry.BeginsAt + closedSegment.Duration,
-            ContentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration,
+            EndsAt = endsAt,
+            ContentEndsAt = contentEndsAt,
         };
         var command = new IChatsBackend.UpsertEntryCommand(audioEntry);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
@@ -227,7 +230,7 @@ public class SourceAudioProcessor : AsyncProcessBase
                     continue;
             }
             transcript = diff;
-            if (!NonEmptyRegex.IsMatch(transcript.Text))
+            if (EmptyRegex.IsMatch(transcript.Text))
                 continue;
 
             // Got first non-empty transcript -> create text entry
@@ -256,7 +259,7 @@ public class SourceAudioProcessor : AsyncProcessBase
             EndsAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.End),
             TextToTimeMap = textToTimeMap,
         };
-        if (!NonEmptyRegex.IsMatch(transcript.Text)) {
+        if (EmptyRegex.IsMatch(transcript.Text)) {
             // Final transcript is empty -> remove text entry
             // TODO(AY): Maybe publish [Audio: ...] markup here
             textEntry = textEntry with { IsRemoved = true };

@@ -5,7 +5,6 @@ namespace ActualChat.Chat;
 public class ChatTile
 {
     public Range<long> IdTileRange { get; init; }
-    public Range<long> IdRange { get; init; }
     public bool IncludesRemoved { get; init; }
     public Range<Moment> BeginsAtRange { get; init; }
     public ImmutableArray<ChatEntry> Entries { get; init; } = ImmutableArray<ChatEntry>.Empty;
@@ -16,29 +15,23 @@ public class ChatTile
 
     public ChatTile(Range<long> idTileRange, bool includesRemoved, ImmutableArray<ChatEntry> entries)
     {
-        var idRange = new Range<long>(long.MaxValue, long.MinValue);
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
-        foreach (var entry in entries) {
-            idRange = idRange.MinMaxWith(entry.Id);
+        foreach (var entry in entries)
             beginsAtRange = beginsAtRange.MinMaxWith(entry.BeginsAt);
-        }
 
         IdTileRange = idTileRange;
         IncludesRemoved = includesRemoved;
+        BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
         Entries = entries;
-        IdRange = idRange;
-        BeginsAtRange = beginsAtRange;
     }
 
     public ChatTile(IEnumerable<ChatTile> tiles, bool includesRemoved)
     {
         var entries = new List<ChatEntry>();
         var idTile = new Range<long>(long.MaxValue, long.MinValue);
-        var idRange = new Range<long>(long.MaxValue, long.MinValue);
         var beginsAtRange = new Range<Moment>(Moment.MaxValue, Moment.MinValue);
         foreach (var tile in tiles) {
             idTile = idTile.MinMaxWith(tile.IdTileRange);
-            idRange = idRange.MinMaxWith(tile.IdRange);
             beginsAtRange = beginsAtRange.MinMaxWith(tile.BeginsAtRange);
             foreach (var entry in tile.Entries)
                 entries.Add(entry);
@@ -46,8 +39,7 @@ public class ChatTile
 
         IdTileRange = idTile;
         IncludesRemoved = includesRemoved;
-        IdRange = idRange;
-        BeginsAtRange = beginsAtRange;
+        BeginsAtRange = (beginsAtRange.Start, beginsAtRange.End + TimeSpan.FromTicks(1));
         Entries = entries.ToImmutableArray();
     }
 }

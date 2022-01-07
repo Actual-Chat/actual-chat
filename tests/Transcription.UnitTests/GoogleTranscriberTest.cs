@@ -31,9 +31,9 @@ public class GoogleTranscriberTest : TestBase
         transcript.Text.Should().Be("проверка связи");
         var points = transcript.TextToTimeMap.Points.ToArray();
         points.Select(p => p.X).Should()
-            .Equal(new[] { 0f, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
+            .Equal(new[] { 0f, 8, 9, 14 }, (l, r) => Math.Abs(l - r) < 0.001);
         points.Select(p => p.Y).Should()
-            .Equal(new[] { 0f, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
+            .Equal(new[] { 0.2f, 1.3, 1.3, 3.47 }, (l, r) => Math.Abs(l - r) < 0.0001);
 
         Log.LogInformation("Transcript={Transcript}", transcript);
 
