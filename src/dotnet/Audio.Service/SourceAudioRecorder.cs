@@ -1,5 +1,4 @@
 using ActualChat.Audio.Db;
-using ActualChat.Chat;
 using ActualChat.Media;
 using Stl.Redis;
 
@@ -7,13 +6,26 @@ namespace ActualChat.Audio;
 
 public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
 {
+    private RedisQueue<AudioRecord>? _newRecordQueue = null!;
+
     protected ILogger<SourceAudioRecorder> Log { get; }
     protected bool DebugMode => Constants.DebugMode.AudioProcessing;
     protected ILogger? DebugLog => DebugMode ? Log : null;
+    protected object Lock { get; } = new();
 
-    private RedisDb RedisDb { get; }
-    private RedisQueue<AudioRecord> NewRecordQueue { get; }
-    private MomentClockSet Clocks { get; }
+    protected RedisDb RedisDb { get; }
+
+    protected RedisQueue<AudioRecord> NewRecordQueue {
+        get {
+            lock (Lock) {
+                return _newRecordQueue ??= RedisDb.GetQueue<AudioRecord>("new-records", new() {
+                    EnqueueCheckPeriod = TimeSpan.FromMilliseconds(250),
+                });
+            }
+        }
+    }
+
+    protected MomentClockSet Clocks { get; }
 
     public SourceAudioRecorder(
         RedisDb<AudioContext> audioRedisDb,
@@ -23,13 +35,14 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         Log = log;
         Clocks = clocks;
         RedisDb = audioRedisDb.WithKeyPrefix("source-audio");
-        NewRecordQueue = RedisDb.GetQueue<AudioRecord>("new-records", new() {
-            EnqueueCheckPeriod = TimeSpan.FromMilliseconds(250),
-        });
+        _ = NewRecordQueue;
     }
 
     public ValueTask DisposeAsync()
-        => NewRecordQueue.DisposeAsync();
+    {
+        RecycleNewRecordQueue();
+        return ValueTask.CompletedTask;
+    }
 
     public async Task RecordSourceAudio(
         Session session,
@@ -44,14 +57,22 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         // streamer.Log = DebugLog;
         if (Constants.DebugMode.AudioRecordingStream)
             recordingStream = recordingStream.WithLog(Log, "RecordSourceAudio", cancellationToken);
-        await streamer.Write(
-                recordingStream,
-                _ => NewRecordQueue.Enqueue(record).ToValueTask(),
-                cancellationToken)
-            .ConfigureAwait(false);
+
+        await streamer.Write(recordingStream, AnnounceNewRecord, cancellationToken).ConfigureAwait(false);
         _ = BackgroundTask.Run(DelayedStreamerRemoval,
             Log, $"{nameof(DelayedStreamerRemoval)} failed",
             CancellationToken.None);
+
+        async ValueTask AnnounceNewRecord(RedisStreamer<RecordingPart> _)
+        {
+            try {
+                await NewRecordQueue.Enqueue(record).ConfigureAwait(false);
+            }
+            catch {
+                RecycleNewRecordQueue();
+                throw;
+            }
+        }
 
         async Task DelayedStreamerRemoval()
         {
@@ -61,7 +82,15 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     }
 
     public Task<AudioRecord> DequeueSourceAudio(CancellationToken cancellationToken)
-        => NewRecordQueue.Dequeue(cancellationToken);
+    {
+        try {
+            return NewRecordQueue.Dequeue(cancellationToken);
+        }
+        catch {
+            RecycleNewRecordQueue();
+            throw;
+        }
+    }
 
     public IAsyncEnumerable<RecordingPart> GetSourceAudioRecordingStream(string audioRecordId, CancellationToken cancellationToken)
     {
@@ -70,5 +99,17 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         });
         // streamer.Log = DebugLog;
         return streamer.Read(cancellationToken).Memoize().Replay(cancellationToken);
+    }
+
+    // Protected methods
+
+    protected void RecycleNewRecordQueue()
+    {
+        RedisQueue<AudioRecord>? newRecordQueue;
+        lock (Lock) {
+            newRecordQueue = _newRecordQueue;
+            _newRecordQueue = null;
+        }
+        newRecordQueue?.DisposeAsync();
     }
 }
