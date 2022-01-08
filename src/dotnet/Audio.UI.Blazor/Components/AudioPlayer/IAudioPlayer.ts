@@ -5,5 +5,4 @@ export interface IAudioPlayer {
     appendAudio(byteArray: Uint8Array, offset: number): Promise<void>;
     endOfStream(): void;
     stop(error: EndOfStreamError | null): void;
-    dispose(): void;
 }
