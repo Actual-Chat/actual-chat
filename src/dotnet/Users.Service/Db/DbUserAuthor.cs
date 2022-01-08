@@ -14,7 +14,7 @@ public class DbUserAuthor : IHasId<string>
     [Key] public string UserId { get; set; } = null!;
     string IHasId<string>.Id => UserId;
 
-    public long Version { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public bool IsAnonymous { get; set; }
@@ -45,7 +45,6 @@ public class DbUserAuthor : IHasId<string>
         public void Configure(EntityTypeBuilder<DbUserAuthor> builder)
         {
             builder.Property(a => a.UserId).IsRequired();
-            builder.Property(a => a.Version).IsConcurrencyToken();
         }
     }
 }

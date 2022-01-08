@@ -24,7 +24,11 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         if (db.IsInMemory())
             return;
 
-        if (DbInfo.ShouldRecreateDb) {
+        if (DbInfo.DbKind == DbKind.MySql) {
+            await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
+            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else if (DbInfo.ShouldRecreateDb) {
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             // await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
             await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
@@ -37,11 +41,13 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         else
             await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 
-        var databaseName = db.GetDbConnection().Database;
-        await dbContext.Database
-            .ExecuteSqlRawAsync(
-                $"ALTER DATABASE \"{databaseName}\" SET DEFAULT_TRANSACTION_ISOLATION TO 'repeatable read';",
-                cancellationToken)
-            .ConfigureAwait(false);
+        if (DbInfo.DbKind == DbKind.PostgreSql) {
+            var databaseName = db.GetDbConnection().Database;
+            await dbContext.Database
+                .ExecuteSqlRawAsync(
+                    $"ALTER DATABASE \"{databaseName}\" SET DEFAULT_TRANSACTION_ISOLATION TO 'repeatable read';",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 }

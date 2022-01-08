@@ -39,7 +39,6 @@ public class DbChatUserSettings : IHasId<string>
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();
             builder.Property(a => a.UserId).IsRequired();
-            builder.Property(a => a.Version).IsConcurrencyToken();
         }
     }
 }
