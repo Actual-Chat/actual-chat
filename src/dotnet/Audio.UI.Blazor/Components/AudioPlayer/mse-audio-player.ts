@@ -145,12 +145,6 @@ export class MseAudioPlayer implements IAudioPlayer {
         this.isInitialized = true;
     }
 
-    public dispose(): void {
-        if (this._debugMode)
-            this.log(`dispose()`);
-        this.stop(null);
-    }
-
     public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
 
         if (!this.isInitialized) {

@@ -84,7 +84,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         BlazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                         JSRef = await JS.InvokeAsync<IJSObjectReference>(
                             $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                            BlazorRef, DebugMode
+                             Command.TrackId.ToString(), BlazorRef, DebugMode
                             ).ConfigureAwait(true);
                         _ = JSRef.InvokeVoidAsync("init", Header).ConfigureAwait(true);
                         break;
@@ -92,9 +92,10 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         if (JSRef == null)
                             break;
 
-                        _ = stop.Immediately
-                            ? JSRef.InvokeVoidAsync("stop")
-                            : JSRef.InvokeVoidAsync("endOfStream");
+                        if (stop.Immediately)
+                            _ = JSRef.InvokeVoidAsync("stop");
+                        else
+                            _ = JSRef.InvokeVoidAsync("endOfStream");
                         break;
                     case SetTrackVolumeCommand:
                         // TODO: Implement this
@@ -132,16 +133,10 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
             try {
                 try {
                     if (jsRef != null)
-                        await jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
+                        await jsRef.DisposeAsync().ConfigureAwait(true);
                 }
                 finally {
-                    try {
-                        if (jsRef != null)
-                            await jsRef.DisposeAsync().ConfigureAwait(true);
-                    }
-                    finally {
-                        blazorRef?.Dispose();
-                    }
+                    blazorRef?.Dispose();
                 }
             }
             catch (Exception e) {
