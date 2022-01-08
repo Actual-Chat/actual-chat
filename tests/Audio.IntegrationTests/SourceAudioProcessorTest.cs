@@ -26,9 +26,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         var dequeueTask = sourceAudioProcessor.SourceAudioRecorder.DequeueSourceAudio(cts.Token);
 
         var recordingSpec = new AudioRecord(
-            "1",
+            session.Id, "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         _ = sourceAudioRecorder.RecordSourceAudio(session, recordingSpec, AsyncEnumerable.Empty<RecordingPart>(), CancellationToken.None);
 
@@ -36,7 +35,7 @@ public class SourceAudioProcessorTest : AppHostTestBase
         record.Should()
             .Be(recordingSpec with {
                 Id = record.Id,
-                AuthorId = record.AuthorId,
+                SessionId = record.SessionId,
             });
     }
 
@@ -163,9 +162,8 @@ public class SourceAudioProcessorTest : AppHostTestBase
         ISourceAudioRecorder sourceAudioRecorder)
     {
         var record = new AudioRecord(
-            chatId,
+            session.Id, chatId,
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath("file.webm");

@@ -4,9 +4,6 @@
 @using ActualChat.Media
 @using System.Buffers.Binary
 @implements IAsyncDisposable
-@inject Session _session
-@inject IJSRuntime _js
-@inject ISourceAudioRecorder _sourceAudioRecorder
 
 @{
     var cls = "";
@@ -31,6 +28,10 @@
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.AudioRecording;
 
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ISourceAudioRecorder SourceAudioRecorder { get; init; } = null!;
+
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
     private Channel<RecordingPart> AudioChannel { get; set; } = null!;
@@ -39,8 +40,6 @@
 
     [Parameter]
     public string ChatId { get; set; } = "";
-    [Parameter]
-    public string Language { get; set; } = "ru-RU";
 
     public async ValueTask DisposeAsync() {
         await StopRecording().ConfigureAwait(true);
@@ -52,7 +51,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            JSRef = await _js.InvokeAsync<IJSObjectReference>(
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
                 BlazorRef, DebugMode
                 ).ConfigureAwait(true);
@@ -107,11 +106,11 @@
             SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
-        var audioRecord = new AudioRecord(ChatId, audioFormat, Language, clientStartOffset);
+        var audioRecord = new AudioRecord(Session.Id.Value, ChatId, audioFormat, clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
         _ = BackgroundTask.Run(
-            () => _sourceAudioRecorder.RecordSourceAudio(_session, audioRecord, audioStream, CancellationToken.None),
-            Log, $"{nameof(_sourceAudioRecorder.RecordSourceAudio)} failed");
+            () => SourceAudioRecorder.RecordSourceAudio(Session, audioRecord, audioStream, CancellationToken.None),
+            Log, $"{nameof(SourceAudioRecorder.RecordSourceAudio)} failed");
     }
 
     [JSInvokable]

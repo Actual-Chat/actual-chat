@@ -1,4 +1,6 @@
 
+using ActualChat.Users;
+
 namespace ActualChat.Audio.Processing;
 
 public sealed class OpenAudioSegment
@@ -10,6 +12,8 @@ public sealed class OpenAudioSegment
     public string StreamId { get; }
     public AudioRecord AudioRecord { get; }
     public AudioSource Audio { get; }
+    public Author Author { get; }
+    public ImmutableArray<LanguageId> Languages { get; }
     public Task<Moment?> RecordedAtTask { get; }
     public Task<TimeSpan> AudibleDurationTask { get; }
     public Task<ClosedAudioSegment> ClosedSegmentTask { get; }
@@ -19,6 +23,8 @@ public sealed class OpenAudioSegment
         int index,
         AudioRecord audioRecord,
         AudioSource audio,
+        Author author,
+        ImmutableArray<LanguageId> languages,
         ILogger log)
     {
         Log = log;
@@ -26,6 +32,8 @@ public sealed class OpenAudioSegment
         StreamId = GetStreamId(audioRecord.Id, index);
         AudioRecord = audioRecord;
         Audio = audio;
+        Author = author;
+        Languages = languages;
         RecordedAtTask = TaskSource.New<Moment?>(true).Task;
         AudibleDurationTask = TaskSource.New<TimeSpan>(true).Task;
         ClosedSegmentTask = TaskSource.New<ClosedAudioSegment>(true).Task;

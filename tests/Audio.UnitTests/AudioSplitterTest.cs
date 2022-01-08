@@ -1,29 +1,25 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Media;
-using Microsoft.Extensions.Logging.Abstractions;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class AudioActivityPeriodExtractorTest : TestBase
+public class AudioSplitterTest : TestBase
 {
-    public AudioActivityPeriodExtractorTest(ITestOutputHelper @out) : base(@out) { }
+    public AudioSplitterTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task SplitStreamDontReadTest()
     {
         var record = new AudioRecord(
-            "test-id",
-            "1",
-            "1",
+            "test-id", "", "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var byteStream = GetAudioFilePath("file.webm").ReadByteStream();
 
         var services = new ServiceCollection().BuildServiceProvider();
-        var audioSplitter = new AudioSplitter(services);
-        var openAudioSegments = audioSplitter.GetSegments(record, byteStream.ToRecordingStream(), default);
+        var audioSplitter = new AudioSplitter(services, true);
+        var openAudioSegments = audioSplitter.GetSegments(record, null!, byteStream.ToRecordingStream(), default);
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
             openAudioSegment.AudioRecord.Should().Be(record);
@@ -38,19 +34,16 @@ public class AudioActivityPeriodExtractorTest : TestBase
     public async Task SplitStreamReadAfterCompletionTest()
     {
         var record = new AudioRecord(
-            "test-id",
-            "1",
-            "1",
+            "test-id", "", "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
         var byteStream = audioFilePath.ReadByteStream();
 
         var services = new ServiceCollection().BuildServiceProvider();
-        var audioSplitter = new AudioSplitter(services);
-        var openAudioSegments = audioSplitter.GetSegments(record, byteStream.ToRecordingStream(), default);
+        var audioSplitter = new AudioSplitter(services, true);
+        var openAudioSegments = audioSplitter.GetSegments(record, null!, byteStream.ToRecordingStream(), default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -72,19 +65,16 @@ public class AudioActivityPeriodExtractorTest : TestBase
     public async Task SplitStreamReadBeforeCompletionTest()
     {
         var record = new AudioRecord(
-            "test-id",
-            "1",
-            "1",
+            "test-id", "", "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
         var byteStream = audioFilePath.ReadByteStream();
 
         var services = new ServiceCollection().BuildServiceProvider();
-        var audioSplitter = new AudioSplitter(services);
-        var openAudioSegments = audioSplitter.GetSegments(record, byteStream.ToRecordingStream(), default);
+        var audioSplitter = new AudioSplitter(services, true);
+        var openAudioSegments = audioSplitter.GetSegments(record, null!, byteStream.ToRecordingStream(), default);
         var size = 0L;
         await foreach (var openAudioSegment in openAudioSegments) {
             openAudioSegment.Index.Should().Be(0);
@@ -106,19 +96,16 @@ public class AudioActivityPeriodExtractorTest : TestBase
     public async Task SplitStreamToMultipleSegmentsUsingStopResumeRecordingTest()
     {
         var record = new AudioRecord(
-            "test-id",
-            "1",
-            "1",
+            "test-id", "", "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
         var byteStream = audioFilePath.ReadByteStream();
         var blobStreamWithBoundaries = InsertSpeechBoundaries(byteStream.ToRecordingStream());
         var services = new ServiceCollection().BuildServiceProvider();
-        var audioActivityExtractor = new AudioSplitter(services);
-        var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
+        var audioActivityExtractor = new AudioSplitter(services, true);
+        var openAudioSegments = audioActivityExtractor.GetSegments(record, null!, blobStreamWithBoundaries, default);
         var size = 0L;
         var index = 0;
         await foreach (var openAudioSegment in openAudioSegments) {
@@ -184,19 +171,16 @@ public class AudioActivityPeriodExtractorTest : TestBase
     public async Task SplitStreamToMultipleSegmentsUsingStopResumeSendingTest()
     {
         var record = new AudioRecord(
-            "test-id",
-            "1",
-            "1",
+            "test-id", "", "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
         var byteStream = audioFilePath.ReadByteStream();
         var blobStreamWithBoundaries = InsertSpeechBoundaries(byteStream.ToRecordingStream());
         var services = new ServiceCollection().BuildServiceProvider();
-        var audioActivityExtractor = new AudioSplitter(services);
-        var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
+        var audioActivityExtractor = new AudioSplitter(services, true);
+        var openAudioSegments = audioActivityExtractor.GetSegments(record, null!, blobStreamWithBoundaries, default);
         var size = 0L;
         var index = 0;
         await foreach (var openAudioSegment in openAudioSegments) {
@@ -271,19 +255,16 @@ public class AudioActivityPeriodExtractorTest : TestBase
     public async Task SkipGapTest()
     {
         var record = new AudioRecord(
-            "test-id",
-            "1",
-            "1",
+            "test-id", "", "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
         var byteStream = audioFilePath.ReadByteStream();
         var blobStreamWithBoundaries = InsertSpeechBoundaries(byteStream.ToRecordingStream());
         var services = new ServiceCollection().BuildServiceProvider();
-        var audioActivityExtractor = new AudioSplitter(services);
-        var openAudioSegments = audioActivityExtractor.GetSegments(record, blobStreamWithBoundaries, default);
+        var audioActivityExtractor = new AudioSplitter(services, true);
+        var openAudioSegments = audioActivityExtractor.GetSegments(record, null!, blobStreamWithBoundaries, default);
         var size = 0L;
         var index = 0;
         await foreach (var openAudioSegment in openAudioSegments) {
