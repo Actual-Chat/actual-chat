@@ -8,6 +8,8 @@ import { DecoderMessage } from "./opus-decoder-worker-message";
 type DecoderState = 'inactive'|'waiting'|'decoding';
 
 const SampleRate = 48000;
+let demuxerWasmBinary: ArrayBuffer = null;
+let decoderWasmBinary: ArrayBuffer = null;
 
 export class OpusDecoder {
     private readonly queue = new Denque<ArrayBuffer | 'endOfStream'>();
@@ -239,7 +241,7 @@ export class OpusDecoder {
         this.decoder["_ogv_audio_decoder_destroy"]();
     }
 
-    private static getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
+    private static getEmscriptenLoaderOptions(wasmBinary: ArrayBuffer): EmscriptenLoaderOptions {
         return {
             locateFile: (filename: string) => {
                 if (filename === "ogv-demuxer-webm-wasm.wasm")
@@ -251,17 +253,30 @@ export class OpusDecoder {
                 else if (filename.slice(0, 5) === 'data:')
                     return filename;
                 else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-            }
+            },
+            wasmBinary: wasmBinary,
         };
     }
 
     /** each time loads OGVDemuxerWebMWWasm with HTTP call, at least until it's cached by browser */
-    private static createDemuxer(): Promise<Demuxer> {
-        return OGVDemuxerWebMW(OpusDecoder.getEmscriptenLoaderOptions()) as Promise<Demuxer>;
+    private static async createDemuxer(): Promise<Demuxer> {
+        if (demuxerWasmBinary == null) {
+            const path = OGVDemuxerWebMWWasm;
+            const response = await fetch(path);
+            demuxerWasmBinary = await response.arrayBuffer();
+        }
+
+        return await (OGVDemuxerWebMW(OpusDecoder.getEmscriptenLoaderOptions(demuxerWasmBinary)) as Promise<Demuxer>);
     }
 
     /** each time loads OGVDecoderAudioOpusWWasm with HTTP call, at least until it's cached by browser */
-    private static  createDecoder():  Promise<Decoder> {
-        return OGVDecoderAudioOpusW(OpusDecoder.getEmscriptenLoaderOptions()) as Promise<Decoder>;
+    private static async createDecoder():  Promise<Decoder> {
+        if (decoderWasmBinary == null) {
+            const path = OGVDecoderAudioOpusWWasm;
+            const response = await fetch(path);
+            decoderWasmBinary = await response.arrayBuffer();
+        }
+
+        return OGVDecoderAudioOpusW(OpusDecoder.getEmscriptenLoaderOptions(decoderWasmBinary)) as Promise<Decoder>;
     }
 }
