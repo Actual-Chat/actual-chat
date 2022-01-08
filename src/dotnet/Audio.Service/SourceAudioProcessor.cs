@@ -14,7 +14,7 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     private static readonly Regex EmptyRegex = new("^\\s*$", RegexOptions.Compiled);
 
-    protected ILogger<SourceAudioProcessor> Log { get; }
+    protected ILogger Log { get; }
     protected bool DebugMode => Constants.DebugMode.AudioProcessing;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
@@ -27,36 +27,25 @@ public class SourceAudioProcessor : AsyncProcessBase
     public TranscriptSplitter TranscriptSplitter { get; }
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
+    public IChatAuthorsBackend ChatAuthorsBackend { get; }
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
 
-    public SourceAudioProcessor(
-        Options settings,
-        ITranscriber transcriber,
-        AudioSegmentSaver audioSegmentSaver,
-        SourceAudioRecorder sourceAudioRecorder,
-        AudioSplitter audioSplitter,
-        AudioSourceStreamer audioSourceStreamer,
-        TranscriptSplitter transcriptSplitter,
-        TranscriptPostProcessor transcriptPostProcessor,
-        TranscriptStreamer transcriptStreamer,
-        IChatsBackend chatsBackend,
-        ICommander commander,
-        MomentClockSet clocks,
-        ILogger<SourceAudioProcessor> log)
+    public SourceAudioProcessor(Options settings, IServiceProvider services)
     {
-        Log = log;
         Settings = settings;
-        Transcriber = transcriber;
-        AudioSegmentSaver = audioSegmentSaver;
-        SourceAudioRecorder = sourceAudioRecorder;
-        AudioSplitter = audioSplitter;
-        AudioSourceStreamer = audioSourceStreamer;
-        TranscriptSplitter = transcriptSplitter;
-        TranscriptPostProcessor = transcriptPostProcessor;
-        TranscriptStreamer = transcriptStreamer;
-        Commander = commander;
-        Clocks = clocks;
+        Log = services.LogFor(GetType());
+        Transcriber = services.GetRequiredService<ITranscriber>();
+        AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
+        SourceAudioRecorder = services.GetRequiredService<SourceAudioRecorder>();
+        AudioSplitter = services.GetRequiredService<AudioSplitter>();
+        AudioSourceStreamer = services.GetRequiredService<AudioSourceStreamer>();
+        TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
+        TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
+        TranscriptStreamer = services.GetRequiredService<TranscriptStreamer>();
+        ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
+        Commander = services.Commander();
+        Clocks = services.Clocks();
     }
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
@@ -85,10 +74,14 @@ public class SourceAudioProcessor : AsyncProcessBase
     internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
         DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
+
         var recordingStream = SourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, cancellationToken);
         if (Constants.DebugMode.AudioRecordingStream)
             recordingStream = recordingStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
-        var openSegments = AudioSplitter.GetSegments(record, recordingStream, cancellationToken);
+
+        var session = new Session(record.SessionId);
+        var author = await ChatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        var openSegments = AudioSplitter.GetSegments(record, author, recordingStream, cancellationToken);
         await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
             DebugLog?.LogDebug(
                 "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
@@ -119,9 +112,13 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     private async Task TranscribeAudio(OpenAudioSegment audioSegment, Task<ChatEntry> audioEntryTask, CancellationToken cancellationToken)
     {
+        var language = audioSegment.Languages.FirstOrDefault();
+        if (language.IsNone)
+            language = LanguageId.Default;
+        var altLanguages = audioSegment.Languages.Where(l => l != language);
         var transcriptionOptions = new TranscriptionOptions() {
-            Language = audioSegment.AudioRecord.Language,
-            AltLanguages = Array.Empty<string>(),
+            Language = language.Value,
+            AltLanguages = altLanguages.Select(l => l.Value).ToArray(),
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
             MaxSpeakerCount = 1,
@@ -182,7 +179,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry() {
             ChatId = audioSegment.AudioRecord.ChatId,
             Type = ChatEntryType.Audio,
-            AuthorId = audioSegment.AudioRecord.AuthorId,
+            AuthorId = audioSegment.Author.Id,
             Content = "",
             StreamId = audioSegment.StreamId,
             BeginsAt = beginsAt,

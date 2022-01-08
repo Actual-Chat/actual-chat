@@ -11,14 +11,12 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
     protected bool DebugMode => Constants.DebugMode.AudioProcessing;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
-    private IChatAuthorsBackend ChatAuthorsBackend { get; }
     private RedisDb RedisDb { get; }
     private RedisQueue<AudioRecord> NewRecordQueue { get; }
     private MomentClockSet Clocks { get; }
 
     public SourceAudioRecorder(
         RedisDb<AudioContext> audioRedisDb,
-        IChatAuthorsBackend chatAuthorsBackend,
         MomentClockSet clocks,
         ILogger<SourceAudioRecorder> log)
     {
@@ -28,7 +26,6 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         NewRecordQueue = RedisDb.GetQueue<AudioRecord>("new-records", new() {
             EnqueueCheckPeriod = TimeSpan.FromMilliseconds(250),
         });
-        ChatAuthorsBackend = chatAuthorsBackend;
     }
 
     public ValueTask DisposeAsync()
@@ -41,11 +38,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         CancellationToken cancellationToken)
     {
         Log.LogInformation("RecordSourceAudio: Record = {Record}", record);
-        var author = await ChatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
-        record = record with {
-            Id = new string(Ulid.NewUlid().ToString()),
-            AuthorId = author.Id,
-        };
+        record = record with { Id = new string(Ulid.NewUlid().ToString()) };
 
         var streamer = RedisDb.GetStreamer<RecordingPart>(record.Id);
         // streamer.Log = DebugLog;

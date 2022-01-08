@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualChat.Users;
 
 namespace ActualChat.Audio.Processing;
 
@@ -7,17 +8,23 @@ public sealed class AudioSplitter : AudioProcessorBase
     private static readonly TimeSpan MaxSegmentProcessingDuration = TimeSpan.FromMinutes(3.5);
     private static readonly TimeSpan SegmentCancellationDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan AudibleDurationWaitDelay = TimeSpan.FromSeconds(1);
+    private IChatUserSettings? ChatUserSettings { get; }
     private ILogger OpenAudioSegmentLog { get; }
     private ILogger AudioSourceLog { get; }
 
-    public AudioSplitter(IServiceProvider services) : base(services)
+    public AudioSplitter(IServiceProvider services) : this(services, false) { }
+    public AudioSplitter(IServiceProvider services, bool testMode) : base(services)
     {
         OpenAudioSegmentLog = Services.LogFor<OpenAudioSegment>();
         AudioSourceLog = Services.LogFor<AudioSource>();
+        ChatUserSettings = testMode
+            ? services.GetService<IChatUserSettings>()
+            : services.GetRequiredService<IChatUserSettings>();
     }
 
     public IAsyncEnumerable<OpenAudioSegment> GetSegments(
         AudioRecord audioRecord,
+        Author author,
         IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken)
     {
@@ -27,7 +34,7 @@ public sealed class AudioSplitter : AudioProcessorBase
         });
 
         _ = BackgroundTask.Run(
-            () => WriteSegments(audioRecord, recordingStream, openSegments, cancellationToken),
+            () => WriteSegments(audioRecord, author, recordingStream, openSegments, cancellationToken),
             Log, $"{nameof(GetSegments)} failed.", CancellationToken.None);
 
         return openSegments.Reader.ReadAllAsync(cancellationToken);
@@ -35,10 +42,12 @@ public sealed class AudioSplitter : AudioProcessorBase
 
     private async Task WriteSegments(
         AudioRecord audioRecord,
+        Author author,
         IAsyncEnumerable<RecordingPart> recordingStream,
         ChannelWriter<OpenAudioSegment> segments,
         CancellationToken cancellationToken)
     {
+        var session = audioRecord.SessionId.IsNullOrEmpty() ? Session.Null : new Session(audioRecord.SessionId);
         var totalDuration = TimeSpan.Zero;
         var segmentIndex = 0;
         var (segment, channel) = await NewAudioSegment(segmentIndex++).ConfigureAwait(false);
@@ -111,6 +120,13 @@ public sealed class AudioSplitter : AudioProcessorBase
 
         async ValueTask<(OpenAudioSegment Segment, ChannelWriter<byte[]> Channel)> NewAudioSegment(int segmentIndex1)
         {
+            var settings = ChatUserSettings != null!
+                ? await ChatUserSettings.Get(session, audioRecord.ChatId, cancellationToken).ConfigureAwait(false)
+                : null;
+            var language = settings.LanguageOrDefault();
+            var altLanguage = language.Next();
+            var languages = ImmutableArray.Create(language, altLanguage);
+
             var linkedCts = new LinkedTimeoutTokenSource(cancellationToken,
                 MaxSegmentProcessingDuration,
                 SegmentCancellationDelay);
@@ -124,7 +140,10 @@ public sealed class AudioSplitter : AudioProcessorBase
             );
             var newChannelByteStream = newChannel.Reader.ReadAllAsync(linkedToken);
             var audio = new AudioSource(newChannelByteStream, TimeSpan.Zero, AudioSourceLog, linkedToken);
-            var newSegment = new OpenAudioSegment(segmentIndex1, audioRecord, audio, OpenAudioSegmentLog);
+            var newSegment = new OpenAudioSegment(
+                segmentIndex1, audioRecord, audio,
+                author, languages,
+                OpenAudioSegmentLog);
 
             _ = BackgroundTask.Run(async () => {
                 try {
