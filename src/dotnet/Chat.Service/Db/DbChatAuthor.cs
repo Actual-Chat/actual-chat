@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatAuthors")]
+[Index(nameof(ChatId), nameof(LocalId))]
 [Index(nameof(ChatId), nameof(UserId))]
 public class DbChatAuthor : IHasId<string>
 {
@@ -15,7 +16,7 @@ public class DbChatAuthor : IHasId<string>
     public string ChatId { get; set; } = null!;
     public long LocalId { get; set; }
 
-    public long Version { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public bool IsAnonymous { get; set; }
@@ -41,7 +42,6 @@ public class DbChatAuthor : IHasId<string>
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.ChatId).IsRequired();
-            builder.Property(a => a.Version).IsConcurrencyToken();
         }
     }
 }

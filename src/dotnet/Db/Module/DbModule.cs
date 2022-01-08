@@ -38,12 +38,18 @@ public class DbModule : HostModule<DbSettings>
             ("context", typeof(TDbContext).Name.TrimSuffix("DbContext").ToLowerInvariant()));
 
         // Creating DbInfo<TDbContext>
-        var dbKind = connectionString.StartsWith("memory://", StringComparison.OrdinalIgnoreCase)
-            ? DbKind.InMemory
-            : DbKind.Default;
+        var (dbKind, connectionStringSuffix) = connectionString switch {
+            { } s when s.HasPrefix("memory:", StringComparison.OrdinalIgnoreCase, out var suffix)
+                => (DbKind.InMemory, suffix.Trim()),
+            { } s when s.HasPrefix("postgresql:", StringComparison.OrdinalIgnoreCase, out var suffix)
+                => (DbKind.PostgreSql, suffix.Trim()),
+            { } s when s.HasPrefix("mysql:", StringComparison.OrdinalIgnoreCase, out var suffix)
+                => (DbKind.MySql, suffix.Trim()),
+            _ => (DbKind.PostgreSql, connectionString),
+        };
         var dbInfo = new DbInfo<TDbContext> {
             DbKind = dbKind,
-            ConnectionString = connectionString,
+            ConnectionString = connectionStringSuffix,
             ShouldRecreateDb = Settings.ShouldRecreateDb,
             ShouldVerifyDb = Settings.ShouldVerifyDb,
             ShouldMigrateDb = Settings.ShouldMigrateDb,
@@ -52,20 +58,34 @@ public class DbModule : HostModule<DbSettings>
         // Adding services
         services.AddSingleton(dbInfo);
         services.AddDbContextFactory<TDbContext>(builder => {
-            if (dbKind == DbKind.InMemory) {
+            switch (dbKind) {
+            case DbKind.InMemory:
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).Name);
-                builder.UseInMemoryDatabase(connectionString);
+                builder.UseInMemoryDatabase(dbInfo.ConnectionString);
                 builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
-            }
-            else {
-                builder.UseNpgsql(connectionString, npgsql => {
-                    npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
+                break;
+            case DbKind.PostgreSql:
+                builder.UseNpgsql(dbInfo.ConnectionString, npgsql => {
+                    npgsql.EnableRetryOnFailure(0);
                     npgsql.MaxBatchSize(1);
+                    npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
+                break;
+            case DbKind.MySql:
+                var serverVersion = ServerVersion.AutoDetect(dbInfo.ConnectionString);
+                builder.UseMySql(dbInfo.ConnectionString, serverVersion, mySql => {
+                    mySql.EnableRetryOnFailure(0);
+                    // mySql.MaxBatchSize(1);
+                    // mySql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
+                });
+                // To be enabled later (requires migrations):
+                // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
+                break;
+            default:
+                throw new NotSupportedException();
             }
-
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
         });
