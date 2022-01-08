@@ -28,9 +28,7 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         NewRecordQueue = RedisDb.GetQueue(
             "new-records",
             new RedisQueue<AudioRecord>.Options() {
-                // NOTE(AY): Sometimes it waits for this period even after the notification,
-                // so we need to investigate this.
-                EnqueueCheckPeriod = TimeSpan.FromMilliseconds(50),
+                EnqueueCheckPeriod = TimeSpan.FromMilliseconds(250),
             });
         ChatAuthorsBackend = chatAuthorsBackend;
     }
