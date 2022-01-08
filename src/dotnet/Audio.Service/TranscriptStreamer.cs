@@ -32,7 +32,9 @@ public class TranscriptStreamer : ITranscriptStreamer
         string streamId,
         CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer<Transcript>(streamId);
+        var streamer = RedisDb.GetStreamer<Transcript>(streamId, new() {
+            AppendCheckPeriod = TimeSpan.FromMilliseconds(250),
+        });
         return streamer.Read(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
     }
