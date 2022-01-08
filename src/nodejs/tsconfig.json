@@ -4,6 +4,7 @@
     "types/",
     "src/",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts",
