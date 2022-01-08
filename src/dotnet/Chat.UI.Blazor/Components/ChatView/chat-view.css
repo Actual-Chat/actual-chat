@@ -90,7 +90,7 @@ a {
 }
 
 .chat-control-button {
-    @apply outline-none justify-center bg-accent rounded-lg transition-all duration-150 ease-in-out;
+    @apply outline-none justify-center bg-accent rounded-md transition-all duration-150 ease-in-out;
 }
 
 .chat-control-button:hover {
