@@ -10,8 +10,8 @@
 @inject IJSRuntime _js
 
 <div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full p-2">
-    <div class="flex flex-row justify-between px-2 md:px-3">
-        <div @ref="InputRef" class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-lg items-end w-full mr-1 overflow-hidden mr-2">
+    <div class="flex flex-row justify-between px-1">
+        <div @ref="InputRef" class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-md items-end w-full overflow-hidden mr-3">
             <button class="attach-button sticky bottom-0 flex outline-none text-secondary hover:cursor-pointer text-primary px-3 py-2">
                 <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                     <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
@@ -21,16 +21,19 @@
                  autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                  aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
             </div>
+            <div class="audio-wave hidden block flex-1 overflow-y-auto py-2 pr-2 outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M1 13h-1v-1h1v1zm22-1h-1v1h1v-1zm-20-1h-1v3h1v-3zm18 0h-1v3h1v-3zm-14 0h-1v3h1v-3zm10-1h-1v5h1v-5zm-12 0h-1v5h1v-5zm14-1h-1v7h1v-7zm-10 0h-1v7h1v-7zm2-2h-1v10h1v-10zm4 0h-1v10h1v-10zm-2-2h-1v14h1v-14z"/>
+                    </svg>
+            </div>
             <button class="post-message hidden sticky bottom-0 flex outline-none text-secondary transition-all duration-150 p-1"
                     @onclick="_ => Post()">
-                <svg class="w-8 h-8 text-secondary fill-current" viewBox="2 2 28 28" id="icon" xmlns="http://www.w3.org/2000/svg"><defs><style>.cls-1{fill:none;}
-                </style></defs><title>send</title><path d="M27.45,15.11l-22-11a1,1,0,0,0-1.08.12,1,1,0,0,0-.33,1L7,16,4,26.74A1,1,0,0,0,5,28a1,1,0,0,0,.45-.11l22-11a1,1,0,0,0,0-1.78Zm-20.9,10L8.76,17H18V15H8.76L6.55,6.89,24.76,16Z"/>
-                <rect id="_Transparent_Rectangle_" data-name="&lt;Transparent Rectangle&gt;" class="cls-1" width="32" height="32"/>
+                <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
         </div>
         <div class="block flex flex-1 flex-row justify-center outline-none items-end">
-            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-lg py-2 border border-accent">
+            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-md py-2">
                 <div class="chat-control-button language-button p-1 w-1/2 hidden">
                     <ChatLanguageToggle/>
                 </div>
