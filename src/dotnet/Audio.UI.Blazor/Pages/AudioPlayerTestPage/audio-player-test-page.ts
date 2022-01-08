@@ -34,7 +34,7 @@ export class AudioPlayerTestPage implements IAudioPlayer {
         this._stats.constructorStartTime = new Date().getTime();
         this.player = isMsePlayer
             ? new MseAudioPlayer(blazorRef, true)
-            : new AudioContextAudioPlayer(blazorRef, true);
+            : new AudioContextAudioPlayer('test-page-player', blazorRef, true);
         this.player.onInitialized = () => this._stats.initializeEndTime = new Date().getTime();
         this.player.onStartPlaying = () => {
             this._stats.playingStartTime = new Date().getTime();
@@ -62,10 +62,6 @@ export class AudioPlayerTestPage implements IAudioPlayer {
 
     public set onInitialized(value: () => void | null) {
         this.player.onInitialized = value;
-    }
-
-    public dispose(): void {
-        this.player.dispose();
     }
 
     public init(byteArray: Uint8Array): Promise<void> {

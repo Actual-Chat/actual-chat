@@ -5,10 +5,10 @@ import { IAudioPlayer } from './IAudioPlayer';
 export class AudioPlayer {
     private static _isMsePlayer = false;
 
-    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean): IAudioPlayer {
+    public static create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean): IAudioPlayer {
         return AudioPlayer._isMsePlayer
             ? MseAudioPlayer.create(blazorRef, debugMode)
-            : AudioContextAudioPlayer.create(blazorRef, debugMode);
+            : AudioContextAudioPlayer.create(playerId, blazorRef, debugMode);
     }
 
     public static changePlayerImplementation(useMse: boolean) {

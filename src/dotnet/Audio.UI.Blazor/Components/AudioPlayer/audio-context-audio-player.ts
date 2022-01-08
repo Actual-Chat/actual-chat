@@ -6,13 +6,15 @@ import { AudioContextPool } from 'audio-context-pool';
 import { IAudioPlayer } from './IAudioPlayer';
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
 import {
-    DecoderWorkerMessage, EndOfStreamCommand,
+    DecoderWorkerMessage,
+    EndOfStreamCommand,
     InitCommand,
     LoadDecoderCommand,
-    PushDataCommand, StopCommand
+    PushDataCommand,
+    StopCommand
 } from "./workers/opus-decoder-worker-message";
 
-type PlayerState = 'inactive' | 'readyToInit' | 'buffering' | 'playing' | 'endOfStream' ;
+type PlayerState = 'inactive' | 'buffering' | 'playing' | 'endOfStream' ;
 
 /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
 const BufferTooMuchThreshold = 5.0;
@@ -21,6 +23,24 @@ const BufferTooMuchThreshold = 5.0;
  * should be in sync with audio-feeder bufferSize
  */
 const BufferEnoughThreshold = 0.1;
+
+const playerMap = new Map<string, AudioContextAudioPlayer>();
+const decoderWorker = new Worker('/dist/opusDecoderWorker.js');
+decoderWorker.postMessage(new LoadDecoderCommand());
+decoderWorker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
+    const { playerId, topic } = ev.data;
+
+    const player = playerMap.get(playerId);
+    if (player == null) {
+        console.error(`decoderWorker.onmessage: can't find player=${playerId}`);
+        return;
+    }
+    switch (topic) {
+        case 'initCompleted':
+            player.initCompleted();
+            break;
+    }
+};
 
 export class AudioContextAudioPlayer implements IAudioPlayer {
 
@@ -33,24 +53,23 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         debugFeederStats: boolean;
     } = null;
 
-    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean): AudioContextAudioPlayer {
-        const player = new AudioContextAudioPlayer(blazorRef, debugMode);
+    public static create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean): AudioContextAudioPlayer {
+        const player = new AudioContextAudioPlayer(playerId, blazorRef, debugMode);
         if (debugMode) {
             self["_player"] = player;
         }
+        playerMap.set(playerId, player)
         return player;
     }
 
     /** How often send offset update event to the blazor, in milliseconds */
     private readonly updateOffsetMs = 200;
-
+    private readonly playerId: string;
     private readonly blazorRef: DotNet.DotNetObject;
-    private readonly decoderWorker: Worker;
     private readonly decoderChannel: MessageChannel;
-    private readonly preInitPromise: Promise<void>;
-    private preInitResolve: () => void;
-    private readonly initPromise: Promise<void>;
-    private initResolve: () => void;
+
+    private initPromise?: Promise<void> = null;
+    private initResolve?: () => void = null;
     private state: PlayerState = 'inactive'
 
     private readonly _debugMode: boolean;
@@ -67,7 +86,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     public onStartPlaying?: () => void = null;
     public onInitialized?: () => void = null;
 
-    constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+    constructor(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        this.playerId = playerId;
         this.blazorRef = blazorRef;
         const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
@@ -88,41 +108,17 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         }
 
         this._unblockQueue = null;
-        this.decoderWorker = new Worker('/dist/opusDecoderWorker.js');
         this.decoderChannel = new MessageChannel();
-        this.decoderWorker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
-            const decoderMessage = ev.data;
-            const { topic } = decoderMessage;
-
-            switch (topic) {
-                case 'readyToInit':
-                    this.preInitResolve();
-                    this.state = 'readyToInit';
-                    break;
-
-                case 'initCompleted':
-                    this.initResolve();
-                    this.state = 'buffering';
-                    break;
-            }
-        };
-        this.preInitPromise = new Promise<void>(resolve => this.preInitResolve = resolve);
-        this.initPromise = new Promise<void>(resolve => this.initResolve = resolve);
-
-        const load = new LoadDecoderCommand();
-        this.decoderWorker.postMessage(load, [this.decoderChannel.port1]);
     }
 
     public async init(header: Uint8Array): Promise<void> {
-        if (this.state !== 'inactive' && this.state !== 'readyToInit') {
+        if (this.state !== 'inactive') {
             this.logError("init: called in a wrong order");
         }
-        if (this.state !== 'readyToInit') {
-            await this.preInitPromise;
-        }
 
-        const init = new InitCommand(header.buffer, header.byteOffset, header.byteLength);
-        this.decoderWorker.postMessage(init, [header.buffer]);
+        this.initPromise = new Promise<void>(resolve => this.initResolve = resolve);
+        const init = new InitCommand(this.playerId, header.buffer, header.byteOffset, header.byteLength);
+        decoderWorker.postMessage(init, [header.buffer, this.decoderChannel.port1]);
 
         this.audioContext = await AudioContextPool.get("main") as AudioContext;
         const feederNodeOptions: AudioWorkletNodeOptions = {
@@ -150,7 +146,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
                     this.log(`audio ended.`);
 
                 const _ = this.onUpdateOffsetTick();
-                this.dispose();
+                this.onStop();
                 const __ = this.invokeOnPlaybackEnded();
                 return;
             }
@@ -172,22 +168,40 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         this.feederNode.connect(this.audioContext.destination);
     }
 
+    public initCompleted(): void {
+        const initResolve = this.initResolve;
+        if (initResolve != null) {
+            initResolve();
+            this.initPromise = null;
+            this.initResolve = null;
+        }
+        this.state = 'buffering';
+    };
+
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
-        if (this.state === 'inactive' || this.state == 'readyToInit') {
-            await this.initPromise;
+        if (this.state === 'inactive') {
+            const initPromise = this.initPromise;
+            if (initPromise != null) {
+                await initPromise;
+                this.initPromise = null;
+                this.initResolve = null;
+            }
+            else {
+                return;
+            }
         }
 
-        const pushData = new PushDataCommand(byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
-        this.decoderWorker.postMessage(pushData, [byteArray.buffer]);
+        const pushData = new PushDataCommand(this.playerId, byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
+        decoderWorker.postMessage(pushData, [byteArray.buffer]);
     }
 
     public endOfStream(): void {
         if (this._debugMode) {
-            this.log("endOfStream()");
+            this.log("Enqueue 'EndOfStream' operation.");
         }
-        const endOfStream = new EndOfStreamCommand();
-        this.decoderWorker.postMessage(endOfStream);
+        const endOfStream = new EndOfStreamCommand(this.playerId);
+        decoderWorker.postMessage(endOfStream);
 
         this.state = 'endOfStream';
     }
@@ -196,31 +210,30 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         if (this._debugMode)
             this.log(`stop(error:${error})`);
 
+        this.onStop();
+
+        const stop = new StopCommand(this.playerId);
+        decoderWorker.postMessage(stop);
+
+    }
+
+    private onStop(): void {
         if (this._debugMode)
-            this.log("Enqueue 'Abort' operation.");
+            this.log(`onStop()`);
+
+        this.state = 'inactive';
+
+        this.initPromise = null;
+        this.initResolve = null;
 
         if (this.feederNode !== null) {
             this.feederNode.stop();
             this.feederNode.clear();
+            this.feederNode.disconnect();
+            this.feederNode = null;
         }
 
-        const stop = new StopCommand();
-        this.decoderWorker.postMessage(stop);
-
-        this.state = 'inactive';
-    }
-
-    public dispose(): void {
-        if (this._debugMode)
-            this.logWarn(`dispose()`);
-
-        this.stop();
-        this.feederNode.disconnect();
-
-        const stop = new StopCommand();
-        this.decoderWorker.postMessage(stop);
-
-        this.state = 'inactive';
+        playerMap.delete(this.playerId);
     }
 
     private onUpdateOffsetTick = async () => {

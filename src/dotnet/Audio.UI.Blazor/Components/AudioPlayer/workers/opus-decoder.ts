@@ -11,27 +11,36 @@ const SampleRate = 48000;
 
 export class OpusDecoder {
     private readonly queue = new Denque<ArrayBuffer | 'endOfStream'>();
-    private readonly workletPort: MessagePort;
     private readonly demuxer: Demuxer;
     private readonly decoder: Decoder;
+    private readonly release: (decoder: OpusDecoder) => void;
 
+    private _playerId: string;
+    private workletPort: MessagePort;
     private state: DecoderState = 'inactive';
 
-    constructor(workletPort: MessagePort, demuxer: Demuxer, decoder: Decoder) {
-        this.workletPort = workletPort;
+    public get playerId() {
+        return this._playerId;
+    }
+
+    constructor(release: (decoder: OpusDecoder) => void, demuxer: Demuxer, decoder: Decoder) {
+        this.release = release;
         this.demuxer = demuxer;
         this.decoder = decoder;
     }
 
-    public static async create(workletPort: MessagePort): Promise<OpusDecoder> {
+    public static async create(release: (decoder: OpusDecoder) => void): Promise<OpusDecoder> {
         const demuxerPromise = OpusDecoder.createDemuxer();
         const decoderPromise = OpusDecoder.createDecoder();
         const [demuxer, decoder] = await Promise.all([demuxerPromise,decoderPromise]);
-        return new OpusDecoder(workletPort, demuxer, decoder);
+        return new OpusDecoder(release, demuxer, decoder);
     }
 
-    public async init(buffer:ArrayBuffer, offset: number, length: number) : Promise<void> {
+    public async init(playerId: string, workletPort: MessagePort, buffer:ArrayBuffer, offset: number, length: number) : Promise<void> {
         try {
+            this._playerId = playerId;
+            this.workletPort = workletPort;
+
             await Promise.all([this.initDemuxer(), this.initDecoder()]);
 
             const header = buffer.slice(offset, offset + length);
@@ -64,6 +73,8 @@ export class OpusDecoder {
 
     public pushEndOfStream(): void {
         this.queue.push('endOfStream');
+
+        const _ = this.processQueue();
     }
 
     public async stop(): Promise<void> {
@@ -72,6 +83,10 @@ export class OpusDecoder {
         this.destroyDemuxer();
         this.destroyDecoder();
         this.state = 'inactive';
+
+        this.release(this);
+        this._playerId = null;
+        this.workletPort = null;
     }
 
     private get isMetadataLoaded(): boolean {
@@ -99,12 +114,7 @@ export class OpusDecoder {
 
             const queueItem = queue.pop();
             if (queueItem == 'endOfStream') {
-                await this.flushDemuxer();
-
-                this.destroyDemuxer();
-                this.destroyDecoder();
-                this.state = 'inactive';
-
+                await this.stop();
                 return;
             }
 
@@ -163,7 +173,6 @@ export class OpusDecoder {
 
         const _ = this.processQueue();
     }
-
 
     private decodeProcess(packet: ArrayBuffer): Promise<Float32Array[] | null> {
         const { decoder } = this;
