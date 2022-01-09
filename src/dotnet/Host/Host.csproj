@@ -53,5 +53,10 @@
     <Watch Remove="wwwroot\**\*.woff" />
     <Watch Remove="wwwroot\**\*.woff2" />
   </ItemGroup>
-
+  <!-- Copy Stl* pdb to the output folder -->
+  <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('Stl')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+    </ItemGroup>
+  </Target>
 </Project>
