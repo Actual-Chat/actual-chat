@@ -48,20 +48,16 @@ a {
     @apply md:transition md:duration-300 md:ease-in-out;
 }
 
-.post-message:hover {
-    @apply md:text-primary;
-}
-
 .post-message:hover .fill-current {
-    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .audio-recorder:hover .not-recording {
-    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .audio-recorder:hover .recording {
-    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .not-recording {
@@ -78,11 +74,11 @@ a {
 }
 
 .chat-player-toggle:hover .toggle-button {
-    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .chat-player-toggle:hover .toggle-button-on {
-    @apply md:transition md:duration-300 md:ease-in-out md:scale-110;
+    @apply md:transition md:duration-300 md:ease-in-out;
 }
 
 .toggle-button {
@@ -91,5 +87,13 @@ a {
 
 .toggle-button-on {
     @apply text-toggle-on md:transition md:duration-300 md:ease-in-out;
+}
+
+.chat-control-button {
+    @apply outline-none justify-center bg-accent rounded-md transition-all duration-150 ease-in-out;
+}
+
+.chat-control-button:hover {
+    @apply md:bg-primary transition-all duration-150 ease-in-out;
 }
 
