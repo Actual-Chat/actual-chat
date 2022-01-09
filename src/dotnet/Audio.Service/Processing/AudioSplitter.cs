@@ -47,7 +47,7 @@ public sealed class AudioSplitter : AudioProcessorBase
         ChannelWriter<OpenAudioSegment> segments,
         CancellationToken cancellationToken)
     {
-        var session = audioRecord.SessionId.IsNullOrEmpty() ? Session.Null : new Session(audioRecord.SessionId);
+        var session = audioRecord.Session;
         var totalDuration = TimeSpan.Zero;
         var segmentIndex = 0;
         var (segment, channel) = await NewAudioSegment(segmentIndex++).ConfigureAwait(false);
