@@ -21,9 +21,8 @@
                  autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                  aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
             </div>
-            <div class="audio-wave hidden block flex-1 overflow-y-auto py-2 pr-2 outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M1 13h-1v-1h1v1zm22-1h-1v1h1v-1zm-20-1h-1v3h1v-3zm18 0h-1v3h1v-3zm-14 0h-1v3h1v-3zm10-1h-1v5h1v-5zm-12 0h-1v5h1v-5zm14-1h-1v7h1v-7zm-10 0h-1v7h1v-7zm2-2h-1v10h1v-10zm4 0h-1v10h1v-10zm-2-2h-1v14h1v-14z"/>
-                    </svg>
+            <div class="audio-wave hidden flex-1 overflow-y-auto py-2 pr-2 outline-none">
+                <svg class="h-6 w-6 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 13h-1v-1h1v1zm22-1h-1v1h1v-1zm-20-1h-1v3h1v-3zm18 0h-1v3h1v-3zm-14 0h-1v3h1v-3zm10-1h-1v5h1v-5zm-12 0h-1v5h1v-5zm14-1h-1v7h1v-7zm-10 0h-1v7h1v-7zm2-2h-1v10h1v-10zm4 0h-1v10h1v-10zm-2-2h-1v14h1v-14z"/></svg>
             </div>
             <button class="post-message hidden sticky bottom-0 flex outline-none text-secondary transition-all duration-150 p-1"
                     @onclick="_ => Post()">
@@ -38,7 +37,7 @@
                     <ChatLanguageToggle/>
                 </div>
                 <div class="chat-control-button recorder-button w-1/2 flex">
-                    <AudioRecorderWrapper ChatId="@Chat.Id"/>
+                    <AudioRecorder ChatId="@Chat.Id"/>
                 </div>
                 @if (RealtimePlayer != null) {
                     <div class="chat-control-button player-button w-1/2 flex">
