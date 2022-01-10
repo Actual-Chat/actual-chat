@@ -1,7 +1,7 @@
 import { AudioRingBuffer } from "./audio-ring-buffer";
 import { VadMessage } from "../audio-vad-message";
 
-const SamplesPerWindow = 768;
+const SAMPLES_PER_WINDOW = 768;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private buffer: AudioRingBuffer;
@@ -30,10 +30,10 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private init(): void {
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferDeque = [];
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
-        this.bufferDeque.push(new ArrayBuffer(SamplesPerWindow * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
+        this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
@@ -55,14 +55,14 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
         }
 
         this.buffer.push(input);
-        if (this.buffer.framesAvailable >= SamplesPerWindow) {
+        if (this.buffer.framesAvailable >= SAMPLES_PER_WINDOW) {
             const vadBuffer = [];
             let vadArrayBuffer = this.bufferDeque.shift();
             if (vadArrayBuffer === undefined) {
-                vadArrayBuffer = new ArrayBuffer(SamplesPerWindow * 4);
+                vadArrayBuffer = new ArrayBuffer(SAMPLES_PER_WINDOW * 4);
             }
 
-            vadBuffer.push(new Float32Array(vadArrayBuffer, 0, SamplesPerWindow));
+            vadBuffer.push(new Float32Array(vadArrayBuffer, 0, SAMPLES_PER_WINDOW));
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.workerPort !== undefined) {

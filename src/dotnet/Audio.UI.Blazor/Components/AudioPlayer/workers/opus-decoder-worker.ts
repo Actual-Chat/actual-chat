@@ -2,7 +2,7 @@ import Denque from 'denque';
 import {
     DecoderCommand,
     DecoderWorkerMessage,
-    DecoderWorkletMessage, EndOfStreamCommand,
+    EndOfStreamCommand,
     InitCommand,
     PushDataCommand, StopCommand
 } from "./opus-decoder-worker-message";
@@ -56,6 +56,7 @@ worker.onmessage = async (ev: MessageEvent) => {
                 console.error(`endOfStream: can't find decoder for player=${playerId}`);
                 break;
             }
+
             decoder.pushEndOfStream();
             break;
         }
@@ -67,15 +68,12 @@ worker.onmessage = async (ev: MessageEvent) => {
                 // already processed by handling 'endOfStream' at the decoder
                 break;
             }
+
             await decoder.stop();
             break;
         }
     }
 
-};
-
-const onWorkletMessage = async (ev: MessageEvent<DecoderWorkletMessage>) => {
-    // do nothing, we just receive buffer as transferable there for GC
 };
 
 function release(decoder: OpusDecoder): void {
