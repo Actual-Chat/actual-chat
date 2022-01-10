@@ -79,8 +79,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         if (Constants.DebugMode.AudioRecordingStream)
             recordingStream = recordingStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
 
-        var session = new Session(record.SessionId);
-        var author = await ChatAuthorsBackend.GetOrCreate(session, record.ChatId, cancellationToken).ConfigureAwait(false);
+        var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         var openSegments = AudioSplitter.GetSegments(record, author, recordingStream, cancellationToken);
         await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
             DebugLog?.LogDebug(
