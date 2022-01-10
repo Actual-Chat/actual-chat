@@ -1,7 +1,7 @@
 
 export type DecoderCommandType = 'loadDecoder' | 'init' | 'pushData' | 'endOfStream' | 'stop';
 
-export interface IDecoderCommand {
+interface DecoderCommandContract {
     command: DecoderCommandType;
     playerId: string;
 }
@@ -13,7 +13,7 @@ export type DecoderCommand =
     EndOfStreamCommand |
     StopCommand;
 
-export class LoadDecoderCommand implements IDecoderCommand {
+export class LoadDecoderCommand implements DecoderCommandContract {
     public readonly command: DecoderCommandType = 'loadDecoder';
     public readonly playerId: string = 'NA';
 
@@ -21,7 +21,7 @@ export class LoadDecoderCommand implements IDecoderCommand {
     }
 }
 
-export class InitCommand implements IDecoderCommand {
+export class InitCommand implements DecoderCommandContract {
     public readonly command: DecoderCommandType = 'init';
     public readonly playerId: string;
     public readonly buffer: ArrayBuffer;
@@ -36,7 +36,7 @@ export class InitCommand implements IDecoderCommand {
     }
 }
 
-export class PushDataCommand implements IDecoderCommand {
+export class PushDataCommand implements DecoderCommandContract {
     public readonly command: DecoderCommandType = 'pushData';
     public readonly playerId: string;
     public readonly buffer: ArrayBuffer;
@@ -51,7 +51,7 @@ export class PushDataCommand implements IDecoderCommand {
     }
 }
 
-export class EndOfStreamCommand implements IDecoderCommand {
+export class EndOfStreamCommand implements DecoderCommandContract {
     public readonly command: DecoderCommandType = 'endOfStream';
     public readonly playerId: string;
 
@@ -60,7 +60,7 @@ export class EndOfStreamCommand implements IDecoderCommand {
     }
 }
 
-export class StopCommand implements IDecoderCommand {
+export class StopCommand implements DecoderCommandContract {
     public readonly command: DecoderCommandType = 'stop';
     public readonly playerId: string;
 
@@ -69,6 +69,7 @@ export class StopCommand implements IDecoderCommand {
     }
 }
 
+//** Decoded samples, will be consumed at the decoder worklet */
 export interface DecoderMessage {
     topic: 'samples';
     offset: number;
@@ -76,11 +77,13 @@ export interface DecoderMessage {
     buffer: ArrayBuffer;
 }
 
+//** Init callback message, handled at the audio player main thread */
 export interface DecoderWorkerMessage {
     topic: 'initCompleted';
     playerId: string;
 }
 
+//** Processed buffer to be returned back to the decoder worker */
 export interface DecoderWorkletMessage {
     topic: 'buffer';
     buffer: ArrayBuffer;
