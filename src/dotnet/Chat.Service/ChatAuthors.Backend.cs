@@ -7,6 +7,8 @@ namespace ActualChat.Chat;
 
 public partial class ChatAuthors
 {
+    private readonly ThreadSafeLruCache<Symbol, long> _maxLocalIdCache = new(16384);
+
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(
         string chatId, string authorId, bool inherit,
@@ -107,19 +109,37 @@ public partial class ChatAuthors
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var maxLocalId = await dbContext.ChatAuthors.ForUpdate() // To serialize inserts
-            .Where(e => e.ChatId == chatId)
-            .OrderByDescending(e => e.LocalId)
-            .Select(e => e.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
         dbChatAuthor.ChatId = chatId;
-        dbChatAuthor.LocalId = await _idSequences.Next(chatId, maxLocalId).ConfigureAwait(false);
+        dbChatAuthor.LocalId = await DbNextLocalId(dbContext, chatId, cancellationToken).ConfigureAwait(false);
         dbChatAuthor.Id = DbChatAuthor.ComposeId(chatId, dbChatAuthor.LocalId);
         dbChatAuthor.UserId = userId.NullIfEmpty();
         dbContext.Add(dbChatAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbChatAuthor.ToModel();
+    }
+
+    // Private / internal methods
+
+    internal async Task<long> DbNextLocalId(
+        ChatDbContext dbContext,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        var idSequenceKey = new Symbol(chatId);
+        var maxLocalId = _maxLocalIdCache.GetValueOrDefault(idSequenceKey);
+        if (maxLocalId == 0) {
+            _maxLocalIdCache[idSequenceKey] = maxLocalId =
+                await dbContext.ChatAuthors.ForUpdate() // To serialize inserts
+                    .Where(e => e.ChatId == chatId)
+                    .OrderByDescending(e => e.LocalId)
+                    .Select(e => e.LocalId)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+        }
+
+        var localId = await _idSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
+        _maxLocalIdCache[idSequenceKey] = localId;
+        return localId;
     }
 }

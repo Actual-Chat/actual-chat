@@ -9,33 +9,42 @@
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 
-<div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full">
-    <div class="flex flex-row justify-between px-3 my-1">
-        @if (RealtimePlayer != null) {
-            <ChatPlayerToggle Player="RealtimePlayer"/>
-        }
-        <div class="block flex flex-row justify-center justify-items-center py-2 px-4 ml-2 rounded-l-2xl outline-none bg-accent items-end">
-            <button class="outline-none text-secondary bg-transparent hover:cursor-pointer text-primary py-1">
-                <svg class="fill-current h-5 w-5 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+<div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full p-2">
+    <div class="flex flex-row justify-between px-1">
+        <div @ref="InputRef" class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-md items-end w-full overflow-hidden mr-3">
+            <button class="attach-button sticky bottom-0 flex outline-none text-secondary hover:cursor-pointer text-primary px-3 py-2">
+                <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
+                </svg>
+            </button>
+            <div class="message-input block flex-1 overflow-y-auto max-h-36 break-words py-2 pr-2 outline-none hover:cursor-text text-primary"
+                 autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
+                 aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
+            </div>
+            <div class="audio-wave hidden flex-1 overflow-y-auto py-2 pr-2 outline-none">
+                <svg class="h-6 w-6 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 13h-1v-1h1v1zm22-1h-1v1h1v-1zm-20-1h-1v3h1v-3zm18 0h-1v3h1v-3zm-14 0h-1v3h1v-3zm10-1h-1v5h1v-5zm-12 0h-1v5h1v-5zm14-1h-1v7h1v-7zm-10 0h-1v7h1v-7zm2-2h-1v10h1v-10zm4 0h-1v10h1v-10zm-2-2h-1v14h1v-14z"/></svg>
+            </div>
+            <button class="post-message hidden sticky bottom-0 flex outline-none text-secondary transition-all duration-150 p-1"
+                    @onclick="_ => Post()">
+                <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
         </div>
-        <div @ref="Ref" class="message-input block overflow-y-auto max-h-36 break-words flex-1 py-2 outline-none hover:cursor-text bg-accent text-primary"
-             autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
-             aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="Message #@(Chat.Title)">
-        </div>
-        <div class="block flex flex-row justify-center justify-items-center outline-none bg-accent rounded-r-2xl mr-2 md:mr-8 pl-2 items-end">
-            <span @ref="ButtonSpanRef">
-                <button class="post-message outline-none py-2 pr-3 text-secondary rounded-r-2xl bg-transparent max-h-12 hidden transition-all duration-150"
-                        @onclick="_ => Post()">
-                    <svg class="items-center fill-current" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="-1 -2 28 28">
-                        <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
-                    </svg>
-                </button>
-                <ChatLanguageToggle />
-                <AudioRecorderWrapper ChatId="@Chat.Id" />
-            </span>
+        <div class="block flex flex-1 flex-row justify-center outline-none items-end">
+            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-md py-2">
+                <div class="chat-control-button language-button p-1 w-1/2 hidden">
+                    <ChatLanguageToggle/>
+                </div>
+                <div class="chat-control-button recorder-button w-1/2 flex">
+                    <AudioRecorder ChatId="@Chat.Id"/>
+                </div>
+                @if (RealtimePlayer != null) {
+                    <div class="chat-control-button player-button w-1/2 flex">
+                        <ChatPlayerToggle Player="RealtimePlayer"/>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </div>
@@ -44,8 +53,8 @@
     private static string? _class;
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
-    private ElementReference Ref { get; set; }
-    private ElementReference ButtonSpanRef { get; set; }
+    private ElementReference InputRef { get; set; }
+    private ElementReference ChatControlRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
@@ -71,7 +80,7 @@
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                Ref, ButtonSpanRef, BlazorRef
+                InputRef, ChatControlRef, BlazorRef
                 ).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("setText", Text).ConfigureAwait(true);
         }

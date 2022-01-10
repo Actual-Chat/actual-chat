@@ -1,17 +1,18 @@
 import Denque from 'denque';
 import SoxrResampler, {SoxrDatatype, SoxrQuality} from 'wasm-audio-resampler';
-import {adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector} from "../audio-vad";
-import {VadMessage} from "../audio-vad-message";
+import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
+import { VadMessage } from "../audio-vad-message";
 import OnnxModel from '../vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 
 
+const CHANNELS = 1;
+const IN_RATE = 48000;
+const OUT_RATE = 16000;
+
 const voiceDetector = new VoiceActivityDetector(OnnxModel);
 const queue = new Denque<ArrayBuffer>();
-const channels = 1;
-const inRate = 48000;
-const outRate = 16000;
 const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const resampleBuffer = new Uint8Array(512 * 4 * 2);
@@ -31,9 +32,9 @@ onmessage = async (ev) => {
             break;
         case 'init-new-stream':
             const newResampler = new SoxrResampler(
-                channels,
-                inRate,
-                outRate,
+                CHANNELS,
+                IN_RATE,
+                OUT_RATE,
                 inputDatatype,
                 outputDatatype,
                 SoxrQuality.SOXR_MQ

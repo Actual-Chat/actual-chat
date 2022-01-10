@@ -120,7 +120,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         Moment? beginsAt,
         CancellationToken cancellationToken)
     {
-        var chatsBackend = Services.GetRequiredService<IChatsBackend>();
+        var chats = (Chats) Services.GetRequiredService<IChatsBackend>();
         var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
         if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {
@@ -152,7 +152,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         {
             lastEndsAt += TimeSpan.FromSeconds(rnd.NextDouble() * 5);
             lastBeginsAt = lastEndsAt;
-            var id = await chatsBackend
+            var id = await chats
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry() {
@@ -177,7 +177,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
             lastEndsAt = lastBeginsAt + duration;
 
-            var id = await chatsBackend
+            var id = await chats
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
                 .ConfigureAwait(false);
             var textToTimeMap = ConvertOldTextToTimeMap(
@@ -195,7 +195,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             };
             dbContext.Add(audioEntry);
 
-            id = await chatsBackend
+            id = await chats
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {
@@ -226,7 +226,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
             var textToTimeMap = ConvertOldTextToTimeMap(
                 "{\"SourcePoints\":[0,5,31,35,53,63,69,76,82,119,121,126],\"TargetPoints\":[0,1.4,3,3.6,4.8,5.3,6,6.3,7,9.5,9.5,10.53]}");
-            var id = await chatsBackend
+            var id = await chats
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Audio, cancellationToken)
                 .ConfigureAwait(false);
             var audioEntry = new DbChatEntry {
@@ -242,7 +242,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             };
             dbContext.Add(audioEntry);
 
-            id = await chatsBackend
+            id = await chats
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
             var textEntry = new DbChatEntry {

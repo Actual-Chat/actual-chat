@@ -15,7 +15,7 @@ interface Encoder {
     close(): void;
 }
 
-type WorkerState = 'inactive'|'readyToInit'|'encoding'|'closed';
+type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'closed';
 
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;

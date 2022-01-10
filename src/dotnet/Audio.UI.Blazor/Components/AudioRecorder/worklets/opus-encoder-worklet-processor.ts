@@ -1,7 +1,7 @@
 import Denque from 'denque';
-import {AudioRingBuffer} from "./audio-ring-buffer";
+import { AudioRingBuffer } from "./audio-ring-buffer";
 
-const SamplesPerMs = 48;
+const SAMPLES_PER_MS = 48;
 
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
     private readonly samplesPerWindow: number;
@@ -17,7 +17,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             throw new Error('OpusEncoderWorkletProcessor supports only 20, 40, 60, 80 timeSlice argument');
         }
 
-        this.samplesPerWindow = timeSlice * SamplesPerMs;
+        this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
         this.buffer = new AudioRingBuffer(8192, 1);
         this.bufferDeque = new Denque<ArrayBuffer>();
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));

@@ -1,6 +1,15 @@
 import Denque from 'denque';
-import { NodeMessage, DataNodeMessage, ChangeStateNodeMessage, StateChangedProcessorMessage, StateProcessorMessage, GetStateNodeMessage } from './feeder-audio-worklet-message';
+import {
+    NodeMessage,
+    DataNodeMessage,
+    ChangeStateNodeMessage,
+    StateChangedProcessorMessage,
+    StateProcessorMessage,
+    GetStateNodeMessage,
+} from './feeder-audio-worklet-message';
+import { DecoderMessage, DecoderWorkletMessage } from "../workers/opus-decoder-worker-message";
 
+const SAMPLE_RATE = 48000;
 /** Part of the feeder that lives in AudioWorkletGlobalScope */
 // TODO: implement pause
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
@@ -12,19 +21,26 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
      * 480_000 samples at 48 kHz ~= 10_000 ms
      */
     private readonly samplesLowThreshold: number = 480_000;
+    private readonly enoughToStartPlaying: number;
+    private readonly tooMuchBuffered: number;
+    private workerPort: MessagePort;
     private chunkOffset: number = 0;
-    private firstProcessTime: number = 0;
-    private lastProcessTime: number = 0;
+    private playbackTime: number = 0;
     private isPlaying: boolean = false;
     private isStarving: boolean = false;
 
+
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
+
+        const { enoughToStartPlaying, tooMuchBuffered } = options.processorOptions;
+        this.enoughToStartPlaying = enoughToStartPlaying;
+        this.tooMuchBuffered = tooMuchBuffered;
         this.port.onmessage = this.onNodeMessage;
     }
 
     /** Count how many samples are queued up */
-    private get sampleCount(): number {
+    private get bufferedSampleCount(): number {
         const { chunks, chunkOffset } = this;
         let result = -chunkOffset;
         const len = chunks.length;
@@ -40,7 +56,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         outputs: Float32Array[][],
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
-        const { debug, chunks, isPlaying, samplesLowThreshold } = this;
+        const { debug, chunks, isPlaying, samplesLowThreshold, tooMuchBuffered } = this;
         let { chunkOffset } = this;
         // if we are disconnected from output (node,channel) then we can be closed
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
@@ -48,21 +64,20 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 console.warn('Feeder processor: empty outputs, stop processing');
             return false;
         }
+
         const output = outputs[0];
         // we only support mono output at the moment
         let channel = output[0];
         if (debug) {
             console.assert(channel.length === 128, "Feeder processor: WebAudio's render quantum size must be 128");
         }
+
         if (!isPlaying) {
             // write silence, because we don't playing
             channel.fill(0);
             return true;
         }
-        if (this.firstProcessTime === 0) {
-            this.firstProcessTime = new Date().getTime();
-            this.lastProcessTime = this.firstProcessTime;
-        }
+
         for (let offset = 0; offset < channel.length;) {
             const chunk = chunks.peekFront();
             if (chunk !== undefined) {
@@ -84,14 +99,21 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                     channel.set(remainingSamples, offset);
                     chunkOffset += remaining;
                     offset += remaining;
+                    this.playbackTime += remaining / SAMPLE_RATE;
                 }
                 else {
                     const remainingSamples = chunk.subarray(chunkOffset);
                     channel.set(remainingSamples, offset);
                     offset += remainingSamples.length;
+                    this.playbackTime += remainingSamples.length / SAMPLE_RATE;
 
                     chunkOffset = 0;
-                    chunks.shift();
+
+                    // send unused buffer back to the worker where it has been allocated for GC purposes
+                    // we don't want to waste audio thread for GCs
+                    const removed = chunks.shift();
+                    const bufferMessage: DecoderWorkletMessage = { topic: 'buffer', buffer: removed.buffer };
+                    this.workerPort.postMessage(bufferMessage, [removed.buffer]);
                 }
             }
             // we don't have enough data to continue playing => starved
@@ -110,34 +132,54 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         this.chunkOffset = chunkOffset;
-        if (this.isPlaying && !this.isStarving && this.sampleCount <= samplesLowThreshold) {
-            const message: StateChangedProcessorMessage = {
-                type: 'stateChanged',
-                state: 'playingWithLowBuffer',
-            };
-            this.port.postMessage(message);
+        const sampleCount = this.bufferedSampleCount;
+        const bufferedDuration = sampleCount / SAMPLE_RATE;
+        if (this.isPlaying && !this.isStarving) {
+            if (sampleCount <= samplesLowThreshold) {
+                const message: StateChangedProcessorMessage = {
+                    type: 'stateChanged',
+                    state: 'playingWithLowBuffer',
+                };
+                this.port.postMessage(message);
+            }
+            if (bufferedDuration > tooMuchBuffered) {
+                const message: StateChangedProcessorMessage = {
+                    type: 'stateChanged',
+                    state: 'playingWithTooMuchBuffer',
+                };
+                this.port.postMessage(message);
+            }
         }
-        this.lastProcessTime = new Date().getTime();
+        // this.lastProcessTime = new Date().getTime();
         return true;
     }
 
     private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
         const msg = ev.data;
         switch (msg.type) {
-        case 'data':
-            this.onDataMessage(msg as DataNodeMessage);
-            break;
-        case 'clear':
-            this.onClearMessage();
-            break;
-        case 'getState':
-            this.onGetState(msg as GetStateNodeMessage);
-            break;
-        case 'changeState':
-            this.onChangeStateMessage(msg as ChangeStateNodeMessage);
-            break;
-        default:
-            throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
+            case 'init-port':
+                this.workerPort = ev.ports[0];
+                this.workerPort.onmessage = this.onWorkerMessage;
+                break;
+
+            case 'data':
+                this.onDataMessage(msg as DataNodeMessage);
+                break;
+
+            case 'clear':
+                this.onClearMessage();
+                break;
+
+            case 'getState':
+                this.onGetState(msg as GetStateNodeMessage);
+                break;
+
+            case 'changeState':
+                this.onChangeStateMessage(msg as ChangeStateNodeMessage);
+                break;
+
+            default:
+                throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
         }
     };
 
@@ -159,11 +201,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         const msg: StateProcessorMessage = {
             type: 'state',
             id: message.id,
-            sampleCount: this.sampleCount,
-            // NOTE(AY): This is kinda hacky computation of playbackTime,
-            // we need to either account for starving periods here, or
-            // just skip them during the playback
-            playbackTime: Math.max(0, this.lastProcessTime - this.firstProcessTime),
+            bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
+            playbackTime: this.playbackTime,
         };
         if (debug)
             console.debug("Feeder processor: get state", msg);
@@ -186,9 +225,32 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         else if (!this.isPlaying && message.state === "play") {
             this.isStarving = true;
             this.isPlaying = true;
-            this.firstProcessTime = 0;
             if (debug)
                 console.debug("Feeder processor: start playing");
+        }
+    }
+
+    private startPlaybackIfEnoughBuffered(): void {
+        if (!this.isPlaying) {
+            const bufferedDuration =  this.bufferedSampleCount / SAMPLE_RATE;
+            if (bufferedDuration >= this.enoughToStartPlaying) {
+                this.isStarving = true;
+                this.isPlaying = true;
+            }
+        }
+    }
+
+    private onWorkerMessage = (ev: MessageEvent) => {
+        const { topic, offset, length, buffer }: DecoderMessage = ev.data;
+
+        switch (topic) {
+            case 'samples':
+                this.chunks.push(new Float32Array(buffer, offset, length / 4 ));
+                this.startPlaybackIfEnoughBuffered();
+                break;
+
+            default:
+                break;
         }
     }
 }

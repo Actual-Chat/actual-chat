@@ -2,18 +2,55 @@
 // TODO: move the command queue processing inside a web worker
 // TODO: combine demuxer / decoder / recorder wasm modules into one
 
-import OGVDecoderAudioOpusW from 'ogv/dist/ogv-decoder-audio-opus-wasm';
-import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm';
-import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
-import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
-import { nextTickAsync } from 'next-tick';
 import { AudioContextPool } from 'audio-context-pool';
-import { OperationQueue, Operation } from './operation-queue';
-import { IAudioPlayer } from './IAudioPlayer';
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
+import {
+    DecoderWorkerMessage,
+    EndOfStreamCommand,
+    InitCommand,
+    LoadDecoderCommand,
+    PushDataCommand,
+    StopCommand
+} from "./workers/opus-decoder-worker-message";
 
+type PlayerState = 'inactive' | 'buffering' | 'playing' | 'endOfStream' ;
 
-export class AudioContextAudioPlayer implements IAudioPlayer {
+/** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
+const BUFFER_TOO_MUCH_THRESHOLD = 5.0;
+/**
+ * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
+ * should be in sync with audio-feeder bufferSize
+ */
+const BUFFER_ENOUGH_THRESHOLD = 0.1;
+
+const playerMap = new Map<string, AudioContextAudioPlayer>();
+const decoderWorker = new Worker('/dist/opusDecoderWorker.js');
+decoderWorker.postMessage(new LoadDecoderCommand());
+decoderWorker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
+    const { playerId, topic } = ev.data;
+
+    const player = playerMap.get(playerId);
+    if (player == null) {
+        console.error(`decoderWorker.onmessage: can't find player=${playerId}`);
+        return;
+    }
+    switch (topic) {
+        case 'initCompleted':
+            player.initCompleted();
+            break;
+    }
+};
+
+export interface AudioPlayer {
+    onStartPlaying?: () => void;
+    onInitialized?: () => void;
+    init(byteArray: Uint8Array): Promise<void>;
+    appendAudio(byteArray: Uint8Array, offset: number): Promise<void>;
+    endOfStream(): void;
+    stop(error: EndOfStreamError | null): void;
+}
+
+export class AudioContextAudioPlayer implements AudioPlayer {
 
     public static debug?: {
         debugMode: boolean;
@@ -24,55 +61,28 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         debugFeederStats: boolean;
     } = null;
 
-    public static create(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
-        const player = new AudioContextAudioPlayer(blazorRef, debugMode);
+    public static async create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean, header: Uint8Array)
+        : Promise<AudioContextAudioPlayer> {
+        const player = new AudioContextAudioPlayer(playerId, blazorRef, debugMode);
         if (debugMode) {
             self["_player"] = player;
         }
+        await player.init(header);
+
+        playerMap.set(playerId, player)
         return player;
     }
 
-    private static getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
-        return {
-            locateFile: (filename: string) => {
-                if (filename === "ogv-demuxer-webm-wasm.wasm")
-                    return OGVDemuxerWebMWWasm;
-                else if (filename === "ogv-decoder-audio-opus-wasm.wasm")
-                    return OGVDecoderAudioOpusWWasm;
-                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
-                // emscripten 1.37.25 loads memory initializers as data: URI
-                else if (filename.slice(0, 5) === 'data:')
-                    return filename;
-                else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
-            }
-        };
-    }
-    /** each time loads OGVDemuxerWebMWWasm with HTTP call, at least until it's cached by browser */
-    private static createDemuxer() {
-        return OGVDemuxerWebMW(AudioContextAudioPlayer.getEmscriptenLoaderOptions()) as Promise<Demuxer>;
-    }
-
-    /** each time loads OGVDecoderAudioOpusWWasm with HTTP call, at least until it's cached by browser */
-    private static createDecoder() {
-        return OGVDecoderAudioOpusW(AudioContextAudioPlayer.getEmscriptenLoaderOptions()) as Promise<Decoder>;
-    }
-
-    public onStartPlaying?: () => void = null;
-    public onInitialized?: () => void = null;
-
-    /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-    private readonly _bufferTooMuchThreshold = 20.0;
-    /**
-     * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
-     * should be in sync with audio-feeder bufferSize
-     */
-    private readonly _bufferEnoughThreshold = 0.1;
-    /** How many milliseconds can we block the main thread for processing */
-    private readonly _processingThresholdMs = 10;
     /** How often send offset update event to the blazor, in milliseconds */
-    private readonly _updateOffsetMs = 200;
+    private readonly updateOffsetMs = 200;
+    private readonly playerId: string;
+    private readonly blazorRef: DotNet.DotNetObject;
+    private readonly decoderChannel: MessageChannel;
 
-    private readonly _blazorRef: DotNet.DotNetObject;
+    private initPromise?: Promise<void> = null;
+    private initResolve?: () => void = null;
+    private state: PlayerState = 'inactive'
+
     private readonly _debugMode: boolean;
     private readonly _debugOperations: boolean;
     private readonly _debugAppendAudioCalls: boolean;
@@ -80,24 +90,16 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
     private readonly _debugFeeder: boolean;
     private readonly _debugFeederStats: boolean;
 
-    private demuxer?: Demuxer;
-    private readonly _demuxerReady: Promise<Demuxer>;
-    private decoder?: Decoder;
-    private readonly _decoderReady: Promise<Decoder>;
     private audioContext: AudioContext;
     private feederNode?: FeederAudioWorkletNode = null;
-    private _queue: OperationQueue;
-    private _isProcessing: boolean;
-    private _isAppending: boolean;
-    private _isPlaying: boolean;
-    private _isDisposed: boolean;
-    private _isEndOfStreamReached: boolean;
-    private _operationSequenceNumber: number;
-    private isInitializeOperationAppended: boolean = false;
     private _unblockQueue?: () => void;
 
-    constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean) {
-        this._blazorRef = blazorRef;
+    public onStartPlaying?: () => void = null;
+    public onInitialized?: () => void = null;
+
+    constructor(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean) {
+        this.playerId = playerId;
+        this.blazorRef = blazorRef;
         const debugOverride = AudioContextAudioPlayer.debug;
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
@@ -116,411 +118,166 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             this._debugFeederStats = debugOverride.debugFeederStats;
         }
 
-        this.demuxer = null;
-        this._isProcessing = false;
-        this._isDisposed = false;
-        this._isPlaying = false;
-        this._isAppending = false;
-        this._isEndOfStreamReached = false;
-        this._operationSequenceNumber = 0;
-        this.decoder = null;
         this._unblockQueue = null;
-        this._queue = new OperationQueue(this._debugOperations);
-        this._demuxerReady = AudioContextAudioPlayer.createDemuxer()
-            .then(demuxer => new Promise<Demuxer>(resolve => demuxer.init(() => {
-                this.demuxer = demuxer;
-                resolve(this.demuxer);
-            })));
-
-        this._decoderReady = AudioContextAudioPlayer.createDecoder()
-            .then(decoder => new Promise<Decoder>(resolve => decoder.init(() => {
-                this.decoder = decoder;
-                resolve(this.decoder);
-            })));
+        this.decoderChannel = new MessageChannel();
     }
 
-    private enqueueInitializeOperation(byteArray: Uint8Array): void {
-        const operation: Operation = {
-            execute: async () => {
-                if (this._debugMode) {
-                    this.log(`initialize(header: ${byteArray.length} bytes)`);
-                }
-                this.audioContext = await AudioContextPool.get("main") as AudioContext;
-                const feederNodeOptions: AudioWorkletNodeOptions = {
-                    channelCount: 1,
-                    channelCountMode: 'explicit',
-                    numberOfInputs: 0,
-                    numberOfOutputs: 1,
-                    outputChannelCount: [1],
-                };
-                this.feederNode = new FeederAudioWorkletNode(
-                    this.audioContext,
-                    'feederWorklet',
-                    feederNodeOptions
-                );
-                this.feederNode.onBufferLow = () => this.unblockQueue('onBufferLow');
-                this.feederNode.onStarving = () => {
-                    if (this._isPlaying && this._isEndOfStreamReached) {
-                        this.feederNode.onStarving = null;
-                        if (this._debugMode)
-                            this.log(`audio ended.`);
-                        const _ = this.onUpdateOffsetTick();
-                        this.dispose();
-                        const __ = this.invokeOnPlaybackEnded();
-                        return;
-                    }
-                    this.unblockQueue('onStarving');
-                };
-                this.feederNode.connect(this.audioContext.destination);
-                if (this.demuxer === null) {
-                    if (this._debugMode)
-                        this.log("initialize: awaiting creation of demuxer");
-                    await this._demuxerReady;
-                    if (this._debugMode)
-                        this.log("initialize: header has been appended with a delay");
-                }
-                if (this.decoder === null) {
-                    if (this._debugMode)
-                        this.log("initialize: awaiting creation of decoder");
-                    await this._decoderReady;
-                    if (this._debugMode)
-                        this.log("initialize: decoder header has been created");
-                }
+    public async init(header: Uint8Array): Promise<void> {
+        if (this.state !== 'inactive') {
+            this.logError("init: called in a wrong order");
+        }
 
-                if (this._debugMode)
-                    this.log("initialize: start processing headers");
+        this.initPromise = new Promise<void>(resolve => this.initResolve = resolve);
+        const init = new InitCommand(this.playerId, header.buffer, header.byteOffset, header.byteLength);
+        decoderWorker.postMessage(init, [header.buffer, this.decoderChannel.port1]);
 
-                await this.processPacket(byteArray, -1);
-
-                if (this._debugMode)
-                    this.log(`initialize: done, found codec: ${this.demuxer.audioCodec}`);
-            },
-            onSuccess: () => {
-                if (this.onInitialized !== null)
-                    this.onInitialized();
-                if (this._debugOperations)
-                    this.log("initialize: success");
-            },
-            onStart: () => {
-                if (this._debugOperations)
-                    this.log("initialize: start");
-            },
-            onError: error => { this.logError(`initialize: error ${error} ${error.stack}`); }
+        this.audioContext = await AudioContextPool.get("main") as AudioContext;
+        const feederNodeOptions: AudioWorkletNodeOptions = {
+            channelCount: 1,
+            channelCountMode: 'explicit',
+            numberOfInputs: 0,
+            numberOfOutputs: 1,
+            outputChannelCount: [1],
+            processorOptions: {
+                enoughToStartPlaying: BUFFER_ENOUGH_THRESHOLD,
+                tooMuchBuffered: BUFFER_TOO_MUCH_THRESHOLD,
+            }
         };
-        this._queue.append(operation);
+        this.feederNode = new FeederAudioWorkletNode(
+            this.audioContext,
+            'feederWorklet',
+            feederNodeOptions
+        );
+        this.feederNode.initWorkerPort(this.decoderChannel.port2);
+        this.feederNode.onBufferLow = () => this.needMoreData('onBufferLow');
+        this.feederNode.onStarving = () => {
+            if (this.state === 'endOfStream') {
+                this.feederNode.onStarving = null;
+                if (this._debugMode)
+                    this.log(`audio ended.`);
 
-        const _ = this.onProcessingTick();
+                const _ = this.onUpdateOffsetTick();
+                this.onStop();
+                const __ = this.invokeOnPlaybackEnded();
+                return;
+            }
+            this.state = 'buffering';
+            this.needMoreData('onStarving');
+        };
+        this.feederNode.onBufferTooMuch = () => {
+            const _ = this.invokeOnChangeReadiness(false, BUFFER_TOO_MUCH_THRESHOLD, 4);
+        }
+        this.feederNode.onStartPlaying = () => {
+            this.state = 'playing'
+            if (this.onStartPlaying !== null)
+                this.onStartPlaying();
+            self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
+            if (this._debugFeeder) {
+                this.log("Feeder start playing");
+            }
+        }
+        this.feederNode.connect(this.audioContext.destination);
     }
 
-    private get _isMetadataLoaded(): boolean {
-        const { decoder: _decoder, demuxer: _demuxer } = this;
-        return _demuxer.loadedMetadata !== null
-            && _demuxer.loadedMetadata !== false
-            && _demuxer.audioCodec !== undefined
-            && _demuxer.audioCodec !== null
-            && _decoder.audioFormat !== null
-            && _decoder.audioFormat !== undefined;
-    }
+    public initCompleted(): void {
+        const initResolve = this.initResolve;
+        if (initResolve != null) {
+            initResolve();
+            this.initPromise = null;
+            this.initResolve = null;
+        }
+        this.state = 'buffering';
+    };
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
-    public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
-        if (this._isAppending) {
-            this.logError("appendAudio: called in a wrong order");
-        }
-        this._isAppending = true;
-        try {
-            if (!this.isInitializeOperationAppended) {
-                this.enqueueInitializeOperation(byteArray);
-                this.isInitializeOperationAppended = true;
-                return Promise.resolve();
+    public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
+        if (this.state === 'inactive') {
+            const initPromise = this.initPromise;
+            if (initPromise != null) {
+                await initPromise;
+                this.initPromise = null;
+                this.initResolve = null;
             }
-            const operationSequenceNumber = this._operationSequenceNumber++;
-            const operation: Operation = {
-                execute: () => this.processPacket(byteArray, offset),
-                onSuccess: () => {
-                    if (this._debugOperations && this._debugAppendAudioCalls)
-                        this.log(`appendAudio #${operationSequenceNumber}: success`);
-                },
-                onStart: () => {
-                    if (this._debugOperations && this._debugAppendAudioCalls)
-                        this.log(`appendAudio #${operationSequenceNumber}: start`);
-                },
-                onError: _ => { }
-            };
-            this._queue.append(operation);
+            else {
+                return;
+            }
+        }
 
-            const _ = this.onProcessingTick();
-        }
-        finally {
-            this._isAppending = false;
-        }
-        return Promise.resolve();
+        const pushData = new PushDataCommand(this.playerId, byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
+        decoderWorker.postMessage(pushData, [byteArray.buffer]);
     }
-
-    private onUpdateOffsetTick = async () => {
-        const feeder = this.feederNode;
-        if (feeder === null || this._isDisposed)
-            return;
-        let state: PlaybackState = await feeder.getState();
-        await this.invokeOnPlaybackTimeChanged(state.playbackTime);
-        if (this._isPlaying) {
-            self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);
-        }
-    };
-
-    private onProcessingTick = async () => {
-        if (this._isProcessing) {
-            return;
-        }
-
-        this._isProcessing = true;
-        try {
-            let start = new Date().getTime();
-            let hasMore: boolean = await this._queue.executeNext();
-            const threshold = this._processingThresholdMs;
-            while (hasMore) {
-                const elapsed = new Date().getTime() - start;
-                if (elapsed > threshold && hasMore) {
-                    // let's give a chance to process browser events
-                    if (this._debugOperations)
-                        this.log(`Planning processing at the next tick, because we were working for ${elapsed} ms`);
-                    await nextTickAsync();
-                    start = new Date().getTime();
-                }
-                hasMore = await this._queue.executeNext();
-            }
-        }
-        finally {
-            this._isProcessing = false;
-        }
-    };
 
     public endOfStream(): void {
         if (this._debugMode) {
-            this.log("endOfStream()");
+            this.log("Enqueue 'EndOfStream' operation.");
         }
-        this._queue.append({
-            execute: (): Promise<void> => {
-                if (this._debugMode)
-                    this.log("endOfStream operation is reached");
-                this._isEndOfStreamReached = true;
-                return new Promise<void>(resolve => this.demuxer.flush(resolve));
-            },
-            onSuccess: () => {
-                if (this._debugOperations)
-                    this.log("endOfStream: success");
-            },
-            onStart: () => {
-                if (this._debugOperations)
-                    this.log("endOfStream: start");
-            },
-            onError: _ => { }
-        });
+        const endOfStream = new EndOfStreamCommand(this.playerId);
+        decoderWorker.postMessage(endOfStream);
 
-        const _ = this.onProcessingTick();
+        this.state = 'endOfStream';
     }
 
     public stop(error: EndOfStreamError | null = null) {
         if (this._debugMode)
             this.log(`stop(error:${error})`);
-        this._isPlaying = false;
-        if (this._debugMode)
-            this.log("Enqueue 'Abort' operation.");
-        this._queue.prepend({
-            execute: () => {
-                if (this.feederNode !== null) {
-                    this.feederNode.stop();
-                    this.feederNode.clear();
-                }
-                this._queue.clear();
-                if (this.demuxer != null) {
-                    return new Promise<void>(resolve => {
-                        this.demuxer.flush(() => resolve());
-                    });
-                }
-            },
-            onSuccess: () => {
-                if (this._debugMode)
-                    this.log("abort: success");
-            },
-            onStart: () => { },
-            onError: error => {
-                if (this._debugMode)
-                    this.logWarn(`Can't stop playing. Error: ${error.message}, ${error.stack}`);
-            }
-        });
 
-        const _ = this.onProcessingTick();
+        this.onStop();
+
+        const stop = new StopCommand(this.playerId);
+        decoderWorker.postMessage(stop);
+
     }
 
-    public dispose(): void {
-        if (this._isDisposed)
+    private onStop(): void {
+        if (this._debugMode)
+            this.log(`onStop()`);
+
+        this.state = 'inactive';
+
+        this.initPromise = null;
+        this.initResolve = null;
+
+        if (this.feederNode !== null) {
+            this.feederNode.stop();
+            this.feederNode.clear();
+            this.feederNode.disconnect();
+            this.feederNode = null;
+        }
+
+        playerMap.delete(this.playerId);
+    }
+
+    private onUpdateOffsetTick = async () => {
+        const feeder = this.feederNode;
+        if (feeder === null || this.state === 'inactive')
             return;
-        this._isDisposed = true;
-        if (this._debugMode)
-            this.logWarn(`dispose()`);
 
-        this.stop();
-        this.demuxer?.flush(() => { this.demuxer?.close(); this.demuxer = null; });
-        this.decoder?.close();
-        this.decoder = null;
-        this.feederNode.disconnect();
-        this._isPlaying = false;
-    }
-
-    private async processPacket(byteArray: Uint8Array, offset: number): Promise<void> {
-        const { demuxer, feederNode: feeder } = this;
-        try {
-            if (this._debugAppendAudioCalls) {
-                this.log(`processPacket(size: ${byteArray.length}, `
-                    + `offset: ${offset}) `
-                    + `isMetadataLoaded: ${this._isMetadataLoaded}`);
-            }
-            await this.demuxEnqueue(byteArray);
-            while (await this.demuxProcess()) {
-                while (demuxer.audioPackets.length > 0) {
-
-                    const { packet, padding } = await this.demuxDequeue();
-                    if (!this._isMetadataLoaded) {
-                        await this.decodeHeaderProcess(packet);
-                        // skip the first header packet without samples
-                        if (offset < 0)
-                            continue;
-                    }
-                    const samples = await this.decodeProcess(packet);
-                    if (this._debugDecoder) {
-                        if (samples !== null && samples.length > 0) {
-                            this.log(`decodeProcess(${packet.byteLength} bytes, padding:${padding}) `
-                                + `returned ${samples[0].byteLength} `
-                                + `bytes / ${samples[0].length} samples, `
-                                + `isMetadataLoaded: ${this._isMetadataLoaded}`);
-                        }
-                        else {
-                            this.log(`decodeProcess(${packet.byteLength} bytes, padding: ${padding}) ` +
-                                "returned null");
-                        }
-                    }
-                    if (samples === null)
-                        continue;
-                    feeder.feed(samples[0]);
-                    const playbackState = await this.feederNode.getState();
-                    if (this._debugFeederStats) {
-                        this.log("Feeder stats: "
-                            + `playbackTime: ${playbackState.playbackTime}, `
-                            + `bufferedDuration: ${playbackState.bufferedDuration}`);
-                    }
-                    if (playbackState.bufferedDuration >= this._bufferEnoughThreshold) {
-                        if (!this._isPlaying) {
-                            if (this.onStartPlaying !== null)
-                                this.onStartPlaying();
-                            this.feederNode.play();
-                            this._isPlaying = true;
-                            self.setTimeout(this.onUpdateOffsetTick, this._updateOffsetMs);
-                            if (this._debugFeeder) {
-                                this.log("Feeder start playing");
-                            }
-                        }
-                    }
-                    // we buffered enough data, tell to blazor about it and block the operation queue
-                    if (playbackState.bufferedDuration >= this._bufferTooMuchThreshold) {
-                        await this.invokeOnChangeReadiness(false, playbackState.playbackTime, 4);
-                        const blocker = new Promise<void>(resolve => this._unblockQueue = resolve);
-                        this._queue.prepend({
-                            execute: () => blocker,
-                            onSuccess: () => {
-                                if (this._debugOperations)
-                                    this.logWarn("End blocking operation queue");
-                            },
-                            onStart: () => {
-                                if (this._debugOperations) {
-                                    this.logWarn("Start blocking operation queue, "
-                                        + `bufferedDuration: ${playbackState.bufferedDuration}`);
-                                }
-                            },
-                            onError: _ => { }
-                        });
-
-                        const _ = this.onProcessingTick();
-                    }
-                }
-            }
-        } catch (error) {
-            this.logError(`processPacket: error ${error} ${error.stack}`);
-            throw error;
+        let state: PlaybackState = await feeder.getState();
+        if (this._debugMode) {
+            this.log(`onUpdateOffsetTick: playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
         }
-    }
 
-    private demuxEnqueue(buffer: ArrayBuffer): Promise<void> {
-        const demuxer = this.demuxer;
-        if (demuxer === null)
-            return Promise.reject("Demuxer is disposed");
-        return new Promise(resolve => demuxer.receiveInput(buffer, resolve));
-    }
+        await this.invokeOnPlaybackTimeChanged(state.playbackTime);
+        self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
+    };
 
-    private demuxDequeue(): Promise<{ packet: ArrayBuffer; padding: number; }> {
-        const demuxer = this.demuxer;
-        if (demuxer === null)
-            return Promise.reject("Demuxer is disposed");
+    private needMoreData(source: string): void {
+        if (this._debugOperations)
+            this.logWarn(`[${source}]: Unblocking queue`);
 
-        return new Promise<{ packet: ArrayBuffer; padding: number; }>(resolve =>
-            demuxer.dequeueAudioPacket((packet, padding) => resolve({ packet, padding })));
-    }
-
-    private demuxProcess(): Promise<boolean> {
-        const demuxer = this.demuxer;
-        if (demuxer === null)
-            return Promise.reject("Demuxer is disposed");
-        if (demuxer.processing === true)
-            return Promise.reject("Demuxer is processing");
-        return new Promise<boolean>(resolve => demuxer.process(more => resolve(more)));
-    }
-
-    private decodeHeaderProcess(packet: ArrayBuffer): Promise<void> {
-        const decoder = this.decoder;
-        if (decoder === null)
-            return Promise.reject("Decoder is disposed");
-        if (decoder.processing === true)
-            return Promise.reject("Decoder is processing");
-        return new Promise<void>(resolve => decoder.processHeader(packet, _ => resolve()));
-    }
-
-    private decodeProcess(packet: ArrayBuffer): Promise<Float32Array[] | null> {
-        const decoder = this.decoder;
-        if (decoder === null)
-            return Promise.reject("Decoder is disposed");
-        if (decoder.processing === true)
-            return Promise.reject("Decoder is processing");
-        return new Promise<Float32Array[] | null>((resolve, reject) => {
-            decoder.processAudio(packet, _ => {
-                if (decoder.audioBuffer !== null && decoder.audioBuffer.length > 0)
-                    resolve(decoder.audioBuffer);
-                else
-                    reject("Can't decode packet to the right format");
-            });
-        });
-    }
-
-    private unblockQueue(source: string): void {
-        const unblock = this._unblockQueue;
-        this._unblockQueue = null;
-        if (unblock !== null) {
-            if (this._debugOperations)
-                this.logWarn(`[${source}]: Unblocking queue`);
-            unblock();
-            const _ = this.invokeOnChangeReadiness(true, /* isn't used */-1, 2);
-        }
+        const _ = this.invokeOnChangeReadiness(true, /* isn't used */-1, 2);
     }
 
     private invokeOnPlaybackTimeChanged(time: number): Promise<void> {
-        return this._blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
+        return this.blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
     }
 
     private invokeOnPlaybackEnded(code: number | null = null, message: string | null = null): Promise<void> {
-        return this._blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
+        return this.blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
     }
 
     private invokeOnChangeReadiness(isBufferReady: boolean, time: number, readyState: number): Promise<void> {
-        return this._blazorRef.invokeMethodAsync("OnChangeReadiness", isBufferReady, time, readyState);
+        return this.blazorRef.invokeMethodAsync("OnChangeReadiness", isBufferReady, time, readyState);
     }
 
     private log(message: string) {

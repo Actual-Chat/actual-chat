@@ -5,11 +5,11 @@
 @inject UICommandRunner _cmd
 
 @{
-    var language = (State.LatestNonErrorValue?.Language ?? default).ValidOrDefault();
+    var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
-<button class="@(_class ??= this.DefaultClass()) align-top pt-2.5 py-0 outline-none text-secondary hover:text-toggle-on rounded-r-full bg-transparent max-h-12 transition-all duration-150"
+<button class="@(_class ??= this.DefaultClass()) relative h-8 w-8 p-1 rounded-full text-md font-semibold text-secondary hover:text-toggle-on transition-all duration-150"
         @onclick="Toggle">
-    @language.Shortcut
+        @language.Shortcut
 </button>
 
 @code {
@@ -27,7 +27,7 @@
     private async Task Toggle()
     {
         var settings = State.Value ?? new() { Language = LanguageId.Default };
-        settings = settings with { Language = settings.Language.Next() };
+        settings = settings with { Language = settings.LanguageOrDefault().Next() };
         var command = new IChatUserSettings.SetCommand(_session, Chat.Id, settings);
         await _cmd.Run(command).ConfigureAwait(true);
     }

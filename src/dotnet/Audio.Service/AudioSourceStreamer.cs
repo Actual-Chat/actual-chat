@@ -43,7 +43,9 @@ public class AudioSourceStreamer : AudioProcessorBase, IAudioSourceStreamer
         if (skipTo > TimeSpan.FromSeconds(MaxStreamDuration))
             return AsyncEnumerable.Empty<AudioStreamPart>();
 
-        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId);
+        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId, new() {
+            AppendCheckPeriod = TimeSpan.FromMilliseconds(250),
+        });
         var audioStream = streamer
             .Read(cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
@@ -52,7 +54,7 @@ public class AudioSourceStreamer : AudioProcessorBase, IAudioSourceStreamer
 
     public Task Publish(string streamId, AudioSource audio, CancellationToken cancellationToken)
     {
-        var streamer = RedisDb.GetStreamer(streamId, new RedisStreamer<AudioStreamPart>.Options {
+        var streamer = RedisDb.GetStreamer<AudioStreamPart>(streamId, new() {
             MaxStreamLength = 10 * 1024,
         });
         var audioStream = ToAudioStream(audio.GetFormatTask(), audio.GetFrames(cancellationToken), cancellationToken);

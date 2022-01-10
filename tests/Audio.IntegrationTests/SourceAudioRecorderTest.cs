@@ -1,9 +1,7 @@
-using ActualChat.Audio.Db;
 using ActualChat.Host;
 using ActualChat.Media;
 using ActualChat.Testing.Host;
 using Stl.IO;
-using Stl.Redis;
 
 namespace ActualChat.Audio.IntegrationTests;
 
@@ -21,9 +19,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("", "Bob"));
         var sourceAudioRecorder = services.GetRequiredService<SourceAudioRecorder>();
         var recordSpec = new AudioRecord(
-            "1",
+            session.Id, "1",
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
 
         var recordTask = sourceAudioRecorder.DequeueSourceAudio(CancellationToken.None);
@@ -32,7 +29,7 @@ public class SourceAudioRecorderTest : AppHostTestBase
         var record = await recordTask.ConfigureAwait(false);
         record.Should().Be(recordSpec with {
             Id = record.Id,
-            AuthorId = record.AuthorId
+            SessionId = record.SessionId,
         });
 
         var audioStream = sourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, CancellationToken.None);
@@ -63,9 +60,8 @@ public class SourceAudioRecorderTest : AppHostTestBase
     private static async Task<long> UploadRecording(Session session, string chatId, ISourceAudioRecorder sourceAudioRecorder)
     {
         var recording = new AudioRecord(
-            chatId,
+            session.Id, chatId,
             new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
-            "RU-ru",
             CpuClock.Now.EpochOffset.TotalSeconds);
         var filePath = GetAudioFilePath();
         var byteStream = filePath.ReadByteStream();

@@ -1,9 +1,8 @@
-import { IAudioPlayer } from "../../Components/AudioPlayer/IAudioPlayer";
+import { AudioPlayer } from "../../Components/AudioPlayer/audio-context-audio-player";
 import { AudioContextAudioPlayer } from "../../Components/AudioPlayer/audio-context-audio-player";
-import { MseAudioPlayer } from "../../Components/AudioPlayer/mse-audio-player";
 
 
-export class AudioPlayerTestPage implements IAudioPlayer {
+export class AudioPlayerTestPage implements AudioPlayer {
     private _stats = {
         constructorStartTime: 0,
         constructorEndTime: 0,
@@ -23,18 +22,17 @@ export class AudioPlayerTestPage implements IAudioPlayer {
         console.warn("Unblock main thread");
     }
 
-    public static create(isMsePlayer: boolean, blazorRef: DotNet.DotNetObject) {
-        return new AudioPlayerTestPage(isMsePlayer, blazorRef);
+    public static async create(blazorRef: DotNet.DotNetObject, header: Uint8Array): Promise<AudioPlayerTestPage> {
+        const player = await AudioContextAudioPlayer.create('audio-player-test-page', blazorRef, true, header);
+        return new AudioPlayerTestPage(blazorRef, player);
     }
 
-    private readonly player: IAudioPlayer;
+    private readonly player: AudioContextAudioPlayer;
     private isFirstAppendAudioCall: boolean = true;
 
-    constructor(isMsePlayer: boolean, blazorRef: DotNet.DotNetObject) {
+    constructor(blazorRef: DotNet.DotNetObject, player: AudioContextAudioPlayer) {
         this._stats.constructorStartTime = new Date().getTime();
-        this.player = isMsePlayer
-            ? new MseAudioPlayer(blazorRef, true)
-            : new AudioContextAudioPlayer(blazorRef, true);
+        this.player = player;
         this.player.onInitialized = () => this._stats.initializeEndTime = new Date().getTime();
         this.player.onStartPlaying = () => {
             this._stats.playingStartTime = new Date().getTime();
@@ -64,8 +62,8 @@ export class AudioPlayerTestPage implements IAudioPlayer {
         this.player.onInitialized = value;
     }
 
-    public dispose(): void {
-        this.player.dispose();
+    public init(byteArray: Uint8Array): Promise<void> {
+        return this.player.init(byteArray);
     }
 
     public appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {

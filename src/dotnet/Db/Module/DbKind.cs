@@ -2,6 +2,7 @@ namespace ActualChat.Db.Module;
 
 public enum DbKind
 {
-    Default = 0,
-    InMemory,
+    InMemory = 0,
+    PostgreSql = 1,
+    MySql = 2,
 }

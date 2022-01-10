@@ -14,23 +14,25 @@
 
 <div class="@(_class ??= this.DefaultClass()) antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words @marginClass">
     @if (showPicture) {
-        <img src="@picture" class="w-10 h-10 rounded-md mr-3 select-none bg-secondary" alt="@author.Name"/>
+        <div class="w-10 h-10 mr-2 select-none bg-secondary">
+            <img src="@picture" alt="@author.Name"/>
+        </div>
     }
     else {
-        <div class="w-10 mr-3">
+        <div class="w-10 mr-2">
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
         </div>
     }
     <div class="flex-1 overflow-hidden">
         @if (showHeader) {
-            <div class="header">
-                    <span class="font-bold text-secondary bg-primary rounded px-1">@author.Name</span>
+            <div class="header chat-message-header ml-1">
+                    <span class="font-bold text-secondary rounded">@author.Name</span>
                 <ChatMessageTimestamp Value="entry.BeginsAt" />
                 &nbsp;
                 <span class="text-accent-muted text-xxs">id=@entry.Id</span>
             </div>
         }
-        <div class="content">
+        <div class="content message-content rounded-sm">
             @if (entry.IsStreaming) {
                 <ChatMessageTranscript Model="@Model"/>
             } else {

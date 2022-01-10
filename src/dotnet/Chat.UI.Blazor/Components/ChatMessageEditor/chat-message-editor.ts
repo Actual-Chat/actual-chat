@@ -1,20 +1,33 @@
 export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
+    private _inputDiv: HTMLDivElement;
+    private _attachButton: HTMLButtonElement;
     private _input: HTMLDivElement;
-    private _buttonSpan: HTMLSpanElement;
     private _postButton: HTMLButtonElement;
+    private _controlDiv: HTMLDivElement;
+    private _langButtonDiv: HTMLDivElement;
+    private _recordButtonDiv: HTMLDivElement;
+    private _recordButton: HTMLButtonElement;
+    private _playerButtonDiv: HTMLDivElement;
     private _isTextMode: boolean = false;
+    private _isRecordOn: boolean = false;
 
-    static create(input: HTMLDivElement, buttonSpan: HTMLSpanElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(input, buttonSpan, backendRef);
+    static create(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(inputDiv, controlDiv, backendRef);
     }
 
-    constructor(input: HTMLDivElement, buttonSpan: HTMLSpanElement, blazorRef: DotNet.DotNetObject) {
-        this._input = input;
-        this._buttonSpan = buttonSpan;
+    constructor(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this._inputDiv = inputDiv;
+        this._attachButton = this._inputDiv.querySelector('button.attach-button');
+        this._input = this._inputDiv.querySelector('div.message-input');
+        this._postButton = this._inputDiv.querySelector('button.post-message');
         this._blazorRef = blazorRef;
-        this._postButton = buttonSpan.querySelector("button.post-message");
+        this._controlDiv = controlDiv;
+        this._langButtonDiv = this._controlDiv.querySelector('div.language-button');
+        this._recordButtonDiv = this._controlDiv.querySelector('div.recorder-button');
+        this._playerButtonDiv = this._controlDiv.querySelector('div.player-button');
+        this._recordButton = this._recordButtonDiv.querySelector('button');
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
@@ -31,7 +44,32 @@ export class ChatMessageEditor {
             this._input.focus();
             this.changeMode();
         })
+        this._recordButton.addEventListener('click', (event: Event & {target: HTMLButtonElement; }) => {
+            this.languageToggle();
+        })
         this.changeMode();
+    }
+
+    public languageToggle() {
+        let recordIcon = this._recordButton.querySelector('svg');
+        let isRecordOn = recordIcon.classList.contains('not-recording');
+        if (this._isRecordOn == isRecordOn)
+            return;
+        this._isRecordOn = isRecordOn;
+        let languageButton = this._langButtonDiv;
+        languageButton.style.transform = "translateX(1rem) scale(.05)";
+        setTimeout(() => {
+            if (isRecordOn){
+                languageButton.classList.replace('hidden', 'flex')
+                this._input.setAttribute('contenteditable', 'false');
+            } else {
+                languageButton.classList.replace('flex', 'hidden');
+                this._input.setAttribute('contenteditable', 'true');
+            }
+        }, 25);
+        setTimeout(() => {
+            languageButton.style.transform = 'translateX(0px) scale(1)';
+        }, 50)
     }
 
     public changeMode() {
@@ -40,24 +78,24 @@ export class ChatMessageEditor {
             return;
         this._isTextMode = isTextMode;
         let postButton = this._postButton;
-        let recordButton = this._buttonSpan.querySelector("button.audio-recorder") as HTMLButtonElement;
-        let languageButton = this._buttonSpan.querySelector("button.chat-language-toggle") as HTMLButtonElement;
+        let recordButton = this._recordButtonDiv;
+        let playerButton = this._playerButtonDiv;
         postButton.style.transform = "translateX(-0.5rem) scale(.05)";
-        recordButton.style.transform = "translateX(-0.5rem) scale(.05)";
         setTimeout(() => {
             if (isTextMode) {
-                postButton.classList.remove('hidden');
-                recordButton.classList.add("hidden");
-                languageButton.classList.add("hidden");
+                postButton.classList.replace('hidden', 'md:hidden');
+                recordButton.classList.add('hidden');
+                recordButton.classList.replace('flex', 'md:flex');
+                playerButton.classList.replace('w-1/2', 'w-full');
             } else {
-                postButton.classList.add("hidden");
+                postButton.classList.replace("md:hidden", 'hidden');
                 recordButton.classList.remove('hidden');
-                languageButton.classList.remove("hidden");
+                recordButton.classList.replace('md:flex', 'flex');
+                playerButton.classList.replace('w-full', 'w-1/2');
             }
         }, 25);
         setTimeout(() => {
             postButton.style.transform = 'translateX(0px) scale(1)';
-            recordButton.style.transform = 'translateX(0px) scale(1)';
         }, 50)
     }
 

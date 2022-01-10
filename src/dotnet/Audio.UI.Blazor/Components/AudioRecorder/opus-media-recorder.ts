@@ -1,5 +1,5 @@
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
-import {AudioContextPool} from 'audio-context-pool';
+import { AudioContextPool } from 'audio-context-pool';
 
 import {
     DoneCommand,
@@ -12,7 +12,7 @@ import {
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding';
 
-const sampleRate: number = 48000;
+const SAMPLE_RATE: number = 48000;
 const mimeType: string = 'audio/webm';
 export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     private readonly worker: Worker;
@@ -162,7 +162,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         // If the worker is already loaded then start
         if (this.workerState === 'readyToInit') {
             const { channelCount, audioBitsPerSecond } = this;
-            const initCommand = new InitCommand(sampleRate, channelCount, audioBitsPerSecond);
+            const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
             this.postMessageToWorker(initCommand);
         }
     }
@@ -190,7 +190,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         // If the worker is already loaded then start
         if (this.workerState === 'readyToInit') {
             const { channelCount, audioBitsPerSecond } = this;
-            const initCommand = new InitCommand(sampleRate, channelCount, audioBitsPerSecond);
+            const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
             this.postMessageToWorker(initCommand);
         }
     }
@@ -275,7 +275,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 this.workerState = 'readyToInit';
                 if (this.state === 'recording') {
                     const {channelCount, audioBitsPerSecond} = this;
-                    const initCommand = new InitCommand(sampleRate, channelCount, audioBitsPerSecond);
+                    const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
                     this.postMessageToWorker(initCommand);
                 }
                 break;

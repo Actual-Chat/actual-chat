@@ -1,6 +1,22 @@
 namespace ActualChat.Collections;
 
-public class LruCache<TKey, TValue>
+public interface ILruCache<in TKey, TValue>
+    where TKey : notnull
+{
+    int Capacity { get; }
+    int Count { get; }
+
+    TValue this[TKey key] { get; set; }
+
+    bool TryGetValue(TKey key, out TValue value);
+    TValue GetValueOrDefault(TKey key);
+    bool TryAdd(TKey key, TValue value);
+    void Add(TKey key, TValue value);
+    bool Remove(TKey key);
+    void Clear();
+}
+
+public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
     where TKey : notnull
 {
     private readonly Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>> _dictionary;
