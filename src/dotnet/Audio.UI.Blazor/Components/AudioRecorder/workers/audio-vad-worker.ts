@@ -1,7 +1,7 @@
 import Denque from 'denque';
 import SoxrResampler, {SoxrDatatype, SoxrQuality} from 'wasm-audio-resampler';
-import {adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector} from "../audio-vad";
-import {VadMessage} from "../audio-vad-message";
+import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
+import { VadMessage } from "../audio-vad-message";
 import OnnxModel from '../vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
