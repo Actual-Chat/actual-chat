@@ -18,8 +18,8 @@ a {
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
-.chat-message:hover {
-    @apply bg-gray-200;
+.chat-message:hover .message-content{
+    @apply bg-gradient-to-t from-gray-100 to-transparent shadow-inner;
 }
 
 .chat-message:hover .chat-message-timestamp-secondary {
