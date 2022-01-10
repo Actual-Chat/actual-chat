@@ -62,11 +62,8 @@ public class SourceAudioProcessor : AsyncProcessBase
                     e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
                     cancellationToken);
             }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception e) {
-                Log.LogError(e, "DequeueSourceAudio failed");
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "DequeueSourceAudio failed, trying the next entry");
             }
         }
     }
