@@ -16,7 +16,7 @@ public record AudioRecord(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Session Session {
         get {
-            if (_session == null || _session.Id.Value != SessionId)
+            if (_session == null || !StringComparer.Ordinal.Equals(_session.Id.Value, SessionId))
                 _session = SessionId.IsNullOrEmpty() ? Session.Null : new Session(SessionId);
             return _session;
         }
