@@ -113,6 +113,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
                     chunkOffset = 0;
 
+                    // send unused buffer back to the worker where it has been allocated for GC purposes
+                    // we don't want to waste audio thread for GCs
                     const removed = chunks.shift();
                     const bufferMessage: DecoderWorkletMessage = { topic: 'buffer', buffer: removed.buffer };
                     this.workerPort.postMessage(bufferMessage, [removed.buffer]);
