@@ -14,7 +14,7 @@
     <BlazorVersion>6.0.1</BlazorVersion>
     <SignalRVersion>6.0.1</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.2.34</StlFusionVersion>
+    <StlFusionVersion>2.2.38</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
