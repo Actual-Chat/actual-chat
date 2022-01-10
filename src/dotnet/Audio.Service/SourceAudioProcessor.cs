@@ -73,7 +73,7 @@ public class SourceAudioProcessor : AsyncProcessBase
 
     internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
+        Log.LogInformation("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
 
         var recordingStream = SourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, cancellationToken);
         if (Constants.DebugMode.AudioRecordingStream)
@@ -82,7 +82,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         var openSegments = AudioSplitter.GetSegments(record, author, recordingStream, cancellationToken);
         await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
-            DebugLog?.LogDebug(
+            Log.LogDebug(
                 "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
                 record.Id, openSegment.Index, openSegment.StreamId);
             var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
