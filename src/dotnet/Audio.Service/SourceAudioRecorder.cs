@@ -68,9 +68,9 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
             try {
                 await NewRecordQueue.Enqueue(record).ConfigureAwait(false);
             }
-            catch {
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "Failed to announce new stream");
                 RecycleNewRecordQueue();
-                throw;
             }
         }
 
