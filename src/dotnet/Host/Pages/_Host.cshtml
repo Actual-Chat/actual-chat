@@ -83,7 +83,7 @@
 }
 else
 {
-    <app id="app" class="flex flex-col h-screen" >
+    <app id="app" class="flex flex-col h-full" >
         @(await Html.RenderApp(_services, HttpContext))
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
