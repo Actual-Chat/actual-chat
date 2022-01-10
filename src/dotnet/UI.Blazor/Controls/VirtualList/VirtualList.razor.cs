@@ -136,6 +136,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             _ = State.Recompute();
     }
 
+    protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
