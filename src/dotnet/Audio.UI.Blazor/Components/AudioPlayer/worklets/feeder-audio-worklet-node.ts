@@ -100,8 +100,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         }
         this.callbacks.delete(message.id);
         const result: PlaybackState = {
-            playbackTime: message.playbackTime / 1000.0,
-            bufferedDuration: message.sampleCount / 48000.0
+            playbackTime: message.playbackTime,
+            bufferedTime: message.bufferedTime,
         };
         resolve(result);
     }
@@ -131,6 +131,6 @@ export interface PlaybackState {
     /** playback time in seconds */
     playbackTime: number,
     /** how much seconds do we have in the buffer to play */
-    bufferedDuration: number,
+    bufferedTime: number,
 }
 

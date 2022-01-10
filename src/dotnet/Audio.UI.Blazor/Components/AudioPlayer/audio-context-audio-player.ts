@@ -253,6 +253,10 @@ export class AudioContextAudioPlayer implements AudioPlayer {
             return;
 
         let state: PlaybackState = await feeder.getState();
+        if (this._debugMode) {
+            this.log(`onUpdateOffsetTick: playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
+        }
+
         await this.invokeOnPlaybackTimeChanged(state.playbackTime);
         self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
     };

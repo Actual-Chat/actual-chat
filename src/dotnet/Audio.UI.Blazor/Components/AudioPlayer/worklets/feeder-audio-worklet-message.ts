@@ -21,9 +21,10 @@ export interface ChangeStateNodeMessage extends NodeMessage {
 }
 
 export interface StateProcessorMessage extends ProcessorMessage {
-    sampleCount: number,
     id: number,
-    /** In milliseconds from the start of playing */
+    /** Buffered samples duration in seconds  */
+    bufferedTime: number,
+    /** In seconds from the start of playing */
     playbackTime: number,
 
 }
