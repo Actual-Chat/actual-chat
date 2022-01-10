@@ -191,7 +191,9 @@ public partial class Chats
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
             if (invChatEntry != null)
                 InvalidateChatPages(entry.ChatId, entry.Type, invChatEntry.Id, isUpdate);
-            _ = GetMaxId(entry.ChatId, entry.Type, default); // We invalidate min-max Id range at last
+            var invIsNew = context.Operation().Items.GetOrDefault(false);
+            if (invIsNew)
+                _ = GetMaxId(entry.ChatId, entry.Type, default); // We invalidate min-max Id range at last
             return null!;
         }
 
@@ -202,60 +204,13 @@ public partial class Chats
         var dbChatAuthor = await dbContext.ChatAuthors
             .SingleAsync(a => a.Id == entry.AuthorId.Value, cancellationToken)
             .ConfigureAwait(false);
+        var isNew = entry.Id == 0;
         var dbEntry = await DbUpsertEntry(dbContext, entry, cancellationToken).ConfigureAwait(false);
 
         entry = dbEntry.ToModel();
         context.Operation().Items.Set(entry);
+        context.Operation().Items.Set(isNew);
         return entry;
-    }
-
-    // [CommandHandler]
-    public virtual async Task<(ChatEntry AudioEntry, ChatEntry TextEntry)> CreateAudioEntry(
-        IChatsBackend.CreateAudioEntryCommand command,
-        CancellationToken cancellationToken)
-    {
-        var audioEntry = command.AudioEntry;
-        if (audioEntry.Type != ChatEntryType.Audio)
-            throw new ArgumentOutOfRangeException(nameof(command), "AudioEntry.Type != ChatEntryType.Audio");
-
-        var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
-            if (context.Operation().Items.TryGet<(ChatEntry AudioEntry, ChatEntry TextEntry)>(out var invEntries)) {
-                var invAudioEntry = invEntries.AudioEntry;
-                var invTextEntry = invEntries.TextEntry;
-                InvalidateChatPages(invAudioEntry.ChatId, invAudioEntry.Type, invAudioEntry.Id, false);
-                InvalidateChatPages(invTextEntry.ChatId, invTextEntry.Type, invTextEntry.Id, false);
-                _ = GetMaxId(invAudioEntry.ChatId, invAudioEntry.Type, default); // We invalidate min-max Id range at last
-                _ = GetMaxId(invTextEntry.ChatId, invTextEntry.Type, default); // We invalidate min-max Id range at last
-            }
-            return default!;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        // TODO: Use entity resolver or remove this check (?)
-        var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleAsync(a => a.Id == audioEntry.AuthorId.Value, cancellationToken)
-            .ConfigureAwait(false);
-
-        var dbAudioEntry = await DbUpsertEntry(dbContext, audioEntry, cancellationToken).ConfigureAwait(false);
-        var textEntry = new ChatEntry() {
-            ChatId = audioEntry.ChatId,
-            AuthorId = audioEntry.AuthorId,
-            Content = "...",
-            Type = ChatEntryType.Text,
-            StreamId = audioEntry.StreamId,
-            AudioEntryId = dbAudioEntry.Id,
-            BeginsAt = audioEntry.BeginsAt,
-        };
-        var dbTextEntry = await DbUpsertEntry(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
-
-        audioEntry = dbAudioEntry.ToModel();
-        textEntry = dbTextEntry.ToModel();
-        var entries = (audioEntry, textEntry);
-        context.Operation().Items.Set(entries);
-        return entries;
     }
 
     // Protected methods
