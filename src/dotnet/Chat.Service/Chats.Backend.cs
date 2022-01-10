@@ -333,8 +333,10 @@ public partial class Chats
         return dbEntry;
     }
 
-    public async Task<long> DbNextEntryId(
-        object dbContext,
+    // Private / internal methods
+
+    internal async Task<long> DbNextEntryId(
+        ChatDbContext dbContext,
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken)
@@ -345,16 +347,15 @@ public partial class Chats
             maxId = _maxIdCache.GetValueOrDefault(idSequenceKey);
 
         if (maxId == 0) {
-            var chatDbContext = (ChatDbContext) dbContext;
-            maxId = await chatDbContext.ChatEntries.ForUpdate() // To serialize inserts
+            maxId = await dbContext.ChatEntries.ForUpdate() // To serialize inserts
                 .Where(e => e.ChatId == chatId && e.Type == entryType)
                 .OrderByDescending(e => e.Id)
                 .Select(e => e.Id)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
-        var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
 
+        var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
         lock (_maxIdCache)
             _maxIdCache[idSequenceKey] = id;
         return id;
