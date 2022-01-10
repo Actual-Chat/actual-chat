@@ -7,7 +7,7 @@ namespace ActualChat.Chat;
 
 public partial class ChatAuthors
 {
-    private readonly LruCache<Symbol, long> _maxLocalIdCache = new(16384);
+    private readonly ThreadSafeLruCache<Symbol, long> _maxLocalIdCache = new(16384);
 
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(
@@ -126,23 +126,20 @@ public partial class ChatAuthors
         string chatId,
         CancellationToken cancellationToken)
     {
-        long maxLocalId;
         var idSequenceKey = new Symbol(chatId);
-        lock (_maxLocalIdCache)
-            maxLocalId = _maxLocalIdCache.GetValueOrDefault(idSequenceKey);
-
+        var maxLocalId = _maxLocalIdCache.GetValueOrDefault(idSequenceKey);
         if (maxLocalId == 0) {
-            maxLocalId = await dbContext.ChatAuthors.ForUpdate() // To serialize inserts
-                .Where(e => e.ChatId == chatId)
-                .OrderByDescending(e => e.LocalId)
-                .Select(e => e.LocalId)
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
+            _maxLocalIdCache[idSequenceKey] = maxLocalId =
+                await dbContext.ChatAuthors.ForUpdate() // To serialize inserts
+                    .Where(e => e.ChatId == chatId)
+                    .OrderByDescending(e => e.LocalId)
+                    .Select(e => e.LocalId)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
         }
 
         var localId = await _idSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
-        lock (_maxLocalIdCache)
-            _maxLocalIdCache[idSequenceKey] = localId;
+        _maxLocalIdCache[idSequenceKey] = localId;
         return localId;
     }
 }

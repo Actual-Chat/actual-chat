@@ -109,6 +109,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Service.Migration", "s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service.Migration", "src\dotnet\Users.Service.Migration\Users.Service.Migration.csproj", "{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.IntegrationTests", "tests\Users.IntegrationTests\Users.IntegrationTests.csproj", "{B9DC9756-9515-4336-B4CF-51EE8126B246}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -279,6 +281,10 @@ Global
 		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9DC9756-9515-4336-B4CF-51EE8126B246}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9DC9756-9515-4336-B4CF-51EE8126B246}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9DC9756-9515-4336-B4CF-51EE8126B246}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9DC9756-9515-4336-B4CF-51EE8126B246}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -326,6 +332,7 @@ Global
 		{B6BE2055-13E8-4A7E-9812-C1DFADE5BD95} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{EB6F6C89-32E9-4EBD-B599-32159A87E481} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{B9DC9756-9515-4336-B4CF-51EE8126B246} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
