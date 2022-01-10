@@ -1,4 +1,12 @@
-import { ChangeStateNodeMessage, DataNodeMessage, GetStateNodeMessage, NodeMessage, ProcessorMessage, StateChangedProcessorMessage, StateProcessorMessage } from "./feeder-audio-worklet-message";
+import {
+    ChangeStateNodeMessage,
+    DataNodeMessage,
+    GetStateNodeMessage,
+    NodeMessage,
+    ProcessorMessage,
+    StateChangedProcessorMessage,
+    StateProcessorMessage
+} from "./feeder-audio-worklet-message";
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {

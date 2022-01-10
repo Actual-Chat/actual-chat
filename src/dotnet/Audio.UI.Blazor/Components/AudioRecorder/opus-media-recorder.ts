@@ -1,5 +1,5 @@
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
-import {AudioContextPool} from 'audio-context-pool';
+import { AudioContextPool } from 'audio-context-pool';
 
 import {
     DoneCommand,

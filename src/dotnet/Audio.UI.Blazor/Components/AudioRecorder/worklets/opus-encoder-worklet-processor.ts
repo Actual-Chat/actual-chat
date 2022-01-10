@@ -1,5 +1,5 @@
 import Denque from 'denque';
-import {AudioRingBuffer} from "./audio-ring-buffer";
+import { AudioRingBuffer } from "./audio-ring-buffer";
 
 const SAMPLES_PER_MS = 48;
 

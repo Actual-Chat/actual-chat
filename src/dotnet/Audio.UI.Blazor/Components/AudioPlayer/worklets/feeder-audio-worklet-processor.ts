@@ -1,6 +1,13 @@
 import Denque from 'denque';
-import { NodeMessage, DataNodeMessage, ChangeStateNodeMessage, StateChangedProcessorMessage, StateProcessorMessage, GetStateNodeMessage } from './feeder-audio-worklet-message';
-import {DecoderMessage, DecoderWorkletMessage} from "../workers/opus-decoder-worker-message";
+import {
+    NodeMessage,
+    DataNodeMessage,
+    ChangeStateNodeMessage,
+    StateChangedProcessorMessage,
+    StateProcessorMessage,
+    GetStateNodeMessage
+} from './feeder-audio-worklet-message';
+import { DecoderMessage, DecoderWorkletMessage } from "../workers/opus-decoder-worker-message";
 
 const SAMPLE_RATE = 48000;
 /** Part of the feeder that lives in AudioWorkletGlobalScope */
