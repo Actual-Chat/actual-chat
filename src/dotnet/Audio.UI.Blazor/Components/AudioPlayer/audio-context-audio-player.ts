@@ -17,12 +17,12 @@ import {
 type PlayerState = 'inactive' | 'buffering' | 'playing' | 'endOfStream' ;
 
 /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-const BufferTooMuchThreshold = 5.0;
+const BUFFER_TOO_MUCH_THRESHOLD = 5.0;
 /**
  * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
  * should be in sync with audio-feeder bufferSize
  */
-const BufferEnoughThreshold = 0.1;
+const BUFFER_ENOUGH_THRESHOLD = 0.1;
 
 const playerMap = new Map<string, AudioContextAudioPlayer>();
 const decoderWorker = new Worker('/dist/opusDecoderWorker.js');
@@ -128,8 +128,8 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             numberOfOutputs: 1,
             outputChannelCount: [1],
             processorOptions: {
-                enoughToStartPlaying: BufferEnoughThreshold,
-                tooMuchBuffered: BufferTooMuchThreshold,
+                enoughToStartPlaying: BUFFER_ENOUGH_THRESHOLD,
+                tooMuchBuffered: BUFFER_TOO_MUCH_THRESHOLD,
             }
         };
         this.feederNode = new FeederAudioWorkletNode(
@@ -154,7 +154,7 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
             this.needMoreData('onStarving');
         };
         this.feederNode.onBufferTooMuch = () => {
-            const _ = this.invokeOnChangeReadiness(false, BufferTooMuchThreshold, 4);
+            const _ = this.invokeOnChangeReadiness(false, BUFFER_TOO_MUCH_THRESHOLD, 4);
         }
         this.feederNode.onStartPlaying = () => {
             this.state = 'playing'

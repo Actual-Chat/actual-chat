@@ -2,6 +2,7 @@ import Denque from 'denque';
 import { NodeMessage, DataNodeMessage, ChangeStateNodeMessage, StateChangedProcessorMessage, StateProcessorMessage, GetStateNodeMessage } from './feeder-audio-worklet-message';
 import {DecoderMessage, DecoderWorkletMessage} from "../workers/opus-decoder-worker-message";
 
+const SAMPLE_RATE = 48000;
 /** Part of the feeder that lives in AudioWorkletGlobalScope */
 // TODO: implement pause
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
@@ -127,7 +128,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         }
         this.chunkOffset = chunkOffset;
         const sampleCount = this.sampleCount;
-        const bufferedDuration = sampleCount / 48000.0;
+        const bufferedDuration = sampleCount / SAMPLE_RATE;
         if (this.isPlaying && !this.isStarving) {
             if (sampleCount <= samplesLowThreshold) {
                 const message: StateChangedProcessorMessage = {
@@ -235,7 +236,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             case 'samples':
                 this.chunks.push(new Float32Array(buffer, offset, length / 4 ));
                 if (!this.isPlaying) {
-                    const bufferedDuration =  this.sampleCount / 48000.0;
+                    const bufferedDuration =  this.sampleCount / SAMPLE_RATE;
                     if (bufferedDuration >= this.enoughToStartPlaying) {
                         this.isStarving = true;
                         this.isPlaying = true;

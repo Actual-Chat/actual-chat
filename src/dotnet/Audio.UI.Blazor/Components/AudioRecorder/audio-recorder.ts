@@ -11,7 +11,6 @@ import { VoiceActivityChanged } from './audio-vad';
 import { toHexString } from "./to-hex-string";
 
 const LogScope = 'AudioRecorder';
-const SampleRate = 48000;
 
 self["StandardMediaRecorder"] = self.MediaRecorder;
 self["OpusMediaRecorder"] = OpusMediaRecorder;
@@ -128,7 +127,7 @@ export class AudioRecorder {
     public async startRecording(): Promise<void> {
         if (this.isRecording())
             return;
-        
+
         if (!this.isMicrophoneAvailable) {
             console.error(`${LogScope}.startRecording: microphone is unavailable.`);
             return;
