@@ -20,9 +20,9 @@
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
-    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.0"/>
+    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
-    <PackageReference Update="EFCore.CheckConstraints" Version="6.0.*" />
+    <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*"/>
     <PackageReference Update="MessagePack" Version="2.3.*"/>
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*"/>
@@ -33,7 +33,7 @@
     <PackageReference Update="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
-    <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.1"/>
+    <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
@@ -102,7 +102,7 @@
     <PackageReference Update="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
 
     <!-- For the build project -->
-    <PackageReference Update="CliWrap" Version="3.3.3"/>
+    <PackageReference Update="CliWrap" Version="3.4.0"/>
     <PackageReference Update="Bullseye" Version="3.8.0"/>
     <PackageReference Update="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1"/>
     <PackageReference Update="System.Management" Version="6.0.0"/>
