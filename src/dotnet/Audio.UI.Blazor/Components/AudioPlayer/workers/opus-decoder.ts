@@ -254,6 +254,7 @@ export class OpusDecoder {
                     return filename;
                 else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
             },
+            // ** Pre-loaded WASM binary as ArrayBuffer
             wasmBinary: wasmBinary,
         };
     }
