@@ -5,7 +5,7 @@ import {
     ChangeStateNodeMessage,
     StateChangedProcessorMessage,
     StateProcessorMessage,
-    GetStateNodeMessage
+    GetStateNodeMessage,
 } from './feeder-audio-worklet-message';
 import { DecoderMessage, DecoderWorkletMessage } from "../workers/opus-decoder-worker-message";
 
@@ -163,7 +163,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         switch (msg.type) {
             case 'init-port':
                 this.workerPort = ev.ports[0];
-                this.workerPort.onmessage = this.onWorkerMessage.bind(this);
+                this.workerPort.onmessage = this.onWorkerMessage;
                 break;
 
             case 'data':
@@ -238,7 +238,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         }
     }
 
-    private onWorkerMessage(ev: MessageEvent) {
+    private onWorkerMessage = (ev: MessageEvent) => {
         const { topic, offset, length, buffer }: DecoderMessage = ev.data;
 
         switch (topic) {
