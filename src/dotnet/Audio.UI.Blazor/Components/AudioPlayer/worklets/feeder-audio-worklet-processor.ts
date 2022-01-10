@@ -25,8 +25,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private readonly tooMuchBuffered: number;
     private workerPort: MessagePort;
     private chunkOffset: number = 0;
-    private firstProcessTime: number = 0;
-    private lastProcessTime: number = 0;
+    private playbackTime: number = 0;
     private isPlaying: boolean = false;
     private isStarving: boolean = false;
 
@@ -41,7 +40,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     /** Count how many samples are queued up */
-    private get sampleCount(): number {
+    private get bufferedSampleCount(): number {
         const { chunks, chunkOffset } = this;
         let result = -chunkOffset;
         const len = chunks.length;
@@ -79,11 +78,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             return true;
         }
 
-        if (this.firstProcessTime === 0) {
-            this.firstProcessTime = new Date().getTime();
-            this.lastProcessTime = this.firstProcessTime;
-        }
-
         for (let offset = 0; offset < channel.length;) {
             const chunk = chunks.peekFront();
             if (chunk !== undefined) {
@@ -105,11 +99,13 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                     channel.set(remainingSamples, offset);
                     chunkOffset += remaining;
                     offset += remaining;
+                    this.playbackTime += remaining / SAMPLE_RATE;
                 }
                 else {
                     const remainingSamples = chunk.subarray(chunkOffset);
                     channel.set(remainingSamples, offset);
                     offset += remainingSamples.length;
+                    this.playbackTime += remainingSamples.length / SAMPLE_RATE;
 
                     chunkOffset = 0;
 
@@ -136,7 +132,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             }
         }
         this.chunkOffset = chunkOffset;
-        const sampleCount = this.sampleCount;
+        const sampleCount = this.bufferedSampleCount;
         const bufferedDuration = sampleCount / SAMPLE_RATE;
         if (this.isPlaying && !this.isStarving) {
             if (sampleCount <= samplesLowThreshold) {
@@ -154,7 +150,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 this.port.postMessage(message);
             }
         }
-        this.lastProcessTime = new Date().getTime();
+        // this.lastProcessTime = new Date().getTime();
         return true;
     }
 
@@ -205,11 +201,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         const msg: StateProcessorMessage = {
             type: 'state',
             id: message.id,
-            sampleCount: this.sampleCount,
-            // NOTE(AY): This is kinda hacky computation of playbackTime,
-            // we need to either account for starving periods here, or
-            // just skip them during the playback
-            playbackTime: Math.max(0, this.lastProcessTime - this.firstProcessTime),
+            bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
+            playbackTime: this.playbackTime,
         };
         if (debug)
             console.debug("Feeder processor: get state", msg);
@@ -232,7 +225,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         else if (!this.isPlaying && message.state === "play") {
             this.isStarving = true;
             this.isPlaying = true;
-            this.firstProcessTime = 0;
             if (debug)
                 console.debug("Feeder processor: start playing");
         }
@@ -240,11 +232,10 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
     private startPlaybackIfEnoughBuffered(): void {
         if (!this.isPlaying) {
-            const bufferedDuration =  this.sampleCount / SAMPLE_RATE;
+            const bufferedDuration =  this.bufferedSampleCount / SAMPLE_RATE;
             if (bufferedDuration >= this.enoughToStartPlaying) {
                 this.isStarving = true;
                 this.isPlaying = true;
-                this.firstProcessTime = 0;
             }
         }
     }
