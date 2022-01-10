@@ -5,7 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public sealed class RealtimeChatPlayer : ChatPlayer
 {
     // Min. delay is ~ 2.5*Ping, so we can skip something
-    private static readonly TimeSpan StreamingSkipTo = TimeSpan.FromSeconds(0.05);
+    private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
 
     public RealtimeChatPlayer(IServiceProvider services) : base(services) { }
 
