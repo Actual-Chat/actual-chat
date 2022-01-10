@@ -19,9 +19,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             .ConfigureAwait(false);
         var startId = startEntry?.Id ?? idRange.End - 1;
 
-        var entries = AudioEntryReader
-            .ReadAllWaitingForNew(startId, cancellationToken)
-            .Where(e => e.Type == ChatEntryType.Audio);
+        var entries = AudioEntryReader.ReadAllWaitingForNew(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.EndsAt < startAt)
                 // We're starting @ (startAt - ChatConstants.MaxEntryDuration),
