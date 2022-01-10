@@ -8,7 +8,6 @@ export interface ProcessorMessage {
     type: "stateChanged" | "state";
 }
 
-
 export interface DataNodeMessage extends NodeMessage {
     buffer: ArrayBuffer;
 }
