@@ -21,5 +21,9 @@ public class SetupSessionTest : AppHostTestBase
             .Select(_ => commander.Call(new SetupSessionCommand(session)))
             .ToArray();
         await Task.WhenAll(tasks);
+
+        var auth = services.GetRequiredService<IAuth>();
+        var sessionInfo = auth.GetSessionInfo(session);
+        sessionInfo.Should().NotBeNull();
     }
 }
