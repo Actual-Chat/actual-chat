@@ -13,9 +13,3 @@ services:
     ports:
      - "5432:5432"
     entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000"]
-  mariadb:
-    image: mariadb
-    environment:
-      MYSQL_ROOT_PASSWORD: mariadb
-    ports:
-     - "3306:3306"
