@@ -238,20 +238,24 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         }
     }
 
+    private startPlaybackIfEnoughBuffered(): void {
+        if (!this.isPlaying) {
+            const bufferedDuration =  this.sampleCount / SAMPLE_RATE;
+            if (bufferedDuration >= this.enoughToStartPlaying) {
+                this.isStarving = true;
+                this.isPlaying = true;
+                this.firstProcessTime = 0;
+            }
+        }
+    }
+
     private onWorkerMessage = (ev: MessageEvent) => {
         const { topic, offset, length, buffer }: DecoderMessage = ev.data;
 
         switch (topic) {
             case 'samples':
                 this.chunks.push(new Float32Array(buffer, offset, length / 4 ));
-                if (!this.isPlaying) {
-                    const bufferedDuration =  this.sampleCount / SAMPLE_RATE;
-                    if (bufferedDuration >= this.enoughToStartPlaying) {
-                        this.isStarving = true;
-                        this.isPlaying = true;
-                        this.firstProcessTime = 0;
-                    }
-                }
+                this.startPlaybackIfEnoughBuffered();
                 break;
 
             default:
