@@ -5,7 +5,7 @@ import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
 import Denque from 'denque';
 import { DecoderMessage } from "./opus-decoder-worker-message";
 
-type DecoderState = 'inactive'|'waiting'|'decoding';
+type DecoderState = 'inactive' | 'waiting' | 'decoding';
 
 const SAMPLE_RATE = 48000;
 let demuxerWasmBinary: ArrayBuffer = null;
