@@ -7,7 +7,7 @@ import { DecoderMessage } from "./opus-decoder-worker-message";
 
 type DecoderState = 'inactive'|'waiting'|'decoding';
 
-const SampleRate = 48000;
+const SAMPLE_RATE = 48000;
 let demuxerWasmBinary: ArrayBuffer = null;
 let decoderWasmBinary: ArrayBuffer = null;
 
@@ -144,7 +144,7 @@ export class OpusDecoder {
                         // discardPadding is in nanoseconds
                         // negative value trims from beginning
                         // positive value trims from end
-                        let trim = Math.round(discardPadding * SampleRate / 1000000000);
+                        let trim = Math.round(discardPadding * SAMPLE_RATE / 1000000000);
                         if (trim > 0) {
                             length = monoPcm.length - Math.min(trim, monoPcm.length);
                             monoPcm = monoPcm.subarray(0, length);

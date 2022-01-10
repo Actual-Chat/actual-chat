@@ -25,9 +25,9 @@ export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleR
     return new VoiceActivityChanged(event.kind, event.offset / sampleRate, event.speechProb, event.duration === null ? null : event.duration / sampleRate);
 }
 
-const SamplesPerWindow = 512;
-const AccumulativePeriodStart = 100;
-const AccumulativePeriodEnd = 300;
+const SAMPLES_PER_WINDOW = 512;
+const ACCUMULATIVE_PERIOD_START = 100;
+const ACCUMULATIVE_PERIOD_END = 300;
 
 export class VoiceActivityDetector {
     private readonly modelUri: URL;
@@ -75,11 +75,11 @@ export class VoiceActivityDetector {
             await this.initPromise;
         }
 
-        if (monoPcm.length !== SamplesPerWindow) {
-            throw new Error(`appendChunk() accepts ${SamplesPerWindow} sample audio windows only.`);
+        if (monoPcm.length !== SAMPLES_PER_WINDOW) {
+            throw new Error(`appendChunk() accepts ${SAMPLES_PER_WINDOW} sample audio windows only.`);
         }
 
-        const tensor = new ort.Tensor(monoPcm, [1, SamplesPerWindow]);
+        const tensor = new ort.Tensor(monoPcm, [1, SAMPLES_PER_WINDOW]);
         const feeds = { input: tensor, h0: h0, c0: c0 };
         const result = await this.session.run(feeds);
         const { output, hn, cn } = result;
@@ -98,7 +98,7 @@ export class VoiceActivityDetector {
         let currentEvent = this.lastActivityEvent;
         const currentOffset = this.sampleCount;
 
-        if (this.speechSteps >= AccumulativePeriodStart) {
+        if (this.speechSteps >= ACCUMULATIVE_PERIOD_START) {
             // enough statistics to adjust trigSum \ negTrigSum
             const probMedian = streamedMedian.median;
             trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
@@ -117,7 +117,7 @@ export class VoiceActivityDetector {
             const offset = Math.max(0, currentOffset - padSamples);
             const duration = offset - currentEvent.offset;
             currentEvent = new VoiceActivityChanged('start', offset, smoothedProb, duration);
-            if (this.speechSteps++ < AccumulativePeriodEnd) {
+            if (this.speechSteps++ < ACCUMULATIVE_PERIOD_END) {
                 this.streamedMedian.push(prob);
             }
         }
