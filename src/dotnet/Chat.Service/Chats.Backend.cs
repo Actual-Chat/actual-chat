@@ -8,7 +8,7 @@ namespace ActualChat.Chat;
 
 public partial class Chats
 {
-    private readonly LruCache<Symbol, long> _maxIdCache = new(16384);
+    private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
@@ -341,23 +341,20 @@ public partial class Chats
         ChatEntryType entryType,
         CancellationToken cancellationToken)
     {
-        long maxId;
         var idSequenceKey = new Symbol($"{chatId}:{entryType:D}");
-        lock (_maxIdCache)
-            maxId = _maxIdCache.GetValueOrDefault(idSequenceKey);
-
+        var maxId = _maxIdCache.GetValueOrDefault(idSequenceKey);
         if (maxId == 0) {
-            maxId = await dbContext.ChatEntries.ForUpdate() // To serialize inserts
-                .Where(e => e.ChatId == chatId && e.Type == entryType)
-                .OrderByDescending(e => e.Id)
-                .Select(e => e.Id)
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
+            _maxIdCache[idSequenceKey] = maxId =
+                await dbContext.ChatEntries.ForUpdate() // To serialize inserts
+                    .Where(e => e.ChatId == chatId && e.Type == entryType)
+                    .OrderByDescending(e => e.Id)
+                    .Select(e => e.Id)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
         }
 
         var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
-        lock (_maxIdCache)
-            _maxIdCache[idSequenceKey] = id;
+        _maxIdCache[idSequenceKey] = id;
         return id;
     }
 }
