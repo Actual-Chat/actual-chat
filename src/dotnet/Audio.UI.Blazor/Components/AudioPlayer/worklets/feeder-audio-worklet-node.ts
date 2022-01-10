@@ -100,8 +100,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         }
         this.callbacks.delete(message.id);
         const result: PlaybackState = {
-            playbackTime: message.playbackTime,
-            bufferedTime: message.bufferedTime,
+            playbackTime: Math.round(message.playbackTime * 1000) / 1000,
+            bufferedTime: Math.round(message.bufferedTime * 1000) / 1000,
         };
         resolve(result);
     }
