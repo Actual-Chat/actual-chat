@@ -3,7 +3,6 @@
 // TODO: combine demuxer / decoder / recorder wasm modules into one
 
 import { AudioContextPool } from 'audio-context-pool';
-import { IAudioPlayer } from './IAudioPlayer';
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
 import {
     DecoderWorkerMessage,
@@ -42,7 +41,16 @@ decoderWorker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
     }
 };
 
-export class AudioContextAudioPlayer implements IAudioPlayer {
+export interface AudioPlayer {
+    onStartPlaying?: () => void;
+    onInitialized?: () => void;
+    init(byteArray: Uint8Array): Promise<void>;
+    appendAudio(byteArray: Uint8Array, offset: number): Promise<void>;
+    endOfStream(): void;
+    stop(error: EndOfStreamError | null): void;
+}
+
+export class AudioContextAudioPlayer implements AudioPlayer {
 
     public static debug?: {
         debugMode: boolean;
@@ -53,11 +61,14 @@ export class AudioContextAudioPlayer implements IAudioPlayer {
         debugFeederStats: boolean;
     } = null;
 
-    public static create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean): AudioContextAudioPlayer {
+    public static async create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean, header: Uint8Array)
+        : Promise<AudioContextAudioPlayer> {
         const player = new AudioContextAudioPlayer(playerId, blazorRef, debugMode);
         if (debugMode) {
             self["_player"] = player;
         }
+        await player.init(header);
+
         playerMap.set(playerId, player)
         return player;
     }

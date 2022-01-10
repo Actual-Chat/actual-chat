@@ -45,7 +45,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
         StateHasChanged();
     }
 
-    public async Task OnToggleClick(bool isMsePlayer)
+    public async Task OnToggleClick()
     {
         if (_isPlaying) {
             Log.LogInformation("Stop playing");
@@ -68,14 +68,13 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var stopWatch = Stopwatch.StartNew();
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
-                _cts.Token, isMsePlayer, blazorRef
+                _cts.Token, blazorRef, audioSource.Format.Serialize()
             ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 try {
                     Log.LogInformation("Playing was cancelled");
-                    await jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
                     await jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
                     if (_registration != default) {
                         await _registration.DisposeAsync().ConfigureAwait(true);
@@ -91,7 +90,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 }
             });
             var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
-            await jsRef.InvokeVoidAsync("init", _cts.Token, audioSource.Format.Serialize()).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {
