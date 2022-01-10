@@ -22,11 +22,10 @@
         <p>[Js] from ctor to the end of initialize: @InitializeDelay ms</p>
         <p>[Js] from ctor to the player.play() call: @StartPlayingDelay ms</p>
         @if (_isPlaying) {
-            <button onclick="@(() => OnToggleClick(true))" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700">Stop</button>
+            <button onclick="@(() => OnToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700">Stop</button>
             <button onclick="@(() => OnBlockMainThread(blockMainThreadMs))" class="mt-3 px-4 py-1 text-gray-700 rounded-md bg-yellow-300">Block js main thread for @blockMainThreadMs ms</button>
         } else {
-            <button onclick="@(() => OnToggleClick(true))" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-blue-700">@(_isPlaying ? "Stop" : "MSE")</button>
-            <button onclick="@(() => OnToggleClick(false))" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700">@(_isPlaying ? "Stop" : "AudioContext")</button>
+            <button onclick="@(() => OnToggleClick())" class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700">@(_isPlaying ? "Stop" : "AudioContext")</button>
         }
     </div>
     <div class="mt-6 bg-red-50 rounded-2xl p-3">
