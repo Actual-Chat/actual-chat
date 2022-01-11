@@ -5,7 +5,7 @@
     <AspNetCoreVersion>6.0.1</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>6.0.0</MicrosoftExtensionsVersion>
     <EntityFrameworkCoreVersion>6.0.1</EntityFrameworkCoreVersion>
-    <NpgsqlVersion>6.0.0</NpgsqlVersion>
+    <NpgsqlVersion>6.0.2</NpgsqlVersion>
     <MySqlVersion>2.1.2</MySqlVersion>
     <EntityFrameworkCoreNpgsqlVersion>6.0.2</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreMySqlVersion>6.0.0</EntityFrameworkCoreMySqlVersion>
@@ -14,26 +14,27 @@
     <BlazorVersion>6.0.1</BlazorVersion>
     <SignalRVersion>6.0.1</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.2.41</StlFusionVersion>
+    <StlFusionVersion>2.2.44</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
-    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.0"/>
+    <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
-    <PackageReference Update="EFCore.CheckConstraints" Version="6.0.*" />
+    <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*"/>
+    <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha03" />
     <PackageReference Update="MessagePack" Version="2.3.*"/>
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*"/>
-    <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="6.0.1"/>
-    <PackageReference Update="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="6.0.1"/>
+    <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)"/>
+    <PackageReference Update="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.Authorization" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly" Version="$(BlazorVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(BlazorVersion)"/>
-    <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.1"/>
+    <PackageReference Update="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
@@ -63,6 +64,7 @@
     <PackageReference Update="Newtonsoft.Json" Version="13.0.*"/>
     <PackageReference Update="Pomelo.EntityFrameworkCore.MySql" Version="$(EntityFrameworkCoreMySqlVersion)"/>
     <PackageReference Update="RestEase" Version="1.5.*"/>
+    <PackageReference Update="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
     <PackageReference Update="StackExchange.Redis" Version="2.2.*"/>
     <PackageReference Update="Stl" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Stl.CommandR" Version="$(StlFusionVersion)"/>
@@ -102,7 +104,7 @@
     <PackageReference Update="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
 
     <!-- For the build project -->
-    <PackageReference Update="CliWrap" Version="3.3.3"/>
+    <PackageReference Update="CliWrap" Version="3.4.0"/>
     <PackageReference Update="Bullseye" Version="3.8.0"/>
     <PackageReference Update="System.CommandLine.DragonFruit" Version="0.3.0-alpha.21216.1"/>
     <PackageReference Update="System.Management" Version="6.0.0"/>

@@ -25,8 +25,9 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         // Other UI-related services
         services.AddScoped<DisposeMonitor>();
         services.AddScoped<AppBlazorCircuitContext>();
-        // Default update delay is 0.5s
-        services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UICommandTracker(), 0.5));
+        // Default update delay is 0.2s
+        services.AddTransient<IUpdateDelayer>(c =>
+            new UpdateDelayer(c.UICommandTracker(), 0.2));
     }
 }
 

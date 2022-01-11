@@ -40,6 +40,8 @@
 
     [Parameter]
     public string ChatId { get; set; } = "";
+    [Parameter]
+    public EventCallback<bool> RecordingStateChanged { get; set; }
 
     public async ValueTask DisposeAsync() {
         await StopRecording().ConfigureAwait(true);
@@ -74,6 +76,7 @@
         StateHasChanged();
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("startRecording");
+        await RecordingStateChanged.InvokeAsync(IsRecording).ConfigureAwait(true);
     }
 
     private async Task StopRecording() {
@@ -81,13 +84,13 @@
         DebugLog?.LogDebug(nameof(StopRecording));
 
         var audioChannel = AudioChannel;
-        _ = Task.Run(async () => {
+        _ = InvokeAsync(async () => {
             await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(true);
             if (AudioChannel != audioChannel)
                 return; // We don't want to stop the next recording here :)
 
             Log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
-            OnRecordingStopped();
+            await OnRecordingStopped().ConfigureAwait(true);
         });
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("stopRecording");
@@ -123,7 +126,7 @@
     }
 
     [JSInvokable]
-    public void OnRecordingStopped() {
+    public async Task OnRecordingStopped() {
         // Does the same as StopRecording; we assume here that recording
         // might be recognized as stopped by JS backend as well
         if (!IsRecording) return;
@@ -132,6 +135,7 @@
         AudioChannel.Writer.Complete();
         AudioChannel = null!;
         StateHasChanged();
+        await RecordingStateChanged.InvokeAsync(IsRecording).ConfigureAwait(true);
     }
 
     private IEnumerable<RecordingPart> DeserializeRecordingData(byte[] data) {

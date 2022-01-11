@@ -54,26 +54,34 @@ public class SourceAudioProcessor : AsyncProcessBase
             return;
 
         // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
-        while (true) {
-            try {
-                var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
-                _ = BackgroundTask.Run(
-                    () => ProcessSourceAudio(record, cancellationToken),
-                    e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
-                    cancellationToken);
+        try {
+            while (true) {
+                try {
+                    var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
+                    _ = BackgroundTask.Run(
+                        () => ProcessSourceAudio(record, cancellationToken),
+                        e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
+                        cancellationToken);
+                }
+                catch (OperationCanceledException) {
+                    if (cancellationToken.IsCancellationRequested)
+                        throw;
+                    // It's some other cancellation - StopToken still isn't cancelled,
+                    // so we continue spinning.
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "DequeueSourceAudio failed, trying the next entry");
+                }
             }
-            catch (OperationCanceledException) {
-                throw;
-            }
-            catch (Exception e) {
-                Log.LogError(e, "DequeueSourceAudio failed");
-            }
+        }
+        finally {
+            Log.LogInformation("Terminated");
         }
     }
 
     internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
+        Log.LogInformation("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
 
         var recordingStream = SourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, cancellationToken);
         if (Constants.DebugMode.AudioRecordingStream)
@@ -82,7 +90,7 @@ public class SourceAudioProcessor : AsyncProcessBase
         var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         var openSegments = AudioSplitter.GetSegments(record, author, recordingStream, cancellationToken);
         await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
-            DebugLog?.LogDebug(
+            Log.LogDebug(
                 "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
                 record.Id, openSegment.Index, openSegment.StreamId);
             var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);

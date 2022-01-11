@@ -8,15 +8,7 @@
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
-        @if (context.Value is ChatMessageModel chatMessageModel) {
-            <ChatMessage Model="@chatMessageModel" />
-        }
-        else if (context.Value is ChatDateSeparatorModel chatDateSeparator) {
-            <ChatDateSeparator Model="@chatDateSeparator" />
-        }
-        else {
-
-        }
+        <ChatMessage Model="@context.Value" />
     </Item>
     <Skeleton>
         @{

@@ -25,4 +25,10 @@ public record AudioRecord(
     public AudioRecord() : this("", "", null!, null!, 0) { }
     public AudioRecord(string sessionId, string chatId, AudioFormat format, double clientStartOffset)
         : this("", sessionId, chatId, format, clientStartOffset) { }
+
+    // This record relies on referential equality
+    public virtual bool Equals(AudioRecord? other)
+        => ReferenceEquals(this, other);
+    public override int GetHashCode()
+        => RuntimeHelpers.GetHashCode(this);
 }

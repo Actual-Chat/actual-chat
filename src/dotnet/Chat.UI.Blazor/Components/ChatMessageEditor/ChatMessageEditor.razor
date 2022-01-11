@@ -8,6 +8,7 @@
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
+@inject MomentClockSet _clocks
 
 <div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full p-2">
     <div class="flex flex-row justify-between px-1">
@@ -37,9 +38,14 @@
                     <ChatLanguageToggle/>
                 </div>
                 <div class="chat-control-button recorder-button w-1/2 flex">
-                    <AudioRecorder ChatId="@Chat.Id"/>
+                    @*
+                        new EventCallback<bool>(null, ...) prevents StateHasChanged call
+                        and thus re-rendering of a parent (this) component.
+                    *@
+                    <AudioRecorder ChatId="@Chat.Id"
+                                   RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
-                @if (RealtimePlayer != null) {
+                @if (RealtimePlayer != null!) {
                     <div class="chat-control-button player-button w-1/2 flex">
                         <ChatPlayerToggle Player="RealtimePlayer"/>
                     </div>
@@ -102,5 +108,16 @@
         var (_, ce) = await _cmd.Run(new IChats.CreateEntryCommand(_session, Chat.Id, Text)).ConfigureAwait(true);
         if (!ce.IsFailed)
             await JSRef.InvokeVoidAsync("setText", "").ConfigureAwait(true);
+    }
+
+    private Task RecordingStateChanged(bool isRecording) {
+        if (isRecording == false)
+            return Task.CompletedTask;
+        var isPlaying = RealtimePlayer.Playback is { IsStopped: false };
+        if (isPlaying)
+            return Task.CompletedTask;
+        // We don't need to await for this here
+        _ = RealtimePlayer.Play(_clocks.SystemClock.Now);
+        return Task.CompletedTask;
     }
 }

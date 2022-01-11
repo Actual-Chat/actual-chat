@@ -11,7 +11,9 @@
         ? $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg"
         : author.Picture;
 }
-
+@if (Model.DateLine.HasValue) {
+    <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
+}
 <div class="@(_class ??= this.DefaultClass()) antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words @marginClass">
     @if (showPicture) {
         <div class="w-10 h-10 mr-2 select-none bg-secondary">
@@ -45,7 +47,7 @@
 @code {
     private static string? _class;
 
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
 
     public override Task SetParametersAsync(ParameterView parameters)

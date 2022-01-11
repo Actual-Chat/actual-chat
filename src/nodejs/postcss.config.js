@@ -4,12 +4,10 @@ module.exports = (api) => {
   // `api.webpackLoaderContext` - loader context for complex use cases
   // `api.env` - alias `api.mode` for compatibility with `postcss-cli`
   // `api.options` - the `postcssOptions` options
-  const tailwindcssConfig = require('./tailwind.config.js')({ env: api.mode });
-
   return {
     plugins: [
       require('./postcss-watch-plugin.js'),
-      require('tailwindcss')(tailwindcssConfig),
+      require('tailwindcss'),
       require('autoprefixer'),
       ...(api.mode === 'production' ? [require('cssnano')({ preset: 'default' })] : [])
     ]

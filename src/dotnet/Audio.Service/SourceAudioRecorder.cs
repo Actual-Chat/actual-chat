@@ -68,9 +68,9 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
             try {
                 await NewRecordQueue.Enqueue(record).ConfigureAwait(false);
             }
-            catch {
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "RecordSourceAudio.AnnounceNewRecord failed");
                 RecycleNewRecordQueue();
-                throw;
             }
         }
 
@@ -86,7 +86,8 @@ public class SourceAudioRecorder : ISourceAudioRecorder, IAsyncDisposable
         try {
             return NewRecordQueue.Dequeue(cancellationToken);
         }
-        catch {
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "DequeueSourceAudio failed");
             RecycleNewRecordQueue();
             throw;
         }
