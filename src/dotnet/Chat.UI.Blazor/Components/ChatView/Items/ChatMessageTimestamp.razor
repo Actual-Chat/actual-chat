@@ -1,17 +1,24 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<string>
-@inject ILiveTime LiveTime
+@inject ILiveTime _liveTime
 
 @{
-    var timestamp = @State.LatestNonErrorValue;
+    var timestamp = State.LatestNonErrorValue;
 }
 
 <span class="@(_class ??= this.DefaultClass()) text-secondary text-xs has-tooltip">@timestamp
     <span class="tooltip z-10 py-2 px-3 text-xs text-gray-900 bg-white rounded-lg border border-gray-200 shadow-sm">@tooltip</span>
 </span>
 
-@*Planned to do tooltips with approach described in https://tailwind-elements.com/docs/standard/components/tooltip/, but I could not get it working.*@
-@*So finally I could accomplish it with approach from https://github.com/Cosbgn/tailwindcss-tooltips.*@
-@*TODO (@iqmulator, @Vladimir Chirikov): improve tooltip  *@
+@*
+Planned to do tooltips with approach described in
+- https://tailwind-elements.com/docs/standard/components/tooltip/ ,
+but I could not get it working.
+I ended up with an approach described here:
+- https://github.com/Cosbgn/tailwindcss-tooltips
+
+TODO (@iqmulator, @Vladimir Chirikov): improve tooltip!
+*@
 
 @code {
     private static string? _class;
@@ -32,6 +39,6 @@
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)
     {
-        return LiveTime.GetMomentsAgo(localTime);
+        return _liveTime.GetMomentsAgo(localTime);
     }
 }

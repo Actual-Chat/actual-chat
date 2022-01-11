@@ -1,10 +1,14 @@
 ﻿using System.Text.Json.Serialization;
+using ActualChat.Comparison;
 using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
-public record ChatEntry : IHasId<long>, IHasVersion<long>
+public sealed record ChatEntry : IHasId<long>, IHasVersion<long>
 {
+    private static IEqualityComparer<ChatEntry> EqualityComparer { get; } =
+        VersionBasedEqualityComparer<ChatEntry, long>.Instance;
+
     public Symbol ChatId { get; init; }
     public ChatEntryType Type { get; init; }
     public long Id { get; init; }
@@ -28,4 +32,10 @@ public record ChatEntry : IHasId<long>, IHasVersion<long>
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public bool IsStreaming => !StreamId.IsEmpty;
+
+    // This record relies on version-based equality
+    public bool Equals(ChatEntry? other)
+        => EqualityComparer.Equals(this, other);
+    public override int GetHashCode()
+        => EqualityComparer.GetHashCode(this);
 }
