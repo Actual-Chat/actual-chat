@@ -8,6 +8,15 @@ namespace ActualChat.Chat;
 
 public partial class Chats
 {
+    private static readonly string[] AdminEmails = new [] {
+        "alex.yakunin@gmail.com",
+        "vovanchig@gmail.com",
+        "vladimir.chirikov@actual.chat",
+        "evgenius.yakunin@gmail.com",
+        "dmitry.filippov@actual.chat",
+        "iqmulator@gmail.com",
+        "crui3er@gmail.com"
+    };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
 
     // [ComputeMethod]
@@ -20,24 +29,32 @@ public partial class Chats
     // [ComputeMethod]
     public virtual async Task<ChatPermissions> GetPermissions(
         string chatId,
-        string? authorId,
+        string chatPrincipalId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return 0;
 
-        var author = !authorId.IsNullOrEmpty()
-            ? await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false)
-            : null;
-        var user = author is { UserId.IsEmpty: false }
-            ? await _authBackend.GetUser(author.UserId, cancellationToken).ConfigureAwait(false)
+        ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
+
+        ChatAuthor? author;
+        if (!authorId.IsNullOrEmpty()) {
+            author = await _chatAuthorsBackend.Get(chatId, authorId!, false, cancellationToken).ConfigureAwait(false);
+            userId = author?.UserId;
+        }
+
+        var user = !userId.IsNullOrEmpty()
+            ? await _authBackend.GetUser(userId, cancellationToken).ConfigureAwait(false)
             : null;
 
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
-        if (Constants.Chat.DefaultChatId == chatId)
-            return ChatPermissions.All;
+        if (Constants.Chat.DefaultChatId == chatId) {
+            if (user != null && IsAdmin(user))
+                return ChatPermissions.All;
+            return ChatPermissions.None;
+        }
         if (chat.IsPublic)
             return ChatPermissions.Read;
 
@@ -216,14 +233,24 @@ public partial class Chats
     // Protected methods
 
     protected async Task AssertHasPermissions(
+        Session session,
         string chatId,
-        string? authorId,
         ChatPermissions permissions,
         CancellationToken cancellationToken)
     {
-        var chatPermissions = await GetPermissions(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        if ((chatPermissions & permissions) != permissions)
+        if (!await CheckHasPermissions(session, chatId, permissions, cancellationToken).ConfigureAwait(false))
             throw new SecurityException("Not enough permissions.");
+    }
+
+    protected async Task<bool> CheckHasPermissions(
+        Session session,
+        string chatId,
+        ChatPermissions permissions,
+        CancellationToken cancellationToken)
+    {
+        var chatPrincipalId = await _chatAuthors.GetSessionChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatPermissions = await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        return (chatPermissions & permissions) == permissions;
     }
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
@@ -311,5 +338,36 @@ public partial class Chats
         var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
         _maxIdCache[idSequenceKey] = id;
         return id;
+    }
+
+    private void ParseChatPrincipalId(string chatPrincipalId, out string? authorId, out string? userId)
+    {
+        bool TryRemovePrefix(string str, string prefix, out string? result)
+        {
+            if (str.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                result = str.Substring(prefix.Length);
+                return true;
+            }
+            result = null;
+            return false;
+        }
+
+        if (TryRemovePrefix(chatPrincipalId, "author:", out authorId)) {
+            userId = null;
+        }
+        else if (TryRemovePrefix(chatPrincipalId, "user:", out userId)) {
+            authorId = null;
+        }
+        else
+            throw new ArgumentException("invalid format", nameof(chatPrincipalId));
+    }
+
+    private bool IsAdmin(User user)
+    {
+        if (user.IsAuthenticated && user.Claims.TryGetValue(System.Security.Claims.ClaimTypes.Email, out var email) && email!=null) {
+            return AdminEmails.Contains(email, StringComparer.OrdinalIgnoreCase) ||
+                email.EndsWith("@actual.chat", StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
     }
 }
