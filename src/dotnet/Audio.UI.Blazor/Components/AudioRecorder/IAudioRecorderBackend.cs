@@ -4,5 +4,5 @@ public interface IAudioRecorderBackend
 {
     void OnStartRecording();
     Task OnAudioEventChunk(byte[] chunk);
-    void OnRecordingStopped();
+    Task OnRecordingStopped();
 }
