@@ -1,8 +1,8 @@
 using System.Net;
 using System.Reflection;
-using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
@@ -129,6 +129,18 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         var fusionAuth = fusion.AddAuthentication();
 
         // Web
+        var dataProtection = Settings.DataProtection.IsNullOrEmpty()
+            ? Path.Combine(Env.ContentRootPath, "data-protection-keys")
+            : Settings.DataProtection;
+        Log.LogInformation("DataProtection path: {DataProtection}", dataProtection);
+        if (dataProtection.StartsWith("gs://", StringComparison.OrdinalIgnoreCase)) {
+            var bucket = dataProtection[5..dataProtection.IndexOf('/', 5)];
+            var objectName = dataProtection[(6 + bucket.Length)..];
+            services.AddDataProtection().PersistKeysToGoogleCloudStorage(bucket, objectName);
+        }
+        else {
+            services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
+        }
         services.AddCors(options => {
             options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
         });
