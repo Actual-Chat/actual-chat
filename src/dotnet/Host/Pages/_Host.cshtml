@@ -2,6 +2,7 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.Host.Pages
 @using ActualChat.Host.Module
+@using ActualChat.Hosting
 @using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
@@ -9,12 +10,14 @@
 @inject ServerAuthHelper _serverAuthHelper
 @inject HostSettings _hostSettings
 @inject BlazorCircuitContext _circuitContext
+@inject HostInfo _hostInfo
 @{
     await _serverAuthHelper.UpdateAuthState(HttpContext);
     var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);
     var sessionId = _serverAuthHelper.Session.Id.Value;
     var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
     var isCloseWindowRequest = _serverAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
+    var blazorMaxReconnectRetries = _hostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
     Layout = null;
     // TODO: add HeadOutlet component (to edit <head>)
     // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
@@ -70,8 +73,7 @@
     </div>
 </div>
 
-@if (isCloseWindowRequest)
-{
+@if (isCloseWindowRequest) {
     <script>
         setTimeout(function () {
             window.close();
@@ -80,9 +82,7 @@
     <div class="alert alert-primary">
         @(closeWindowFlowName) completed, you can close this window.
     </div>
-}
-else
-{
+} else {
     <app id="app" class="flex flex-col h-full" >
         @(await Html.RenderApp(_services, HttpContext))
         @* <component type="typeof(App)" render-mode="Server" /> *@
@@ -92,19 +92,6 @@ else
     @if(isServerSideBlazor)
     {
         <script src="_framework/blazor.server.js" autostart="false"></script>
-        <environment exclude="Development">
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Blazor.start({
-                    reconnectionOptions: {
-                        maxRetries: 60,
-                        retryIntervalMilliseconds: 2000
-                    }
-                });
-            });
-        </script>
-        </environment>
-        <environment include="Development">
         <script>
             (function () {
                 async function attemptReload() {
@@ -132,12 +119,11 @@ else
 
             Blazor.start({
                 reconnectionOptions: {
-                     maxRetries: 15768000,
+                     maxRetries: @(blazorMaxReconnectRetries),
                      retryIntervalMilliseconds: 2000
                 },
             });
             </script>
-        </environment>
     }
     else
     {
