@@ -5,7 +5,7 @@
     <AspNetCoreVersion>6.0.1</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>6.0.0</MicrosoftExtensionsVersion>
     <EntityFrameworkCoreVersion>6.0.1</EntityFrameworkCoreVersion>
-    <NpgsqlVersion>6.0.0</NpgsqlVersion>
+    <NpgsqlVersion>6.0.2</NpgsqlVersion>
     <MySqlVersion>2.1.2</MySqlVersion>
     <EntityFrameworkCoreNpgsqlVersion>6.0.2</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreMySqlVersion>6.0.0</EntityFrameworkCoreMySqlVersion>
@@ -24,10 +24,11 @@
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*"/>
+    <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha03" />
     <PackageReference Update="MessagePack" Version="2.3.*"/>
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*"/>
-    <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="6.0.1"/>
-    <PackageReference Update="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="6.0.1"/>
+    <PackageReference Update="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)"/>
+    <PackageReference Update="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.Authorization" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)"/>
