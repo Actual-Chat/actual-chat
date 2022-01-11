@@ -54,17 +54,28 @@ public class SourceAudioProcessor : AsyncProcessBase
             return;
 
         // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
-        while (true) {
-            try {
-                var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
-                _ = BackgroundTask.Run(
-                    () => ProcessSourceAudio(record, cancellationToken),
-                    e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
-                    cancellationToken);
+        try {
+            while (true) {
+                try {
+                    var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
+                    _ = BackgroundTask.Run(
+                        () => ProcessSourceAudio(record, cancellationToken),
+                        e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
+                        cancellationToken);
+                }
+                catch (OperationCanceledException) {
+                    if (cancellationToken.IsCancellationRequested)
+                        throw;
+                    // It's some other cancellation - StopToken still isn't cancelled,
+                    // so we continue spinning.
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "DequeueSourceAudio failed, trying the next entry");
+                }
             }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogError(e, "DequeueSourceAudio failed, trying the next entry");
-            }
+        }
+        finally {
+            Log.LogInformation("Terminated");
         }
     }
 
