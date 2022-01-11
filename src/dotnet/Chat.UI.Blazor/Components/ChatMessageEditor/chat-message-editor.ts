@@ -7,11 +7,11 @@ export class ChatMessageEditor {
     private _postButton: HTMLButtonElement;
     private _controlDiv: HTMLDivElement;
     private _langButtonDiv: HTMLDivElement;
-    private _recordButtonDiv: HTMLDivElement;
+    private _recorderButtonDiv: HTMLDivElement;
     private _recordButton: HTMLButtonElement;
     private _playerButtonDiv: HTMLDivElement;
     private _isTextMode: boolean = false;
-    private _isRecordOn: boolean = false;
+    private _isRecording: boolean = false;
 
     static create(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(inputDiv, controlDiv, backendRef);
@@ -25,9 +25,9 @@ export class ChatMessageEditor {
         this._blazorRef = blazorRef;
         this._controlDiv = controlDiv;
         this._langButtonDiv = this._controlDiv.querySelector('div.language-button');
-        this._recordButtonDiv = this._controlDiv.querySelector('div.recorder-button');
+        this._recorderButtonDiv = this._controlDiv.querySelector('div.recorder-button');
         this._playerButtonDiv = this._controlDiv.querySelector('div.player-button');
-        this._recordButton = this._recordButtonDiv.querySelector('button');
+        this._recordButton = this._recorderButtonDiv.querySelector('button');
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
@@ -45,21 +45,21 @@ export class ChatMessageEditor {
             this.changeMode();
         })
         this._recordButton.addEventListener('click', (event: Event & {target: HTMLButtonElement; }) => {
-            this.languageToggle();
+            this.syncLanguageButtonVisibility();
         })
         this.changeMode();
     }
 
-    public languageToggle() {
+    public syncLanguageButtonVisibility() {
         let recordIcon = this._recordButton.querySelector('svg');
-        let isRecordOn = recordIcon.classList.contains('not-recording');
-        if (this._isRecordOn == isRecordOn)
+        let isRecording = recordIcon.classList.contains('not-recording');
+        if (this._isRecording == isRecording)
             return;
-        this._isRecordOn = isRecordOn;
+        this._isRecording = isRecording;
         let languageButton = this._langButtonDiv;
         languageButton.style.transform = "translateX(1rem) scale(.05)";
         setTimeout(() => {
-            if (isRecordOn){
+            if (isRecording){
                 languageButton.classList.replace('hidden', 'flex')
                 this._input.setAttribute('contenteditable', 'false');
             } else {
@@ -78,7 +78,7 @@ export class ChatMessageEditor {
             return;
         this._isTextMode = isTextMode;
         let postButton = this._postButton;
-        let recordButton = this._recordButtonDiv;
+        let recordButton = this._recorderButtonDiv;
         let playerButton = this._playerButtonDiv;
         postButton.style.transform = "translateX(-0.5rem) scale(.05)";
         setTimeout(() => {
