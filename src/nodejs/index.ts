@@ -1,3 +1,4 @@
+import './styles/main.css';
 import './styles/spinkit.css';
 import './styles/blazor.css';
 import './node_modules/fork-awesome/css/fork-awesome.min.css';

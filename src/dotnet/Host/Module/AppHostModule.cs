@@ -130,7 +130,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // Web
         var dataProtection = Settings.DataProtection.IsNullOrEmpty()
-            ? Path.Combine(Env.ContentRootPath, "data-protection-keys")
+            ? Path.Combine(Path.GetFullPath(Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!), "data-protection-keys")
             : Settings.DataProtection;
         Log.LogInformation("DataProtection path: {DataProtection}", dataProtection);
         if (dataProtection.StartsWith("gs://", StringComparison.OrdinalIgnoreCase)) {

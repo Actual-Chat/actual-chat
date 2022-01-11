@@ -1,24 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 .group:hover .hover-item {
     position: absolute;
     opacity: 0%;
 }
+
 .group .hover-item.alt {
     position: absolute;
     opacity: 0%;
 }
+
 .group:hover .hover-item.alt {
     position: static;
     opacity: 100%;
 }
 
-.tooltip{
+.tooltip {
     visibility: hidden;
     position: absolute;
 }
+
 .has-tooltip:hover .tooltip {
     visibility: visible;
     z-index: 100;

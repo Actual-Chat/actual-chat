@@ -51,6 +51,9 @@ const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
 module.exports = (env, args) => {
   /**@type {import('webpack').Configuration}*/
   const config = {
+    performance: {
+      hints: false,
+    },
     optimization: {
       // prevent process.env.NODE_ENV overriding by --mode
       nodeEnv: false,
@@ -99,7 +102,7 @@ module.exports = (env, args) => {
       }),
       new WatchRunPlugin(),
       new webpack.ProvidePlugin({
-         Buffer: ['buffer', 'Buffer'],
+        Buffer: ['buffer', 'Buffer'],
       }),
     ],
     module: {
