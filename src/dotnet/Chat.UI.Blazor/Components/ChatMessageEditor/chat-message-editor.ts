@@ -4,6 +4,7 @@ export class ChatMessageEditor {
     private _inputDiv: HTMLDivElement;
     private _attachButton: HTMLButtonElement;
     private _input: HTMLDivElement;
+    private _audioWave: HTMLDivElement;
     private _postButton: HTMLButtonElement;
     private _controlDiv: HTMLDivElement;
     private _langButtonDiv: HTMLDivElement;
@@ -21,6 +22,7 @@ export class ChatMessageEditor {
         this._inputDiv = inputDiv;
         this._attachButton = this._inputDiv.querySelector('button.attach-button');
         this._input = this._inputDiv.querySelector('div.message-input');
+        this._audioWave = this._inputDiv.querySelector('div.audio-wave');
         this._postButton = this._inputDiv.querySelector('button.post-message');
         this._blazorRef = blazorRef;
         this._controlDiv = controlDiv;
@@ -57,19 +59,29 @@ export class ChatMessageEditor {
             return;
         this._isRecording = isRecording;
         let languageButton = this._langButtonDiv;
+        let input = this._input;
+        let wave = this._audioWave;
         languageButton.style.transform = "translateX(1rem) scale(.05)";
         setTimeout(() => {
             if (isRecording){
                 languageButton.classList.replace('hidden', 'flex')
-                this._input.setAttribute('contenteditable', 'false');
+                input.classList.replace('block', 'md:block')
+                input.classList.replace('pr-2', 'md:pr-2');
+                input.classList.add('sm:hidden');
+                wave.classList.replace('hidden', 'md:hidden')
+                wave.classList.add('sm:block');
             } else {
                 languageButton.classList.replace('flex', 'hidden');
-                this._input.setAttribute('contenteditable', 'true');
+                input.classList.remove('sm:hidden');
+                input.classList.replace('md:block', 'block');
+                input.classList.replace('md:pr-2', 'pr-2');
+                wave.classList.remove('sm:block');
+                wave.classList.replace('md:hidden', 'hidden');
             }
         }, 25);
         setTimeout(() => {
             languageButton.style.transform = 'translateX(0px) scale(1)';
-        }, 50)
+        }, 50);
     }
 
     public changeMode() {
