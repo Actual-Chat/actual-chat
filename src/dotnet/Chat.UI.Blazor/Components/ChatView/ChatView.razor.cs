@@ -24,7 +24,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public ValueTask DisposeAsync()
         => ChatPlayers.DisposePlayers(Chat.Id);
 
-    private async Task<VirtualListData<IChatViewItemModel>> GetMessages(
+    private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
@@ -85,10 +85,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .Where(a => a != null)
             .ToDictionary(a => a!.Id);
 
-        var chatMessageModels = ChatViewItemModelsBuilder.Build(chatEntries, authors);
+        var chatMessages = ChatMessageModel.FromEntries(chatEntries, authors);
         var result = VirtualListData.New(
-            chatMessageModels,
-            m => m.Id,
+            chatMessages,
             startId <= chatIdRange.Start,
             endId + 1 >= chatIdRange.End);
         return result;

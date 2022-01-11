@@ -14,5 +14,5 @@
     <Using Include="ActualChat.Chat.UI.Blazor" />
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
-  
+
 </Project>
