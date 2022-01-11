@@ -84,13 +84,13 @@
         DebugLog?.LogDebug(nameof(StopRecording));
 
         var audioChannel = AudioChannel;
-        _ = Task.Run(async () => {
+        _ = InvokeAsync(async () => {
             await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(true);
             if (AudioChannel != audioChannel)
                 return; // We don't want to stop the next recording here :)
 
             Log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by JS backend");
-            OnRecordingStopped();
+            await OnRecordingStopped().ConfigureAwait(true);
         });
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("stopRecording");
