@@ -52,6 +52,18 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     }
 
     // [ComputeMethod]
+    public virtual async Task<string> GetSessionChatPrincipalId(
+        Session session, string chatId,
+        CancellationToken cancellationToken)
+    {
+        var author = await GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author!=null)
+            return "author:" + author.Id;
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        return "user:" + (user.IsAuthenticated ? user.Id : "");
+    }
+
+    // [ComputeMethod]
     public virtual async Task<Author?> GetAuthor(
         string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)

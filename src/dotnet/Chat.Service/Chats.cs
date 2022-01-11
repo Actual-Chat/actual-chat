@@ -39,8 +39,9 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
-        await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        var canRead = await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        if (!canRead)
+            return null;
         return await Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -52,8 +53,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         Range<long> idTileRange,
         CancellationToken cancellationToken)
     {
-        var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
-        await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         return await GetTile(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -65,8 +65,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
     {
-        var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
-        await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         return await GetEntryCount(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
@@ -78,8 +77,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         ChatEntryType entryType,
         CancellationToken cancellationToken)
     {
-        var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
-        await AssertHasPermissions(chatId, author?.Id, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         return await GetIdRange(chatId, entryType, cancellationToken).ConfigureAwait(false);
     }
 
@@ -89,8 +87,8 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         string chatId,
         CancellationToken cancellationToken)
     {
-        var author = await _chatAuthors.GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await GetPermissions(chatId, author?.Id, cancellationToken).ConfigureAwait(false);
+        var chatPrinciaplId = await _chatAuthors.GetSessionChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await GetPermissions(chatId, chatPrinciaplId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -120,8 +118,8 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, text) = command;
+        await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-        await AssertHasPermissions(chatId, author.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
         var chatEntry = new ChatEntry() {
             ChatId = chatId,
@@ -140,8 +138,8 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, entryId) = command;
+        await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-        await AssertHasPermissions(chatId, author.Id, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
 
         var idTile = IdTileStack.FirstLayer.GetTile(entryId);
         var tile = await GetTile(session, chatId, ChatEntryType.Text, idTile.Range, cancellationToken).ConfigureAwait(false);

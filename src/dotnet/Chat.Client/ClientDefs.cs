@@ -51,6 +51,8 @@ public interface IChatAuthorsClientDef
 {
     [Get(nameof(GetSessionChatAuthor))]
     Task<ChatAuthor?> GetSessionChatAuthor(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetSessionChatPrincipalId))]
+    Task<string> GetSessionChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthor))]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
 }

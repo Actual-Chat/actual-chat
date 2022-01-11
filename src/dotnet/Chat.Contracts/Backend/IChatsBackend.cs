@@ -29,7 +29,7 @@ public interface IChatsBackend
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatPermissions> GetPermissions(
-        string chatId, string? authorId,
+        string chatId, string chatPrincipalId,
         CancellationToken cancellationToken);
 
     // Commands
