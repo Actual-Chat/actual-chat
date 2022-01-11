@@ -3,7 +3,7 @@
 }
 
 .chat-message:hover .message-content{
-    @apply bg-gradient-to-t from-gray-100 to-transparent shadow-inner;
+    @apply bg-gray-100;
 }
 
 .chat-message:hover .chat-message-timestamp-secondary {
