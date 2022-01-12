@@ -1,9 +1,9 @@
+import Denque from 'denque';
 import OGVDecoderAudioOpusW from 'ogv/dist/ogv-decoder-audio-opus-wasm';
 import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm';
 import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
-import Denque from 'denque';
-import { DecoderMessage } from "./opus-decoder-worker-message";
+import { SamplesDecoderWorkerMessage } from "./opus-decoder-worker-message";
 
 type DecoderState = 'inactive' | 'waiting' | 'decoding';
 
@@ -12,7 +12,7 @@ let demuxerWasmBinary: ArrayBuffer = null;
 let decoderWasmBinary: ArrayBuffer = null;
 
 export class OpusDecoder {
-    private readonly queue = new Denque<ArrayBuffer | 'endOfStream'>();
+    private readonly queue = new Denque<ArrayBuffer | 'end'>();
     private readonly demuxer: Demuxer;
     private readonly decoder: Decoder;
     private readonly release: (decoder: OpusDecoder) => void;
@@ -74,7 +74,7 @@ export class OpusDecoder {
     }
 
     public pushEndOfStream(): void {
-        this.queue.push('endOfStream');
+        this.queue.push('end');
 
         const _ = this.processQueue();
     }
@@ -115,7 +115,7 @@ export class OpusDecoder {
             this.state = 'decoding';
 
             const queueItem = queue.pop();
-            if (queueItem == 'endOfStream') {
+            if (queueItem == 'end') {
                 await this.stop();
                 return;
             }
@@ -155,13 +155,13 @@ export class OpusDecoder {
                         }
                     }
 
-                    const decoderMessage: DecoderMessage = {
-                        topic: 'samples',
+                    const msg: SamplesDecoderWorkerMessage = {
+                        type: 'samples',
                         buffer: monoPcm.buffer,
                         offset: offset * 4,
                         length: length * 4,
                     };
-                    workletPort.postMessage(decoderMessage, [monoPcm.buffer]);
+                    workletPort.postMessage(msg, [monoPcm.buffer]);
 
                 }
             }
