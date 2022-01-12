@@ -1,75 +1,54 @@
-// TODO: implement better audio context pool + cache nodes
-// TODO: move the command queue processing inside a web worker
-// TODO: combine demuxer / decoder / recorder wasm modules into one
-
 import { AudioContextPool } from 'audio-context-pool';
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
 import {
-    DecoderWorkerMessage,
-    EndOfStreamCommand,
-    InitCommand,
-    LoadDecoderCommand,
-    PushDataCommand,
-    StopCommand
+    DataDecoderMessage,
+    DecoderWorkerMessage, EndDecoderMessage, InitCompletedDecoderWorkerMessage, InitDecoderMessage, LoadDecoderMessage, StopDecoderMessage,
 } from "./workers/opus-decoder-worker-message";
 
-type PlayerState = 'inactive' | 'buffering' | 'playing' | 'endOfStream' ;
+type PlayerState = 'inactive' | 'buffering' | 'playing' | 'endOfStream';
 
-/** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
-const BUFFER_TOO_MUCH_THRESHOLD = 5.0;
-/**
- * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
- * should be in sync with audio-feeder bufferSize
- */
-const BUFFER_ENOUGH_THRESHOLD = 0.1;
-
-const playerMap = new Map<string, AudioContextAudioPlayer>();
+const playerMap = new Map<string, AudioPlayer>();
 const decoderWorker = new Worker('/dist/opusDecoderWorker.js');
-decoderWorker.postMessage(new LoadDecoderCommand());
+// TODO: try to remove load message
+decoderWorker.postMessage({ type: 'load' });
 decoderWorker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
-    const { playerId, topic } = ev.data;
+    const msg = ev.data;
+    switch (msg.type) {
+        case 'initCompleted':
+            onInitCompleted(msg as InitCompletedDecoderWorkerMessage);
+            break;
+        default:
+            throw new Error(`Unsupported message from the decoder worker. Message type: ${msg.type}`);
+    }
+};
 
+function onInitCompleted(message: InitCompletedDecoderWorkerMessage) {
+    const { playerId } = message;
     const player = playerMap.get(playerId);
     if (player == null) {
         console.error(`decoderWorker.onmessage: can't find player=${playerId}`);
         return;
     }
-    switch (topic) {
-        case 'initCompleted':
-            player.initCompleted();
-            break;
-    }
-};
-
-export interface AudioPlayer {
-    onStartPlaying?: () => void;
-    onInitialized?: () => void;
-    init(byteArray: Uint8Array): Promise<void>;
-    appendAudio(byteArray: Uint8Array, offset: number): Promise<void>;
-    endOfStream(): void;
-    stop(error: EndOfStreamError | null): void;
+    player.initCompleted();
 }
 
-export class AudioContextAudioPlayer implements AudioPlayer {
+export class AudioPlayer {
 
     public static debug?: {
         debugMode: boolean;
         debugOperations: boolean;
-        debugAppendAudioCalls: boolean;
-        debugDecoder: boolean;
         debugFeeder: boolean;
-        debugFeederStats: boolean;
     } = null;
 
     public static async create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean, header: Uint8Array)
-        : Promise<AudioContextAudioPlayer> {
-        const player = new AudioContextAudioPlayer(playerId, blazorRef, debugMode);
+        : Promise<AudioPlayer> {
+        const player = new AudioPlayer(playerId, blazorRef, debugMode);
         if (debugMode) {
             self["_player"] = player;
         }
         await player.init(header);
 
-        playerMap.set(playerId, player)
+        playerMap.set(playerId, player);
         return player;
     }
 
@@ -81,18 +60,14 @@ export class AudioContextAudioPlayer implements AudioPlayer {
 
     private initPromise?: Promise<void> = null;
     private initResolve?: () => void = null;
-    private state: PlayerState = 'inactive'
+    private state: PlayerState = 'inactive';
 
     private readonly _debugMode: boolean;
     private readonly _debugOperations: boolean;
-    private readonly _debugAppendAudioCalls: boolean;
-    private readonly _debugDecoder: boolean;
     private readonly _debugFeeder: boolean;
-    private readonly _debugFeederStats: boolean;
 
     private audioContext: AudioContext;
     private feederNode?: FeederAudioWorkletNode = null;
-    private _unblockQueue?: () => void;
 
     public onStartPlaying?: () => void = null;
     public onInitialized?: () => void = null;
@@ -100,25 +75,19 @@ export class AudioContextAudioPlayer implements AudioPlayer {
     constructor(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean) {
         this.playerId = playerId;
         this.blazorRef = blazorRef;
-        const debugOverride = AudioContextAudioPlayer.debug;
+        const debugOverride = AudioPlayer.debug;
+
         if (debugOverride === null || debugOverride === undefined) {
             this._debugMode = debugMode;
-            this._debugAppendAudioCalls = debugMode && true;
             this._debugOperations = debugMode && false;
-            this._debugDecoder = debugMode && false;
             this._debugFeeder = debugMode && true;
-            this._debugFeederStats = this._debugFeeder && true;
         }
         else {
             this._debugMode = debugOverride.debugMode;
-            this._debugAppendAudioCalls = debugOverride.debugAppendAudioCalls;
             this._debugOperations = debugOverride.debugOperations;
-            this._debugDecoder = debugOverride.debugDecoder;
             this._debugFeeder = debugOverride.debugFeeder;
-            this._debugFeederStats = debugOverride.debugFeederStats;
         }
 
-        this._unblockQueue = null;
         this.decoderChannel = new MessageChannel();
     }
 
@@ -128,7 +97,14 @@ export class AudioContextAudioPlayer implements AudioPlayer {
         }
 
         this.initPromise = new Promise<void>(resolve => this.initResolve = resolve);
-        const init = new InitCommand(this.playerId, header.buffer, header.byteOffset, header.byteLength);
+        const init: InitDecoderMessage = {
+            type: 'init',
+            playerId: this.playerId,
+            buffer: header.buffer,
+            offset: header.byteOffset,
+            length: header.byteLength,
+            workletPort: this.decoderChannel.port1
+        };
         decoderWorker.postMessage(init, [header.buffer, this.decoderChannel.port1]);
 
         this.audioContext = await AudioContextPool.get("main") as AudioContext;
@@ -138,10 +114,6 @@ export class AudioContextAudioPlayer implements AudioPlayer {
             numberOfInputs: 0,
             numberOfOutputs: 1,
             outputChannelCount: [1],
-            processorOptions: {
-                enoughToStartPlaying: BUFFER_ENOUGH_THRESHOLD,
-                tooMuchBuffered: BUFFER_TOO_MUCH_THRESHOLD,
-            }
         };
         this.feederNode = new FeederAudioWorkletNode(
             this.audioContext,
@@ -165,17 +137,17 @@ export class AudioContextAudioPlayer implements AudioPlayer {
             this.needMoreData('onStarving');
         };
         this.feederNode.onBufferTooMuch = () => {
-            const _ = this.invokeOnChangeReadiness(false, BUFFER_TOO_MUCH_THRESHOLD, 4);
-        }
+            const _ = this.invokeOnChangeReadiness(false, 10, 4);
+        };
         this.feederNode.onStartPlaying = () => {
-            this.state = 'playing'
+            this.state = 'playing';
             if (this.onStartPlaying !== null)
                 this.onStartPlaying();
             self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
             if (this._debugFeeder) {
                 this.log("Feeder start playing");
             }
-        }
+        };
         this.feederNode.connect(this.audioContext.destination);
     }
 
@@ -203,17 +175,22 @@ export class AudioContextAudioPlayer implements AudioPlayer {
             }
         }
 
-        const pushData = new PushDataCommand(this.playerId, byteArray.buffer, byteArray.byteOffset, byteArray.byteLength);
-        decoderWorker.postMessage(pushData, [byteArray.buffer]);
+        const pushDataMsg: DataDecoderMessage = {
+            type: 'data',
+            playerId: this.playerId,
+            buffer: byteArray.buffer,
+            offset: byteArray.byteOffset,
+            length: byteArray.byteLength,
+        };
+        decoderWorker.postMessage(pushDataMsg, [byteArray.buffer]);
     }
 
     public endOfStream(): void {
         if (this._debugMode) {
             this.log("Enqueue 'EndOfStream' operation.");
         }
-        const endOfStream = new EndOfStreamCommand(this.playerId);
-        decoderWorker.postMessage(endOfStream);
-
+        const msg: EndDecoderMessage = { type: 'end', playerId: this.playerId };
+        decoderWorker.postMessage(msg);
         this.state = 'endOfStream';
     }
 
@@ -222,10 +199,8 @@ export class AudioContextAudioPlayer implements AudioPlayer {
             this.log(`stop(error:${error})`);
 
         this.onStop();
-
-        const stop = new StopCommand(this.playerId);
-        decoderWorker.postMessage(stop);
-
+        const msg: StopDecoderMessage = { type: 'stop', playerId: this.playerId };
+        decoderWorker.postMessage(msg);
     }
 
     private onStop(): void {
@@ -281,14 +256,14 @@ export class AudioContextAudioPlayer implements AudioPlayer {
     }
 
     private log(message: string) {
-        console.debug(`AudioContextAudioPlayer: ${message}`);
+        console.debug(`AudioPlayer: ${message}`);
     }
 
     private logWarn(message: string) {
-        console.warn(`AudioContextAudioPlayer: ${message}`);
+        console.warn(`AudioPlayer: ${message}`);
     }
 
     private logError(message: string) {
-        console.error(`AudioContextAudioPlayer: ${message}`);
+        console.error(`AudioPlayer: ${message}`);
     }
 }

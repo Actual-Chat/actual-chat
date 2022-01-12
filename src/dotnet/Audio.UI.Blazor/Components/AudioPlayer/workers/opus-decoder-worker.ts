@@ -1,40 +1,37 @@
 import Denque from 'denque';
 import {
-    DecoderCommand,
-    DecoderWorkerMessage,
-    EndOfStreamCommand,
-    InitCommand,
-    PushDataCommand, StopCommand
+    DataDecoderMessage,
+    DecoderMessage, EndDecoderMessage, InitCompletedDecoderWorkerMessage, InitDecoderMessage, StopDecoderMessage,
 } from "./opus-decoder-worker-message";
 import { OpusDecoder } from "./opus-decoder";
 
 
 const decoderPool = new Denque<OpusDecoder>();
-const decoderMap = new Map<string,OpusDecoder>();
+const decoderMap = new Map<string, OpusDecoder>();
 const worker = self as unknown as Worker;
 
-worker.onmessage = async (ev: MessageEvent) => {
+worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
     try {
-        const {command}: DecoderCommand = ev.data;
-        switch (command) {
-            case 'loadDecoder':
+        const msg = ev.data;
+        switch (msg.type) {
+            case 'load':
                 await onLoadDecoder();
                 break;
 
             case 'init':
-                await onInit(ev.data, ev.ports[0]);
+                await onInit(msg as InitDecoderMessage);
                 break;
 
-            case 'pushData':
-                await onPushData(ev.data);
+            case 'data':
+                await onData(msg as DataDecoderMessage);
                 break;
 
-            case 'endOfStream':
-                await onEndOfStream(ev.data);
+            case 'end':
+                await onEnd(msg as EndDecoderMessage);
                 break;
 
             case 'stop':
-                await onStop(ev.data);
+                await onStop(msg as StopDecoderMessage);
                 break;
         }
     }
@@ -45,14 +42,13 @@ worker.onmessage = async (ev: MessageEvent) => {
 };
 
 async function onLoadDecoder(): Promise<void> {
-    decoderPool.push(await OpusDecoder.create(release));
-    decoderPool.push(await OpusDecoder.create(release));
-    decoderPool.push(await OpusDecoder.create(release));
+    for (let i = 0; i < 3; ++i) {
+        decoderPool.push(await OpusDecoder.create(release));
+    }
 }
 
-async function onInit(command: InitCommand, port: MessagePort): Promise<void> {
-    const { playerId, buffer, offset, length } = command;
-    const workletPort = port;
+async function onInit(message: InitDecoderMessage): Promise<void> {
+    const { playerId, buffer, offset, length, workletPort } = message;
     let decoder = decoderPool.shift();
     if (decoder == null) {
         decoder = await OpusDecoder.create(release);
@@ -60,30 +56,29 @@ async function onInit(command: InitCommand, port: MessagePort): Promise<void> {
     await decoder.init(playerId, workletPort, buffer, offset, length);
     decoderMap.set(playerId, decoder);
 
-    const initCompletedMessage: DecoderWorkerMessage = {topic: 'initCompleted', playerId: playerId};
+    const initCompletedMessage: InitCompletedDecoderWorkerMessage = { type: 'initCompleted', playerId: playerId };
     worker.postMessage(initCompletedMessage);
 }
 
-async function onPushData(command: PushDataCommand): Promise<void> {
-    const { playerId, buffer, offset, length } = command;
+async function onData(message: DataDecoderMessage): Promise<void> {
+    const { playerId, buffer, offset, length } = message;
     const decoder = getDecoder(playerId);
     decoder.pushData(buffer, offset, length);
 }
 
-async function onEndOfStream(command: EndOfStreamCommand): Promise<void> {
-    const {playerId} = command;
+async function onEnd(message: EndDecoderMessage): Promise<void> {
+    const { playerId } = message;
     const decoder = getDecoder(playerId);
     decoder.pushEndOfStream();
 }
 
-async function onStop(command: StopCommand): Promise<void> {
-    const {playerId} = command;
+async function onStop(message: StopDecoderMessage): Promise<void> {
+    const { playerId } = message;
     const decoder = decoderMap.get(playerId);
     if (decoder == null) {
         // already processed by handling 'endOfStream' at the decoder
         return;
     }
-
     await decoder.stop();
 }
 

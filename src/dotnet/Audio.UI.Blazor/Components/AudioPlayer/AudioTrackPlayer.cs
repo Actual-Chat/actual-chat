@@ -83,7 +83,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     case StartPlaybackCommand:
                         BlazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                         JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                            $"{AudioBlazorUIModule.ImportName}.AudioContextAudioPlayer.create",
+                            $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                              Command.TrackId.ToString(), BlazorRef, DebugMode, Header
                             ).ConfigureAwait(true);
                         break;

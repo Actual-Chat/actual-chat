@@ -2,6 +2,7 @@ import {
     ChangeStateNodeMessage,
     DataNodeMessage,
     GetStateNodeMessage,
+    InitNodeMessage,
     NodeMessage,
     ProcessorMessage,
     StateChangedProcessorMessage,
@@ -24,12 +25,13 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         this.port.onmessage = this.onProcessorMessage;
     }
 
-    public initWorkerPort(workerPort: MessagePort) {
-        const msg: NodeMessage = {
-            type: 'init-port'
+    public initWorkerPort(decoderWorkerPort: MessagePort) {
+        const msg: InitNodeMessage = {
+            type: 'init',
+            decoderWorkerPort: decoderWorkerPort,
         };
 
-        this.port.postMessage(msg, [workerPort]);
+        this.port.postMessage(msg, [decoderWorkerPort]);
     }
 
     public play(): void {
@@ -100,8 +102,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         }
         this.callbacks.delete(message.id);
         const result: PlaybackState = {
-            playbackTime: Math.round(message.playbackTime * 1000) / 1000,
-            bufferedTime: Math.round(message.bufferedTime * 1000) / 1000,
+            playbackTime: message.playbackTime,
+            bufferedTime: message.bufferedTime,
         };
         resolve(result);
     }
