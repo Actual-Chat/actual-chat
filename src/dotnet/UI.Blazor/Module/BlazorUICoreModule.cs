@@ -30,6 +30,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddTransient<IUpdateDelayer>(c =>
             new UpdateDelayer(c.UICommandTracker(), 0.2));
 
+        services.AddBlazorContextMenu();
         services.AddBlazoredModal();
     }
 }

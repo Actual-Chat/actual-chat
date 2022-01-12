@@ -31,6 +31,7 @@
     <title>Actual Chat</title>
     <base href="~/"/>
     <link href="/dist/bundle.css" rel="stylesheet"/>
+    <link href="_content/Blazor.ContextMenu/blazorContextMenu.min.css" rel="stylesheet" />
     <link href="_content/Blazored.Modal/blazored-modal.css" rel="stylesheet" />
     <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
     <script>
@@ -90,6 +91,8 @@
     </app>
 
     <script src="/dist/bundle.js"></script>
+    <script src="_content/Blazored.Modal/blazored.modal.js"></script>
+    <script src="_content/Blazor.ContextMenu/blazorContextMenu.min.js"></script>
     @if(isServerSideBlazor)
     {
         <script src="_framework/blazor.server.js" autostart="false"></script>
@@ -125,12 +128,10 @@
                 },
             });
             </script>
-        <script src="_content/Blazored.Modal/blazored.modal.js"></script>
     }
     else
     {
         <script src="_framework/blazor.webassembly.js"></script>
-        <script src="_content/Blazored.Modal/blazored.modal.js"></script>
     }
 }
 </body>
