@@ -1,8 +1,6 @@
-import { AudioPlayer } from "../../Components/AudioPlayer/audio-context-audio-player";
-import { AudioContextAudioPlayer } from "../../Components/AudioPlayer/audio-context-audio-player";
+import { AudioPlayer } from "../../Components/AudioPlayer/audio-player";
 
-
-export class AudioPlayerTestPage implements AudioPlayer {
+export class AudioPlayerTestPage {
     private _stats = {
         constructorStartTime: 0,
         constructorEndTime: 0,
@@ -23,14 +21,14 @@ export class AudioPlayerTestPage implements AudioPlayer {
     }
 
     public static async create(blazorRef: DotNet.DotNetObject, header: Uint8Array): Promise<AudioPlayerTestPage> {
-        const player = await AudioContextAudioPlayer.create('audio-player-test-page', blazorRef, true, header);
+        const player = await AudioPlayer.create('audio-player-test-page', blazorRef, true, header);
         return new AudioPlayerTestPage(blazorRef, player);
     }
 
-    private readonly player: AudioContextAudioPlayer;
+    private readonly player: AudioPlayer;
     private isFirstAppendAudioCall: boolean = true;
 
-    constructor(blazorRef: DotNet.DotNetObject, player: AudioContextAudioPlayer) {
+    constructor(blazorRef: DotNet.DotNetObject, player: AudioPlayer) {
         this._stats.constructorStartTime = new Date().getTime();
         this.player = player;
         this.player.onInitialized = () => this._stats.initializeEndTime = new Date().getTime();

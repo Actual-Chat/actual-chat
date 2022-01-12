@@ -1,90 +1,60 @@
+/* Message that is used to communicate between the global scope and the decoder web worker (main thread -> worker) */
+export interface DecoderMessage {
+    type: 'load' | 'init' | 'data' | 'end' | 'stop';
+}
 
-export type DecoderCommandType = 'loadDecoder' | 'init' | 'pushData' | 'endOfStream' | 'stop';
+export interface LoadDecoderMessage extends DecoderMessage {
+    type: 'load';
+}
 
-interface DecoderCommandContract {
-    command: DecoderCommandType;
+export interface InitDecoderMessage extends DecoderMessage {
+    type: 'init';
+    playerId: string;
+    buffer: ArrayBuffer;
+    offset: number;
+    length: number;
+    workletPort: MessagePort;
+}
+
+export interface DataDecoderMessage extends DecoderMessage {
+    type: 'data';
+    playerId: string;
+    buffer: ArrayBuffer;
+    offset: number;
+    length: number;
+}
+
+export interface EndDecoderMessage extends DecoderMessage {
+    type: 'end';
     playerId: string;
 }
 
-export type DecoderCommand =
-    LoadDecoderCommand |
-    InitCommand |
-    PushDataCommand |
-    EndOfStreamCommand |
-    StopCommand;
-
-export class LoadDecoderCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'loadDecoder';
-    public readonly playerId: string = 'NA';
-
-    constructor() {
-    }
+export interface StopDecoderMessage extends DecoderMessage {
+    type: 'stop';
+    playerId: string;
 }
 
-export class InitCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'init';
-    public readonly playerId: string;
-    public readonly buffer: ArrayBuffer;
-    public readonly offset: number;
-    public readonly length: number;
-
-    constructor(playerId: string, buffer: ArrayBuffer, offset: number, length: number) {
-        this.playerId = playerId;
-        this.buffer = buffer;
-        this.offset = offset;
-        this.length = length;
-    }
+/** Message that is sent from the decoder web worker (web worker -> { worklet | main thread }) */
+export interface DecoderWorkerMessage {
+    type: 'samples' | 'initCompleted';
 }
 
-export class PushDataCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'pushData';
-    public readonly playerId: string;
-    public readonly buffer: ArrayBuffer;
-    public readonly offset: number;
-    public readonly length: number;
-
-    constructor(playerId: string, buffer: ArrayBuffer, offset: number, length: number) {
-        this.playerId = playerId;
-        this.buffer = buffer;
-        this.offset = offset;
-        this.length = length;
-    }
-}
-
-export class EndOfStreamCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'endOfStream';
-    public readonly playerId: string;
-
-    constructor(playerId: string) {
-        this.playerId = playerId;
-    }
-}
-
-export class StopCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'stop';
-    public readonly playerId: string;
-
-    constructor(playerId: string) {
-        this.playerId = playerId;
-    }
-}
-
-//** Decoded samples, will be consumed at the decoder worklet */
-export interface DecoderMessage {
-    topic: 'samples';
+/** Decoded samples, will be consumed at the decoder worklet (web worker -> worklet) */
+export interface SamplesDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'samples';
     offset: number;
     length: number;
     buffer: ArrayBuffer;
 }
 
-//** Init callback message, handled at the audio player main thread */
-export interface DecoderWorkerMessage {
-    topic: 'initCompleted';
+/** Init callback message, handled at the audio player main thread (web worker -> main thread) */
+export interface InitCompletedDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'initCompleted';
     playerId: string;
 }
 
-//** Processed buffer to be returned back to the decoder worker */
+/** Processed buffer to be returned back from the worklet to the decoder worker (worklet -> web worker) */
 export interface DecoderWorkletMessage {
-    topic: 'buffer';
+    type: 'buffer';
     buffer: ArrayBuffer;
 }
