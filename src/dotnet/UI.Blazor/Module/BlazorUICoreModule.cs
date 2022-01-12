@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using Blazored.Modal;
 using Stl.Plugins;
 
 namespace ActualChat.UI.Blazor.Module;
@@ -28,6 +29,8 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c =>
             new UpdateDelayer(c.UICommandTracker(), 0.2));
+
+        services.AddBlazoredModal();
     }
 }
 
