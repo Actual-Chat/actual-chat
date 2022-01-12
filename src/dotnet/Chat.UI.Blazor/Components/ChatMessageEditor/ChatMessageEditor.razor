@@ -10,19 +10,19 @@
 @inject IJSRuntime _js
 @inject MomentClockSet _clocks
 
-<div class="@(_class ??= this.DefaultClass()) sticky bottom-0 self-end bg-secondary w-full p-2">
+<div @ref="EditorRef" class="@(_class ??= this.DefaultClass()) chat-message-editor initial sticky bottom-0 self-end bg-secondary w-full p-2">
     <div class="flex flex-row justify-between px-1">
-        <div @ref="InputRef" class="block flex flex-row justify-center items-center justify-items-center outline-none bg-accent rounded-md w-full overflow-hidden mr-3">
+        <div class="block flex flex-row justify-center items-center justify-items-center outline-none bg-accent rounded-md w-full overflow-hidden mr-3">
             <button class="attach-button sticky flex outline-none text-secondary hover:cursor-pointer text-primary px-3 py-2">
                 <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                     <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
                 </svg>
             </button>
-            <div class="message-input block flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary"
+            <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary"
                  autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                  aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
             </div>
-            <div class="audio-wave block flex-auto w-full py-2 pr-2 outline-none hidden">
+            <div class="audio-wave block flex-auto w-full py-2 pr-2 outline-none">
                 <svg class="h-6 w-full fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="1.5 3.4 45 3.6">
                     <path d="M 0.817 5.474 L 0.658 5.474 L 0.658 5.226 L 0.817 5.226 L 0.817 5.474 Z M 4.324 5.226 L 4.164 5.226 L 4.164 5.474 L 4.324 5.474 L 4.324 5.226 Z M 1.136 4.978 L 0.977 4.978 L 0.977 5.723 L 1.136 5.723 L 1.136 4.978 Z M 4.005 4.978 L 3.845 4.978 L 3.845 5.723 L 4.005 5.723 L 4.005 4.978 Z M 1.774 4.978 L 1.614 4.978 L 1.614 5.723 L 1.774 5.723 L 1.774 4.978 Z M 3.367 4.729 L 3.208 4.729 L 3.208 5.971 L 3.367 5.971 L 3.367 4.729 Z M 1.455 4.729 L 1.295 4.729 L 1.295 5.971 L 1.455 5.971 L 1.455 4.729 Z M 3.686 4.481 L 3.527 4.481 L 3.527 6.22 L 3.686 6.22 L 3.686 4.481 Z M 2.092 4.481 L 1.933 4.481 L 1.933 6.22 L 2.092 6.22 L 2.092 4.481 Z M 2.411 3.984 L 2.252 3.984 L 2.252 6.468 L 2.411 6.468 L 2.411 3.984 Z M 3.049 3.984 L 2.889 3.984 L 2.889 6.468 L 3.049 6.468 L 3.049 3.984 Z M 2.73 3.487 L 2.57 3.487 L 2.57 6.965 L 2.73 6.965 L 2.73 3.487 Z" style=""/>
                     <path d="M 4.33 5.473 L 4.171 5.473 L 4.171 5.225 L 4.33 5.225 L 4.33 5.473 Z M 7.837 5.225 L 7.677 5.225 L 7.677 5.473 L 7.837 5.473 L 7.837 5.225 Z M 4.649 4.977 L 4.49 4.977 L 4.49 5.722 L 4.649 5.722 L 4.649 4.977 Z M 7.518 4.977 L 7.358 4.977 L 7.358 5.722 L 7.518 5.722 L 7.518 4.977 Z M 5.287 4.977 L 5.127 4.977 L 5.127 5.722 L 5.287 5.722 L 5.287 4.977 Z M 6.88 4.728 L 6.721 4.728 L 6.721 5.97 L 6.88 5.97 L 6.88 4.728 Z M 4.968 4.728 L 4.808 4.728 L 4.808 5.97 L 4.968 5.97 L 4.968 4.728 Z M 7.199 4.48 L 7.04 4.48 L 7.04 6.219 L 7.199 6.219 L 7.199 4.48 Z M 5.605 4.48 L 5.446 4.48 L 5.446 6.219 L 5.605 6.219 L 5.605 4.48 Z M 5.924 3.983 L 5.765 3.983 L 5.765 6.467 L 5.924 6.467 L 5.924 3.983 Z M 6.562 3.983 L 6.402 3.983 L 6.402 6.467 L 6.562 6.467 L 6.562 3.983 Z M 6.243 3.486 L 6.083 3.486 L 6.083 6.964 L 6.243 6.964 L 6.243 3.486 Z" style=""/>
@@ -39,7 +39,7 @@
                     <path d="M 42.926 5.456 L 42.767 5.456 L 42.767 5.208 L 42.926 5.208 L 42.926 5.456 Z M 46.433 5.208 L 46.273 5.208 L 46.273 5.456 L 46.433 5.456 L 46.433 5.208 Z M 43.245 4.96 L 43.086 4.96 L 43.086 5.705 L 43.245 5.705 L 43.245 4.96 Z M 46.114 4.96 L 45.954 4.96 L 45.954 5.705 L 46.114 5.705 L 46.114 4.96 Z M 43.883 4.96 L 43.723 4.96 L 43.723 5.705 L 43.883 5.705 L 43.883 4.96 Z M 45.476 4.711 L 45.317 4.711 L 45.317 5.953 L 45.476 5.953 L 45.476 4.711 Z M 43.564 4.711 L 43.404 4.711 L 43.404 5.953 L 43.564 5.953 L 43.564 4.711 Z M 45.795 4.463 L 45.636 4.463 L 45.636 6.202 L 45.795 6.202 L 45.795 4.463 Z M 44.201 4.463 L 44.042 4.463 L 44.042 6.202 L 44.201 6.202 L 44.201 4.463 Z M 44.52 3.966 L 44.361 3.966 L 44.361 6.45 L 44.52 6.45 L 44.52 3.966 Z M 45.158 3.966 L 44.998 3.966 L 44.998 6.45 L 45.158 6.45 L 45.158 3.966 Z M 44.839 3.469 L 44.679 3.469 L 44.679 6.947 L 44.839 6.947 L 44.839 3.469 Z" style=""/>
                 </svg>
             </div>
-            <button class="post-message hidden sticky self-end flex outline-none text-secondary transition-all duration-150 p-1"
+            <button class="post-message sticky self-end flex outline-none text-secondary p-1"
                     @onclick="_ => Post()">
                 <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
@@ -47,10 +47,11 @@
             </button>
         </div>
         <div class="block flex flex-1 flex-row justify-center outline-none items-end">
-            <div @ref="ChatControlRef" class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-md py-2">
-                <div class="chat-control-button language-button p-1 w-1/2 hidden">
+            <div class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-md py-2">
+                <div class="chat-control-button language-button p-1 w-1/2">
                     <ChatLanguageToggle/>
                 </div>
+<<<<<<< Updated upstream
                 <div class="chat-control-button recorder-button w-1/2 flex">
                     @*
                         new EventCallback<bool>(null, ...) prevents StateHasChanged call
@@ -61,6 +62,13 @@
                 </div>
                 @if (RealtimePlayer != null!) {
                     <div class="chat-control-button player-button w-1/2 flex">
+=======
+                <div class="chat-control-button recorder-button w-1/2">
+                    <AudioRecorder ChatId="@Chat.Id"/>
+                </div>
+                @if (RealtimePlayer != null) {
+                    <div class="chat-control-button player-button w-1/2">
+>>>>>>> Stashed changes
                         <ChatPlayerToggle Player="RealtimePlayer"/>
                     </div>
                 }
@@ -73,8 +81,7 @@
     private static string? _class;
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
-    private ElementReference InputRef { get; set; }
-    private ElementReference ChatControlRef { get; set; }
+    private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
@@ -100,7 +107,7 @@
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await _js.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                InputRef, ChatControlRef, BlazorRef
+                EditorRef, BlazorRef
                 ).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("setText", Text).ConfigureAwait(true);
         }
