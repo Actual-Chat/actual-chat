@@ -1,0 +1,97 @@
+.message-input::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.not-recording {
+    @apply text-secondary;
+}
+
+.recording {
+    @apply text-toggle-on;
+}
+
+[contenteditable=true]:empty:not(:focus):before{
+    @apply text-placeholder truncate text-xs md:text-sm;
+    content:attr(data-text)
+}
+
+.toggle-button {
+    @apply text-secondary;
+}
+
+.toggle-button-on {
+    @apply text-toggle-on;
+}
+
+.chat-control-button {
+    @apply outline-none justify-center bg-accent rounded-md;
+}
+
+.chat-control-button:hover {
+    @apply md:bg-primary;
+}
+
+.initial .audio-wave {
+    @apply hidden;
+}
+
+.initial .message-input {
+    @apply block;
+}
+
+.initial .post-message {
+    @apply hidden;
+}
+
+.initial .language-button {
+    @apply hidden translate-x-4;
+}
+
+.initial .recorder-button {
+    @apply flex animate-display-from-right md:animate-none;
+}
+
+.initial .player-button {
+    @apply flex;
+}
+
+.text-mode .post-message {
+    @apply md:hidden animate-display-from-left md:animate-instant-display;
+}
+
+.text-mode .recorder-button {
+    @apply hidden md:flex;
+}
+
+.text-mode .audio-wave {
+    @apply hidden;
+}
+
+.text-mode .language-button {
+    @apply hidden;
+}
+
+.text-mode .player-button {
+    @apply flex;
+}
+
+.record-mode .post-message {
+    @apply hidden;
+}
+
+.record-mode .recorder-button {
+    @apply flex;
+}
+
+.record-mode .audio-wave {
+    @apply flex md:hidden;
+}
+
+.record-mode .language-button {
+    @apply animate-display-from-right;
+}
+
+.record-mode .player-button {
+    @apply flex;
+}

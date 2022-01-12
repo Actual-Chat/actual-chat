@@ -1,12 +1,13 @@
+import './chat-message-editor.css';
+
 export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
-    private _inputDiv: HTMLDivElement;
+    private _editorDiv: HTMLDivElement;
     private _attachButton: HTMLButtonElement;
     private _input: HTMLDivElement;
     private _audioWave: HTMLDivElement;
     private _postButton: HTMLButtonElement;
-    private _controlDiv: HTMLDivElement;
     private _langButtonDiv: HTMLDivElement;
     private _recorderButtonDiv: HTMLDivElement;
     private _recordButton: HTMLButtonElement;
@@ -14,22 +15,29 @@ export class ChatMessageEditor {
     private _isTextMode: boolean = false;
     private _isRecording: boolean = false;
 
-    static create(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(inputDiv, controlDiv, backendRef);
+    static create(editorDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(editorDiv, backendRef);
     }
 
-    constructor(inputDiv: HTMLDivElement, controlDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
-        this._inputDiv = inputDiv;
-        this._attachButton = this._inputDiv.querySelector('button.attach-button');
-        this._input = this._inputDiv.querySelector('div.message-input');
-        this._audioWave = this._inputDiv.querySelector('div.audio-wave');
-        this._postButton = this._inputDiv.querySelector('button.post-message');
+    constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this._editorDiv = editorDiv;
+        this._attachButton = this._editorDiv.querySelector('button.attach-button');
+        this._input = this._editorDiv.querySelector('div.message-input');
+        this._audioWave = this._editorDiv.querySelector('div.audio-wave');
+        this._postButton = this._editorDiv.querySelector('button.post-message');
         this._blazorRef = blazorRef;
+<<<<<<< Updated upstream
         this._controlDiv = controlDiv;
         this._langButtonDiv = this._controlDiv.querySelector('div.language-button');
         this._recorderButtonDiv = this._controlDiv.querySelector('div.recorder-button');
         this._playerButtonDiv = this._controlDiv.querySelector('div.player-button');
         this._recordButton = this._recorderButtonDiv.querySelector('button');
+=======
+        this._langButtonDiv = this._editorDiv.querySelector('div.language-button');
+        this._recordButtonDiv = this._editorDiv.querySelector('div.recorder-button');
+        this._playerButtonDiv = this._editorDiv.querySelector('div.player-button');
+        this._recordButton = this._recordButtonDiv.querySelector('button');
+>>>>>>> Stashed changes
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
@@ -57,6 +65,7 @@ export class ChatMessageEditor {
         let isRecording = recordIcon.classList.contains('not-recording');
         if (this._isRecording == isRecording)
             return;
+<<<<<<< Updated upstream
         this._isRecording = isRecording;
         let languageButton = this._langButtonDiv;
         let input = this._input;
@@ -82,6 +91,14 @@ export class ChatMessageEditor {
         setTimeout(() => {
             languageButton.style.transform = 'translateX(0px) scale(1)';
         }, 50);
+=======
+        this._isRecordOn = isRecordOn;
+        if (isRecordOn){
+            this._editorDiv.classList.replace('initial', 'record-mode');
+        } else {
+            this._editorDiv.classList.replace('record-mode', 'initial');
+        }
+>>>>>>> Stashed changes
     }
 
     public changeMode() {
@@ -89,6 +106,7 @@ export class ChatMessageEditor {
         if (this._isTextMode == isTextMode)
             return;
         this._isTextMode = isTextMode;
+<<<<<<< Updated upstream
         let postButton = this._postButton;
         let recordButton = this._recorderButtonDiv;
         let playerButton = this._playerButtonDiv;
@@ -109,6 +127,13 @@ export class ChatMessageEditor {
         setTimeout(() => {
             postButton.style.transform = 'translateX(0px) scale(1)';
         }, 50)
+=======
+        if (isTextMode) {
+            this._editorDiv.classList.replace('initial', 'text-mode');
+        } else {
+            this._editorDiv.classList.replace('text-mode', 'initial');
+        }
+>>>>>>> Stashed changes
     }
 
     public getText(): string {
