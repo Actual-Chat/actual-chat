@@ -21,6 +21,7 @@
 
   <ItemGroup Label="Nupkg Versions">
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
+    <PackageReference Update="Blazor.ContextMenu" Version="1.11.1" />
     <PackageReference Update="Blazored.Modal" Version="6.0.1" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
