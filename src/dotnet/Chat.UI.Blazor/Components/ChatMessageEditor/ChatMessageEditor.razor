@@ -51,7 +51,6 @@
                 <div class="chat-control-button language-button p-1 w-1/2">
                     <ChatLanguageToggle/>
                 </div>
-<<<<<<< Updated upstream
                 <div class="chat-control-button recorder-button w-1/2 flex">
                     @*
                         new EventCallback<bool>(null, ...) prevents StateHasChanged call
@@ -61,14 +60,7 @@
                                    RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
                 @if (RealtimePlayer != null!) {
-                    <div class="chat-control-button player-button w-1/2 flex">
-=======
-                <div class="chat-control-button recorder-button w-1/2">
-                    <AudioRecorder ChatId="@Chat.Id"/>
-                </div>
-                @if (RealtimePlayer != null) {
                     <div class="chat-control-button player-button w-1/2">
->>>>>>> Stashed changes
                         <ChatPlayerToggle Player="RealtimePlayer"/>
                     </div>
                 }
