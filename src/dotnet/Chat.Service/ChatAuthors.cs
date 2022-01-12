@@ -36,7 +36,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthor?> GetSessionChatAuthor(
+    public virtual async Task<ChatAuthor?> GetChatAuthor(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
@@ -52,12 +52,12 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     }
 
     // [ComputeMethod]
-    public virtual async Task<string> GetSessionChatPrincipalId(
+    public virtual async Task<string> GetChatPrincipalId(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
-        var author = await GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (author!=null)
+        var author = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author != null)
             return author.Id;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         return user.IsAuthenticated ? user.Id : "";

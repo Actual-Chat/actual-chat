@@ -23,7 +23,7 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     protected IChatAuthors ChatAuthors { get; }
     protected IChatMediaResolver MediaResolver { get; }
     protected AudioDownloader AudioDownloader { get; }
-    protected IAudioSourceStreamer AudioSourceStreamer { get; }
+    protected IAudioStreamer AudioStreamer { get; }
     protected object Lock { get; } = new();
 
     public Session Session { get; init; } = Session.Null;
@@ -46,7 +46,7 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         ChatAuthors = Services.GetRequiredService<IChatAuthors>();
         MediaResolver = Services.GetRequiredService<IChatMediaResolver>();
         AudioDownloader = Services.GetRequiredService<AudioDownloader>();
-        AudioSourceStreamer = Services.GetRequiredService<IAudioSourceStreamer>();
+        AudioStreamer = Services.GetRequiredService<IAudioStreamer>();
         PlaybackState = Services.StateFactory().NewMutable<Playback?>();
     }
 
@@ -119,7 +119,7 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
     protected async ValueTask<ChatAuthor?> GetChatAuthor(CancellationToken cancellationToken)
     {
         _chatAuthor ??= await ChatAuthors
-            .GetSessionChatAuthor(Session, ChatId, cancellationToken)
+            .GetChatAuthor(Session, ChatId, cancellationToken)
             .ConfigureAwait(false);
         return _chatAuthor;
     }
@@ -187,7 +187,7 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             DebugLog?.LogDebug(
                 "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}, skipTo={SkipTo:N}",
                 audioEntry.ChatId, audioEntry.Id, audioEntry.StreamId, skipTo.TotalSeconds);
-            var audio = await AudioSourceStreamer
+            var audio = await AudioStreamer
                 .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
                 .ConfigureAwait(false);
             var trackInfo = new ChatAudioTrackInfo(audioEntry) {

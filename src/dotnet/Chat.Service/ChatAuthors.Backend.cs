@@ -56,7 +56,7 @@ public partial class ChatAuthors
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 
