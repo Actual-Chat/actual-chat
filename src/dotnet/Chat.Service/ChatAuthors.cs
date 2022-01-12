@@ -58,9 +58,9 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     {
         var author = await GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author!=null)
-            return "author:" + author.Id;
+            return author.Id;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        return "user:" + (user.IsAuthenticated ? user.Id : "");
+        return user.IsAuthenticated ? user.Id : "";
     }
 
     // [ComputeMethod]

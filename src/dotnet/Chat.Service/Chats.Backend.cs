@@ -342,24 +342,14 @@ public partial class Chats
 
     private void ParseChatPrincipalId(string chatPrincipalId, out string? authorId, out string? userId)
     {
-        bool TryRemovePrefix(string str, string prefix, out string? result)
-        {
-            if (str.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
-                result = str.Substring(prefix.Length);
-                return true;
-            }
-            result = null;
-            return false;
-        }
-
-        if (TryRemovePrefix(chatPrincipalId, "author:", out authorId)) {
+        if (chatPrincipalId.Contains(":", StringComparison.Ordinal)) {
+            authorId = chatPrincipalId;
             userId = null;
         }
-        else if (TryRemovePrefix(chatPrincipalId, "user:", out userId)) {
+        else {
             authorId = null;
+            userId = chatPrincipalId;
         }
-        else
-            throw new ArgumentException("invalid format", nameof(chatPrincipalId));
     }
 
     private bool IsAdmin(User user)
