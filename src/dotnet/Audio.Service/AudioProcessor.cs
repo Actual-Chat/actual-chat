@@ -1,11 +1,12 @@
 using System.Text.RegularExpressions;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
+using ActualChat.Media;
 using ActualChat.Transcription;
 
 namespace ActualChat.Audio;
 
-public class SourceAudioProcessor : AsyncProcessBase
+public class AudioProcessor : IAudioProcessor
 {
     public record Options
     {
@@ -21,9 +22,8 @@ public class SourceAudioProcessor : AsyncProcessBase
     public Options Settings { get; }
     public ITranscriber Transcriber { get; }
     public AudioSegmentSaver AudioSegmentSaver { get; }
-    public SourceAudioRecorder SourceAudioRecorder { get; }
     public AudioSplitter AudioSplitter { get; }
-    public AudioSourceStreamer AudioSourceStreamer { get; }
+    public AudioStreamer AudioStreamer { get; }
     public TranscriptSplitter TranscriptSplitter { get; }
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
     public TranscriptStreamer TranscriptStreamer { get; }
@@ -31,15 +31,14 @@ public class SourceAudioProcessor : AsyncProcessBase
     public ICommander Commander { get; }
     public MomentClockSet Clocks { get; }
 
-    public SourceAudioProcessor(Options settings, IServiceProvider services)
+    public AudioProcessor(Options settings, IServiceProvider services)
     {
         Settings = settings;
         Log = services.LogFor(GetType());
         Transcriber = services.GetRequiredService<ITranscriber>();
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
-        SourceAudioRecorder = services.GetRequiredService<SourceAudioRecorder>();
         AudioSplitter = services.GetRequiredService<AudioSplitter>();
-        AudioSourceStreamer = services.GetRequiredService<AudioSourceStreamer>();
+        AudioStreamer = services.GetRequiredService<AudioStreamer>();
         TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
         TranscriptStreamer = services.GetRequiredService<TranscriptStreamer>();
@@ -48,52 +47,22 @@ public class SourceAudioProcessor : AsyncProcessBase
         Clocks = services.Clocks();
     }
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    public async Task ProcessAudio(
+        AudioRecord record,
+        IAsyncEnumerable<RecordingPart> recordingStream,
+        CancellationToken cancellationToken)
     {
-        if (!Settings.IsEnabled)
-            return;
-
-        // TODO(AK): add push-back based on current node performance metrics \ or provide signals for scale-out
-        try {
-            while (true) {
-                try {
-                    var record = await SourceAudioRecorder.DequeueSourceAudio(cancellationToken).ConfigureAwait(false);
-                    _ = BackgroundTask.Run(
-                        () => ProcessSourceAudio(record, cancellationToken),
-                        e => Log.LogError(e, "Failed to process AudioRecord={Record}", record),
-                        cancellationToken);
-                }
-                catch (OperationCanceledException) {
-                    if (cancellationToken.IsCancellationRequested)
-                        throw;
-                    // It's some other cancellation - StopToken still isn't cancelled,
-                    // so we continue spinning.
-                }
-                catch (Exception e) {
-                    Log.LogError(e, "DequeueSourceAudio failed, trying the next entry");
-                }
-            }
-        }
-        finally {
-            Log.LogInformation("Terminated");
-        }
-    }
-
-    internal async Task ProcessSourceAudio(AudioRecord record, CancellationToken cancellationToken)
-    {
-        Log.LogInformation("ProcessSourceAudio: record #{RecordId} = {Record}", record.Id, record);
-
-        var recordingStream = SourceAudioRecorder.GetSourceAudioRecordingStream(record.Id, cancellationToken);
+        Log.LogInformation(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
         if (Constants.DebugMode.AudioRecordingStream)
-            recordingStream = recordingStream.WithLog(Log, "ProcessSourceAudio", cancellationToken);
+            recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
         var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
         var openSegments = AudioSplitter.GetSegments(record, author, recordingStream, cancellationToken);
         await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
             Log.LogDebug(
-                "ProcessSourceAudio: record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
+                nameof(ProcessAudio) + ": record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
                 record.Id, openSegment.Index, openSegment.StreamId);
-            var publishAudioTask = AudioSourceStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
+            var publishAudioTask = AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
             var saveAudioTask = SaveAudio(openSegment, cancellationToken);
             var audioEntryTask = CreateAudioEntry(openSegment, cancellationToken);
             var transcribeTask = BackgroundTask.Run(
@@ -116,6 +85,8 @@ public class SourceAudioProcessor : AsyncProcessBase
             }
         }
     }
+
+    // Private methods
 
     private async Task TranscribeAudio(OpenAudioSegment audioSegment, Task<ChatEntry> audioEntryTask, CancellationToken cancellationToken)
     {

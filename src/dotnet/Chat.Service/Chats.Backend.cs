@@ -8,14 +8,17 @@ namespace ActualChat.Chat;
 
 public partial class Chats
 {
-    private static readonly string[] AdminEmails = new [] {
+    private static readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) {
+        "alex.yakunin@actual.chat",
         "alex.yakunin@gmail.com",
-        "vovanchig@gmail.com",
+        "alexey.kochetov@actual.chat",
+        "undead00@gmail.com",
         "vladimir.chirikov@actual.chat",
-        "evgenius.yakunin@gmail.com",
+        "vovanchig@gmail.com",
         "dmitry.filippov@actual.chat",
+        "crui3er@gmail.com",
+        "andrey.yakunin@actual.chat",
         "iqmulator@gmail.com",
-        "crui3er@gmail.com"
     };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
 
@@ -248,7 +251,7 @@ public partial class Chats
         ChatPermissions permissions,
         CancellationToken cancellationToken)
     {
-        var chatPrincipalId = await _chatAuthors.GetSessionChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var chatPermissions = await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
         return (chatPermissions & permissions) == permissions;
     }
@@ -354,10 +357,13 @@ public partial class Chats
 
     private bool IsAdmin(User user)
     {
-        if (user.IsAuthenticated && user.Claims.TryGetValue(System.Security.Claims.ClaimTypes.Email, out var email) && email!=null) {
-            return AdminEmails.Contains(email, StringComparer.OrdinalIgnoreCase) ||
-                email.EndsWith("@actual.chat", StringComparison.OrdinalIgnoreCase);
-        }
-        return false;
+        if (!user.IsAuthenticated)
+            return false;
+        if (user.Identities.Any(i =>
+                StringComparer.Ordinal.Equals(i.Key.Schema, "internal")
+                || StringComparer.Ordinal.Equals(i.Key.Schema, "test")))
+            return true;
+        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
+        return AdminEmails.Contains(email);
     }
 }

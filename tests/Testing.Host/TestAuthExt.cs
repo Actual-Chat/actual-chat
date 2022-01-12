@@ -19,13 +19,19 @@ public static class TestAuthExt
             user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()));
         var userIdentity = user.Identities.Keys.First();
 
-        var auth = appHost.Services.GetRequiredService<IAuth>();
-        var authBackend = appHost.Services.GetRequiredService<IAuthBackend>();
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var auth = services.GetRequiredService<IAuth>();
+        var authBackend = services.GetRequiredService<IAuthBackend>();
+
         var command = new SignInCommand(session, user, userIdentity);
-        await authBackend.SignIn(command, cancellationToken).ConfigureAwait(false);
+        await commander.Call(command, cancellationToken).ConfigureAwait(false);
         var sessionInfo = await auth.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
         sessionInfo = sessionInfo.MustBeAuthenticated();
         user = (await authBackend.GetUser(sessionInfo.UserId, cancellationToken).ConfigureAwait(false))!;
+
+        // Let's wait a bit to ensure all invalidations go through
+        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
         return user;
     }
 }

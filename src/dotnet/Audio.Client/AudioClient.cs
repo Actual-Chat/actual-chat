@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.SignalR.Client;
 namespace ActualChat.Audio.Client;
 
 public class AudioClient : HubClientBase,
-    ISourceAudioRecorder,
-    IAudioSourceStreamer,
+    IAudioProcessor,
+    IAudioStreamer,
     ITranscriptStreamer
 {
     private const int StreamBufferSize = 64;
@@ -35,19 +35,16 @@ public class AudioClient : HubClientBase,
         return audio;
     }
 
-    public async Task RecordSourceAudio(
-        Session session,
+    public async Task ProcessAudio(
         AudioRecord record,
         IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("RecordSourceAudio: Record = {Record}", record);
+        Log.LogDebug("ProcessAudio: Record = {Record}", record);
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        await HubConnection.SendAsync("RecordSourceAudio",
-                session,
-                record,
-                recordingStream.WithBuffer(StreamBufferSize, cancellationToken),
-                cancellationToken)
+        recordingStream = recordingStream.WithBuffer(StreamBufferSize, cancellationToken);
+        await HubConnection
+            .SendAsync("ProcessAudio", record, recordingStream, cancellationToken)
             .ConfigureAwait(false);
     }
 

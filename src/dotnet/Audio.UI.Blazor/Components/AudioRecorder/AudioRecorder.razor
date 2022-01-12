@@ -30,7 +30,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ISourceAudioRecorder SourceAudioRecorder { get; init; } = null!;
+    [Inject] private IAudioProcessor AudioProcessor { get; init; } = null!;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
@@ -109,11 +109,11 @@
             SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
-        var audioRecord = new AudioRecord(Session.Id.Value, ChatId, audioFormat, clientStartOffset);
+        var audioRecord = new AudioRecord(Session.Id, ChatId, audioFormat, clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
         _ = BackgroundTask.Run(
-            () => SourceAudioRecorder.RecordSourceAudio(Session, audioRecord, audioStream, CancellationToken.None),
-            Log, $"{nameof(SourceAudioRecorder.RecordSourceAudio)} failed");
+            () => AudioProcessor.ProcessAudio(audioRecord, audioStream, CancellationToken.None),
+            Log, $"{nameof(AudioProcessor.ProcessAudio)} failed");
     }
 
     [JSInvokable]

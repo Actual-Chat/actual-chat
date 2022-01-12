@@ -11,11 +11,14 @@ public record AudioRecord(
         [property: DataMember(Order = 4)] double ClientStartOffset)
     : IHasId<string>
 {
+    private static string NewId() => Ulid.NewUlid().ToString();
+
     private Session? _session;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Session Session {
         get {
+            // Returns cached Session object w/ the matching Id
             if (_session == null || !StringComparer.Ordinal.Equals(_session.Id.Value, SessionId))
                 _session = SessionId.IsNullOrEmpty() ? Session.Null : new Session(SessionId);
             return _session;
@@ -24,7 +27,7 @@ public record AudioRecord(
 
     public AudioRecord() : this("", "", null!, null!, 0) { }
     public AudioRecord(string sessionId, string chatId, AudioFormat format, double clientStartOffset)
-        : this("", sessionId, chatId, format, clientStartOffset) { }
+        : this(NewId(), sessionId, chatId, format, clientStartOffset) { }
 
     // This record relies on referential equality
     public virtual bool Equals(AudioRecord? other)

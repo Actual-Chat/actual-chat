@@ -2,10 +2,9 @@ using ActualChat.Media;
 
 namespace ActualChat.Audio;
 
-public interface ISourceAudioRecorder
+public interface IAudioProcessor
 {
-    Task RecordSourceAudio(
-        Session session,
+    Task ProcessAudio(
         AudioRecord record,
         IAsyncEnumerable<RecordingPart> recordingStream,
         CancellationToken cancellationToken);

@@ -87,7 +87,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         string chatId,
         CancellationToken cancellationToken)
     {
-        var chatPrinciaplId = await _chatAuthors.GetSessionChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatPrinciaplId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         return await GetPermissions(chatId, chatPrinciaplId, cancellationToken).ConfigureAwait(false);
     }
 

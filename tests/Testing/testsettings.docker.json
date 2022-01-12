@@ -1,24 +1,31 @@
 {
   "RedisConfiguration": "localhost",
+  "RedisSettings": {
+    "DefaultRedis": "localhost|test_{instance.}{context}"
+  },
   "DbSettings": {
-    "DefaultDb": "Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
-    // "DefaultDb": "mysql:Server=localhost;Database=ac_{instance_}{context};Port=3306;User=root;Password=mariadb",
-    // "DefaultDb": "memory:ac_{instance_}{context}",
+    "DefaultDb": "Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
+    // "DefaultDb": "mysql:Server=localhost;Database=ac_test_{instance_}{context};Port=3306;User=root;Password=mariadb",
+    // "DefaultDb": "memory:ac_test_{instance_}{context}",
     "OverrideDb": "",
-    // OverrideDb": "memory:ac_{instance_}{context}",
+    // OverrideDb": "memory:ac_test_{instance_}{context}",
     "ShouldRecreateDb": true,
     "ShouldVerifyDb": false
   },
+  "AudioSettings": {
+    "Redis": ""
+  },
+  "ChatSettings": {
+    "Db": "",
+    "Redis": ""
+  },
   "UsersSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=postgres",
+    "Db": "",
+    "Redis": "",
     "GoogleClientId": "784581221205-frrmhss3h51h5c1jaiglpal4olod7kr8.apps.googleusercontent.com",
     "GoogleClientSecret": "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",
     "MicrosoftAccountClientId": "8f340c72-8e4c-4b8b-b32d-78531af99ea7",
     "MicrosoftAccountClientSecret": "~mm7Q~280FKqlFP5HeKU.xNatXIDr9g6aEu01"
-  },
-  "ChatSettings": {
-    "Db": "Server=localhost;Database=ac_tests_users;Port=5432;User Id=postgres;Password=postgres",
-    "DefaultChatId": ""
   },
   "Logging": {
     "LogLevel": {

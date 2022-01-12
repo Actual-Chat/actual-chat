@@ -5,7 +5,7 @@ using Stl.Redis;
 
 namespace ActualChat.Audio;
 
-public class AudioSourceStreamer : AudioProcessorBase, IAudioSourceStreamer
+public class AudioStreamer : AudioProcessorBase, IAudioStreamer
 {
     private const int StreamBufferSize = 64;
     private const int MaxStreamDuration = 600;
@@ -13,7 +13,7 @@ public class AudioSourceStreamer : AudioProcessorBase, IAudioSourceStreamer
     private ILogger AudioSourceLog { get; }
     private RedisDb RedisDb { get; }
 
-    public AudioSourceStreamer(IServiceProvider services) : base(services)
+    public AudioStreamer(IServiceProvider services) : base(services)
     {
         AudioSourceLog = Services.LogFor<AudioSource>();
         var audioRedisDb = Services.GetRequiredService<RedisDb<AudioContext>>();
