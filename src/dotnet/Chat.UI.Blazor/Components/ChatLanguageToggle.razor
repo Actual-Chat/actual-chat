@@ -7,7 +7,7 @@
 @{
     var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
-<button class="@(_class ??= this.DefaultClass()) relative h-8 w-8 p-1 rounded-full text-md font-semibold text-secondary hover:text-toggle-on transition-all duration-150"
+<button class="@(_class ??= this.DefaultClass()) chat-language-toggle relative h-8 w-8 p-1 rounded-full text-md font-semibold text-secondary hover:text-toggle-on"
         @onclick="Toggle">
         @language.Shortcut
 </button>
