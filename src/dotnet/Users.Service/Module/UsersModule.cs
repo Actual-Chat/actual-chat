@@ -109,6 +109,7 @@ public class UsersModule : HostModule<UsersSettings>
         services.AddSingleton<UserNamer>();
         fusion.AddComputeService<IUserInfos, UserInfos>();
         fusion.AddComputeService<IUserStates, UserStates>();
+        fusion.AddComputeService<IUserAuthors, UserAuthors>();
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         services.AddCommander()

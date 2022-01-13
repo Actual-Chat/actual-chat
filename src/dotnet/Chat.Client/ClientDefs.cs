@@ -55,6 +55,9 @@ public interface IChatAuthorsClientDef
     Task<string> GetChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthor))]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+
+    [Post(nameof(UpdateAuthor))]
+    Task<Author> UpdateAuthor([Body] IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]
@@ -64,4 +67,11 @@ public interface IChatUserSettingsClientDef
     Task<ChatUserSettings?> Get(Session session, string chatId, CancellationToken cancellationToken);
     [Post(nameof(Set))]
     Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
+}
+
+[BasePath("userAuthors")]
+public interface IUserAuthorsClientDef
+{
+    [Get(nameof(Get))]
+    Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
 }

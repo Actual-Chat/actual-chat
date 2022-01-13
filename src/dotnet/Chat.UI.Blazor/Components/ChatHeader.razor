@@ -1,10 +1,26 @@
 @namespace ActualChat.UI.Blazor.Components
+@inject Blazored.Modal.Services.IModalService ModalService
+@using BlazorContextMenu
 
-<div class="px-2">
-    <span class="float-left">@Chat.Title</span>
-</div>
+<ContextMenuTrigger MenuId="chatHeaderMenu">
+    <div class="px-2">
+        <span class="float-left">@Chat.Title</span>
+    </div>
+</ContextMenuTrigger>
+
+<ContextMenu Id="chatHeaderMenu" CssClass="text-secondary font-normal">
+    <Item OnClick="@ShowChatProfileSettings">Show Chat Profile Settings</Item>
+</ContextMenu>
 
 @code {
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
+
+    private void ShowChatProfileSettings()
+    {
+        var options = new Blazored.Modal.ModalOptions { UseCustomLayout = true };
+        var parameters = new Blazored.Modal.ModalParameters();
+        parameters.Add(nameof(ChatProfileSettings.ChatId), (string)Chat.Id);
+        ModalService.Show<ChatProfileSettings>(string.Empty, parameters, options);
+    }
 }

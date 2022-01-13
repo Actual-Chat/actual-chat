@@ -23,11 +23,7 @@ public partial class ChatAuthors
             chatAuthor = dbChatAuthor?.ToModel();
         }
 
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
-            return chatAuthor;
-
-        var userInfo = await _userInfos.Get(chatAuthor.UserId, cancellationToken).ConfigureAwait(false);
-        return chatAuthor.InheritFrom(userInfo);
+        return await Enrich(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -46,11 +42,8 @@ public partial class ChatAuthors
                 .ConfigureAwait(false);
             chatAuthor = dbChatAuthor?.ToModel();
         }
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
-            return chatAuthor;
 
-        var userInfo = await _userInfos.Get(userId, cancellationToken).ConfigureAwait(false);
-        return chatAuthor.InheritFrom(userInfo);
+        return await Enrich(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 
     // Not a [ComputeMethod]!
@@ -119,9 +112,45 @@ public partial class ChatAuthors
         return dbChatAuthor.ToModel();
     }
 
+    public virtual async Task Update(IChatAuthorsBackend.UpdateCommand command, CancellationToken cancellationToken)
+    {
+        var (authorId, name, picture) = command;
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            var operation = CommandContext.GetCurrent().Operation();
+            var chatAuthor = operation.Items.Get<ChatAuthor>()!;
+            var userId = (string?)context.Operation().Items[nameof(ChatAuthor.UserId)];
+            var chatId = (string)context.Operation().Items[nameof(ChatAuthor.ChatId)]!;
+            if (!userId.IsNullOrEmpty()) {
+                _ = GetByUserId(chatId, userId, true, default);
+                _ = GetByUserId(chatId, userId, false, default);
+            }
+            _ = Get(chatId, authorId, true, default);
+            _ = Get(chatId, authorId, false, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChatAuthor == null)
+            throw new InvalidOperationException("chat author does not exists");
+
+        context.Operation().Items[nameof(ChatAuthor.ChatId)] = dbChatAuthor.ChatId;
+        context.Operation().Items[nameof(ChatAuthor.UserId)] = dbChatAuthor.UserId;
+        dbChatAuthor.Name = name ?? "";
+        dbChatAuthor.Picture = picture ?? "";
+        dbChatAuthor.Version = VersionGenerator.NextVersion();
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     // Private / internal methods
 
-    internal async Task<long> DbNextLocalId(
+        internal async Task<long> DbNextLocalId(
         ChatDbContext dbContext,
         string chatId,
         CancellationToken cancellationToken)
@@ -141,5 +170,17 @@ public partial class ChatAuthors
         var localId = await _idSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
         _maxLocalIdCache[idSequenceKey] = localId;
         return localId;
+    }
+
+    private async Task<ChatAuthor?> Enrich(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
+    {
+        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
+            return chatAuthor;
+
+        var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken).ConfigureAwait(false);
+        if (userAuthor == null)
+            return chatAuthor;
+
+        return chatAuthor.InheritFrom(userAuthor);
     }
 }
