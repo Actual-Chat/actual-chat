@@ -107,7 +107,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.Service.Migration", "s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Service.Migration", "src\dotnet\Users.Service.Migration\Users.Service.Migration.csproj", "{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.IntegrationTests", "tests\Users.IntegrationTests\Users.IntegrationTests.csproj", "{B9DC9756-9515-4336-B4CF-51EE8126B246}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.IntegrationTests", "tests\Users.IntegrationTests\Users.IntegrationTests.csproj", "{B9DC9756-9515-4336-B4CF-51EE8126B246}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Redis.IntegrationTests", "tests\Redis.IntegrationTests\Redis.IntegrationTests.csproj", "{3182C4D2-6EDA-4A81-B163-EEB2F622E734}"
 EndProject

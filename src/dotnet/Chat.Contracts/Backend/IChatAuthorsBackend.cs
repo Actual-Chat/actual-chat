@@ -12,6 +12,9 @@ public interface IChatAuthorsBackend
 
     [CommandHandler]
     Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
     public record CreateCommand(string ChatId, string UserId) : ICommand<ChatAuthor>, IBackendCommand { }
+    public record UpdateCommand(string AuthorId, string Name, string Picture) : ICommand<Unit>, IBackendCommand { }
 }
