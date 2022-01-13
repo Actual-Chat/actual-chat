@@ -4,7 +4,7 @@
     var author = Model.Author;
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
-    var marginClass = Model.IsBlockEnd ? "mb-4" : "mb-2";
+    var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var entry = Model.Entry;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
     var picture = string.IsNullOrWhiteSpace(author.Picture)
@@ -14,9 +14,9 @@
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="@(_class ??= this.DefaultClass()) antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words @marginClass">
+<div class="@(_class ??= this.DefaultClass()) rounded-md antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words @marginClass">
     @if (showPicture) {
-        <div class="w-10 h-10 mr-2 select-none bg-secondary">
+        <div class="author-avatar w-10 h-10 mr-2 select-none bg-secondary rounded-md">
             <img src="@picture" alt="@author.Name"/>
         </div>
     }
@@ -25,7 +25,7 @@
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
         </div>
     }
-    <div class="flex-1 overflow-hidden">
+    <div class="flex-1 overflow-hidden mb-1 mt-1">
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
                     <span class="font-bold text-secondary rounded">@author.Name</span>
