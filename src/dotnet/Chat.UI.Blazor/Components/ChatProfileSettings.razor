@@ -65,7 +65,7 @@
     {
         chat = await Chats.Get(Session, ChatId, default);
 
-        var chatAuthor = await ChatAuthors.GetSessionChatAuthor(Session, ChatId, default);
+        var chatAuthor = await ChatAuthors.GetChatAuthor(Session, ChatId, default);
         var user = await Auth.GetUser(Session, default);
         if (user.IsAuthenticated) {
             var userAuthor = await UserAuthors.Get(user.Id, true, default);
