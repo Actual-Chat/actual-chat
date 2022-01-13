@@ -2,7 +2,11 @@
     @apply h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto;
 }
 
-.chat-message:hover .message-content{
+.chat-message:hover {
+    @apply bg-gray-100;
+}
+
+.chat-message:hover .author-avatar {
     @apply bg-gray-100;
 }
 

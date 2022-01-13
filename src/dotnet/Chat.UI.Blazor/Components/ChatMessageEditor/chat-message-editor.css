@@ -32,32 +32,8 @@
     @apply md:bg-primary;
 }
 
-.initial .audio-wave {
-    @apply hidden;
-}
-
-.initial .message-input {
-    @apply block;
-}
-
-.initial .post-message {
-    @apply hidden;
-}
-
-.initial .language-button {
-    @apply hidden translate-x-4;
-}
-
-.initial .recorder-button {
-    @apply flex animate-display-from-right md:animate-none;
-}
-
-.initial .player-button {
-    @apply flex;
-}
-
 .text-mode .post-message {
-    @apply md:hidden animate-display-from-left md:animate-instant-display;
+    @apply flex md:hidden animate-display-from-left md:animate-instant-display;
 }
 
 .text-mode .recorder-button {
@@ -89,9 +65,66 @@
 }
 
 .record-mode .language-button {
-    @apply animate-display-from-right;
+    @apply flex animate-display-from-right;
 }
 
 .record-mode .player-button {
     @apply flex;
+}
+
+.audio-wave-svg-main:nth-child(1),
+.audio-wave-svg-main:nth-child(6),
+.audio-wave-svg-main:nth-child(11),
+.audio-wave-svg-main:nth-child(16),
+.audio-wave-svg-main:nth-child(21),
+.audio-wave-svg-main:nth-child(26) {
+    animation: audio 500ms infinite;
+}
+
+.audio-wave-svg-main:nth-child(2),
+.audio-wave-svg-main:nth-child(7),
+.audio-wave-svg-main:nth-child(12),
+.audio-wave-svg-main:nth-child(17),
+.audio-wave-svg-main:nth-child(22),
+.audio-wave-svg-main:nth-child(27) {
+    animation: audio 575ms infinite;
+}
+
+.audio-wave-svg-main:nth-child(3),
+.audio-wave-svg-main:nth-child(8),
+.audio-wave-svg-main:nth-child(13),
+.audio-wave-svg-main:nth-child(18),
+.audio-wave-svg-main:nth-child(23),
+.audio-wave-svg-main:nth-child(28) {
+    animation: audio 650ms infinite;
+}
+
+.audio-wave-svg-main:nth-child(4),
+.audio-wave-svg-main:nth-child(9),
+.audio-wave-svg-main:nth-child(14),
+.audio-wave-svg-main:nth-child(19),
+.audio-wave-svg-main:nth-child(24),
+.audio-wave-svg-main:nth-child(29) {
+    animation: audio 725ms infinite;
+}
+
+.audio-wave-svg-main:nth-child(5),
+.audio-wave-svg-main:nth-child(10),
+.audio-wave-svg-main:nth-child(15),
+.audio-wave-svg-main:nth-child(20),
+.audio-wave-svg-main:nth-child(25),
+.audio-wave-svg-main:nth-child(30) {
+    animation: audio 800ms infinite;
+}
+
+@keyframes audio {
+    0% {
+        transform: scaleY(0.3);
+    }
+    50% {
+    transform: scaleY(3);
+    }
+    100% {
+        transform: scaleY(0.2);
+    }
 }

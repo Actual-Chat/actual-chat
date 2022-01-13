@@ -59,9 +59,9 @@ export class ChatMessageEditor {
             return;
         this._isRecording = isRecording;
         if (isRecording){
-            this._editorDiv.classList.replace('initial', 'record-mode');
+            this._editorDiv.classList.add('record-mode');
         } else {
-            this._editorDiv.classList.replace('record-mode', 'initial');
+            this._editorDiv.classList.remove('record-mode');
         }
     }
 
@@ -71,9 +71,9 @@ export class ChatMessageEditor {
             return;
         this._isTextMode = isTextMode;
         if (isTextMode) {
-            this._editorDiv.classList.replace('initial', 'text-mode');
+            this._editorDiv.classList.add( 'text-mode');
         } else {
-            this._editorDiv.classList.replace('text-mode', 'initial');
+            this._editorDiv.classList.remove('text-mode');
         }
     }
 
