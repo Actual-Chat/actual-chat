@@ -241,7 +241,6 @@ public class VirtualListRenderPlan<TItem>
         // so there is no warranty the viewport will actually be fully inside
         // the new FullRange.
         Viewport = Viewport.ScrollInto(FullRange, IsEndAligned);
-        return;
 
         // AY: This part causes weird issues w/ scroll, to be investigated later.
         /*
