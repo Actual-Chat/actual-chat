@@ -9,10 +9,10 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
     private BlazorCircuitContext CircuitContext { get; }
     private IJSRuntime JS { get; }
-    private byte[] Header { get; }
     private DotNetObjectReference<IAudioPlayerBackend>? BlazorRef { get; set; }
     private IJSObjectReference? JSRef { get; set; }
     private Task<Unit> WhenBufferReady { get; set; } = TaskSource.New<Unit>(true).Task;
+    private bool _isStopSent = false;
 
     public AudioSource AudioSource => (AudioSource)Source;
 
@@ -21,17 +21,16 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
         JS = Services.GetRequiredService<IJSRuntime>();
-        Header = AudioSource.Format.Serialize();
         UpdateBufferReadyState(true);
     }
 
     [JSInvokable]
-    public Task OnPlaybackEnded(int? errorCode, string? errorMessage)
+    public Task OnPlaybackEnded(string? errorMessage)
     {
         Exception? error = null;
         if (errorMessage != null) {
             error = new TargetInvocationException(
-                $"Playback stopped with an error, code = {errorCode}, message = '{errorMessage}'.",
+                $"Playback stopped with an error, message = '{errorMessage}'.",
                 null);
             Log.LogError(error, "Playback stopped with an error");
         }
@@ -40,33 +39,18 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     }
 
     [JSInvokable]
-    public Task OnPlaybackTimeChanged(double? offset)
+    public Task OnPlaybackTimeChanged(double offset)
     {
-        if (offset != null)
-            OnPlayedTo(TimeSpan.FromSeconds(offset.Value));
+        OnPlayedTo(TimeSpan.FromSeconds(offset));
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
+    public Task OnChangeReadiness(bool isBufferReady)
     {
-        DebugLog?.LogDebug(
-            "bufferReady={BufferReadiness}, Offset={Offset}, mediaReadyState={MediaElementReadyState}",
-            isBufferReady,
-            offset,
-            ToMediaElementReadyState(readyState));
-
+        DebugLog?.LogDebug("[{TrackPlayerId}] OnChangeReadiness(bufferReady:{BufferReadiness})", isBufferReady);
         UpdateBufferReadyState(isBufferReady);
         return Task.CompletedTask;
-
-        static string ToMediaElementReadyState(int? state) => state switch {
-            0 => "HAVE_NOTHING",
-            1 => "HAVE_METADATA",
-            2 => "HAVE_CURRENT_DATA",
-            3 => "HAVE_FUTURE_DATA",
-            4 => "HAVE_ENOUGH_DATA",
-            _ => $"UNKNOWN:{state?.ToString(CultureInfo.InvariantCulture) ?? "(null)"}",
-        };
     }
 
     [JSInvokable]
@@ -80,21 +64,32 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 switch (command) {
-                    case StartPlaybackCommand:
+                    case InitializeCommand:
                         BlazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
                         JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                            $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                             Command.TrackId.ToString(), BlazorRef, DebugMode, Header
+                                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                                CancellationToken.None,
+                                BlazorRef,
+                                DebugMode
                             ).ConfigureAwait(true);
                         break;
-                    case StopPlaybackCommand stop:
+                    case StartPlaybackCommand:
                         if (JSRef == null)
-                            break;
-
-                        if (stop.Immediately)
-                            _ = JSRef.InvokeVoidAsync("stop");
-                        else
-                            _ = JSRef.InvokeVoidAsync("endOfStream");
+                            throw new InvalidOperationException($"{nameof(StartPlaybackCommand)}: Initialize command should be called first.");
+                        _ = JSRef.InvokeVoidAsync("init", CancellationToken.None, AudioSource.Format.Serialize());
+                        break;
+                    case StopPlaybackCommand:
+                        if (!_isStopSent) {
+                            if (JSRef == null)
+                                throw new InvalidOperationException($"{nameof(StopPlaybackCommand)}: Initialize command should be called first.");
+                            _ = JSRef.InvokeVoidAsync("stop", CancellationToken.None);
+                            _isStopSent = true;
+                        }
+                        break;
+                    case EndCommand:
+                        if (JSRef == null)
+                            throw new InvalidOperationException($"{nameof(EndCommand)}: Initialize command should be called first.");
+                        _ = JSRef.InvokeVoidAsync("end", CancellationToken.None);
                         break;
                     case SetTrackVolumeCommand:
                         // TODO: Implement this
@@ -108,11 +103,10 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 if (JSRef == null)
-                    return;
+                    throw new InvalidOperationException("Can't process media frame before initialization.");
 
                 var chunk = frame.Data;
-                var offset = frame.Offset.TotalSeconds;
-                _ = JSRef.InvokeVoidAsync("appendAudio", cancellationToken, chunk, offset);
+                _ = JSRef.InvokeVoidAsync("data", cancellationToken, chunk);
                 try {
                     await WhenBufferReady.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }

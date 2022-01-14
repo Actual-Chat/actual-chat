@@ -27,6 +27,9 @@ namespace Build
             if (str.Contains("Exception:", StringComparison.OrdinalIgnoreCase))
                 return Red(str);
 
+            if (str.Contains("fail:", StringComparison.OrdinalIgnoreCase))
+                return Red(str);
+
             if (str.Contains(" warning ", StringComparison.OrdinalIgnoreCase))
                 return Yellow(str);
 
