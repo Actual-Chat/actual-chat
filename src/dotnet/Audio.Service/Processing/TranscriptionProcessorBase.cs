@@ -4,5 +4,5 @@ public abstract class TranscriptionProcessorBase : AudioProcessorBase
 {
     protected TranscriptionProcessorBase(IServiceProvider services)
         : base(services)
-        => DebugMode = Constants.DebugMode.TranscriptionProcessing;
+        => DebugMode = Constants.DebugMode.Transcription;
 }

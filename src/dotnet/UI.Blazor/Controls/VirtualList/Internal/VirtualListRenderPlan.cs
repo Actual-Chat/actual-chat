@@ -20,7 +20,7 @@ public class VirtualListRenderPlan<TItem>
     // JsonIgnores are here solely to make JsonFormatter.Format work
     [JsonIgnore]
     public VirtualList<TItem> VirtualList { get; set; } = null!;
-    public long RenderIndex { get; set; } = 0;
+    public long RenderIndex { get; set; }
     [JsonIgnore]
     public VirtualListClientSideState? ClientSideState { get; set; }
     [JsonIgnore]
@@ -51,7 +51,9 @@ public class VirtualListRenderPlan<TItem>
     public double EndSpacerSize { get; set; }
     public VirtualListEdge? TrackingEdge { get; set; }
     public bool IsEndAligned => VirtualList.PreferredTrackingEdge == VirtualListEdge.End;
-    public double ScrollTop => IsEndAligned ? Viewport.End - FullRange.End : SpacerSize + Viewport.Start;
+    public double ScrollTop => IsEndAligned
+        ? Viewport.End - (DisplayedRange.End + EndSpacerSize)
+        : SpacerSize + Viewport.Start;
 
     /// <summary> Indicates whether JS backend must notify Blazor part when it's safe to scroll. </summary>
     public bool NotifyWhenSafeToScroll { get; set; }
@@ -67,7 +69,7 @@ public class VirtualListRenderPlan<TItem>
     public VirtualListRenderPlan(VirtualList<TItem> virtualList)
     {
         VirtualList = virtualList;
-        RenderIndex = VirtualList.NextRenderIndex++;
+        RenderIndex = 1;
         Data = VirtualList.Data;
         SpacerSize = VirtualList.SpacerSize;
         EndSpacerSize = VirtualList.SpacerSize;
@@ -95,7 +97,7 @@ public class VirtualListRenderPlan<TItem>
     {
         try {
             var plan = (VirtualListRenderPlan<TItem>) MemberwiseClone();
-            plan.RenderIndex = VirtualList.NextRenderIndex++;
+            plan.RenderIndex++;
             plan.Data = VirtualList.Data;
             plan.ClientSideState = VirtualList.ClientSideState;
 
@@ -147,7 +149,7 @@ public class VirtualListRenderPlan<TItem>
 
         UpdateViewportAndSpacer(lastPlan);
         UpdateScrollRelated(lastPlan);
-        UpdateClientSideState(lastPlan);
+        UpdateClientSideState();
     }
 
     protected void UpdateViewportAndSpacer(VirtualListRenderPlan<TItem>? lastPlan)
@@ -239,7 +241,9 @@ public class VirtualListRenderPlan<TItem>
         // so there is no warranty the viewport will actually be fully inside
         // the new FullRange.
         Viewport = Viewport.ScrollInto(FullRange, IsEndAligned);
+        return;
 
+        // AY: This part causes weird issues w/ scroll, to be investigated later.
         if (!MustScroll) {
             // 3. We aren't scrolling, but maybe we still want to adjust the spacer...
             var maxSpacerSizeDelta = Math.Max(
@@ -257,7 +261,7 @@ public class VirtualListRenderPlan<TItem>
         }
     }
 
-    protected void UpdateClientSideState(VirtualListRenderPlan<TItem>? lastPlan)
+    protected void UpdateClientSideState()
     {
         if (!MustScroll || ClientSideState == null)
             return;

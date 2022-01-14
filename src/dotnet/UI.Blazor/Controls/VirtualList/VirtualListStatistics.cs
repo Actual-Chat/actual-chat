@@ -11,7 +11,7 @@ public interface IVirtualListStatistics
     /// </summary>
     double ResponseFulfillmentRatio { get; }
 
-    void AddItem(double size);
+    void AddItem(double size, int count);
     void AddResponse(long actualCount, long expectedCount);
 }
 

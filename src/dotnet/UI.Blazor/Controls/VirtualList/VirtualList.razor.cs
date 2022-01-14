@@ -22,8 +22,6 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     // ReSharper disable once StaticMemberInGenericType
-    protected internal long NextRenderIndex { get; set; }
-    protected long LastAfterRenderRenderIndex { get; set; } = -1;
     protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
     protected VirtualListRenderPlan<TItem> Plan { get; set; } = null!;
     protected VirtualListDataQuery? LastQuery { get; set; }
@@ -65,10 +63,20 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     protected override bool ShouldRender()
     {
-        var isPlanActual = ReferenceEquals(Plan.Data, Data) && ReferenceEquals(Plan.ClientSideState, ClientSideState);
-        if (!isPlanActual)
-            Plan = Plan.Next();
-        return !ReferenceEquals(Plan, LastPlan);
+        if (LastPlan == null) {
+            DebugLog?.LogDebug(nameof(ShouldRender) + ": true (no LastPlan)");
+            return true;
+        }
+        var isSameState = ReferenceEquals(LastPlan.Data, Data) && ReferenceEquals(LastPlan.ClientSideState, ClientSideState);
+        if (isSameState) {
+            DebugLog?.LogDebug(nameof(ShouldRender) + ": false (same state)");
+            return false;
+        }
+        Plan = LastPlan.Next();
+        if (!Plan.IsFullyLoaded(Plan.GetLoadZoneRange()))
+            UpdateData();
+        DebugLog?.LogDebug(nameof(ShouldRender) + ": true");
+        return true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -84,47 +92,24 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
                 Ref, BlazorRef, plan!.IsEndAligned, DebugMode
                 ).ConfigureAwait(true);
         }
-        if (plan == null || plan.RenderIndex == LastAfterRenderRenderIndex || JSRef == null!)
-            return; // Nothing new is rendered
-
-        LastAfterRenderRenderIndex = plan.RenderIndex;
-        var renderState = new VirtualListRenderState() {
-            RenderIndex = plan.RenderIndex,
-
-            SpacerSize = plan.SpacerSize,
-            EndSpacerSize = plan.EndSpacerSize,
-            ScrollHeight = plan.FullRange.Size(),
-            ItemSizes = plan.DisplayedItems.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
-
-            ScrollTop = plan.ScrollTop,
-            ClientHeight = plan.Viewport.Size(),
-
-            MustMeasure = plan.UnmeasuredItems.Count != 0,
-            MustScroll = plan.MustScroll,
-            NotifyWhenSafeToScroll = plan.NotifyWhenSafeToScroll,
-        };
-        if (!plan.IsFullyLoaded(plan.GetLoadZoneRange()))
-            UpdateData();
-        DebugLog?.LogDebug("OnAfterRender: #{RenderIndex}", renderState.RenderIndex);
-        ClientSideState = plan.ClientSideState ?? ClientSideState;
-        await JSRef.InvokeVoidAsync("afterRender", renderState).ConfigureAwait(true);
     }
 
     [JSInvokable]
-    public async Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
+    public Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
     {
-        var lastPlan = LastPlan;
-        if (lastPlan == null! || clientSideState.RenderIndex != lastPlan.RenderIndex) {
+        var plan = LastPlan;
+        var expectedRenderIndex = plan?.RenderIndex ?? 0;
+        if (clientSideState.RenderIndex != expectedRenderIndex) {
             DebugLog?.LogDebug(
-                "UpdateClientSideState: outdated RenderIndex = {RenderIndex} < {ExpectedRenderIndex}",
-                clientSideState.RenderIndex, lastPlan?.RenderIndex);
-            return lastPlan?.RenderIndex ?? -1;
+                "UpdateClientSideState: outdated RenderIndex = {RenderIndex} != {ExpectedRenderIndex}",
+                clientSideState.RenderIndex, expectedRenderIndex);
+            return Task.FromResult(expectedRenderIndex);
         }
 
         DebugLog?.LogDebug("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
         ClientSideState = clientSideState;
-        StateHasChanged();
-        return lastPlan.RenderIndex;
+        _ = this.StateHasChangedAsync();
+        return Task.FromResult(expectedRenderIndex);
     }
 
     protected void UpdateData()
@@ -146,10 +131,11 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         VirtualListData<TItem> response;
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
-            DebugLog?.LogDebug("ComputeState: query={Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
+            DebugLog?.LogDebug(
+                nameof(ComputeState) + ": query={Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
                 query,
-                response.Items.FirstOrDefault().Key,
-                response.Items.LastOrDefault().Key,
+                response.Items.FirstOrDefault()?.Key,
+                response.Items.LastOrDefault()?.Key,
                 response.HasAllItems ? "all" : response.HasVeryFirstItem ? "start" : "end");
         }
         catch (Exception e) when (e is not OperationCanceledException) {
