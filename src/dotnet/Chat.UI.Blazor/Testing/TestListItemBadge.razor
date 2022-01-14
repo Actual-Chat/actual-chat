@@ -1,5 +1,5 @@
 @inherits ComputedStateComponent<TestListItem>
-@inject TestListService _listService
+@inject VirtualListTestService _service
 
 @{
     var item = State.ValueOrDefault ?? new(0, "Loading...");
@@ -18,5 +18,5 @@
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     protected override Task<TestListItem> ComputeState(CancellationToken cancellationToken)
-        => _listService.GetItem(ItemRef, cancellationToken);
+        => _service.GetItem(ItemRef, cancellationToken);
 }

@@ -4,11 +4,11 @@
 <VirtualList
     Class="@(this.DefaultClass())"
     PreferredTrackingEdge="VirtualListEdge.End"
-    LoadZoneSize="6000" BufferZoneSize="12000" SpacerSize="24000"
+    LoadZoneSize="6000" BufferZoneSize="8000" SpacerSize="8000" SkeletonCount="100"
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
-        <ChatMessage Model="@context.Value" />
+        <ChatMessage Model="@context" />
     </Item>
     <Skeleton>
         @{

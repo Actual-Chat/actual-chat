@@ -2,18 +2,19 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public sealed class ChatMessageModel : IEquatable<ChatMessageModel>
+public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
 {
     private static readonly int MaxBlockLength = 100;
     private static readonly int MaxBlockContentLength = 10_000;
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
 
-    public string Key { get; }
+    public Symbol Key { get; }
     public ChatEntry Entry { get; }
     public Author Author { get; }
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
+    public int CountAs { get; init; } = 1;
 
     public ChatMessageModel(ChatEntry entry, Author author)
     {
@@ -48,11 +49,11 @@ public sealed class ChatMessageModel : IEquatable<ChatMessageModel>
 
     // Static helpers
 
-    public static List<KeyValuePair<string, ChatMessageModel>> FromEntries(
+    public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
         Dictionary<Symbol, Author?> authors)
     {
-        var result = new List<KeyValuePair<string, ChatMessageModel>>(chatEntries.Count);
+        var result = new List<ChatMessageModel>(chatEntries.Count);
 
         var isBlockStart = true;
         var lastDate = default(DateOnly);
@@ -78,7 +79,7 @@ public sealed class ChatMessageModel : IEquatable<ChatMessageModel>
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
             };
-            result.Add(new(model.Key, model));
+            result.Add(model);
 
             isBlockStart = isBlockEnd;
             blockLength += 1;
@@ -98,5 +99,4 @@ public sealed class ChatMessageModel : IEquatable<ChatMessageModel>
             return nextEntry.BeginsAt - prevEndsAt >= BlockSplitPauseDuration;
         }
     }
-
 }
