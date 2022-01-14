@@ -3,14 +3,18 @@
 }
 
 .chat-message:hover {
-    @apply bg-gray-100;
+    @apply bg-message-hover;
 }
 
 .chat-message:hover .author-avatar {
-    @apply bg-gray-100;
+    @apply bg-message-hover;
 }
 
 .chat-message:hover .chat-message-timestamp-secondary {
+    @apply visible;
+}
+
+.chat-message:hover .message-menu {
     @apply visible;
 }
 
