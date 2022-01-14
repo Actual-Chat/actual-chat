@@ -7,32 +7,25 @@ namespace ActualChat.Chat;
 
 public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, IChatAuthorsBackend
 {
+    private readonly ICommander _commander;
     private readonly IAuth _auth;
-    private readonly IUserInfos _userInfos;
-    private readonly IUserStates _userStates;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
     private readonly RedisSequenceSet<ChatAuthor> _idSequences;
-    private readonly ICommander _commander;
     private readonly IRandomNameGenerator _randomNameGenerator;
+    private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
+    private readonly IUserInfos _userInfos;
+    private readonly IUserStates _userStates;
 
-    public ChatAuthors(
-        IAuth auth,
-        IUserInfos userInfos,
-        IUserStates userStates,
-        IUserAuthorsBackend userAuthorsBackend,
-        RedisSequenceSet<ChatAuthor> idSequences,
-        ICommander commander,
-        IRandomNameGenerator randomNameGenerator,
-        IServiceProvider serviceProvider
-    ) : base(serviceProvider)
+    public ChatAuthors(IServiceProvider services) : base(services)
     {
-        _auth = auth;
-        _userInfos = userInfos;
-        _userStates = userStates;
-        _userAuthorsBackend = userAuthorsBackend;
-        _idSequences = idSequences;
-        _commander = commander;
-        _randomNameGenerator = randomNameGenerator;
+        _commander = services.Commander();
+        _auth = Services.GetRequiredService<IAuth>();
+        _userAuthorsBackend = services.GetRequiredService<IUserAuthorsBackend>();
+        _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
+        _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
+        _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
+        _userInfos = services.GetRequiredService<IUserInfos>();
+        _userStates = services.GetRequiredService<IUserStates>();
     }
 
     // [ComputeMethod]

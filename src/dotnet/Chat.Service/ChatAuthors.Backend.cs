@@ -14,16 +14,11 @@ public partial class ChatAuthors
         string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)
     {
-        ChatAuthor? chatAuthor;
-        var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false)) {
-            var dbChatAuthor = await dbContext.ChatAuthors
-                .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
-                .ConfigureAwait(false);
-            chatAuthor = dbChatAuthor?.ToModel();
-        }
-
-        return await Enrich(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
+        var dbChatAuthor = await _dbChatAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
+        if (!StringComparer.Ordinal.Equals(dbChatAuthor?.ChatId, chatId))
+            return null;
+        var chatAuthor = dbChatAuthor.ToModel();
+        return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -43,7 +38,7 @@ public partial class ChatAuthors
             chatAuthor = dbChatAuthor?.ToModel();
         }
 
-        return await Enrich(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
+        return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 
     // Not a [ComputeMethod]!
@@ -150,7 +145,7 @@ public partial class ChatAuthors
 
     // Private / internal methods
 
-    internal async Task<long> DbNextLocalId(
+    private async Task<long> DbNextLocalId(
         ChatDbContext dbContext,
         string chatId,
         CancellationToken cancellationToken)
@@ -172,7 +167,7 @@ public partial class ChatAuthors
         return localId;
     }
 
-    private async Task<ChatAuthor?> Enrich(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
+    private async Task<ChatAuthor?> InheritFromUserAuthor(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
     {
         if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
             return chatAuthor;
