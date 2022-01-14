@@ -23,4 +23,8 @@ public class UserInfosController : ControllerBase, IUserInfos
     [HttpGet, Publish]
     public Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken)
         => _userInfos.GetByName(name, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken)
+        => _userInfos.GetGravatarHash(userId, cancellationToken);
 }

@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 
@@ -22,10 +23,18 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
 
         var dbUserAuthor = await _dbUserAuthorResolver.Get(userId, cancellationToken).ConfigureAwait(false);
         var userAuthor = dbUserAuthor?.ToModel();
-        if (!inherit)
+        if (!inherit || userAuthor == null)
             return userAuthor;
 
         var userInfo = await _userInfos.Get(userId, cancellationToken).ConfigureAwait(false);
-        return userAuthor.InheritFrom(userInfo);
+        var result = userAuthor.InheritFrom(userInfo);
+        if (result.Picture.IsNullOrEmpty()) {
+            var gravatarHash = await _userInfos.GetGravatarHash(userId, cancellationToken).ConfigureAwait(false);
+            if (!gravatarHash.IsNullOrEmpty()) {
+                var gravatarPic = "https://www.gravatar.com/avatar/" + gravatarHash;
+                result = result with { Picture = gravatarPic };
+            }
+        }
+        return result;
     }
 }
