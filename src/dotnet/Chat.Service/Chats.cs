@@ -9,31 +9,23 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
+    private readonly ICommander _commander;
     private readonly IAuth _auth;
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
-    private readonly ICommander _commander;
 
-    public Chats(
-        IAuth auth,
-        IAuthBackend authBackend,
-        IChatAuthors chatAuthors,
-        IChatAuthorsBackend chatAuthorsBackend,
-        IDbEntityResolver<string, DbChat> dbChatResolver,
-        RedisSequenceSet<ChatEntry> idSequences,
-        ICommander commander,
-        IServiceProvider services) : base(services)
+    public Chats(IServiceProvider services) : base(services)
     {
-        _auth = auth;
-        _authBackend = authBackend;
-        _chatAuthors = chatAuthors;
-        _chatAuthorsBackend = chatAuthorsBackend;
-        _dbChatResolver = dbChatResolver;
-        _idSequences = idSequences;
-        _commander = commander;
+        _commander = Services.Commander();
+        _auth = Services.GetRequiredService<IAuth>();
+        _authBackend = Services.GetRequiredService<IAuthBackend>();
+        _chatAuthors = Services.GetRequiredService<IChatAuthors>();
+        _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
+        _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
     }
 
     // [ComputeMethod]

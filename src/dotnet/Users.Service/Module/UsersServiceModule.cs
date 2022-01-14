@@ -16,11 +16,11 @@ using Stl.Redis;
 
 namespace ActualChat.Users.Module;
 
-public class UsersModule : HostModule<UsersSettings>
+public class UsersServiceModule : HostModule<UsersSettings>
 {
-    public UsersModule(IPluginInfoProvider.Query _) : base(_) { }
+    public UsersServiceModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public UsersModule(IPluginHost plugins) : base(plugins) { }
+    public UsersServiceModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
     {
@@ -66,6 +66,7 @@ public class UsersModule : HostModule<UsersSettings>
             services.TryAddSingleton<DbUserByNameResolver>();
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
             dbContext.AddEntityResolver<string, DbUserState>();
+            dbContext.AddEntityResolver<string, DbUserAuthor>();
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {

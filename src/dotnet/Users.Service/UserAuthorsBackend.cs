@@ -1,5 +1,4 @@
 using ActualChat.Users.Db;
-using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -7,12 +6,13 @@ namespace ActualChat.Users;
 public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBackend
 {
     private readonly IUserInfos _userInfos;
+    private readonly IDbEntityResolver<string, DbUserAuthor> _dbUserAuthorResolver;
 
-    public UserAuthorsBackend(IUserInfos userInfos, IServiceProvider services)
-        : base(services)
-        => _userInfos = userInfos;
-
-    // Backend
+    public UserAuthorsBackend(IServiceProvider services) : base(services)
+    {
+        _userInfos = Services.GetRequiredService<IUserInfos>();
+        _dbUserAuthorResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserAuthor>>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken)
@@ -20,14 +20,8 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
         if (userId.IsNullOrEmpty())
             return null;
 
-        UserAuthor? userAuthor;
-        var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false)) {
-            var dbUserAuthor = await dbContext.UserAuthors
-                .SingleOrDefaultAsync(a => a.UserId == userId, cancellationToken)
-                .ConfigureAwait(false);
-            userAuthor = dbUserAuthor?.ToModel();
-        }
+        var dbUserAuthor = await _dbUserAuthorResolver.Get(userId, cancellationToken).ConfigureAwait(false);
+        var userAuthor = dbUserAuthor?.ToModel();
         if (!inherit)
             return userAuthor;
 
