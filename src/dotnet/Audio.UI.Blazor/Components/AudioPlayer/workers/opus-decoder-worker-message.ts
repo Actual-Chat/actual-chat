@@ -1,24 +1,30 @@
 /* Message that is used to communicate between the global scope and the decoder web worker (main thread -> worker) */
 export interface DecoderMessage {
-    type: 'load' | 'init' | 'data' | 'end' | 'stop';
+    type: 'create' | 'init' | 'data' | 'end' | 'stop';
 }
 
-export interface LoadDecoderMessage extends DecoderMessage {
-    type: 'load';
+/** When controller created he sends the create message to initialize decoder on the web worker side */
+export interface CreateDecoderMessage extends DecoderMessage {
+    type: 'create';
+    controllerId: number;
+    callbackId: number;
+    workletPort: MessagePort;
 }
 
 export interface InitDecoderMessage extends DecoderMessage {
     type: 'init';
-    playerId: string;
+    controllerId: number,
+    callbackId: number,
+    // ArrayBuffer sometimes can be bigger than Uint8Array and can be started not from the beginning
+    // so we should transfer offset and length too
     buffer: ArrayBuffer;
     offset: number;
     length: number;
-    workletPort: MessagePort;
 }
 
 export interface DataDecoderMessage extends DecoderMessage {
     type: 'data';
-    playerId: string;
+    controllerId: number;
     buffer: ArrayBuffer;
     offset: number;
     length: number;
@@ -26,35 +32,33 @@ export interface DataDecoderMessage extends DecoderMessage {
 
 export interface EndDecoderMessage extends DecoderMessage {
     type: 'end';
-    playerId: string;
+    controllerId: number;
 }
 
 export interface StopDecoderMessage extends DecoderMessage {
     type: 'stop';
-    playerId: string;
+    controllerId: number;
 }
 
 /** Message that is sent from the decoder web worker (web worker -> { worklet | main thread }) */
 export interface DecoderWorkerMessage {
-    type: 'samples' | 'initCompleted';
+    type: 'end' | 'samples' | 'operationCompleted';
 }
 
 /** Decoded samples, will be consumed at the decoder worklet (web worker -> worklet) */
 export interface SamplesDecoderWorkerMessage extends DecoderWorkerMessage {
     type: 'samples';
+    buffer: ArrayBuffer;
     offset: number;
     length: number;
-    buffer: ArrayBuffer;
+}
+/** Message says that decoder has reached the end of the stream (web worker -> worklet) */
+export interface EndDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'end';
 }
 
-/** Init callback message, handled at the audio player main thread (web worker -> main thread) */
-export interface InitCompletedDecoderWorkerMessage extends DecoderWorkerMessage {
-    type: 'initCompleted';
-    playerId: string;
-}
-
-/** Processed buffer to be returned back from the worklet to the decoder worker (worklet -> web worker) */
-export interface DecoderWorkletMessage {
-    type: 'buffer';
-    buffer: ArrayBuffer;
+/** Tells that an (async) operation was completed (create, init etc). (web worker -> main thread) */
+export interface OperationCompletedDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'operationCompleted';
+    callbackId: number;
 }

@@ -1,269 +1,163 @@
-import { AudioContextPool } from 'audio-context-pool';
-import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
-import {
-    DataDecoderMessage,
-    DecoderWorkerMessage, EndDecoderMessage, InitCompletedDecoderWorkerMessage, InitDecoderMessage, LoadDecoderMessage, StopDecoderMessage,
-} from "./workers/opus-decoder-worker-message";
+import { ObjectPool } from 'object-pool';
+import { AudioPlayerController } from './audio-player-controller';
+import { PlaybackState } from './worklets/feeder-audio-worklet-node';
 
-type PlayerState = 'inactive' | 'buffering' | 'playing' | 'endOfStream';
-
-const playerMap = new Map<string, AudioPlayer>();
-const decoderWorker = new Worker('/dist/opusDecoderWorker.js');
-// TODO: try to remove load message
-decoderWorker.postMessage({ type: 'load' });
-decoderWorker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
-    const msg = ev.data;
-    switch (msg.type) {
-        case 'initCompleted':
-            onInitCompleted(msg as InitCompletedDecoderWorkerMessage);
-            break;
-        default:
-            throw new Error(`Unsupported message from the decoder worker. Message type: ${msg.type}`);
-    }
-};
-
-function onInitCompleted(message: InitCompletedDecoderWorkerMessage) {
-    const { playerId } = message;
-    const player = playerMap.get(playerId);
-    if (player == null) {
-        console.error(`decoderWorker.onmessage: can't find player=${playerId}`);
-        return;
-    }
-    player.initCompleted();
-}
-
+/**
+ * A lightweight facade of the AudioPlayerBackend.
+ * They are separated because of requirement of an user gesture to create audioContext.
+ */
 export class AudioPlayer {
 
-    public static debug?: {
-        debugMode: boolean;
-        debugOperations: boolean;
-        debugFeeder: boolean;
-    } = null;
-
-    public static async create(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean, header: Uint8Array)
-        : Promise<AudioPlayer> {
-        const player = new AudioPlayer(playerId, blazorRef, debugMode);
-        if (debugMode) {
-            self["_player"] = player;
-        }
-        await player.init(header);
-
-        playerMap.set(playerId, player);
-        return player;
-    }
-
-    /** How often send offset update event to the blazor, in milliseconds */
-    private readonly updateOffsetMs = 200;
-    private readonly playerId: string;
-    private readonly blazorRef: DotNet.DotNetObject;
-    private readonly decoderChannel: MessageChannel;
-
-    private initPromise?: Promise<void> = null;
-    private initResolve?: () => void = null;
-    private state: PlayerState = 'inactive';
-
-    private readonly _debugMode: boolean;
-    private readonly _debugOperations: boolean;
-    private readonly _debugFeeder: boolean;
-
-    private audioContext: AudioContext;
-    private feederNode?: FeederAudioWorkletNode = null;
+    private static controllerPool = new ObjectPool<AudioPlayerController>(() => AudioPlayerController.create());
+    public static debug?: boolean = null;
 
     public onStartPlaying?: () => void = null;
     public onInitialized?: () => void = null;
 
-    constructor(playerId: string, blazorRef: DotNet.DotNetObject, debugMode: boolean) {
-        this.playerId = playerId;
+    private readonly debug: boolean;
+    /** How often send offset update event to the blazor, in milliseconds */
+    private readonly updateOffsetMs = 200;
+    private readonly blazorRef: DotNet.DotNetObject;
+
+    private controller?: AudioPlayerController = null;
+    private state: 'uninitialized' | 'initializing' | 'initialized' | 'playing' | 'stopped' | 'ended' = 'uninitialized';
+    /**
+     * We can't await init() on the blazor side, because it will cause a round-trip delay (blazor server),
+     * so if data comes before initialization, we will wait this promise.
+     */
+    private initPromise?: Promise<void> = null;
+    /** we can do this with state, but it's clearer */
+    private isBufferFull: boolean = false;
+
+
+    public static async create(blazorRef: DotNet.DotNetObject, debug: boolean): Promise<AudioPlayer> {
+        const controller = await this.controllerPool.get();
+        if (AudioPlayer.debug)
+            console.debug(`Created player with controllerId:${controller.id}`);
+        return new AudioPlayer(controller, blazorRef, debug);
+    }
+
+    public constructor(controller: AudioPlayerController, blazorRef: DotNet.DotNetObject, debug: boolean) {
         this.blazorRef = blazorRef;
-        const debugOverride = AudioPlayer.debug;
-
-        if (debugOverride === null || debugOverride === undefined) {
-            this._debugMode = debugMode;
-            this._debugOperations = debugMode && false;
-            this._debugFeeder = debugMode && true;
-        }
-        else {
-            this._debugMode = debugOverride.debugMode;
-            this._debugOperations = debugOverride.debugOperations;
-            this._debugFeeder = debugOverride.debugFeeder;
-        }
-
-        this.decoderChannel = new MessageChannel();
+        this.debug = AudioPlayer.debug === null ? debug : AudioPlayer.debug;
+        this.controller = controller;
     }
 
-    public async init(header: Uint8Array): Promise<void> {
-        if (this.state !== 'inactive') {
-            this.logError("init: called in a wrong order");
-        }
+    public init(header: Uint8Array): Promise<void> {
+        const { debug, state } = this;
+        this.state = 'initializing';
+        console.assert(state === 'uninitialized', "init: called in a wrong order");
 
-        this.initPromise = new Promise<void>(resolve => this.initResolve = resolve);
-        const init: InitDecoderMessage = {
-            type: 'init',
-            playerId: this.playerId,
-            buffer: header.buffer,
-            offset: header.byteOffset,
-            length: header.byteLength,
-            workletPort: this.decoderChannel.port1
-        };
-        decoderWorker.postMessage(init, [header.buffer, this.decoderChannel.port1]);
-
-        this.audioContext = await AudioContextPool.get("main") as AudioContext;
-        const feederNodeOptions: AudioWorkletNodeOptions = {
-            channelCount: 1,
-            channelCountMode: 'explicit',
-            numberOfInputs: 0,
-            numberOfOutputs: 1,
-            outputChannelCount: [1],
-        };
-        this.feederNode = new FeederAudioWorkletNode(
-            this.audioContext,
-            'feederWorklet',
-            feederNodeOptions
-        );
-        this.feederNode.initWorkerPort(this.decoderChannel.port2);
-        this.feederNode.onBufferLow = () => this.needMoreData('onBufferLow');
-        this.feederNode.onStarving = () => {
-            if (this.state === 'endOfStream') {
-                this.feederNode.onStarving = null;
-                if (this._debugMode)
-                    this.log(`audio ended.`);
-
-                const _ = this.onUpdateOffsetTick();
-                this.onStop();
-                const __ = this.invokeOnPlaybackEnded();
-                return;
+        this.initPromise = this.controller.init(header, {
+            onBufferLow: async () => {
+                if (this.isBufferFull) {
+                    this.isBufferFull = false;
+                    if (debug)
+                        console.debug(`onBufferLow, controllerId:${this.controller.id}`);
+                    await this.invokeOnChangeReadiness(true);
+                }
+            },
+            onBufferTooMuch: async () => {
+                if (!this.isBufferFull) {
+                    this.isBufferFull = true;
+                    if (debug)
+                        console.debug(`onBufferTooMuch, controllerId:${this.controller.id}`);
+                    await this.invokeOnChangeReadiness(false);
+                }
+            },
+            onStartPlaying: () => {
+                if (debug)
+                    console.debug(`onStartPlaying, controllerId:${this.controller.id}`);
+                this.state = 'playing';
+                if (this.onStartPlaying !== null)
+                    this.onStartPlaying();
+                self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
+            },
+            onStopped: async () => {
+                if (debug)
+                    console.debug(`onStopped, controllerId:${this.controller.id}`);
+                // after shop we should notify about the real playback time
+                await this.onUpdateOffsetTick();
+                this.state = 'stopped';
+            },
+            onStarving: async () => {
+                if (debug)
+                    console.warn(`onStarving, controllerId:${this.controller.id}`);
+                await this.onUpdateOffsetTick();
+                // doesn't change anything (because onBufferLow should do the call), but we can try to ping server
+                await this.invokeOnChangeReadiness(true);
+            },
+            onEnded: async () => {
+                this.state = 'ended';
+                const { controller } = this;
+                if (controller !== null) {
+                    this.controller = null;
+                    if (debug)
+                        console.debug(`onEnded, release controllerId:${controller.id} to the pool`);
+                    await Promise.all([AudioPlayer.controllerPool.release(controller), this.invokeOnPlaybackEnded()]);
+                }
             }
-            this.state = 'buffering';
-            this.needMoreData('onStarving');
-        };
-        this.feederNode.onBufferTooMuch = () => {
-            const _ = this.invokeOnChangeReadiness(false, 10, 4);
-        };
-        this.feederNode.onStartPlaying = () => {
-            this.state = 'playing';
-            if (this.onStartPlaying !== null)
-                this.onStartPlaying();
-            self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
-            if (this._debugFeeder) {
-                this.log("Feeder start playing");
+        }).then(() => {
+            if (this.onInitialized !== null) {
+                this.onInitialized();
             }
-        };
-        this.feederNode.connect(this.audioContext.destination);
+            this.state = 'initialized';
+        });
+        return this.initPromise;
     }
-
-    public initCompleted(): void {
-        const initResolve = this.initResolve;
-        if (initResolve != null) {
-            initResolve();
-            this.initPromise = null;
-            this.initResolve = null;
-        }
-        this.state = 'buffering';
-    };
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
-    public async appendAudio(byteArray: Uint8Array, offset: number): Promise<void> {
-        if (this.state === 'inactive') {
-            const initPromise = this.initPromise;
-            if (initPromise != null) {
-                await initPromise;
-                this.initPromise = null;
-                this.initResolve = null;
-            }
-            else {
-                return;
-            }
-        }
-
-        const pushDataMsg: DataDecoderMessage = {
-            type: 'data',
-            playerId: this.playerId,
-            buffer: byteArray.buffer,
-            offset: byteArray.byteOffset,
-            length: byteArray.byteLength,
-        };
-        decoderWorker.postMessage(pushDataMsg, [byteArray.buffer]);
+    public async data(bytes: Uint8Array): Promise<void> {
+        console.assert(this.controller !== null, "Controller must be presented. Lifetime error.");
+        console.assert(this.initPromise !== null, `Player isn't initialized. controllerId:${this.controller.id}.`);
+        await this.initPromise;
+        this.controller.enqueue(bytes);
     }
 
-    public endOfStream(): void {
-        if (this._debugMode) {
-            this.log("Enqueue 'EndOfStream' operation.");
-        }
-        const msg: EndDecoderMessage = { type: 'end', playerId: this.playerId };
-        decoderWorker.postMessage(msg);
-        this.state = 'endOfStream';
+    public async end(): Promise<void> {
+        if (this.debug)
+            console.debug(`Got from blazor 'end()' controllerId:${this.controller.id}`);
+        console.assert(this.controller !== null, 'Controller must be presented. Lifetime error.');
+        console.assert(this.initPromise !== null, `Player isn't initialized. controllerId:${this.controller.id}.`);
+        await this.initPromise;
+        this.controller.enqueueEnd();
     }
 
-    public stop(error: EndOfStreamError | null = null) {
-        if (this._debugMode)
-            this.log(`stop(error:${error})`);
-
-        this.onStop();
-        const msg: StopDecoderMessage = { type: 'stop', playerId: this.playerId };
-        decoderWorker.postMessage(msg);
-    }
-
-    private onStop(): void {
-        if (this._debugMode)
-            this.log(`onStop()`);
-
-        this.state = 'inactive';
-
-        this.initPromise = null;
-        this.initResolve = null;
-
-        if (this.feederNode !== null) {
-            this.feederNode.stop();
-            this.feederNode.clear();
-            this.feederNode.disconnect();
-            this.feederNode = null;
+    public async stop(): Promise<void> {
+        if (this.debug)
+            console.debug(`Got from blazor: stop(). controllerId:${this.controller.id} state:${this.state}`);
+        // blazor can call stop() between create() and init() calls (if cancelled by user/server)
+        if (this.initPromise !== null) {
+            await this.initPromise;
+            console.assert(this.controller !== null, "Controller must be created. Lifetime error.");
+            if (this.debug)
+                console.debug(`Call controller stop(). controllerId:${this.controller.id} state:${this.state}`);
+            this.controller.stop();
         }
-
-        playerMap.delete(this.playerId);
     }
 
     private onUpdateOffsetTick = async () => {
-        const feeder = this.feederNode;
-        if (feeder === null || this.state === 'inactive')
-            return;
-
-        let state: PlaybackState = await feeder.getState();
-        if (this._debugMode) {
-            this.log(`onUpdateOffsetTick: playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
+        const { state, controller, debug } = this;
+        if (state === 'playing' && controller !== null) {
+            let state: PlaybackState = await controller.getState();
+            if (debug) {
+                console.debug(`onUpdateOffsetTick(controllerId:${controller.id}): ` +
+                    `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
+            }
+            await this.invokeOnPlaybackTimeChanged(state.playbackTime);
+            self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
         }
-
-        await this.invokeOnPlaybackTimeChanged(state.playbackTime);
-        self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
     };
-
-    private needMoreData(source: string): void {
-        if (this._debugOperations)
-            this.logWarn(`[${source}]: Unblocking queue`);
-
-        const _ = this.invokeOnChangeReadiness(true, /* isn't used */-1, 2);
-    }
 
     private invokeOnPlaybackTimeChanged(time: number): Promise<void> {
         return this.blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
     }
 
-    private invokeOnPlaybackEnded(code: number | null = null, message: string | null = null): Promise<void> {
-        return this.blazorRef.invokeMethodAsync("OnPlaybackEnded", code, message);
+    private invokeOnPlaybackEnded(message: string | null = null): Promise<void> {
+        return this.blazorRef.invokeMethodAsync("OnPlaybackEnded", message);
     }
 
-    private invokeOnChangeReadiness(isBufferReady: boolean, time: number, readyState: number): Promise<void> {
-        return this.blazorRef.invokeMethodAsync("OnChangeReadiness", isBufferReady, time, readyState);
-    }
-
-    private log(message: string) {
-        console.debug(`AudioPlayer: ${message}`);
-    }
-
-    private logWarn(message: string) {
-        console.warn(`AudioPlayer: ${message}`);
-    }
-
-    private logError(message: string) {
-        console.error(`AudioPlayer: ${message}`);
+    private invokeOnChangeReadiness(isBufferReady: boolean): Promise<void> {
+        return this.blazorRef.invokeMethodAsync("OnChangeReadiness", isBufferReady);
     }
 }
