@@ -165,6 +165,7 @@ module.exports = {
       'display-from-right': 'display-element-from-right 150ms ease-in-out',
       'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
       'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
+      'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
     },
     aspectRatio: {
       auto: 'auto',
@@ -665,6 +666,14 @@ module.exports = {
         to: {
           transform: 'translateX(1rem) scale(.1)',
             opacity: 0,
+        },
+      },
+      'display-element-from-bottom': {
+        from: {
+          transform: 'translateY(3rem)',
+        },
+        to: {
+          transform: 'translateY(0rem)',
         },
       },
     },
