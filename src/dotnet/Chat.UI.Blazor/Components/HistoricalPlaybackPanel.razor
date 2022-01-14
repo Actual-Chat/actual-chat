@@ -8,8 +8,8 @@
     var cssClass = _class ??= this.DefaultClass();
 }
 @if (model != Model.NotPlaying) {
-    <div class="@cssClass flex flex-row mx-3 my-1 items-center justify-center">
-        <div class="flex flex-row rounded-2xl px-4 outline-none bg-accent items-center justify-center">
+    <div class="@cssClass flex flex-row mx-3 mb-2 items-center justify-center animate-display-from-bottom">
+        <div class="flex flex-row rounded-md px-4 outline-none bg-accent items-center justify-center">
             @* Icons *@
             <div class="c-icons flex flex-row py-2">
                 <svg class="h-5" viewBox="0 0 68 24" xmlns="http://www.w3.org/2000/svg">
@@ -24,7 +24,7 @@
             @* Stop button *@
             <div class="c-stop ml-1 flex flex-row items-center">
                 <button @onclick="_ => Player.Stop()" class="text-secondary hover:transition hover:duration-300 hover:ease-in-out hover:scale-110">
-                    <svg class="h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0 0h24v24h-24z"/>
                     </svg>
                 </button>
