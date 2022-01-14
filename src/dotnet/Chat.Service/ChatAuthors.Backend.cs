@@ -114,15 +114,17 @@ public partial class ChatAuthors
 
         if (Computed.IsInvalidating()) {
             var operation = CommandContext.GetCurrent().Operation();
-            var chatAuthor = operation.Items.Get<ChatAuthor>()!;
-            var userId = (string?)context.Operation().Items[nameof(ChatAuthor.UserId)];
-            var chatId = (string)context.Operation().Items[nameof(ChatAuthor.ChatId)]!;
-            if (!userId.IsNullOrEmpty()) {
-                _ = GetByUserId(chatId, userId, true, default);
-                _ = GetByUserId(chatId, userId, false, default);
+            var invChatAuthor = operation.Items.Get<ChatAuthor>();
+            if (invChatAuthor != null) {
+                var invChatId = invChatAuthor.ChatId;
+                var invUserId = invChatAuthor.UserId;
+                if (!invUserId.IsEmpty) {
+                    _ = GetByUserId(invChatId, invUserId, true, default);
+                    _ = GetByUserId(invChatId, invUserId, false, default);
+                }
+                _ = Get(invChatId, authorId, true, default);
+                _ = Get(invChatId, authorId, false, default);
             }
-            _ = Get(chatId, authorId, true, default);
-            _ = Get(chatId, authorId, false, default);
             return;
         }
 
@@ -135,12 +137,13 @@ public partial class ChatAuthors
         if (dbChatAuthor == null)
             throw new InvalidOperationException("chat author does not exists");
 
-        context.Operation().Items[nameof(ChatAuthor.ChatId)] = dbChatAuthor.ChatId;
-        context.Operation().Items[nameof(ChatAuthor.UserId)] = dbChatAuthor.UserId;
         dbChatAuthor.Name = name ?? "";
         dbChatAuthor.Picture = picture ?? "";
         dbChatAuthor.Version = VersionGenerator.NextVersion();
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var сhatAuthor = dbChatAuthor.ToModel();
+        context.Operation().Items.Set(сhatAuthor);
     }
 
     // Private / internal methods
