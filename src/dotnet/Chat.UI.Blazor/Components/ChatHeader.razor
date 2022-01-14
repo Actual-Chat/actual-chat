@@ -1,5 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
-@inject Blazored.Modal.Services.IModalService ModalService
+@inject IModalService _modalService
 @using BlazorContextMenu
 
 <ContextMenuTrigger MenuId="chatHeaderMenu">
@@ -21,6 +21,6 @@
         var options = new ModalOptions { UseCustomLayout = true };
         var parameters = new ModalParameters();
         parameters.Add(nameof(EditChatAuthor.ChatId), (string)Chat.Id);
-        ModalService.Show<EditChatAuthor>(string.Empty, parameters, options);
+        _modalService.Show<EditChatAuthor>(string.Empty, parameters, options);
     }
 }
