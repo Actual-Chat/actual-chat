@@ -4,8 +4,8 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
 {
-    private static readonly int MaxBlockLength = 100;
-    private static readonly int MaxBlockContentLength = 10_000;
+    // private static readonly int MaxBlockLength = 1_000;
+    // private static readonly int MaxBlockContentLength = 10_000;
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
 
     public Symbol Key { get; }
@@ -71,9 +71,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
             var date = DateOnly.FromDateTime(entry.BeginsAt.ToDateTime().ToLocalTime());
             var hasDateLine = date != lastDate;
-            var isBlockEnd = blockLength > MaxBlockLength
-                || blockContentLength > MaxBlockContentLength
-                || ShouldSplit(entry, nextEntry);
+            var isBlockEnd = ShouldSplit(entry, nextEntry);
             var model = new ChatMessageModel(entry, authors[entry.AuthorId]!) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,

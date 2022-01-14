@@ -16,7 +16,7 @@ public class AudioProcessor : IAudioProcessor
     private static readonly Regex EmptyRegex = new("^\\s*$", RegexOptions.Compiled);
 
     protected ILogger Log { get; }
-    protected bool DebugMode => Constants.DebugMode.AudioProcessing;
+    protected bool DebugMode => Constants.DebugMode.AudioProcessor;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public Options Settings { get; }
