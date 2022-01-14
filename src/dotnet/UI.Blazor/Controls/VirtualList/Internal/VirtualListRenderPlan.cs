@@ -244,6 +244,7 @@ public class VirtualListRenderPlan<TItem>
         return;
 
         // AY: This part causes weird issues w/ scroll, to be investigated later.
+        /*
         if (!MustScroll) {
             // 3. We aren't scrolling, but maybe we still want to adjust the spacer...
             var maxSpacerSizeDelta = Math.Max(
@@ -259,6 +260,7 @@ public class VirtualListRenderPlan<TItem>
             else
                 NotifyWhenSafeToScroll = true;
         }
+        */
     }
 
     protected void UpdateClientSideState()
