@@ -150,7 +150,7 @@ public partial class ChatAuthors
 
     // Private / internal methods
 
-        internal async Task<long> DbNextLocalId(
+    internal async Task<long> DbNextLocalId(
         ChatDbContext dbContext,
         string chatId,
         CancellationToken cancellationToken)
