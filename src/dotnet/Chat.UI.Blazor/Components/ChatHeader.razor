@@ -9,18 +9,18 @@
 </ContextMenuTrigger>
 
 <ContextMenu Id="chatHeaderMenu" CssClass="text-secondary font-normal">
-    <Item OnClick="@ShowChatProfileSettings">Show Chat Profile Settings</Item>
+    <Item OnClick="@OnEditChatAuthor">Edit your name, image and bio in this chat</Item>
 </ContextMenu>
 
 @code {
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    private void ShowChatProfileSettings()
+    private void OnEditChatAuthor()
     {
         var options = new ModalOptions { UseCustomLayout = true };
         var parameters = new ModalParameters();
-        parameters.Add(nameof(ChatProfileSettings.ChatId), (string)Chat.Id);
-        ModalService.Show<ChatProfileSettings>(string.Empty, parameters, options);
+        parameters.Add(nameof(EditChatAuthor.ChatId), (string)Chat.Id);
+        ModalService.Show<EditChatAuthor>(string.Empty, parameters, options);
     }
 }
