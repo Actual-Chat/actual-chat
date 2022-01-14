@@ -18,8 +18,8 @@
 
     private void ShowChatProfileSettings()
     {
-        var options = new Blazored.Modal.ModalOptions { UseCustomLayout = true };
-        var parameters = new Blazored.Modal.ModalParameters();
+        var options = new ModalOptions { UseCustomLayout = true };
+        var parameters = new ModalParameters();
         parameters.Add(nameof(ChatProfileSettings.ChatId), (string)Chat.Id);
         ModalService.Show<ChatProfileSettings>(string.Empty, parameters, options);
     }
