@@ -8,14 +8,14 @@ public class ServerAuthHelper : Stl.Fusion.Server.Authentication.ServerAuthHelpe
     private ClaimMapper ClaimMapper { get; }
 
     public ServerAuthHelper(
-        Options? options,
+        Options? settings,
         IAuth auth,
         IAuthBackend authBackend,
         ISessionResolver sessionResolver,
         AuthSchemasCache authSchemasCache,
         ClaimMapper claimMapper,
         MomentClockSet clocks)
-        : base(options, auth, authBackend, sessionResolver, authSchemasCache, clocks)
+        : base(settings, auth, authBackend, sessionResolver, authSchemasCache, clocks)
         => ClaimMapper = claimMapper;
 
     protected override (User User, UserIdentity AuthenticatedIdentity) UpsertUser(User user, ClaimsPrincipal httpUser, string schema)
