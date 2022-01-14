@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,6 +12,7 @@ using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
+using Stl.Fusion.Server.Controllers;
 using Stl.Plugins;
 using Stl.Redis;
 
@@ -36,6 +38,14 @@ public class UsersServiceModule : HostModule<UsersSettings>
             options.LogoutPath = "/signOut";
             if (IsDevelopmentInstance)
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+            // This controls the expiration time stored in the cookie itself
+            options.ExpireTimeSpan = TimeSpan.FromDays(14);
+            options.SlidingExpiration = true;
+            // And this controls when the browser forgets the cookie
+            options.Events.OnSigningIn = ctx => {
+                ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
+                return Task.CompletedTask;
+            };
         }).AddGoogle(options => {
             options.ClientId = Settings.GoogleClientId;
             options.ClientSecret = Settings.GoogleClientSecret;
@@ -97,11 +107,14 @@ public class UsersServiceModule : HostModule<UsersSettings>
         var fusionAuth = fusion.AddAuthentication();
         services.TryAddScoped<ServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
-            signInControllerOptionsBuilder: (_, options) => {
-                options.DefaultScheme = MicrosoftAccountDefaults.AuthenticationScheme;
+            signInControllerSettingsFactory: _ => SignInController.DefaultSettings with {
+                DefaultScheme = GoogleDefaults.AuthenticationScheme,
+                SignInPropertiesBuilder = (_, properties) => {
+                    properties.IsPersistent = true;
+                },
             },
-            authHelperOptionsBuilder: (_, options) => {
-                options.NameClaimKeys = Array.Empty<string>();
+            serverAuthHelperSettingsFactory: _ => new() {
+                NameClaimKeys = Array.Empty<string>(),
             });
 
         // Module's own services
