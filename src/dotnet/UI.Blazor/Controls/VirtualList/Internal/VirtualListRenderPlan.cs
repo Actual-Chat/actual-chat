@@ -119,7 +119,7 @@ public class VirtualListRenderPlan<TItem>
         DisplayedItems = new List<ItemRenderPlan>();
         UnmeasuredItems = new List<ItemRenderPlan>();
         var itemRange = default(Range<double>);
-        foreach (var (key, item) in Data.Items) {
+        foreach (var (key, item, count) in Data.Items) {
             var newItem = new ItemRenderPlan { Key = key, Item = item };
             if (newItemSizes != null && newItemSizes.TryGetValue(key, out var newSize)) {
                 statistics.AddItem(newSize);
@@ -171,6 +171,10 @@ public class VirtualListRenderPlan<TItem>
             Viewport = Viewport.Move(topInsertSize);
             SpacerSize -= topInsertSize;
             EndSpacerSize -= bottomInsertSize;
+            if (Data.HasVeryFirstItem)
+                SpacerSize = 0;
+            if (Data.HasVeryLastItem)
+                EndSpacerSize = 0;
         }
         else {
             // Full refresh, i.e. no single common item between the old and the new plan
