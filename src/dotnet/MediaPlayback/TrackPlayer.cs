@@ -55,9 +55,11 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
         Exception? error = null;
         var isStarted = false;
         try {
+            var initializeTask = ProcessCommand(new InitializeCommand(this));
             // Actual playback
             var cpuClock = Clocks.CpuClock;
             var frames = Source.GetFramesUntyped(cancellationToken);
+            // TODO: shouldn't run playing if frames less than threshold (for example 20-40 ms only)
             await foreach (var frame in frames.ConfigureAwait(false)) {
                 if (!isStarted) {
                     // We do this here because we want to start buffering as early as possible
@@ -66,6 +68,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
                     if (playbackDelay > TimeSpan.FromMilliseconds(10))
                         await cpuClock.Delay(playbackDelay, cancellationToken).ConfigureAwait(false);
                     OnPlayedTo(TimeSpan.Zero);
+                    await initializeTask.ConfigureAwait(false);
                     var startPlaybackTask = ProcessCommand(new StartPlaybackCommand(this));
                     Log.LogInformation("Track #{TrackId}: StartPlaybackCommand, delay={Delay}",
                         Command.TrackId, GetDelayInfo(TimeSpan.Zero));
@@ -77,8 +80,8 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
                         Command.TrackId, GetDelayInfo(frame.Offset));
                 await processMediaFrameTask.ConfigureAwait(false);
             }
-            Log.LogInformation("Track #{TrackId}: StopPlaybackCommand", Command.TrackId);
-            await ProcessCommand(new StopPlaybackCommand(this, false)).ConfigureAwait(false);
+            Log.LogInformation("Track #{TrackId}: EndCommand", Command.TrackId);
+            await ProcessCommand(new EndCommand(this)).ConfigureAwait(false);
             await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException e) {
@@ -92,10 +95,11 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
         }
         finally {
             if (!WhenCompleted.IsCompleted) {
-                var immediately = cancellationToken.IsCancellationRequested || error != null;
-                var stopCommand = new StopPlaybackCommand(this, immediately);
                 try {
-                    await ProcessCommand(stopCommand).AsTask().WithTimeout(StopTimeout, default).ConfigureAwait(false);
+                    await ProcessCommand(new StopPlaybackCommand(this))
+                        .AsTask()
+                        .WithTimeout(StopTimeout, default)
+                        .ConfigureAwait(false);
                     await WhenCompleted.WithTimeout(StopTimeout, default).ConfigureAwait(false);
                     if (!WhenCompleted.IsCompleted)
                         OnStopped();
@@ -166,8 +170,8 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
 
     protected string GetDelayInfo(TimeSpan frameOffset)
     {
-        var recordedAt =  Command.TrackInfo.RecordedAt + frameOffset;
-        var clientSideRecordedAt =  Command.TrackInfo.ClientSideRecordedAt + frameOffset;
+        var recordedAt = Command.TrackInfo.RecordedAt + frameOffset;
+        var clientSideRecordedAt = Command.TrackInfo.ClientSideRecordedAt + frameOffset;
         var now = Clocks.SystemClock.Now;
         var delay = now - recordedAt;
         if (delay > MaxReportedDelay)

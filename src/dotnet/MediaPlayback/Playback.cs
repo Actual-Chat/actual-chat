@@ -114,7 +114,7 @@ public sealed class Playback : AsyncProcessBase, IHasServices
                         await Task.WhenAll(volumeTasks).ConfigureAwait(false);
                         break;
                     case StopCommand stopCommand:
-                        await TryStop(true).ConfigureAwait(false);
+                        await TryStop().ConfigureAwait(false);
                         break;
                     default:
                         throw new NotSupportedException($"Unsupported command type: '{command.GetType()}'.");
@@ -140,13 +140,13 @@ public sealed class Playback : AsyncProcessBase, IHasServices
         }
         catch (OperationCanceledException) {
             debugStopReason = "cancellation";
-            _ = TryStop(true);
+            _ = TryStop();
             throw;
         }
         catch (Exception e) {
             debugStopReason = "error";
             Log.LogError(e, "#{PlaybackIndex} failed", playbackIndex);
-            _ = TryStop(true);
+            _ = TryStop();
             throw;
         }
         finally {
@@ -167,9 +167,9 @@ public sealed class Playback : AsyncProcessBase, IHasServices
             DebugLog?.LogDebug("#{PlaybackIndex} ended ({StopReason})", playbackIndex, debugStopReason);
         }
 
-        Task TryStop(bool immediately) {
+        Task TryStop() {
             var stopTasks = trackPlayers.Values
-                .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p, immediately)).AsTask())
+                .Select(p => p.EnqueueCommand(new StopPlaybackCommand(p)).AsTask())
                 .ToArray();
             return Task.WhenAll(stopTasks);
         }
