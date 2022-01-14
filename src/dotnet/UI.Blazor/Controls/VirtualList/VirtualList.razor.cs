@@ -110,23 +110,21 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     }
 
     [JSInvokable]
-    public async Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
+    public Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
     {
         var lastPlan = LastPlan;
         if (lastPlan == null! || clientSideState.RenderIndex != lastPlan.RenderIndex) {
             DebugLog?.LogDebug(
                 "UpdateClientSideState: outdated RenderIndex = {RenderIndex} < {ExpectedRenderIndex}",
                 clientSideState.RenderIndex, lastPlan?.RenderIndex);
-            return lastPlan?.RenderIndex ?? -1;
+            return Task.FromResult(lastPlan?.RenderIndex ?? -1);
         }
 
-        if (DebugMode && Constants.DebugMode.VirtualListClientSideStateUpdateDelay > TimeSpan.Zero)
-            await Task.Delay(Constants.DebugMode.VirtualListClientSideStateUpdateDelay).ConfigureAwait(true);
-
+        // await Task.Delay(1000); // Debug only!
         DebugLog?.LogDebug("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
         ClientSideState = clientSideState;
         _ = this.StateHasChangedAsync();
-        return lastPlan.RenderIndex;
+        return Task.FromResult(lastPlan.RenderIndex);
     }
 
     protected void UpdateData()
