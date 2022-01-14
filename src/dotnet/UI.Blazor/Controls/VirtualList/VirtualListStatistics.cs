@@ -23,7 +23,7 @@ public class VirtualListStatistics : IVirtualListStatistics
     private double _responseActualCountSum;
     private long _responseExpectedCountSum;
 
-    public double DefaultItemSize { get; init; } = 16;
+    public double DefaultItemSize { get; init; } = 100;
     public double MinItemSize { get; init; } = 8;
     public double MaxItemSize { get; init; } = 16_384;
     /// <summary>
@@ -50,7 +50,7 @@ public class VirtualListStatistics : IVirtualListStatistics
             MinItemSize, MaxItemSize);
 
     public double DefaultResponseFulfillmentRatio { get; init; } = 1;
-    public double MinResponseFulfillmentRatio { get; init; } = 0.001;
+    public double MinResponseFulfillmentRatio { get; init; } = 0.25;
     public double MaxResponseFulfillmentRatio { get; init; } = 1;
     /// <summary>
     /// Acts similarly to <see cref="ItemCountResetThreshold"/>, but for response count statistics.
@@ -67,10 +67,14 @@ public class VirtualListStatistics : IVirtualListStatistics
             _responseExpectedCountSum < 1 ? DefaultResponseFulfillmentRatio : _responseActualCountSum / _responseExpectedCountSum,
             MinResponseFulfillmentRatio, MaxResponseFulfillmentRatio);
 
-    public void AddItem(double size)
+    public void AddItem(double size, int countAs)
     {
+        if (countAs == 0)
+            return;
+
+        size /= countAs;
         _itemSizeSum += size;
-        ++_itemCount;
+        _itemCount += countAs;
         if (_itemCount < ItemCountResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight

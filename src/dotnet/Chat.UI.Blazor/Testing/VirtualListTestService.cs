@@ -1,15 +1,13 @@
-using Stl.Time.Internal;
-
 namespace ActualChat.Chat.UI.Blazor.Testing;
 
-public class TestListService
+public class VirtualListTestService
 {
     private static readonly string[] Words = {"best", "virtual", "scroll", "ever", "100%", "absolutely"};
 
     private Moment Start { get; }
     private IMomentClock Clock { get; }
 
-    public TestListService(IServiceProvider services)
+    public VirtualListTestService(IServiceProvider services)
     {
         Clock = services.Clocks().CpuClock;
         Start = Clock.Now;
@@ -46,7 +44,6 @@ public class TestListService
             Enumerable
                 .Range(start, end - start + 1)
                 .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed)),
-            item => item.Key.ToString(CultureInfo.InvariantCulture),
             start == range.Start,
             end == range.End);
         await Task.Delay(100, cancellationToken).ConfigureAwait(false);
@@ -56,7 +53,7 @@ public class TestListService
     [ComputeMethod]
     public virtual async Task<TestListItem> GetItem(TestListItemRef itemRef, CancellationToken cancellationToken)
     {
-        var key = itemRef.Key;
+        var key = itemRef.Id;
         var keyRange = GetKeyRange(itemRef.RangeSeed);
         var contentSeed = itemRef.ContentSeed ?? await GetSeed(key % 10, 10, cancellationToken).ConfigureAwait(false);
         var rnd = new Random(contentSeed + key);
