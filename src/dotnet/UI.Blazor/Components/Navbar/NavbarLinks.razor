@@ -1,10 +1,11 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @inject HostInfo _hostInfo
+@inject IEnumerable<NavBarItem> _navBarItems
 
-<NavbarGroup Title="Chats">
-    <NavbarLink Title="The Actual One" Url="@($"/chat/{Constants.Chat.DefaultChatId}")" />
-</NavbarGroup>
+@foreach (var barItem in _navBarItems.OrderBy(c => c.Order))
+    @barItem.Content
+
 <NavbarGroup Title="Contacts">
     <Icons>
         <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
