@@ -2,7 +2,6 @@
  * We're only allowed to have 4-6 audio contexts on many browsers
  * and there's no way to discard them before GC, so we should reuse audio contexts.
  */
-// TODO: make the pooling with node objects too
 export class AudioContextPool {
 
     private static audioContexts = new Map<string, {
@@ -64,32 +63,19 @@ export class AudioContextPool {
         });
     };
 }
-/** helper function with workaround of Safari addModule implementation */
-async function getWorklet(url: string): Promise<string> {
-    if (self.navigator.userAgent.includes('Safari') && !self.navigator.userAgent.includes('Chrome')) {
-        const response = await fetch(url);
-        const text = await response.text();
-        return text;
-    } else {
-        return url;
-    }
-}
 
 AudioContextPool.register("main", async () => {
     const audioContext = new AudioContext({
         latencyHint: 'interactive',
         sampleRate: 48000,
     });
-    const feederWorklet = await getWorklet('/dist/feederWorklet.js');
-    await audioContext.audioWorklet.addModule(feederWorklet);
+    await audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
     return audioContext;
 });
 AudioContextPool.register("recorder", async () => {
     const audioContext = new AudioContext({ sampleRate: 48000 });
-    const opusEncoderWorklet = await getWorklet('/dist/opusEncoderWorklet.js');
-    await audioContext.audioWorklet.addModule(opusEncoderWorklet);
-    const vadWorklet = await getWorklet('/dist/vadWorklet.js');
-    await audioContext.audioWorklet.addModule(vadWorklet);
+    await audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
+    await audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
     return audioContext;
 });
 
