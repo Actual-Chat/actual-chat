@@ -88,8 +88,6 @@ public partial class ChatAuthors
             var userAuthor = await _userAuthorsBackend.Get(userId, true, cancellationToken).ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             dbChatAuthor = new DbChatAuthor() {
-                Name = userAuthor.Name, // Wrong: it should either generate anon
-                Picture = userAuthor.Picture,
                 IsAnonymous = userAuthor.IsAnonymous,
             };
         }
