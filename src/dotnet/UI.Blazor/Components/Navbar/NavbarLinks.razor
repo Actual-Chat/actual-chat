@@ -3,9 +3,6 @@
 @inject HostInfo _hostInfo
 @inject IEnumerable<NavBarItem> _navBarItems
 
-@foreach (var barItem in _navBarItems.OrderBy(c => c.Order))
-    @barItem.Content
-
 <NavbarGroup Title="Contacts">
     <Icons>
         <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -17,6 +14,7 @@
         <NavbarLink Title="Satoshi Nakamoto" Url="#" IsOnline="false"/>
     </ChildContent>
 </NavbarGroup>
+
 @if (_hostInfo.IsDevelopmentInstance) {
     <NavbarGroup Title="Test pages">
         <NavbarLink Title="Virtual List" Url="/test/virtual-list" />
