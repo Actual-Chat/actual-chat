@@ -14,7 +14,6 @@ function _(file) {
 // https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
 class WatchRunPlugin {
   apply(compiler) {
-    const /** @type {import('webpack').Compilation} */ compilation = null;
 
     compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
 

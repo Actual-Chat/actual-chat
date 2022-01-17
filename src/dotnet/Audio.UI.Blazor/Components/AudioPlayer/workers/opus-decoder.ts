@@ -67,6 +67,8 @@ export class OpusDecoder {
         queue.clear();
         demuxer.audioPackets = [];
         await this.flushDemuxer();
+        // free + alloc the queue in the demuxer
+        this.demuxer["_ogv_demuxer_destroy"]();
         await new Promise<void>(resolve => this.demuxer.init(resolve));
         this.state = 'uninitialized';
     }
