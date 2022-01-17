@@ -48,7 +48,7 @@
     @*More Button*@
     <div class="more-button mx-1 rounded-md">
         <div class="flex-col">
-            <button class="text-secondary transition duration-300 ease-in-out hover:scale-110">
+            <button class="text-secondary transition duration-300 ease-in-out hover:scale-110" @onclick="DisplaySubmenu">
                 <svg class="w-6 h-6 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-3 -3 30 30"><path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/></svg>
             </button>
             <div class="more-tooltip message-menu-tooltip">
@@ -56,4 +56,15 @@
             </div>
         </div>
     </div>
+    <ChatMessageSubmenu isVisible="@isSubmenuVisible" />
+
 </div>
+
+
+@code {
+    private bool isSubmenuVisible { get; set; } = false;
+
+    private void DisplaySubmenu() {
+        isSubmenuVisible = !isSubmenuVisible;
+    }
+}

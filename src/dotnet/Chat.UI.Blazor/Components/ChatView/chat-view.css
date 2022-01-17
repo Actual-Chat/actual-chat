@@ -43,6 +43,14 @@
     @apply visible;
 }
 
+.message-submenu-button {
+    @apply relative w-full flex-row rounded-md m-1 text-primary;
+}
+
+.submenu-item:hover {
+    @apply bg-secondary;
+}
+
 .reply-button:hover .reply-tooltip {
     @apply visible;
 }
