@@ -1,0 +1,59 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComputedStateComponent<AccountView.Model>
+
+@{
+    var model = @State.LatestNonErrorValue;
+    var name = model.Name;
+    var picture = model.Picture;
+    if (picture.IsNullOrEmpty())
+        picture = $"https://avatars.dicebear.com/api/avataaars/{name}.svg";
+}
+
+<img class="inline-block h-8 w-8 rounded-full" src="@picture" alt="avatar">
+<div class="ml-3">
+    <p class="text-sm leading-5 font-medium text-primary-muted hover:text-primary">
+        @name
+    </p>
+    <div class="flex flex-row items-center px-1">
+        <span class="rounded-full block w-2 h-2 mr-2 bg-online"></span>
+        <span class="text-primary-muted font-medium text-xxs text-left leading-4 hover:text-primary"><a href="#">Online</a></span>
+    </div>
+</div>
+
+@code {
+    private IAccountInfoProvider? _accountInfoProvider;
+
+    public class Model
+    {
+        public string Picture { get; set; } = "";
+        public string Name { get; set; } = "";
+    }
+
+    [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
+
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public User User { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _accountInfoProvider = ServiceProvider.GetService<IAccountInfoProvider>();
+    }
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+    => new () { InitialValue = new() { Name = User.Name } };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var model = new Model();
+        if (!User.IsAuthenticated || _accountInfoProvider == null)
+            return new Model { Name = User.Name };
+        var accountInfo = await _accountInfoProvider.GetAccountInfo(User, cancellationToken);
+        model.Name = accountInfo?.Name ?? User.Name;
+        model.Picture = accountInfo?.Picture ?? "";
+        return model;
+    }
+}
