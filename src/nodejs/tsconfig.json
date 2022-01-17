@@ -21,6 +21,8 @@
     "noEmitOnError": true,
     "importsNotUsedAsValues": "remove",
     "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "maxNodeModuleJsDepth": 1,
     "esModuleInterop": false,
     // change to true (?)
     "noImplicitAny": false,
