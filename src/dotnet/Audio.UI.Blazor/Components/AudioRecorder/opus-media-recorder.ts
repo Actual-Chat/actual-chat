@@ -12,6 +12,15 @@ import {
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding';
 
+export class DataEvent extends Event {
+    readonly data: Uint8Array;
+
+    constructor(data: Uint8Array) {
+        super('datarecorded');
+        this.data = data;
+    }
+}
+
 const SAMPLE_RATE: number = 48000;
 const mimeType: string = 'audio/webm';
 export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
@@ -23,7 +32,6 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     private workerState: WorkerState = 'inactive';
     private encoderWorklet: AudioWorkletNode = null;
     private stopResolve: () => void = null;
-    // private startResolve: () => void = null;
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream: MediaStream;
@@ -33,6 +41,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     public state: RecordingState = 'inactive';
 
+    public ondatarecorded: ((ev: DataEvent) => any) | null;
     public ondataavailable: ((ev: BlobEvent) => any) | null;
     public onerror: ((ev: MediaRecorderErrorEvent) => any) | null;
     public onpause: ((ev: Event) => any) | null;
@@ -69,6 +78,11 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     public override dispatchEvent(event: Event): boolean {
         const { type } = event;
         switch (type) {
+            case 'datarecorded':
+                if (this.ondatarecorded) {
+                    this.ondatarecorded(event as DataEvent);
+                }
+                break;
             case 'dataavailable':
                 if (this.ondataavailable) {
                     this.ondataavailable(event as BlobEvent);
@@ -289,11 +303,25 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
             case 'encodedData':
             case 'lastEncodedData':
-                let data = new Blob(buffers, {'type': mimeType});
-                let eventToPush;
-                eventToPush = new Event('dataavailable');
-                eventToPush.data = data;
-                this.dispatchEvent(eventToPush);
+                if (this.ondataavailable) {
+                    let data = new Blob(buffers, {'type': mimeType});
+                    let eventToPush;
+                    eventToPush = new Event('dataavailable');
+                    eventToPush.data = data;
+
+                    this.dispatchEvent(eventToPush);
+                }
+                else if (this.ondatarecorded) {
+                    const totalLength = buffers.reduce((t,buffer) => t + buffer.byteLength, 0);
+                    const data = new Uint8Array(totalLength);
+                    buffers.reduce((offset, buffer)=>{
+                        data.set(new Uint8Array(buffer),offset);
+                        return offset + buffer.byteLength;
+                    },0);
+                    const dataEvent = new DataEvent(data);
+
+                    this.dispatchEvent(dataEvent);
+                }
 
                 // Detect of stop() called before
                 if (command === 'lastEncodedData') {
