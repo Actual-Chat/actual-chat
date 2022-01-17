@@ -671,9 +671,11 @@ module.exports = {
       },
       'display-element-from-bottom': {
         from: {
-          transform: 'translateY(3rem)',
+          opacity: 0,
+          transform: 'translateY(1.5rem)',
         },
         to: {
+          opacity: 1,
           transform: 'translateY(0rem)',
         },
       },
