@@ -10,7 +10,7 @@ import {
 import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from "../workers/opus-decoder-worker-message";
 
 const SAMPLE_RATE = 48000;
-/** Part of the feeder that lives in AudioWorkletGlobalScope */
+/** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
     private readonly debug: boolean = false;

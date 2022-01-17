@@ -171,6 +171,15 @@ module.exports = (env, args) => {
       ],
     },
     entry: {
+      warmUpWorklet: {
+        import: './src/worklets/warm-up-worklet-processor.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
       feederWorklet: {
         import: './../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts',
         chunkLoading: false,
