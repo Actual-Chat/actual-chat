@@ -31,7 +31,7 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
         if (result.Picture.IsNullOrEmpty()) {
             var gravatarHash = await _userInfos.GetGravatarHash(userId, cancellationToken).ConfigureAwait(false);
             if (!gravatarHash.IsNullOrEmpty()) {
-                var gravatarPic = "https://www.gravatar.com/avatar/" + gravatarHash;
+                var gravatarPic = "https://www.gravatar.com/avatar/" + gravatarHash + "?d=identicon";
                 result = result with { Picture = gravatarPic };
             }
         }
