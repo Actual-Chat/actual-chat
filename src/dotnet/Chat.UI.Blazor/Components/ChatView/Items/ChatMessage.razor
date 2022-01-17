@@ -8,10 +8,6 @@
     var entry = Model.Entry;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
     var picture = author.Picture;
-    if (string.IsNullOrWhiteSpace(picture))
-        picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg";
-    else if (picture.Contains("gravatar.com/avatar/"))
-        picture = picture + $"?d=https://avatars.dicebear.com/api/avataaars/{author.Name}.svg";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
