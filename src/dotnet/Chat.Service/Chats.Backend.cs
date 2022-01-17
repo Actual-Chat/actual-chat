@@ -19,6 +19,8 @@ public partial class Chats
         "crui3er@gmail.com",
         "andrey.yakunin@actual.chat",
         "iqmulator@gmail.com",
+        "alexis.kochetov@gmail.com",
+        "alexey.kochetov@actual.chat",
         "vobewaf244@douwx.com", // Test account
     };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
