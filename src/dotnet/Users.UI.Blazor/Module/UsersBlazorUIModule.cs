@@ -16,6 +16,8 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
         services.AddSingleton(_ => new PresenceService.Options() {
             UpdatePeriod = TimeSpan.FromSeconds(50),
         });
+
+        services.AddScoped<IAccountInfoProvider, AccountInfoProvider>();
     }
 }
 
