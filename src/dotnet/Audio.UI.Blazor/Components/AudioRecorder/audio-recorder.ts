@@ -1,4 +1,4 @@
-import { OpusMediaRecorder } from './opus-media-recorder';
+import {DataEvent, OpusMediaRecorder} from './opus-media-recorder';
 import { AudioContextPool } from 'audio-context-pool';
 import {
     DataRecordingEvent,
@@ -48,12 +48,9 @@ export class AudioRecorder {
             audioBitsPerSecond: 32000,
         };
         this.recorder = new OpusMediaRecorder(options);
-        this.recorder.ondataavailable = async (be: BlobEvent) => {
+        this.recorder.ondatarecorded = async (de: DataEvent) => {
             try {
-                const blob = be.data;
-                let buffer = await blob.arrayBuffer();
-                let chunk = new Uint8Array(buffer);
-                this.queue.append(new DataRecordingEvent(chunk));
+                this.queue.append(new DataRecordingEvent(de.data));
             } catch (e) {
                 console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
             }
