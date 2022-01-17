@@ -148,28 +148,45 @@ export class AudioRecorder {
             this.context = {
                 recorderContext: recorderContext,
                 vadWorkletNode: vadWorkletNode,
-            }
+            };
         }
 
         if (this.recording == null) {
-            const stream: MediaStream = await navigator.mediaDevices.getUserMedia({
+            const constraints: MediaStreamConstraints & any = {
                 audio: {
                     channelCount: 1,
                     sampleRate: 48000,
                     sampleSize: 32,
-                    // @ts-ignore
-                    autoGainControl: {
-                        ideal: true
-                    },
-                    echoCancellation: {
-                        ideal: true
-                    },
-                    noiseSuppression: {
-                        ideal: true
-                    }
+                    autoGainControl: true,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    googEchoCancellation: true,
+                    googEchoCancellation2: true,
+                    latency: 0,
+                    /**
+                     * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
+                     * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
+                     */
+                    advanced: [
+                        { autoGainControl: { exact: true } },
+                        { echoCancellation: { exact: true } },
+                        { noiseSuppression: { exact: true } },
+                        { googEchoCancellation: { ideal: true } },
+                        { googEchoCancellation2: { ideal: true } },
+                        { googAutoGainControl: { ideal: true } },
+                        { googNoiseSuppression: { ideal: true } },
+                        { googNoiseSuppression2: { ideal: true } },
+                        { googExperimentalAutoGainControl: { ideal: true } },
+                        { googExperimentalEchoCancellation: { ideal: true } },
+                        { googExperimentalNoiseSuppression: { ideal: true } },
+                        { googHighpassFilter: { ideal: true } },
+                        { googTypingNoiseDetection: { ideal: true } },
+                        { googAudioMirroring: { exact: false } },
+                    ],
                 },
                 video: false
-            });
+            };
+            const stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
 
             // TODO: refactor this after deleting recordrtc
             this.vadWorker.postMessage({ topic: 'init-new-stream' });
