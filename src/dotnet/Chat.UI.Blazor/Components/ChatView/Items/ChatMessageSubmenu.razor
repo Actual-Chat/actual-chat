@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<div class="w-40 absolute right-0 flex flex-col bg-accent rounded-md p-1 mr-12 -mt-8 shadow-lg @visibleToggle()">
+<div class="chat-message-submenu w-40 absolute right-0 bottom-0 flex flex-col bg-accent rounded-md p-1 mr-12 -mt-20 shadow-lg invisible">
     <div class="relative">
         @* Create Thread *@
         <div class="submenu-item px-1 rounded-sm">
@@ -31,12 +31,3 @@
         </div>
     </div>
 </div>
-
-@code {
-    [Parameter]
-    public bool isVisible { get; set; }
-
-    private string visibleToggle()
-        => isVisible ? "visible" : "invisible";
-
-}

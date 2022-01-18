@@ -66,3 +66,7 @@
 .more-button:hover .more-tooltip {
     @apply visible;
 }
+
+.more-button:focus .chat-message-submenu {
+    @apply visible;
+}
