@@ -33,6 +33,24 @@ public partial class Chats
     }
 
     // [ComputeMethod]
+    public virtual async Task<string[]> GetOwnedChatIds(string userId, CancellationToken cancellationToken)
+    {
+        if (userId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        string[] ownedChatIds;
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false)) {
+            ownedChatIds = await dbContext.ChatOwners
+                .Where(a => a.UserId == userId)
+                .Select(a => a.ChatId)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return ownedChatIds;
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ChatPermissions> GetPermissions(
         string chatId,
         string chatPrincipalId,
@@ -182,11 +200,15 @@ public partial class Chats
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating())
-            return null!; // Nothing to invalidate
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            foreach(var userIdInv in invChat.OwnerIds)
+                _ = GetOwnedChatIds(userIdInv, default);
+            return null!;
+        }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
         var chat = command.Chat with {
             Id = Ulid.NewUlid().ToString(),

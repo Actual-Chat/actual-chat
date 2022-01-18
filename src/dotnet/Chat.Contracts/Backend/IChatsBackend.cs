@@ -5,6 +5,8 @@ public interface IChatsBackend
     [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> Get(string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
+    Task<string[]> GetOwnedChatIds(string userId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
     Task<long> GetEntryCount(
         string chatId, ChatEntryType entryType, Range<long>? idTileRange,
         bool includeRemoved,

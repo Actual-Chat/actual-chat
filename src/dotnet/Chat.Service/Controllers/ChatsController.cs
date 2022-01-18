@@ -21,6 +21,10 @@ public class ChatsController : ControllerBase, IChats
         => _chats.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
+        => _chats.GetChats(session, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<long> GetEntryCount(
         Session session,
         string chatId,
