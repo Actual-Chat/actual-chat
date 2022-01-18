@@ -9,6 +9,9 @@ public interface IChatsClientDef
     [Get(nameof(Get))]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
+    [Get(nameof(GetChats))]
+    Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
+
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
         Session session,
@@ -55,6 +58,8 @@ public interface IChatAuthorsClientDef
     Task<string> GetChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthor))]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
+    [Get(nameof(GetChatIds))]
+    Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
 
     [Post(nameof(UpdateAuthor))]
     Task UpdateAuthor([Body] IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken);

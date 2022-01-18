@@ -38,6 +38,22 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [ComputeMethod]
+    public virtual async Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
+    {
+        var chatIds = await _chatAuthors.GetChatIds(session, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user.IsAuthenticated) {
+            var ownedChatIds = await GetOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
+            chatIds = chatIds.Union(ownedChatIds, StringComparer.Ordinal).ToArray();
+        }
+
+        var chatTasks = await Task
+            .WhenAll(chatIds.Select(id => Get(session, id, cancellationToken)))
+            .ConfigureAwait(false);
+        return chatTasks.Where(c => c != null).Select(c => c!).ToArray();
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         Session session,
         string chatId,

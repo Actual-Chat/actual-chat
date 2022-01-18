@@ -7,6 +7,8 @@ namespace ActualChat.Chat;
 
 public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, IChatAuthorsBackend
 {
+    private const string AuthorIdSuffix = "::authorId";
+
     private readonly ICommander _commander;
     private readonly IAuth _auth;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
@@ -38,7 +40,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
             return await GetByUserId(chatId, user.Id, false, cancellationToken).ConfigureAwait(false);
 
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        var authorId = options[$"{chatId}::authorId"] as string;
+        var authorId = options[chatId + AuthorIdSuffix] as string;
         if (authorId == null)
             return null;
         return await Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
@@ -63,6 +65,22 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     {
         var chatAuthor = await Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);
         return chatAuthor.ToAuthor();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user.IsAuthenticated)
+            return await GetChatIdsByUserId(user.Id, cancellationToken).ConfigureAwait(false);
+
+        var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        var chatIds = options.Items.Keys
+            .Select(c => c.Value)
+            .Where(c => c.EndsWith(AuthorIdSuffix, StringComparison.Ordinal))
+            .Select(c => c.Substring(0, c.Length - AuthorIdSuffix.Length))
+            .ToArray();
+        return chatIds;
     }
 
     // [CommandHandler]

@@ -41,6 +41,24 @@ public partial class ChatAuthors
         return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken)
+    {
+        if (userId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        string[] chatIds;
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false)) {
+            chatIds = await dbContext.ChatAuthors
+                .Where(a => a.UserId == userId)
+                .Select(a => a.ChatId)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return chatIds;
+    }
+
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
@@ -57,7 +75,7 @@ public partial class ChatAuthors
         if (!user.IsAuthenticated) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
-                new($"{chatId}::authorId", chatAuthor.Id));
+                new(chatId + AuthorIdSuffix, chatAuthor.Id));
             await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return chatAuthor;
@@ -71,6 +89,7 @@ public partial class ChatAuthors
             if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
                 _ = GetByUserId(chatId, userId, false, default);
+                _ = GetChatIdsByUserId(userId, default);
             }
             return default!;
         }
