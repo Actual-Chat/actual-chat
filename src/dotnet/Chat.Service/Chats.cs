@@ -111,10 +111,24 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
 
         var chat = new Chat() {
             Title = title,
+            IsPublic = command.IsPublic,
             OwnerIds = ImmutableArray.Create(user.Id),
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
         return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Unit> JoinChat(IChats.JoinChatCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId) = command;
+        // TODO: add permissions check
+
+        await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        return Unit.Default;
     }
 
     // [CommandHandler]
