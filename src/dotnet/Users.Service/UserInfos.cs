@@ -43,9 +43,10 @@ public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
         using var md5 = System.Security.Cryptography.MD5.Create();
         var inputBytes = Encoding.ASCII.GetBytes(input);
         var hashBytes = md5.ComputeHash(inputBytes);
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(32);
         foreach (var @byte in hashBytes)
-            sb.Append(@byte.ToString("x2"));
+#pragma warning disable MA0028
+            sb.Append(@byte.ToString("x2", CultureInfo.InvariantCulture));
         return sb.ToString();
     }
 }

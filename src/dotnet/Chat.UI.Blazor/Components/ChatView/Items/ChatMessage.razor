@@ -9,7 +9,8 @@
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
     var picture = author.Picture;
     if (string.IsNullOrWhiteSpace(picture))
-        picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name}.svg";
+        // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
+        picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
