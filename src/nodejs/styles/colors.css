@@ -4,6 +4,7 @@
     --background-secondary: #F9FAFB;
     --background-accent: #e2e7ec;
     --background-online: #31d872;
+    --background-message-hover: #f3f4f6;
 
     --text-color-primary: #2b3641;
     --text-color-primary-muted: #3b4a59;
@@ -34,6 +35,7 @@
     --background-secondary: #222831;
     --background-accent: #4b5666;
     --background-online: #31d872;
+    --background-message-hover: #1f2937;
 
     --text-color-primary: #f6f7f9;
     --text-color-primary-muted: #d3d9e1;

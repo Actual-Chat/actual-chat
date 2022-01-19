@@ -51,6 +51,7 @@ module.exports = {
         'button-success-hover': 'var(--button-color-success-hover)',
         'button-accent': 'var(--button-color-accent)',
         'button-accent-hover': 'var(--button-color-accent-hover)',
+        'message-hover': 'var(--background-message-hover)',
       },
     },
     screens: {
@@ -670,9 +671,11 @@ module.exports = {
       },
       'display-element-from-bottom': {
         from: {
-          transform: 'translateY(3rem)',
+          opacity: 0,
+          transform: 'translateY(1.5rem)',
         },
         to: {
+          opacity: 1,
           transform: 'translateY(0rem)',
         },
       },
