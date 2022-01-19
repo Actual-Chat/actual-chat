@@ -1,4 +1,4 @@
-import {DataEvent, OpusMediaRecorder} from './opus-media-recorder';
+import { DataEvent, OpusMediaRecorder } from './opus-media-recorder';
 import { AudioContextPool } from 'audio-context-pool';
 import {
     DataRecordingEvent,
@@ -31,7 +31,7 @@ export class AudioRecorder {
 
     private recording: {
         stream: MediaStream,
-        streamNode: MediaStreamAudioSourceNode,
+        streamSourceNode: MediaStreamAudioSourceNode,
     };
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: IRecordingEventQueue) {
@@ -184,21 +184,21 @@ export class AudioRecorder {
                 video: false
             };
             const stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
-
-            // TODO: refactor this after deleting recordrtc
             this.vadWorker.postMessage({ topic: 'init-new-stream' });
-            const streamNode = this.context.recorderContext.createMediaStreamSource(stream);
-            streamNode.connect(this.context.vadWorkletNode);
+
+            const streamSourceNode = this.context.recorderContext.createMediaStreamSource(stream);
+
+            streamSourceNode.connect(this.context.vadWorkletNode);
 
             this.recording = {
                 stream: stream,
-                streamNode: streamNode,
+                streamSourceNode: streamSourceNode,
             };
         }
 
 
         this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
-        await this.recorder.startAsync(this.recording.streamNode, 40);
+        await this.recorder.startAsync(this.recording.streamSourceNode, 40);
         await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
@@ -212,8 +212,8 @@ export class AudioRecorder {
         this.recording = null;
 
         if (recording !== null) {
-            recording.streamNode.disconnect();
-            recording.streamNode = null;
+            recording.streamSourceNode.disconnect();
+            recording.streamSourceNode = null;
             this.context.vadWorkletNode.disconnect();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());

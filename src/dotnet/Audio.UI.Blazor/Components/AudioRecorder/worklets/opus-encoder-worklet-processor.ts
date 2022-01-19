@@ -4,6 +4,7 @@ import { AudioRingBuffer } from "./audio-ring-buffer";
 const SAMPLES_PER_MS = 48;
 
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
+    private static allowedTimeSlice = [20, 40, 60, 80];
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
     private readonly bufferDeque: Denque;
@@ -13,8 +14,10 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         const { timeSlice } = options.processorOptions;
-        if (timeSlice != 20 && timeSlice != 40 && timeSlice != 60 && timeSlice != 80) {
-            throw new Error('OpusEncoderWorkletProcessor supports only 20, 40, 60, 80 timeSlice argument');
+
+        if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
+            throw new Error('OpusEncoderWorkletProcessor supports only ' +
+                JSON.stringify(OpusEncoderWorkletProcessor.allowedTimeSlice) + ' timeSlice argument');
         }
 
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
@@ -75,7 +78,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
                 }
             }
         }
-        catch(error) {
+        catch (error) {
             console.log(error);
         }
 

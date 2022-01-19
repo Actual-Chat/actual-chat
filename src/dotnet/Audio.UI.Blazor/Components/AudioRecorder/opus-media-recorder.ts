@@ -271,7 +271,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 break;
 
             case 'done':
-                // Tell encoder finallize the job and destory itself.
+                // Tell encoder finalize the job and destroy itself.
                 // Expected 'lastEncodedData' event from the worker.
                 this.worker.postMessage(encoderCommand);
                 break;
