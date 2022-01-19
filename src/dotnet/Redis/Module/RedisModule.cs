@@ -1,6 +1,7 @@
-﻿using ActualChat.Configuration;
+using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
+using StackExchange.Redis;
 using Stl.Plugins;
 using Stl.Redis;
 
@@ -37,6 +38,26 @@ public class RedisModule : HostModule<RedisSettings>
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
             typeof(TContext).Name, configuration, keyPrefix);
 
+        // Stl.Redis doesn't support specifying SocketManager for now
+        var cfg = ConfigurationOptions.Parse(configuration);
+        // remove after https://github.com/StackExchange/StackExchange.Redis/pull/1939 will be published
+        cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(configuration, keyPrefix);
+    }
+}
+
+internal static class ServiceCollectionExt
+{
+    private static IServiceCollection AddRedisDb<TContext>(
+        this IServiceCollection services,
+        ConfigurationOptions configuration,
+        string? keyPrefix = null)
+    {
+        keyPrefix ??= typeof(TContext).Name;
+        services.AddSingleton(c => {
+            var multiplexer = ConnectionMultiplexer.Connect(configuration);
+            return new RedisDb<TContext>(multiplexer, keyPrefix);
+        });
+        return services;
     }
 }
