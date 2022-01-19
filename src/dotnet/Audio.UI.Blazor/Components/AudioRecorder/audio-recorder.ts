@@ -149,6 +149,10 @@ export class AudioRecorder {
         }
 
         if (this.recording == null) {
+            /**
+             * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
+             * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
+             */
             const constraints: MediaStreamConstraints & any = {
                 audio: {
                     channelCount: 1,
@@ -160,10 +164,6 @@ export class AudioRecorder {
                     googEchoCancellation: true,
                     googEchoCancellation2: true,
                     latency: 0,
-                    /**
-                     * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
-                     * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
-                     */
                     advanced: [
                         { autoGainControl: { exact: true } },
                         { echoCancellation: { exact: true } },

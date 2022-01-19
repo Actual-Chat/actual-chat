@@ -4,14 +4,10 @@ export class ChatMessageEditor {
 
     private _blazorRef: DotNet.DotNetObject;
     private _editorDiv: HTMLDivElement;
-    private _attachButton: HTMLButtonElement;
     private _input: HTMLDivElement;
-    private _audioWave: HTMLDivElement;
     private _postButton: HTMLButtonElement;
-    private _langButtonDiv: HTMLDivElement;
     private _recorderButtonDiv: HTMLDivElement;
     private _recordButton: HTMLButtonElement;
-    private _playerButtonDiv: HTMLDivElement;
     private _isTextMode: boolean = false;
     private _isRecording: boolean = false;
 
@@ -21,14 +17,10 @@ export class ChatMessageEditor {
 
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this._editorDiv = editorDiv;
-        this._attachButton = this._editorDiv.querySelector('button.attach-button');
         this._input = this._editorDiv.querySelector('div.message-input');
-        this._audioWave = this._editorDiv.querySelector('div.audio-wave');
         this._postButton = this._editorDiv.querySelector('button.post-message');
         this._blazorRef = blazorRef;
-        this._langButtonDiv = this._editorDiv.querySelector('div.language-button');
         this._recorderButtonDiv = this._editorDiv.querySelector('div.recorder-button');
-        this._playerButtonDiv = this._editorDiv.querySelector('div.player-button');
         this._recordButton = this._recorderButtonDiv.querySelector('button');
 
         // Wiring up event listeners
@@ -55,7 +47,7 @@ export class ChatMessageEditor {
     public syncLanguageButtonVisibility() {
         let recordIcon = this._recordButton.querySelector('svg');
         let isRecording = recordIcon.classList.contains('not-recording');
-        if (this._isRecording == isRecording)
+        if (this._isRecording === isRecording)
             return;
         this._isRecording = isRecording;
         if (isRecording){
@@ -67,11 +59,11 @@ export class ChatMessageEditor {
 
     public changeMode() {
         let isTextMode = this._input.innerText != "";
-        if (this._isTextMode == isTextMode)
+        if (this._isTextMode === isTextMode)
             return;
         this._isTextMode = isTextMode;
         if (isTextMode) {
-            this._editorDiv.classList.add( 'text-mode');
+            this._editorDiv.classList.add('text-mode');
         } else {
             this._editorDiv.classList.remove('text-mode');
         }
