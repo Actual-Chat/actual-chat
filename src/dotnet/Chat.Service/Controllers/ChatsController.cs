@@ -67,6 +67,10 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpPost]
+    public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
+        => _chats.JoinChat(command, cancellationToken);
+
+    [HttpPost]
     public Task<ChatEntry> CreateEntry([FromBody] IChats.CreateEntryCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);

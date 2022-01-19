@@ -62,7 +62,7 @@ public partial class Chats
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
 
-        ChatAuthor? author;
+        ChatAuthor? author = null;
         if (!authorId.IsNullOrEmpty()) {
             author = await _chatAuthorsBackend.Get(chatId, authorId!, false, cancellationToken).ConfigureAwait(false);
             userId = author?.UserId;
@@ -79,6 +79,8 @@ public partial class Chats
                 return ChatPermissions.All;
             return ChatPermissions.None;
         }
+        if (author != null)
+            return ChatPermissions.Read | ChatPermissions.Write;
         if (chat.IsPublic)
             return ChatPermissions.Read;
 

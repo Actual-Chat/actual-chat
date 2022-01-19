@@ -31,17 +31,16 @@
     }
 
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private UICommandRunner Cmd { get; set; } = default!;
 
-    private Model _model = new();
+    private readonly Model _model = new();
 
     [CascadingParameter]
     public BlazoredModalInstance ModalInstance { get; set; } = default!;
 
     private async Task OnCreate()
     {
-        var command = new IChats.CreateChatCommand(Session, _model.Title);
+        var command = new IChats.CreateChatCommand(Session, _model.Title) { IsPublic = true };
         await Cmd.Run(command, default);
         await ModalInstance.CloseAsync();
     }
