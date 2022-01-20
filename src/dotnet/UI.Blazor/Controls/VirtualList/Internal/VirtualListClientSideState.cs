@@ -11,13 +11,13 @@ public class VirtualListClientSideState
     public double EndSpacerSize { get; set; }
     /// <summary> Total height of the scroll area. </summary>
     public double ScrollHeight { get; set; }
+    /// <summary> Scroll top of the viewport. </summary>
+    public double? ScrollTop { get; set; }
+    /// <summary> Visible viewport height. </summary>
+    public double? ViewportHeight { get; set; }
+
     /// <summary> Size of resized items. </summary>
     public Dictionary<string, double> ItemSizes { get; set; } = new(StringComparer.Ordinal);
-
-    /// <summary> Scroll top of the viewport. </summary>
-    public double ScrollTop { get; set; }
-    /// <summary> Client height (visible viewport height) of the viewport. </summary>
-    public double ClientHeight { get; set; }
 
     /// <summary> Can we scroll programmatically at the moment? </summary>
     public bool IsSafeToScroll { get; set; }

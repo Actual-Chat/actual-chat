@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
     var plan = LastPlan = Plan;
-    DebugLog?.LogDebug("Rendering: RenderIndex={RenderIndex}", Plan.RenderIndex);
+    DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
     var flexBase = "flex flex-nowrap items-stretch";
     var flexDir = Plan.IsEndAligned ? "flex-col-reverse" : "flex-col";
     var scrollContainerFlexClass = $"{flexBase} {flexDir}";
@@ -19,19 +19,25 @@
         ItemSizes = plan.DisplayedItems.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
 
         ScrollTop = plan.ScrollTop,
-        ClientHeight = plan.Viewport.Size(),
+        ViewportHeight = plan.Viewport?.Size(),
 
         MustMeasure = plan.UnmeasuredItems.Count != 0,
         MustScroll = plan.MustScroll,
         NotifyWhenSafeToScroll = plan.NotifyWhenSafeToScroll,
     };
     ClientSideState = plan.ClientSideState ?? ClientSideState;
+    if (Plan.UnmeasuredItems.Count == 0 && !Plan.IsFullyLoaded())
+        UpdateData();
 }
 
 @* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
 <div @ref="Ref" class="virtual-list overflow-y-scroll h-full @scrollContainerFlexClass @Class @(CssClasses.Default[GetType()])"
      style="@Style">
     <div class="content relative @flexBase flex-col">
+        <div @key="@("<RenderState>")"
+             data-render-state="@SystemJsonSerializer.Default.Write(renderState)"
+             class="data render-state"
+             style="display: none"></div>
         <div class="items items-unmeasured @flexClass overflow-y-hidden h-0 invisible">
             @foreach (var planItem in Plan.UnmeasuredItems) {
                 <div @key="planItem.Key" class="item" data-key="@planItem.Key">
@@ -39,8 +45,9 @@
                 </div>
             }
         </div>
-        <div class="spacer spacer-start overflow-y-hidden @invFlexClass"
-              style="height: @(Plan.SpacerSize)px">
+        <div @key="@("<Spacer>")"
+             class="spacer spacer-start overflow-y-hidden @invFlexClass"
+             style="height: @(Plan.SpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = -SkeletonCount; i < 0; i++) {
                     <div @key="@i" class="skeleton">
@@ -50,13 +57,14 @@
             </SkeletonContainer>
         </div>
         <div class="items items-displayed @flexClass">
-            @foreach (var planItem in Plan.DisplayedItems) {
+            @foreach (var planItem in Plan.LoadedItems) {
                 <div @key="planItem.Key" class="item" data-key="@planItem.Key">
                     @Item(planItem.Item)
                 </div>
             }
         </div>
-        <div class="spacer spacer-end overflow-y-hidden @flexClass"
+        <div @key="@("<EndSpacer>")"
+             class="spacer spacer-end overflow-y-hidden @flexClass"
              style="height: @(Plan.EndSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
@@ -66,6 +74,8 @@
                 }
             </SkeletonContainer>
         </div>
-        <div class="render-state" style="display: none" data-render-state="@SystemJsonSerializer.Default.Write(renderState)"></div>
+        <div class="data render-index"
+             style="display: none"
+             data-render-index="@renderState.RenderIndex"></div>
     </div>
 </div>
