@@ -58,6 +58,8 @@ export class AudioContextPool {
     private static _initEventListener = () => {
         AudioContextPool.removeInitListeners();
         AudioContextPool.audioContexts.forEach(async (obj, key) => {
+            if (obj.audioContext != null)
+                return;
             obj.audioContext = await obj.factory();
             console.debug(`AudioContextPool: AudioContext "${key}" is created.`);
             // try to warm-up context

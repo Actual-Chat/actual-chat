@@ -9,9 +9,11 @@ import {
 } from './recording-event-queue';
 import { VoiceActivityChanged } from './audio-vad';
 import { toHexString } from "./to-hex-string";
+import { isAecWorkaroundNeeded, enableChromiumAec } from "./chromiumEchoCancellation";
 
 const LogScope = 'AudioRecorder';
 
+// TODO: Remove unused &broken code
 self["StandardMediaRecorder"] = self.MediaRecorder;
 self["OpusMediaRecorder"] = OpusMediaRecorder;
 
@@ -31,7 +33,7 @@ export class AudioRecorder {
 
     private recording: {
         stream: MediaStream,
-        streamSourceNode: MediaStreamAudioSourceNode,
+        source: MediaStreamAudioSourceNode,
     };
 
     public constructor(blazorRef: DotNet.DotNetObject, debugMode: boolean, queue: IRecordingEventQueue) {
@@ -107,12 +109,13 @@ export class AudioRecorder {
         return new AudioRecorder(blazorRef, debugMode, queue);
     }
 
+    // TODO: remove this
     public static changeMediaRecorder(useStandardMediaRecorder: boolean) {
         self.MediaRecorder = useStandardMediaRecorder
             ? self["StandardMediaRecorder"]
             : self["OpusMediaRecorder"];
     }
-
+    // TODO: remove this
     public static isStandardMediaRecorder(): boolean {
         return self.MediaRecorder === self["StandardMediaRecorder"];
     }
@@ -183,22 +186,23 @@ export class AudioRecorder {
                 },
                 video: false
             };
-            const stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
+            let stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
             this.vadWorker.postMessage({ topic: 'init-new-stream' });
-
-            const streamSourceNode = this.context.recorderContext.createMediaStreamSource(stream);
-
-            streamSourceNode.connect(this.context.vadWorkletNode);
+            if (isAecWorkaroundNeeded()) {
+                console.debug("echoCancellation is enabled");
+                stream = await enableChromiumAec(stream);
+            }
+            const source = this.context.recorderContext.createMediaStreamSource(stream);
+            source.connect(this.context.vadWorkletNode);
 
             this.recording = {
                 stream: stream,
-                streamSourceNode: streamSourceNode,
+                source: source,
             };
         }
 
-
         this.queue.append(new ResumeRecordingEvent(Date.now(), 0));
-        await this.recorder.startAsync(this.recording.streamSourceNode, 40);
+        await this.recorder.startAsync(this.recording.source, 40);
         await this.blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
@@ -212,8 +216,8 @@ export class AudioRecorder {
         this.recording = null;
 
         if (recording !== null) {
-            recording.streamSourceNode.disconnect();
-            recording.streamSourceNode = null;
+            recording.source.disconnect();
+            recording.source = null;
             this.context.vadWorkletNode.disconnect();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
