@@ -5,6 +5,8 @@
     --background-accent: #e2e7ec;
     --background-online: #31d872;
     --background-message-hover: #f3f4f6;
+    --background-separate-line: #2b3641;
+    --background-error-alert: #f2b6bb;
 
     --text-color-primary: #2b3641;
     --text-color-primary-muted: #3b4a59;
@@ -21,7 +23,7 @@
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
     --button-color-error: #95211E;
-    --button-color-error-hover: #D94440;
+    --button-color-error-hover: #f2b6bb;
 
     --glow-max: #fff;
     --glow-mid: rgb(181, 240, 255);

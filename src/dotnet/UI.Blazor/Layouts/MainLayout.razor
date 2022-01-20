@@ -42,10 +42,14 @@
     </nav>
     <div class="flex-1 overflow-y-auto flex flex-col relative float-left">
         <div class="bg-secondary flex-1 overflow-y-auto">
-            @foreach (var failure in failures) {
-                <WhenCommandError
-                    Error="failure.Result?.Error"
-                    Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))" />
+            @if (failures.Count != 0) {
+                <div class="flex flex-col absolute z-50 right-0 mr-2 mt-12 md:mt-2 w-1/4">
+                    @foreach (var failure in failures) {
+                        <WhenCommandError
+                            Error="failure.Result?.Error"
+                            Dismissed="@(_ => _commandFailureList.Remove(failure.CommandId))"/>
+                    }
+                </div>
             }
             @Body
         </div>

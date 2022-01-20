@@ -20,6 +20,10 @@ module.exports = {
   darkMode: 'media',
   theme: {
     extend: {
+      colors: {
+        'separate-line': 'var(--background-separate-line)',
+        'error-alert': 'var(--background-error-alert)',
+      },
       textColor: {
         'primary': 'var(--text-color-primary)',
         'primary-muted': 'var(--text-color-primary-muted)',
@@ -51,7 +55,10 @@ module.exports = {
         'button-success-hover': 'var(--button-color-success-hover)',
         'button-accent': 'var(--button-color-accent)',
         'button-accent-hover': 'var(--button-color-accent-hover)',
+        'button-error': 'var(--button-color-error)',
+        'button-error-hover': 'var(--button-color-error-hover)',
         'message-hover': 'var(--background-message-hover)',
+        'separate-line': 'var(--background-separate-line)',
       },
     },
     screens: {
