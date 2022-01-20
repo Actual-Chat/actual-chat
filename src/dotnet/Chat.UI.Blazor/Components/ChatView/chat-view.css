@@ -48,7 +48,7 @@
 }
 
 .submenu-item:hover {
-    @apply bg-secondary;
+    @apply bg-primary;
 }
 
 .reply-button:hover .reply-tooltip {
