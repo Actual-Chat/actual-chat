@@ -16,21 +16,16 @@ const onError = (e: any) => {
 };
 
 let delayedReconnectTimeout: number | null = null;
-let audio: HTMLAudioElement | null = null;
 
 /**
  * Routes audio through Chrome's audio mixer (via a loopback WebRTC connection),
  * thus enabling Acoustic Echo Cancellation (AEC) while preserving all the audio processing with WebAudio API.
- * @param {MediaStream} stream Audio input from microphone
- * @returns {Promise<MediaStream>} Audio output with applied echoCancellation
- * maybe it should be something like:
- * 1) source audioContext.createMediaStreamSource(microphoneStream) => MediaStreamAudioSourceNode
- * 2) destination = audioContext.createMediaStreamDestination()-> MediaStreamAudioDestinationNode
- * 3) source.connect(destination)
- * 4) audio.srcObject = await startLoopback(destination.stream)
- * audio tag is necessary as workaround of
+ * DOESN'T WORK WITH `AudioContext.destination`!
+ * playing with Audio tag is necessary as workaround of
  * {@link https://bugs.chromium.org/p/chromium/issues/detail?id=933677}
  * {@link https://bugs.chromium.org/p/chromium/issues/detail?id=687574}
+ * @param {MediaStream} stream Audio input
+ * @returns {Promise<MediaStream>} Audio output with applied echoCancellation
  */
 export async function enableChromiumAec(stream: MediaStream): Promise<MediaStream> {
     const loopbackStream = new MediaStream();
@@ -83,14 +78,6 @@ export async function enableChromiumAec(stream: MediaStream): Promise<MediaStrea
         await inboundPeerConnection.setLocalDescription(answer);
         await outboundPeerConnection.setRemoteDescription(answer);
 
-        if (audio === null) {
-            audio = new Audio();
-            audio.volume = 0.0;
-            audio.muted = true;
-            audio.autoplay = false;
-        }
-
-        audio.srcObject = loopbackStream;
         return loopbackStream;
     }
     catch (e) {

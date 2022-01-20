@@ -233,7 +233,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     private async initialize(timeSlice: number): Promise<void> {
         if (this.context == null) {
-            this.context = await AudioContextPool.get('recorder') as AudioContext;
+            this.context = await AudioContextPool.get('main') as AudioContext;
             if (this.context.sampleRate != 48000) {
                 throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${ this.context.sampleRate }`);
             }

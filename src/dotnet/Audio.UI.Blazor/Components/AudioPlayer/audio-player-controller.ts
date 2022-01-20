@@ -2,6 +2,7 @@ import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-w
 import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from "./workers/opus-decoder-worker-message";
 import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
+import { isAecWorkaroundNeeded, enableChromiumAec } from "./chromiumEchoCancellation";
 
 const worker = new Worker('/dist/opusDecoderWorker.js');
 let workerLastCallbackId: number = 0;
@@ -42,6 +43,8 @@ export class AudioPlayerController implements Resettable {
     private audioContext?: AudioContext = null;
     private decoderChannel = new MessageChannel();
     private feederNode?: FeederAudioWorkletNode = null;
+    private audioElement?: HTMLAudioElement = null;
+    private destinationNode?: MediaStreamAudioDestinationNode = null;
 
     private constructor() {
         this.id = lastControllerId++;
@@ -78,22 +81,33 @@ export class AudioPlayerController implements Resettable {
         onEnded?: () => void,
     }): Promise<void> {
         if (this.feederNode === null) {
-            await this.createFeeder();
+            await this.createNodes();
         }
-        const { feederNode, audioContext } = this;
+        const { feederNode, audioContext, destinationNode, audioElement } = this;
         feederNode.onBufferLow = callbacks.onBufferLow;
         feederNode.onStartPlaying = callbacks.onStartPlaying;
         feederNode.onBufferTooMuch = callbacks.onBufferTooMuch;
         feederNode.onStarving = callbacks.onStarving;
         feederNode.onStopped = callbacks.onStopped;
         feederNode.onEnded = callbacks.onEnded;
-        feederNode.connect(audioContext.destination);
 
+        // we should use isAecWorkaroundNeeded() rather this.audioElement !== null
+        // because we should take an option to disable it
+        if (isAecWorkaroundNeeded()) {
+            feederNode.connect(destinationNode);
+            const stream = await enableChromiumAec(destinationNode.stream);
+            audioElement.srcObject = stream;
+            audioElement.muted = false;
+            const _ = audioElement.play();
+        }
+        else {
+            feederNode.connect(audioContext.destination);
+        }
         await this.initWorker(header);
     }
 
     /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
-    private async createFeeder(): Promise<void> {
+    private async createNodes(): Promise<void> {
         this.audioContext = await AudioContextPool.get("main") as AudioContext;
         const feederNodeOptions: AudioWorkletNodeOptions = {
             channelCount: 1,
@@ -108,6 +122,14 @@ export class AudioPlayerController implements Resettable {
             'feederWorklet',
             feederNodeOptions
         );
+
+        if (isAecWorkaroundNeeded()) {
+            this.destinationNode = this.audioContext.createMediaStreamDestination();
+            this.audioElement = new Audio();
+            this.audioElement.autoplay = false;
+            this.audioElement.muted = true;
+            this.audioElement.pause();
+        }
     }
 
     private initWorker(header: Uint8Array): Promise<void> {
@@ -158,21 +180,30 @@ export class AudioPlayerController implements Resettable {
         };
         worker.postMessage(workerMsg);
         this.feederNode.stop();
+        if (this.audioElement !== null) {
+            this.audioElement.muted = true;
+            this.audioElement.pause();
+        }
         // we sent the stop to worker and worklet (node->processor->onStopped->release to the pool->reset)
     }
 
     public reset(): void | PromiseLike<void> {
-        const { feederNode, audioContext } = this;
+        const { feederNode, destinationNode, audioElement } = this;
         if (feederNode !== null) {
-            if (audioContext !== null) {
-                feederNode.disconnect(this.audioContext.destination);
-            }
+            feederNode.disconnect();
             feederNode.onBufferLow = null;
             feederNode.onStartPlaying = null;
             feederNode.onBufferTooMuch = null;
             feederNode.onStarving = null;
             feederNode.onStopped = null;
             feederNode.onEnded = null;
+        }
+        if (destinationNode !== null) {
+            destinationNode.disconnect();
+        }
+        if (audioElement !== null) {
+            audioElement.muted = true;
+            audioElement.pause();
         }
     }
 }

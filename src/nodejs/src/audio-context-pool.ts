@@ -100,14 +100,11 @@ AudioContextPool.register("main", async () => {
         latencyHint: 'interactive',
         sampleRate: 48000,
     });
-    await audioContext.audioWorklet.addModule('/dist/feederWorklet.js');
-    return audioContext;
-});
-
-AudioContextPool.register("recorder", async () => {
-    const audioContext = new AudioContext({ sampleRate: 48000 });
-    await audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js');
-    await audioContext.audioWorklet.addModule('/dist/vadWorklet.js');
+    await Promise.all([
+        audioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
+        audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
+        audioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
+    ]);
     return audioContext;
 });
 
