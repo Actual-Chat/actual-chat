@@ -40,6 +40,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxExpectedExpansion { get; set; } = 1_000_000;
     [Parameter] public VirtualListEdge PreferredTrackingEdge { get; set; } = VirtualListEdge.End;
+    [Parameter] public VirtualListEdge? InitialTrackingEdge { get; set; }
 
     [Parameter, EditorRequired]
     public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =
@@ -73,8 +74,6 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             return false;
         }
         Plan = LastPlan.Next();
-        if (!Plan.IsFullyLoaded(Plan.GetLoadZoneRange()))
-            UpdateData();
         DebugLog?.LogDebug(nameof(ShouldRender) + ": true");
         return true;
     }
@@ -132,11 +131,12 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
             DebugLog?.LogDebug(
-                nameof(ComputeState) + ": query={Query} -> keys [{Key0}...{KeyE}] w/ {Range} item(s)",
+                nameof(ComputeState) + ": query={Query} -> keys [{Key0}...{KeyE}], has {First} {Last}",
                 query,
                 response.Items.FirstOrDefault()?.Key,
                 response.Items.LastOrDefault()?.Key,
-                response.HasAllItems ? "all" : response.HasVeryFirstItem ? "start" : "end");
+                response.HasVeryFirstItem ? "first " : "",
+                response.HasVeryLastItem ? "last" : "");
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
@@ -163,9 +163,12 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             return LastQuery!;
         if (plan.DisplayedItems.Count == 0) // No entries -> nothing to "align" the query to
             return LastQuery!;
+        if (!plan.Viewport.HasValue)
+            return LastQuery!;
 
-        var loaderZone = new Range<double>(plan.Viewport.Start - LoadZoneSize, plan.Viewport.End + LoadZoneSize);
-        var bufferZone = new Range<double>(plan.Viewport.Start - BufferZoneSize, plan.Viewport.End + BufferZoneSize);
+        var viewport = plan.Viewport.GetValueOrDefault();
+        var loaderZone = new Range<double>(viewport.Start - LoadZoneSize, viewport.End + LoadZoneSize);
+        var bufferZone = new Range<double>(viewport.Start - BufferZoneSize, viewport.End + BufferZoneSize);
         var displayedItems = plan.DisplayedItems;
         var startIndex = -1;
         var endIndex = -1;

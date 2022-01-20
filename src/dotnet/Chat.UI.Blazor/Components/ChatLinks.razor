@@ -16,10 +16,8 @@
 </NavbarGroup>
 
 @code {
-    [Inject] private IModalService ModalService { get; set; }
+    [Inject] private IModalService ModalService { get; set; } = null!;
 
     private void OnAddChatClicked()
-    {
-        ModalService.Show<CreateChat>("", new ModalOptions { HideHeader = true });
-    }
+        => ModalService.Show<CreateChat>("", new ModalOptions { HideHeader = true });
 }

@@ -10,5 +10,5 @@ public interface IUserInfos
     Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken);
+    Task<string> GetGravatarHash(string userId, CancellationToken cancellationToken);
 }
