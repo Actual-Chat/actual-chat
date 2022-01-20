@@ -34,6 +34,9 @@ export class ChatMessageEditor {
             event.preventDefault();
             this._blazorRef.invokeMethodAsync("Post", this.getText());
         });
+        this._input.addEventListener('mousedown', (event: MouseEvent & {target: HTMLDivElement; }) => {
+            this._input.focus();
+        })
         this._postButton.addEventListener('click', (event: Event & { target: HTMLButtonElement; }) => {
             this._input.focus();
             this.changeMode();
