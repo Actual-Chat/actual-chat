@@ -9,7 +9,6 @@ import {
 } from './recording-event-queue';
 import { VoiceActivityChanged } from './audio-vad';
 import { toHexString } from "./to-hex-string";
-import { isAecWorkaroundNeeded, enableChromiumAec } from "./chromiumEchoCancellation";
 
 const LogScope = 'AudioRecorder';
 
@@ -134,7 +133,7 @@ export class AudioRecorder {
         }
 
         if (this.context == null) {
-            const recorderContext = await AudioContextPool.get("recorder") as AudioContext;
+            const recorderContext = await AudioContextPool.get("main") as AudioContext;
             const audioWorkletOptions: AudioWorkletNodeOptions = {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
@@ -188,10 +187,6 @@ export class AudioRecorder {
             };
             let stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
             this.vadWorker.postMessage({ topic: 'init-new-stream' });
-            if (isAecWorkaroundNeeded()) {
-                console.debug("echoCancellation is enabled");
-                stream = await enableChromiumAec(stream);
-            }
             const source = this.context.recorderContext.createMediaStreamSource(stream);
             source.connect(this.context.vadWorkletNode);
 
