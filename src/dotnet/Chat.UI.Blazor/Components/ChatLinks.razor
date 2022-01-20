@@ -7,15 +7,11 @@
 
 <NavbarGroup Title="Chats">
     <Icons>
-        <AuthorizeView>
-            <Authorized>
-                <button title="Add chat" @onclick="OnAddChatClicked">
-                    <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
-                    </svg>
-                </button>
-            </Authorized>
-        </AuthorizeView>
+        <button>
+            <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+            </svg>
+        </button>
     </Icons>
     <ChildContent>
         @foreach(var chat in chats) {
@@ -47,10 +43,5 @@
             Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
             AddDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId)
         };
-    }
-
-    private void OnAddChatClicked()
-    {
-        ModalService.Show<CreateChat>("", new ModalOptions { HideHeader = true });
     }
 }
