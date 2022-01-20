@@ -119,6 +119,19 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [CommandHandler]
+    public virtual async Task<Unit> UpdateChat(IChats.UpdateChatCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, chat) = command;
+        await AssertHasPermissions(session, chat.Id, ChatPermissions.Owner, cancellationToken).ConfigureAwait(false);
+
+        var updateChatCommand = new IChatsBackend.UpdateChatCommand(chat);
+        return await _commander.Call(updateChatCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task<Unit> JoinChat(IChats.JoinChatCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

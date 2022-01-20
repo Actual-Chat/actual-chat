@@ -227,6 +227,41 @@ public partial class Chats
     }
 
     // [CommandHandler]
+    public virtual async Task<Unit> UpdateChat(
+        IChatsBackend.UpdateChatCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            _ = Get(invChat.Id, default);
+            return default;
+        }
+
+        var chat = command.Chat;
+        var chatId = (string)chat.Id;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats
+            .SingleOrDefaultAsync(a => a.Id == chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChat == null)
+            throw new InvalidOperationException("chat does not exists");
+        if (dbChat.Version != chat.Version)
+            throw new InvalidOperationException("chat has been modified already");
+
+        dbChat.Title = chat.Title;
+        dbChat.IsPublic = chat.IsPublic;
+        dbChat.Version = VersionGenerator.NextVersion();
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        chat = dbChat.ToModel();
+        context.Operation().Items.Set(chat);
+        return default;
+    }
+
+    // [CommandHandler]
     public virtual async Task<ChatEntry> UpsertEntry(
         IChatsBackend.UpsertEntryCommand command,
         CancellationToken cancellationToken)
