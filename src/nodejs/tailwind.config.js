@@ -21,8 +21,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'separate-line': 'var(--background-separate-line)',
-        'error-alert': 'var(--background-error-alert)',
+        'error-toast-header': 'var(--error-toast-header)',
+        'error-toast-body': 'var(--error-toast-body)',
       },
       textColor: {
         'primary': 'var(--text-color-primary)',
