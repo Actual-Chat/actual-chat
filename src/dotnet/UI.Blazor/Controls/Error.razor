@@ -38,7 +38,7 @@
             await Close().ConfigureAwait(true);
     }
 
-    protected override void OnAfterRender(bool firstRender) {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
             _ = AutoClose();
     }
