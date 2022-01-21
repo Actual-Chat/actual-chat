@@ -3,6 +3,9 @@
 
 @if (_chat != null) {
     <div class="px-2 py-2">
+        <div>
+            <h3>Chat <b>"@(_chat.Title)"</b> properties:</h3>
+        </div>
         <div class="mt-5">
             <EditForm Model="@_model" OnValidSubmit="@OnSave">
                 <DataAnnotationsValidator/>
