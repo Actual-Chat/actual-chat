@@ -50,7 +50,7 @@ public class ChatActivity
         // var activeEntriesSubject = new Subject<ChatEntry>();
         // var completedEntriesSubject = new Subject<ChatEntry>();
 
-        var activeEntries = new HashSet<ChatEntry>();
+        var activeEntries = new HashSet<(long,Symbol)>();
         var activeEntriesSubject = Observable.Create<ChatEntry>(observer => TrackRecordingBeginning(chatId, observer, cancellationToken));
         var completedEntriesSubject = Observable.Create<ChatEntry>(observer => TrackRecordingCompletion(chatId, observer, cancellationToken))
             .Delay(TimeSpan.FromMilliseconds(500));
@@ -62,12 +62,14 @@ public class ChatActivity
             var activeEntriesHaveBeenChanged = false;
             foreach (var entry in window)
                 activeEntriesHaveBeenChanged |= entry.IsStreaming
-                    ? activeEntries.Add(entry)
-                    : activeEntries.Remove(entry);
+                    ? activeEntries.Add((entry.Id, entry.AuthorId))
+                    : activeEntries.Remove((entry.Id, entry.AuthorId));
 
             if (activeEntriesHaveBeenChanged)
                 activityState.Value = activeEntries
-                    .Select(e => new ChatActivityEntry(e.AuthorId, ActivityKind.Recording))
+                    .Select(e => e.Item2)
+                    .Distinct()
+                    .Select(authorId => new ChatActivityEntry(authorId, ActivityKind.Recording))
                     .ToImmutableList();
         }
     }

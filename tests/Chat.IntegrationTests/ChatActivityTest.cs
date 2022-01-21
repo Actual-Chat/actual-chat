@@ -32,13 +32,18 @@ public class ChatActivityTest : AppHostTestBase
         var cts = new CancellationTokenSource();
         var ct = cts.Token;
         try {
-            await AddChatEntries(commander, chatAuthorsBackend, session, ct);
+            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
             var chatActivity = clientServices.GetRequiredService<ChatActivity>();
             var recordingActivity = chatActivity.GetRecordingActivity(ChatId, ct);
             recordingActivity.Value.Should().HaveCount(0);
+
             await recordingActivity.Computed.WhenInvalidated(ct);
             await recordingActivity.Computed.Update(ct);
             recordingActivity.Value.Should().HaveCount(1);
+
+            await recordingActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: ct);
+            await recordingActivity.Computed.Update(ct);
+            recordingActivity.Value.Should().HaveCount(0);
         }
         finally {
             cts.Cancel();
@@ -55,7 +60,7 @@ public class ChatActivityTest : AppHostTestBase
     {
         var author = await chatAuthorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
-        var command = new IChatsBackend.UpsertEntryCommand(new ChatEntry {
+        var entry = new ChatEntry {
             ChatId = ChatId,
             Type = ChatEntryType.Audio,
             AuthorId = author.Id,
@@ -63,7 +68,17 @@ public class ChatActivityTest : AppHostTestBase
             StreamId = "FAKE",
             BeginsAt = clock.Now + TimeSpan.FromMilliseconds(20),
             ClientSideBeginsAt = clock.Now,
-        });
-        var audioEntry = await commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        };
+        var createCommand = new IChatsBackend.UpsertEntryCommand(entry);
+        entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(2000), cancellationToken);
+
+        entry = entry with {
+            EndsAt = clock.Now,
+            StreamId = Symbol.Empty,
+        };
+        var completeCommand = new IChatsBackend.UpsertEntryCommand(entry);
+        await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }
