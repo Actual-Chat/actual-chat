@@ -51,7 +51,6 @@ public class ChatActivityTest : AppHostTestBase
 
     }
 
-
     private async Task AddChatEntries(
         ICommander commander,
         IChatAuthorsBackend chatAuthorsBackend,

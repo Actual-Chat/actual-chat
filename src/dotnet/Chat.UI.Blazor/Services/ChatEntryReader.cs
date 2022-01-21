@@ -179,6 +179,48 @@ public sealed class ChatEntryReader
         }
     }
 
+    public async IAsyncEnumerable<IComputed<ChatTile>> ReadNewTiles(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var idTilesLayer0 = IdTileStack.FirstLayer;
+        var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
+        var thisTile = idTilesLayer0.GetTile(idRange.End - 1);
+
+        var thisTileRange = thisTile.Range;
+        var thisTileComputed = await Computed
+            .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, thisTileRange, ct), cancellationToken)
+            .ConfigureAwait(false);
+
+        while (true) {
+            var nextTile = thisTile.Next();
+
+            yield return thisTileComputed;
+
+            var nextTileComputed = await Computed
+                .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, nextTile.Range, ct), cancellationToken)
+                .ConfigureAwait(false);
+            while (true) {
+                var nextTileInvalidatedTask = nextTileComputed.Value.IsEmpty
+                    ? nextTileComputed.WhenInvalidated(cancellationToken)
+                    : Task.CompletedTask; //
+                await nextTileInvalidatedTask.ConfigureAwait(false);
+
+                if (nextTileComputed.Value.IsEmpty) {
+                    // This means it was invalidated (see nextTileInvalidatedTask = ...), so let's update it first
+                    nextTileComputed = await nextTileComputed.Update(cancellationToken).ConfigureAwait(false);
+                }
+                if (!nextTileComputed.Value.IsEmpty) {
+                    // Next tile is ready, so we're switching to it
+                    thisTile = nextTile;
+                    thisTileComputed = nextTileComputed;
+                    break;
+                }
+                // nextTile is still empty, so let's continue watching thisTile/nextTile pair
+            }
+        }
+        // ReSharper disable once IteratorNeverReturns
+    }
+
     public async Task<ChatEntry?> FindByMinBeginsAt(
         Moment minBeginsAt,
         Range<long> idRange,

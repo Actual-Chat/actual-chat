@@ -9,7 +9,7 @@ public enum ActivityKind
     Typing,
 }
 
-public record struct ChatActivityEntry(Symbol AuthorId, ActivityKind Kind);
+public record ChatActivityEntry(Symbol AuthorId, ActivityKind Kind);
 
 public class ChatActivity
 {
@@ -47,9 +47,6 @@ public class ChatActivity
         IMutableState<ImmutableList<ChatActivityEntry>> activityState,
         CancellationToken cancellationToken)
     {
-        // var activeEntriesSubject = new Subject<ChatEntry>();
-        // var completedEntriesSubject = new Subject<ChatEntry>();
-
         var activeEntries = new HashSet<(long,Symbol)>();
         var activeEntriesSubject = Observable.Create<ChatEntry>(observer => TrackRecordingBeginning(chatId, observer, cancellationToken));
         var completedEntriesSubject = Observable.Create<ChatEntry>(observer => TrackRecordingCompletion(chatId, observer, cancellationToken))
