@@ -14,5 +14,9 @@
     <Using Include="ActualChat.Chat.UI.Blazor" />
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" />
+  </ItemGroup>
 
 </Project>
