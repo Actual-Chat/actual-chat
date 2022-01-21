@@ -22,8 +22,8 @@
     --button-color-success-hover: #5ecaf9;
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
-    --button-color-error: #95211E;
-    --button-color-error-hover: #f2b6bb;
+    --error-toast-header: #feb7b7;
+    --error-toast-body: #fecaca;
 
     --glow-max: #fff;
     --glow-mid: rgb(181, 240, 255);
