@@ -7,13 +7,12 @@ public class VirtualListRenderState
 
     public double SpacerSize { get; set; }
     public double EndSpacerSize { get; set; }
-    public double ScrollHeight { get; set; }
+    public double? ScrollHeight { get; set; }
     public double? ScrollTop { get; set; }
     public double? ViewportHeight { get; set; }
 
     public Dictionary<string, double> ItemSizes { get; set; } = null!;
 
-    public bool MustMeasure { get; set; }
     public bool MustScroll { get; set; }
     public bool NotifyWhenSafeToScroll { get; set; }
 }

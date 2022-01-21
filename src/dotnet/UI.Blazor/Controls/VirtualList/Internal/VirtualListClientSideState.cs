@@ -10,7 +10,7 @@ public class VirtualListClientSideState
     /// <summary> End spacer size. </summary>
     public double EndSpacerSize { get; set; }
     /// <summary> Total height of the scroll area. </summary>
-    public double ScrollHeight { get; set; }
+    public double? ScrollHeight { get; set; }
     /// <summary> Scroll top of the viewport. </summary>
     public double? ScrollTop { get; set; }
     /// <summary> Visible viewport height. </summary>

@@ -18,6 +18,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected internal bool DebugMode => Constants.DebugMode.VirtualList;
 
     protected ElementReference Ref { get; set; }
+    protected ElementReference RenderStateRef { get; set; }
+    protected ElementReference ContentRef { get; set; }
     protected IJSObjectReference JSRef { get; set; } = null!;
     protected DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
@@ -88,7 +90,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                Ref, BlazorRef, plan!.IsEndAligned, DebugMode
+                Ref, RenderStateRef, BlazorRef, plan!.IsEndAligned, DebugMode
                 ).ConfigureAwait(true);
         }
     }
@@ -159,9 +161,9 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     protected virtual VirtualListDataQuery GetDataQuery(VirtualListRenderPlan<TItem> plan)
     {
-        if (plan.UnmeasuredItems.Count != 0) // Let's wait for measurement to complete first
+        if (plan.HasUnmeasuredItems) // Let's wait for measurement to complete first
             return LastQuery!;
-        if (plan.DisplayedItems.Count == 0) // No entries -> nothing to "align" the query to
+        if (plan.Items.Count == 0) // No entries -> nothing to "align" the query to
             return LastQuery!;
         if (!plan.Viewport.HasValue)
             return LastQuery!;
@@ -169,11 +171,12 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var viewport = plan.Viewport.GetValueOrDefault();
         var loaderZone = new Range<double>(viewport.Start - LoadZoneSize, viewport.End + LoadZoneSize);
         var bufferZone = new Range<double>(viewport.Start - BufferZoneSize, viewport.End + BufferZoneSize);
-        var displayedItems = plan.DisplayedItems;
         var startIndex = -1;
         var endIndex = -1;
-        for (var i = 0; i < displayedItems.Count; i++) {
-            if (displayedItems[i].Range.IntersectWith(bufferZone).Size() > 0) {
+        var items = plan.Items;
+        for (var i = 0; i < items.Count; i++) {
+            var item = items[i];
+            if (item.IsMeasured && item.Range.IntersectWith(bufferZone).Size() > 0) {
                 endIndex = i;
                 if (startIndex < 0)
                     startIndex = i;
@@ -185,14 +188,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         if (startIndex < 0) {
             DebugLog?.LogWarning(nameof(GetDataQuery) + ": reset");
             // No items inside the bufferZone, so we'll take the first or the last item
-            startIndex = endIndex = displayedItems[0].Range.End < bufferZone.Start ? 0 : displayedItems.Count - 1;
+            startIndex = endIndex = items[0].Range.End < bufferZone.Start ? 0 : items.Count - 1;
         }
 
         var itemSize = Statistics.ItemSize;
         var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
 
-        var firstItem = displayedItems[startIndex];
-        var lastItem = displayedItems[endIndex];
+        var firstItem = items[startIndex];
+        var lastItem = items[endIndex];
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": bufferZone fits {FirstItemId} ... {LastItemId} keys",
             firstItem.Key, lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
