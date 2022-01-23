@@ -99,6 +99,7 @@
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*"/>
     <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*"/>
     <PackageReference Update="System.Reactive" Version="5.0.*"/>
+    <PackageReference Update="System.Interactive.Async" Version="5.1.*"/>
 
     <!-- OpenTelemetry & Metrics-->
     <PackageReference Update="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
