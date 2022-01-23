@@ -62,7 +62,7 @@ public sealed class ChatEntryReader
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var tile in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
-            foreach (var entry in tile.Entries) {
+            foreach (var entry in tile.Value.Entries) {
                 if (entry.Id < idRange.Start)
                     continue;
                 if (entry.Id >= idRange.End)
@@ -83,8 +83,8 @@ public sealed class ChatEntryReader
 
         ChatTile? thisTile = null;
         await foreach (var tile in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
-            thisTile = tile;
-            foreach (var entry in tile.Entries) {
+            thisTile = tile.Value;
+            foreach (var entry in thisTile.Entries) {
                 if (entry.Id <= lastId)
                     continue;
                 yield return entry;
@@ -162,7 +162,47 @@ public sealed class ChatEntryReader
         // ReSharper disable once IteratorNeverReturns
     }
 
-    public async IAsyncEnumerable<ChatTile> ReadAllTiles(
+    public async IAsyncEnumerable<ChatEntry> ReadAllUpdates(
+        long minId,
+        Func<(ChatTile Tile, bool HasNext),bool> waitForUpdate,
+        Func<ChatEntry, bool> shouldReturn,
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
+        idRange = (minId, Math.Max(minId + 1, idRange.End));
+
+        // TODO(AK): Exception handling!!!!!!!!
+        var activeTiles = Channel.CreateUnbounded<IComputed<ChatTile>>(new UnboundedChannelOptions {
+            SingleReader = true,
+            SingleWriter = true,
+        });
+        IComputed<ChatTile>? thisTileComputed = null;
+
+        await foreach (var tileComputed in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
+            if (thisTileComputed != null && waitForUpdate((thisTileComputed.Value, true)))
+                await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
+
+            thisTileComputed = tileComputed;
+
+            foreach (var entry in tileComputed.Value.Entries.Where(shouldReturn))
+                yield return entry;
+        }
+        if (thisTileComputed != null&& waitForUpdate((thisTileComputed.Value, false)))
+            await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
+
+        var newTiles = ReadNewTiles(cancellationToken);
+        var updatedTiles = InvalidateAndUpdate(activeTiles.Reader.ReadAllAsync(cancellationToken), cancellationToken);
+        await foreach (var tileComputed in newTiles.Merge(updatedTiles).WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (waitForUpdate((tileComputed.Value, false)))
+                await activeTiles.Writer.WriteAsync(tileComputed, cancellationToken).ConfigureAwait(false);
+
+            foreach (var entry in tileComputed.Value.Entries.Where(shouldReturn))
+                yield return entry;
+        }
+    }
+
+    public async IAsyncEnumerable<IComputed<ChatTile>> ReadAllTiles(
         Range<long> idRange,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -174,8 +214,11 @@ public sealed class ChatEntryReader
              idTile.Start < idRange.End;
              idTile = idTile.Next())
         {
-            var tile = await Chats.GetTile(Session, ChatId, EntryType, idTile.Range, cancellationToken).ConfigureAwait(false);
-            yield return tile;
+            var idTileRange = idTile.Range;
+            var tileComputed = await Computed
+                .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, idTileRange, ct), cancellationToken)
+                .ConfigureAwait(false);
+            yield return tileComputed;
         }
     }
 
@@ -235,6 +278,102 @@ public sealed class ChatEntryReader
     }
 
     // Private methods
+
+    private static async IAsyncEnumerable<IComputed<ChatTile>> InvalidateAndUpdate(
+        IAsyncEnumerable<IComputed<ChatTile>> tiles,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var completedSlots = new Stack<int>();
+        var taskBuffer = ArrayBuffer<ValueTask<(IComputed<ChatTile>?,bool)>>.Lease(false);
+        try {
+            // adding artificial completed tasks
+            for (int i = 0; i < taskBuffer.Capacity - 1; i++)
+                taskBuffer.Add(ValueTask.FromResult((null as IComputed<ChatTile>, false)));
+
+            var tilesEnumerator = tiles.GetAsyncEnumerator(cancellationToken);
+            var moveNextTask = WrapMoveNext(tilesEnumerator, cancellationToken);
+            taskBuffer.Add(moveNextTask);
+            var whenAnyValue = TaskExt.WhenAny(taskBuffer.Buffer);
+            while (taskBuffer.Capacity > completedSlots.Count) {
+                // cancellationToken.ThrowIfCancellationRequested();
+
+                // tricky awaiter that returns an index of first completed task
+                var index = await whenAnyValue;
+                completedSlots.Push(index);
+
+                // value tasks should be awaited once
+                var (tileComputed, isEnum) = await taskBuffer[index].ConfigureAwait(false);
+                if (isEnum) {
+                    if (tileComputed == null) {
+                        // tiles enumerable has been enumerated to the end
+                    }
+                    else {
+                        if (completedSlots.TryPop(out var completedIndex)) {
+                            whenAnyValue.Replace(completedIndex,
+                                WrapInvalidateAndUpdate(tileComputed, cancellationToken));
+                        }
+                        else {
+                            var newCapacity = taskBuffer.Capacity * 2;
+                            var newTaskBuffer =
+                                ArrayBuffer<ValueTask<(IComputed<ChatTile>?, bool)>>.Lease(false, newCapacity);
+                            try {
+                                taskBuffer.Buffer.CopyTo(newTaskBuffer.Buffer, 0);
+                                newTaskBuffer.Count = taskBuffer.Count;
+                                newTaskBuffer.Add(WrapInvalidateAndUpdate(tileComputed, cancellationToken));
+                                // adding artificial completed tasks
+                                for (int i = newTaskBuffer.Count; i < newTaskBuffer.Capacity; i++)
+                                    taskBuffer.Add(ValueTask.FromResult((null as IComputed<ChatTile>, false)));
+
+                                taskBuffer.Release();
+                                taskBuffer = newTaskBuffer;
+
+                                whenAnyValue.Replace(taskBuffer.Buffer);
+                            }
+                            finally {
+                                newTaskBuffer.Release();
+                            }
+                        }
+                    }
+                }
+                else {
+                    if (tileComputed == null) {
+                        // artificial completed task, do nothing
+                    }
+                    else
+                        yield return tileComputed;
+                }
+            }
+        }
+        finally {
+            taskBuffer.Release();
+        }
+    }
+
+    private static async ValueTask<(IComputed<ChatTile>?, bool)> WrapInvalidateAndUpdate(
+        IComputed<ChatTile> tileComputed,
+        CancellationToken cancellationToken)
+    {
+        var updatedComputed = await InvalidateAndUpdate(tileComputed, cancellationToken).ConfigureAwait(false);
+        return (updatedComputed, false);
+    }
+
+    private static async ValueTask<(IComputed<ChatTile>?, bool)> WrapMoveNext(
+        IAsyncEnumerator<IComputed<ChatTile>> tilesEnumerator,
+        CancellationToken cancellationToken)
+    {
+        var hasNext = await tilesEnumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false);
+        return hasNext
+            ? (tilesEnumerator.Current, true)
+            : (null, true);
+    }
+
+    private static async ValueTask<IComputed<ChatTile>> InvalidateAndUpdate(
+        IComputed<ChatTile> tileComputed,
+        CancellationToken cancellationToken)
+    {
+        await tileComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+        return await tileComputed.Update(cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task<ChatEntry?> FindByMinBeginsAtPrecise(
         Moment beginsAt,
