@@ -118,7 +118,7 @@ public static class AsyncEnumerableExt
         IMomentClock clock,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var item in source.ConfigureAwait(false)) {
             await clock.Delay(eachItemDelay, cancellationToken).ConfigureAwait(false);
 
             yield return item;
