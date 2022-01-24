@@ -93,7 +93,9 @@ public class AudioProcessor : IAudioProcessor
         var language = audioSegment.Languages.FirstOrDefault();
         if (language.IsNone)
             language = LanguageId.Default;
-        var altLanguages = audioSegment.Languages.Where(l => l != language);
+        var altLanguages = language == LanguageId.English
+            ? Enumerable.Empty<LanguageId>()
+            : audioSegment.Languages.Where(l => l != language);
         var transcriptionOptions = new TranscriptionOptions() {
             Language = language.Value,
             AltLanguages = altLanguages.Select(l => l.Value).ToArray(),
