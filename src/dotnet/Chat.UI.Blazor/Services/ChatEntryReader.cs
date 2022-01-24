@@ -229,15 +229,8 @@ public sealed class ChatEntryReader
         var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
         var thisTile = idTilesLayer0.GetTile(idRange.End - 1);
 
-        var thisTileRange = thisTile.Range;
-        var thisTileComputed = await Computed
-            .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, thisTileRange, ct), cancellationToken)
-            .ConfigureAwait(false);
-
         while (true) {
             var nextTile = thisTile.Next();
-
-            yield return thisTileComputed;
 
             var nextTileComputed = await Computed
                 .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, nextTile.Range, ct), cancellationToken)
@@ -255,7 +248,7 @@ public sealed class ChatEntryReader
                 if (!nextTileComputed.Value.IsEmpty) {
                     // Next tile is ready, so we're switching to it
                     thisTile = nextTile;
-                    thisTileComputed = nextTileComputed;
+                    yield return nextTileComputed;
                     break;
                 }
                 // nextTile is still empty, so let's continue watching thisTile/nextTile pair

@@ -228,8 +228,6 @@ public static class TaskExt
         /// <param name="task">The new task to store and await at the specified index.</param>
         public void Replace(int index, in ValueTask<T> task)
         {
-            Debug.Assert(_tasks[index].IsCompleted, "A task shouldn't be replaced before it has completed.");
-
             _tasks[index] = task;
 
             task.ConfigureAwait(false).GetAwaiter().OnCompleted(_onReady[index]);
