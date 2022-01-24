@@ -21,8 +21,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'separate-line': 'var(--background-separate-line)',
-        'error-alert': 'var(--background-error-alert)',
+        'error-toast-header': 'var(--error-toast-header)',
+        'error-toast-body': 'var(--error-toast-body)',
       },
       textColor: {
         'primary': 'var(--text-color-primary)',
@@ -174,6 +174,7 @@ module.exports = {
       'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
       'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
       'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
+      'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
     },
     aspectRatio: {
       auto: 'auto',
