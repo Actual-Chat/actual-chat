@@ -54,6 +54,18 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [ComputeMethod]
+    public virtual async Task<InviteCodeCheckResult> CheckInviteCode(Session session, string inviteCode, CancellationToken cancellationToken)
+    {
+        if (!ValidateInviteCode(inviteCode, out var chatId))
+            return new InviteCodeCheckResult {IsValid = false};
+
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return new InviteCodeCheckResult {IsValid = false};
+        return new InviteCodeCheckResult {IsValid = true, ChatTitle = chat.Title};
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         Session session,
         string chatId,
@@ -125,23 +137,76 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chat) = command;
-        await AssertHasPermissions(session, chat.Id, ChatPermissions.Owner, cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(session, chat.Id, ChatPermissions.Admin, cancellationToken).ConfigureAwait(false);
 
         var updateChatCommand = new IChatsBackend.UpdateChatCommand(chat);
         return await _commander.Call(updateChatCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task<Unit> JoinChat(IChats.JoinChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task<Unit> JoinPublicChat(IChats.JoinPublicChatCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId) = command;
-        // TODO: add permissions check
 
-        await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        var enoughPermissions = chat != null && chat.IsPublic;
+        if (!enoughPermissions)
+            throw new InvalidOperationException("Invalid command");
+
+        await JoinChat(session, chatId, cancellationToken).ConfigureAwait(false);
         return Unit.Default;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<string> JoinWithInviteCode(IChats.JoinWithInviteCodeCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, inviteCode) = command;
+        if (!ValidateInviteCode(inviteCode, out var chatId))
+            throw new InvalidOperationException("Invitation code is expired or invalid");
+
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        var enoughPermissions = chat != null;
+        if (!enoughPermissions)
+            throw new InvalidOperationException("Invalid command");
+
+        await JoinChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        return chatId;
+    }
+
+    private async Task JoinChat(Session session, string chatId, CancellationToken cancellationToken)
+        => await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+
+    private bool ValidateInviteCode(string inviteCode, out string chatId)
+    {
+        if (string.IsNullOrEmpty(inviteCode))
+            throw new ArgumentException("Value cannot be null or empty.", nameof(inviteCode));
+
+        const string prefix = "super-secret-code-for-";
+        if (!inviteCode.StartsWith(prefix, StringComparison.Ordinal)) {
+            chatId = "";
+            return false;
+        }
+        chatId = inviteCode.Substring(prefix.Length);
+        return true;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<string> GenerateInviteCode(IChats.GenerateInviteCodeCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId) = command;
+        await AssertHasPermissions(session, chatId, ChatPermissions.Invite, cancellationToken).ConfigureAwait(false);
+
+        const string prefix = "super-secret-code-for-";
+        return prefix + command.ChatId;
     }
 
     // [CommandHandler]

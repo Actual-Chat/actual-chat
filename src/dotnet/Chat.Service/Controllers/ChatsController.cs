@@ -25,6 +25,10 @@ public class ChatsController : ControllerBase, IChats
         => _chats.GetChats(session, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<InviteCodeCheckResult> CheckInviteCode(Session session, string inviteCode, CancellationToken cancellationToken)
+        => _chats.CheckInviteCode(session, inviteCode, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -66,6 +70,7 @@ public class ChatsController : ControllerBase, IChats
         return _chats.CreateChat(command, cancellationToken);
     }
 
+    [HttpPost]
     public Task<Unit> UpdateChat(IChats.UpdateChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
@@ -73,8 +78,25 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpPost]
-    public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
-        => _chats.JoinChat(command, cancellationToken);
+    public Task<Unit> JoinPublicChat([FromBody] IChats.JoinPublicChatCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _chats.JoinPublicChat(command, cancellationToken);
+    }
+
+    [HttpPost]
+    public Task<string> JoinWithInviteCode([FromBody] IChats.JoinWithInviteCodeCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _chats.JoinWithInviteCode(command, cancellationToken);
+    }
+
+    [HttpPost]
+    public Task<string> GenerateInviteCode([FromBody] IChats.GenerateInviteCodeCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _chats.GenerateInviteCode(command, cancellationToken);
+    }
 
     [HttpPost]
     public Task<ChatEntry> CreateTextEntry([FromBody] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken)
