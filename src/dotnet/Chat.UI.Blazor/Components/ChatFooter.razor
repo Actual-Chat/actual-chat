@@ -14,8 +14,35 @@
         @if (model.CanSend) {
             <ChatMessageEditor/>
         } else if (model.CanJoin) {
-            <button type="button" class="bg-accent rounded-md mx-3 py-1.5 font-medium text-secondary hover:text-primary"
-                    @onclick="@OnJoin">Join Chat</button>
+            <div class="bg-accent rounded-md mx-3 py-1.5 px-2 flex justify-center">
+                <AuthorizeView>
+                    <Authorized>
+                        <div>
+                            <span class="inline-flex">To post or talk,</span>
+                            <button type="button" @onclick="@OnJoin"
+                                    class="bg-button-success group rounded-md
+                                           hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+                                           inline-flex px-3 py-1 text-sm font-medium leading-5
+                                           transition duration-150 ease-in-out">
+                                <span class="fill-current text-accent-muted group-hover:text-primary">Join this chat</span>
+                            </button>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <div>
+                            <div class="inline-flex"><SignInButton BtnCss="px-3 py-1"/></div>
+                            <span class="inline-flex mx-1">or</span>
+                            <button type="button" @onclick="@OnJoin"
+                                    class="bg-button-success group rounded-md
+                                               hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+                                               inline-flex px-3 py-1 text-sm font-medium leading-5
+                                               transition duration-150 ease-in-out">
+                                <span class="fill-current text-accent-muted group-hover:text-primary">Join this chat anonymously</span>
+                            </button>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
         }
     </div>
 }

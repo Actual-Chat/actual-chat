@@ -1,0 +1,63 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@inject ClientAuthHelper _clientAuthHelper
+@{
+    var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
+    var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
+}
+
+<div class="flex-shrink-0 flex">
+    <div class="flex items-center">
+        <div class="relative">
+            <div class="relative">
+                <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden") z-50">
+                    <div class="bg-secondary shadow-lg py-1 rounded-md bg-secondary mb-1 relative select-none">
+                        @foreach (var (name, displayName) in unusedAuthSchemas) {
+                            <a @onclick="@(_ => SignIn(name))" href="#" class="text-sm text-secondary hover:bg-accent block px-4 py-2">
+                                Sign in with @displayName
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button @onclick="() => IsOpen = !IsOpen" class="signin-button @BtnCss" type="button" aria-haspopup="true" aria-expanded="true" aria-controls="account-dropdown-items">
+                    <span class="signin-text">Sign in</span>
+                    <svg class="signin-text ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code{
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
+    private User User => AuthState.User;
+    private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
+    private bool IsOpen { get; set; }
+
+    [Parameter]
+    public string BtnCss { get; set; } = "";
+
+    protected override async Task OnParametersSetAsync()
+        => AuthState = await AuthStateTask;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+    // GetSchemas requires JS interop, so it can be called only at this point
+            AuthSchemas = await _clientAuthHelper.GetSchemas();
+            StateHasChanged();
+        }
+    }
+
+    public void SignOut() {
+        _clientAuthHelper.SignOut();
+        IsOpen = false;
+    }
+
+    public void SignIn(string name) {
+        _clientAuthHelper.SignIn(name);
+        IsOpen = false;
+    }
+}
