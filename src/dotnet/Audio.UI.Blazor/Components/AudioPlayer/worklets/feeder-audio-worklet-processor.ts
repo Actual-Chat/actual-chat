@@ -1,41 +1,42 @@
 import Denque from 'denque';
 import {
     NodeMessage,
-    DataNodeMessage,
-    ChangeStateNodeMessage,
     StateChangedProcessorMessage,
     StateProcessorMessage,
     GetStateNodeMessage,
+    InitNodeMessage,
+    OperationCompletedProcessorMessage,
 } from './feeder-audio-worklet-message';
-import { DecoderMessage, DecoderWorkletMessage } from "../workers/opus-decoder-worker-message";
+import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from "../workers/opus-decoder-worker-message";
 
 const SAMPLE_RATE = 48000;
-/** Part of the feeder that lives in AudioWorkletGlobalScope */
-// TODO: implement pause
+/** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
     private readonly debug: boolean = false;
-    private readonly chunks = new Denque<Float32Array>();
+    private readonly chunks = new Denque<Float32Array | 'end'>();
     /**
      * 128 samples at 48 kHz ~= 2.67 ms
+     * 240_000 samples at 48 kHz ~= 5_000 ms
      * 480_000 samples at 48 kHz ~= 10_000 ms
      */
     private readonly samplesLowThreshold: number = 480_000;
-    private readonly enoughToStartPlaying: number;
-    private readonly tooMuchBuffered: number;
+    /**
+     * How much seconds do we have in the buffer before we can start to play (from the start or after starving),
+     * should be in sync with audio-feeder bufferSize
+     */
+    private readonly enoughToStartPlaying: number = 0.1;
+    /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
+    private readonly tooMuchBuffered: number = 15.0;
     private workerPort: MessagePort;
     private chunkOffset: number = 0;
+    /** In seconds from the start of playing, excluding starving time and processing time */
     private playbackTime: number = 0;
     private isPlaying: boolean = false;
     private isStarving: boolean = false;
 
-
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-
-        const { enoughToStartPlaying, tooMuchBuffered } = options.processorOptions;
-        this.enoughToStartPlaying = enoughToStartPlaying;
-        this.tooMuchBuffered = tooMuchBuffered;
         this.port.onmessage = this.onNodeMessage;
     }
 
@@ -58,11 +59,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     ): boolean {
         const { debug, chunks, isPlaying, samplesLowThreshold, tooMuchBuffered } = this;
         let { chunkOffset } = this;
-        // if we are disconnected from output (node,channel) then we can be closed
         if (outputs == null || outputs.length === 0 || outputs[0].length === 0) {
-            if (debug)
-                console.warn('Feeder processor: empty outputs, stop processing');
-            return false;
+            return true;
         }
 
         const output = outputs[0];
@@ -81,42 +79,46 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         for (let offset = 0; offset < channel.length;) {
             const chunk = chunks.peekFront();
             if (chunk !== undefined) {
-                if (this.isStarving) {
-                    this.isStarving = false;
-                    const message: StateChangedProcessorMessage = {
-                        type: 'stateChanged',
-                        state: 'playing',
-                    };
-                    this.port.postMessage(message);
-                }
-
-                this.isStarving = false;
-                const chunkAvailable = chunk.length - chunkOffset;
-                const remaining = channel.length - offset;
-
-                if (chunkAvailable >= remaining) {
-                    const remainingSamples = chunk.subarray(chunkOffset, chunkOffset + remaining);
-                    channel.set(remainingSamples, offset);
-                    chunkOffset += remaining;
-                    offset += remaining;
-                    this.playbackTime += remaining / SAMPLE_RATE;
+                if (chunk === 'end') {
+                    channel.fill(0, offset);
+                    if (debug)
+                        console.debug('Feeder: reached end of stream');
+                    this.onStopMessage();
+                    break;
                 }
                 else {
-                    const remainingSamples = chunk.subarray(chunkOffset);
-                    channel.set(remainingSamples, offset);
-                    offset += remainingSamples.length;
-                    this.playbackTime += remainingSamples.length / SAMPLE_RATE;
+                    if (this.isStarving) {
+                        this.isStarving = false;
+                        const message: StateChangedProcessorMessage = {
+                            type: 'stateChanged',
+                            state: 'playing',
+                        };
+                        this.port.postMessage(message);
+                    }
 
-                    chunkOffset = 0;
+                    this.isStarving = false;
+                    const chunkAvailable = chunk.length - chunkOffset;
+                    const remaining = channel.length - offset;
 
-                    // send unused buffer back to the worker where it has been allocated for GC purposes
-                    // we don't want to waste audio thread for GCs
-                    const removed = chunks.shift();
-                    const bufferMessage: DecoderWorkletMessage = { topic: 'buffer', buffer: removed.buffer };
-                    this.workerPort.postMessage(bufferMessage, [removed.buffer]);
+                    if (chunkAvailable >= remaining) {
+                        const remainingSamples = chunk.subarray(chunkOffset, chunkOffset + remaining);
+                        channel.set(remainingSamples, offset);
+                        chunkOffset += remaining;
+                        offset += remaining;
+                        this.playbackTime += remaining / SAMPLE_RATE;
+                    }
+                    else {
+                        const remainingSamples = chunk.subarray(chunkOffset);
+                        channel.set(remainingSamples, offset);
+                        offset += remainingSamples.length;
+                        this.playbackTime += remainingSamples.length / SAMPLE_RATE;
+
+                        chunkOffset = 0;
+                        chunks.shift();
+                    }
                 }
             }
-            // we don't have enough data to continue playing => starved
+            // we don't have enough data to continue playing => starving
             else {
                 channel.fill(0, offset);
                 if (!this.isStarving) {
@@ -150,32 +152,20 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 this.port.postMessage(message);
             }
         }
-        // this.lastProcessTime = new Date().getTime();
         return true;
     }
 
     private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
         const msg = ev.data;
         switch (msg.type) {
-            case 'init-port':
-                this.workerPort = ev.ports[0];
-                this.workerPort.onmessage = this.onWorkerMessage;
+            case 'init':
+                this.onInitMessage(msg as InitNodeMessage);
                 break;
-
-            case 'data':
-                this.onDataMessage(msg as DataNodeMessage);
+            case 'stop':
+                this.onStopMessage();
                 break;
-
-            case 'clear':
-                this.onClearMessage();
-                break;
-
             case 'getState':
                 this.onGetState(msg as GetStateNodeMessage);
-                break;
-
-            case 'changeState':
-                this.onChangeStateMessage(msg as ChangeStateNodeMessage);
                 break;
 
             default:
@@ -183,24 +173,32 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         }
     };
 
-    private onDataMessage(message: DataNodeMessage) {
-        this.chunks.push(new Float32Array(message.buffer));
+    private onInitMessage(message: InitNodeMessage) {
+        this.workerPort = message.decoderWorkerPort;
+        this.workerPort.onmessage = this.onWorkerMessage;
+        const msg: OperationCompletedProcessorMessage = {
+            type: 'operationCompleted',
+            callbackId: message.callbackId,
+        };
+        this.port.postMessage(msg);
     }
 
-    private onClearMessage() {
+    private reset(): void {
         const { debug } = this;
         if (debug)
             console.debug("Feeder processor: clear");
         this.isPlaying = false;
         this.isStarving = false;
         this.chunks.clear();
+        this.chunkOffset = 0;
+        // we don't set playbackTime = 0, because we want to see it in getState() after a stop.
     }
 
     private onGetState(message: GetStateNodeMessage) {
         const { debug } = this;
         const msg: StateProcessorMessage = {
             type: 'state',
-            id: message.id,
+            callbackId: message.callbackId,
             bufferedTime: this.bufferedSampleCount / SAMPLE_RATE,
             playbackTime: this.playbackTime,
         };
@@ -209,11 +207,11 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         this.port.postMessage(msg);
     }
 
-    private onChangeStateMessage(message: ChangeStateNodeMessage) {
-        const { debug } = this;
-        if (this.isPlaying && message.state === "stop") {
-            this.isStarving = false;
-            this.isPlaying = false;
+    private onStopMessage() {
+        const { isPlaying: wasPlaying, debug } = this;
+        this.reset();
+
+        if (wasPlaying) {
             if (debug)
                 console.debug("Feeder processor: stopping");
             const message: StateChangedProcessorMessage = {
@@ -222,37 +220,63 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             };
             this.port.postMessage(message);
         }
-        else if (!this.isPlaying && message.state === "play") {
-            this.isStarving = true;
-            this.isPlaying = true;
-            if (debug)
-                console.debug("Feeder processor: start playing");
-        }
+        const message: StateChangedProcessorMessage = {
+            type: 'stateChanged',
+            state: 'ended',
+        };
+        this.port.postMessage(message);
     }
 
     private startPlaybackIfEnoughBuffered(): void {
         if (!this.isPlaying) {
-            const bufferedDuration =  this.bufferedSampleCount / SAMPLE_RATE;
+            const bufferedDuration = this.bufferedSampleCount / SAMPLE_RATE;
             if (bufferedDuration >= this.enoughToStartPlaying) {
                 this.isStarving = true;
                 this.isPlaying = true;
+                this.playbackTime = 0;
             }
         }
     }
 
-    private onWorkerMessage = (ev: MessageEvent) => {
-        const { topic, offset, length, buffer }: DecoderMessage = ev.data;
+    private onWorkerMessage = (ev: MessageEvent<DecoderWorkerMessage>): void => {
+        const msg = ev.data;
+        try {
+            switch (msg.type) {
+                case 'samples':
+                    this.onSamplesDecoderWorkerMessage(msg as SamplesDecoderWorkerMessage);
+                    break;
+                case 'end':
+                    this.onEndDecoderWorkerMessage(msg as EndDecoderWorkerMessage);
+                    break;
+                default:
+                    throw new Error(`Feeder processor: Unsupported worker message type: ${msg.type}`);
+            }
+        }
+        catch (error) {
+            console.error(error);
+        }
+    };
 
-        switch (topic) {
-            case 'samples':
-                this.chunks.push(new Float32Array(buffer, offset, length / 4 ));
-                this.startPlaybackIfEnoughBuffered();
-                break;
-
-            default:
-                break;
+    private onEndDecoderWorkerMessage(message: EndDecoderWorkerMessage) {
+        this.chunks.push('end');
+        // if we don't start to play and the 'end' is already here
+        // for example if play threshold > number of frames before the end
+        if (!this.isPlaying) {
+            this.reset();
+            const message: StateChangedProcessorMessage = {
+                type: 'stateChanged',
+                state: 'ended',
+            };
+            this.port.postMessage(message);
         }
     }
+
+    private onSamplesDecoderWorkerMessage(message: SamplesDecoderWorkerMessage) {
+        const { buffer, length, offset } = message;
+        this.chunks.push(new Float32Array(buffer.slice(offset, offset + length)));
+        this.startPlaybackIfEnoughBuffered();
+    }
+
 }
 // @ts-ignore
 registerProcessor('feederWorklet', FeederAudioWorkletProcessor);

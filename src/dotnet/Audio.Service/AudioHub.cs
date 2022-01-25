@@ -6,17 +6,17 @@ namespace ActualChat.Audio;
 
 public class AudioHub : Hub
 {
-    private readonly AudioSourceStreamer _audioSourceStreamer;
-    private readonly SourceAudioRecorder _sourceAudioRecorder;
+    private readonly IAudioProcessor _audioProcessor;
+    private readonly AudioStreamer _audioStreamer;
     private readonly TranscriptStreamer _transcriptStreamer;
 
     public AudioHub(
-        SourceAudioRecorder sourceAudioRecorder,
-        AudioSourceStreamer audioSourceStreamer,
+        IAudioProcessor audioProcessor,
+        AudioStreamer audioStreamer,
         TranscriptStreamer transcriptStreamer)
     {
-        _sourceAudioRecorder = sourceAudioRecorder;
-        _audioSourceStreamer = audioSourceStreamer;
+        _audioProcessor = audioProcessor;
+        _audioStreamer = audioStreamer;
         _transcriptStreamer = transcriptStreamer;
     }
 
@@ -24,17 +24,19 @@ public class AudioHub : Hub
         string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
-        => _audioSourceStreamer.GetAudioStream(streamId, skipTo, cancellationToken);
+        => _audioStreamer.GetAudioStream(streamId, skipTo, cancellationToken);
 
     public IAsyncEnumerable<Transcript> GetTranscriptDiffStream(
         string streamId,
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
-    public Task RecordSourceAudio(
-            Session session,
-            AudioRecord audioRecord,
-            IAsyncEnumerable<RecordingPart> recordingStream)
+    public Task ProcessAudio(
+        AudioRecord audioRecord,
+        IAsyncEnumerable<RecordingPart> recordingStream)
+    {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        => _sourceAudioRecorder.RecordSourceAudio(session, audioRecord, recordingStream.TrimOnCancellation(), default);
+        recordingStream = recordingStream.TrimOnCancellation();
+        return _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default);
+    }
 }

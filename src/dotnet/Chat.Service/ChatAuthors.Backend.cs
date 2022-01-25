@@ -14,20 +14,11 @@ public partial class ChatAuthors
         string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)
     {
-        ChatAuthor? chatAuthor;
-        var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false)) {
-            var dbChatAuthor = await dbContext.ChatAuthors
-                .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
-                .ConfigureAwait(false);
-            chatAuthor = dbChatAuthor?.ToModel();
-        }
-
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
-            return chatAuthor;
-
-        var userInfo = await _userInfos.Get(chatAuthor.UserId, cancellationToken).ConfigureAwait(false);
-        return chatAuthor.InheritFrom(userInfo);
+        var dbChatAuthor = await _dbChatAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
+        if (!StringComparer.Ordinal.Equals(dbChatAuthor?.ChatId, chatId))
+            return null;
+        var chatAuthor = dbChatAuthor.ToModel();
+        return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -46,17 +37,32 @@ public partial class ChatAuthors
                 .ConfigureAwait(false);
             chatAuthor = dbChatAuthor?.ToModel();
         }
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
-            return chatAuthor;
 
-        var userInfo = await _userInfos.Get(userId, cancellationToken).ConfigureAwait(false);
-        return chatAuthor.InheritFrom(userInfo);
+        return await InheritFromUserAuthor(chatAuthor, inherit, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken)
+    {
+        if (userId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        string[] chatIds;
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false)) {
+            chatIds = await dbContext.ChatAuthors
+                .Where(a => a.UserId == userId)
+                .Select(a => a.ChatId)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return chatIds;
     }
 
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await GetSessionChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 
@@ -69,7 +75,7 @@ public partial class ChatAuthors
         if (!user.IsAuthenticated) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
-                new($"{chatId}::authorId", chatAuthor.Id));
+                new(chatId + AuthorIdSuffix, chatAuthor.Id));
             await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return chatAuthor;
@@ -83,6 +89,7 @@ public partial class ChatAuthors
             if (!userId.IsNullOrEmpty()) {
                 _ = GetByUserId(chatId, userId, true, default);
                 _ = GetByUserId(chatId, userId, false, default);
+                _ = GetChatIdsByUserId(userId, default);
             }
             return default!;
         }
@@ -100,8 +107,6 @@ public partial class ChatAuthors
             var userAuthor = await _userAuthorsBackend.Get(userId, true, cancellationToken).ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             dbChatAuthor = new DbChatAuthor() {
-                Name = userAuthor.Name, // Wrong: it should either generate anon
-                Picture = userAuthor.Picture,
                 IsAnonymous = userAuthor.IsAnonymous,
             };
         }
@@ -119,9 +124,48 @@ public partial class ChatAuthors
         return dbChatAuthor.ToModel();
     }
 
+    public virtual async Task Update(IChatAuthorsBackend.UpdateCommand command, CancellationToken cancellationToken)
+    {
+        var (authorId, name, picture) = command;
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            var operation = CommandContext.GetCurrent().Operation();
+            var invChatAuthor = operation.Items.Get<ChatAuthor>();
+            if (invChatAuthor != null) {
+                var invChatId = invChatAuthor.ChatId;
+                var invUserId = invChatAuthor.UserId;
+                if (!invUserId.IsEmpty) {
+                    _ = GetByUserId(invChatId, invUserId, true, default);
+                    _ = GetByUserId(invChatId, invUserId, false, default);
+                }
+                _ = Get(invChatId, authorId, true, default);
+                _ = Get(invChatId, authorId, false, default);
+            }
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChatAuthor = await dbContext.ChatAuthors
+            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChatAuthor == null)
+            throw new InvalidOperationException("chat author does not exists");
+
+        dbChatAuthor.Name = name ?? "";
+        dbChatAuthor.Picture = picture ?? "";
+        dbChatAuthor.Version = VersionGenerator.NextVersion();
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var сhatAuthor = dbChatAuthor.ToModel();
+        context.Operation().Items.Set(сhatAuthor);
+    }
+
     // Private / internal methods
 
-    internal async Task<long> DbNextLocalId(
+    private async Task<long> DbNextLocalId(
         ChatDbContext dbContext,
         string chatId,
         CancellationToken cancellationToken)
@@ -141,5 +185,17 @@ public partial class ChatAuthors
         var localId = await _idSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
         _maxLocalIdCache[idSequenceKey] = localId;
         return localId;
+    }
+
+    private async Task<ChatAuthor?> InheritFromUserAuthor(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
+    {
+        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
+            return chatAuthor;
+
+        var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken).ConfigureAwait(false);
+        if (userAuthor == null)
+            return chatAuthor;
+
+        return chatAuthor.InheritFrom(userAuthor);
     }
 }

@@ -1,11 +1,13 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @inject HostInfo _hostInfo
+@inject IEnumerable<NavBarItem> _navBarItems
 
-<NavbarGroup Title="Chats">
-    <NavbarLink Title="The Actual One" Url="@($"/chat/{Constants.Chat.DefaultChatId}")" />
-</NavbarGroup>
-<NavbarGroup Title="Contacts">
+@foreach (var barItem in _navBarItems.OrderBy(c => c.Order)) {
+    @barItem.Content
+}
+
+    <NavbarGroup Title="Contacts">
     <Icons>
         <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
             <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
@@ -21,6 +23,7 @@
         <NavbarLink Title="Virtual List" Url="/test/virtual-list" />
         <NavbarLink Title="Audio Player" Url="/test/audio-player" />
         <NavbarLink Title="Audio Recorder" Url="/test/audio-recorder" />
+        <NavbarLink Title="Edit Chat Author" Url="/test/edit-chat-author" />
         <NavbarLink Title="Authentication" Url="/test/auth" />
     </NavbarGroup>
 }

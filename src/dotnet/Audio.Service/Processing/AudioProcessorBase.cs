@@ -7,7 +7,7 @@ public abstract class AudioProcessorBase
 
     protected ILogger Log => _log ??= Services.LogFor(GetType());
     protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected bool DebugMode { get; init; } = Constants.DebugMode.AudioProcessing;
+    protected bool DebugMode { get; init; } = Constants.DebugMode.AudioProcessor;
 
     protected IServiceProvider Services { get; }
     protected MomentClockSet Clocks => _clocks ??= Services.Clocks();

@@ -1,0 +1,39 @@
+@inherits ComputedStateComponent<ChatLinks.Model>
+
+@{
+    var model = State.LatestNonErrorValue;
+    var chats = model.Chats;
+}
+
+<NavbarGroup Title="Chats">
+    <ChildContent>
+        @foreach(var chat in chats) {
+            <NavbarLink Title="@chat.Name" Url="@($"/chat/{chat.Url}")" />
+        }
+        @if (model.AddDefault) {
+            <NavbarLink Title="The Actual One" Url="@($"/chat/{Constants.Chat.DefaultChatId}")" />
+        }
+    </ChildContent>
+</NavbarGroup>
+
+@code {
+    public class Model
+    {
+        public (string Name, string Url)[] Chats { get; set; } = new (string Name, string Url)[0];
+        public bool AddDefault { get; set; } = true;
+    }
+
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private IChats Chats { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new () };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chats = await Chats.GetChats(Session, cancellationToken);
+        return new () {
+            Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
+            AddDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId)
+        };
+    }
+}

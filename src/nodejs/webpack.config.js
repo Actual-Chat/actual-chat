@@ -14,7 +14,6 @@ function _(file) {
 // https://stackoverflow.com/questions/43140501/can-webpack-report-which-file-triggered-a-compilation-in-watch-mode
 class WatchRunPlugin {
   apply(compiler) {
-    const /** @type {import('webpack').Compilation} */ compilation = null;
 
     compiler.hooks.watchRun.tap('WatchRun', (/** @type {import('webpack').Compiler} */ comp) => {
 
@@ -172,6 +171,15 @@ module.exports = (env, args) => {
       ],
     },
     entry: {
+      warmUpWorklet: {
+        import: './src/worklets/warm-up-worklet-processor.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+          type: 'module',
+        }
+      },
       feederWorklet: {
         import: './../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts',
         chunkLoading: false,

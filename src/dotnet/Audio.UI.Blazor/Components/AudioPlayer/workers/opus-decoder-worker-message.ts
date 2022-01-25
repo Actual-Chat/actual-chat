@@ -1,90 +1,64 @@
-
-export type DecoderCommandType = 'loadDecoder' | 'init' | 'pushData' | 'endOfStream' | 'stop';
-
-interface DecoderCommandContract {
-    command: DecoderCommandType;
-    playerId: string;
-}
-
-export type DecoderCommand =
-    LoadDecoderCommand |
-    InitCommand |
-    PushDataCommand |
-    EndOfStreamCommand |
-    StopCommand;
-
-export class LoadDecoderCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'loadDecoder';
-    public readonly playerId: string = 'NA';
-
-    constructor() {
-    }
-}
-
-export class InitCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'init';
-    public readonly playerId: string;
-    public readonly buffer: ArrayBuffer;
-    public readonly offset: number;
-    public readonly length: number;
-
-    constructor(playerId: string, buffer: ArrayBuffer, offset: number, length: number) {
-        this.playerId = playerId;
-        this.buffer = buffer;
-        this.offset = offset;
-        this.length = length;
-    }
-}
-
-export class PushDataCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'pushData';
-    public readonly playerId: string;
-    public readonly buffer: ArrayBuffer;
-    public readonly offset: number;
-    public readonly length: number;
-
-    constructor(playerId: string, buffer: ArrayBuffer, offset: number, length: number) {
-        this.playerId = playerId;
-        this.buffer = buffer;
-        this.offset = offset;
-        this.length = length;
-    }
-}
-
-export class EndOfStreamCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'endOfStream';
-    public readonly playerId: string;
-
-    constructor(playerId: string) {
-        this.playerId = playerId;
-    }
-}
-
-export class StopCommand implements DecoderCommandContract {
-    public readonly command: DecoderCommandType = 'stop';
-    public readonly playerId: string;
-
-    constructor(playerId: string) {
-        this.playerId = playerId;
-    }
-}
-
-//** Decoded samples, will be consumed at the decoder worklet */
+/* Message that is used to communicate between the global scope and the decoder web worker (main thread -> worker) */
 export interface DecoderMessage {
-    topic: 'samples';
+    type: 'create' | 'init' | 'data' | 'end' | 'stop';
+}
+
+/** When controller created he sends the create message to initialize decoder on the web worker side */
+export interface CreateDecoderMessage extends DecoderMessage {
+    type: 'create';
+    controllerId: number;
+    callbackId: number;
+    workletPort: MessagePort;
+}
+
+export interface InitDecoderMessage extends DecoderMessage {
+    type: 'init';
+    controllerId: number,
+    callbackId: number,
+    // ArrayBuffer sometimes can be bigger than Uint8Array and can be started not from the beginning
+    // so we should transfer offset and length too
+    buffer: ArrayBuffer;
     offset: number;
     length: number;
-    buffer: ArrayBuffer;
 }
 
-//** Init callback message, handled at the audio player main thread */
+export interface DataDecoderMessage extends DecoderMessage {
+    type: 'data';
+    controllerId: number;
+    buffer: ArrayBuffer;
+    offset: number;
+    length: number;
+}
+
+export interface EndDecoderMessage extends DecoderMessage {
+    type: 'end';
+    controllerId: number;
+}
+
+export interface StopDecoderMessage extends DecoderMessage {
+    type: 'stop';
+    controllerId: number;
+}
+
+/** Message that is sent from the decoder web worker (web worker -> { worklet | main thread }) */
 export interface DecoderWorkerMessage {
-    topic: 'initCompleted';
-    playerId: string;
+    type: 'end' | 'samples' | 'operationCompleted';
 }
 
-//** Processed buffer to be returned back to the decoder worker */
-export interface DecoderWorkletMessage {
-    topic: 'buffer';
+/** Decoded samples, will be consumed at the decoder worklet (web worker -> worklet) */
+export interface SamplesDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'samples';
     buffer: ArrayBuffer;
+    offset: number;
+    length: number;
+}
+/** Message says that decoder has reached the end of the stream (web worker -> worklet) */
+export interface EndDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'end';
+}
+
+/** Tells that an (async) operation was completed (create, init etc). (web worker -> main thread) */
+export interface OperationCompletedDecoderWorkerMessage extends DecoderWorkerMessage {
+    type: 'operationCompleted';
+    callbackId: number;
 }

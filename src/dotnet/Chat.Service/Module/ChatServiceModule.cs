@@ -35,7 +35,7 @@ public class ChatServiceModule : HostModule<ChatSettings>
             dbContext.AddEntityResolver<string, DbChat>((_, options) => {
                 options.QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners);
             });
-            dbContext.AddEntityResolver<string, DbChatEntry>();
+            dbContext.AddEntityResolver<string, DbChatAuthor>();
         });
 
         var fusion = services.AddFusion();

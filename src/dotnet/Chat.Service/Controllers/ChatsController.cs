@@ -21,6 +21,10 @@ public class ChatsController : ControllerBase, IChats
         => _chats.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
+        => _chats.GetChats(session, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -61,6 +65,16 @@ public class ChatsController : ControllerBase, IChats
         command.UseDefaultSession(_sessionResolver);
         return _chats.CreateChat(command, cancellationToken);
     }
+
+    public Task<Unit> UpdateChat(IChats.UpdateChatCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _chats.UpdateChat(command, cancellationToken);
+    }
+
+    [HttpPost]
+    public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
+        => _chats.JoinChat(command, cancellationToken);
 
     [HttpPost]
     public Task<ChatEntry> CreateEntry([FromBody] IChats.CreateEntryCommand command, CancellationToken cancellationToken)

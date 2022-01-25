@@ -8,6 +8,21 @@ namespace ActualChat.Chat;
 
 public partial class Chats
 {
+    private static readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) {
+        "alex.yakunin@actual.chat",
+        "alex.yakunin@gmail.com",
+        "alexey.kochetov@actual.chat",
+        "undead00@gmail.com",
+        "vladimir.chirikov@actual.chat",
+        "vovanchig@gmail.com",
+        "dmitry.filippov@actual.chat",
+        "crui3er@gmail.com",
+        "andrey.yakunin@actual.chat",
+        "iqmulator@gmail.com",
+        "alexis.kochetov@gmail.com",
+        "alexey.kochetov@actual.chat",
+        "vobewaf244@douwx.com", // Test account
+    };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
 
     // [ComputeMethod]
@@ -18,26 +33,54 @@ public partial class Chats
     }
 
     // [ComputeMethod]
+    public virtual async Task<string[]> GetOwnedChatIds(string userId, CancellationToken cancellationToken)
+    {
+        if (userId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        string[] ownedChatIds;
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false)) {
+            ownedChatIds = await dbContext.ChatOwners
+                .Where(a => a.UserId == userId)
+                .Select(a => a.ChatId)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return ownedChatIds;
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ChatPermissions> GetPermissions(
         string chatId,
-        string? authorId,
+        string chatPrincipalId,
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return 0;
 
-        var author = !authorId.IsNullOrEmpty()
-            ? await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false)
-            : null;
-        var user = author is { UserId.IsEmpty: false }
-            ? await _authBackend.GetUser(author.UserId, cancellationToken).ConfigureAwait(false)
+        ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
+
+        ChatAuthor? author = null;
+        if (!authorId.IsNullOrEmpty()) {
+            author = await _chatAuthorsBackend.Get(chatId, authorId!, false, cancellationToken).ConfigureAwait(false);
+            userId = author?.UserId;
+        }
+
+        var user = !userId.IsNullOrEmpty()
+            ? await _authBackend.GetUser(userId, cancellationToken).ConfigureAwait(false)
             : null;
 
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
-        if (Constants.Chat.DefaultChatId == chatId)
-            return ChatPermissions.All;
+        if (Constants.Chat.DefaultChatId == chatId) {
+            if (user != null && IsAdmin(user))
+                return ChatPermissions.All;
+            return ChatPermissions.None;
+        }
+        if (author != null)
+            return ChatPermissions.Read | ChatPermissions.Write;
         if (chat.IsPublic)
             return ChatPermissions.Read;
 
@@ -159,11 +202,15 @@ public partial class Chats
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating())
-            return null!; // Nothing to invalidate
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            foreach(var userIdInv in invChat.OwnerIds)
+                _ = GetOwnedChatIds(userIdInv, default);
+            return null!;
+        }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
         var chat = command.Chat with {
             Id = Ulid.NewUlid().ToString(),
@@ -177,6 +224,41 @@ public partial class Chats
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Unit> UpdateChat(
+        IChatsBackend.UpdateChatCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            _ = Get(invChat.Id, default);
+            return default;
+        }
+
+        var chat = command.Chat;
+        var chatId = (string)chat.Id;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats
+            .SingleOrDefaultAsync(a => a.Id == chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChat == null)
+            throw new InvalidOperationException("chat does not exists");
+        if (dbChat.Version != chat.Version)
+            throw new InvalidOperationException("chat has been modified already");
+
+        dbChat.Title = chat.Title;
+        dbChat.IsPublic = chat.IsPublic;
+        dbChat.Version = VersionGenerator.NextVersion();
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        chat = dbChat.ToModel();
+        context.Operation().Items.Set(chat);
+        return default;
     }
 
     // [CommandHandler]
@@ -216,14 +298,24 @@ public partial class Chats
     // Protected methods
 
     protected async Task AssertHasPermissions(
+        Session session,
         string chatId,
-        string? authorId,
         ChatPermissions permissions,
         CancellationToken cancellationToken)
     {
-        var chatPermissions = await GetPermissions(chatId, authorId, cancellationToken).ConfigureAwait(false);
-        if ((chatPermissions & permissions) != permissions)
+        if (!await CheckHasPermissions(session, chatId, permissions, cancellationToken).ConfigureAwait(false))
             throw new SecurityException("Not enough permissions.");
+    }
+
+    protected async Task<bool> CheckHasPermissions(
+        Session session,
+        string chatId,
+        ChatPermissions permissions,
+        CancellationToken cancellationToken)
+    {
+        var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatPermissions = await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        return (chatPermissions & permissions) == permissions;
     }
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
@@ -311,5 +403,29 @@ public partial class Chats
         var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
         _maxIdCache[idSequenceKey] = id;
         return id;
+    }
+
+    private void ParseChatPrincipalId(string chatPrincipalId, out string? authorId, out string? userId)
+    {
+        if (chatPrincipalId.Contains(":", StringComparison.Ordinal)) {
+            authorId = chatPrincipalId;
+            userId = null;
+        }
+        else {
+            authorId = null;
+            userId = chatPrincipalId;
+        }
+    }
+
+    private bool IsAdmin(User user)
+    {
+        if (!user.IsAuthenticated)
+            return false;
+        if (user.Identities.Any(i =>
+                StringComparer.Ordinal.Equals(i.Key.Schema, "internal")
+                || StringComparer.Ordinal.Equals(i.Key.Schema, "test")))
+            return true;
+        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
+        return AdminEmails.Contains(email);
     }
 }

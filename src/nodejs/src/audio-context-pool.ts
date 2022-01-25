@@ -2,7 +2,6 @@
  * We're only allowed to have 4-6 audio contexts on many browsers
  * and there's no way to discard them before GC, so we should reuse audio contexts.
  */
-// TODO: make the pooling with node objects too
 export class AudioContextPool {
 
     private static audioContexts = new Map<string, {
@@ -27,12 +26,12 @@ export class AudioContextPool {
             throw new Error(`AudioContext factory with key "${key}" isn't registered.`);
 
         if (obj.audioContext === null) {
-            console.warn("pool get: obj.audioContext", obj.audioContext);
+            console.warn(`AudioContextPool get(): audioContext '${key}' wasn't initialized`);
             obj.audioContext = await obj.factory();
         }
 
-        if (obj.audioContext.state === 'suspended' && typeof obj.audioContext["resume"] === 'function')
-            (obj.audioContext as AudioContext).resume();
+        if (obj.audioContext.state === 'suspended' && isAudioContext(obj.audioContext))
+            await obj.audioContext.resume();
         return obj.audioContext;
     }
 
@@ -59,20 +58,41 @@ export class AudioContextPool {
     private static _initEventListener = () => {
         AudioContextPool.removeInitListeners();
         AudioContextPool.audioContexts.forEach(async (obj, key) => {
+            if (obj.audioContext != null)
+                return;
             obj.audioContext = await obj.factory();
-            console.debug(`AudioContext "${key}" is initialized.`);
+            console.debug(`AudioContextPool: AudioContext "${key}" is created.`);
+            // try to warm-up context
+            if (isAudioContext(obj.audioContext) && obj.audioContext.state === 'running') {
+                console.debug(`AudioContextPool: Start warming up audioContext "${key}"`);
+                await obj.audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
+                const nodeOptions: AudioWorkletNodeOptions = {
+                    channelCount: 1,
+                    channelCountMode: 'explicit',
+                    numberOfInputs: 0,
+                    numberOfOutputs: 1,
+                    outputChannelCount: [1],
+                };
+                const node = new AudioWorkletNode(obj.audioContext, 'warmUpWorklet', nodeOptions);
+                node.connect(obj.audioContext.destination);
+                await new Promise<void>(resolve => {
+                    node.port.postMessage('stop');
+                    node.port.onmessage = (ev: MessageEvent<string>): void => {
+                        console.assert(ev.data === 'stopped', "Unsupported message from warm up worklet.");
+                        resolve();
+                    };
+                });
+                node.disconnect();
+                console.debug(`AudioContextPool: End of warming up audioContext "${key}"`);
+            }
+            console.debug(`AudioContextPool: AudioContext "${key}" is initialized.`);
+
         });
     };
 }
-/** helper function with workaround of Safari addModule implementation */
-async function getWorklet(url: string): Promise<string> {
-    if (self.navigator.userAgent.includes('Safari') && !self.navigator.userAgent.includes('Chrome')) {
-        const response = await fetch(url);
-        const text = await response.text();
-        return text;
-    } else {
-        return url;
-    }
+
+function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioContext {
+    return !!obj && typeof obj === 'object' && typeof obj["resume"] === 'function';
 }
 
 AudioContextPool.register("main", async () => {
@@ -80,16 +100,11 @@ AudioContextPool.register("main", async () => {
         latencyHint: 'interactive',
         sampleRate: 48000,
     });
-    const feederWorklet = await getWorklet('/dist/feederWorklet.js');
-    await audioContext.audioWorklet.addModule(feederWorklet);
-    return audioContext;
-});
-AudioContextPool.register("recorder", async () => {
-    const audioContext = new AudioContext({ sampleRate: 48000 });
-    const opusEncoderWorklet = await getWorklet('/dist/opusEncoderWorklet.js');
-    await audioContext.audioWorklet.addModule(opusEncoderWorklet);
-    const vadWorklet = await getWorklet('/dist/vadWorklet.js');
-    await audioContext.audioWorklet.addModule(vadWorklet);
+    await Promise.all([
+        audioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
+        audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
+        audioContext.audioWorklet.addModule('/dist/vadWorklet.js'),
+    ]);
     return audioContext;
 });
 

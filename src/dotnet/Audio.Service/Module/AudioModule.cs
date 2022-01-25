@@ -45,20 +45,18 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
         // Module's own services
         services.AddTransient<AudioHub>();
 
-        services.TryAddSingleton<SourceAudioProcessor.Options>();
-        services.AddSingleton<SourceAudioProcessor>();
-        services.AddHostedService(sp => sp.GetRequiredService<SourceAudioProcessor>());
+        services.TryAddSingleton<AudioProcessor.Options>();
+        services.AddSingleton<AudioProcessor>();
+        services.AddTransient<IAudioProcessor>(c => c.GetRequiredService<AudioProcessor>());
 
         services.AddSingleton<AudioSegmentSaver>();
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();
         services.AddSingleton<AudioSplitter>();
-        services.AddSingleton<AudioSourceStreamer>();
-        services.AddTransient<IAudioSourceStreamer>(c => c.GetRequiredService<AudioSourceStreamer>());
+        services.AddSingleton<AudioStreamer>();
+        services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioStreamer>());
         services.AddSingleton<TranscriptSplitter>();
         services.AddSingleton<TranscriptPostProcessor>();
         services.AddSingleton<TranscriptStreamer>();
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<TranscriptStreamer>());
-        services.AddSingleton<SourceAudioRecorder>();
-        services.AddTransient<ISourceAudioRecorder>(c => c.GetRequiredService<SourceAudioRecorder>());
     }
 }

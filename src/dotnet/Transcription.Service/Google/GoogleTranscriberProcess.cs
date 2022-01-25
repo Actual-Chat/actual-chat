@@ -12,7 +12,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
 {
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode => Constants.DebugMode.TranscriptionGoogle || Constants.DebugMode.Transcription;
+    private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
     private TranscriptionOptions Options { get; }
     private AudioSource AudioSource { get; }

@@ -20,6 +20,10 @@ module.exports = {
   darkMode: 'media',
   theme: {
     extend: {
+      colors: {
+        'error-toast-header': 'var(--error-toast-header)',
+        'error-toast-body': 'var(--error-toast-body)',
+      },
       textColor: {
         'primary': 'var(--text-color-primary)',
         'primary-muted': 'var(--text-color-primary-muted)',
@@ -51,6 +55,10 @@ module.exports = {
         'button-success-hover': 'var(--button-color-success-hover)',
         'button-accent': 'var(--button-color-accent)',
         'button-accent-hover': 'var(--button-color-accent-hover)',
+        'button-error': 'var(--button-color-error)',
+        'button-error-hover': 'var(--button-color-error-hover)',
+        'message-hover': 'var(--background-message-hover)',
+        'separate-line': 'var(--background-separate-line)',
       },
     },
     screens: {
@@ -160,6 +168,13 @@ module.exports = {
       ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       bounce: 'bounce 1s infinite',
+      'instant-display': 'display-element-from-left 0s',
+      'display-from-left': 'display-element-from-left 150ms ease-in-out',
+      'display-from-right': 'display-element-from-right 150ms ease-in-out',
+      'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
+      'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
+      'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
+      'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
     },
     aspectRatio: {
       auto: 'auto',
@@ -624,6 +639,52 @@ module.exports = {
         '50%': {
           transform: 'none',
           animationTimingFunction: 'cubic-bezier(0,0,0.2,1)',
+        },
+      },
+      'display-element-from-left': {
+        from: {
+          transform: 'translateX(-1rem) scale(.05)',
+        },
+        to: {
+          transform: 'translateX(0rem) scale(1)',
+        },
+      },
+      'hide-element-to-left': {
+        from: {
+          transform: 'translateX(0rem) scale(1)',
+            opacity: 1,
+        },
+        to: {
+          transform: 'translateX(-1rem) scale(.1)',
+            opacity: 0,
+        },
+      },
+      'display-element-from-right': {
+        from: {
+          transform: 'translateX(1rem) scale(.05)',
+        },
+        to: {
+          transform: 'translateX(0rem) scale(1)',
+        },
+      },
+      'hide-element-to-right': {
+        from: {
+          transform: 'translateX(0rem) scale(1)',
+            opacity: 1,
+          },
+        to: {
+          transform: 'translateX(1rem) scale(.1)',
+            opacity: 0,
+        },
+      },
+      'display-element-from-bottom': {
+        from: {
+          opacity: 0,
+          transform: 'translateY(1.5rem)',
+        },
+        to: {
+          opacity: 1,
+          transform: 'translateY(0rem)',
         },
       },
     },

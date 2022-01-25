@@ -14,13 +14,15 @@
     <BlazorVersion>6.0.1</BlazorVersion>
     <SignalRVersion>6.0.1</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.2.44</StlFusionVersion>
+    <StlFusionVersion>2.3.1</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
+    <PackageReference Update="Blazor.ContextMenu" Version="1.11.1" />
+    <PackageReference Update="Blazored.Modal" Version="6.0.1" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*"/>

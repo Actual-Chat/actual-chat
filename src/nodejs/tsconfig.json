@@ -3,6 +3,7 @@
     "index.ts",
     "types/",
     "src/",
+    "src/worklets/warm-up-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts",
@@ -21,6 +22,8 @@
     "noEmitOnError": true,
     "importsNotUsedAsValues": "remove",
     "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "maxNodeModuleJsDepth": 1,
     "esModuleInterop": false,
     // change to true (?)
     "noImplicitAny": false,

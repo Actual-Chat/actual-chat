@@ -3,6 +3,7 @@ using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,16 +12,17 @@ using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
+using Stl.Fusion.Server.Controllers;
 using Stl.Plugins;
 using Stl.Redis;
 
 namespace ActualChat.Users.Module;
 
-public class UsersModule : HostModule<UsersSettings>
+public class UsersServiceModule : HostModule<UsersSettings>
 {
-    public UsersModule(IPluginInfoProvider.Query _) : base(_) { }
+    public UsersServiceModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
-    public UsersModule(IPluginHost plugins) : base(plugins) { }
+    public UsersServiceModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
     {
@@ -36,6 +38,14 @@ public class UsersModule : HostModule<UsersSettings>
             options.LogoutPath = "/signOut";
             if (IsDevelopmentInstance)
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+            // This controls the expiration time stored in the cookie itself
+            options.ExpireTimeSpan = TimeSpan.FromDays(14);
+            options.SlidingExpiration = true;
+            // And this controls when the browser forgets the cookie
+            options.Events.OnSigningIn = ctx => {
+                ctx.CookieOptions.Expires = DateTimeOffset.UtcNow.AddDays(28);
+                return Task.CompletedTask;
+            };
         }).AddGoogle(options => {
             options.ClientId = Settings.GoogleClientId;
             options.ClientSecret = Settings.GoogleClientSecret;
@@ -66,6 +76,7 @@ public class UsersModule : HostModule<UsersSettings>
             services.TryAddSingleton<DbUserByNameResolver>();
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
             dbContext.AddEntityResolver<string, DbUserState>();
+            dbContext.AddEntityResolver<string, DbUserAuthor>();
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
@@ -96,11 +107,14 @@ public class UsersModule : HostModule<UsersSettings>
         var fusionAuth = fusion.AddAuthentication();
         services.TryAddScoped<ServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
-            signInControllerOptionsBuilder: (_, options) => {
-                options.DefaultScheme = MicrosoftAccountDefaults.AuthenticationScheme;
+            signInControllerSettingsFactory: _ => SignInController.DefaultSettings with {
+                DefaultScheme = GoogleDefaults.AuthenticationScheme,
+                SignInPropertiesBuilder = (_, properties) => {
+                    properties.IsPersistent = true;
+                },
             },
-            authHelperOptionsBuilder: (_, options) => {
-                options.NameClaimKeys = Array.Empty<string>();
+            serverAuthHelperSettingsFactory: _ => new() {
+                NameClaimKeys = Array.Empty<string>(),
             });
 
         // Module's own services
@@ -109,6 +123,7 @@ public class UsersModule : HostModule<UsersSettings>
         services.AddSingleton<UserNamer>();
         fusion.AddComputeService<IUserInfos, UserInfos>();
         fusion.AddComputeService<IUserStates, UserStates>();
+        fusion.AddComputeService<IUserAuthors, UserAuthors>();
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         services.AddCommander()

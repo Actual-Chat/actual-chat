@@ -2,9 +2,12 @@
 @page "/unavailable/{What}"
 @inject NavigationManager _nav
 
-<h1>Unavailable</h1>
-
-This @(What.NullIfEmpty() ?? "page") doesn't exist.
+<PageWithHeaderAndFooter>
+    <Header><h1>Unavailable</h1></Header>
+    <Body>
+        This @(What.NullIfEmpty() ?? "page") doesn't exist.
+    </Body>
+</PageWithHeaderAndFooter>
 
 @code {
     [Parameter]

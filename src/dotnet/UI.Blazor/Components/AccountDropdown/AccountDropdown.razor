@@ -3,7 +3,6 @@
 @{
     var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var picture = $"https://avatars.dicebear.com/api/avataaars/{User.Name}.svg";
 }
 
 <AuthorizeView>
@@ -21,16 +20,7 @@
                     </div>
                     <div class="account-dropdown-block">
                         <button @onclick="() => IsOpen = !IsOpen" class="max-w-xs flex items-center text-sm rounded-full text-primary-muted outline-none ml-2">
-                            <img class="inline-block h-8 w-8 rounded-full" src="@picture" alt="avatar">
-                            <div class="ml-3">
-                                <p class="text-sm leading-5 font-medium text-primary-muted hover:text-primary">
-                                    @User.Name
-                                </p>
-                                <div class="flex flex-row items-center px-1">
-                                    <span class="rounded-full block w-2 h-2 mr-2 bg-online"></span>
-                                    <span class="text-primary-muted font-medium text-xxs text-left leading-4 hover:text-primary"><a href="#">Online</a></span>
-                                </div>
-                            </div>
+                            <AccountView User="@User" />
                         </button>
                     </div>
                 </div>

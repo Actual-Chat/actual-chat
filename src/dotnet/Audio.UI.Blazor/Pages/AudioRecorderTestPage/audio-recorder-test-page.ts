@@ -23,7 +23,7 @@ class DataUrlSendingQueue implements IRecordingEventQueue {
             return;
         }
         const length = command.serialize(this._buffer, 0);
-        this._data.push(this._buffer.slice(0, length));
+        this._data.push(this._buffer.slice(3, length));
     }
 }
 

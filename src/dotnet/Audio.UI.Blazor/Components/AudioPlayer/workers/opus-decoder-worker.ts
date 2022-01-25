@@ -1,100 +1,104 @@
-import Denque from 'denque';
-import {
-    DecoderCommand,
-    DecoderWorkerMessage,
-    EndOfStreamCommand,
-    InitCommand,
-    PushDataCommand, StopCommand
-} from "./opus-decoder-worker-message";
+import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from "./opus-decoder-worker-message";
 import { OpusDecoder } from "./opus-decoder";
 
-
-const decoderPool = new Denque<OpusDecoder>();
-const decoderMap = new Map<string,OpusDecoder>();
 const worker = self as unknown as Worker;
+const decoders = new Map<number, OpusDecoder>();
+const debug: boolean = false;
+const debugPushes: boolean = debug && true;
 
-worker.onmessage = async (ev: MessageEvent) => {
+worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
     try {
-        const {command}: DecoderCommand = ev.data;
-        switch (command) {
-            case 'loadDecoder':
-                await onLoadDecoder();
+        const msg = ev.data;
+        switch (msg.type) {
+            case 'create':
+                await onCreate(msg as CreateDecoderMessage);
                 break;
-
             case 'init':
-                await onInit(ev.data, ev.ports[0]);
+                await onInit(msg as InitDecoderMessage);
                 break;
-
-            case 'pushData':
-                await onPushData(ev.data);
+            case 'data':
+                onData(msg as DataDecoderMessage);
                 break;
-
-            case 'endOfStream':
-                await onEndOfStream(ev.data);
+            case 'end':
+                onEnd(msg as EndDecoderMessage);
                 break;
-
             case 'stop':
-                await onStop(ev.data);
+                await onStop(msg as StopDecoderMessage);
                 break;
+            default:
+                throw new Error(`Decoder Worker: Unsupported DecoderMessage type: ${msg.type}`);
         }
     }
     catch (error) {
-        // TODO(AK): implement centralized logging for client, like Sentry, etc.
         console.error(error);
     }
 };
 
-async function onLoadDecoder(): Promise<void> {
-    decoderPool.push(await OpusDecoder.create(release));
-    decoderPool.push(await OpusDecoder.create(release));
-    decoderPool.push(await OpusDecoder.create(release));
-}
-
-async function onInit(command: InitCommand, port: MessagePort): Promise<void> {
-    const { playerId, buffer, offset, length } = command;
-    const workletPort = port;
-    let decoder = decoderPool.shift();
-    if (decoder == null) {
-        decoder = await OpusDecoder.create(release);
+function getDecoder(controllerId: number): OpusDecoder {
+    const decoder = decoders.get(controllerId);
+    if (decoder === undefined) {
+        throw new Error(`Can't find decoder object for controllerId:${controllerId}`);
     }
-    await decoder.init(playerId, workletPort, buffer, offset, length);
-    decoderMap.set(playerId, decoder);
-
-    const initCompletedMessage: DecoderWorkerMessage = {topic: 'initCompleted', playerId: playerId};
-    worker.postMessage(initCompletedMessage);
-}
-
-async function onPushData(command: PushDataCommand): Promise<void> {
-    const { playerId, buffer, offset, length } = command;
-    const decoder = getDecoder(playerId);
-    decoder.pushData(buffer, offset, length);
-}
-
-async function onEndOfStream(command: EndOfStreamCommand): Promise<void> {
-    const {playerId} = command;
-    const decoder = getDecoder(playerId);
-    decoder.pushEndOfStream();
-}
-
-async function onStop(command: StopCommand): Promise<void> {
-    const {playerId} = command;
-    const decoder = decoderMap.get(playerId);
-    if (decoder == null) {
-        // already processed by handling 'endOfStream' at the decoder
-        return;
-    }
-
-    await decoder.stop();
-}
-
-function release(decoder: OpusDecoder): void {
-    decoderMap.delete(decoder.playerId);
-    decoderPool.push(decoder);
-}
-
-function getDecoder(playerId: string): OpusDecoder {
-    const decoder = decoderMap.get(playerId);
-    if (decoder == null)
-        throw new Error(`Can't find decoder for player=${playerId}`);
     return decoder;
+}
+
+async function onCreate(message: CreateDecoderMessage) {
+    const { callbackId, workletPort, controllerId } = message;
+    // decoders are pooled with the parent object, so we don't need an object pool here
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): start create`);
+    const decoder = await OpusDecoder.create(workletPort);
+    decoders.set(controllerId, decoder);
+    const msg: OperationCompletedDecoderWorkerMessage = {
+        type: "operationCompleted",
+        callbackId: callbackId,
+    };
+    worker.postMessage(msg);
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): end create`);
+}
+
+async function onInit(message: InitDecoderMessage): Promise<void> {
+    const { callbackId, controllerId, buffer, length, offset } = message;
+    const decoder = getDecoder(controllerId);
+    const data = buffer.slice(offset, offset + length);
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): start init, header - ${data.byteLength} bytes`);
+    await decoder.init(data);
+
+    const msg: OperationCompletedDecoderWorkerMessage = {
+        type: "operationCompleted",
+        callbackId: callbackId,
+    };
+    worker.postMessage(msg);
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): end init`);
+}
+
+function onData(message: DataDecoderMessage): void {
+    const { controllerId, buffer, offset, length } = message;
+    const decoder = getDecoder(controllerId);
+    const data = buffer.slice(offset, offset + length);
+    if (debugPushes)
+        console.debug(`Decoder(controllerId:${controllerId}): push ${data.byteLength} data bytes`);
+    decoder.pushData(data);
+}
+
+function onEnd(message: EndDecoderMessage): void {
+    const { controllerId } = message;
+    const decoder = getDecoder(controllerId);
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): push end`);
+
+    decoder.pushEnd();
+}
+
+async function onStop(message: StopDecoderMessage): Promise<void> {
+    const { controllerId } = message;
+    const decoder = getDecoder(controllerId);
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): start stop`);
+    await decoder.stop();
+    if (debug)
+        console.debug(`Decoder(controllerId:${controllerId}): end stop`);
 }

@@ -26,7 +26,23 @@ public static class AuthorLikeExt
             return null;
         if (source.IsAnonymous || @base == null)
             return source;
-        source = source with { Name = @base.Name };
+        if (source.Name.IsNullOrEmpty() && !@base.Name.IsNullOrEmpty())
+            source = source with { Name = @base.Name };
+        return source;
+    }
+
+    [return: NotNullIfNotNull("source")]
+    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, IAuthorLike? @base)
+        where TAuthor : Author
+    {
+        if (source == null)
+            return null;
+        if (source.IsAnonymous || @base == null)
+            return source;
+        if (source.Name.IsNullOrEmpty() && !@base.Name.IsNullOrEmpty())
+            source = source with { Name = @base.Name };
+        if (source.Picture.IsNullOrEmpty() && !@base.Picture.IsNullOrEmpty())
+            source = source with { Picture = @base.Picture };
         return source;
     }
 }

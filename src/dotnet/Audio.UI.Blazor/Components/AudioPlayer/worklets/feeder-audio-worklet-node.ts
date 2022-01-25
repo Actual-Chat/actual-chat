@@ -1,75 +1,66 @@
 import {
-    ChangeStateNodeMessage,
-    DataNodeMessage,
     GetStateNodeMessage,
-    NodeMessage,
+    InitNodeMessage,
+    OperationCompletedProcessorMessage,
     ProcessorMessage,
     StateChangedProcessorMessage,
-    StateProcessorMessage
+    StateProcessorMessage,
+    StopNodeMessage
 } from "./feeder-audio-worklet-message";
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
+
     public onStartPlaying?: () => void = null;
     public onBufferLow?: () => void = null;
     public onBufferTooMuch?: () => void = null;
     public onStarving?: () => void = null;
+    /** If playing was started and now it's stopped */
+    public onStopped?: () => void = null;
+    /** Called at the end of the queue, even if the playing wasn't started */
+    public onEnded?: () => void = null;
 
     private lastCallbackId: number = 0;
     private callbacks = new Map<number, Function>();
 
-    constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
+    private constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
         super(context, name, options);
         this.onprocessorerror = this.onProcessorError;
         this.port.onmessage = this.onProcessorMessage;
     }
 
-    public initWorkerPort(workerPort: MessagePort) {
-        const msg: NodeMessage = {
-            type: 'init-port'
-        };
+    public static async create(
+        decoderWorkerPort: MessagePort,
+        context: BaseAudioContext,
+        name: string,
+        options?: AudioWorkletNodeOptions
+    ): Promise<FeederAudioWorkletNode> {
 
-        this.port.postMessage(msg, [workerPort]);
-    }
-
-    public play(): void {
-        const msg: ChangeStateNodeMessage = {
-            type: "changeState",
-            state: "play",
-        };
-        this.port.postMessage(msg);
-    }
-
-    public clear(): void {
-        const msg: NodeMessage = {
-            type: "clear",
-        };
-        this.port.postMessage(msg);
+        const node = new FeederAudioWorkletNode(context, name, options);
+        const callbackId = node.lastCallbackId++;
+        return new Promise<FeederAudioWorkletNode>(resolve => {
+            node.callbacks.set(callbackId, () => resolve(node));
+            const msg: InitNodeMessage = {
+                type: 'init',
+                callbackId: callbackId,
+                decoderWorkerPort: decoderWorkerPort,
+            };
+            node.port.postMessage(msg, [decoderWorkerPort]);
+        });
     }
 
     public stop(): void {
-        const msg: ChangeStateNodeMessage = {
-            type: "changeState",
-            state: "stop",
-        };
+        const msg: StopNodeMessage = { type: "stop" };
         this.port.postMessage(msg);
-    }
-
-    public feed(samples: Float32Array) {
-        const msg: DataNodeMessage = {
-            type: "data",
-            buffer: samples.buffer
-        };
-        this.port.postMessage(msg, [msg.buffer]);
     }
 
     public getState(): Promise<PlaybackState> {
         const callbackId = this.lastCallbackId++;
-        return new Promise<PlaybackState>((resolve, reject) => {
+        return new Promise<PlaybackState>(resolve => {
             this.callbacks.set(callbackId, resolve);
             const msg: GetStateNodeMessage = {
                 type: "getState",
-                id: callbackId,
+                callbackId: callbackId,
             };
             this.port.postMessage(msg);
 
@@ -78,34 +69,48 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
 
     private onProcessorMessage = (ev: MessageEvent<ProcessorMessage>): void => {
         const msg = ev.data;
-        switch (msg.type) {
-            case 'stateChanged': {
-                this.onStateChanged(msg as StateChangedProcessorMessage);
-                break;
+        try {
+            switch (msg.type) {
+                case 'stateChanged':
+                    this.onStateChanged(msg as StateChangedProcessorMessage);
+                    break;
+                case 'state':
+                    this.onState(msg as StateProcessorMessage);
+                    break;
+                case 'operationCompleted':
+                    this.onOperationCompleted(msg as OperationCompletedProcessorMessage);
+                    break;
+                default:
+                    throw new Error(`Feeder node: Unsupported message type: ${msg.type}`);
             }
-            case 'state': {
-                this.onState(msg as StateProcessorMessage);
-                break;
-            }
-            default:
-                throw new Error(`Feeder node: Unsupported message type: ${msg.type}`);
+        }
+        catch (error) {
+            console.error(error);
         }
     };
 
-    private onState(message: StateProcessorMessage): void {
-        const resolve = this.callbacks.get(message.id);
-        if (resolve === undefined) {
-            console.error(`Feeder node: callback with id '${message.id}' is not found.`);
-            return;
+    private popCallback(callbackId: number): Function {
+        const callback = this.callbacks.get(callbackId);
+        if (callback === undefined) {
+            throw new Error(`Feeder node: Callback with id '${callbackId}' is not found.`);
         }
-        this.callbacks.delete(message.id);
-        const result: PlaybackState = {
-            playbackTime: Math.round(message.playbackTime * 1000) / 1000,
-            bufferedTime: Math.round(message.bufferedTime * 1000) / 1000,
-        };
-        resolve(result);
+        this.callbacks.delete(callbackId);
+        return callback;
     }
 
+    private onOperationCompleted(message: OperationCompletedProcessorMessage): void {
+        const callback = this.popCallback(message.callbackId);
+        callback();
+    }
+
+    private onState(message: StateProcessorMessage): void {
+        const callback = this.popCallback(message.callbackId);
+        const result: PlaybackState = {
+            playbackTime: message.playbackTime,
+            bufferedTime: message.bufferedTime,
+        };
+        callback(result);
+    }
 
     private onStateChanged(message: StateChangedProcessorMessage): void {
         if (message.state === 'playingWithLowBuffer' && this.onBufferLow !== null) {
@@ -120,6 +125,12 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         else if (message.state === 'playing' && this.onStartPlaying !== null) {
             this.onStartPlaying();
         }
+        else if (message.state === 'stopped' && this.onStopped !== null) {
+            this.onStopped();
+        }
+        else if (message.state === 'ended' && this.onEnded !== null) {
+            this.onEnded();
+        }
     }
 
     private onProcessorError = (ev: Event) => {
@@ -128,9 +139,9 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
 }
 
 export interface PlaybackState {
-    /** playback time in seconds */
+    /** In seconds from the start of playing, excluding starving time and processing time */
     playbackTime: number,
-    /** how much seconds do we have in the buffer to play */
+    /** how much seconds do we have in the buffer to play. */
     bufferedTime: number,
 }
 

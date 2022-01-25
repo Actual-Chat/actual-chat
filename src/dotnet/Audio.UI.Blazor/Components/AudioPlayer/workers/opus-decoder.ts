@@ -1,94 +1,76 @@
+import Denque from 'denque';
 import OGVDecoderAudioOpusW from 'ogv/dist/ogv-decoder-audio-opus-wasm';
 import OGVDecoderAudioOpusWWasm from 'ogv/dist/ogv-decoder-audio-opus-wasm.wasm';
 import OGVDemuxerWebMW from 'ogv/dist/ogv-demuxer-webm-wasm';
 import OGVDemuxerWebMWWasm from 'ogv/dist/ogv-demuxer-webm-wasm.wasm';
-import Denque from 'denque';
-import { DecoderMessage } from "./opus-decoder-worker-message";
+import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from "./opus-decoder-worker-message";
 
-type DecoderState = 'inactive' | 'waiting' | 'decoding';
-
-const SAMPLE_RATE = 48000;
-let demuxerWasmBinary: ArrayBuffer = null;
-let decoderWasmBinary: ArrayBuffer = null;
+let demuxerWasmBinary: ArrayBuffer | null = null;
+let decoderWasmBinary: ArrayBuffer | null = null;
 
 export class OpusDecoder {
-    private readonly queue = new Denque<ArrayBuffer | 'endOfStream'>();
+    private readonly debug: boolean = false;
+    private readonly queue = new Denque<ArrayBuffer | 'end'>();
     private readonly demuxer: Demuxer;
     private readonly decoder: Decoder;
-    private readonly release: (decoder: OpusDecoder) => void;
 
-    private _playerId: string;
-    private workletPort: MessagePort;
-    private state: DecoderState = 'inactive';
+    private readonly workletPort: MessagePort;
+    private state: 'uninitialized' | 'waiting' | 'decoding' = 'uninitialized';
 
-    public get playerId() {
-        return this._playerId;
-    }
-
-    constructor(release: (decoder: OpusDecoder) => void, demuxer: Demuxer, decoder: Decoder) {
-        this.release = release;
+    /** accepts fully initialized demuxer/decoder only, use the factory method `create` to construct an object */
+    private constructor(demuxer: Demuxer, decoder: Decoder, workletPort: MessagePort) {
         this.demuxer = demuxer;
         this.decoder = decoder;
+        this.workletPort = workletPort;
     }
 
-    public static async create(release: (decoder: OpusDecoder) => void): Promise<OpusDecoder> {
+    public static async create(workletPort: MessagePort): Promise<OpusDecoder> {
         const demuxerPromise = OpusDecoder.createDemuxer();
         const decoderPromise = OpusDecoder.createDecoder();
-        const [demuxer, decoder] = await Promise.all([demuxerPromise,decoderPromise]);
-        return new OpusDecoder(release, demuxer, decoder);
+        const [demuxer, decoder] = await Promise.all([demuxerPromise, decoderPromise]);
+        return new OpusDecoder(demuxer, decoder, workletPort);
     }
 
-    public async init(playerId: string, workletPort: MessagePort, buffer:ArrayBuffer, offset: number, length: number) : Promise<void> {
-        try {
-            this._playerId = playerId;
-            this.workletPort = workletPort;
-
-            await Promise.all([this.initDemuxer(), this.initDecoder()]);
-
-            const header = buffer.slice(offset, offset + length);
-            await this.demuxEnqueue(header);
-            while (await this.demuxProcess()) {
-                while (this.demuxer.audioPackets.length > 0) {
-                    const {packet} = await this.demuxDequeue();
-                    if (!this.isMetadataLoaded) {
-                        await this.decodeHeaderProcess(packet);
-                    }
-                }
+    public async init(header: ArrayBuffer): Promise<void> {
+        console.assert(this.queue.length === 0, 'queue should be empty, check stop/reset logic');
+        console.assert(this.demuxer.audioPackets.length === 0, 'demuxer should be empty, check stop/reset logic');
+        await this.demuxEnqueue(header);
+        while (await this.demuxProcess()) {
+            while (this.demuxer.audioPackets.length > 0) {
+                const { packet } = await this.demuxDequeue();
+                await this.decodeHeaderProcess(packet);
             }
-            this.state = 'waiting';
         }
-        catch (error) {
-            console.error(error);
-            throw error;
-        }
+        this.state = 'waiting';
     }
 
-    public pushData(buffer:ArrayBuffer, offset: number, length: number): void {
+    public pushData(data: ArrayBuffer): void {
+        // if (this.debug)
+        //     console.debug(`Decoder: push data bytes: ${data.byteLength}`);
         const { state, queue } = this;
-        if (buffer.byteLength !== 0 && state !== 'inactive') {
-            const data = buffer.slice(offset, offset + length);
-            queue.push(data);
-
-            const _ = this.processQueue();
-        }
+        console.assert(state !== 'uninitialized', "Decoder isn't initialized but got a data. Lifetime error.");
+        console.assert(data.byteLength, "Decoder got an empty data message.");
+        queue.push(data);
+        const _ = this.processQueue();
     }
 
-    public pushEndOfStream(): void {
-        this.queue.push('endOfStream');
-
+    public pushEnd(): void {
+        const { state, queue, debug } = this;
+        console.assert(state !== 'uninitialized', "Decoder isn't initialized but got an end of data. Lifetime error.");
+        queue.push('end');
         const _ = this.processQueue();
     }
 
     public async stop(): Promise<void> {
+        const { demuxer, state, queue, debug } = this;
+        console.assert(state !== 'uninitialized', "Decoder isn't initialized but got stop message. Lifetime error.");
+        queue.clear();
+        demuxer.audioPackets = [];
         await this.flushDemuxer();
-
-        this.destroyDemuxer();
-        this.destroyDecoder();
-        this.state = 'inactive';
-
-        this.release(this);
-        this._playerId = null;
-        this.workletPort = null;
+        // free + alloc the queue in the demuxer
+        this.demuxer["_ogv_demuxer_destroy"]();
+        await new Promise<void>(resolve => this.demuxer.init(resolve));
+        this.state = 'uninitialized';
     }
 
     private get isMetadataLoaded(): boolean {
@@ -101,75 +83,64 @@ export class OpusDecoder {
     }
 
     private async processQueue(): Promise<void> {
-        const { queue, demuxer, workletPort } = this;
-
-        if (queue.isEmpty()) {
-            return;
-        }
-
-        if (this.state === 'decoding') {
+        const { queue, demuxer, workletPort, debug } = this;
+        if (queue.isEmpty() || this.state === 'decoding') {
             return;
         }
 
         try {
             this.state = 'decoding';
-
             const queueItem = queue.pop();
-            if (queueItem == 'endOfStream') {
+            if (queueItem === 'end') {
+                if (debug) {
+                    console.debug("Decoder: queue end is reached. Send end to worklet and stop queue processing");
+                }
+                // tell the worklet, that we are at the end of playing
+                const msg: EndDecoderWorkerMessage = { type: 'end' };
+                workletPort.postMessage(msg);
                 await this.stop();
                 return;
             }
-
             await this.demuxEnqueue(queueItem);
-
             while (await this.demuxProcess()) {
                 while (demuxer.audioPackets.length > 0) {
 
-                    const {packet, discardPadding } = await this.demuxDequeue();
+                    const { packet, discardPadding: padding } = await this.demuxDequeue();
                     // if we haven't parsed metadata yet
                     if (!this.isMetadataLoaded) {
                         await this.decodeHeaderProcess(packet);
-                        continue;
                     }
-
                     const samples = await this.decodeProcess(packet);
-                    if (samples === null)
-                        continue;
-
-                    let monoPcm = samples[0];
-                    let offset = 0;
-                    let length = monoPcm.length;
-
-                    if (discardPadding) {
-                        // discardPadding is in nanoseconds
-                        // negative value trims from beginning
-                        // positive value trims from end
-                        let trim = Math.round(discardPadding * SAMPLE_RATE / 1000000000);
-                        if (trim > 0) {
-                            length = monoPcm.length - Math.min(trim, monoPcm.length);
-                            monoPcm = monoPcm.subarray(0, length);
-                        } else {
-                            offset = Math.min(Math.abs(trim), monoPcm.length);
-                            length = monoPcm.length - offset;
-                            monoPcm = monoPcm.subarray(offset, length);
+                    if (debug) {
+                        if (samples !== null && samples.length > 0) {
+                            console.debug(`Decoder: decodeProcess(${packet.byteLength} bytes, padding:${padding}) `
+                                + `returned ${samples[0].byteLength} `
+                                + `bytes / ${samples[0].length} samples, `
+                                + `isMetadataLoaded: ${this.isMetadataLoaded}`);
+                        }
+                        else {
+                            console.debug(`Decoder: decodeProcess(${packet.byteLength} bytes, padding: ${padding}) ` +
+                                "returned null");
                         }
                     }
+                    if (samples == null)
+                        continue;
 
-                    const decoderMessage: DecoderMessage = {
-                        topic: 'samples',
-                        buffer: monoPcm.buffer,
-                        offset: offset * 4,
-                        length: length * 4,
+                    let channel = samples[0];
+                    const msg: SamplesDecoderWorkerMessage = {
+                        type: 'samples',
+                        buffer: channel.buffer,
+                        length: channel.byteLength,
+                        offset: channel.byteOffset,
                     };
-                    workletPort.postMessage(decoderMessage, [monoPcm.buffer]);
-
+                    workletPort.postMessage(msg, [channel.buffer]);
                 }
             }
-        } catch (error) {
+        }
+        catch (error) {
             console.error(error);
-            throw error;
-
-        } finally {
+        }
+        finally {
             this.state = 'waiting';
         }
 
@@ -218,27 +189,7 @@ export class OpusDecoder {
     private flushDemuxer(): Promise<void> {
         return new Promise(resolve => {
             this.demuxer.flush(resolve);
-        })
-    }
-
-    private initDemuxer(): Promise<void> {
-        return new Promise(resolve => {
-            this.demuxer.init(resolve);
-        })
-    }
-
-    private initDecoder(): Promise<void> {
-        return new Promise(resolve => {
-            this.decoder.init(resolve);
-        })
-    }
-
-    private destroyDemuxer(): void {
-        this.demuxer["_ogv_demuxer_destroy"]();
-    }
-
-    private destroyDecoder(): void {
-        this.decoder["_ogv_audio_decoder_destroy"]();
+        });
     }
 
     private static getEmscriptenLoaderOptions(wasmBinary: ArrayBuffer): EmscriptenLoaderOptions {
@@ -248,38 +199,40 @@ export class OpusDecoder {
                     return OGVDemuxerWebMWWasm;
                 else if (filename === "ogv-decoder-audio-opus-wasm.wasm")
                     return OGVDecoderAudioOpusWWasm;
-                    // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
                 // emscripten 1.37.25 loads memory initializers as data: URI
                 else if (filename.slice(0, 5) === 'data:')
                     return filename;
                 else throw new Error(`Emscripten module tried to load an unknown file: "${filename}"`);
             },
-            // ** Pre-loaded WASM binary as ArrayBuffer
-            // * https://emscripten.org/docs/compiling/WebAssembly.html?highlight=wasmbinary#wasm-files-and-compilation
-            // * /
+            /**
+             * Pre-loaded WASM binary as ArrayBuffer, prevents multiple http calls
+             * https://emscripten.org/docs/compiling/WebAssembly.html?highlight=wasmbinary#wasm-files-and-compilation
+             */
             wasmBinary: wasmBinary,
         };
     }
 
-    /** each time loads OGVDemuxerWebMWWasm with HTTP call, at least until it's cached by browser */
     private static async createDemuxer(): Promise<Demuxer> {
-        if (demuxerWasmBinary == null) {
+        if (demuxerWasmBinary === null) {
             const path = OGVDemuxerWebMWWasm;
             const response = await fetch(path);
             demuxerWasmBinary = await response.arrayBuffer();
         }
 
-        return await (OGVDemuxerWebMW(OpusDecoder.getEmscriptenLoaderOptions(demuxerWasmBinary)) as Promise<Demuxer>);
+        const demuxer = await (OGVDemuxerWebMW(OpusDecoder.getEmscriptenLoaderOptions(demuxerWasmBinary)) as Promise<Demuxer>);
+        await new Promise<void>(resolve => demuxer.init(resolve));
+        return demuxer;
     }
 
-    /** each time loads OGVDecoderAudioOpusWWasm with HTTP call, at least until it's cached by browser */
-    private static async createDecoder():  Promise<Decoder> {
-        if (decoderWasmBinary == null) {
+    private static async createDecoder(): Promise<Decoder> {
+        if (decoderWasmBinary === null) {
             const path = OGVDecoderAudioOpusWWasm;
             const response = await fetch(path);
             decoderWasmBinary = await response.arrayBuffer();
         }
-
-        return OGVDecoderAudioOpusW(OpusDecoder.getEmscriptenLoaderOptions(decoderWasmBinary)) as Promise<Decoder>;
+        const decoder = await (OGVDecoderAudioOpusW(OpusDecoder.getEmscriptenLoaderOptions(decoderWasmBinary)) as Promise<Decoder>);
+        await new Promise<void>(resolve => decoder.init(resolve));
+        return decoder;
     }
 }

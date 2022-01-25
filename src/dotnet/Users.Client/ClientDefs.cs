@@ -1,4 +1,4 @@
-﻿using RestEase;
+using RestEase;
 
 namespace ActualChat.Users.Client;
 
@@ -9,6 +9,8 @@ public interface IUserInfosClientDef
     Task<UserInfo?> Get(string userId, bool inherit, CancellationToken cancellationToken);
     [Get(nameof(GetByName))]
     Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
+    [Get(nameof(GetGravatarHash))]
+    Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken);
 }
 
 [BasePath("userStates")]

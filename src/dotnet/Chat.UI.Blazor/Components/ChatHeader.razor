@@ -1,10 +1,38 @@
 @namespace ActualChat.UI.Blazor.Components
+@inject NavigationManager _nav
+@using BlazorContextMenu
 
-<div class="px-2">
-    <span class="float-left">@Chat.Title</span>
-</div>
+@{
+    var cls = _isOpen ? "rotate-180" : "";
+}
+
+<ContextMenuTrigger MenuId="chatHeaderMenu" MouseButtonTrigger="MouseButtonTrigger.Both">
+    <div class="px-2 inline-flex">
+        <span class="float-left">@Chat.Title</span>
+        <svg class="ml-1 -mr-2 w-5 h-5 @cls" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
+    </div>
+</ContextMenuTrigger>
+
+<ContextMenu Id="chatHeaderMenu" CssClass="text-secondary font-normal" OnAppearing="OnMenuAppearing" OnHiding="OnMenuHiding">
+    <Item OnClick="@OnEditChatAuthor">Edit your name, image and bio in this chat</Item>
+    <Item OnClick="@OnEditChat">Edit chat</Item>
+</ContextMenu>
 
 @code {
+    private bool _isOpen;
+
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
+
+    private void OnEditChatAuthor()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/edit/author");
+
+    private void OnEditChat()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/edit");
+
+    private void OnMenuAppearing()
+        => _isOpen = true;
+
+    private void OnMenuHiding()
+        => _isOpen = false;
 }

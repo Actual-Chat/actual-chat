@@ -6,4 +6,7 @@ public record VirtualListDataQuery(Range<string> InclusiveRange)
     public double ExpandEndBy { get; init; }
     public long ExpectedStartExpansion { get; init; }
     public long ExpectedEndExpansion { get; init; }
+
+    public override string ToString()
+        => $"(+{ExpandStartBy}/{ExpectedStartExpansion} | {InclusiveRange} | +{ExpandEndBy}/{ExpectedEndExpansion})";
 }

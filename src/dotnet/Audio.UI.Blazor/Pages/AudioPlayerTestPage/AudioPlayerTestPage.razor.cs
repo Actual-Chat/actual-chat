@@ -23,7 +23,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private bool _isPlaying;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
-    private int? _prevMediaElementReadyState;
     private double _offset;
     private string _uri = "https://dev.actual.chat/api/audio/download/audio-record/01FQEXRGK4DA5BACTDTAGMF0D7/0000.webm";
     private AudioSource? _audioSource;
@@ -60,7 +59,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _offset = 0d;
             InitializeDelay = 0;
             StartPlayingDelay = 0;
-            _prevMediaElementReadyState = null;
             StateHasChanged();
             _cts = new CancellationTokenSource();
             var audioSource = await CreateAudioSource(_uri, _cts.Token);
@@ -68,13 +66,14 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var stopWatch = Stopwatch.StartNew();
             var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
-                _cts.Token, blazorRef, audioSource.Format.Serialize()
-            ).ConfigureAwait(true);
+                _cts.Token,
+                blazorRef).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 try {
                     Log.LogInformation("Playing was cancelled");
+                    await jsRef.InvokeVoidAsync("stop", CancellationToken.None).ConfigureAwait(true);
                     await jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
                     if (_registration != default) {
                         await _registration.DisposeAsync().ConfigureAwait(true);
@@ -89,6 +88,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     StateHasChanged();
                 }
             });
+            _ = jsRef.InvokeVoidAsync("init", audioSource.Format.Serialize());
             var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
@@ -99,17 +99,16 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
                 }
-                _ = jsRef.InvokeVoidAsync("appendAudio", _cts.Token, frame.Data, frame.Offset.TotalSeconds)
+                _ = jsRef.InvokeVoidAsync("data", _cts.Token, frame.Data)
                     .ConfigureAwait(true);
             }
             if (!_cts.Token.IsCancellationRequested)
-                await jsRef.InvokeVoidAsync("endOfStream", _cts.Token).ConfigureAwait(true);
+                await jsRef.InvokeVoidAsync("end", _cts.Token).ConfigureAwait(true);
         }
     }
 
     private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
     {
-        var audioLog = Services.LogFor<AudioSource>();
         if (_audioSource == null || !StringComparer.Ordinal.Equals(_audioBlobStreamUri, audioUri)) {
             var audioDownloader = new AudioDownloader(Services);
             _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken);
@@ -120,36 +119,12 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnChangeReadiness(bool isBufferReady, double? offset, int? readyState)
-    {
-        if (_prevMediaElementReadyState != readyState) {
-            _prevMediaElementReadyState = readyState;
-            Log.LogInformation(
-                "Playing offset={PlayingOffset}s OnChangeReadiness(isBufferReady={BufferReadiness}, offset={Offset}s, readyState={MediaElementReadyState})",
-                _offset, isBufferReady, offset, ToMediaElementReadyState(readyState)
-            );
-            StateHasChanged();
-        }
-        return Task.CompletedTask;
-    }
-
-    private static string ToMediaElementReadyState(int? state) => state switch {
-        0 => "HAVE_NOTHING",
-        1 => "HAVE_METADATA",
-        2 => "HAVE_CURRENT_DATA",
-        3 => "HAVE_FUTURE_DATA",
-        4 => "HAVE_ENOUGH_DATA",
-        null => "null",
-        // ReSharper disable once ConstantConditionalAccessQualifier
-        _ => $"UNKNOWN:{state?.ToString(CultureInfo.InvariantCulture) ?? "(null)"}",
-    };
+    public Task OnChangeReadiness(bool isBufferReady) => Task.CompletedTask;
 
     [JSInvokable]
-    public async Task OnPlaybackEnded(int? errorCode, string? errorMessage)
+    public async Task OnPlaybackEnded(string? errorMessage)
     {
-        Log.LogInformation(
-            "OnPlaybackEnded(errorCode={ErrorCode}, errorMessage={ErrorMessage})",
-            errorCode, errorMessage);
+        Log.LogInformation("OnPlaybackEnded(errorMessage={ErrorMessage})", errorMessage);
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
             await _registration.DisposeAsync().ConfigureAwait(true);
@@ -157,12 +132,12 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnPlaybackTimeChanged(double? offset)
+    public Task OnPlaybackTimeChanged(double offset)
     {
         if (false) {
             Log.LogInformation("OnPlaybackTimeChanged(offset={Offset}s)", offset);
         }
-        _offset = offset ?? 0d;
+        _offset = offset;
         StateHasChanged();
         return Task.CompletedTask;
     }

@@ -7,36 +7,31 @@ namespace ActualChat.Chat;
 
 public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, IChatAuthorsBackend
 {
+    private const string AuthorIdSuffix = "::authorId";
+
+    private readonly ICommander _commander;
     private readonly IAuth _auth;
-    private readonly IUserInfos _userInfos;
-    private readonly IUserStates _userStates;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
     private readonly RedisSequenceSet<ChatAuthor> _idSequences;
-    private readonly ICommander _commander;
     private readonly IRandomNameGenerator _randomNameGenerator;
+    private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
+    private readonly IUserInfos _userInfos;
+    private readonly IUserStates _userStates;
 
-    public ChatAuthors(
-        IAuth auth,
-        IUserInfos userInfos,
-        IUserStates userStates,
-        IUserAuthorsBackend userAuthorsBackend,
-        RedisSequenceSet<ChatAuthor> idSequences,
-        ICommander commander,
-        IRandomNameGenerator randomNameGenerator,
-        IServiceProvider serviceProvider
-    ) : base(serviceProvider)
+    public ChatAuthors(IServiceProvider services) : base(services)
     {
-        _auth = auth;
-        _userInfos = userInfos;
-        _userStates = userStates;
-        _userAuthorsBackend = userAuthorsBackend;
-        _idSequences = idSequences;
-        _commander = commander;
-        _randomNameGenerator = randomNameGenerator;
+        _commander = services.Commander();
+        _auth = Services.GetRequiredService<IAuth>();
+        _userAuthorsBackend = services.GetRequiredService<IUserAuthorsBackend>();
+        _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
+        _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
+        _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
+        _userInfos = services.GetRequiredService<IUserInfos>();
+        _userStates = services.GetRequiredService<IUserStates>();
     }
 
     // [ComputeMethod]
-    public virtual async Task<ChatAuthor?> GetSessionChatAuthor(
+    public virtual async Task<ChatAuthor?> GetChatAuthor(
         Session session, string chatId,
         CancellationToken cancellationToken)
     {
@@ -45,10 +40,22 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
             return await GetByUserId(chatId, user.Id, false, cancellationToken).ConfigureAwait(false);
 
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        var authorId = options[$"{chatId}::authorId"] as string;
+        var authorId = options[chatId + AuthorIdSuffix] as string;
         if (authorId == null)
             return null;
         return await Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string> GetChatPrincipalId(
+        Session session, string chatId,
+        CancellationToken cancellationToken)
+    {
+        var author = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (author != null)
+            return author.Id;
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        return user.IsAuthenticated ? user.Id : "";
     }
 
     // [ComputeMethod]
@@ -58,5 +65,33 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     {
         var chatAuthor = await Get(chatId, authorId, inherit, cancellationToken).ConfigureAwait(false);
         return chatAuthor.ToAuthor();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user.IsAuthenticated)
+            return await GetChatIdsByUserId(user.Id, cancellationToken).ConfigureAwait(false);
+
+        var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        var chatIds = options.Items.Keys
+            .Select(c => c.Value)
+            .Where(c => c.EndsWith(AuthorIdSuffix, StringComparison.Ordinal))
+            .Select(c => c.Substring(0, c.Length - AuthorIdSuffix.Length))
+            .ToArray();
+        return chatIds;
+    }
+
+    // [CommandHandler]
+    public virtual async Task UpdateAuthor(IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        // TODO: check permissions
+        var author = await GetOrCreate(command.Session, command.ChatId, cancellationToken).ConfigureAwait(false);
+        var updateCommand = new IChatAuthorsBackend.UpdateCommand(author.Id, command.Name, command.Picture);
+        await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

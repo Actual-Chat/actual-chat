@@ -15,8 +15,14 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.ClientServices;
-        var user = tester.SignIn(new User("", "reader-test-user")).ConfigureAwait(false);
+        var user = await tester.SignIn(new User("", "Bob"));
         var session = tester.Session;
+
+        var auth = services.GetRequiredService<IAuth>();
+        var u = await auth.GetUser(session, CancellationToken.None);
+        u.IsAuthenticated.Should().BeTrue();
+        u.Id.Should().Be(user.Id);
+        u.Name.Should().Be(user.Name);
 
         var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, ChatId, CancellationToken.None);
@@ -50,7 +56,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var user = tester.SignIn(new User("", "reader-test-user")).ConfigureAwait(false);
+        var user = await tester.SignIn(new User("", "Bob"));
         var session = tester.Session;
         var clocks = services.Clocks().SystemClock;
 
