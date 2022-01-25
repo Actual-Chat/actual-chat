@@ -153,7 +153,8 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId, text) = command;
-        await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
+        // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
+        // await AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var chatEntry = new ChatEntry() {
