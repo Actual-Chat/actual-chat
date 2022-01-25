@@ -9,12 +9,12 @@
     <div class="flex items-center">
         <div class="relative">
             <div class="relative">
-                <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden") z-50">
+                <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden")">
                     <div class="bg-secondary shadow-lg py-1 rounded-md bg-secondary mb-1 relative select-none">
                         @foreach (var (name, displayName) in unusedAuthSchemas) {
-                            <a @onclick="@(_ => SignIn(name))" href="#" class="text-sm text-secondary hover:bg-accent block px-4 py-2">
+                            <button type="button" @onclick="@(_ => SignIn(name))" class="w-full cursor-pointer text-left text-sm text-secondary hover:bg-accent block px-4 py-2">
                                 Sign in with @displayName
-                            </a>
+                            </button>
                         }
                     </div>
                 </div>

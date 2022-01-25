@@ -10,7 +10,7 @@
                         <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden")">
                             <div class="bg-secondary shadow-lg py-1 rounded-md mb-1 relative select-none">
                                 <span class="text-sm text-secondary hover:bg-accent block px-4 py-2">Settings</span>
-                                <a @onclick="SignOut" href="#" class="text-sm text-secondary hover:bg-accent block px-4 py-2">Sign out</a>
+                                <button type="button" @onclick="SignOut" class="w-full cursor-pointer text-left text-sm text-secondary hover:bg-accent block px-4 py-2">Sign out</button>
                             </div>
                         </div>
                     </div>
