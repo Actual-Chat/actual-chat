@@ -12,6 +12,9 @@ public interface IChatsClientDef
     [Get(nameof(GetChats))]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
+    [Get(nameof(CheckInviteCode))]
+    Task<InviteCodeCheckResult> CheckInviteCode(Session session, string inviteCode, CancellationToken cancellationToken);
+
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
         Session session,
