@@ -87,6 +87,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // API controllers
         app.UseRouting();
+        app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -141,6 +142,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         else {
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
         }
+        // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         services.AddCors(options => {
             options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
         });
