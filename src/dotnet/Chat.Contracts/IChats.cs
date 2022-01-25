@@ -48,7 +48,7 @@ public interface IChats
     [CommandHandler]
     Task<Unit> JoinChat(JoinChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ChatEntry> CreateEntry(CreateEntryCommand command, CancellationToken cancellationToken);
+    Task<ChatEntry> CreateTextEntry(CreateTextEntryCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
@@ -59,6 +59,6 @@ public interface IChats
 
     public record UpdateChatCommand(Session Session, Chat Chat) : ISessionCommand<Unit>;
     public record JoinChatCommand(Session Session, string ChatId) : ISessionCommand<Unit>;
-    public record CreateEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>;
+    public record CreateTextEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>;
     public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
 }

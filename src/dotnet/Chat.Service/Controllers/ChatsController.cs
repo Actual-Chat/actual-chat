@@ -77,10 +77,10 @@ public class ChatsController : ControllerBase, IChats
         => _chats.JoinChat(command, cancellationToken);
 
     [HttpPost]
-    public Task<ChatEntry> CreateEntry([FromBody] IChats.CreateEntryCommand command, CancellationToken cancellationToken)
+    public Task<ChatEntry> CreateTextEntry([FromBody] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
-        return _chats.CreateEntry(command, cancellationToken);
+        return _chats.CreateTextEntry(command, cancellationToken);
     }
 
     [HttpPost]
