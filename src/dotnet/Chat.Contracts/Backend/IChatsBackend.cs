@@ -34,6 +34,16 @@ public interface IChatsBackend
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken);
 
+    Task AssertHasPermissions(
+        Session session, string chatId,
+        ChatPermissions permissions,
+        CancellationToken cancellationToken);
+
+    Task<bool> CheckHasPermissions(
+        Session session, string chatId,
+        ChatPermissions read,
+        CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
@@ -47,4 +57,6 @@ public interface IChatsBackend
     public record UpdateChatCommand(Chat Chat) : ICommand<Unit>, IBackendCommand;
     public record CreateAudioEntryCommand(ChatEntry AudioEntry) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
     public record UpsertEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>, IBackendCommand;
+
+
 }

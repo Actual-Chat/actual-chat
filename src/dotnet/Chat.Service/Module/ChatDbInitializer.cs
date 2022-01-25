@@ -120,7 +120,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         Moment? beginsAt,
         CancellationToken cancellationToken)
     {
-        var chats = (Chats) Services.GetRequiredService<IChatsBackend>();
+        var chats = (ChatsBackend) Services.GetRequiredService<IChatsBackend>();
         var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
         if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {

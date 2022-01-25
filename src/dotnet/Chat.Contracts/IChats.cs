@@ -53,8 +53,6 @@ public interface IChats
     [CommandHandler]
     Task<string> JoinWithInviteCode(JoinWithInviteCodeCommand command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<string> GenerateInviteCode(GenerateInviteCodeCommand command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task<ChatEntry> CreateTextEntry(CreateTextEntryCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
@@ -67,7 +65,6 @@ public interface IChats
     public record UpdateChatCommand(Session Session, Chat Chat) : ISessionCommand<Unit>;
     public record JoinPublicChatCommand(Session Session, string ChatId) : ISessionCommand<Unit>;
     public record JoinWithInviteCodeCommand(Session Session, string InviteCode) : ISessionCommand<string>;
-    public record GenerateInviteCodeCommand(Session Session, string ChatId) : ISessionCommand<string>;
     public record CreateTextEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>;
     public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
 }
