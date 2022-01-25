@@ -92,13 +92,6 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpPost]
-    public Task<string> GenerateInviteCode([FromBody] IChats.GenerateInviteCodeCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.GenerateInviteCode(command, cancellationToken);
-    }
-
-    [HttpPost]
     public Task<ChatEntry> CreateTextEntry([FromBody] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);

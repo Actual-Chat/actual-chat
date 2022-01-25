@@ -3,11 +3,13 @@ using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Versioning;
+using Stl.Redis;
 
 namespace ActualChat.Chat;
 
-public partial class Chats
+public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private static readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) {
         "alex.yakunin@actual.chat",
         "alex.yakunin@gmail.com",
@@ -24,6 +26,21 @@ public partial class Chats
         "vobewaf244@douwx.com", // Test account
     };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
+
+    private readonly IAuthBackend _authBackend;
+    private readonly IChatAuthors _chatAuthors;
+    private readonly IChatAuthorsBackend _chatAuthorsBackend;
+    private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
+    private readonly RedisSequenceSet<ChatEntry> _idSequences;
+
+    public ChatsBackend(IServiceProvider services) : base(services)
+    {
+        _authBackend = Services.GetRequiredService<IAuthBackend>();
+        _chatAuthors = Services.GetRequiredService<IChatAuthors>();
+        _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
+        _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
@@ -295,9 +312,7 @@ public partial class Chats
         return entry;
     }
 
-    // Protected methods
-
-    protected async Task AssertHasPermissions(
+    public async Task AssertHasPermissions(
         Session session,
         string chatId,
         ChatPermissions permissions,
@@ -307,7 +322,7 @@ public partial class Chats
             throw new SecurityException("Not enough permissions.");
     }
 
-    protected async Task<bool> CheckHasPermissions(
+    public async Task<bool> CheckHasPermissions(
         Session session,
         string chatId,
         ChatPermissions permissions,
@@ -317,6 +332,8 @@ public partial class Chats
         var chatPermissions = await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
         return (chatPermissions & permissions) == permissions;
     }
+
+    // Protected methods
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
     {

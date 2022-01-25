@@ -49,8 +49,6 @@ public interface IChatsClientDef
     Task<Unit> JoinPublicChat([Body] IChats.JoinPublicChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(JoinWithInviteCode))]
     Task<string> JoinWithInviteCode([Body] IChats.JoinWithInviteCodeCommand command, CancellationToken cancellationToken);
-    [Post(nameof(GenerateInviteCode))]
-    Task<string> GenerateInviteCode([Body] IChats.GenerateInviteCodeCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateTextEntry))]
     Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
@@ -87,4 +85,14 @@ public interface IUserAuthorsClientDef
 {
     [Get(nameof(Get))]
     Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
+}
+
+[BasePath("inviteCodes")]
+public interface IInviteCodesClientDef
+{
+    [Get(nameof(Get))]
+    Task<ImmutableArray<InviteCode>> Get(Session session, string chatId, CancellationToken cancellationToken);
+
+    [Post(nameof(Generate))]
+    Task<InviteCode> Generate([Body] IInviteCodes.GenerateCommand command, CancellationToken cancellationToken);
 }
