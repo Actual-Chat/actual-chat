@@ -103,7 +103,7 @@
         if (Text.IsNullOrEmpty())
             return;
 
-        var (_, ce) = await _cmd.Run(new IChats.CreateEntryCommand(_session, Chat.Id, Text)).ConfigureAwait(true);
+        var (_, ce) = await _cmd.Run(new IChats.CreateTextEntryCommand(_session, Chat.Id, Text)).ConfigureAwait(true);
         if (!ce.IsFailed)
             await JSRef.InvokeVoidAsync("setText", "").ConfigureAwait(true);
     }

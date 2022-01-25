@@ -145,8 +145,8 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> CreateEntry(
-        IChats.CreateEntryCommand command,
+    public virtual async Task<ChatEntry> CreateTextEntry(
+        IChats.CreateTextEntryCommand command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

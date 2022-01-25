@@ -47,8 +47,8 @@ public interface IChatsClientDef
     Task<Unit> UpdateChat([Body] IChats.UpdateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(JoinChat))]
     Task<Chat> JoinChat([Body] IChats.JoinChatCommand command, CancellationToken cancellationToken);
-    [Post(nameof(CreateEntry))]
-    Task<ChatEntry> CreateEntry([Body] IChats.CreateEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(CreateTextEntry))]
+    Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 }
