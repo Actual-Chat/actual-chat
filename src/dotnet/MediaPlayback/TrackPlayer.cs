@@ -156,9 +156,7 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
     protected virtual void OnVolumeSet(double volume)
         => UpdateState(volume, (v, s) => s with { Volume = v });
 
-
     // Delay reporting
-
     protected ILogger? GetDelayReportLog(ref Moment delayReportTime)
     {
         var now = Clocks.CpuClock.Now;
