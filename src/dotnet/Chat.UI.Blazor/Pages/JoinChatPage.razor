@@ -13,6 +13,9 @@
 
     [Parameter]
     public string InviteCode { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = ChatPage.AutoJoinQueryParameter)]
+    public string? AutoJoin { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
@@ -21,6 +24,9 @@
         _useResult = runResult.Result;
         if (!_useResult.IsValid)
             return;
-        Nav.NavigateTo($"/chat/{_useResult.ChatId}");
+        var uri = $"/chat/{_useResult.ChatId}";
+        if (AutoJoin != null)
+            uri = uri + "?" + ChatPage.AutoJoinQueryParameter + "=" + AutoJoin;
+        Nav.NavigateTo(uri);
     }
 }
