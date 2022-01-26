@@ -97,11 +97,31 @@ function delayedReconnect(stream: MediaStream): void {
     }, 10000);
 }
 
+let isAecWorkaroundNeededCached: boolean | null = null;
 
 /** Chromium browsers don't apply echoCancellation to a Web Audio pipeline */
 export function isAecWorkaroundNeeded(): boolean {
     const force = self["forceEchoCancellation"];
     if (force !== null && force !== undefined)
         return force;
-    return window.navigator.userAgent.includes('Chrome');
+    if (isAecWorkaroundNeededCached !== null)
+        return isAecWorkaroundNeededCached;
+    const navigatorUAData: { mobile: boolean; } = self.navigator["userAgentData"];
+    // mobile phones have good echoCancellation by hardware, we don't need anything to do
+    if (navigatorUAData != null && navigatorUAData.mobile != null) {
+        isAecWorkaroundNeededCached = false;
+        return isAecWorkaroundNeededCached;
+    }
+    const isChromium = window.navigator.userAgent.indexOf('Chrome') !== -1;
+    if (!isChromium) {
+        isAecWorkaroundNeededCached = false;
+        return isAecWorkaroundNeededCached;
+    }
+    // additional checks for mobile phones + chrome, that don't support userAgentData yet
+    if (/Android|Mobile|Phone|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+        isAecWorkaroundNeededCached = false;
+        return isAecWorkaroundNeededCached;
+    }
+    isAecWorkaroundNeededCached = true;
+    return isAecWorkaroundNeededCached;
 }
