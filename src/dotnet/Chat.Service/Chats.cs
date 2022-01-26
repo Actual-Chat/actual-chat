@@ -188,7 +188,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var (session, chatId, text) = command;
         // NOTE(AY): Temp. commented this out, coz it confuses lots of people who're trying to post in anonymous mode
         // await _chatsBackend.AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
-        await _chatsBackend.AssertHasPermissions(session, chatId, ChatPermissions.Write, cancellationToken).ConfigureAwait(false);
         var author = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var chatEntry = new ChatEntry() {
