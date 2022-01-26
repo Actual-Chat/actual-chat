@@ -1,0 +1,18 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+
+@if (IsTitleVisible && !IsIconVisible) {
+    <button class="menu-item-component @CommonStyle" name="@Name">
+        @Title
+    </button>
+} else if (IsTitleVisible && IsIconVisible && !string.IsNullOrWhiteSpace(Icon)) {
+    <button class="menu-item-component @CommonStyle" name="@Name">
+        <div class="flex flex-1 float-left">@Title</div>
+        <div class="flex float-right mr-1">
+            @((MarkupString)Icon)
+        </div>
+    </button>
+}
+
+@code {
+
+}
