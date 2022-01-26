@@ -31,17 +31,11 @@ public interface IChatsBackend
         CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
     Task<ChatPermissions> GetPermissions(
+        Session session, string chatId,
+        CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<ChatPermissions> GetPermissions(
         string chatId, string chatPrincipalId,
-        CancellationToken cancellationToken);
-
-    Task AssertHasPermissions(
-        Session session, string chatId,
-        ChatPermissions permissions,
-        CancellationToken cancellationToken);
-
-    Task<bool> CheckHasPermissions(
-        Session session, string chatId,
-        ChatPermissions read,
         CancellationToken cancellationToken);
 
     // Commands

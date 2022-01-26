@@ -64,16 +64,14 @@
         var permissions = await _chats.GetPermissions(_session, chatId, cancellationToken);
         var canSend = permissions.HasFlag(ChatPermissions.Write);
         var canJoin = false;
-        if (!canSend) {
-            var chat = await _chats.Get(_session, chatId, cancellationToken);
-            canJoin = chat?.IsPublic ?? false;
-        }
+        if (!canSend)
+            canJoin = await _chats.CheckCanJoin(_session, chatId, cancellationToken);
         return new () { CanSend = canSend, CanJoin = canJoin };
     }
 
     private async Task OnJoin() {
         string chatId = Chat.Id;
-        var command = new IChats.JoinPublicChatCommand(_session, chatId);
+        var command = new IChats.JoinChatCommand(_session, chatId);
         await _cmd.Run(command, default);
     }
 }
