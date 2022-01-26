@@ -133,6 +133,17 @@
     {
         <script src="_framework/blazor.webassembly.js"></script>
     }
+
+    <script>
+        window.addEventListener('mouseup', function(event){
+            let menu = document.querySelector('.attach-menu');
+            let attachButton = document.querySelector('.attach-button-div');
+            if (!attachButton.contains(event.target) && menu.classList.contains('menu-opened')) {
+                menu.querySelector('.menu-body').classList.add('hidden');
+                menu.classList.replace('menu-opened', 'menu-closed');
+            }
+        });
+    </script>
 }
 </body>
 </html>

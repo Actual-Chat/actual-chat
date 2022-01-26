@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
-<div class="menu-component @MenuStyle @MenuStatus()" name="@Name">
+<div class="menu-component @MenuClasses @MenuStatus()" name="@Name">
     <div class="menu-body relative @(IsOpen ? "" : "hidden")">
         <div class="py-1 select-none p-1 flex @MenuDirection()">
            <div>@ChildContent</div>
@@ -9,6 +9,26 @@
 </div>
 
 @code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter]
+    public string MenuClasses { get; set; } = "";
+    [Parameter]
+    public string Title { get; set; } = "";
+    [Parameter]
+    public string Icon { get; set; } = "";
+    [Parameter]
+    public bool IsHorizontal { get; set; }
+    [Parameter]
+    public string Name { get; set; } = "";
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool ItemsTitleVisible { get; set; } = true;
+    private bool ItemsIconVisible { get; set; }
+
     @* For closing all menus by JS *@
     private string MenuStatus()
         => IsOpen ? "menu-opened" : "menu-closed";

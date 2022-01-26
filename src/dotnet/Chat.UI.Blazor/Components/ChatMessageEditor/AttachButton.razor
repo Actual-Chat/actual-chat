@@ -4,22 +4,32 @@
     var commonStyle = "p-1 text-left";
 }
 
-<Menu IsOpen="@AttachMenuOpen" MenuStyle="left-4 bottom-12 w-40" Name="attach-menu">
-    <MenuItem Title="Menu Item 1" Name="Item1" CommonStyle="@commonStyle"/>
-    <MenuItem Title="Menu Item 2" Name="Item2" CommonStyle="@commonStyle"/>
-    <MenuItem Title="Menu Item 3" Name="Item3" CommonStyle="@commonStyle"/>
-    <Menu IsOpen="@AttachMenuOpen" MenuStyle="left-32 bottom-32 w-40" >
-        <MenuItem Title="Menu Item 4" Name="Item4" CommonStyle="@commonStyle"/>
-        <MenuItem Title="Menu Item 4" Name="Item4" CommonStyle="@commonStyle"/>
-        <MenuItem Title="Menu Item 4" Name="Item4" CommonStyle="@commonStyle"/>
+<div class="attach-button-div">
+    <Menu @bind-IsOpen="@IsMenuOpen" MenuClasses="attach-menu left-4 bottom-12 w-40">
+        <MenuItem Title="Menu Item 1" Name="Item1" MenuItemClasses="@commonStyle"/>
+        <MenuItem Title="Menu Item 2" Name="Item2" MenuItemClasses="@commonStyle"/>
+        <MenuItem Title="Menu Item 3" Name="Item3" MenuItemClasses="@commonStyle"/>
+        @* <Menu IsOpen="@AttachSubmenuOpen" MenuClasses="attach-submenu left-32 bottom-32 w-40"> *@
+        @*     <MenuItem Title="Menu Item 4" Name="Item4" MenuItemClasses="@commonStyle"/> *@
+        @*     <MenuItem Title="Menu Item 4" Name="Item4" MenuItemClasses="@commonStyle"/> *@
+        @*     <MenuItem Title="Menu Item 4" Name="Item4" MenuItemClasses="@commonStyle"/> *@
+        @* </Menu> *@
     </Menu>
-</Menu>
-<button @onclick="() => AttachMenuOpen = !AttachMenuOpen" class="attach-button sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2">
-    <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-        <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
-    </svg>
-</button>
+    <button @onclick="@(OpenMenu)" class="attach-button sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2">
+        <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+            <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
+        </svg>
+    </button>
+</div>
 
 @code {
-    private bool AttachMenuOpen { get; set; }
+    [Parameter]
+    public bool IsMenuOpen { get; set; }
+    [Parameter]
+    public EventCallback<bool> IsMenuOpenChanged { get; set; }
+
+    async Task OpenMenu() {
+        IsMenuOpen = !IsMenuOpen;
+        await IsMenuOpenChanged.InvokeAsync(IsMenuOpen);
+    }
 }

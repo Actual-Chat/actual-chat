@@ -10,6 +10,9 @@ export class ChatMessageEditor {
     private _recordButton: HTMLButtonElement;
     private _isTextMode: boolean = false;
     private _isRecording: boolean = false;
+    private _attachButtonDiv: HTMLDivElement;
+    private _attachButton: HTMLButtonElement;
+    private _attachMenu: HTMLDivElement;
 
     static create(editorDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, backendRef);
@@ -22,6 +25,31 @@ export class ChatMessageEditor {
         this._blazorRef = blazorRef;
         this._recorderButtonDiv = this._editorDiv.querySelector('div.recorder-button');
         this._recordButton = this._recorderButtonDiv.querySelector('button');
+        this._attachButtonDiv = this._editorDiv.querySelector('.attach-button-div');
+        this._attachButton = this._attachButtonDiv.querySelector('.attach-button');
+        this._attachMenu = this._attachButtonDiv.querySelector('.attach-menu');
+
+        let target = this._attachMenu;
+        const config = {
+            attributes: true,
+            childList: false,
+            subtree: false,
+            attributeOldValue: false
+        };
+        function callback(mutationsList, observer){
+            for (let m of mutationsList){
+                if (m.attributeName === 'class'){
+                    if (m.target.classList.contains('menu-closed') && m.target.querySelector('.menu-body').classList.contains('hidden')) {
+                        closeMenu(blazorRef);
+                    }
+                }
+            }
+        }
+        function closeMenu(ref: DotNet.DotNetObject) {
+            ref.invokeMethodAsync('HideMenu');
+        }
+        const observer = new MutationObserver(callback);
+        observer.observe(target, config);
 
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {

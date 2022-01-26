@@ -1,11 +1,11 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
 @if (IsTitleVisible && !IsIconVisible) {
-    <button class="menu-item-component @CommonStyle" name="@Name">
+    <button @onclick="OnClick" class="menu-item-component @MenuItemClasses" name="@Name">
         @Title
     </button>
 } else if (IsTitleVisible && IsIconVisible && !string.IsNullOrWhiteSpace(Icon)) {
-    <button class="menu-item-component @CommonStyle" name="@Name">
+    <button @onclick="OnClick" class="menu-item-component @MenuItemClasses" name="@Name">
         <div class="flex flex-1 float-left">@Title</div>
         <div class="flex float-right mr-1">
             @((MarkupString)Icon)
@@ -14,5 +14,18 @@
 }
 
 @code {
-
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+    [Parameter]
+    public string? Title { get; set; }
+    [Parameter]
+    public string? Icon { get; set; } = "";
+    [Parameter]
+    public bool IsTitleVisible { get; set; } = true;
+    [Parameter]
+    public bool IsIconVisible { get; set; }
+    [Parameter]
+    public string? MenuItemClasses { get; set; }
+    [Parameter]
+    public string? Name { get; set; }
 }
