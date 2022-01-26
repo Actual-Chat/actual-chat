@@ -1,0 +1,7 @@
+﻿.menu-component {
+    @apply absolute bg-secondary rounded-md border border-primary shadow-lg;
+}
+
+.menu-item-component {
+    @apply  text-sm text-secondary hover:bg-accent rounded-sm;
+}
