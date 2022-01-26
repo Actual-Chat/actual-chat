@@ -30,4 +30,13 @@ public class InviteCodesController : ControllerBase, IInviteCodes
         command.UseDefaultSession(_sessionResolver);
         return _inviteCodes.Generate(command, cancellationToken);
     }
+
+    [HttpPost]
+    public Task<InviteCodeUseResult> UseInviteCode(
+        [FromBody] IInviteCodes.UseInviteCodeCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _inviteCodes.UseInviteCode(command, cancellationToken);
+    }
 }

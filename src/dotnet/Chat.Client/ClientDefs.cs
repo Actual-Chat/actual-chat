@@ -12,9 +12,6 @@ public interface IChatsClientDef
     [Get(nameof(GetChats))]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
-    [Get(nameof(CheckInviteCode))]
-    Task<InviteCodeCheckResult> CheckInviteCode(Session session, string inviteCode, CancellationToken cancellationToken);
-
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
         Session session,
@@ -48,10 +45,8 @@ public interface IChatsClientDef
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(UpdateChat))]
     Task<Unit> UpdateChat([Body] IChats.UpdateChatCommand command, CancellationToken cancellationToken);
-    [Post(nameof(JoinPublicChat))]
-    Task<Unit> JoinPublicChat([Body] IChats.JoinPublicChatCommand command, CancellationToken cancellationToken);
-    [Post(nameof(JoinWithInviteCode))]
-    Task<string> JoinWithInviteCode([Body] IChats.JoinWithInviteCodeCommand command, CancellationToken cancellationToken);
+    [Post(nameof(JoinChat))]
+    Task<Unit> JoinChat([Body] IChats.JoinChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateTextEntry))]
     Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
@@ -98,4 +93,7 @@ public interface IInviteCodesClientDef
 
     [Post(nameof(Generate))]
     Task<InviteCode> Generate([Body] IInviteCodes.GenerateCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(UseInviteCode))]
+    Task<InviteCodeUseResult> UseInviteCode([Body] IInviteCodes.UseInviteCodeCommand command, CancellationToken cancellationToken);
 }

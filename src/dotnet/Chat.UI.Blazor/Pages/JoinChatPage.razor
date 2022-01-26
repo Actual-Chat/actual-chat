@@ -1,26 +1,13 @@
 ﻿@page "/join/{InviteCode}"
 
-@if (_checkResult != null) {
-    if (_checkResult.IsValid) {
-        <h3>About to join to '@_checkResult.ChatTitle'</h3>
-        <p>
-            Please check if you need to log in first.
-        </p>
-        <p>
-            <button type="button"
-                    class="bg-green-500 hover:bg-green-700 text-white py-1 px-4 rounded"
-                    @onclick="@OnJoinClicked">Join</button>
-        </p>
-    } else {
-        <h3>Invite code is invalid or expired.</h3>
-    }
+@if (_useResult != null && !_useResult.IsValid) {
+    <h3>Invite code is invalid or expired.</h3>
 }
 
 @code {
-    private InviteCodeCheckResult? _checkResult;
+    private InviteCodeUseResult? _useResult;
 
     [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
     [Inject] private NavigationManager Nav { get; set; } = null!;
 
@@ -29,13 +16,11 @@
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
-        _checkResult = await Chats.CheckInviteCode(Session, InviteCode, default);
-    }
-
-    private async Task OnJoinClicked() {
-        var command = new IChats.JoinWithInviteCodeCommand(Session, InviteCode);
-        var (chatId, cmdEvent) = await Cmd.Run(command, default);
-        if (cmdEvent.IsCompletedSuccessfully)
-            Nav.NavigateTo($"/chat/{chatId}");
+        var cmd = new IInviteCodes.UseInviteCodeCommand(Session, InviteCode);
+        var runResult = await Cmd.Run(cmd);
+        _useResult = runResult.Result;
+        if (!_useResult.IsValid)
+            return;
+        Nav.NavigateTo($"/chat/{_useResult.ChatId}");
     }
 }

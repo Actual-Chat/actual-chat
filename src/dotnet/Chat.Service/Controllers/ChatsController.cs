@@ -25,10 +25,6 @@ public class ChatsController : ControllerBase, IChats
         => _chats.GetChats(session, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<InviteCodeCheckResult> CheckInviteCode(Session session, string inviteCode, CancellationToken cancellationToken)
-        => _chats.CheckInviteCode(session, inviteCode, cancellationToken);
-
-    [HttpGet, Publish]
     public Task<long> GetEntryCount(
         Session session,
         string chatId,
@@ -61,6 +57,10 @@ public class ChatsController : ControllerBase, IChats
         CancellationToken cancellationToken)
         => _chats.GetPermissions(session, chatId, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<bool> CheckCanJoin(Session session, string chatId, CancellationToken cancellationToken)
+        => _chats.CheckCanJoin(session, chatId, cancellationToken);
+
     // Commands
 
     [HttpPost]
@@ -78,17 +78,10 @@ public class ChatsController : ControllerBase, IChats
     }
 
     [HttpPost]
-    public Task<Unit> JoinPublicChat([FromBody] IChats.JoinPublicChatCommand command, CancellationToken cancellationToken)
+    public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
-        return _chats.JoinPublicChat(command, cancellationToken);
-    }
-
-    [HttpPost]
-    public Task<string> JoinWithInviteCode([FromBody] IChats.JoinWithInviteCodeCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.JoinWithInviteCode(command, cancellationToken);
+        return _chats.JoinChat(command, cancellationToken);
     }
 
     [HttpPost]
