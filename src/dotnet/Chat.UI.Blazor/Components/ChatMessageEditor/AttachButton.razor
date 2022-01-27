@@ -1,21 +1,24 @@
-﻿@namespace ActualChat.Chat.UI.Blazor.Components
+﻿@using System.Net.NetworkInformation
+@namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
     var commonStyle = "p-1 text-left";
+    @* Menu Name and Button Class must be the same for js listeners *@
+    var menuNameButtonClass = "attach-menu";
 }
 
 <div class="attach-button-div">
-    <Menu @bind-IsOpen="@IsMenuOpen" MenuClasses="attach-menu left-4 bottom-12 w-40">
+    <Menu @bind-IsOpen="@IsMenuOpen" Name="@menuNameButtonClass" MenuClasses="attach-menu left-4 bottom-12 w-40">
         <MenuItem Title="Menu Item 1" Name="Item1" MenuItemClasses="@commonStyle"/>
         <MenuItem Title="Menu Item 2" Name="Item2" MenuItemClasses="@commonStyle"/>
         <MenuItem Title="Menu Item 3" Name="Item3" MenuItemClasses="@commonStyle"/>
-        @* <Menu IsOpen="@AttachSubmenuOpen" MenuClasses="attach-submenu left-32 bottom-32 w-40"> *@
+        @* <Menu @bind-IsOpen="@AttachSubmenuOpen" MenuClasses="attach-submenu left-32 bottom-32 w-40"> *@
         @*     <MenuItem Title="Menu Item 4" Name="Item4" MenuItemClasses="@commonStyle"/> *@
         @*     <MenuItem Title="Menu Item 4" Name="Item4" MenuItemClasses="@commonStyle"/> *@
         @*     <MenuItem Title="Menu Item 4" Name="Item4" MenuItemClasses="@commonStyle"/> *@
         @* </Menu> *@
     </Menu>
-    <button @onclick="@(OpenMenu)" class="attach-button sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2">
+    <button @onclick="@MenuToggle" class="@menuNameButtonClass sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2">
         <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
             <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
         </svg>
@@ -23,13 +26,8 @@
 </div>
 
 @code {
-    [Parameter]
-    public bool IsMenuOpen { get; set; }
-    [Parameter]
-    public EventCallback<bool> IsMenuOpenChanged { get; set; }
+    private bool IsMenuOpen { get; set; }
 
-    async Task OpenMenu() {
-        IsMenuOpen = !IsMenuOpen;
-        await IsMenuOpenChanged.InvokeAsync(IsMenuOpen);
-    }
+    private void MenuToggle()
+        => IsMenuOpen = !IsMenuOpen;
 }
