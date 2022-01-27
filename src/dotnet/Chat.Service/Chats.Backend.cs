@@ -322,27 +322,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return entry;
     }
 
-    // public async Task AssertHasPermissions(
-    //     Session session,
-    //     string chatId,
-    //     ChatPermissions permissions,
-    //     CancellationToken cancellationToken)
-    // {
-    //     if (!await CheckHasPermissions(session, chatId, permissions, cancellationToken).ConfigureAwait(false))
-    //         throw new SecurityException("Not enough permissions.");
-    // }
-
-    // public async Task<bool> CheckHasPermissions(
-    //     Session session,
-    //     string chatId,
-    //     ChatPermissions permissions,
-    //     CancellationToken cancellationToken)
-    // {
-    //     var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-    //     var chatPermissions = await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-    //     return (chatPermissions & permissions) == permissions;
-    // }
-
     // Protected methods
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
