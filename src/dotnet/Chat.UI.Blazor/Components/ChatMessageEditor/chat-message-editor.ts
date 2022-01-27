@@ -51,6 +51,16 @@ export class ChatMessageEditor {
         const observer = new MutationObserver(callback);
         observer.observe(target, config);
 
+        window.addEventListener('mouseup', (event: MouseEvent & {target: Element; }) => {
+            this.listenerHandler(event);
+        });
+
+        document.addEventListener('keydown', (event: KeyboardEvent & {target: Element; }) => {
+            if (event.keyCode == 27 || event.key == "Escape" || event.key == "Esc") {
+                this.listenerHandler(event);
+            }
+        });
+
         // Wiring up event listeners
         this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
             let _ = this.updateClientSideState();
@@ -73,6 +83,28 @@ export class ChatMessageEditor {
             this.syncLanguageButtonVisibility();
         })
         this.changeMode();
+    }
+
+    public listenerHandler(event: Event & {target: Element}){
+        let menu = this._attachMenu;
+        let attachBtn = this._attachButtonDiv;
+        switch (event.type) {
+            case "mouseup":
+                if (!attachBtn.contains(event.target) && menu.classList.contains('menu-opened'))
+                    this.closeMenu(menu);
+                    break;
+            case "keydown":
+                if (menu.classList.contains('menu-opened'))
+                    this.closeMenu(menu);
+                    break;
+            default:
+                return;
+        }
+    }
+
+    public closeMenu(menu: HTMLDivElement) {
+        menu.querySelector('.menu-body').classList.add('hidden');
+        menu.classList.replace('menu-opened', 'menu-closed');
     }
 
     public syncLanguageButtonVisibility() {
