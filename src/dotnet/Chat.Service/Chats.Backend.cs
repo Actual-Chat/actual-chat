@@ -2,6 +2,7 @@ using System.Security;
 using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
+using Stl.Generators;
 using Stl.Versioning;
 using Stl.Redis;
 
@@ -26,6 +27,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         "vobewaf244@douwx.com", // Test account
     };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
+    private const string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
+    private readonly RandomStringGenerator _chatIdGenerator = new (10, ChatIdAlphabet);
 
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
@@ -240,7 +243,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var chat = command.Chat with {
-            Id = Ulid.NewUlid().ToString(),
+            Id = _chatIdGenerator.Next(), // TODO: add reprocessing in case uniqueness conflicts
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
         };
