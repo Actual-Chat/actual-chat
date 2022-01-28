@@ -1,0 +1,7 @@
+﻿.dropdown-menu {
+    @apply absolute bg-secondary rounded-md border border-primary shadow-lg;
+}
+
+.dropdown-menu-item {
+    @apply text-sm text-secondary hover:bg-accent rounded-sm;
+}
