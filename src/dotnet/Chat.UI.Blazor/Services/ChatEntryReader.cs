@@ -186,7 +186,8 @@ public sealed class ChatEntryReader
             thisTileComputed = tileComputed;
 
             foreach (var entry in tileComputed.Value.Entries.Where(shouldReturn))
-                yield return entry;
+                if (entry.Id >= minId)
+                    yield return entry;
         }
         if (thisTileComputed != null&& waitForUpdate((thisTileComputed.Value, false)))
             await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
@@ -198,7 +199,8 @@ public sealed class ChatEntryReader
                 await activeTiles.Writer.WriteAsync(tileComputed, cancellationToken).ConfigureAwait(false);
 
             foreach (var entry in tileComputed.Value.Entries.Where(shouldReturn))
-                yield return entry;
+                if (entry.Id >= minId)
+                    yield return entry;
         }
     }
 
@@ -284,8 +286,7 @@ public sealed class ChatEntryReader
                 taskBuffer.Add(ValueTask.FromResult((null as IComputed<ChatTile>, false)));
 
             var tilesEnumerator = tiles.GetAsyncEnumerator(cancellationToken);
-            var moveNextTask = WrapMoveNext(tilesEnumerator, cancellationToken);
-            taskBuffer.Add(moveNextTask);
+            taskBuffer.Add(WrapMoveNext(tilesEnumerator, cancellationToken));
             var whenAnyValue = TaskExt.WhenAny(taskBuffer.Buffer);
             while (taskBuffer.Capacity > completedSlots.Count) {
                 // cancellationToken.ThrowIfCancellationRequested();
@@ -301,29 +302,32 @@ public sealed class ChatEntryReader
                         // tiles enumerable has been enumerated to the end
                     }
                     else {
-                        if (completedSlots.TryPop(out var completedIndex)) {
-                            whenAnyValue.Replace(completedIndex,
-                                WrapInvalidateAndUpdate(tileComputed, cancellationToken));
+                        var invalidateWrap = WrapInvalidateAndUpdate(tileComputed, cancellationToken);
+                        var moveNextWrap = WrapMoveNext(tilesEnumerator, cancellationToken);
+
+                        if (completedSlots.Count >= 2) {
+                            whenAnyValue.Replace(completedSlots.Pop(), invalidateWrap);
+                            whenAnyValue.Replace(completedSlots.Pop(), moveNextWrap);
                         }
                         else {
                             var newCapacity = taskBuffer.Capacity * 2;
                             var newTaskBuffer =
                                 ArrayBuffer<ValueTask<(IComputed<ChatTile>?, bool)>>.Lease(false, newCapacity);
+                            var oldTaskBuffer = taskBuffer;
                             try {
                                 taskBuffer.Buffer.CopyTo(newTaskBuffer.Buffer, 0);
                                 newTaskBuffer.Count = taskBuffer.Count;
-                                newTaskBuffer.Add(WrapInvalidateAndUpdate(tileComputed, cancellationToken));
+                                newTaskBuffer.Add(invalidateWrap);
+                                newTaskBuffer.Add(moveNextWrap);
                                 // adding artificial completed tasks
                                 for (int i = newTaskBuffer.Count; i < newTaskBuffer.Capacity; i++)
-                                    taskBuffer.Add(ValueTask.FromResult((null as IComputed<ChatTile>, false)));
+                                    newTaskBuffer.Add(ValueTask.FromResult((null as IComputed<ChatTile>, false)));
 
-                                taskBuffer.Release();
                                 taskBuffer = newTaskBuffer;
-
                                 whenAnyValue.Replace(taskBuffer.Buffer);
                             }
                             finally {
-                                newTaskBuffer.Release();
+                                oldTaskBuffer.Release();
                             }
                         }
                     }
