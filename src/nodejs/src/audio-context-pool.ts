@@ -29,9 +29,15 @@ export class AudioContextPool {
             console.warn(`AudioContextPool get(): audioContext '${key}' wasn't initialized`);
             obj.audioContext = await obj.factory();
         }
-
-        if (obj.audioContext.state === 'suspended' && isAudioContext(obj.audioContext))
+        if (!isAudioContext(obj.audioContext)) {
+            console.error(`AudioContextPool: not an AudioContext:`, obj.audioContext)
+            return obj.audioContext;
+        }
+        if (obj.audioContext.state === 'suspended') {
+            console.warn(`AudioContextPool get(): trying to  resume, '${key}' ->`, obj.audioContext);
             await obj.audioContext.resume();
+            console.log(`AudioContextPool get(): resumed, '${key}' ->`, obj.audioContext);
+        }
         return obj.audioContext;
     }
 
@@ -41,8 +47,6 @@ export class AudioContextPool {
      */
     public static init() {
         self.addEventListener('touchstart', AudioContextPool._initEventListener);
-        if (isiOS())
-            return;
         self.addEventListener('onkeydown', AudioContextPool._initEventListener);
         self.addEventListener('mousedown', AudioContextPool._initEventListener);
         self.addEventListener('pointerdown', AudioContextPool._initEventListener);
@@ -51,8 +55,6 @@ export class AudioContextPool {
 
     private static removeInitListeners() {
         self.removeEventListener('touchstart', AudioContextPool._initEventListener);
-        if (isiOS())
-            return;
         self.removeEventListener('onkeydown', AudioContextPool._initEventListener);
         self.removeEventListener('mousedown', AudioContextPool._initEventListener);
         self.removeEventListener('pointerdown', AudioContextPool._initEventListener);
@@ -102,24 +104,13 @@ function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioConte
     return !!obj && typeof obj === 'object' && typeof obj["resume"] === 'function';
 }
 
-function isiOS() {
-    return [
-            'iPad Simulator',
-            'iPhone Simulator',
-            'iPod Simulator',
-            'iPad',
-            'iPhone',
-            'iPod'
-        ].includes(navigator.platform)
-        // iPad on iOS 13 detection
-        || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
-}
-
 AudioContextPool.register("main", async () => {
     const audioContext = new AudioContext({
         latencyHint: 'interactive',
         sampleRate: 48000,
     });
+    if (audioContext.state === 'suspended')
+        await audioContext.resume();
     await Promise.all([
         audioContext.audioWorklet.addModule('/dist/feederWorklet.js'),
         audioContext.audioWorklet.addModule('/dist/opusEncoderWorklet.js'),
