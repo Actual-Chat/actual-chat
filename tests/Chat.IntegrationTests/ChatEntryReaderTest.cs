@@ -170,6 +170,89 @@ public class ChatEntryReaderTest : AppHostTestBase
         result[0].Value.Entries.Length.Should().BeGreaterThanOrEqualTo(1);
     }
 
+    [Fact]
+    public async Task ReadAllUpdatesTest()
+    {
+        using var appHost = await TestHostFactory.NewAppHost();
+        using var tester = appHost.NewWebClientTester();
+        var services = tester.ClientServices;
+        var user = await tester.SignIn(new User("", "Bob"));
+        var session = tester.Session;
+
+        var auth = services.GetRequiredService<IAuth>();
+        var u = await auth.GetUser(session, CancellationToken.None);
+        u.IsAuthenticated.Should().BeTrue();
+        u.Id.Should().Be(user.Id);
+        u.Name.Should().Be(user.Name);
+
+        var chats = services.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, ChatId, CancellationToken.None);
+        chat.Should().NotBeNull();
+        chat?.Title.Should().Be("The Actual One");
+
+        var commander = tester.AppServices.GetRequiredService<ICommander>();
+        var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
+        await AddChatEntries(chats,
+            session,
+            ChatId,
+            CancellationToken.None,
+            1);
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
+
+        var updateCount = 0;
+        var cts = new CancellationTokenSource();
+        var id = idRange.End - 1;
+        var updates = reader.ReadAllUpdates(
+            id,
+            _ => true,
+            _ => true,
+            cts.Token);
+        await foreach (var entry in updates.TrimOnCancellation()) {
+            entry.Id.Should().Be(id);
+            var updated = entry with { Content = entry.Content + " 1" };
+            var completeCommand = new IChatsBackend.UpsertEntryCommand(updated);
+            await commander.Call(completeCommand, true, default).ConfigureAwait(false);
+            if (++updateCount >= 3)
+                cts.Cancel();
+        }
+
+        // _ = Task.Run(async () => {
+        //     await Task.Delay(100);
+        //     // chats.E
+        //
+        // });
+        /*updateCount++;
+
+                var updated = entry with { Content = entry.Content + " 1" };
+                var completeCommand = new IChatsBackend.UpsertEntryCommand(updated);
+                commander.Call(completeCommand, true, cts.Token).ConfigureAwait(false);
+                if (updateCount >= 3)
+                    cts.Cancel();
+
+                return true;*/
+        // var result = await updates.TrimOnCancellation(cts.Token).ToListAsync();
+        // result.Count.Should().Be(4);
+        // result.Should().Satisfy(entry => entry.Id == id);
+
+        // var cts1 = new CancellationTokenSource();
+        // cts1.CancelAfter(500);
+        // var result = await reader.ReadNewTiles(cts1.Token).TrimOnCancellation().ToListAsync();
+        // result.Count.Should().Be(0);
+        //
+        // var cts2 = new CancellationTokenSource();
+        // _ = Task.Run(() => AddChatEntries(chats,
+        //         session,
+        //         ChatId,
+        //         CancellationToken.None,
+        //         (int)Constants.Chat.IdTileStack.MinTileSize)
+        //     .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
+        //
+        // result = await reader.ReadNewTiles(cts2.Token).TrimOnCancellation().ToListAsync();
+        // result.Count.Should().Be(1);
+        // result[0].Value.Should().NotBeNull();
+        // result[0].Value.Entries.Length.Should().BeGreaterThanOrEqualTo(1);
+    }
+
     private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken, int entryCount = 3)
     {
         var phrases = new[] {
@@ -181,7 +264,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var count = 0;
         while (true)
             foreach (var text in phrases) {
-            _ = await chats.CreateTextEntry(new (session, chatId, text), cancellationToken).ConfigureAwait(false);
+                await chats.CreateTextEntry(new (session, chatId, text), cancellationToken).ConfigureAwait(false);
                 if (++count > entryCount)
                     return;
             }
