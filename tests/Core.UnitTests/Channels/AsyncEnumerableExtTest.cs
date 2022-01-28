@@ -58,7 +58,7 @@ public class AsyncEnumerableExtTest
         var left = Left(cts.Token);
         var right = Right(cts.Token);
         var result = left.Merge(right);
-        await foreach (var n in result) {
+        await foreach (var n in result.TrimOnCancellation()) {
             if (n == 10)
                 cts.Cancel();
         }

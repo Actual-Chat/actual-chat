@@ -215,42 +215,6 @@ public class ChatEntryReaderTest : AppHostTestBase
             if (++updateCount >= 3)
                 cts.Cancel();
         }
-
-        // _ = Task.Run(async () => {
-        //     await Task.Delay(100);
-        //     // chats.E
-        //
-        // });
-        /*updateCount++;
-
-                var updated = entry with { Content = entry.Content + " 1" };
-                var completeCommand = new IChatsBackend.UpsertEntryCommand(updated);
-                commander.Call(completeCommand, true, cts.Token).ConfigureAwait(false);
-                if (updateCount >= 3)
-                    cts.Cancel();
-
-                return true;*/
-        // var result = await updates.TrimOnCancellation(cts.Token).ToListAsync();
-        // result.Count.Should().Be(4);
-        // result.Should().Satisfy(entry => entry.Id == id);
-
-        // var cts1 = new CancellationTokenSource();
-        // cts1.CancelAfter(500);
-        // var result = await reader.ReadNewTiles(cts1.Token).TrimOnCancellation().ToListAsync();
-        // result.Count.Should().Be(0);
-        //
-        // var cts2 = new CancellationTokenSource();
-        // _ = Task.Run(() => AddChatEntries(chats,
-        //         session,
-        //         ChatId,
-        //         CancellationToken.None,
-        //         (int)Constants.Chat.IdTileStack.MinTileSize)
-        //     .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
-        //
-        // result = await reader.ReadNewTiles(cts2.Token).TrimOnCancellation().ToListAsync();
-        // result.Count.Should().Be(1);
-        // result[0].Value.Should().NotBeNull();
-        // result[0].Value.Entries.Length.Should().BeGreaterThanOrEqualTo(1);
     }
 
     private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken, int entryCount = 3)
