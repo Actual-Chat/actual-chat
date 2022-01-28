@@ -40,19 +40,23 @@ export class AudioContextPool {
      * after user interaction.
      */
     public static init() {
+        self.addEventListener('touchstart', AudioContextPool._initEventListener);
+        if (isiOS())
+            return;
         self.addEventListener('onkeydown', AudioContextPool._initEventListener);
         self.addEventListener('mousedown', AudioContextPool._initEventListener);
         self.addEventListener('pointerdown', AudioContextPool._initEventListener);
         self.addEventListener('pointerup', AudioContextPool._initEventListener);
-        self.addEventListener('touchstart', AudioContextPool._initEventListener);
     }
 
     private static removeInitListeners() {
+        self.removeEventListener('touchstart', AudioContextPool._initEventListener);
+        if (isiOS())
+            return;
         self.removeEventListener('onkeydown', AudioContextPool._initEventListener);
         self.removeEventListener('mousedown', AudioContextPool._initEventListener);
         self.removeEventListener('pointerdown', AudioContextPool._initEventListener);
         self.removeEventListener('pointerup', AudioContextPool._initEventListener);
-        self.removeEventListener('touchstart', AudioContextPool._initEventListener);
     }
 
     private static _initEventListener = () => {
@@ -62,9 +66,10 @@ export class AudioContextPool {
                 return;
             obj.audioContext = await obj.factory();
             console.debug(`AudioContextPool: AudioContext "${key}" is created.`);
-            // try to warm-up context
+
+            // Try to warm-up context
             if (isAudioContext(obj.audioContext) && obj.audioContext.state === 'running') {
-                console.debug(`AudioContextPool: Start warming up audioContext "${key}"`);
+                console.debug(`AudioContextPool: Start warming up AudioContext "${key}"`);
                 await obj.audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
                 const nodeOptions: AudioWorkletNodeOptions = {
                     channelCount: 1,
@@ -83,16 +88,31 @@ export class AudioContextPool {
                     };
                 });
                 node.disconnect();
-                console.debug(`AudioContextPool: End of warming up audioContext "${key}"`);
+                console.debug(`AudioContextPool: End of warming up AudioContext "${key}"`);
+            }
+            else {
+                console.debug(`AudioContextPool: Can't warm up AudioContext:`, obj.audioContext)
             }
             console.debug(`AudioContextPool: AudioContext "${key}" is initialized.`);
-
         });
     };
 }
 
 function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioContext {
     return !!obj && typeof obj === 'object' && typeof obj["resume"] === 'function';
+}
+
+function isiOS() {
+    return [
+            'iPad Simulator',
+            'iPhone Simulator',
+            'iPod Simulator',
+            'iPad',
+            'iPhone',
+            'iPod'
+        ].includes(navigator.platform)
+        // iPad on iOS 13 detection
+        || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 }
 
 AudioContextPool.register("main", async () => {
