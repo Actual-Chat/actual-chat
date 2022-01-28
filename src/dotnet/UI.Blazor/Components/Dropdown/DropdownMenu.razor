@@ -1,12 +1,10 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
-@inject IJSRuntime _js
-@implements IMenuBackend
 
-<div @ref="MenuRef" class="menu-component @MenuClasses @MenuStatus()" name="@Name">
+<div class="dropdown-menu @CssClasses @MenuStatus()" name="@Name">
     <div class="menu-body relative @(IsOpen ? "" : "hidden")">
         <div class="py-1 select-none p-1 flex @MenuDirection()">
-           <div>@ChildContent</div>
+            <div>@ChildContent</div>
         </div>
     </div>
 </div>
@@ -17,7 +15,7 @@
     [Parameter]
     public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter]
-    public string MenuClasses { get; set; } = "";
+    public string CssClasses { get; set; } = "";
     [Parameter]
     public string Title { get; set; } = "";
     [Parameter]
@@ -31,28 +29,11 @@
 
     private bool ItemsTitleVisible { get; set; } = true;
     private bool ItemsIconVisible { get; set; }
-    private DotNetObjectReference<IMenuBackend> BlazorRef { get; set; } = null!;
-    private ElementReference MenuRef { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
 
     private string MenuStatus()
         => IsOpen ? "menu-opened" : "menu-closed";
 
     private string MenuDirection()
         => !IsHorizontal ? "flex-col" : "flex-row";
-
-    [JSInvokable]
-    public Task HideMenu() {
-        return IsOpenChanged.InvokeAsync(false);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IMenuBackend>(this);
-            JSRef = await _js.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.Menu.create",
-                MenuRef, BlazorRef
-                ).ConfigureAwait(true);
-        }
     }
 }

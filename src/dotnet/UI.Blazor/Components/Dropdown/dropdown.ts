@@ -1,22 +1,23 @@
-﻿import './menu-component.css';
+﻿import './dropdown.css';
 
-export class Menu {
+export class Dropdown {
 
     private _blazorRef: DotNet.DotNetObject;
+    private _dropdown: HTMLDivElement;
     private _menuDiv: HTMLDivElement;
     private _menuBody: HTMLDivElement;
     private _controlBtn: HTMLButtonElement;
 
-    static create(menuDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): Menu {
-        return new Menu(menuDiv, backendRef);
+    static create(dropdown: HTMLDivElement, backendRef: DotNet.DotNetObject): Dropdown {
+        return new Dropdown(dropdown, backendRef);
     }
 
-    constructor(menuDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+    constructor(dropdown: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this._blazorRef = blazorRef;
-        this._menuDiv = menuDiv;
+        this._dropdown = dropdown;
+        this._menuDiv = this._dropdown.querySelector('.dropdown-menu');
         this._menuBody = this._menuDiv.querySelector('.menu-body');
-        let menuName = this._menuDiv.getAttribute('name');
-        this._controlBtn = document.querySelector('button'+ '.' + menuName);
+        this._controlBtn = this._dropdown.querySelector('.dropdown-button');
 
         window.addEventListener('mouseup', (event: MouseEvent & {target: Element; }) => {
             this.listenerHandler(event);
@@ -29,17 +30,17 @@ export class Menu {
         });
     }
 
-    public listenerHandler(event: Event & {target: Element}){
+    public listenerHandler(event: Event & { target: Element; }) {
+        let dropdown = this._dropdown;
         let menu = this._menuDiv;
         let control = this._controlBtn;
         switch (event.type) {
             case "mouseup":
-                if (!menu.contains(event.target) && menu.classList.contains('menu-opened')) {
-                    if (control.contains(event.target))
-                        return;
+                if (control.contains(event.target))
+                    return;
+                if (!dropdown.contains(event.target) && menu.classList.contains('menu-opened'))
                     this.HideMenu(this._blazorRef)
                     break;
-                }
             case "keydown":
                 if (menu.classList.contains('menu-opened'))
                     this.HideMenu(this._blazorRef)

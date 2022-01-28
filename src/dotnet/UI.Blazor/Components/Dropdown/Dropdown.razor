@@ -1,0 +1,39 @@
+﻿@using System.Net.NetworkInformation
+@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inject IJSRuntime _js
+@implements IDropdownBackend
+
+<div class="dropdown" @ref="DropdownRef">
+    @ChildContent
+</div>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool IsMenuOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsMenuOpenChanged { get; set; }
+
+    private DotNetObjectReference<IDropdownBackend> BlazorRef { get; set; } = null!;
+    private ElementReference DropdownRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IDropdownBackend>(this);
+            JSRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.Dropdown.create",
+                DropdownRef, BlazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+
+    [JSInvokable]
+    public Task HideMenu()
+        => IsMenuOpenChanged.InvokeAsync(false);
+}
