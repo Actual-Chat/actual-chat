@@ -79,7 +79,10 @@ public sealed class ChatEntryReader
         var lastId = minId - 1;
         return ReadAllUpdates(
             minId,
-            _ => false,
+            tuple => {
+                var (_, hasNext) = tuple;
+                return !hasNext;
+            },
             entry => {
                 if (entry.Id <= lastId)
                     return false;
