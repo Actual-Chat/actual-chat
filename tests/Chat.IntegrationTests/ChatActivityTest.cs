@@ -1,5 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
+using Stl.Time.Testing;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -57,6 +58,7 @@ public class ChatActivityTest : AppHostTestBase
         Session session,
         CancellationToken cancellationToken)
     {
+        var testClock = new TestClock();
         var author = await chatAuthorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var entry = new ChatEntry {
@@ -71,7 +73,7 @@ public class ChatActivityTest : AppHostTestBase
         var createCommand = new IChatsBackend.UpsertEntryCommand(entry);
         entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
 
-        await Task.Delay(TimeSpan.FromMilliseconds(2000), cancellationToken);
+        await testClock.Delay(2000, cancellationToken);
 
         entry = entry with {
             EndsAt = clock.Now,
