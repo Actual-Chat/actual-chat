@@ -1,11 +1,11 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
 @if (IsTitleVisible && !IsIconVisible) {
-    <button @onclick="OnClickItem" class="dropdown-menu-item @CssClasses" name="@Name">
+    <button @onclick="OnClickItem" class="dropdown-menu-item @GetCss()" name="@Name">
         @Title
     </button>
 } else if (IsTitleVisible && IsIconVisible && !string.IsNullOrWhiteSpace(Icon)) {
-    <button @onclick="OnClickItem" class="dropdown-menu-item @CssClasses" name="@Name">
+    <button @onclick="OnClickItem" class="dropdown-menu-item @GetCss()" name="@Name">
         <div class="flex flex-1 float-left">@Title</div>
         <div class="flex float-right mr-1">
             @((MarkupString)Icon)
@@ -25,7 +25,12 @@
     [Parameter]
     public bool IsIconVisible { get; set; }
     [Parameter]
-    public string? CssClasses { get; set; }
+    public string Css { get; set; } = "";
     [Parameter]
     public string? Name { get; set; }
+    [CascadingParameter]
+    public Menu? Menu { get; set; }
+
+    private string GetCss()
+        => $"{Css} {Menu?.ItemCss}";
 }
