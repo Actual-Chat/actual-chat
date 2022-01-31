@@ -40,24 +40,9 @@ public class RedisModule : HostModule<RedisSettings>
 
         // Stl.Redis doesn't support specifying SocketManager for now
         var cfg = ConfigurationOptions.Parse(configuration);
-        // remove after https://github.com/StackExchange/StackExchange.Redis/pull/1939 will be published
+        // Remove once https://github.com/StackExchange/StackExchange.Redis/pull/1939 is published
         cfg.SocketManager = SocketManager.ThreadPool;
-        services.AddRedisDb<TContext>(configuration, keyPrefix);
+        services.AddRedisDb<TContext>(cfg, keyPrefix);
     }
 }
 
-internal static class ServiceCollectionExt
-{
-    private static IServiceCollection AddRedisDb<TContext>(
-        this IServiceCollection services,
-        ConfigurationOptions configuration,
-        string? keyPrefix = null)
-    {
-        keyPrefix ??= typeof(TContext).Name;
-        services.AddSingleton(c => {
-            var multiplexer = ConnectionMultiplexer.Connect(configuration);
-            return new RedisDb<TContext>(multiplexer, keyPrefix);
-        });
-        return services;
-    }
-}
