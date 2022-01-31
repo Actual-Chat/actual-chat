@@ -1,4 +1,6 @@
+@using ActualChat.Hosting
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inject HostInfo _hostInfo
 
 @{
     var showHeader = Model.IsBlockStart;
@@ -42,7 +44,9 @@
             }
         </div>
     </div>
-    <ChatMessageMenu/>
+    @if (_hostInfo.IsDevelopmentInstance) {
+        <ChatMessageMenu/>
+    }
 </div>
 
 @code {
