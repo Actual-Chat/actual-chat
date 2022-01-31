@@ -38,9 +38,7 @@ public class RedisModule : HostModule<RedisSettings>
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
             typeof(TContext).Name, configuration, keyPrefix);
 
-        // Stl.Redis doesn't support specifying SocketManager for now
         var cfg = ConfigurationOptions.Parse(configuration);
-        // Remove once https://github.com/StackExchange/StackExchange.Redis/pull/1939 is published
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
     }
