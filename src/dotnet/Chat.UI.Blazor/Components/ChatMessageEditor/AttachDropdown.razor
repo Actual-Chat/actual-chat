@@ -1,19 +1,18 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
-    var commonStyle = "p-1 text-left";
-    var menuButtonIcon = @"<svg class=""fill-current h-6 w-6 text-secondary hover:text-primary"" xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 20 20"">
+    var dropdownButtonIcon = @"<svg class=""fill-current h-6 w-6 text-secondary hover:text-primary"" xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 20 20"">
     <path d=""M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z""/>
     </svg>";
 }
 
 <Dropdown @bind-IsMenuOpen="@IsMenuOpen">
-    <DropdownMenu @bind-IsOpen="@IsMenuOpen" CssClasses="left-4 bottom-12 w-40">
-        <DropdownMenuItem Title="Menu Item 1" Name="Item1" CssClasses="@commonStyle"/>
-        <DropdownMenuItem Title="Menu Item 2" Name="Item2" CssClasses="@commonStyle"/>
-        <DropdownMenuItem Title="Menu Item 3" Name="Item3" CssClasses="@commonStyle"/>
-    </DropdownMenu>
-    <DropdownButton Icon="@menuButtonIcon" MenuToggle="@MenuHandler" CssClasses="sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2"/>
+    <Menu @bind-IsOpen="@IsMenuOpen" Css="left-4 bottom-12 w-40" ItemCss="p-1 text-left">
+        <MenuItem Title="Menu Item 1" Name="Item1"/>
+        <MenuItem Title="Menu Item 2" Name="Item2"/>
+        <MenuItem Title="Menu Item 3" Name="Item3"/>
+    </Menu>
+    <DropdownButton Icon="@dropdownButtonIcon" MenuToggle="@MenuHandler" Css="sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2"/>
 </Dropdown>
 
 @code {
