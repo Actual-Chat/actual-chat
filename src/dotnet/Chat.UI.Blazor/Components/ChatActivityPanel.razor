@@ -27,7 +27,8 @@
     protected override async Task<ActivityState> ComputeState(CancellationToken cancellationToken) {
         var recordingActivity = await ChatActivity.GetRecordingActivity(Chat.Id, cancellationToken).Use(cancellationToken);
         var authors = new List<Author>();
-        foreach (var entry in recordingActivity) {
+        var now = ChatActivity.Clocks.SystemClock.Now;
+        foreach (var entry in recordingActivity.NotOlderThan(now - TimeSpan.FromMinutes(2))) {
             var author = await ChatAuthors.GetAuthor(Chat.Id, entry.AuthorId, true, cancellationToken);
             if (author != null)
                 authors.Add(author);
