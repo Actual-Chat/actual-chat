@@ -183,9 +183,19 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddMeter(FusionDiagnostics.FusionMeter.Name)
                 .AddMeter(CommanderDiagnostics.CommanderMeter.Name)
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.ExportProcessorType = ExportProcessorType.Batch;
+                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                        ExporterTimeoutMilliseconds = 10_000,
+                        MaxExportBatchSize = 256,
+                        MaxQueueSize = 1024,
+                        ScheduledDelayMilliseconds = 20_000,
+                    };
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.MetricReaderType = MetricReaderType.Periodic;
+                    cfg.PeriodicExportingMetricReaderOptions = new PeriodicExportingMetricReaderOptions() {
+                        ExportIntervalMilliseconds = 15_000,
+                    };
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
@@ -211,7 +221,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddGrpcClientInstrumentation()
                 .AddNpgsql()
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.ExportProcessorType = ExportProcessorType.Batch;
+                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                        ExporterTimeoutMilliseconds = 10_000,
+                        MaxExportBatchSize = 256,
+                        MaxQueueSize = 1024,
+                        ScheduledDelayMilliseconds = 20_000,
+                    };
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })

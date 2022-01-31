@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 
 namespace ActualChat.Host;
@@ -92,13 +93,19 @@ public class AppHost : IDisposable
                     { WebHostDefaults.ServerUrlsKey, ServerUrls },
                 },
             });
-        cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
+        cfg.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
         HostConfigurationBuilder?.Invoke(cfg);
     }
 
     protected virtual void ConfigureAppConfiguration(IConfigurationBuilder appBuilder)
     {
-        appBuilder.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
+        // disable FSW, because they eat a lot and can exhaust the handles available to epoll on linux containers
+        var jsonProviders = appBuilder.Sources.OfType<JsonConfigurationSource>().Where(j => j.ReloadOnChange).ToArray();
+        foreach (var item in jsonProviders) {
+            appBuilder.Sources.Remove(item);
+            appBuilder.AddJsonFile(item.Path, item.Optional, reloadOnChange: false);
+        }
+        appBuilder.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
         AppConfigurationBuilder?.Invoke(appBuilder);
     }
 
