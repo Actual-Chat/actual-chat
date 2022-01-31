@@ -27,12 +27,12 @@ internal static class Program
             var envMinIo = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO");
             if (string.IsNullOrWhiteSpace(envMinIo)
                 || !int.TryParse(envMinIo, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIoThreads)) {
-                minIoThreads = 6;
+                minIoThreads = 8;
             }
             var envMinWorker = Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER");
             if (string.IsNullOrWhiteSpace(envMinWorker)
                 || !int.TryParse(envMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorkerThreads)) {
-                minWorkerThreads = 6;
+                minWorkerThreads = 8;
             }
             ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIo);
             if (currentMinIo < minIoThreads) {
