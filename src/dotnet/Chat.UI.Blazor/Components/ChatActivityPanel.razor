@@ -1,0 +1,45 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@inherits ComputedStateComponent<ActualChat.Chat.UI.Blazor.Components.ChatActivityPanel.ActivityState>
+
+<div class="inline-flex">
+    @foreach (var author in State.LatestNonErrorValue.SpeakNow) {
+        var picture = author.Picture;
+        if (string.IsNullOrWhiteSpace(picture))
+            // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
+        picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
+
+        <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
+            <img src="@picture" alt="@author.Name"/>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    public Chat Chat { get; set; } = null!;
+
+    [Inject]
+    public ChatActivity ChatActivity { get; set; } = null!;
+    [Inject]
+    public IChatAuthors ChatAuthors { get; set; } = null!;
+
+    protected override async Task<ActivityState> ComputeState(CancellationToken cancellationToken) {
+        var recordingActivity = await ChatActivity.GetRecordingActivity(Chat.Id, cancellationToken).Use(cancellationToken);
+        var authors = new List<Author>();
+        foreach (var entry in recordingActivity) {
+            var author = await ChatAuthors.GetAuthor(Chat.Id, entry.AuthorId, true, cancellationToken);
+            if (author != null)
+                authors.Add(author);
+        }
+
+        return new ActivityState {
+            SpeakNow = authors
+        };
+    }
+
+
+    public class ActivityState {
+        public List<Author> SpeakNow { get; init; } = null!;
+    }
+}
