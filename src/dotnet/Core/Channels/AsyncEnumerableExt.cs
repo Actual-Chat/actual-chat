@@ -79,16 +79,18 @@ public static class AsyncEnumerableExt
         }
     }
 
-    public static (IAsyncEnumerable<TSource>, IAsyncEnumerable<TSource>) Split<TSource>(
+    public static (IAsyncEnumerable<TSource> Matched, IAsyncEnumerable<TSource> NotMatched) Split<TSource>(
         this IAsyncEnumerable<TSource> source,
         Func<TSource,bool> splitPredicate,
         CancellationToken cancellationToken)
     {
         var matched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
             SingleWriter = true,
+            SingleReader = true,
         });
         var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
             SingleWriter = true,
+            SingleReader = true,
         });
 
         _ = Task.Run(async () => {
@@ -125,20 +127,23 @@ public static class AsyncEnumerableExt
         }
     }
 
+    // originally copied from there https://github.com/dotnet/reactive/blob/9f2a8090cea4bf931d4ac3ad071f4df147f4df50/Ix.NET/Source/System.Interactive.Async/System/Linq/Operators/Merge.cs#L20
+    // fixed bugs and refactored later
+
     /// <summary>
     /// Merges elements from all of the specified async-enumerable sequences into a single async-enumerable sequence.
     /// </summary>
     /// <typeparam name="TSource">The type of the elements in the source sequences.</typeparam>
     /// <param name="source">Observable sequence.</param>
-    /// <param name="sources">Observable sequences.</param>
+    /// <param name="otherSources">Observable sequences.</param>
     /// <returns>The async-enumerable sequence that merges the elements of the async-enumerable sequences.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="sources"/> is null.</exception>
-    public static IAsyncEnumerable<TSource> Merge<TSource>(this IAsyncEnumerable<TSource> source, params IAsyncEnumerable<TSource>[] sources)
+    /// <exception cref="ArgumentNullException"><paramref name="otherSources"/> is null.</exception>
+    public static IAsyncEnumerable<TSource> Merge<TSource>(this IAsyncEnumerable<TSource> source, params IAsyncEnumerable<TSource>[] otherSources)
     {
-        if (sources == null)
-            throw new ArgumentNullException(nameof(sources));
+        if (otherSources == null)
+            throw new ArgumentNullException(nameof(otherSources));
 
-        return Core(source, sources);
+        return Core(source, otherSources);
 
         static async IAsyncEnumerable<TSource> Core(
             IAsyncEnumerable<TSource> source,
@@ -218,6 +223,41 @@ public static class AsyncEnumerableExt
                     case > 1:
                         throw new AggregateException(errors);
                 }
+        }
+    }
+
+    public static async IAsyncEnumerable<List<TSource>> Buffer<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        TimeSpan bufferDuration,
+        IMomentClock clock,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var buffer = new List<TSource>();
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
+        var moveNext = enumerator.MoveNextAsync().AsTask();
+        var delayTask = clock.Delay(bufferDuration, cancellationToken);
+        while (true) {
+            await Task.WhenAny(moveNext, delayTask).ConfigureAwait(false);
+
+            if (moveNext.IsCompleted) {
+                var hasNext = await moveNext.ConfigureAwait(false);
+                if (hasNext) {
+                    buffer.Add(enumerator.Current);
+                    moveNext = enumerator.MoveNextAsync().AsTask();
+                }
+                else {
+                    yield return buffer;
+                    break;
+                }
+            }
+
+            if (delayTask.IsCompleted && buffer.Count > 0) {
+                yield return buffer;
+
+                buffer = new List<TSource>();
+                delayTask = clock.Delay(bufferDuration, cancellationToken);
+            }
         }
     }
 
