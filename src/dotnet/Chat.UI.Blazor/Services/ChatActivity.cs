@@ -42,7 +42,6 @@ public class ChatActivity
     public IChats Chats { get; }
     public MomentClockSet Clocks { get; }
 
-
     public ChatActivity(Session session, IStateFactory stateFactory, IChats chats, MomentClockSet clocks)
     {
         Session = session;
@@ -54,9 +53,10 @@ public class ChatActivity
     // ReSharper disable once HeapView.CanAvoidClosure
     public IMutableState<ChatActivityState> GetRecordingActivity(Symbol chatId, CancellationToken cancellationToken)
         => _chatState.GetOrAdd(chatId,
-            cid => {
+            chatId1 => {
+                using var _ = Computed.SuspendDependencyCapture();
                 var state = _stateFactory.NewMutable(new ChatActivityState());
-                Task.Run(() => UpdateActivityState(cid, state, cancellationToken), cancellationToken);
+                Task.Run(() => UpdateActivityState(chatId1, state, cancellationToken), cancellationToken);
                 return state;
             });
 
