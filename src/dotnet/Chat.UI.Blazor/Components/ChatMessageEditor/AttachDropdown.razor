@@ -7,17 +7,15 @@
 }
 
 <Dropdown @bind-IsMenuOpen="@IsMenuOpen">
-    <Menu @bind-IsOpen="@IsMenuOpen" Css="left-4 bottom-12 w-40" ItemCss="p-1 text-left">
-        <MenuItem Title="Menu Item 1" Name="Item1"/>
-        <MenuItem Title="Menu Item 2" Name="Item2"/>
-        <MenuItem Title="Menu Item 3" Name="Item3"/>
-    </Menu>
-    <DropdownButton Icon="@dropdownButtonIcon" MenuToggle="@MenuHandler" Css="sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2"/>
+    <DropdownMenu IsOpen="@IsMenuOpen" Class="left-4 bottom-12" ItemClass="p-1 text-left">
+        <DropdownMenuItem Title="(To Be Implemented)" Name="wip" Icon="@dropdownButtonIcon"/>
+    </DropdownMenu>
+    <DropdownButton Icon="@dropdownButtonIcon" Click="@OnButtonClick" Class="sticky flex outline-none hover:cursor-pointer text-primary px-3 py-2"/>
 </Dropdown>
 
 @code {
     private bool IsMenuOpen { get; set; }
 
-    private void MenuHandler()
+    private void OnButtonClick()
         => IsMenuOpen = !IsMenuOpen;
 }
