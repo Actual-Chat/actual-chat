@@ -131,6 +131,8 @@ public static class TaskExt
         => task.WithErrorHandler(e => errorLog.LogError(e, message));
 
     // WhenAny
+    // copied from https://github.com/dotnet/reactive/blob/93386a90d9e7a78c2a0c3aaa16d31e1328f71b72/Ix.NET/Source/System.Interactive.Async/TaskExt.cs#L16
+    // refactored later
     public static WhenAnyValueTask<T> WhenAny<T>(ValueTask<T>[] tasks)
     {
         var whenAny = new WhenAnyValueTask<T>(tasks);
