@@ -1,17 +1,23 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Services
-@inherits ComputedStateComponent<ActualChat.Chat.UI.Blazor.Components.ChatActivityPanel.ActivityState>
+@inherits ComputedStateComponent<ActualChat.Chat.UI.Blazor.Components.ChatActivityPanel.ChatActivityPanelState>
 
 <div class="inline-flex">
-    @foreach (var author in State.LatestNonErrorValue.SpeakNow) {
-        var picture = author.Picture;
-        if (string.IsNullOrWhiteSpace(picture))
-            // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
-        picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
 
-        <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
-            <img src="@picture" alt="@author.Name"/>
-        </div>
+    @{
+        var speaking = State.LatestNonErrorValue?.Speaking;
+        if (speaking != null) {
+            foreach (var author in speaking) {
+                var picture = author.Picture;
+                if (string.IsNullOrWhiteSpace(picture))
+                    // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
+                    picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
+
+                <div class="author-avatar w-6 h-6 mx-1 select-none bg-secondary rounded-md">
+                    <img src="@picture" alt="@author.Name" title="@author.Name"/>
+                </div>
+            }
+        }
     }
 </div>
 
@@ -20,27 +26,39 @@
     public Chat Chat { get; set; } = null!;
 
     [Inject]
-    public ChatActivity ChatActivity { get; set; } = null!;
+    public ChatActivities ChatActivities { get; set; } = null!;
     [Inject]
     public IChatAuthors ChatAuthors { get; set; } = null!;
 
-    protected override async Task<ActivityState> ComputeState(CancellationToken cancellationToken) {
-        var recordingActivity = await ChatActivity.GetRecordingActivity(Chat.Id, cancellationToken).Use(cancellationToken);
-        var authors = new List<Author>();
-        var now = ChatActivity.Clocks.SystemClock.Now;
-        foreach (var entry in recordingActivity.NotOlderThan(now - TimeSpan.FromMinutes(2))) {
-            var author = await ChatAuthors.GetAuthor(Chat.Id, entry.AuthorId, true, cancellationToken);
-            if (author != null)
-                authors.Add(author);
-        }
+    private ChatActivityState? ChatActivityState { get; set; }
 
-        return new ActivityState {
-            SpeakNow = authors
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        ChatActivityState = ChatActivities.GetRecordingActivity(Chat.Id);
+    }
+
+    protected override async Task<ChatActivityPanelState> ComputeState(CancellationToken cancellationToken) {
+        if (ChatActivityState == null)
+            return new() { Speaking = new() };
+
+        var recordingActivity = await ChatActivityState.CurrentActivity.Use(cancellationToken);
+        var authorTasks = recordingActivity
+            .Select(ra => ChatAuthors.GetAuthor(Chat.Id, ra.AuthorId, true, cancellationToken));
+        var authors = await Task.WhenAll(authorTasks);
+
+        return new() {
+            Speaking = authors.Where(a => a != null).ToList()!,
         };
     }
 
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
 
-    public class ActivityState {
-        public List<Author> SpeakNow { get; init; } = null!;
+        ChatActivityState?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    public class ChatActivityPanelState {
+        public List<Author> Speaking { get; init; } = null!;
     }
 }

@@ -77,35 +77,29 @@ public sealed class ChatEntryReader
         CancellationToken cancellationToken)
     {
         var lastId = minId - 1;
-        return ReadAllUpdates(
-            minId,
-            tuple => {
-                var (_, hasNext) = tuple;
-                return !hasNext;
-            },
-            entry => {
+        return ReadAllUpdates(minId, (_, hasNext) => !hasNext, cancellationToken)
+            .Where(entry => {
                 if (entry.Id <= lastId)
                     return false;
 
                 lastId = entry.Id;
                 return true;
-            },
-            cancellationToken
-        );
+            });
     }
 
     public IAsyncEnumerable<ChatEntry> ReadAllUpdates(
         long minId,
-        Func<(ChatTile Tile, bool HasNext),bool> waitForUpdate,
-        Func<ChatEntry, bool> shouldReturn,
+        Func<ChatTile, bool, bool> enqueueTileForUpdate,
         CancellationToken cancellationToken)
     {
         var activeTiles = Channel.CreateUnbounded<IComputed<ChatTile>>(new UnboundedChannelOptions {
             SingleReader = true,
             SingleWriter = true,
         });
-        var output = Channel.CreateUnbounded<ChatEntry>(new UnboundedChannelOptions {
+        var output = Channel.CreateBounded<ChatEntry>(new BoundedChannelOptions(100) {
+            SingleReader = true,
             SingleWriter = true,
+            FullMode = BoundedChannelFullMode.Wait,
         });
 
         _ = Task.Run(() => GatherUpdates(output), cancellationToken);
@@ -121,16 +115,15 @@ public sealed class ChatEntryReader
                 idRange = (minId, Math.Max(minId + 1, idRange.End));
 
                 await foreach (var tileComputed in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
-                    if (thisTileComputed != null && waitForUpdate((thisTileComputed.Value, true)))
+                    if (thisTileComputed != null && enqueueTileForUpdate(thisTileComputed.Value, true))
                         await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
 
                     thisTileComputed = tileComputed;
 
-                    foreach (var entry in tileComputed.Value.Entries.Where(shouldReturn))
-                        if (entry.Id >= minId)
-                            await writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
+                    foreach (var entry in tileComputed.Value.Entries.Where(entry => entry.Id >= minId))
+                        await writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
                 }
-                if (thisTileComputed != null && waitForUpdate((thisTileComputed.Value, false)))
+                if (thisTileComputed != null && enqueueTileForUpdate(thisTileComputed.Value, false))
                     await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
 
                 var newTiles = ReadNewTiles(cancellationToken);
@@ -138,12 +131,11 @@ public sealed class ChatEntryReader
                 await foreach (var tileComputed in newTiles.Merge(updatedTiles)
                            .WithCancellation(cancellationToken)
                            .ConfigureAwait(false)) {
-                    if (waitForUpdate((tileComputed.Value, false)))
+                    if (enqueueTileForUpdate(tileComputed.Value, false))
                         await activeTiles.Writer.WriteAsync(tileComputed, cancellationToken).ConfigureAwait(false);
 
-                    foreach (var entry in tileComputed.Value.Entries.Where(shouldReturn))
-                        if (entry.Id >= minId)
-                            await writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
+                    foreach (var entry in tileComputed.Value.Entries.Where(entry => entry.Id >= minId))
+                        await writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex) {

@@ -34,20 +34,17 @@ public class ChatActivityTest : AppHostTestBase
         var ct = cts.Token;
         try {
             _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
-            var chatActivity = clientServices.GetRequiredService<ChatActivity>();
-            var recordingActivity = chatActivity.GetRecordingActivity(ChatId, ct);
-            recordingActivity.Value.Current.Should().HaveCount(0);
-            recordingActivity.Value.History.Should().HaveCount(0);
+            var chatActivity = clientServices.GetRequiredService<ChatActivities>();
+            var recordingActivity = chatActivity.GetRecordingActivity(ChatId);
+            recordingActivity.CurrentActivity.Value.Should().HaveCount(0);
 
-            await recordingActivity.Computed.WhenInvalidated(ct);
-            await recordingActivity.Computed.Update(ct);
-            recordingActivity.Value.Current.Should().HaveCount(1);
-            recordingActivity.Value.History.Should().HaveCount(0);
+            await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct);
+            await recordingActivity.CurrentActivity.Computed.Update(ct);
+            recordingActivity.CurrentActivity.Value.Should().HaveCount(1);
 
-            await recordingActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: ct);
-            await recordingActivity.Computed.Update(ct);
-            recordingActivity.Value.Current.Should().HaveCount(0);
-            recordingActivity.Value.History.Should().HaveCount(1);
+            await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: ct);
+            await recordingActivity.CurrentActivity.Computed.Update(ct);
+            recordingActivity.CurrentActivity.Value.Should().HaveCount(0);
         }
         finally {
             cts.Cancel();

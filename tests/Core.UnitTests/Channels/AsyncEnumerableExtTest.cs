@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Channels;
@@ -108,6 +109,44 @@ public class AsyncEnumerableExtTest
             cancellationToken.ThrowIfCancellationRequested();
 
             yield return 6;
+        }
+    }
+
+    [Fact]
+    [SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
+    public async Task RandomizedMergeTest()
+    {
+        var testClock = new TestClock();
+        var cts = new CancellationTokenSource();
+        var random = new Random();
+        var otherSourceLength = random.Next(4, 7);
+        var sequenceLength = 100;
+        var source = GenerateRandomUniqueSequence(sequenceLength, testClock, random, cts.Token);
+        var otherSources = Enumerable.Range(0, otherSourceLength)
+            .Select(_ => GenerateRandomUniqueSequence(sequenceLength, testClock, random, cts.Token));
+
+        cts.CancelAfter(30*1000);
+        var otherSourceArray = otherSources.ToArray();
+        var count = await source.Merge(otherSourceArray).CountAsync(cancellationToken: cts.Token);
+        count.Should().Be(sequenceLength * (otherSourceLength + 1));
+
+        var sum = await source.Merge(otherSourceArray).SumAsync(i => i, cancellationToken: cts.Token);
+        sum.Should().Be((otherSourceLength + 1) * (sequenceLength - 1) * sequenceLength / 2);
+    }
+
+    private async IAsyncEnumerable<int> GenerateRandomUniqueSequence(
+        int length,
+        ITestClock delayClock,
+        Random random,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var randomNumbers = Enumerable.Range(0, length)
+            .Select(i => (i, random: random.Next()))
+            .OrderBy(x => x.random)
+            .Select(x => x.i);
+        foreach (var number in randomNumbers) {
+            await delayClock.Delay(random.Next(100), cancellationToken: cancellationToken).ConfigureAwait(false);
+            yield return number;
         }
     }
 }

@@ -204,8 +204,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var id = idRange.End - 1;
         var updates = reader.ReadAllUpdates(
             id,
-            _ => true,
-            _ => true,
+            (_,_) => true,
             cts.Token);
         await foreach (var entry in updates.TrimOnCancellation()) {
             entry.Id.Should().Be(id);
