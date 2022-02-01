@@ -1,6 +1,7 @@
 using System.Text;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
+using Grpc.Core;
 
 namespace ActualChat.Host;
 
@@ -12,6 +13,7 @@ internal static class Program
         Activity.DefaultIdFormat = ActivityIdFormat.W3C;
         Activity.ForceDefaultIdFormat = true;
         AdjustThreadPool();
+        AdjustGrpcCoreThreadPool();
         using var appHost = new AppHost();
         await appHost.Build().ConfigureAwait(false);
         Constants.HostInfo = appHost.Services.GetRequiredService<HostInfo>();
@@ -44,6 +46,16 @@ internal static class Program
             if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIo)) {
                 throw new Exception("ERROR: Can't set min worker threads");
             }
+        }
+
+        static void AdjustGrpcCoreThreadPool()
+        {
+            var grpcThreadsEnv = Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE");
+            if (string.IsNullOrWhiteSpace(grpcThreadsEnv)
+                || !int.TryParse(grpcThreadsEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int grpcThreads)) {
+                grpcThreads = 8;
+            }
+            GrpcEnvironment.SetThreadPoolSize(grpcThreads);
         }
     }
 }
