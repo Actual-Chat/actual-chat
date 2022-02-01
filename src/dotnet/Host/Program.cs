@@ -46,6 +46,7 @@ internal static class Program
             if (currentMinWorker < minWorkerThreads && !ThreadPool.SetMinThreads(minWorkerThreads, currentMinIo)) {
                 throw new Exception("ERROR: Can't set min worker threads");
             }
+            ThreadPool.SetMaxThreads(4096, 4096);
         }
 
         static void AdjustGrpcCoreThreadPool()
@@ -56,6 +57,9 @@ internal static class Program
                 grpcThreads = 8;
             }
             GrpcEnvironment.SetThreadPoolSize(grpcThreads);
+            GrpcEnvironment.SetCompletionQueueCount(grpcThreads);
+            // requires user to never block in async code, can easily lead to deadlocks
+            GrpcEnvironment.SetHandlerInlining(true);
         }
     }
 }
