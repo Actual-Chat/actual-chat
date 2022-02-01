@@ -3,5 +3,5 @@
 }
 
 .dropdown-menu-item {
-    @apply text-sm text-secondary hover:bg-accent rounded-sm;
+    @apply text-sm text-secondary hover:bg-primary rounded-sm;
 }

@@ -19,35 +19,33 @@ export class Dropdown {
         this._menuBody = this._menuDiv.querySelector('.menu-body');
         this._controlBtn = this._dropdown.querySelector('.dropdown-button');
 
-        window.addEventListener('mouseup', (event: MouseEvent & {target: Element; }) => {
-            this.listenerHandler(event);
-        });
-
-        document.addEventListener('keydown', (event: KeyboardEvent & {target: Element; }) => {
-            if (event.keyCode == 27 || event.key == "Escape" || event.key == "Esc") {
-                this.listenerHandler(event);
-            }
-        });
+        window.addEventListener('mouseup', this.mouseListener)
+        document.addEventListener('keydown', this.escapeListener);
     }
 
-    public listenerHandler(event: Event & { target: Element; }) {
-        let dropdown = this._dropdown;
+    public mouseListener = ((event: MouseEvent & {target: Element; }) => {
         let menu = this._menuDiv;
         let control = this._controlBtn;
-        switch (event.type) {
-            case "mouseup":
-                if (control.contains(event.target))
-                    return;
-                if (!dropdown.contains(event.target) && menu.classList.contains('menu-opened'))
-                    this.HideMenu(this._blazorRef)
-                    break;
-            case "keydown":
-                if (menu.classList.contains('menu-opened'))
-                    this.HideMenu(this._blazorRef)
-                    break;
-            default:
-                return;
+        let dropdown = this._dropdown;
+        if (control.contains(event.target))
+            return;
+        if (!dropdown.contains(event.target) && menu.classList.contains('menu-opened')) {
+            this.HideMenu(this._blazorRef);
         }
+    })
+
+    public escapeListener = ((event: KeyboardEvent & {target: Element; }) => {
+        if (event.keyCode == 27 || event.key == "Escape" || event.key == "Esc") {
+            let menu = this._menuDiv;
+            if (menu.classList.contains('menu-opened')) {
+                this.HideMenu(this._blazorRef);
+            }
+        }
+    })
+
+    public dispose() {
+        window.removeEventListener('mouseup', this.mouseListener);
+        document.removeEventListener('keydown', this.escapeListener);
     }
 
     public HideMenu(ref: DotNet.DotNetObject) {

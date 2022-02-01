@@ -24,28 +24,38 @@ export class ChatMessageEditor {
         this._recordButton = this._recorderButtonDiv.querySelector('button');
 
         // Wiring up event listeners
-        this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
-            let _ = this.updateClientSideState();
-            this.changeMode();
-        });
-        this._input.addEventListener('keydown', (event: KeyboardEvent & { target: HTMLDivElement; }) => {
-            if (event.key != 'Enter' || event.shiftKey)
-                return;
-            event.preventDefault();
-            this._blazorRef.invokeMethodAsync("Post", this.getText());
-        });
-        this._input.addEventListener('mousedown', (event: MouseEvent & {target: HTMLDivElement; }) => {
-            this._input.focus();
-        })
-        this._postButton.addEventListener('click', (event: Event & { target: HTMLButtonElement; }) => {
-            this._input.focus();
-            this.changeMode();
-        })
-        this._recordButton.addEventListener('click', (event: Event & {target: HTMLButtonElement; }) => {
-            this.syncLanguageButtonVisibility();
-        })
+        this._input.addEventListener('input', this._inputInputListener);
+        this._input.addEventListener('keydown', this._inputKeydownListener);
+        this._input.addEventListener('mousedown', this._inputMousedownListener);
+        this._postButton.addEventListener('click', this._postClickListener)
+        this._recordButton.addEventListener('click', this._recordClickListener)
         this.changeMode();
     }
+
+    public _inputInputListener = ((event: Event & {target: Element; }) => {
+        let _ = this.updateClientSideState();
+        this.changeMode();
+    })
+
+    public _inputKeydownListener = ((event: KeyboardEvent & {target: Element; }) => {
+        if (event.key != 'Enter' || event.shiftKey)
+            return;
+        event.preventDefault();
+        this._blazorRef.invokeMethodAsync("Post", this.getText());
+    })
+
+    public _inputMousedownListener = ((event: MouseEvent & {target: Element; }) => {
+        this._input.focus();
+    })
+
+    public _postClickListener = ((event: MouseEvent & {target: Element; }) => {
+        this._input.focus();
+        this.changeMode();
+    })
+
+    public _recordClickListener = ((event: Event & {target: Element; }) => {
+        this.syncLanguageButtonVisibility();
+    })
 
     public syncLanguageButtonVisibility() {
         let recordIcon = this._recordButton.querySelector('svg');

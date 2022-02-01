@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
-<div class="dropdown-menu @Css @MenuStatus()" name="@Name">
+<div class="dropdown-menu @Class @MenuStatus()" name="@Name">
     <div class="menu-body relative @(IsOpen ? "" : "hidden")">
         <div class="py-1 select-none p-1 flex @MenuDirection()">
             <CascadingValue Value="@this" IsFixed="true">
@@ -14,11 +14,9 @@
     [Parameter]
     public bool IsOpen { get; set; }
     [Parameter]
-    public EventCallback<bool> IsOpenChanged { get; set; }
+    public string Class { get; set; } = "";
     [Parameter]
-    public string Css { get; set; } = "";
-    [Parameter]
-    public string ItemCss { get; set; } = "";
+    public string ItemClass { get; set; } = "";
     [Parameter]
     public string Title { get; set; } = "";
     [Parameter]
