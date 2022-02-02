@@ -1,0 +1,81 @@
+﻿@page "/user/avatars"
+@inherits ComputedStateComponent<Pages.UserAvatarsPage.Model>
+@{
+    var state = State.LatestNonErrorValue ?? new Model();
+    var items = state.Items;
+}
+<h3>User avatars</h3>
+<ul class="flex flex-wrap">
+    <li class="group m-2">
+        <UserAvatarTemplate Name="New Avatar">
+            <ActionsTemplate>
+                <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary" @onclick="OnAddNewAvatar">
+                    Create New
+                </button>
+            </ActionsTemplate>
+        </UserAvatarTemplate>
+    </li>
+    @foreach (var item in items) {
+        <li class="group m-2">
+            <div class="relative">
+                <UserAvatar AvatarId="@item.AvatarId">
+                    <ActionsTemplate>
+                        <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary"
+                                @onclick="@(() => EditAvatar(item.AvatarId))">Edit</button>
+                    </ActionsTemplate>
+                </UserAvatar>
+                <div class="absolute top-0 right-0 mr-4 mt-2">
+                    @if (item.IsDefault) {
+                        <button type="button" title="Default" @onclick="@(() => MakeDefault(""))">
+                            <i class="fa fa-check fa-3x text-green-500" aria-hidden="true"></i>
+                        </button>
+                    } else {
+                        <button type="button" title="Make default" @onclick="@(() => MakeDefault(item.AvatarId))">
+                            <i class="fa fa-check fa-2x text-gray-200 hover:scale-110 hover:text-green-500 transition duration-300 ease-in-out" aria-hidden="true"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        </li>
+    }
+</ul>
+
+@code {
+
+    public class Model {
+        public Item[] Items { get; set; } = Array.Empty<Item>();
+    }
+
+    public class Item {
+        public bool IsDefault { get; set; }
+        public string AvatarId { get; set; } = "";
+    }
+
+    [Inject] IUserAvatars UserAvatars { get; set; } = null!;
+    [Inject] NavigationManager Nav { get; set; } = default!;
+    [Inject] Session Session { get; set; } = null!;
+    [Inject] UICommandRunner Cmd { get; set; } = null!;
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await UserAvatars.GetAvatarIds(Session, cancellationToken);
+        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken);
+        return new Model {
+            Items = avatarIds.Select(c => new Item {AvatarId = c, IsDefault = c == defaultAvatarId}).ToArray()
+        };
+    }
+
+    private async Task MakeDefault(string avatarId) {
+        var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
+        await Cmd.Run(command);
+    }
+
+
+    private async Task OnAddNewAvatar() {
+        var command = new IUserAvatars.CreateCommand(Session);
+        await Cmd.Run(command);
+    }
+
+    private void EditAvatar(string avatarId) {
+        Nav.NavigateTo("user/avatar/" + avatarId);
+    }
+}

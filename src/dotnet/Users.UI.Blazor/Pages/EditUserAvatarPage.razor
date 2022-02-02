@@ -1,0 +1,16 @@
+@page "/user/avatar/{AvatarId}"
+
+<div class="px-2 py-2">
+    <UserAvatarEditor AvatarId="@AvatarId" CancelRequested="NavigateToList" OnUpdated="NavigateToList" />
+</div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    [Parameter]
+    public string AvatarId { get; set; } = "";
+
+    private void NavigateToList() {
+        Nav.NavigateTo($"/user/avatars");
+    }
+}

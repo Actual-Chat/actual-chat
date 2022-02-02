@@ -63,6 +63,11 @@ public class UsersServiceModule : HostModule<UsersSettings>
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();
         redisModule.AddRedisDb<UsersDbContext>(services, Settings.Redis);
 
+        services.AddSingleton(c => {
+            var chatRedisDb = c.GetRequiredService<RedisDb<UsersDbContext>>();
+            return chatRedisDb.GetSequenceSet<DbUserAvatar>("seq." + nameof(UserAvatar));
+        });
+
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
         dbModule.AddDbContextServices<UsersDbContext>(services, Settings.Db);
@@ -77,6 +82,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
             dbContext.AddEntityResolver<string, DbUserState>();
             dbContext.AddEntityResolver<string, DbUserAuthor>();
+            dbContext.AddEntityResolver<string, DbUserAvatar>();
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
@@ -125,6 +131,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserStates, UserStates>();
         fusion.AddComputeService<IUserAuthors, UserAuthors>();
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
+        fusion.AddComputeService<IUserAvatars, UserAvatars>();
+        fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();

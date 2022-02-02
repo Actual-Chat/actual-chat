@@ -1,0 +1,31 @@
+﻿@inherits ComputedStateComponent<UserAvatar.Model>
+
+@{
+    var state = State.LatestNonErrorValue ?? new Model();
+}
+
+<UserAvatarTemplate Name="@state.Name" Bio="@state.Bio" Picture="@state.Picture" ActionsTemplate="@ActionsTemplate"/>
+
+@code {
+
+    public class Model {
+        public string Name { get; set; } = "";
+        public string Picture { get; set; } = "";
+        public string Bio { get; set; } = "";
+    }
+
+    [Inject] IUserAvatars UserAvatars { get; set; } = null!;
+    [Inject] Session Session { get; set; } = null!;
+
+    [Parameter]
+    public string AvatarId { get; set; } = "";
+    [Parameter]
+    public RenderFragment ActionsTemplate { get; set; } = default!;
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var userAvatar = await UserAvatars.Get(Session, AvatarId, cancellationToken).ConfigureAwait(false);
+        if (userAvatar != null)
+            return new Model {Name = userAvatar.Name, Picture = userAvatar.Picture, Bio = userAvatar.Bio};
+        return new Model();
+    }
+}

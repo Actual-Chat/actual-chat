@@ -57,7 +57,6 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 LocalId = 1,
                 Version = VersionGenerator.NextVersion(),
                 Name = UserConstants.Admin.Name,
-                Picture = UserConstants.Admin.Picture,
                 IsAnonymous = false,
                 UserId = adminUserId,
             };

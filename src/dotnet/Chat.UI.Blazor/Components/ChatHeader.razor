@@ -16,6 +16,7 @@
 
 <ContextMenu Id="chatHeaderMenu" CssClass="text-secondary font-normal" OnAppearing="OnMenuAppearing" OnHiding="OnMenuHiding">
     <Item OnClick="@OnEditChatAuthor">Edit your name, image and bio in this chat</Item>
+    <Item OnClick="@OnEditChatAuthorAvatar">Edit avatar</Item>
     @if (_canEdit) {
         <Item OnClick="@OnEditChat">Edit chat</Item>
     }
@@ -38,6 +39,9 @@
         _canEdit = permissions.HasFlag(ChatPermissions.Admin);
         _canInvite = permissions.HasFlag(ChatPermissions.Invite);
     }
+
+    private void OnEditChatAuthorAvatar()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
 
     private void OnEditChatAuthor()
         => _nav.NavigateTo($"/chat/{Chat.Id}/edit/author");
