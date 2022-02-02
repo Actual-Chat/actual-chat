@@ -18,7 +18,6 @@ public class DbChatAuthor : IHasId<string>
 
     [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = "";
-    public string Picture { get; set; } = "";
     public bool IsAnonymous { get; set; }
     public string? UserId { get; set; }
 
@@ -31,7 +30,6 @@ public class DbChatAuthor : IHasId<string>
             ChatId = ChatId,
             Version = Version,
             Name = Name,
-            Picture = Picture,
             IsAnonymous = IsAnonymous,
             UserId = UserId ?? "",
         };

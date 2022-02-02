@@ -12,11 +12,10 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     private readonly ICommander _commander;
     private readonly IAuth _auth;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
+    private readonly IUserAvatarsBackend _userAvatarsBackend;
     private readonly RedisSequenceSet<ChatAuthor> _idSequences;
     private readonly IRandomNameGenerator _randomNameGenerator;
     private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
-    private readonly IUserInfos _userInfos;
-    private readonly IUserStates _userStates;
 
     public ChatAuthors(IServiceProvider services) : base(services)
     {
@@ -26,8 +25,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
-        _userInfos = services.GetRequiredService<IUserInfos>();
-        _userStates = services.GetRequiredService<IUserStates>();
+        _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
     }
 
     // [ComputeMethod]

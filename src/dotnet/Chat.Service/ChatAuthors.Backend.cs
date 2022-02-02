@@ -99,7 +99,7 @@ public partial class ChatAuthors
             var name = _randomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
-                Picture = "",
+                // Picture = "",
                 IsAnonymous = true,
             };
         }
@@ -121,7 +121,29 @@ public partial class ChatAuthors
         dbContext.Add(dbChatAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbChatAuthor.ToModel();
+        var model = dbChatAuthor.ToModel();
+        CommandContext.GetCurrent().Items.Set(model);
+        return model;
+    }
+
+    /// <summary> The filter which creates default avatar for anonymous chat author</summary>
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task OnChatAuthorCreated(
+        IChatAuthorsBackend.CreateCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        if (Computed.IsInvalidating())
+            return;
+
+        var model = context.Items.Get<ChatAuthor>()!;
+
+        if (!model.UserId.IsEmpty)
+            return;
+
+        await _userAvatarsBackend.EnsureChatAuthorAvatar(model.Id, model.Name, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public virtual async Task Update(IChatAuthorsBackend.UpdateCommand command, CancellationToken cancellationToken)
@@ -155,7 +177,7 @@ public partial class ChatAuthors
             throw new InvalidOperationException("chat author does not exists");
 
         dbChatAuthor.Name = name ?? "";
-        dbChatAuthor.Picture = picture ?? "";
+        // dbChatAuthor.Picture = picture ?? "";
         dbChatAuthor.Version = VersionGenerator.NextVersion();
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -189,13 +211,25 @@ public partial class ChatAuthors
 
     private async Task<ChatAuthor?> InheritFromUserAuthor(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
     {
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
+        if (!inherit || chatAuthor == null)
             return chatAuthor;
 
-        var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken).ConfigureAwait(false);
-        if (userAuthor == null)
-            return chatAuthor;
+        if (!chatAuthor.UserId.IsEmpty) {
+            var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken)
+                .ConfigureAwait(false);
+            if (userAuthor == null)
+                return chatAuthor;
 
-        return chatAuthor.InheritFrom(userAuthor);
+            return chatAuthor.InheritFrom(userAuthor);
+        }
+        else {
+            var avatarId = await _userAvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
+                .ConfigureAwait(false);
+            var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+            if (avatar != null) {
+                chatAuthor = chatAuthor with {Name = avatar.Name, Picture = avatar.Picture};
+            }
+            return chatAuthor;
+        }
     }
 }

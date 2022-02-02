@@ -15,4 +15,8 @@ public class UserAuthorsBackendController : ControllerBase, IUserAuthorsBackend
     [HttpGet, Publish]
     public Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken)
         => _service.Get(userId, inherit, cancellationToken);
+
+    [HttpPost]
+    public Task SetAvatar([FromBody] IUserAuthorsBackend.SetAvatarCommand command, CancellationToken cancellationToken)
+        => _service.SetAvatar(command, cancellationToken);
 }
