@@ -54,6 +54,6 @@ public static class AuthorLikeExt
             return null;
         if (avatar == null)
             return source;
-        return source with { Name = source.Name, Picture = avatar.Picture };
+        return source with { Name = avatar.Name, Picture = avatar.Picture };
     }
 }
