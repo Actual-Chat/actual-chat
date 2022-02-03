@@ -34,7 +34,7 @@
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
-        ChatActivityState = ChatActivities.GetRecordingActivity(Chat.Id);
+        ChatActivityState = await ChatActivities.GetRecordingActivity(Chat.Id);
     }
 
     protected override async Task<ChatActivityPanelState> ComputeState(CancellationToken cancellationToken) {
