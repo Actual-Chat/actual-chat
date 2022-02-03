@@ -4,7 +4,7 @@
 
 <div class="dropdown-menu @Class @MenuStatus()" name="@Name">
     <div class="menu-body relative @(IsOpen ? "" : "hidden")">
-        <div class="py-1 select-none p-1 flex @MenuDirection()">
+        <div class="select-none flex @MenuDirection()">
             <CascadingValue Value="@this" IsFixed="true">
                 @ChildContent
             </CascadingValue>

@@ -5,11 +5,13 @@
 @implements IDropdownBackend
 @implements IAsyncDisposable
 
-<div class="dropdown" @ref="DropdownRef">
+<div class="dropdown @Class" @ref="DropdownRef">
     @ChildContent
 </div>
 
 @code {
+    [Parameter]
+    public string Class { get; set; } = "";
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
     [Parameter]
