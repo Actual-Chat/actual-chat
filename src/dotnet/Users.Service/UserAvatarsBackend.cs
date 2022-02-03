@@ -45,7 +45,8 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         return avatarIds;
     }
 
-    public async Task EnsureChatAuthorAvatar(string chatAuthorId, string name, CancellationToken cancellationToken)
+    // Not [ComputedMethod]
+    public virtual async Task EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken)
     {
         var avatarId = DbUserAvatar.GetCompositeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1);
         var avatar = await Get(avatarId, cancellationToken).ConfigureAwait(false);

@@ -99,7 +99,6 @@ public partial class ChatAuthors
             var name = _randomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
-                // Picture = "",
                 IsAnonymous = true,
             };
         }
@@ -138,11 +137,9 @@ public partial class ChatAuthors
             return;
 
         var model = context.Items.Get<ChatAuthor>()!;
-
         if (!model.UserId.IsEmpty)
             return;
-
-        await _userAvatarsBackend.EnsureChatAuthorAvatar(model.Id, model.Name, cancellationToken)
+        await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -177,7 +174,6 @@ public partial class ChatAuthors
             throw new InvalidOperationException("chat author does not exists");
 
         dbChatAuthor.Name = name ?? "";
-        // dbChatAuthor.Picture = picture ?? "";
         dbChatAuthor.Version = VersionGenerator.NextVersion();
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -215,11 +211,19 @@ public partial class ChatAuthors
             return chatAuthor;
 
         if (!chatAuthor.UserId.IsEmpty) {
+            var chatUserSettings = await _chatUserSettingsBackend
+                .Get(chatAuthor.UserId.Value, chatAuthor.ChatId, cancellationToken)
+                .ConfigureAwait(false);
+            var avatarId = chatUserSettings?.AvatarId ?? Symbol.Empty;
+            if (!avatarId.IsEmpty) {
+                var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+                return chatAuthor.InheritFrom(avatar);
+            }
+
             var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken)
                 .ConfigureAwait(false);
             if (userAuthor == null)
                 return chatAuthor;
-
             return chatAuthor.InheritFrom(userAuthor);
         }
         else {
