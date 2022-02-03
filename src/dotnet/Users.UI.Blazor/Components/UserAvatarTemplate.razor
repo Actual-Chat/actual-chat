@@ -1,4 +1,4 @@
-﻿<div class="bg-white font-semibold text-center rounded-3xl border shadow-lg p-3 w-80 max-w-xs">
+﻿<div class="bg-white font-semibold text-center rounded-3xl border shadow-lg p-3 w-80 max-w-xs @Css">
     @if (!Picture.IsNullOrEmpty()) {
         <img class="mb-3 w-24 h-24 rounded-full shadow-lg mx-auto" src="@Picture" alt="avatar pic">
     } else {
@@ -18,6 +18,9 @@
 
     [Parameter]
     public string Bio { get; set; } = "";
+
+    [Parameter]
+    public string Css { get; set; } = "";
 
     [Parameter]
     public RenderFragment ActionsTemplate { get; set; } = null!;
