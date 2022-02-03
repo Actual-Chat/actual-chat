@@ -4,8 +4,8 @@ export class Dropdown {
 
     private _blazorRef: DotNet.DotNetObject;
     private _dropdown: HTMLDivElement;
-    private _menuDiv: HTMLDivElement;
-    private _menuBody: HTMLDivElement;
+    private _contentDiv: HTMLDivElement;
+    private _contentBody: HTMLDivElement;
     private _controlBtn: HTMLButtonElement;
 
     static create(dropdown: HTMLDivElement, backendRef: DotNet.DotNetObject): Dropdown {
@@ -15,8 +15,8 @@ export class Dropdown {
     constructor(dropdown: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this._blazorRef = blazorRef;
         this._dropdown = dropdown;
-        this._menuDiv = this._dropdown.querySelector('.dropdown-menu');
-        this._menuBody = this._menuDiv.querySelector('.menu-body');
+        this._contentDiv = this._dropdown.querySelector('.dropdown-content');
+        this._contentBody = this._contentDiv.querySelector('.dropdown-content-body');
         this._controlBtn = this._dropdown.querySelector('.dropdown-button');
 
         window.addEventListener('mouseup', this.mouseListener)
@@ -24,21 +24,21 @@ export class Dropdown {
     }
 
     public mouseListener = ((event: MouseEvent & {target: Element; }) => {
-        let menu = this._menuDiv;
+        let menu = this._contentDiv;
         let control = this._controlBtn;
         let dropdown = this._dropdown;
         if (control.contains(event.target))
             return;
-        if (!dropdown.contains(event.target) && menu.classList.contains('menu-opened')) {
-            this.HideMenu(this._blazorRef);
+        if (!dropdown.contains(event.target) && menu.classList.contains('dropdown-content-opened')) {
+            this.HideContent(this._blazorRef);
         }
     })
 
     public escapeListener = ((event: KeyboardEvent & {target: Element; }) => {
         if (event.keyCode == 27 || event.key == "Escape" || event.key == "Esc") {
-            let menu = this._menuDiv;
-            if (menu.classList.contains('menu-opened')) {
-                this.HideMenu(this._blazorRef);
+            let content = this._contentDiv;
+            if (content.classList.contains('dropdown-content-opened')) {
+                this.HideContent(this._blazorRef);
             }
         }
     })
@@ -48,7 +48,7 @@ export class Dropdown {
         document.removeEventListener('keydown', this.escapeListener);
     }
 
-    public HideMenu(ref: DotNet.DotNetObject) {
-        ref.invokeMethodAsync('HideMenu');
+    public HideContent(ref: DotNet.DotNetObject) {
+        ref.invokeMethodAsync('HideContent');
     }
 }
