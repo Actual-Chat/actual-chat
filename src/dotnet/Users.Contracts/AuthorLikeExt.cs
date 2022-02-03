@@ -45,4 +45,15 @@ public static class AuthorLikeExt
             source = source with { Picture = @base.Picture };
         return source;
     }
+
+    [return: NotNullIfNotNull("source")]
+    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, UserAvatar? avatar)
+        where TAuthor : Author
+    {
+        if (source == null)
+            return null;
+        if (avatar == null)
+            return source;
+        return source with { Name = source.Name, Picture = avatar.Picture };
+    }
 }

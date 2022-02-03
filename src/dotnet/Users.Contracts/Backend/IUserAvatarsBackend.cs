@@ -7,11 +7,10 @@ public interface IUserAvatarsBackend
     Task<string> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
     Task<string[]> GetAvatarIds(string userId, CancellationToken cancellationToken);
-    Task EnsureChatAuthorAvatar(string chatAuthorId, string name, CancellationToken cancellationToken);
+    Task EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<UserAvatar> Create(CreateCommand command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task Update(UpdateCommand command, CancellationToken cancellationToken);
 

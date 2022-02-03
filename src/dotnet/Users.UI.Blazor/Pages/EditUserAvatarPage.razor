@@ -1,7 +1,7 @@
 @page "/user/avatar/{AvatarId}"
 
 <div class="px-2 py-2">
-    <UserAvatarEditor AvatarId="@AvatarId" CancelRequested="NavigateToList" OnUpdated="NavigateToList" />
+    <UserAvatarEditor AvatarId="@AvatarId" CancelRequested="NavigateBack" OnUpdated="NavigateBack" />
 </div>
 
 @code {
@@ -9,8 +9,13 @@
 
     [Parameter]
     public string AvatarId { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
 
-    private void NavigateToList() {
-        Nav.NavigateTo($"/user/avatars");
+
+    private void NavigateBack() {
+        var urlBack = ReturnUrl.NullIfWhiteSpace() ?? "/user/avatars";
+        Nav.NavigateTo(urlBack);
     }
 }
