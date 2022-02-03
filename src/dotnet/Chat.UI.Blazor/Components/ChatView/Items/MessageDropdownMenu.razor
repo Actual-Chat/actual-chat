@@ -1,8 +1,7 @@
-﻿@using System.Xml.Schema
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.Xml.Schema
 @using ActualChat.UI.Blazor.Components.Dropdown
 @using BlazorContextMenu
-@using Google.Apis.Http
-@namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
     var reactionIcon = @"<svg class=""w-5 h-5 fill-current"" xlmns=""http://www.w3.org/2000/svg"" viewBox=""-2 -4 28 28""><path d=""M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3.5 8c.828 0 1.5.671 1.5 1.5s-.672 1.5-1.5 1.5-1.5-.671-1.5-1.5.672-1.5 1.5-1.5zm-7 0c.828 0 1.5.671 1.5 1.5s-.672 1.5-1.5 1.5-1.5-.671-1.5-1.5.672-1.5 1.5-1.5zm3.501 10c-2.801 0-4.874-1.846-6.001-3.566l.493-.493c1.512 1.195 3.174 1.931 5.508 1.931 2.333 0 3.994-.736 5.506-1.931l.493.493c-1.127 1.72-3.199 3.566-5.999 3.566z""/></svg>";
@@ -10,23 +9,18 @@
     var editIcon = @"<svg class=""w-5 h-5 fill-current"" xlmns=""http://www.w3.org/2000/svg"" viewBox=""-3 -5 30 30""><path d=""M7.127 22.564l-7.126 1.436 1.438-7.125 5.688 5.689zm-4.274-7.104l5.688 5.689 15.46-15.46-5.689-5.689-15.459 15.46z""/></svg>";
     var removeIcon = @"<svg class=""w-5 h-5 fill-current"" xlmns=""http://www.w3.org/2000/svg"" viewBox=""-3 -5 30 30""><path d=""M19 24h-14c-1.104 0-2-.896-2-2v-16h18v16c0 1.104-.896 2-2 2m-9-14c0-.552-.448-1-1-1s-1 .448-1 1v9c0 .552.448 1 1 1s1-.448 1-1v-9zm6 0c0-.552-.448-1-1-1s-1 .448-1 1v9c0 .552.448 1 1 1s1-.448 1-1v-9zm6-5h-20v-2h6v-1.5c0-.827.673-1.5 1.5-1.5h5c.825 0 1.5.671 1.5 1.5v1.5h6v2zm-12-2h4v-1h-4v1z""/></svg>";
     var moreIcon = @"<svg class=""w-5 h-5 fill-current"" xlmns=""http://www.w3.org/2000/svg"" viewBox=""-3 -5 30 30""><path d=""M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z""/></svg>";
-    var menuClass = "message-menu h-8 absolute right-0 flex flex-row bg-message-hover shadow-lg rounded-md mr-6 -mt-7";
-    var itemClass = "p-1 text-left";
+    var menuCss = "message-menu h-8 absolute right-0 flex flex-row bg-message-hover shadow-lg rounded-md mr-6 -mt-7" + " " + Css;
 }
 
-<Dropdown @bind-IsMenuOpen="@IsMenuOpen">
-    <DropdownMenu IsOpen="@IsMenuOpen" Class="@menuClass" ItemClass="@itemClass" Orientation="Orientation.Horizontal">
-        <DropdownMenuItem Title="Reaction" Name="wip" Icon="@reactionIcon"/>
-        <DropdownMenuItem Title="Reply" Name="wip" Icon="@replyIcon"/>
-        <DropdownMenuItem Title="Edit" Name="wip" Icon="@editIcon"/>
-        <DropdownMenuItem Title="Remove" Name="wip" Icon="@removeIcon"/>
-        <DropdownMenuItem Title="More" Name="wip" Icon="@moreIcon"/>
-    </DropdownMenu>
-</Dropdown>
+<DropdownMenu Class="@menuCss" ItemClass="p-1 text-left" Orientation="Orientation.Horizontal">
+    <DropdownMenuItem Title="Reaction" Name="wip" Icon="@reactionIcon"/>
+    <DropdownMenuItem Title="Reply" Name="wip" Icon="@replyIcon"/>
+    <DropdownMenuItem Title="Edit" Name="wip" Icon="@editIcon"/>
+    <DropdownMenuItem Title="Remove" Name="wip" Icon="@removeIcon"/>
+    <DropdownMenuItem Title="More" Name="wip" Icon="@moreIcon"/>
+</DropdownMenu>
 
 @code {
-    private bool IsMenuOpen { get; set; }
-
-    private void OnButtonClick()
-        => IsMenuOpen = !IsMenuOpen;
+    [Parameter]
+    public string Css { get; set; } = "";
 }
