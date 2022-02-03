@@ -4,7 +4,7 @@
     var state = State.LatestNonErrorValue ?? new Model();
 }
 
-<UserAvatarTemplate Name="@state.Name" Bio="@state.Bio" Picture="@state.Picture" ActionsTemplate="@ActionsTemplate"/>
+<UserAvatarTemplate Name="@state.Name" Bio="@state.Bio" Picture="@state.Picture" Css="@Css" ActionsTemplate="@ActionsTemplate"/>
 
 @code {
 
@@ -17,6 +17,8 @@
     [Inject] IUserAvatars UserAvatars { get; set; } = null!;
     [Inject] Session Session { get; set; } = null!;
 
+    [Parameter]
+    public string Css { get; set; } = "";
     [Parameter]
     public string AvatarId { get; set; } = "";
     [Parameter]

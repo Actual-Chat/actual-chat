@@ -97,8 +97,8 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
             UserId = userId,
             LocalId = nextLocalId,
             Name = command.Name,
-            Bio = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-            Picture = "https://avatars.dicebear.com/api/avataaars/nix.svg"
+            Bio = "",
+            Picture = ""
         };
         dbContext.UserAvatars.Add(dbUserAvatar);
 

@@ -4,24 +4,18 @@
     var items = State.LatestNonErrorValue.Items;
     var title = new MarkupString(Title);
 }
-<h3>@title</h3>
+<h3 class="ml-4 mt-4 mb-6">@title</h3>
 @if (items.Length == 0) {
-    <p>Create a new Avatar</p>
+    <div class="absolute top-0 left-0 h-full w-full grid justify-items-center items-center">
+        <span>Create your first Avatar</span>
+    </div>
 }
 <ul class="flex flex-wrap">
-    <li class="group m-2">
-        <UserAvatarTemplate Name="New Avatar">
-            <ActionsTemplate>
-                <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary" @onclick="OnAddNewAvatar">
-                    Create New
-                </button>
-            </ActionsTemplate>
-        </UserAvatarTemplate>
-    </li>
     @foreach (var item in items) {
-        <li class="group m-2">
+        var brdCls = !string.IsNullOrEmpty(ChatId) && item.IsUserDefault ? "border border-green-300" : "";
+        <li class="group m-4">
             <div class="relative">
-                <UserAvatar AvatarId="@item.AvatarId">
+                <UserAvatar AvatarId="@item.AvatarId" Css="@brdCls">
                     <ActionsTemplate>
                         <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary"
                                 @onclick="@(() => EditAvatar(item.AvatarId))">Edit</button>
@@ -30,7 +24,7 @@
                 <div class="absolute top-0 right-0 mr-4 mt-2">
                     @if (item.IsSelected) {
                         <button type="button" title="Selected" @onclick="@(() => Select(""))">
-                            <i class="fa fa-check fa-3x text-green-500" aria-hidden="true"></i>
+                            <i class="fa fa-check fa-2x scale-125 text-green-500" aria-hidden="true"></i>
                         </button>
                     } else {
                         <button type="button" title="Select" @onclick="@(() => Select(item.AvatarId))">
@@ -42,9 +36,23 @@
         </li>
     }
 </ul>
-<div>
-    <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-4 rounded ml-3"
-                                @onclick="OnCancel">Cancel</button>
+
+<button type="button" title="Create new Avatar"
+        @onclick="OnAddNewAvatar"
+        class="w-10 h-10 text-accent bg-button-success rounded-full group
+               hover:scale-110 ease-in-out duration-150
+               hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+               absolute bottom-0 right-0 mr-4 mb-4">
+    <span class="fill-current text-accent-muted group-hover:text-primary ease-in-out duration-150">
+        <svg class="w-6 h-6 mx-auto" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+        </svg>
+    </span>
+</button>
+
+<div class="absolute top-0 right-0 mr-4 mt-4 ">
+    <CloseButton Click="OnCancel" />
 </div>
 
 @code {
@@ -114,8 +122,7 @@
 
     private void EditAvatar(string avatarId) {
         var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
-        var returnUrlEncoded = UrlEncoder.Default.Encode(returnUrl);
-        Nav.NavigateTo("user/avatar/" + avatarId + "?returnUrl=" + returnUrlEncoded);
+        Nav.NavigateTo("user/avatar/" + avatarId + "?returnUrl=" + UrlEncoder.Default.Encode(returnUrl));
     }
 
     private void OnCancel() {
