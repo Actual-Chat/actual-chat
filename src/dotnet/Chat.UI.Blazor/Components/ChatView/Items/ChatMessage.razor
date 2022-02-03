@@ -1,25 +1,22 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
-    var author = Model.Author;
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var entry = Model.Entry;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
-    var picture = author.Picture;
-    if (string.IsNullOrWhiteSpace(picture))
-        // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
-        picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
 <div class="@(_class ??= this.DefaultClass()) px-3 antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words @marginClass">
     @if (showPicture) {
-        <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
-            <img src="@picture" alt="@author.Name"/>
-        </div>
+        <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
+            <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
+                <img src="@context.Picture" alt="@context.Name"/>
+            </div>
+        </ChatAuthor>
     }
     else {
         <div class="w-10 mr-2 mt-1">
@@ -29,8 +26,10 @@
     <div class="flex-1 overflow-hidden mb-1 mt-1">
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
-                <span class="font-bold text-secondary rounded">@author.Name</span>
-                <ChatMessageTimestamp Value="entry.BeginsAt" />
+                <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
+                    <span class="font-bold text-secondary rounded">@context.Name</span>
+                </ChatAuthor>
+                <ChatMessageTimestamp Value="entry.BeginsAt"/>
                 &nbsp;
                 <span class="text-accent-muted text-xxs">id=@entry.Id</span>
             </div>
