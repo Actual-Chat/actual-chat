@@ -1,0 +1,4 @@
+**/wwwroot/dist/**
+tailwind.config.js
+*.d.ts
+node_modules

@@ -4,16 +4,22 @@
   "scripts": {
     "build:Debug": "webpack --mode development",
     "build:Release": "webpack --mode production",
-    "watch": "webpack --mode development --watch"
+    "watch": "webpack --mode development --watch",
+    "lint": "eslint --ext .js,.ts --config .eslintrc.yml ../"
   },
   "devDependencies": {
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
     "@types/recordrtc": "^5.6.8",
+    "@typescript-eslint/eslint-plugin": "^5.10.2",
+    "@typescript-eslint/parser": "^5.10.2",
     "@typescript/lib-dom": "npm:@types/web@^0.0.48",
     "autoprefixer": "^10.4.2",
     "css-loader": "^6.5.1",
     "cssnano": "^5.0.15",
+    "eslint": "^8.8.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.25.4",
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
     "mini-css-extract-plugin": "^2.4.6",
     "opus-media-recorder": "^0.8.0",

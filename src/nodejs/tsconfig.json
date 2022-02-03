@@ -26,7 +26,7 @@
     "maxNodeModuleJsDepth": 1,
     "esModuleInterop": false,
     // change to true (?)
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     // change to true (?)
     "strictNullChecks": false,
     // change to false (?)
