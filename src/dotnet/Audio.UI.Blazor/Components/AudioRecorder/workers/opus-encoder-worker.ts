@@ -1,5 +1,8 @@
 import WebMOpusEncoder from 'opus-media-recorder/WebMOpusEncoder';
 import Denque from 'denque';
+import * as signalR from '@microsoft/signalr';
+import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+
 import {
     EncoderCommand,
     EncoderMessage,
@@ -19,6 +22,14 @@ type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'closed';
 
 const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/api/hub/audio")
+    .withAutomaticReconnect([0, 300, 500, 1000, 3000, 10000])
+    .withHubProtocol(new MessagePackHubProtocol())
+    .configureLogging(signalR.LogLevel.Information)
+    .build();
+const recordingSubject = new signalR.Subject<any>();
+
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
 let encoder: Encoder;
@@ -28,7 +39,7 @@ worker.onmessage = (ev: MessageEvent) => {
     const {command}: EncoderCommand = ev.data;
     switch (command) {
         case 'loadEncoder':
-            const {mimeType, wasmPath}: LoadEncoderCommand = ev.data;
+            const { mimeType, wasmPath }: LoadEncoderCommand = ev.data;
             workletPort = ev.ports[0];
             workletPort.onmessage = onWorkletMessage;
 
