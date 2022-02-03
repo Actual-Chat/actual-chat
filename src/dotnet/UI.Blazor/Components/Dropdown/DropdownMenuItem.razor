@@ -10,18 +10,14 @@
     @if (IsHorizontal()) {
         <button @onclick="OnItemClick" tooltip="@Title" flow="@TooltipFlow()" class="dropdown-menu-item flex h-8 w-full text-primary @GetCss()" name="@Name">
             <div class="icon-container relative flex-auto mx-1 h-full">
-                <div class="text-primary rounded-sm text-xxs relative">
-                    @((MarkupString) Icon)
-                </div>
+                <div class="text-primary rounded-sm text-xxs relative">@Icon</div>
             </div>
         </button>
     } else {
         <button @onclick="OnItemClick" class="dropdown-menu-item flex h-8 w-full text-primary @GetCss()" name="@Name">
             @if (IsIconOnLeft()) {
                 <div class="icon-container w-8 @leftContainerClass">
-                    <div class="flex">
-                        @((MarkupString) Icon)
-                    </div>
+                    <div class="flex">@Icon</div>
                 </div>
                 <div class="title-container w-full @rightContainerClass">
                     <div class="flex">@Title</div>
@@ -31,9 +27,7 @@
                     <div class="flex">@Title</div>
                 </div>
                 <div class="icon-container w-10 @leftContainerClass">
-                    <div class="flex">
-                        @((MarkupString) Icon)
-                    </div>
+                    <div class="flex">@Icon</div>
                 </div>
             }
         </button>
@@ -46,7 +40,7 @@
     [Parameter]
     public string Title { get; set; } = "";
     [Parameter]
-    public string Icon { get; set; } = "";
+    public RenderFragment? Icon { get; set; }
     [Parameter]
     public string Class { get; set; } = "";
     [Parameter]
