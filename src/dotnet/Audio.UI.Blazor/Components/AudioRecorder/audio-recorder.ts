@@ -12,10 +12,6 @@ import { toHexString } from "./to-hex-string";
 
 const LogScope = 'AudioRecorder';
 
-// TODO: Remove unused &broken code
-self["StandardMediaRecorder"] = self.MediaRecorder;
-self["OpusMediaRecorder"] = OpusMediaRecorder;
-
 export class AudioRecorder {
     private readonly debugMode: boolean;
     private readonly blazorRef: DotNet.DotNetObject;
@@ -49,13 +45,13 @@ export class AudioRecorder {
             audioBitsPerSecond: 32000,
         };
         this.recorder = new OpusMediaRecorder(options);
-        this.recorder.ondatarecorded = async (de: DataEvent) => {
-            try {
-                this.queue.append(new DataRecordingEvent(de.data));
-            } catch (e) {
-                console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
-            }
-        };
+        // this.recorder.ondatarecorded = async (de: DataEvent) => {
+        //     try {
+        //         this.queue.append(new DataRecordingEvent(de.data));
+        //     } catch (e) {
+        //         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
+        //     }
+        // };
         this.recorder.onerror = async (errorEvent: MediaRecorderErrorEvent) => {
             console.error(`${LogScope}.onerror: ${errorEvent}`);
         };
@@ -106,17 +102,6 @@ export class AudioRecorder {
             },
         });
         return new AudioRecorder(blazorRef, debugMode, queue);
-    }
-
-    // TODO: remove this
-    public static changeMediaRecorder(useStandardMediaRecorder: boolean) {
-        self.MediaRecorder = useStandardMediaRecorder
-            ? self["StandardMediaRecorder"]
-            : self["OpusMediaRecorder"];
-    }
-    // TODO: remove this
-    public static isStandardMediaRecorder(): boolean {
-        return self.MediaRecorder === self["StandardMediaRecorder"];
     }
 
     public dispose() {
