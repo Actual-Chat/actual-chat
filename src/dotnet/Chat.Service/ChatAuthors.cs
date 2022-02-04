@@ -92,7 +92,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         var chatAuthor = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
             return null;
-        var avatar = await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, null, cancellationToken)
+        var avatar = await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, "", cancellationToken)
             .ConfigureAwait(false);
         return avatar.Id;
     }
