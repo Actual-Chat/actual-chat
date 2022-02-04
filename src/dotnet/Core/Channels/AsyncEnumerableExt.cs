@@ -235,16 +235,19 @@ public static class AsyncEnumerableExt
         var buffer = new List<TSource>();
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
-        var moveNext = enumerator.MoveNextAsync().AsTask();
+        var moveNext = enumerator.MoveNextAsync();
         var delayTask = clock.Delay(bufferDuration, cancellationToken);
         while (true) {
-            await Task.WhenAny(moveNext, delayTask).ConfigureAwait(false);
+            if (buffer.Count > 0)
+                await Task.WhenAny(moveNext.AsTask(), delayTask).ConfigureAwait(false);
+            else
+                await moveNext.ConfigureAwait(false);
 
             if (moveNext.IsCompleted) {
                 var hasNext = await moveNext.ConfigureAwait(false);
                 if (hasNext) {
                     buffer.Add(enumerator.Current);
-                    moveNext = enumerator.MoveNextAsync().AsTask();
+                    moveNext = enumerator.MoveNextAsync();
                 }
                 else {
                     yield return buffer;
