@@ -82,16 +82,4 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
             .ToArray();
         return chatIds;
     }
-
-    // [CommandHandler]
-    public virtual async Task UpdateAuthor(IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        // TODO: check permissions
-        var author = await GetOrCreate(command.Session, command.ChatId, cancellationToken).ConfigureAwait(false);
-        var updateCommand = new IChatAuthorsBackend.UpdateCommand(author.Id, command.Name, command.Picture);
-        await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
-    }
 }

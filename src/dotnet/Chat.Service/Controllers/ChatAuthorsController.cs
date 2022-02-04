@@ -43,11 +43,4 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
         => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
 
     // Commands
-
-    [HttpPost]
-    public Task UpdateAuthor([FromBody] IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _service.UpdateAuthor(command, cancellationToken);
-    }
 }

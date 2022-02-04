@@ -14,9 +14,4 @@ public interface IChatAuthors
     Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
 
     // Commands
-
-    [CommandHandler]
-    Task UpdateAuthor(UpdateAuthorCommand command, CancellationToken cancellationToken);
-
-    public record UpdateAuthorCommand(Session Session, string ChatId, string Name, string Picture) : ISessionCommand<Unit>;
 }

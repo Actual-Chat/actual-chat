@@ -143,44 +143,6 @@ public partial class ChatAuthors
             .ConfigureAwait(false);
     }
 
-    public virtual async Task Update(IChatAuthorsBackend.UpdateCommand command, CancellationToken cancellationToken)
-    {
-        var (authorId, name, picture) = command;
-        var context = CommandContext.GetCurrent();
-
-        if (Computed.IsInvalidating()) {
-            var operation = CommandContext.GetCurrent().Operation();
-            var invChatAuthor = operation.Items.Get<ChatAuthor>();
-            if (invChatAuthor != null) {
-                var invChatId = invChatAuthor.ChatId;
-                var invUserId = invChatAuthor.UserId;
-                if (!invUserId.IsEmpty) {
-                    _ = GetByUserId(invChatId, invUserId, true, default);
-                    _ = GetByUserId(invChatId, invUserId, false, default);
-                }
-                _ = Get(invChatId, authorId, true, default);
-                _ = Get(invChatId, authorId, false, default);
-            }
-            return;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
-            .ConfigureAwait(false);
-        if (dbChatAuthor == null)
-            throw new InvalidOperationException("chat author does not exists");
-
-        dbChatAuthor.Name = name ?? "";
-        dbChatAuthor.Version = VersionGenerator.NextVersion();
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        var сhatAuthor = dbChatAuthor.ToModel();
-        context.Operation().Items.Set(сhatAuthor);
-    }
-
     // Private / internal methods
 
     private async Task<long> DbNextLocalId(
