@@ -3,37 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Redis;
 
-namespace ActualChat.Users;
-
-public static class LocalIdGeneratorFactory
-{
-    public static DbContextLocalIdGeneratorFactory<TDbContext> ForContext<TDbContext>(IServiceProvider svp)
-        => new DbContextLocalIdGeneratorFactory<TDbContext>(svp);
-}
-
-public class DbContextLocalIdGeneratorFactory<TDbContext>
-{
-    private readonly IServiceProvider _svp;
-
-    public LocalIdGenerator<TDbContext, TEntity> Create<TEntity>(
-        Func<TDbContext,DbSet<TEntity>> dbSetExtractor,
-        Expression<Func<TEntity,string>> shardKeySelector,
-        Expression<Func<TEntity,long>> localIdSelector
-    )
-        where TEntity : class
-    {
-        var idSequences = _svp.GetRequiredService<RedisSequenceSet<TEntity>>();
-        return new LocalIdGenerator<TDbContext, TEntity>(
-            idSequences,
-            dbSetExtractor,
-            shardKeySelector,
-            localIdSelector);
-    }
-
-
-    public DbContextLocalIdGeneratorFactory(IServiceProvider svp)
-        => _svp = svp;
-}
+namespace ActualChat.Db;
 
 public class LocalIdGenerator<TDbContext, TEntity> where TEntity : class
 {
@@ -54,10 +24,11 @@ public class LocalIdGenerator<TDbContext, TEntity> where TEntity : class
         _localIdSelector = localIdSelector;
     }
 
-    private Expression<Func<TEntity, bool>> CreateShardFilterExpression(string shardKey)
+    private Expression<Func<TEntity, bool>> CreateShardFilterExpression(LocalIdQueryClosure closure)
     {
         var p = _shardKeySelector.Parameters[0];
-        var body = Expression.Equal(_shardKeySelector.Body, Expression.Constant(shardKey));
+        var field = Expression.Field(Expression.Constant(closure), LocalIdQueryClosure.ShardKeyFieldInfo);
+        var body = Expression.Equal(_shardKeySelector.Body, field);
         var filterExpression = Expression.Lambda<Func<TEntity, bool>>(body, p);
         return filterExpression;
     }
@@ -70,7 +41,8 @@ public class LocalIdGenerator<TDbContext, TEntity> where TEntity : class
         var idSequenceKey = new Symbol(shardKey);
         var maxLocalId = _maxLocalIdCache.GetValueOrDefault(idSequenceKey);
         if (maxLocalId == 0) {
-            var filterExpression = CreateShardFilterExpression(shardKey);
+            var closure = new LocalIdQueryClosure { ShardKey = shardKey };
+            var filterExpression = CreateShardFilterExpression(closure);
             _maxLocalIdCache[idSequenceKey] = maxLocalId =
                 await _dbSetExtractor(dbContext).ForUpdate() // To serialize inserts
                     .Where(filterExpression)

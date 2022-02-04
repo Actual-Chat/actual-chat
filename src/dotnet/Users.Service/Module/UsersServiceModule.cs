@@ -62,11 +62,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         // Redis
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();
         redisModule.AddRedisDb<UsersDbContext>(services, Settings.Redis);
-
-        services.AddSingleton(c => {
-            var chatRedisDb = c.GetRequiredService<RedisDb<UsersDbContext>>();
-            return chatRedisDb.GetSequenceSet<DbUserAvatar>("seq." + nameof(UserAvatar));
-        });
+        services.RegisterLocalIdGenerator<UsersDbContext, DbUserAvatar>();
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
