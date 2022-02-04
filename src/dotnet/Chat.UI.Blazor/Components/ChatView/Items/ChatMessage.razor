@@ -16,8 +16,8 @@
 <div class="@(_class ??= this.DefaultClass()) px-3 antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words group @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-            <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
-                <img src="@context.Picture" alt="@context.Name"/>
+            <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")">
+                <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
         </ChatAuthor>
     }
@@ -30,7 +30,7 @@
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
                 <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-                    <span class="font-bold text-secondary rounded">@context.Name</span>
+                    <span class="font-bold text-secondary rounded">@context.Author.Name</span>
                 </ChatAuthor>
                 <ChatMessageTimestamp Value="entry.BeginsAt"/>
                 &nbsp;
