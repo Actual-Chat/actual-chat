@@ -21,5 +21,6 @@ public class UsersClientModule : HostModule
 
         fusionClient.AddReplicaService<IUserInfos, IUserInfosClientDef>();
         fusionClient.AddReplicaService<IUserStates, IUserStatesClientDef>();
+        fusionClient.AddReplicaService<IUserAvatars, IUserAvatarsClientDef>();
     }
 }
