@@ -41,5 +41,13 @@
     "onnxruntime-web": "^1.10.0",
     "readable-stream": "^3.6.0",
     "wasm-audio-resampler": "^2.0.0"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "tabWidth": 4,
+    "parser": "typescript",
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "useTabs": false
   }
 }
