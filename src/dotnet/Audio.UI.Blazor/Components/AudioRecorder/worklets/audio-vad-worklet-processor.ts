@@ -1,5 +1,5 @@
-import { AudioRingBuffer } from "./audio-ring-buffer";
-import { VadMessage } from "../audio-vad-message";
+import { AudioRingBuffer } from './audio-ring-buffer';
+import { VadMessage } from '../audio-vad-message';
 
 const SAMPLES_PER_WINDOW = 768;
 
@@ -91,5 +91,5 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 }
 
-// @ts-ignore
+// @ts-expect-error  - registerProcessor exists
 registerProcessor('audio-vad-worklet-processor', VadAudioWorkletProcessor);
