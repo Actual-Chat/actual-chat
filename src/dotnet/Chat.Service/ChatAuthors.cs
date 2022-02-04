@@ -82,4 +82,18 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
             .ToArray();
         return chatIds;
     }
+
+    // [ComputeMethod]
+    public virtual async Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user.IsAuthenticated)
+            return null;
+        var chatAuthor = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null)
+            return null;
+        var avatar = await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, null, cancellationToken)
+            .ConfigureAwait(false);
+        return avatar.Id;
+    }
 }

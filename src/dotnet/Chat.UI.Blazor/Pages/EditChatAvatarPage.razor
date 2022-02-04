@@ -19,12 +19,11 @@ else if (!_avatarId.IsNullOrEmpty()) {
     [Parameter]
     public string ChatId { get; set; } = "";
 
-    private string _avatarId = "";
+    private string? _avatarId = "";
     private bool _pickUserAvatar;
     private string? _chatName;
 
     protected override async Task OnParametersSetAsync() {
-
         var user = await Auth.GetUser(Session, default);
         _pickUserAvatar = user.IsAuthenticated;
         if (user.IsAuthenticated) {
@@ -32,12 +31,7 @@ else if (!_avatarId.IsNullOrEmpty()) {
             var chat = await Chats.Get(Session, ChatId, default);
             _chatName = chat?.Title ?? "";
         } else {
-            var chatAuthor = await ChatAuthors.GetChatAuthor(Session, ChatId, default);
-            if (chatAuthor != null) {
-                // edit default chat user avatar
-                var chatAuthorId = chatAuthor?.Id ?? "---";
-                _avatarId = "1:" + chatAuthorId + ":1";
-            }
+            _avatarId = await ChatAuthors.GetChatAuthorAvatarId(Session, ChatId, default);
         }
     }
 
