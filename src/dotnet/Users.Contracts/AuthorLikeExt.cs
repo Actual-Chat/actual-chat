@@ -39,11 +39,7 @@ public static class AuthorLikeExt
             return null;
         if (source.IsAnonymous || @base == null)
             return source;
-        if (source.Name.IsNullOrEmpty() && !@base.Name.IsNullOrEmpty())
-            source = source with { Name = @base.Name };
-        if (source.Picture.IsNullOrEmpty() && !@base.Picture.IsNullOrEmpty())
-            source = source with { Picture = @base.Picture };
-        return source;
+        return source with { Name = @base.Name, Picture = @base.Picture };
     }
 
     [return: NotNullIfNotNull("source")]

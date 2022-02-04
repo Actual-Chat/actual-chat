@@ -184,18 +184,13 @@ public partial class ChatAuthors
 
             var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken)
                 .ConfigureAwait(false);
-            if (userAuthor == null)
-                return chatAuthor;
             return chatAuthor.InheritFrom(userAuthor);
         }
         else {
             var avatarId = await _userAvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
                 .ConfigureAwait(false);
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
-            if (avatar != null) {
-                chatAuthor = chatAuthor with {Name = avatar.Name, Picture = avatar.Picture};
-            }
-            return chatAuthor;
+            return chatAuthor.InheritFrom(avatar);
         }
     }
 }
