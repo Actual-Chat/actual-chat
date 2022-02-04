@@ -1,5 +1,5 @@
 import Denque from 'denque';
-import { AudioRingBuffer } from "./audio-ring-buffer";
+import { AudioRingBuffer } from './audio-ring-buffer';
 
 const SAMPLES_PER_MS = 48;
 
@@ -16,8 +16,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         const { timeSlice } = options.processorOptions;
 
         if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
-            throw new Error('OpusEncoderWorkletProcessor supports only ' +
-                JSON.stringify(OpusEncoderWorkletProcessor.allowedTimeSlice) + ' timeSlice argument');
+            throw new Error(`OpusEncoderWorkletProcessor supports only ${
+                JSON.stringify(OpusEncoderWorkletProcessor.allowedTimeSlice)  } timeSlice argument`);
         }
 
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;
@@ -40,6 +40,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             }
         };
     }
+
     public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
         try {
             if (inputs == null
