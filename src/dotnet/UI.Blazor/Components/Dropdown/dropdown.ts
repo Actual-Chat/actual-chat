@@ -1,6 +1,4 @@
-﻿import './dropdown.css';
-
-export class Dropdown {
+﻿export class Dropdown {
 
     private _blazorRef: DotNet.DotNetObject;
     private _dropdown: HTMLDivElement;

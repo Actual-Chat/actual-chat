@@ -8,25 +8,25 @@
 
 <div class="relative">
     @if (IsHorizontal()) {
-        <button @onclick="OnItemClick" tooltip="@Title" flow="@TooltipFlow()" class="dropdown-menu-item flex h-8 w-full text-primary @GetCss()" name="@Name">
-            <div class="icon-container relative flex-auto mx-1 h-full">
-                <div class="text-primary rounded-sm text-xxs relative">@Icon</div>
+        <button @onclick="OnItemClick" tooltip="@Title" flow="@TooltipFlow()" class="menu-item flex h-8 w-full text-secondary @GetCss()" name="@Name">
+            <div class="icon-container horizontal-item relative flex-auto mx-1 h-full">
+                <div class="rounded-sm text-xxs relative">@Icon</div>
             </div>
         </button>
     } else {
-        <button @onclick="OnItemClick" class="dropdown-menu-item flex h-8 w-full text-primary @GetCss()" name="@Name">
+        <button @onclick="OnItemClick" class="menu-item flex h-8 w-full text-secondary @GetCss()" name="@Name">
             @if (IsIconOnLeft()) {
-                <div class="icon-container w-8 @leftContainerClass">
+                <div class="w-8 @leftContainerClass">
                     <div class="flex">@Icon</div>
                 </div>
-                <div class="title-container w-full @rightContainerClass">
+                <div class="w-full @rightContainerClass">
                     <div class="flex">@Title</div>
                 </div>
             } else {
-                <div class="title-container w-full @rightContainerClass">
+                <div class="w-full @rightContainerClass">
                     <div class="flex">@Title</div>
                 </div>
-                <div class="icon-container w-10 @leftContainerClass">
+                <div class="w-10 @leftContainerClass">
                     <div class="flex">@Icon</div>
                 </div>
             }
@@ -46,7 +46,7 @@
     [Parameter]
     public string Name { get; set; } = "";
     [CascadingParameter]
-    public DropdownMenu? Menu { get; set; }
+    public Menu? Menu { get; set; }
 
     private string GetCss()
         => $"{Class} {Menu?.ItemClass}";
