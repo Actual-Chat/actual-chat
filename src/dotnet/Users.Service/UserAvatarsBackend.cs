@@ -1,4 +1,5 @@
-﻿using ActualChat.Users.Db;
+﻿using ActualChat.Db;
+using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -14,8 +15,8 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
     {
         _dbUserAvatarResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserAvatar>>();
         _commander = Services.GetRequiredService<ICommander>();
-        _localIdGenerator = LocalIdGeneratorFactory
-            .ForContext<UsersDbContext>(services)
+        _localIdGenerator = Services.LocalIdGeneratorFactory()
+            .ForContext<UsersDbContext>()
             .Create(db => db.UserAvatars, a => a.UserId, a => a.LocalId);
     }
 
