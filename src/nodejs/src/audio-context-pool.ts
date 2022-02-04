@@ -12,7 +12,7 @@ export class AudioContextPool {
     public static register(key: string, factory: () => Promise<BaseAudioContext>): void {
         if (AudioContextPool.audioContexts.has(key))
             throw new Error(`AudioContext with key "${key}" is already registered.`);
-        AudioContextPool.audioContexts.set(key, { audioContext: null, factory: factory, });
+        AudioContextPool.audioContexts.set(key, { audioContext: null, factory: factory });
     }
 
     /**
@@ -21,7 +21,7 @@ export class AudioContextPool {
      * Don't close the context, because it's shared across the app.
      */
     public static async get(key: string): Promise<BaseAudioContext> {
-        let obj = AudioContextPool.audioContexts.get(key);
+        const obj = AudioContextPool.audioContexts.get(key);
         if (obj === undefined)
             throw new Error(`AudioContext factory with key "${key}" isn't registered.`);
 
@@ -30,7 +30,7 @@ export class AudioContextPool {
             obj.audioContext = await obj.factory();
         }
         if (!isAudioContext(obj.audioContext)) {
-            console.error(`AudioContextPool: not an AudioContext:`, obj.audioContext)
+            console.error(`AudioContextPool: not an AudioContext:`, obj.audioContext);
             return obj.audioContext;
         }
         if (obj.audioContext.state === 'suspended') {
@@ -85,15 +85,14 @@ export class AudioContextPool {
                 await new Promise<void>(resolve => {
                     node.port.postMessage('stop');
                     node.port.onmessage = (ev: MessageEvent<string>): void => {
-                        console.assert(ev.data === 'stopped', "Unsupported message from warm up worklet.");
+                        console.assert(ev.data === 'stopped', 'Unsupported message from warm up worklet.');
                         resolve();
                     };
                 });
                 node.disconnect();
                 console.debug(`AudioContextPool: End of warming up AudioContext "${key}"`);
-            }
-            else {
-                console.debug(`AudioContextPool: Can't warm up AudioContext:`, obj.audioContext)
+            } else {
+                console.debug(`AudioContextPool: Can't warm up AudioContext:`, obj.audioContext);
             }
             console.debug(`AudioContextPool: AudioContext "${key}" is initialized.`);
         });
@@ -101,10 +100,10 @@ export class AudioContextPool {
 }
 
 function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioContext {
-    return !!obj && typeof obj === 'object' && typeof obj["resume"] === 'function';
+    return !!obj && typeof obj === 'object' && typeof obj['resume'] === 'function';
 }
 
-AudioContextPool.register("main", async () => {
+AudioContextPool.register('main', async () => {
     const audioContext = new AudioContext({
         latencyHint: 'interactive',
         sampleRate: 48000,
