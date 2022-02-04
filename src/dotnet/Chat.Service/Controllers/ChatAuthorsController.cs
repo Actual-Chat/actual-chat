@@ -39,8 +39,13 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     }
 
     [HttpGet, Publish]
+    public Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        session ??= _sessionResolver.Session;
+        return _service.GetChatAuthorAvatarId(session, chatId, cancellationToken);
+    }
+
+    [HttpGet, Publish]
     public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
         => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
-
-    // Commands
 }

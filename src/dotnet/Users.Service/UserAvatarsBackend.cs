@@ -46,7 +46,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
     }
 
     // Not [ComputedMethod]
-    public virtual async Task EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken)
+    public virtual async Task<UserAvatar> EnsureChatAuthorAvatarCreated(string chatAuthorId, string? name, CancellationToken cancellationToken)
     {
         var avatarId = DbUserAvatar.GetCompositeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1);
         var avatar = await Get(avatarId, cancellationToken).ConfigureAwait(false);
@@ -58,8 +58,9 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         }
         else {
             var createCommand = new IUserAvatarsBackend.CreateCommand(chatAuthorId, name);
-            await _commander.Run(createCommand, true, cancellationToken).ConfigureAwait(false);
+            avatar = await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
         }
+        return avatar;
     }
 
     // [CommandHandler]
