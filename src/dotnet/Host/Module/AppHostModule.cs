@@ -73,7 +73,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             app.UseBaseUri(baseUri);
         }
         if (!string.IsNullOrEmpty(Settings.Prometheus?.Endpoint))
-            app.UseMetricServer();
+            app.UseMetricServer(url: Settings.Prometheus.Endpoint);
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
