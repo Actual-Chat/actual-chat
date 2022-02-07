@@ -1,4 +1,4 @@
-**/wwwroot/dist/**
+src/dotnet/UI.Blazor.Host/wwwroot/dist/**
 tailwind.config.js
 *.d.ts
 node_modules
