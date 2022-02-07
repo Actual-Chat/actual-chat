@@ -15,6 +15,8 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Prometheus;
+using Prometheus.DotNetRuntime;
 using Stl.CommandR.Diagnostics;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
@@ -59,7 +61,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
-        // app.UseCors("Default");
 
         // See
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
@@ -71,6 +72,8 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             Log.LogInformation("Overriding request host to {BaseUri}", baseUri);
             app.UseBaseUri(baseUri);
         }
+        if (!string.IsNullOrEmpty(Settings.Prometheus?.Endpoint))
+            app.UseMetricServer();
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
@@ -232,6 +235,30 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
+        }
+
+        // Prometheus
+        var prometheus = Settings.Prometheus;
+        if (!string.IsNullOrEmpty(prometheus?.Endpoint)) {
+            // https://github.com/djluck/prometheus-net.DotNetRuntime/blob/master/docs/metrics-exposed-5.0.md
+            services.AddSingleton(sp => {
+                var builder = DotNetRuntimeStatsBuilder.Customize();
+                if (prometheus.Gc)
+                    builder.WithGcStats(CaptureLevel.Informational);
+                if (prometheus.Contention)
+                    builder.WithContentionStats(CaptureLevel.Informational, SampleEvery.TenEvents);
+                if (prometheus.Exceptions)
+                    builder.WithExceptionStats(CaptureLevel.Errors);
+                if (prometheus.Jit)
+                    builder.WithJitStats(CaptureLevel.Counters, SampleEvery.HundredEvents);
+                if (prometheus.ThreadPool)
+                    builder.WithThreadPoolStats(CaptureLevel.Informational);
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Prometheus");
+                return builder
+                    .WithErrorHandler(ex =>
+                        logger.LogError(ex, "Unexpected exception occurred in prometheus-net.DotNetRuntime")
+                    ).StartCollecting();
+            });
         }
     }
 }

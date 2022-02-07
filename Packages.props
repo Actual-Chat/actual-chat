@@ -15,8 +15,8 @@
     <SignalRVersion>6.0.1</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <StlFusionVersion>2.3.11</StlFusionVersion>
-    <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
-    <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
+    <OpenTelemetryVersion>1.2.0-rc2</OpenTelemetryVersion>
+    <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
@@ -97,7 +97,7 @@
     <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*"/>
     <PackageReference Update="System.Reactive" Version="5.0.*"/>
 
-    <!-- OpenTelemetry -->
+    <!-- OpenTelemetry & Metrics-->
     <PackageReference Update="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageReference Update="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />
     <PackageReference Update="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
@@ -106,6 +106,9 @@
     <PackageReference Update="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
+    <PackageReference Update="prometheus-net" Version="5.0.2" />
+    <PackageReference Update="prometheus-net.DotNetRuntime" Version="4.2.3" />
+    <PackageReference Update="prometheus-net.AspNetCore" Version="5.0.2" />
 
     <!-- For the build project -->
     <PackageReference Update="CliWrap" Version="3.4.0"/>
