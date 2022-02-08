@@ -2,7 +2,6 @@ using System.Net;
 using System.Reflection;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
-using CZGL.ProcessMetrics;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -95,13 +94,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
             endpoints.MapControllers();
-            if (!string.IsNullOrEmpty(Settings.PrometheusEndpoint)) {
-                endpoints.ProcessMetrices(Settings.PrometheusEndpoint, options => {
-                    options.ListenerNames.Add(EventNames.System_Runtime);
-                    options.ListenerNames.Add(EventNames.TplEventSource);
-                    options.ListenerNames.Add(EventNames.AspNetCore_Http_Connections);
-                });
-            }
             endpoints.MapFallbackToPage("/_Host");
         });
     }

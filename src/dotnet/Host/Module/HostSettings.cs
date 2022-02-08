@@ -8,5 +8,4 @@ public class HostSettings
     /// Path to the folder or google cloud storage bucket <br/>(example: <c>gs://BUCKET_NAME/OBJECT_NAME</c>)
     /// </summary>
     public string DataProtection { get; set; } = "";
-    public string PrometheusEndpoint { get; set; } = "";
 }
