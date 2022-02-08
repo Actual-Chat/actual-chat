@@ -38,7 +38,7 @@
     protected override async Task OnParametersSetAsync()
         => AuthState = await AuthStateTask;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+    protected override void OnAfterRender(bool firstRender) {
         if (firstRender) {
             // Update required to get actual User
             StateHasChanged();

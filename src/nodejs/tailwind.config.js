@@ -45,6 +45,7 @@ module.exports = {
         'accent-inverted': 'var(--text-color-accent)',
         'success': 'var(--button-color-success)',
         'success-muted': 'var(--button-color-success-hover)',
+        'separate-line': 'var(--background-separate-line)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -175,6 +176,8 @@ module.exports = {
       'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
       'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
       'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
+      'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
+      'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -264,6 +267,7 @@ module.exports = {
       0: '0px',
       2: '2px',
       4: '4px',
+      5: '5px',
       8: '8px',
     },
     boxShadow: {
@@ -687,6 +691,18 @@ module.exports = {
           transform: 'translateY(0rem)',
         },
       },
+      'tooltip-vertical': {
+        to: {
+          transform: 'translate(-50%, 0)',
+          opacity: 1,
+        },
+      },
+      'tooltip-horizontal': {
+        to: {
+          transform: 'translate(0, -50%)',
+          opacity: 1,
+        },
+      },
     },
     letterSpacing: {
       tighter: '-0.05em',
@@ -732,6 +748,7 @@ module.exports = {
     maxWidth: ({ theme, breakpoints }) => ({
       none: 'none',
       0: '0rem',
+      xxs: '10rem',
       xs: '20rem',
       sm: '24rem',
       md: '28rem',
@@ -760,6 +777,7 @@ module.exports = {
     },
     minWidth: {
       0: '0px',
+      12: '3rem',
       full: '100%',
       min: 'min-content',
       max: 'max-content',

@@ -2,87 +2,105 @@ import './chat-message-editor.css';
 
 export class ChatMessageEditor {
 
-    private _blazorRef: DotNet.DotNetObject;
-    private _editorDiv: HTMLDivElement;
-    private _input: HTMLDivElement;
-    private _postButton: HTMLButtonElement;
-    private _recorderButtonDiv: HTMLDivElement;
-    private _recordButton: HTMLButtonElement;
-    private _isTextMode: boolean = false;
-    private _isRecording: boolean = false;
+    private blazorRef: DotNet.DotNetObject;
+    private editorDiv: HTMLDivElement;
+    private input: HTMLDivElement;
+    private postButton: HTMLButtonElement;
+    private recorderButtonDiv: HTMLDivElement;
+    private recordButton: HTMLButtonElement;
+    private isTextMode: boolean = false;
+    private isRecording: boolean = false;
 
-    static create(editorDiv: HTMLDivElement, backendRef: DotNet.DotNetObject): ChatMessageEditor {
-        return new ChatMessageEditor(editorDiv, backendRef);
+    static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
+        return new ChatMessageEditor(editorDiv, blazorRef);
     }
 
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
-        this._editorDiv = editorDiv;
-        this._input = this._editorDiv.querySelector('div.message-input');
-        this._postButton = this._editorDiv.querySelector('button.post-message');
-        this._blazorRef = blazorRef;
-        this._recorderButtonDiv = this._editorDiv.querySelector('div.recorder-button');
-        this._recordButton = this._recorderButtonDiv.querySelector('button');
+        this.editorDiv = editorDiv;
+        this.input = this.editorDiv.querySelector('div.message-input');
+        this.postButton = this.editorDiv.querySelector('button.post-message');
+        this.blazorRef = blazorRef;
+        this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
+        this.recordButton = this.recorderButtonDiv.querySelector('button');
 
         // Wiring up event listeners
-        this._input.addEventListener('input', (event: Event & { target: HTMLDivElement; }) => {
-            let _ = this.updateClientSideState();
-            this.changeMode();
-        });
-        this._input.addEventListener('keydown', (event: KeyboardEvent & { target: HTMLDivElement; }) => {
-            if (event.key != 'Enter' || event.shiftKey)
-                return;
-            event.preventDefault();
-            this._blazorRef.invokeMethodAsync("Post", this.getText());
-        });
-        this._input.addEventListener('mousedown', (event: MouseEvent & {target: HTMLDivElement; }) => {
-            this._input.focus();
-        })
-        this._postButton.addEventListener('click', (event: Event & { target: HTMLButtonElement; }) => {
-            this._input.focus();
-            this.changeMode();
-        })
-        this._recordButton.addEventListener('click', (event: Event & {target: HTMLButtonElement; }) => {
-            this.syncLanguageButtonVisibility();
-        })
+        this.input.addEventListener('input', this.inputInputListener);
+        this.input.addEventListener('keydown', this.inputKeydownListener);
+        this.input.addEventListener('mousedown', this.inputMousedownListener);
+        this.postButton.addEventListener('click', this.postClickListener);
+        this.recordButton.addEventListener('click', this.recordClickListener);
         this.changeMode();
     }
 
-    public syncLanguageButtonVisibility() {
-        let recordIcon = this._recordButton.querySelector('svg');
-        let isRecording = recordIcon.classList.contains('not-recording');
-        if (this._isRecording === isRecording)
+    private inputInputListener = ((event: Event & {target: Element; }) => {
+        const _ = this.updateClientSideState();
+        this.changeMode();
+    })
+
+    private inputKeydownListener = ((event: KeyboardEvent & {target: Element; }) => {
+        if (event.key != 'Enter' || event.shiftKey)
             return;
-        this._isRecording = isRecording;
+        event.preventDefault();
+        this.blazorRef.invokeMethodAsync("Post", this.getText());
+    })
+
+    private inputMousedownListener = ((event: MouseEvent & {target: Element; }) => {
+        this.input.focus();
+    })
+
+    private postClickListener = ((event: MouseEvent & {target: Element; }) => {
+        this.input.focus();
+        this.changeMode();
+    })
+
+    private recordClickListener = ((event: Event & {target: Element; }) => {
+        this.syncLanguageButtonVisibility();
+    })
+
+    private syncLanguageButtonVisibility() {
+        const recordIcon = this.recordButton.querySelector('svg');
+        const isRecording = recordIcon.classList.contains('not-recording');
+        if (this.isRecording === isRecording)
+            return;
+        this.isRecording = isRecording;
         if (isRecording){
-            this._editorDiv.classList.add('record-mode');
+            this.editorDiv.classList.add('record-mode');
         } else {
-            this._editorDiv.classList.remove('record-mode');
+            this.editorDiv.classList.remove('record-mode');
         }
     }
 
-    public changeMode() {
-        let isTextMode = this._input.innerText != "";
-        if (this._isTextMode === isTextMode)
+    private changeMode() {
+        const isTextMode = this.input.innerText != "";
+        if (this.isTextMode === isTextMode)
             return;
-        this._isTextMode = isTextMode;
+        this.isTextMode = isTextMode;
         if (isTextMode) {
-            this._editorDiv.classList.add('text-mode');
+            this.editorDiv.classList.add('text-mode');
         } else {
-            this._editorDiv.classList.remove('text-mode');
+            this.editorDiv.classList.remove('text-mode');
         }
     }
 
-    public getText(): string {
-        return this._input.innerText;
+    private getText(): string {
+        return this.input.innerText;
     }
 
-    public setText(text: string) {
-        this._input.innerText = text;
+    private setText(text: string) {
+        this.input.innerText = text;
         this.changeMode();
-        let _ = this.updateClientSideState();
+        const _ = this.updateClientSideState();
     }
 
-    public updateClientSideState() : Promise<void> {
-        return this._blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
+    private updateClientSideState() : Promise<void> {
+        return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
+    }
+
+    private dispose() {
+        this.input.removeEventListener('input', this.inputInputListener);
+        this.input.removeEventListener('keydown', this.inputKeydownListener);
+        this.input.removeEventListener('mousedown', this.inputMousedownListener);
+        this.postButton.removeEventListener('click', this.postClickListener);
+        this.recordButton.removeEventListener('click', this.recordClickListener);
     }
 }
