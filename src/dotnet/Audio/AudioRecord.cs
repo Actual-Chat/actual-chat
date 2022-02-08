@@ -4,11 +4,10 @@ namespace ActualChat.Audio;
 
 [DataContract]
 public record AudioRecord(
-        [property: DataMember(Order = 0)] string Id, // Ignored on upload
-        [property: DataMember(Order = 1)] string SessionId,
-        [property: DataMember(Order = 2)] string ChatId,
-        [property: DataMember(Order = 3)] AudioFormat Format,
-        [property: DataMember(Order = 4)] double ClientStartOffset)
+        [property: DataMember] string Id, // Ignored on upload
+        [property: DataMember] string SessionId,
+        [property: DataMember] string ChatId,
+        [property: DataMember] double ClientStartOffset)
     : IHasId<string>
 {
     private static string NewId() => Ulid.NewUlid().ToString();
@@ -25,9 +24,9 @@ public record AudioRecord(
         }
     }
 
-    public AudioRecord() : this("", "", null!, null!, 0) { }
-    public AudioRecord(string sessionId, string chatId, AudioFormat format, double clientStartOffset)
-        : this(NewId(), sessionId, chatId, format, clientStartOffset) { }
+    public AudioRecord() : this("", "",  null!, 0) { }
+    public AudioRecord(string sessionId, string chatId,  double clientStartOffset)
+        : this(NewId(), sessionId, chatId,  clientStartOffset) { }
 
     // This record relies on referential equality
     public virtual bool Equals(AudioRecord? other)

@@ -1,11 +1,11 @@
 /** Message that is used to communicate between the global scope and the audio worklet scope (node -> processor) */
 export interface NodeMessage {
-    type: "init" | "stop" | "getState";
+    type: 'init' | 'stop' | 'getState';
 }
 
 /** Message that is used to communicate between the audio worklet scope and the global scope (processor -> node) */
 export interface ProcessorMessage {
-    type: "stateChanged" | "state" | "operationCompleted";
+    type: 'stateChanged' | 'state' | 'operationCompleted';
 }
 
 /** Wires up the web worker and the worklet (node -> processor) */
@@ -25,7 +25,7 @@ export interface StopNodeMessage extends NodeMessage {
 }
 
 export interface StateProcessorMessage extends ProcessorMessage {
-    type: "state",
+    type: 'state',
     callbackId: number,
     /** Buffered samples duration in seconds  */
     bufferedTime: number,
@@ -39,6 +39,6 @@ export interface OperationCompletedProcessorMessage extends ProcessorMessage {
 }
 
 export interface StateChangedProcessorMessage extends ProcessorMessage {
-    type: "stateChanged";
-    state: "playing" | "playingWithLowBuffer" | "playingWithTooMuchBuffer" | "starving" | "stopped" | "ended";
+    type: 'stateChanged';
+    state: 'playing' | 'playingWithLowBuffer' | 'playingWithTooMuchBuffer' | 'starving' | 'stopped' | 'ended';
 }

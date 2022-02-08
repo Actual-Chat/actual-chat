@@ -8,7 +8,7 @@ import {
     ResumeRecordingEvent
 } from './recording-event-queue';
 import { VoiceActivityChanged } from './audio-vad';
-import { toHexString } from "./to-hex-string";
+import { toHexString } from './to-hex-string';
 
 const LogScope = 'AudioRecorder';
 
@@ -39,7 +39,6 @@ export class AudioRecorder {
         this.queue = queue;
 
         const options: MediaRecorderOptions = {
-            // @ts-ignore
             mimeType: 'audio/webm;codecs=opus',
             bitsPerSecond: 32000,
             audioBitsPerSecond: 32000,
@@ -52,7 +51,7 @@ export class AudioRecorder {
         //         console.error(`${LogScope}.startRecording: error ${e}`, e.stack);
         //     }
         // };
-        this.recorder.onerror = async (errorEvent: MediaRecorderErrorEvent) => {
+        this.recorder.onerror = (errorEvent: MediaRecorderErrorEvent) => {
             console.error(`${LogScope}.onerror: ${errorEvent}`);
         };
 
@@ -81,7 +80,7 @@ export class AudioRecorder {
         if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
             alert('Please allow to use microphone.');
 
-            if (navigator["getUserMedia"] !== undefined) {
+            if (navigator['getUserMedia'] !== undefined) {
                 alert('This browser seems supporting deprecated getUserMedia API.');
             }
         } else {
@@ -118,7 +117,7 @@ export class AudioRecorder {
         }
 
         if (this.context == null) {
-            const recorderContext = await AudioContextPool.get("main") as AudioContext;
+            const recorderContext = await AudioContextPool.get('main') as AudioContext;
             const audioWorkletOptions: AudioWorkletNodeOptions = {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
@@ -170,7 +169,7 @@ export class AudioRecorder {
                 },
                 video: false
             };
-            let stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
+            const stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
             this.vadWorker.postMessage({ topic: 'init-new-stream' });
             const source = this.context.recorderContext.createMediaStreamSource(stream);
             source.connect(this.context.vadWorkletNode);
