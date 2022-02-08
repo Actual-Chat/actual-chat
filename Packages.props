@@ -106,9 +106,8 @@
     <PackageReference Update="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
-    <PackageReference Update="prometheus-net" Version="5.0.2" />
-    <PackageReference Update="prometheus-net.DotNetRuntime" Version="4.2.3" />
-    <PackageReference Update="prometheus-net.AspNetCore" Version="5.0.2" />
+
+    <PackageReference Update="CZGL.ProcessMetrics.ASPNETCore" Version="1.1.0" />
 
     <!-- For the build project -->
     <PackageReference Update="CliWrap" Version="3.4.0"/>

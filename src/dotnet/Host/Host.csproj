@@ -26,9 +26,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" />
     <PackageReference Include="Npgsql.OpenTelemetry" />
     <PackageReference Include="Google.Cloud.AspNetCore.DataProtection.Storage" />
-    <PackageReference Include="prometheus-net" />
-    <PackageReference Include="prometheus-net.DotNetRuntime" />
-    <PackageReference Include="prometheus-net.AspNetCore" />
+    <PackageReference Include="CZGL.ProcessMetrics.ASPNETCore" />
   </ItemGroup>
 
   <ItemGroup>
