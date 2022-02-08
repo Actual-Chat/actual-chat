@@ -26,7 +26,6 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" />
     <PackageReference Include="Npgsql.OpenTelemetry" />
     <PackageReference Include="Google.Cloud.AspNetCore.DataProtection.Storage" />
-    <PackageReference Include="CZGL.ProcessMetrics.ASPNETCore" />
   </ItemGroup>
 
   <ItemGroup>

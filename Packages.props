@@ -107,8 +107,6 @@
     <PackageReference Update="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageReference Update="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
 
-    <PackageReference Update="CZGL.ProcessMetrics.ASPNETCore" Version="1.1.0" />
-
     <!-- For the build project -->
     <PackageReference Update="CliWrap" Version="3.4.0"/>
     <PackageReference Update="Bullseye" Version="3.8.0"/>
