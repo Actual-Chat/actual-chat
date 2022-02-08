@@ -15,11 +15,7 @@
 <div @ref="EditorRef" class="@(_class ??= this.DefaultClass()) chat-message-editor sticky bottom-0 self-end bg-secondary w-full px-2">
     <div class="flex flex-row justify-between px-1">
         <div class="flex flex-row justify-center items-center justify-items-center outline-none bg-accent rounded-md w-full overflow-hidden mr-3">
-            @if (_hostInfo.IsDevelopmentInstance) {
-                <AttachDropdownDev/>
-            } else {
-                <AttachDropdown/>
-            }
+            <AttachDropdown/>
             <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary block"
                  autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                  aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
@@ -76,6 +72,7 @@
     public async ValueTask DisposeAsync()
     {
         if (JSRef != null!)
+            await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
             await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
         // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
