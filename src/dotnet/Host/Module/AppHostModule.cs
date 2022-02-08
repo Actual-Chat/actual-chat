@@ -2,6 +2,7 @@ using System.Net;
 using System.Reflection;
 using ActualChat.Hosting;
 using ActualChat.Web.Module;
+using CZGL.ProcessMetrics;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -15,8 +16,6 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Prometheus;
-using Prometheus.DotNetRuntime;
 using Stl.CommandR.Diagnostics;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
@@ -72,8 +71,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             Log.LogInformation("Overriding request host to {BaseUri}", baseUri);
             app.UseBaseUri(baseUri);
         }
-        if (!string.IsNullOrEmpty(Settings.Prometheus?.Endpoint))
-            app.UseMetricServer(url: Settings.Prometheus.Endpoint);
 
         app.UseWebSockets(new WebSocketOptions {
             KeepAliveInterval = TimeSpan.FromSeconds(30),
@@ -98,6 +95,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             endpoints.MapBlazorHub();
             endpoints.MapFusionWebSocketServer();
             endpoints.MapControllers();
+            if (!string.IsNullOrEmpty(Settings.PrometheusEndpoint)) {
+                endpoints.ProcessMetrices(Settings.PrometheusEndpoint, options => {
+                    options.ListenerNames.Add(EventNames.System_Runtime);
+                    options.ListenerNames.Add(EventNames.TplEventSource);
+                    options.ListenerNames.Add(EventNames.AspNetCore_Http_Connections);
+                });
+            }
             endpoints.MapFallbackToPage("/_Host");
         });
     }
@@ -235,30 +239,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
-        }
-
-        // Prometheus
-        var prometheus = Settings.Prometheus;
-        if (!string.IsNullOrEmpty(prometheus?.Endpoint)) {
-            // https://github.com/djluck/prometheus-net.DotNetRuntime/blob/master/docs/metrics-exposed-5.0.md
-            services.AddSingleton(sp => {
-                var builder = DotNetRuntimeStatsBuilder.Customize();
-                if (prometheus.Gc)
-                    builder.WithGcStats(CaptureLevel.Informational);
-                if (prometheus.Contention)
-                    builder.WithContentionStats(CaptureLevel.Informational, SampleEvery.TenEvents);
-                if (prometheus.Exceptions)
-                    builder.WithExceptionStats(CaptureLevel.Errors);
-                if (prometheus.Jit)
-                    builder.WithJitStats(CaptureLevel.Counters, SampleEvery.HundredEvents);
-                if (prometheus.ThreadPool)
-                    builder.WithThreadPoolStats(CaptureLevel.Informational);
-                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Prometheus");
-                return builder
-                    .WithErrorHandler(ex =>
-                        logger.LogError(ex, "Unexpected exception occurred in prometheus-net.DotNetRuntime")
-                    ).StartCollecting();
-            });
         }
     }
 }
