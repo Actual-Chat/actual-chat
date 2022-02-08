@@ -3,10 +3,6 @@
 @using ActualChat.UI.Blazor.Components.Dropdown
 @using BlazorContextMenu
 
-@{
-    var menuCss = "message-submenu rounded-md border border-primary p-1 absolute min-w-max right-6 -mt-20";
-}
-
 <Dropdown ContentPositionCss="right-4 bottom-4">
     <ButtonTemplate>
         <div class="p-1 more-button menu-item flex h-8 w-full" tooltip="More">
@@ -16,7 +12,7 @@
         </div>
     </ButtonTemplate>
     <ContentTemplate>
-        <Menu Class="@menuCss" ItemClass="p-1 text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+        <Menu Class="message-submenu rounded-md border border-primary p-1 absolute min-w-max right-6 -mt-20" ItemClass="p-1 text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             <MenuItem Title="Create Thread" Name="wip">
                 <Icon>
                     <svg class="w-5 h-5 fill-current" viewBox="-4 -4 32 32" xmlns="http://www.w3.org/2000/svg">

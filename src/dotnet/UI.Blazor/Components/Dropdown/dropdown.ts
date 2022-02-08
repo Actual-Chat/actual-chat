@@ -22,12 +22,10 @@
     }
 
     private mouseListener = ((event: MouseEvent & {target: Element; }) => {
-        const menu = this.contentDiv;
-        const control = this.controlBtn;
-        const dropdown = this.dropdown;
-        if (control.contains(event.target))
+        const {contentDiv, controlBtn, dropdown} = this;
+        if (controlBtn.contains(event.target))
             return;
-        if (!dropdown.contains(event.target) && menu.classList.contains('dropdown-content-opened')) {
+        if (!dropdown.contains(event.target) && contentDiv.classList.contains('dropdown-content-opened')) {
             this.hideContent();
         }
     })
