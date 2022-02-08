@@ -7,7 +7,7 @@ import {
     InitNodeMessage,
     OperationCompletedProcessorMessage,
 } from './feeder-audio-worklet-message';
-import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from "../workers/opus-decoder-worker-message";
+import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from '../workers/opus-decoder-worker-message';
 
 const SAMPLE_RATE = 48000;
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
@@ -29,11 +29,11 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     /** How much seconds do we have in the buffer before we tell to blazor that we have enough data */
     private readonly tooMuchBuffered: number = 15.0;
     private workerPort: MessagePort;
-    private chunkOffset: number = 0;
+    private chunkOffset = 0;
     /** In seconds from the start of playing, excluding starving time and processing time */
-    private playbackTime: number = 0;
-    private isPlaying: boolean = false;
-    private isStarving: boolean = false;
+    private playbackTime = 0;
+    private isPlaying = false;
+    private isStarving = false;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -65,7 +65,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
         const output = outputs[0];
         // we only support mono output at the moment
-        let channel = output[0];
+        const channel = output[0];
         if (debug) {
             console.assert(channel.length === 128, "Feeder processor: WebAudio's render quantum size must be 128");
         }
@@ -186,7 +186,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private reset(): void {
         const { debug } = this;
         if (debug)
-            console.debug("Feeder processor: clear");
+            console.debug('Feeder processor: clear');
         this.isPlaying = false;
         this.isStarving = false;
         this.chunks.clear();
@@ -203,7 +203,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             playbackTime: this.playbackTime,
         };
         if (debug)
-            console.debug("Feeder processor: get state", msg);
+            console.debug('Feeder processor: get state', msg);
         this.port.postMessage(msg);
     }
 
@@ -213,7 +213,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
         if (wasPlaying) {
             if (debug)
-                console.debug("Feeder processor: stopping");
+                console.debug('Feeder processor: stopping');
             const message: StateChangedProcessorMessage = {
                 type: 'stateChanged',
                 state: 'stopped',
@@ -278,5 +278,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
 }
-// @ts-ignore
+
+// @ts-expect-error - register  is defined
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('feederWorklet', FeederAudioWorkletProcessor);
