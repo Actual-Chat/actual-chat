@@ -9,7 +9,7 @@
     <button @onclick="@(() => _isOpened = !_isOpened)" class="dropdown-button sticky flex outline-none hover:cursor-pointer @ButtonClass">
         @ButtonTemplate
     </button>
-    <div class="dropdown-content absolute bg-secondary shadow-lg @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
+    <div class="dropdown-content absolute @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
         <div class="dropdown-content-body relative @(_isOpened ? "" : "hidden")">
             @ContentTemplate
         </div>
