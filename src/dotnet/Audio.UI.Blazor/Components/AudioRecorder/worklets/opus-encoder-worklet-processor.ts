@@ -1,19 +1,24 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
+import { BufferEncoderWorkletMessage, EncoderWorkletMessage } from './opus-encoder-worklet-message';
 
 const SAMPLES_PER_MS = 48;
+
+export interface ProcessorOptions {
+    timeSlice: number;
+}
 
 export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
     private static allowedTimeSlice = [20, 40, 60, 80];
     private readonly samplesPerWindow: number;
     private readonly buffer: AudioRingBuffer;
-    private readonly bufferDeque: Denque;
+    private readonly bufferDeque: Denque<ArrayBuffer>;
 
     private workerPort: MessagePort;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
-        const { timeSlice } = options.processorOptions;
+        const { timeSlice } = options.processorOptions as ProcessorOptions;
 
         if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
             throw new Error(`OpusEncoderWorkletProcessor supports only ${
@@ -27,18 +32,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
         this.bufferDeque.push(new ArrayBuffer(this.samplesPerWindow * 4));
-        this.port.onmessage = (ev) => {
-            const { topic } = ev.data;
-
-            switch (topic) {
-                case 'init-port':
-                    this.workerPort = ev.ports[0];
-                    this.workerPort.onmessage = this.onWorkerMessage.bind(this);
-                    break;
-                default:
-                    break;
-            }
-        };
+        this.port.onmessage = this.onRecorderMessage;
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
@@ -60,7 +54,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
 
             this.buffer.push(input);
             if (this.buffer.framesAvailable >= this.samplesPerWindow) {
-                const audioBuffer = [];
+                const audioBuffer = new Array<Float32Array>();
                 let audioArrayBuffer = this.bufferDeque.shift();
                 if (audioArrayBuffer === undefined) {
                     audioArrayBuffer = new ArrayBuffer(this.samplesPerWindow * 4);
@@ -70,7 +64,11 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
 
                 if (this.buffer.pull(audioBuffer)) {
                     if (this.workerPort !== undefined) {
-                        this.workerPort.postMessage({ topic: 'buffer', buffer: audioArrayBuffer }, [audioArrayBuffer]);
+                        const bufferMessage: BufferEncoderWorkletMessage = {
+                            type: 'buffer',
+                            buffer: audioArrayBuffer,
+                        };
+                        this.workerPort.postMessage(bufferMessage, [audioArrayBuffer]);
                     } else {
                         console.log('worklet port is still undefined');
                     }
@@ -86,10 +84,10 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         return true;
     }
 
-    private onWorkerMessage(ev: MessageEvent) {
-        const { topic, buffer } = ev.data;
+    private onWorkerMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
+        const { type, buffer } = ev.data;
 
-        switch (topic) {
+        switch (type) {
             case 'buffer':
                 this.bufferDeque.push(buffer);
                 break;
@@ -97,7 +95,21 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
                 break;
         }
     }
+
+    private onRecorderMessage = (ev: MessageEvent<EncoderWorkletMessage>) => {
+        const { type } = ev.data;
+
+        switch (type) {
+            case 'init-port':
+                this.workerPort = ev.ports[0];
+                this.workerPort.onmessage = this.onWorkerMessage;
+                break;
+            default:
+                break;
+        }
+    }
 }
 
-// @ts-ignore
+// @ts-expect-error - register  is defined
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('opus-encoder-worklet-processor', OpusEncoderWorkletProcessor);
