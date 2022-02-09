@@ -37,7 +37,7 @@ public class AudioClient : HubClientBase,
 
     public async Task ProcessAudio(
         AudioRecord record,
-        IAsyncEnumerable<RecordingPart> recordingStream,
+        IAsyncEnumerable<byte[]> recordingStream,
         CancellationToken cancellationToken)
     {
         Log.LogDebug("ProcessAudio: Record = {Record}", record);

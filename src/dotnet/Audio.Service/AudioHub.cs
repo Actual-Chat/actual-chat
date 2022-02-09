@@ -31,12 +31,7 @@ public class AudioHub : Hub
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
-    public Task ProcessAudio(
-        AudioRecord audioRecord,
-        IAsyncEnumerable<RecordingPart> recordingStream)
-    {
+    public Task ProcessAudio(AudioRecord audioRecord, IAsyncEnumerable<byte[]> recordingStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        recordingStream = recordingStream.TrimOnCancellation();
-        return _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default);
-    }
+        => _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default);
 }
