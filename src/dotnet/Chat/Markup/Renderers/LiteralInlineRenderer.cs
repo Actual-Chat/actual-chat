@@ -5,53 +5,51 @@ namespace ActualChat.Chat;
 
 internal class LiteralInlineRenderer : MarkupObjectRenderer<LiteralInline>
 {
-    private static readonly Regex WordRegex = new("\\S+\\s+", RegexOptions.Compiled);
-
     protected override void Write(MarkupRenderer renderer, LiteralInline obj)
     {
         var text = obj.Content.ToString();
+        var startIndex = obj.Content.Start;
 
-        var hasTextToTimeMap = !renderer.Markup.TextToTimeMap.IsEmpty;
-        ParseText(text, renderer.Parts, hasTextToTimeMap, renderer.Markup);
-        // if (renderer.EnableHtmlEscape)
-        // {
-        //     renderer.WriteEscape(ref obj.Content);
-        // }
-        // else
-        // {
-        //     renderer.Write(ref obj.Content);
-        // }
-    }
+        var markup = renderer.Markup;
+        var parts = renderer.Parts;
+        var hasTextToTimeMap = !markup.TextToTimeMap.IsEmpty;
 
-    private static void ParseText(string text, List<MarkupPart> parts, bool hasTextToTimeMap, Markup markup)
-    {
-        if (!hasTextToTimeMap) {
-            parts.Add(new PlainTextPart() {
+        if (hasTextToTimeMap) {
+            MarkupByWordParser.ParseText(text, startIndex, parts, markup);
+            return;
+        }
+
+        var emphasis = GetEmphasis(obj);
+        if (emphasis != Emphasis.None) {
+            parts.Add(new FormattedTextPart {
                 Markup = markup,
-                TextRange = (0, text.Length),
+                TextRange = (startIndex, startIndex + text.Length),
+                Emphasis = emphasis
             });
             return;
         }
 
-        while (true) {
-            var start = parts.Count == 0 ? 0 : parts[^1].TextRange.End;
-            if (start >= text.Length)
-                break;
+        parts.Add(new PlainTextPart() {
+            Markup = markup,
+            TextRange = (startIndex, startIndex + text.Length),
+        });
+    }
 
-            var wordMatch = WordRegex.Match(text, start);
-            if (wordMatch.Success) {
-                parts.Add(new PlainTextPart()
-                {
-                    Markup = markup,
-                    TextRange = (wordMatch.Index, wordMatch.Index + wordMatch.Length),
-                });
-                continue;
+    private Emphasis GetEmphasis(LiteralInline literalInline)
+    {
+        Emphasis emphasis = Emphasis.None;
+        IInline? inline = literalInline;
+        while (inline!=null) {
+            if (inline is EmphasisInline emphasisInline) {
+                var emphasisLocal = emphasisInline.DelimiterCount == 2
+                    ? Emphasis.Strong
+                    : emphasisInline.DelimiterCount == 1
+                        ? Emphasis.Em
+                        : Emphasis.None;
+                emphasis |= emphasisLocal;
             }
-
-            parts.Add(new PlainTextPart() {
-                Markup = markup,
-                TextRange = (start, text.Length),
-            });
+            inline = inline.Parent;
         }
+        return emphasis;
     }
 }

@@ -7,8 +7,8 @@ public class MarkupParsingTest
     {
         var text = "Мороз и солнце; день чудесный!";
         var result = await new MarkupParser().Parse(text);
-        result.Parts.Length.Should().Be(1);
-        result.Parts[0].Should().Be(text);
+        var plainText = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        plainText.Text.Should().Be(text);
     }
 
     [Fact]
@@ -46,4 +46,38 @@ public class MarkupParsingTest
         imagePart.Url.Should().Be(text);
         imagePart.Text.Should().Be(text);
     }
+
+    [Fact]
+    public async Task EmphasisTest()
+    {
+        var text = "*italic text*";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(1);
+        var textPart = result.Parts[0].Should().BeOfType<FormattedTextPart>().Subject;
+        textPart.Emphasis.Should().Be(Emphasis.Em);
+        textPart.Text.Should().Be("italic text");
+    }
+
+    [Fact]
+    public async Task StrongTest()
+    {
+        var text = "**bold text**";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(1);
+        var textPart = result.Parts[0].Should().BeOfType<FormattedTextPart>().Subject;
+        textPart.Emphasis.Should().Be(Emphasis.Strong);
+        textPart.Text.Should().Be("bold text");
+    }
+     [Fact]
+     public async Task EmphasisMixedTest()
+     {
+         var text = "***bold mixed*** text";
+         var result = await new MarkupParser().Parse(text);
+         result.Parts.Length.Should().Be(2);
+         var formattedTextPart = result.Parts[0].Should().BeOfType<FormattedTextPart>().Subject;
+         formattedTextPart.Emphasis.Should().Be(Emphasis.Strong | Emphasis.Em);
+         formattedTextPart.Text.Should().Be("bold mixed");
+         var plainTextPart = result.Parts[1].Should().BeOfType<PlainTextPart>().Subject;
+         plainTextPart.Text.Should().Be(" text");
+     }
 }

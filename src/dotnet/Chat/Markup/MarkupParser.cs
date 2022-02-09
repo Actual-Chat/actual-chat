@@ -13,13 +13,21 @@ public sealed class MarkupParser
             TextToTimeMap = textToTimeMap,
         };
 
-        var document = Markdown.Parse(text, _pipeline);
-        var markupProto = new MarkupProto(markup);
-        var renderer = new MarkupRenderer(markupProto);
-        _pipeline.Setup(renderer);
-        _ = renderer.Render(document);
+        List<MarkupPart> parts;
+        if (!textToTimeMap.IsEmpty) {
+            parts = new ();
+            MarkupByWordParser.ParseText(text, 0, parts, markup);
+        }
+        else {
+            var document = Markdown.Parse(text, _pipeline);
+            var markupProto = new MarkupProto(markup);
+            var renderer = new MarkupRenderer(markupProto);
+            _pipeline.Setup(renderer);
+            _ = renderer.Render(document);
+            parts = markupProto.Parts;
+        }
 
-        markup.Parts = markupProto.Parts.ToImmutableArray();
+        markup.Parts = parts.ToImmutableArray();
         return ValueTask.FromResult(markup);
     }
 }

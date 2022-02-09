@@ -1,15 +1,25 @@
 @using Stl.Extensibility
 @implements IMarkupPartView
-@attribute [MatchFor(typeof(ImagePart), typeof(IMarkupPartView))]
+@attribute [MatchFor(typeof(FormattedTextPart), typeof(IMarkupPartView))]
 
 @{
-    var part = (ImagePart) Part;
+    var part = (FormattedTextPart)Part;
     var cls = _class ??= this.DefaultClass();
 }
 
-<a class="cursor-pointer @cls" href="@part.Url" target="_blank">
-    <img style="max-width: 400px; max-height: 300px" src="@part.Url" alt="@(part.Text.NullIfEmpty() ?? "image")" />
-</a>
+<span class="@cls">
+@if (part.Emphasis.HasFlag(Emphasis.Strong) && part.Emphasis.HasFlag(Emphasis.Em)) {
+    <strong><em>@part.Text</em></strong>
+}
+else if (part.Emphasis.HasFlag(Emphasis.Strong)) {
+    <strong>@part.Text</strong>
+}
+else if (part.Emphasis.HasFlag(Emphasis.Em)) {
+    <em>@part.Text</em>
+} else {
+    @part.Text
+}
+</span>
 
 @code {
     private static string? _class;
