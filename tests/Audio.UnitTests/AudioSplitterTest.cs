@@ -13,7 +13,6 @@ public class AudioSplitterTest : TestBase
     {
         var record = new AudioRecord(
             "test-id", "", "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         var byteStream = GetAudioFilePath("file.webm").ReadByteStream();
 
@@ -35,7 +34,6 @@ public class AudioSplitterTest : TestBase
     {
         var record = new AudioRecord(
             "test-id", "", "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
@@ -66,7 +64,6 @@ public class AudioSplitterTest : TestBase
     {
         var record = new AudioRecord(
             "test-id", "", "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
@@ -97,7 +94,6 @@ public class AudioSplitterTest : TestBase
     {
         var record = new AudioRecord(
             "test-id", "", "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
@@ -172,7 +168,6 @@ public class AudioSplitterTest : TestBase
     {
         var record = new AudioRecord(
             "test-id", "", "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;
@@ -256,7 +251,6 @@ public class AudioSplitterTest : TestBase
     {
         var record = new AudioRecord(
             "test-id", "", "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         var audioFilePath = GetAudioFilePath("file.webm");
         var fileSize = audioFilePath.GetFileInfo().Length;

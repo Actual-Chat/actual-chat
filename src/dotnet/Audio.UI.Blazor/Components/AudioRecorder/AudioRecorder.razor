@@ -109,7 +109,7 @@
             SampleRate = 48_000,
         };
         var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
-        var audioRecord = new AudioRecord(Session.Id, ChatId, audioFormat, clientStartOffset);
+        var audioRecord = new AudioRecord(Session.Id, ChatId, clientStartOffset);
         var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
         _ = BackgroundTask.Run(
             () => AudioProcessor.ProcessAudio(audioRecord, audioStream, CancellationToken.None),
