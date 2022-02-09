@@ -1,12 +1,23 @@
 @using Stl.Extensibility
 @implements IMarkupPartView
+@attribute [MatchFor(typeof(ImagePart), typeof(IMarkupPartView))]
 
-<span class="@(_class ??= this.DefaultClass()) text-red-500">
-    [<span class="fa fa-exclamation-triangle"></span> no view for '@Part.GetType().Name']
-</span>
+@{
+    var part = (ImagePart) Part;
+    var cls = _class ??= this.DefaultClass();
+}
+
+<a class="@cls">
+    <img style="max-width: 400px; max-height: 300px" src="@part.Url" alt="@part.Text" />
+</a>
 
 @code {
     private static string? _class;
+    private ILogger? _log;
+
+    // Just one dependency: it should render as quickly as possible
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatEntry Entry { get; set; } = null!;

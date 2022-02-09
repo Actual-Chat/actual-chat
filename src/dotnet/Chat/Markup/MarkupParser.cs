@@ -1,50 +1,25 @@
-using System.Text.RegularExpressions;
+using Markdig;
 
 namespace ActualChat.Chat;
 
 public sealed class MarkupParser
 {
-    private static readonly Regex WordRegex = new("\\S+\\s+", RegexOptions.Compiled);
+    private static readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder().UseAutoLinks().Build();
 
     public ValueTask<Markup> Parse(string text, LinearMap textToTimeMap = default)
     {
-        var markup = new Markup() {
+        var markup = new Markup {
             Text = text,
             TextToTimeMap = textToTimeMap,
         };
-        var hasTextToTimeMap = !textToTimeMap.IsEmpty;
 
-        // NOTE(AY): Pretty dummy parsing logic - for now
-        var parts = new List<MarkupPart>();
-        while (true) {
-            var start = parts.Count == 0 ? 0 : parts[^1].TextRange.End;
-            if (start >= text.Length)
-                break;
+        var document = Markdown.Parse(text, _pipeline);
+        var markupProto = new MarkupProto(markup);
+        var renderer = new MarkupRenderer(markupProto);
+        _pipeline.Setup(renderer);
+        _ = renderer.Render(document);
 
-            if (!hasTextToTimeMap) {
-                parts.Add(new PlainTextPart() {
-                    Markup = markup,
-                    TextRange = (start, text.Length),
-                });
-                continue;
-            }
-
-            var wordMatch = WordRegex.Match(text, start);
-            if (wordMatch.Success) {
-                parts.Add(new PlainTextPart() {
-                    Markup = markup,
-                    TextRange = (wordMatch.Index, wordMatch.Index + wordMatch.Length),
-                });
-                continue;
-            }
-
-            parts.Add(new PlainTextPart() {
-                Markup = markup,
-                TextRange = (start, text.Length),
-            });
-        }
-
-        markup.Parts = parts.ToImmutableArray();
+        markup.Parts = markupProto.Parts.ToImmutableArray();
         return ValueTask.FromResult(markup);
     }
 }
