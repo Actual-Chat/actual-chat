@@ -93,4 +93,14 @@ public class MarkupParsingTest
         var codePart = result.Parts[1].Should().BeOfType<CodePart>().Subject;
         codePart.Text.Should().Be("var x = 0;");
     }
+
+    [Fact]
+    public async Task NewLineTest()
+    {
+        var text = "line 1\r\nline2";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(1);
+        var plainTextPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart.Text.Should().Be(text);
+    }
 }
