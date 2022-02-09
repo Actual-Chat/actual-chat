@@ -8,6 +8,7 @@ export interface LoadEncoderMessage extends EncoderMessage {
     type: 'loadEncoder';
     mimeType: 'audio/webm';
     wasmPath: string;
+    audioHubUrl: string;
 }
 
 export interface InitMessage extends EncoderMessage {
