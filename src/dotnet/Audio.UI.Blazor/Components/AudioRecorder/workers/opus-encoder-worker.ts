@@ -18,16 +18,12 @@ type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'closed';
 
 type ModuleOverrides = {
     locateFile?: (path:string, scriptDirectory: string) => string;
+    wasmBinary?: ArrayBuffer;
 }
 
 const queue = new Denque<ArrayBuffer | 'done'>();
 const worker = self as unknown as Worker;
-const connection = new signalR.HubConnectionBuilder()
-    .withUrl('/api/hub/audio')
-    .withAutomaticReconnect([0, 300, 500, 1000, 3000, 10000])
-    .withHubProtocol(new MessagePackHubProtocol())
-    .configureLogging(signalR.LogLevel.Information)
-    .build();
+let connection: signalR.HubConnection;
 const recordingSubject = new signalR.Subject<Uint8Array>();
 
 let state: WorkerState = 'inactive';
@@ -79,9 +75,18 @@ async function onOnit(command: InitMessage): Promise<void> {
 }
 
 async function onLoadEncoder(command: LoadEncoderMessage, port: MessagePort): Promise<void> {
-    const { mimeType, wasmPath } = command;
+    const { mimeType, wasmPath, audioHubUrl } = command;
     workletPort = port;
     workletPort.onmessage = onWorkletMessage;
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl(audioHubUrl)
+        .withAutomaticReconnect([0, 300, 500, 1000, 3000, 10000])
+        .withHubProtocol(new MessagePackHubProtocol())
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+
+    // Connect to the hub endpoint
+    await connection.start();
 
     // Setting encoder module
     const mime = mimeType.toLowerCase();
@@ -94,11 +99,12 @@ async function onLoadEncoder(command: LoadEncoderMessage, port: MessagePort): Pr
     if (wasmPath) {
         moduleOverrides.locateFile = (path, scriptDirectory) =>
             path.match(/.wasm/) ? wasmPath : scriptDirectory + path;
+
+        const response = await fetch(wasmPath);
+        moduleOverrides.wasmBinary = await response.arrayBuffer();
     }
     // Initialize the module
     encoder = await encoderModule(moduleOverrides);
-
-    await connection.start();
 
     // Notify the host ready to accept 'init' message.
     worker.postMessage({command: 'readyToInit'});
