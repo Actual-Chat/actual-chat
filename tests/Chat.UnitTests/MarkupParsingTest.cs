@@ -68,16 +68,29 @@ public class MarkupParsingTest
         textPart.Emphasis.Should().Be(Emphasis.Strong);
         textPart.Text.Should().Be("bold text");
     }
-     [Fact]
-     public async Task EmphasisMixedTest()
-     {
-         var text = "***bold mixed*** text";
-         var result = await new MarkupParser().Parse(text);
-         result.Parts.Length.Should().Be(2);
-         var formattedTextPart = result.Parts[0].Should().BeOfType<FormattedTextPart>().Subject;
-         formattedTextPart.Emphasis.Should().Be(Emphasis.Strong | Emphasis.Em);
-         formattedTextPart.Text.Should().Be("bold mixed");
-         var plainTextPart = result.Parts[1].Should().BeOfType<PlainTextPart>().Subject;
-         plainTextPart.Text.Should().Be(" text");
-     }
+
+    [Fact]
+    public async Task EmphasisMixedTest()
+    {
+        var text = "***bold mixed*** text";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(2);
+        var formattedTextPart = result.Parts[0].Should().BeOfType<FormattedTextPart>().Subject;
+        formattedTextPart.Emphasis.Should().Be(Emphasis.Strong | Emphasis.Em);
+        formattedTextPart.Text.Should().Be("bold mixed");
+        var plainTextPart = result.Parts[1].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart.Text.Should().Be(" text");
+    }
+
+    [Fact]
+    public async Task CodeTest()
+    {
+        var text = "Variables declaration: ```var x = 0;```";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(2);
+        var plainTextPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart.Text.Should().Be("Variables declaration: ");
+        var codePart = result.Parts[1].Should().BeOfType<CodePart>().Subject;
+        codePart.Text.Should().Be("var x = 0;");
+    }
 }
