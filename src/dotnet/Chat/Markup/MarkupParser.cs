@@ -4,7 +4,11 @@ namespace ActualChat.Chat;
 
 public sealed class MarkupParser
 {
-    private static readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder().UseAutoLinks().UsePreciseSourceLocation().Build();
+    private static readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
+        .UseAutoLinks()
+        .UsePreciseSourceLocation()
+        .DisableHeadings()
+        .Build();
 
     public ValueTask<Markup> Parse(string text, LinearMap textToTimeMap = default)
     {

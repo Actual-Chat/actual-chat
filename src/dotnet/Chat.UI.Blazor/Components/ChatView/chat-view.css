@@ -70,3 +70,7 @@
 .more-button:focus .chat-message-submenu {
     @apply visible;
 }
+
+.whitespace-break-spaces {
+    white-space: break-spaces;
+}
