@@ -1,4 +1,4 @@
-import { DataEvent, OpusMediaRecorder } from './opus-media-recorder';
+import { DataEvent, OpusMediaRecorder, OpusMediaRecorderOptions } from './opus-media-recorder';
 import { AudioContextPool } from 'audio-context-pool';
 import {
     DataRecordingEvent,
@@ -38,7 +38,7 @@ export class AudioRecorder {
         this.isMicrophoneAvailable = false;
         this.queue = queue;
 
-        const options: MediaRecorderOptions = {
+        const options: OpusMediaRecorderOptions = {
             mimeType: 'audio/webm;codecs=opus',
             bitsPerSecond: 32000,
             audioBitsPerSecond: 32000,
