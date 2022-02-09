@@ -1,12 +1,12 @@
 using System.Text.RegularExpressions;
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
-using ActualChat.Media;
 using ActualChat.Transcription;
+using ActualChat.Users;
 
 namespace ActualChat.Audio;
 
-public class AudioProcessor : IAudioProcessor
+public sealed class AudioProcessor : IAudioProcessor
 {
     public record Options
     {
@@ -15,14 +15,16 @@ public class AudioProcessor : IAudioProcessor
 
     private static readonly Regex EmptyRegex = new("^\\s*$", RegexOptions.Compiled);
 
-    protected ILogger Log { get; }
-    protected bool DebugMode => Constants.DebugMode.AudioProcessor;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
+    private ILogger Log { get; }
+    private ILogger OpenAudioSegmentLog { get;  }
+    private ILogger AudioSourceLog { get; }
+    private bool DebugMode => Constants.DebugMode.AudioProcessor;
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private IChatUserSettings? ChatUserSettings { get; }
 
     public Options Settings { get; }
     public ITranscriber Transcriber { get; }
     public AudioSegmentSaver AudioSegmentSaver { get; }
-    public AudioSplitter AudioSplitter { get; }
     public AudioStreamer AudioStreamer { get; }
     public TranscriptSplitter TranscriptSplitter { get; }
     public TranscriptPostProcessor TranscriptPostProcessor { get; }
@@ -37,7 +39,7 @@ public class AudioProcessor : IAudioProcessor
         Log = services.LogFor(GetType());
         Transcriber = services.GetRequiredService<ITranscriber>();
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
-        AudioSplitter = services.GetRequiredService<AudioSplitter>();
+        // AudioSplitter = services.GetRequiredService<AudioSplitter>();
         AudioStreamer = services.GetRequiredService<AudioStreamer>();
         TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
@@ -45,44 +47,56 @@ public class AudioProcessor : IAudioProcessor
         ChatAuthorsBackend = services.GetRequiredService<IChatAuthorsBackend>();
         Commander = services.Commander();
         Clocks = services.Clocks();
+        OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
+        AudioSourceLog = services.LogFor<AudioSource>();
+        ChatUserSettings = services.GetService<IChatUserSettings>();
     }
 
     public async Task ProcessAudio(
         AudioRecord record,
-        IAsyncEnumerable<RecordingPart> recordingStream,
+        IAsyncEnumerable<byte[]> recordingStream,
         CancellationToken cancellationToken)
     {
         Log.LogInformation(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
         if (Constants.DebugMode.AudioRecordingStream)
             recordingStream = recordingStream.WithLog(Log, nameof(ProcessAudio), cancellationToken);
 
+        var settings = ChatUserSettings != null!
+            ? await ChatUserSettings.Get(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false)
+            : null;
+        var language = settings.LanguageOrDefault();
+        var altLanguage = language.Next();
+        var languages = ImmutableArray.Create(language, altLanguage);
+
         var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
-        var openSegments = AudioSplitter.GetSegments(record, author, recordingStream, cancellationToken);
-        await foreach (var openSegment in openSegments.ConfigureAwait(false)) {
-            Log.LogDebug(
-                nameof(ProcessAudio) + ": record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
-                record.Id, openSegment.Index, openSegment.StreamId);
-            var publishAudioTask = AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
-            var saveAudioTask = SaveAudio(openSegment, cancellationToken);
-            var audioEntryTask = CreateAudioEntry(openSegment, cancellationToken);
-            var transcribeTask = BackgroundTask.Run(
-                () => TranscribeAudio(openSegment, audioEntryTask, cancellationToken),
-                Log, $"{nameof(TranscribeAudio)} failed",
-                CancellationToken.None);
+        var audio = new AudioSource(recordingStream, TimeSpan.Zero, AudioSourceLog, cancellationToken);
+        var openSegment = new OpenAudioSegment(
+            0, record, audio,
+            author, languages,
+            OpenAudioSegmentLog);
+        Log.LogDebug(
+            nameof(ProcessAudio) + ": record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
+            record.Id, openSegment.Index, openSegment.StreamId);
+        var publishAudioTask = AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
+        var saveAudioTask = SaveAudio(openSegment, cancellationToken);
+        var audioEntryTask = CreateAudioEntry(openSegment, cancellationToken);
+        var transcribeTask = BackgroundTask.Run(
+            () => TranscribeAudio(openSegment, audioEntryTask, cancellationToken),
+            Log, $"{nameof(TranscribeAudio)} failed",
+            CancellationToken.None);
 
-            _ = BackgroundTask.Run(FinalizeAudioProcessing,
-                Log, $"{nameof(FinalizeAudioProcessing)} failed",
-                CancellationToken.None);
+        _ = BackgroundTask.Run(FinalizeAudioProcessing,
+            Log, $"{nameof(FinalizeAudioProcessing)} failed",
+            CancellationToken.None);
 
-            async Task FinalizeAudioProcessing()
-            {
-                // TODO(AY): We should make sure finalization happens no matter what (later)!
-                await publishAudioTask.ConfigureAwait(false);
-                var audioEntry = await audioEntryTask.ConfigureAwait(false);
-                var audioBlobId = await saveAudioTask.ConfigureAwait(false);
-                await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, cancellationToken).ConfigureAwait(false);
-                await transcribeTask.ConfigureAwait(false);
-            }
+        async Task FinalizeAudioProcessing()
+        {
+            // TODO(AY): We should make sure finalization happens no matter what (later)!
+            await publishAudioTask.ConfigureAwait(false);
+            var audioEntry = await audioEntryTask.ConfigureAwait(false);
+            var audioBlobId = await saveAudioTask.ConfigureAwait(false);
+            await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, cancellationToken).ConfigureAwait(false);
+            await transcribeTask.ConfigureAwait(false);
         }
     }
 
