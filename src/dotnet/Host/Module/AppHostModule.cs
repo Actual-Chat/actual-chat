@@ -177,7 +177,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
-                // .AddAspNetCoreInstrumentation()
+                .AddAspNetCoreInstrumentation()
                 .AddMeter(AppMeter.Name)
                 .AddMeter(FusionDiagnostics.FusionMeter.Name)
                 .AddMeter(CommanderDiagnostics.CommanderMeter.Name)
