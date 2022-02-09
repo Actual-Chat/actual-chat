@@ -5,6 +5,7 @@ import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 
 import { EncoderMessage, InitMessage, LoadEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
+import { EncoderResponseMessage } from '../opus-media-recorder-message';
 
 interface Encoder {
     init(inputSampleRate: number, channelCount: number, bitsPerSecond: number): void;
@@ -19,7 +20,7 @@ type ModuleOverrides = {
     locateFile?: (path:string, scriptDirectory: string) => string;
 }
 
-const queue = new Denque<ArrayBuffer>();
+const queue = new Denque<ArrayBuffer | 'done'>();
 const worker = self as unknown as Worker;
 const connection = new signalR.HubConnectionBuilder()
     .withUrl('/api/hub/audio')
@@ -27,7 +28,7 @@ const connection = new signalR.HubConnectionBuilder()
     .withHubProtocol(new MessagePackHubProtocol())
     .configureLogging(signalR.LogLevel.Information)
     .build();
-const recordingSubject = new signalR.Subject<any>();
+const recordingSubject = new signalR.Subject<Uint8Array>();
 
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
@@ -57,24 +58,9 @@ worker.onmessage = (ev: MessageEvent<EncoderMessage>) => {
 
 function onDone() {
     state = 'closed';
-    if (!encoder) return;
 
-    encoder.close();
-
-    const buffers = encoder.flush();
-    const message: EncoderMessage = {
-        type: 'lastEncodedData',
-        buffers,
-    };
-    worker.postMessage(message, buffers);
-}
-
-
-function onGetEncodedData() {
-    if (!encoder) return;
-
-    const buffers = encoder.flush();
-    sendEncodedData(buffers);
+    queue.push('done');
+    processQueue();
 }
 
 async function onOnit(command: InitMessage): Promise<void> {
@@ -83,11 +69,10 @@ async function onOnit(command: InitMessage): Promise<void> {
     state = 'encoding';
 
     await connection.send('ProcessAudio',
-        { SessionId: sessionId, ChatId: chatId, AudioFormat: {}, ClientStartOffset: Date.now() / 1000 },
-        // +                { 1: this.sessionId, 2: this.chatId, 3: Date.now() / 1000 },
+        { SessionId: sessionId, ChatId: chatId, ClientStartOffset: Date.now() / 1000 },
         recordingSubject);
 
-    const message: EncoderMessage = {
+    const message: EncoderResponseMessage = {
         type: 'initCompleted',
     };
     worker.postMessage(message);
@@ -120,11 +105,11 @@ async function onLoadEncoder(command: LoadEncoderMessage, port: MessagePort): Pr
     state = 'readyToInit';
 }
 
-function onWorkletMessage(ev: MessageEvent<EncoderWorkletMessage>) {
-    const { topic, buffer } = ev.data;
+function onWorkletMessage(ev: MessageEvent<BufferEncoderWorkletMessage>) {
+    const { type, buffer } = ev.data;
 
     let audioBuffer: ArrayBuffer;
-    switch (topic) {
+    switch (type) {
         case 'buffer':
             audioBuffer = buffer;
             break;
@@ -150,20 +135,30 @@ function processQueue(): void {
     try {
         isEncoding = true;
 
-        const buffer = queue.pop();
-        const monoPcm = new Float32Array(buffer);
-        encoder.encode([monoPcm]);
+        const bufferOrDone = queue.pop();
+        if (typeof bufferOrDone === 'string') {
+            if (bufferOrDone === 'done') {
+                encoder.close();
+                const buffers = encoder.flush();
+                sendEncodedData(buffers);
 
-        const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer };
-        workletPort.postMessage(workletMessage, [buffer]);
+                const message: EncoderResponseMessage = {
+                    type: 'doneCompleted'
+                };
+                worker.postMessage(message, buffers);
+            }
+        }
+        else {
+            const buffer = bufferOrDone;
+            const monoPcm = new Float32Array(buffer);
+            encoder.encode([monoPcm]);
 
-        const buffers = encoder.flush();
-        // const message: EncoderMessage = {
-        //     command: 'encodedData',
-        //     buffers
-        // };
-        // worker.postMessage(message, buffers);
-        sendEncodedData(buffers);
+            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer };
+            workletPort.postMessage(workletMessage, [buffer]);
+
+            const buffers = encoder.flush();
+            sendEncodedData(buffers);
+        }
 
     } catch (error) {
         isEncoding = false;
@@ -177,6 +172,7 @@ function processQueue(): void {
 }
 
 function sendEncodedData(buffers: ArrayBuffer[]): void {
+    // TODO: free!!!
     const totalLength = buffers.reduce((t,buffer) => t + buffer.byteLength, 0);
     const data = new Uint8Array(totalLength);
     buffers.reduce((offset, buffer)=>{
@@ -184,16 +180,5 @@ function sendEncodedData(buffers: ArrayBuffer[]): void {
         return offset + buffer.byteLength;
     },0);
 
-
-    // // Detect of stop() called before
-    // if (command === 'lastEncodedData') {
-    //     this.dispatchEvent(new Event('stop'));
-    //
-    //     this.workerState = 'readyToInit';
-    //     if (this.stopResolve) {
-    //         const resolve = this.stopResolve;
-    //         this.stopResolve = null;
-    //         resolve();
-    //     }
-    // }
+    recordingSubject.next(data);
 }

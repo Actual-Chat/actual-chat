@@ -4,7 +4,7 @@ import { AudioContextPool } from 'audio-context-pool';
 import { EncoderResponseMessage } from './opus-media-recorder-message';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
-import { EncoderMessage, InitMessage, LoadEncoderMessage } from './workers/opus-encoder-worker-message';
+import { DoneMessage, EncoderMessage, InitMessage, LoadEncoderMessage } from './workers/opus-encoder-worker-message';
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding';
 
@@ -15,6 +15,11 @@ export class DataEvent extends Event {
         super('datarecorded');
         this.data = data;
     }
+}
+
+export interface OpusMediaRecorderOptions extends  MediaRecorderOptions {
+    sessionId: string;
+    chatId: string;
 }
 
 const SAMPLE_RATE = 48000;
@@ -34,6 +39,8 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     public readonly videoBitsPerSecond: number = NaN;
     public readonly audioBitsPerSecond: number;
     public readonly mimeType: string = mimeType;
+    public readonly sessionId: string;
+    public readonly chatId: string;
 
     public state: RecordingState = 'inactive';
 
@@ -45,15 +52,17 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     public onstart: ((ev: Event) => void) | null;
     public onstop: ((ev: Event) => void) | null;
 
-    constructor(options: MediaRecorderOptions) {
+    constructor(options: OpusMediaRecorderOptions) {
         super();
 
         this.audioBitsPerSecond = options.audioBitsPerSecond;
+        this.sessionId = options.sessionId;
+        this.chatId = options.chatId;
 
         this.workerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
-        this.worker.onmessage = (ev: MessageEvent<EncoderResponseMessage>) => this.onWorkerMessage(ev);
-        this.worker.onerror = (e) => this.onWorkerError(e);
+        this.worker.onmessage = this.onWorkerMessage;
+        this.worker.onerror = this.onWorkerError;
 
         const loadEncoder: LoadEncoderMessage = {
             type: 'loadEncoder',
@@ -210,9 +219,16 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         // If the worker is already loaded then start
         if (this.workerState === 'readyToInit') {
-            const { channelCount, audioBitsPerSecond } = this;
-            const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
-            this.postMessageToWorker(initCommand);
+            const { channelCount, audioBitsPerSecond, sessionId, chatId } = this;
+            const initMessage: InitMessage = {
+                type: 'init',
+                sampleRate: SAMPLE_RATE,
+                channelCount: channelCount,
+                bitsPerSecond: audioBitsPerSecond,
+                sessionId: sessionId,
+                chatId: chatId,
+            };
+            this.postMessageToWorker(initMessage);
         }
     }
 
@@ -226,7 +242,10 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.encoderWorklet.disconnect();
 
         // Stop event will be triggered at _onmessageFromWorker(),
-        this.postMessageToWorker(new DoneCommand());
+        const doneMessage: DoneMessage = {
+            type: 'done'
+        }
+        this.postMessageToWorker(doneMessage);
 
         this.state = 'inactive';
     }
@@ -288,15 +307,22 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
     }
 
-    private onWorkerMessage(ev: MessageEvent<EncoderResponseMessage>) {
+    private onWorkerMessage = (ev: MessageEvent<EncoderResponseMessage>) => {
         const { type } = ev.data;
         switch (type) {
             case 'readyToInit':
                 this.workerState = 'readyToInit';
                 if (this.state === 'recording') {
-                    const {channelCount, audioBitsPerSecond} = this;
-                    const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
-                    this.postMessageToWorker(initCommand);
+                    const { channelCount, audioBitsPerSecond, sessionId, chatId } = this;
+                    const initMessage: InitMessage = {
+                        type: 'init',
+                        sampleRate: SAMPLE_RATE,
+                        channelCount: channelCount,
+                        bitsPerSecond: audioBitsPerSecond,
+                        sessionId: sessionId,
+                        chatId: chatId,
+                    };
+                    this.postMessageToWorker(initMessage);
                 }
                 break;
 
@@ -307,38 +333,15 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 this.dispatchEvent( new Event('start'));
                 break;
 
-            case 'encodedData':
-            case 'lastEncodedData':
-                if (this.ondataavailable) {
-                    const data = new Blob(buffers, {'type': mimeType});
-                    let eventToPush;
-                    eventToPush = new Event('dataavailable');
-                    eventToPush.data = data;
-
-                    this.dispatchEvent(eventToPush);
-                }
-                else if (this.ondatarecorded) {
-                    const totalLength = buffers.reduce((t,buffer) => t + buffer.byteLength, 0);
-                    const data = new Uint8Array(totalLength);
-                    buffers.reduce((offset, buffer)=>{
-                        data.set(new Uint8Array(buffer),offset);
-                        return offset + buffer.byteLength;
-                    },0);
-                    const dataEvent = new DataEvent(data);
-
-                    this.dispatchEvent(dataEvent);
-                }
-
+            case 'doneCompleted':
                 // Detect of stop() called before
-                if (type === 'lastEncodedData') {
-                    this.dispatchEvent(new Event('stop'));
+                this.dispatchEvent(new Event('stop'));
 
-                    this.workerState = 'readyToInit';
-                    if (this.stopResolve) {
-                        const resolve = this.stopResolve;
-                        this.stopResolve = null;
-                        resolve();
-                    }
+                this.workerState = 'readyToInit';
+                if (this.stopResolve) {
+                    const resolve = this.stopResolve;
+                    this.stopResolve = null;
+                    resolve();
                 }
                 break;
 
@@ -347,7 +350,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
     }
 
-    onWorkerError (error) {
+    private onWorkerError = (error: ErrorEvent) => {
         // Stop stream first
         this.source.disconnect();
         this.encoderWorklet.disconnect();
@@ -355,9 +358,9 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         // Send message to host
         const message = [
-            'FileName: ' + error.filename,
-            'LineNumber: ' + error.lineno,
-            'Message: ' + error.message
+            `FileName: ${error.filename}`,
+            `LineNumber: ${error.lineno}`,
+            `Message: ${error.message}`
         ].join(' - ');
         const errorToPush = new Event('error');
         errorToPush['name'] = 'UnknownError';
