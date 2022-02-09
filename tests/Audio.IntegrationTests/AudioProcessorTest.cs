@@ -25,7 +25,6 @@ public class AudioProcessorTest : AppHostTestBase
 
         var audioRecord = new AudioRecord(
             session.Id, "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
         await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<RecordingPart>(), CancellationToken.None);
 
@@ -131,7 +130,6 @@ public class AudioProcessorTest : AppHostTestBase
     {
         var record = new AudioRecord(
             session.Id, chatId,
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath(fileName);
