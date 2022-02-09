@@ -8,19 +8,19 @@ namespace ActualChat.Audio.UI.Blazor.Pages;
 
 public partial class AudioRecorderTestPage : ComponentBase, IDisposable
 {
-    [Inject]
-    private ILogger<AudioRecorderTestPage> Log { get; set; } = null!;
-    [Inject]
-    private IJSRuntime JS { get; set; } = null!;
+    [Inject] private ILogger<AudioRecorderTestPage> Log { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
 
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private IJSObjectReference? _jsRef = null;
     private ElementReference _recordsRef;
     private int _recordNumber = 0;
-
     protected bool DebugMode { get; set; } = true;
     protected bool IsRecording { get; set; }
+    private string ChatId => "the-actual-one";
+
 
     public async Task ToggleRecording()
     {
@@ -30,7 +30,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
             var blazorRef = DotNetObjectReference.Create(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorderTestPage.createObj",
-                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++
+                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++, Session.Id, ChatId
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda

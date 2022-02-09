@@ -55,7 +55,7 @@
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                BlazorRef, DebugMode
+                BlazorRef, Session.Id, ChatId, DebugMode
                 ).ConfigureAwait(true);
         }
     }
@@ -102,18 +102,6 @@
     public void OnStartRecording() {
         if (!IsRecording) return;
         DebugLog?.LogDebug(nameof(OnStartRecording));
-
-        // var audioFormat = new AudioFormat {
-        //     CodecKind = AudioCodecKind.Opus,
-        //     ChannelCount = 1,
-        //     SampleRate = 48_000,
-        // };
-        // var clientStartOffset = CpuClock.Now.EpochOffset.TotalSeconds;
-        // var audioRecord = new AudioRecord(Session.Id, ChatId, clientStartOffset);
-        // var audioStream = AudioChannel.Reader.ReadAllAsync(CancellationToken.None);
-        // _ = BackgroundTask.Run(
-        //     () => AudioProcessor.ProcessAudio(audioRecord, audioStream, CancellationToken.None),
-        //     Log, $"{nameof(AudioProcessor.ProcessAudio)} failed");
     }
 
     [JSInvokable]

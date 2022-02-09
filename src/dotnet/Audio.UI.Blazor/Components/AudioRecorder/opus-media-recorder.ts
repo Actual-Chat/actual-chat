@@ -64,10 +64,23 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.worker.onmessage = this.onWorkerMessage;
         this.worker.onerror = this.onWorkerError;
 
+        // Setting the url to the href property of an anchor tag handles normalization
+        // for us. There are 3 main cases.
+        // 1. Relative path normalization e.g "b" -> "http://localhost:5000/a/b"
+        // 2. Absolute path normalization e.g "/a/b" -> "http://localhost:5000/a/b"
+        // 3. Network path reference normalization e.g "//localhost:5000/a/b" -> "http://localhost:5000/a/b"
+        const aTag = window.document.createElement('a');
+        aTag.href = '/api/hub/audio';
+        const audioHubUrl = aTag.href;
+
+        aTag.href = WebMOpusWasm as string;
+        const wasmPathUrl = aTag.href;
+
         const loadEncoder: LoadEncoderMessage = {
             type: 'loadEncoder',
             mimeType: 'audio/webm',
-            wasmPath: WebMOpusWasm as string,
+            wasmPath: wasmPathUrl,
+            audioHubUrl: audioHubUrl,
         }
         this.postMessageToWorker(loadEncoder);
     }
@@ -352,9 +365,12 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     private onWorkerError = (error: ErrorEvent) => {
         // Stop stream first
-        this.source.disconnect();
-        this.encoderWorklet.disconnect();
-        this.workerState = 'readyToInit'
+        if (this.source)
+            this.source.disconnect();
+        if (this.encoderWorklet)
+            this.encoderWorklet.disconnect();
+
+        this.workerState = 'readyToInit';
 
         // Send message to host
         const message = [
