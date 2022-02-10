@@ -3,29 +3,10 @@
 
 <AuthorizeView>
     <Authorized>
-        <div class="flex-shrink-0 flex">
-            <div class="flex items-center">
-                <div class="relative">
-                    <div class="relative">
-                        <div class="absolute bottom-0 left-0 w-48 rounded-md @(IsOpen ? "" : "hidden")">
-                            <div class="bg-secondary shadow-lg py-1 rounded-md mb-1 relative select-none">
-                                <span class="text-sm text-secondary hover:bg-accent block px-4 py-2">Settings</span>
-                                <a href="user/avatars" class="text-sm text-secondary hover:bg-accent block px-4 py-2">Avatars</a>
-                                <button type="button" @onclick="SignOut" class="w-full cursor-pointer text-left text-sm text-secondary hover:bg-accent block px-4 py-2">Sign out</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="account-dropdown-block">
-                        <button @onclick="() => IsOpen = !IsOpen" class="max-w-xs flex items-center text-sm rounded-full text-primary-muted outline-none ml-2">
-                            <AccountView User="@User" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <AccountMenu/>
     </Authorized>
     <NotAuthorized>
-        <SignInButton BtnCss="px-4 py-2" />
+        <SignInMenu ButtonClass="px-4 py-2" ContentPositionClass="left-0 bottom-11"/>
     </NotAuthorized>
 </AuthorizeView>
 
@@ -44,10 +25,5 @@
             // Update required to get actual User
             StateHasChanged();
         }
-    }
-
-    public void SignOut() {
-        _clientAuthHelper.SignOut();
-        IsOpen = false;
     }
 }
