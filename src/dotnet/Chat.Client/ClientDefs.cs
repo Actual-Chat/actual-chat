@@ -41,6 +41,12 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
+    [Get(nameof(CheckCanJoin))]
+    Task<bool> CheckCanJoin(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
     [Post(nameof(CreateChat))]
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(UpdateChat))]
