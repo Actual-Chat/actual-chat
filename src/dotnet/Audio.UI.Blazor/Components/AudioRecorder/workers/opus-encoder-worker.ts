@@ -24,7 +24,7 @@ type ModuleOverrides = {
 const queue = new Denque<ArrayBuffer | 'done'>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
-const recordingSubject = new signalR.Subject<Uint8Array>();
+let recordingSubject: signalR.Subject<Uint8Array>;
 
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
@@ -59,23 +59,24 @@ function onDone() {
     processQueue();
 }
 
-async function onOnit(command: InitMessage): Promise<void> {
-    const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = command;
+async function onOnit(message: InitMessage): Promise<void> {
+    const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = message;
     encoder.init(sampleRate, channelCount, bitsPerSecond);
     state = 'encoding';
 
+    recordingSubject = new signalR.Subject<Uint8Array>();
     await connection.send('ProcessAudio',
         { SessionId: sessionId, ChatId: chatId, ClientStartOffset: Date.now() / 1000 },
         recordingSubject);
 
-    const message: EncoderResponseMessage = {
+    const initCompletedMessage: EncoderResponseMessage = {
         type: 'initCompleted',
     };
-    worker.postMessage(message);
+    worker.postMessage(initCompletedMessage);
 }
 
-async function onLoadEncoder(command: LoadEncoderMessage, port: MessagePort): Promise<void> {
-    const { mimeType, wasmPath, audioHubUrl } = command;
+async function onLoadEncoder(message: LoadEncoderMessage, port: MessagePort): Promise<void> {
+    const { mimeType, wasmPath, audioHubUrl } = message;
     workletPort = port;
     workletPort.onmessage = onWorkletMessage;
     connection = new signalR.HubConnectionBuilder()
@@ -104,11 +105,20 @@ async function onLoadEncoder(command: LoadEncoderMessage, port: MessagePort): Pr
         moduleOverrides.wasmBinary = await response.arrayBuffer();
     }
     // Initialize the module
-    encoder = await encoderModule(moduleOverrides);
-
-    // Notify the host ready to accept 'init' message.
-    worker.postMessage({command: 'readyToInit'});
-    state = 'readyToInit';
+    // Do not use await - it doesnt' work!
+    void encoderModule(moduleOverrides)
+        .then(Module => {
+            encoder = Module;
+            // Notify the host ready to accept 'init' message.
+            const readyToInit: EncoderResponseMessage = {
+                type: 'readyToInit'
+            }
+            worker.postMessage(readyToInit);
+            state = 'readyToInit';
+        }, reason => {
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            console.error(`Error loading Opus encoder: ${reason}`)
+        });
 }
 
 function onWorkletMessage(ev: MessageEvent<BufferEncoderWorkletMessage>) {
@@ -144,14 +154,21 @@ function processQueue(): void {
         const bufferOrDone = queue.pop();
         if (typeof bufferOrDone === 'string') {
             if (bufferOrDone === 'done') {
-                encoder.close();
-                const buffers = encoder.flush();
-                sendEncodedData(buffers);
+                try {
+                    if (encoder) {
+                        encoder.close();
+                        const buffers = encoder.flush();
+                        sendEncodedData(buffers);
+                    }
 
-                const message: EncoderResponseMessage = {
-                    type: 'doneCompleted'
-                };
-                worker.postMessage(message, buffers);
+                    const message: EncoderResponseMessage = {
+                        type: 'doneCompleted'
+                    };
+                    worker.postMessage(message);
+                }
+                finally {
+                    recordingSubject.complete();
+                }
             }
         }
         else {

@@ -30,7 +30,6 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private IAudioProcessor AudioProcessor { get; init; } = null!;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
