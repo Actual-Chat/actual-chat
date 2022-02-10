@@ -1,6 +1,5 @@
 @using Stl.Extensibility
 @implements IMarkupPartView
-@attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
 
 <span class="@(_class ??= this.DefaultClass()) text-red-500">
     [<span class="fa fa-exclamation-triangle"></span> no view for '@Part.GetType().Name']
