@@ -66,8 +66,9 @@ async function onOnit(message: InitMessage): Promise<void> {
 
     recordingSubject = new signalR.Subject<Uint8Array>();
     await connection.send('ProcessAudio',
-        { SessionId: sessionId, ChatId: chatId, ClientStartOffset: Date.now() / 1000 },
-        recordingSubject);
+        sessionId, chatId, Date.now() / 1000, recordingSubject);
+
+    console.log('init recorder worker!');
 
     const initCompletedMessage: EncoderResponseMessage = {
         type: 'initCompleted',
