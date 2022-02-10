@@ -24,7 +24,6 @@ public record AudioRecord(
         }
     }
 
-    public AudioRecord() : this("", "",  null!, 0) { }
     public AudioRecord(string sessionId, string chatId,  double clientStartOffset)
         : this(NewId(), sessionId, chatId,  clientStartOffset) { }
 

@@ -31,11 +31,11 @@ public class AudioHub : Hub
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
-    public async Task ProcessAudio(AudioRecord audioRecord, IAsyncEnumerable<byte[]> recordingStream)
-    // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> recordingStream)
     {
-        // var res = await recordingStream.ToListAsync().ConfigureAwait(false);
-        await _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default)
+        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+        var audioRecord = new AudioRecord(sessionId, chatId, clientStartOffset);
+        await _audioProcessor.ProcessAudio(audioRecord, recordingStream, default)
             .ConfigureAwait(false);
     }
 }

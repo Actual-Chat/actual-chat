@@ -68,35 +68,30 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-        var parseTask = BackgroundTask.Run(() => byteStream.ForEachAwaitAsync(
-            async chunk => {
-
-                var data = chunk;
-                AppendData(ref readBuffer, ref state, data);
-                frameBuffer.Clear();
-                state = FillFrameBuffer(
-                    frameBuffer,
-                    state.IsEmpty
-                        ? new WebMReader(readBuffer.Span)
-                        : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
-                    formatBlocks,
-                    ref ebml,
-                    ref segment,
-                    ref actualSkipTo,
-                    ref clusterOffsetMs,
-                    ref blockOffsetMs,
-                    ref skipAdjustmentClusterMs,
-                    ref skipAdjustmentBlockMs);
-
-                foreach (var frame in frameBuffer) {
-                    duration = frame.Offset + frame.Duration;
-                    await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
-                }
-            }, cancellationToken), cancellationToken);
-
         var _ = BackgroundTask.Run(async () => {
             try {
-                await parseTask.ConfigureAwait(false);
+                await foreach (var data in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                    AppendData(ref readBuffer, ref state, data);
+                    frameBuffer.Clear();
+                    state = FillFrameBuffer(
+                        frameBuffer,
+                        state.IsEmpty
+                            ? new WebMReader(readBuffer.Span)
+                            : WebMReader.FromState(state).WithNewSource(readBuffer.Span),
+                        formatBlocks,
+                        ref ebml,
+                        ref segment,
+                        ref actualSkipTo,
+                        ref clusterOffsetMs,
+                        ref blockOffsetMs,
+                        ref skipAdjustmentClusterMs,
+                        ref skipAdjustmentBlockMs);
+
+                    foreach (var frame in frameBuffer) {
+                        duration = frame.Offset + frame.Duration;
+                        await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
+                    }
+                }
                 durationTaskSource.SetResult(duration);
             }
             catch (OperationCanceledException e) {
