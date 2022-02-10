@@ -6,9 +6,5 @@
     <!-- Should be just User.csproj in the future -->
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="Markup\Parts\NewLinePart.cs" />
-  </ItemGroup>
-
+  
 </Project>

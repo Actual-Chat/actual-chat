@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 
 internal class LinkInlineRenderer : MarkupObjectRenderer<LinkInline>
 {
-    private static readonly string[] _imageExtensions = new[] {".bmp", ".png", ".jpg"};
+    private static readonly string[] _imageExtensions = new[] {".bmp", ".png", ".jpg", ".jpeg", ".ico", ".gif"};
 
     protected override void Write(MarkupRenderer renderer, LinkInline link)
     {
