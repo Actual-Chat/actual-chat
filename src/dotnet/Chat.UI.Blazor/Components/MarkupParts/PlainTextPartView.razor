@@ -19,9 +19,9 @@
     }
 }
 @if (isPlayable) {
-    <span class="@cls" @onclick="Play">@Part.Text</span>
+    <span class="@cls whitespace-break-spaces" @onclick="Play">@Part.Text</span>
 } else {
-    <span class="@cls">@Part.Text</span>
+    <span class="@cls whitespace-break-spaces">@Part.Text</span>
 }
 
 @code {

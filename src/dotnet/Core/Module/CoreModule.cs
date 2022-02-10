@@ -15,8 +15,14 @@ public class CoreModule : HostModule<CoreSettings>
 
     public override void InjectServices(IServiceCollection services)
     {
+        var pluginAssemblies = Plugins.FoundPlugins.InfoByType
+            .Select(c => c.Value.Type.TryResolve())
+            .Where(c => c != null)
+            .Select(c => c!.Assembly)
+            .Distinct()
+            .ToArray();
         // Common services
-        services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder());
+        services.AddSingleton<IMatchingTypeFinder>(_ => new MatchingTypeFinder(pluginAssemblies));
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
         fusion.AddComputeService<ILiveTime, LiveTime>();

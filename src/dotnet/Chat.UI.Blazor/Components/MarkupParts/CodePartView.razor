@@ -1,0 +1,27 @@
+@using Stl.Extensibility
+@implements IMarkupPartView
+@attribute [MatchFor(typeof(CodePart), typeof(IMarkupPartView))]
+
+@{
+    var part = (CodePart) Part;
+    var cls = _class ??= this.DefaultClass();
+}
+
+<pre class="mt-2 max-w-[90%]"><code class="@cls block bg-primary p-1 rounded-md border border-gray-300">@part.Text</code></pre>
+
+@code {
+    private static string? _class;
+    private ILogger? _log;
+
+    // Just one dependency: it should render as quickly as possible
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public ChatEntry Entry { get; set; } = null!;
+    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
+    public MarkupPart Part { get; set; } = null!;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+}
