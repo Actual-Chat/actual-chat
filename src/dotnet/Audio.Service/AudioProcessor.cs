@@ -77,9 +77,22 @@ public sealed class AudioProcessor : IAudioProcessor
         Log.LogDebug(
             nameof(ProcessAudio) + ": record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
             record.Id, openSegment.Index, openSegment.StreamId);
-        var publishAudioTask = AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken);
-        var saveAudioTask = SaveAudio(openSegment, cancellationToken);
-        var audioEntryTask = CreateAudioEntry(openSegment, cancellationToken);
+
+        var publishAudioTask = BackgroundTask.Run(
+            () => AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken),
+            Log, $"{nameof(AudioStreamer.Publish)} failed",
+            cancellationToken);
+
+        var saveAudioTask = BackgroundTask.Run(
+            () => SaveAudio(openSegment, cancellationToken),
+            Log, $"{nameof(SaveAudio)} failed",
+            cancellationToken);
+
+        var audioEntryTask = BackgroundTask.Run(
+            () => CreateAudioEntry(openSegment, cancellationToken),
+            Log, $"{nameof(CreateAudioEntry)} failed",
+            cancellationToken);
+
         var transcribeTask = BackgroundTask.Run(
             () => TranscribeAudio(openSegment, audioEntryTask, cancellationToken),
             Log, $"{nameof(TranscribeAudio)} failed",
@@ -88,6 +101,8 @@ public sealed class AudioProcessor : IAudioProcessor
         _ = BackgroundTask.Run(FinalizeAudioProcessing,
             Log, $"{nameof(FinalizeAudioProcessing)} failed",
             CancellationToken.None);
+
+        await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
 
         async Task FinalizeAudioProcessing()
         {
