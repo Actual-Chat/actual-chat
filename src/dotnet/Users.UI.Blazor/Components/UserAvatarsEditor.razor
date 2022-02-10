@@ -1,0 +1,131 @@
+﻿@using System.Text.Encodings.Web
+@inherits ComputedStateComponent<UserAvatarsEditor.Model>
+@{
+    var items = State.LatestNonErrorValue.Items;
+    var title = new MarkupString(Title);
+}
+<h3 class="ml-4 mt-4 mb-6">@title</h3>
+@if (items.Length == 0) {
+    <div class="absolute top-0 left-0 h-full w-full grid justify-items-center items-center">
+        <span>Create your first Avatar</span>
+    </div>
+}
+<ul class="flex flex-wrap">
+    @foreach (var item in items) {
+        var brdCls = !string.IsNullOrEmpty(ChatId) && item.IsUserDefault ? "border border-green-300" : "";
+        <li class="group m-4">
+            <div class="relative">
+                <UserAvatar AvatarId="@item.AvatarId" Css="@brdCls">
+                    <ActionsTemplate>
+                        <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary"
+                                @onclick="@(() => EditAvatar(item.AvatarId))">Edit</button>
+                    </ActionsTemplate>
+                </UserAvatar>
+                <div class="absolute top-0 right-0 mr-4 mt-2">
+                    @if (item.IsSelected) {
+                        <button type="button" title="Selected" @onclick="@(() => Select(""))">
+                            <i class="fa fa-check fa-2x scale-125 text-green-500" aria-hidden="true"></i>
+                        </button>
+                    } else {
+                        <button type="button" title="Select" @onclick="@(() => Select(item.AvatarId))">
+                            <i class="fa fa-check fa-2x text-gray-200 hover:scale-110 hover:text-green-500 transition duration-300 ease-in-out" aria-hidden="true"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        </li>
+    }
+</ul>
+
+<button type="button" title="Create new Avatar"
+        @onclick="OnAddNewAvatar"
+        class="w-10 h-10 text-accent bg-button-success rounded-full group
+               hover:scale-110 ease-in-out duration-150
+               hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+               absolute bottom-0 right-0 mr-4 mb-4">
+    <span class="fill-current text-accent-muted group-hover:text-primary ease-in-out duration-150">
+        <svg class="w-6 h-6 mx-auto" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+        </svg>
+    </span>
+</button>
+
+<div class="absolute top-0 right-0 mr-4 mt-4 ">
+    <CloseButton Click="OnCancel" />
+</div>
+
+@code {
+    public class Model {
+        public Item[] Items { get; set; } = Array.Empty<Item>();
+    }
+
+    public class Item {
+        public bool IsUserDefault { get; set; }
+        public bool IsSelected { get; set; }
+        public string AvatarId { get; set; } = "";
+    }
+
+    [Inject] IUserAvatars UserAvatars { get; set; } = null!;
+    [Inject] IChatUserSettings ChatUserSettings { get; set; } = null!;
+    [Inject] NavigationManager Nav { get; set; } = default!;
+    [Inject] Session Session { get; set; } = null!;
+    [Inject] UICommandRunner Cmd { get; set; } = null!;
+
+    [Parameter]
+    public string Title { get; set; } = "";
+    [Parameter]
+    public string ChatId { get; set; } = "";
+    [Parameter]
+    public Action? CancelRequested { get; set; } = default!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new () { InitialValue = new ()};
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var avatarIds = await UserAvatars.GetAvatarIds(Session, cancellationToken);
+        var userDefaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken);
+        string selectedAvatarId;
+        if (string.IsNullOrEmpty(ChatId)) {
+            selectedAvatarId = userDefaultAvatarId;
+        } else {
+            var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);
+            selectedAvatarId = chatUserSettings?.AvatarId ?? "";
+        }
+        return new Model {
+            Items = avatarIds.Select(c => new Item {
+                AvatarId = c,
+                IsUserDefault = c == userDefaultAvatarId,
+                IsSelected = c == selectedAvatarId
+            }).ToArray()
+        };
+    }
+
+    private async Task Select(string avatarId) {
+        if (ChatId.IsNullOrEmpty()) {
+            var command = new IUserAvatars.SetDefaultCommand(Session, avatarId);
+            await Cmd.Run(command);
+        } else {
+            var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, default).ConfigureAwait(false);
+            chatUserSettings ??= new();
+            chatUserSettings = chatUserSettings with { AvatarId = avatarId };
+            var command = new IChatUserSettings.SetCommand(Session, ChatId, chatUserSettings);
+            await Cmd.Run(command);
+        }
+    }
+
+    private async Task OnAddNewAvatar() {
+        var command = new IUserAvatars.CreateCommand(Session);
+        await Cmd.Run(command);
+    }
+
+    private void EditAvatar(string avatarId) {
+        var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        Nav.NavigateTo("user/avatar/" + avatarId + "?returnUrl=" + UrlEncoder.Default.Encode(returnUrl));
+    }
+
+    private void OnCancel() {
+        CancelRequested?.Invoke();
+    }
+}

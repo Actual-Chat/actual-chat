@@ -64,9 +64,6 @@ public interface IChatAuthorsClientDef
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [Get(nameof(GetChatIds))]
     Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
-
-    [Post(nameof(UpdateAuthor))]
-    Task UpdateAuthor([Body] IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]

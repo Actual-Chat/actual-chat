@@ -12,11 +12,11 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     private readonly ICommander _commander;
     private readonly IAuth _auth;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
+    private readonly IUserAvatarsBackend _userAvatarsBackend;
     private readonly RedisSequenceSet<ChatAuthor> _idSequences;
     private readonly IRandomNameGenerator _randomNameGenerator;
     private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
-    private readonly IUserInfos _userInfos;
-    private readonly IUserStates _userStates;
+    private readonly IChatUserSettingsBackend _chatUserSettingsBackend;
 
     public ChatAuthors(IServiceProvider services) : base(services)
     {
@@ -26,8 +26,8 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
-        _userInfos = services.GetRequiredService<IUserInfos>();
-        _userStates = services.GetRequiredService<IUserStates>();
+        _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
+        _chatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
     }
 
     // [ComputeMethod]
@@ -83,15 +83,17 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         return chatIds;
     }
 
-    // [CommandHandler]
-    public virtual async Task UpdateAuthor(IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        // TODO: check permissions
-        var author = await GetOrCreate(command.Session, command.ChatId, cancellationToken).ConfigureAwait(false);
-        var updateCommand = new IChatAuthorsBackend.UpdateCommand(author.Id, command.Name, command.Picture);
-        await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (user.IsAuthenticated)
+            return null;
+        var chatAuthor = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null)
+            return null;
+        var avatar = await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, "", cancellationToken)
+            .ConfigureAwait(false);
+        return avatar.Id;
     }
 }

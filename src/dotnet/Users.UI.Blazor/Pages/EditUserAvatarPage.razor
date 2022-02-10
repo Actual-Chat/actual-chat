@@ -1,0 +1,21 @@
+@page "/user/avatar/{AvatarId}"
+
+<div class="px-2 py-2">
+    <UserAvatarEditor AvatarId="@AvatarId" CancelRequested="NavigateBack" OnUpdated="NavigateBack" />
+</div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    [Parameter]
+    public string AvatarId { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+
+    private void NavigateBack() {
+        var urlBack = ReturnUrl.NullIfWhiteSpace() ?? "/user/avatars";
+        Nav.NavigateTo(urlBack);
+    }
+}
