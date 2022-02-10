@@ -1,5 +1,3 @@
-using ActualChat.Media;
-
 namespace ActualChat.Audio;
 
 public interface IAudioProcessor

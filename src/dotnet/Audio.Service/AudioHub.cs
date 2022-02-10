@@ -31,7 +31,11 @@ public class AudioHub : Hub
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
-    public Task ProcessAudio(AudioRecord audioRecord, IAsyncEnumerable<byte[]> recordingStream)
-        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        => _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default);
+    public async Task ProcessAudio(AudioRecord audioRecord, IAsyncEnumerable<byte[]> recordingStream)
+    // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+    {
+        // var res = await recordingStream.ToListAsync().ConfigureAwait(false);
+        await _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default)
+            .ConfigureAwait(false);
+    }
 }
