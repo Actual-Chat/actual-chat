@@ -99,7 +99,6 @@ public partial class ChatAuthors
             var name = _randomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
-                Picture = "",
                 IsAnonymous = true,
             };
         }
@@ -121,46 +120,27 @@ public partial class ChatAuthors
         dbContext.Add(dbChatAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbChatAuthor.ToModel();
+        var model = dbChatAuthor.ToModel();
+        CommandContext.GetCurrent().Items.Set(model);
+        return model;
     }
 
-    public virtual async Task Update(IChatAuthorsBackend.UpdateCommand command, CancellationToken cancellationToken)
+    /// <summary> The filter which creates default avatar for anonymous chat author</summary>
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task OnChatAuthorCreated(
+        IChatAuthorsBackend.CreateCommand command,
+        CancellationToken cancellationToken)
     {
-        var (authorId, name, picture) = command;
         var context = CommandContext.GetCurrent();
-
-        if (Computed.IsInvalidating()) {
-            var operation = CommandContext.GetCurrent().Operation();
-            var invChatAuthor = operation.Items.Get<ChatAuthor>();
-            if (invChatAuthor != null) {
-                var invChatId = invChatAuthor.ChatId;
-                var invUserId = invChatAuthor.UserId;
-                if (!invUserId.IsEmpty) {
-                    _ = GetByUserId(invChatId, invUserId, true, default);
-                    _ = GetByUserId(invChatId, invUserId, false, default);
-                }
-                _ = Get(invChatId, authorId, true, default);
-                _ = Get(invChatId, authorId, false, default);
-            }
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        if (Computed.IsInvalidating())
             return;
-        }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbChatAuthor = await dbContext.ChatAuthors
-            .SingleOrDefaultAsync(a => a.Id == authorId, cancellationToken)
+        var model = context.Items.Get<ChatAuthor>()!;
+        if (!model.UserId.IsEmpty)
+            return;
+        await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
             .ConfigureAwait(false);
-        if (dbChatAuthor == null)
-            throw new InvalidOperationException("chat author does not exists");
-
-        dbChatAuthor.Name = name ?? "";
-        dbChatAuthor.Picture = picture ?? "";
-        dbChatAuthor.Version = VersionGenerator.NextVersion();
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        var сhatAuthor = dbChatAuthor.ToModel();
-        context.Operation().Items.Set(сhatAuthor);
     }
 
     // Private / internal methods
@@ -189,13 +169,28 @@ public partial class ChatAuthors
 
     private async Task<ChatAuthor?> InheritFromUserAuthor(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
     {
-        if (!inherit || chatAuthor == null || chatAuthor.UserId.IsEmpty)
+        if (!inherit || chatAuthor == null)
             return chatAuthor;
 
-        var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken).ConfigureAwait(false);
-        if (userAuthor == null)
-            return chatAuthor;
+        if (!chatAuthor.UserId.IsEmpty) {
+            var chatUserSettings = await _chatUserSettingsBackend
+                .Get(chatAuthor.UserId.Value, chatAuthor.ChatId, cancellationToken)
+                .ConfigureAwait(false);
+            var avatarId = chatUserSettings?.AvatarId ?? Symbol.Empty;
+            if (!avatarId.IsEmpty) {
+                var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+                return chatAuthor.InheritFrom(avatar);
+            }
 
-        return chatAuthor.InheritFrom(userAuthor);
+            var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken)
+                .ConfigureAwait(false);
+            return chatAuthor.InheritFrom(userAuthor);
+        }
+        else {
+            var avatarId = await _userAvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
+                .ConfigureAwait(false);
+            var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+            return chatAuthor.InheritFrom(avatar);
+        }
     }
 }

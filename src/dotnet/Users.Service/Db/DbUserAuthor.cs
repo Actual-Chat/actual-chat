@@ -16,8 +16,8 @@ public class DbUserAuthor : IHasId<string>
 
     [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = "";
-    public string Picture { get; set; } = "";
     public bool IsAnonymous { get; set; }
+    public string AvatarId { get; set; } = "";
 
     public DbUserAuthor() { }
     public DbUserAuthor(UserAuthor model) => UpdateFrom(model);
@@ -27,8 +27,8 @@ public class DbUserAuthor : IHasId<string>
             Id = UserId,
             Version = Version,
             Name = Name,
-            Picture = Picture,
             IsAnonymous = IsAnonymous,
+            AvatarId = AvatarId
         };
 
     public void UpdateFrom(UserAuthor model)
@@ -36,8 +36,8 @@ public class DbUserAuthor : IHasId<string>
         UserId = model.Id;
         Version = model.Version;
         Name = model.Name;
-        Picture = model.Picture;
         IsAnonymous = model.IsAnonymous;
+        AvatarId = model.AvatarId;
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbUserAuthor>
