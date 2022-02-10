@@ -1,0 +1,54 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@inject ClientAuthHelper _clientAuthHelper
+@inject NavigationManager _navigator
+
+<Dropdown ContentPositionCss="bottom-11 left-0 w-48 rounded-md" Class="relative">
+    <ButtonTemplate>
+        <AccountView User="@User"></AccountView>
+    </ButtonTemplate>
+    <ContentTemplate>
+        <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+            <MenuItem Title="Settings" Name="settings">
+                <Icon>
+                    <svg class="fill-current h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 32 32">
+                        <path d="M24 13.616v-3.232l-2.869-1.02c-.198-.687-.472-1.342-.811-1.955l1.308-2.751-2.285-2.285-2.751 1.307c-.613-.339-1.269-.613-1.955-.811l-1.021-2.869h-3.232l-1.021 2.869c-.686.198-1.342.471-1.955.811l-2.751-1.308-2.285 2.285 1.308 2.752c-.339.613-.614 1.268-.811 1.955l-2.869 1.02v3.232l2.869 1.02c.197.687.472 1.342.811 1.955l-1.308 2.751 2.285 2.286 2.751-1.308c.613.339 1.269.613 1.955.811l1.021 2.869h3.232l1.021-2.869c.687-.198 1.342-.472 1.955-.811l2.751 1.308 2.285-2.286-1.308-2.751c.339-.613.613-1.268.811-1.955l2.869-1.02zm-12 2.384c-2.209 0-4-1.791-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4z"/>
+                    </svg>
+                </Icon>
+            </MenuItem>
+            <MenuItem Title="Avatars" Name="avatars" OnItemClick="Avatars">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="fill-current h-6 w-6" viewBox="-4 -1 32 32">
+                        <path d="M16.5 14.5c0 .828-.56 1.5-1.25 1.5s-1.25-.672-1.25-1.5.56-1.5 1.25-1.5 1.25.672 1.25 1.5zm-7.75-1.5c-.69 0-1.25.672-1.25 1.5s.56 1.5 1.25 1.5 1.25-.672 1.25-1.5-.56-1.5-1.25-1.5zm3.25 8.354c2.235 0 3-2.354 3-2.354h-6s.847 2.354 3 2.354zm12-6.041c0 1.765-.985 3.991-3.138 4.906-2.025 3.233-4.824 5.781-8.862 5.781-3.826 0-6.837-2.548-8.862-5.781-2.153-.916-3.138-3.142-3.138-4.906 0-2.053.862-3.8 2.71-3.964.852-9.099 8.57-8.408 9.837-10.849.323.559.477 1.571-.02 2.286.873-.045 2.344-1.304 2.755-2.552.754.366 1.033 1.577.656 2.354.542-.103 2.187-1.15 3.062-2.588.688 1.563.026 3.563-.708 4.771l-.012.001c1.796 1.707 2.781 4.129 3.01 6.576 1.859.165 2.71 1.917 2.71 3.965zm-2.58-1.866c-.235-.152-.531-.115-.672-.053-.56.25-1.214-.062-1.372-.66l-.001.016c-.333-2.604-1.125-4.854-2.611-5.565-6.427 7.009-10.82-.914-11.94 3.529-.101.582-.166 1.172-.166 1.766 0 .719-.743 1.209-1.406.914-.14-.062-.437-.1-.672.053-1 .651-.894 4.184 1.554 5.012.224.076.413.228.535.43 2.447 4.053 5.225 5.111 7.331 5.111 3.288 0 5.615-2.269 7.332-5.111.122-.202.312-.354.535-.43 2.447-.828 2.553-4.361 1.553-5.012z"/>
+                    </svg>
+                </Icon>
+            </MenuItem>
+            <MenuItem Title="Sign Out" Name="singOut" OnItemClick="SignOut">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="fill-current h-6 w-6" viewBox="-6 -2 32 32">
+                        <path d="M16 9v-4l8 7-8 7v-4h-8v-6h8zm-16-7v20h14v-2h-12v-16h12v-2h-14z"/>
+                    </svg>
+                </Icon>
+            </MenuItem>
+        </Menu>
+    </ContentTemplate>
+</Dropdown>
+
+@code{
+    [CascadingParameter]
+    private Task<AuthState> AuthStateTask { get; set; } = null!;
+    private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
+    private User User => AuthState.User;
+    private bool IsOpen { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+        => AuthState = await AuthStateTask;
+
+    public void SignOut() {
+        _clientAuthHelper.SignOut();
+        IsOpen = false;
+    }
+
+    public void Avatars() {
+        _navigator.NavigateTo("/user/avatars");
+    }
+}

@@ -1,12 +1,12 @@
-﻿@using System.Net.NetworkInformation
+﻿@namespace ActualChat.UI.Blazor.Components
+@using System.Net.NetworkInformation
 @using ActualChat.UI.Blazor.Module
-@namespace ActualChat.Chat.UI.Blazor.Components
 @inject IJSRuntime _js
 @implements IDropdownBackend
 @implements IAsyncDisposable
 
 <div class="dropdown @Class" @ref="DropdownRef">
-    <button @onclick="@(() => _isOpened = !_isOpened)" class="dropdown-button sticky flex outline-none hover:cursor-pointer @ButtonClass">
+    <button @onclick="@(() => _isOpened = !_isOpened)" class="dropdown-button relative flex outline-none hover:cursor-pointer @ButtonClass">
         @ButtonTemplate
     </button>
     <div class="dropdown-content absolute @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
