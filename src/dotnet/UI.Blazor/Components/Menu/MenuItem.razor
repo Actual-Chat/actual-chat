@@ -1,8 +1,8 @@
-﻿@using ActualChat.UI.Blazor.Components.Dropdown
-@namespace ActualChat.UI.Blazor.Components
+﻿@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Components
 
 @{
-    var leftContainerClass = "flex-auto float-left mr-4 ml-1 h-full";
+    var leftContainerClass = "flex-auto float-left mx-1 h-full";
     var rightContainerClass  = "flex-auto float-right mx-1 h-full";
 }
 
@@ -14,7 +14,7 @@
             </div>
         </button>
     } else {
-        <button @onclick="OnItemClick" class="menu-item flex h-8 w-full text-secondary @GetCss()" name="@Name">
+        <button @onclick="OnItemClick" class="menu-item p-1.5 flex h-8 w-full text-secondary @GetCss()" name="@Name">
             @if (IsIconOnLeft()) {
                 <div class="w-8 @leftContainerClass">
                     <div class="flex">@Icon</div>

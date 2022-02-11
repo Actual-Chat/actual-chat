@@ -3,7 +3,7 @@
 }
 
 .menu-item {
-    @apply text-sm text-secondary hover:bg-primary rounded-md;
+    @apply text-sm text-secondary hover:bg-primary rounded-sm min-w-max;
 }
 
 .menu-item:hover {
