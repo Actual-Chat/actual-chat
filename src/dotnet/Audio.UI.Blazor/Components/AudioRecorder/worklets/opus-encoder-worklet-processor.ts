@@ -35,7 +35,7 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         this.port.onmessage = this.onRecorderMessage;
     }
 
-    public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
+    public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         try {
             if (inputs == null
                 || inputs.length === 0
