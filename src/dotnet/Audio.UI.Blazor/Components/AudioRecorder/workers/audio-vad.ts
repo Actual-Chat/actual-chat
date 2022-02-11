@@ -98,6 +98,8 @@ export class VoiceActivityDetector {
         let currentEvent = this.lastActivityEvent;
         const currentOffset = this.sampleCount;
 
+        // console.log(prob);
+
         if (this.speechSteps >= ACCUMULATIVE_PERIOD_START) {
             // enough statistics to adjust trigSum \ negTrigSum
             const probMedian = streamedMedian.median;

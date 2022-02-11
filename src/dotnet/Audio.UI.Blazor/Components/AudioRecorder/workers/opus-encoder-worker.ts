@@ -22,6 +22,7 @@ type ModuleOverrides = {
     wasmBinary?: ArrayBuffer;
 }
 
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
 const queue = new Denque<ArrayBuffer | 'done'>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
@@ -122,7 +123,7 @@ async function onLoadEncoder(message: LoadEncoderMessage, workletMessagePort: Me
             state = 'readyToInit';
         }, reason => {
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            console.error(`Error loading Opus encoder: ${reason}`)
+            console.error(`Error loading Opus encoder: ${reason}`);
         });
 }
 
@@ -137,21 +138,34 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         default:
             break;
     }
-    if (audioBuffer.byteLength !== 0 && state === 'encoding') {
-        queue.push(buffer);
-
-        processQueue();
+    if (audioBuffer.byteLength !== 0) {
+        if (state === 'encoding'){
+            queue.push(buffer);
+            processQueue();
+        } else if (state === 'paused') {
+            queue.push(buffer);
+            if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
+                const bufferOrDone = queue.shift();
+                if (bufferOrDone === 'done') {
+                    queue.shift();
+                    queue.unshift('done');
+                }
+            }
+        }
     }
 };
 
 const onVadMessage = (ev: MessageEvent<VoiceActivityChanged>) => {
     const vadEvent = ev.data;
+    console.log(vadEvent);
+
     if (state === 'encoding') {
         if (vadEvent.kind === 'end') {
             state = 'paused';
         }
     } else if (state == 'paused' && vadEvent.kind === 'start') {
         state = 'encoding';
+        processQueue();
     }
 };
 
@@ -160,14 +174,14 @@ function processQueue(): void {
         return;
     }
 
-    if (isEncoding) {
+    if (isEncoding || state !== 'encoding') {
         return;
     }
 
     try {
         isEncoding = true;
 
-        const bufferOrDone = queue.pop();
+        const bufferOrDone = queue.shift();
         if (typeof bufferOrDone === 'string') {
             if (bufferOrDone === 'done') {
                 try {
