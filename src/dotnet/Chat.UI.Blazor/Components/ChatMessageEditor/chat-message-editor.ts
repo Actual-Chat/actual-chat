@@ -27,6 +27,7 @@ export class ChatMessageEditor {
         this.input.addEventListener('input', this.inputInputListener);
         this.input.addEventListener('keydown', this.inputKeydownListener);
         this.input.addEventListener('mousedown', this.inputMousedownListener);
+        this.input.addEventListener('paste', this.inputPasteListener);
         this.postButton.addEventListener('click', this.postClickListener);
         this.recordButton.addEventListener('click', this.recordClickListener);
         this.changeMode();
@@ -46,6 +47,16 @@ export class ChatMessageEditor {
 
     private inputMousedownListener = ((event: MouseEvent & {target: Element; }) => {
         this.input.focus();
+    })
+
+    private inputPasteListener = ((event: ClipboardEvent & {target: Element; }) => {
+        // Get pasted data via clipboard API
+        const clipboardData = event.clipboardData;
+        const pastedData = clipboardData.getData('text/plain');
+        if (pastedData.length>0) {
+            this.pasteClipboardData(pastedData);
+            event.preventDefault();
+        }
     })
 
     private postClickListener = ((event: MouseEvent & {target: Element; }) => {
@@ -93,13 +104,80 @@ export class ChatMessageEditor {
     }
 
     private updateClientSideState() : Promise<void> {
+        //console.log("message editor: UpdateClientSideState")
         return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
+    }
+
+    private pasteClipboardData(pastedData: string) {
+        // document.execCommand api is deprecated
+        // (see https://developer.mozilla.org/ru/docs/Web/API/Document/execCommand)
+        // but it gives better experience for undo (ctrl+z) in comparison with
+        // insertTextWithSelection function implemented with using Selection API
+        // (see https://developer.mozilla.org/en-US/docs/Web/API/Selection)
+        if (ChatMessageEditor.insertTextWithExecCommand(pastedData))
+            return
+        ChatMessageEditor.insertTextWithSelection(pastedData);
+        this.changeMode();
+        const _ = this.updateClientSideState();
+    }
+
+    private static replaceHeadingSpaces(text : string) : string {
+        let spacesNumber = 0;
+        for (let i = 0; i < text.length; i++) {
+            if (text.charAt(i) !== " ")
+                break;
+            spacesNumber++;
+        }
+        const repeatNumber = Math.ceil(spacesNumber / 2);
+        return "&nbsp; ".repeat(repeatNumber) + text.substr(spacesNumber);
+    }
+
+    private static insertTextWithExecCommand(text : string) : boolean {
+        //return document.execCommand("insertText", false, text)
+        function escapetext(text : string) : string {
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+            return text.replace(/[&<>"']/g, function(m) {
+                return map[m];
+            });
+        }
+
+        let html = "";
+        const lines = text.split(/\r\n|\r|\n/);
+        let firstLine = true;
+        for (let line of lines) {
+            if (!firstLine)
+                html += "<br />";
+            html += ChatMessageEditor.replaceHeadingSpaces(escapetext(line));
+            firstLine = false;
+        }
+        return document.execCommand('insertHtml', false, html);
+    }
+
+    private static insertTextWithSelection(text : string) {
+        const selection = window.getSelection();
+        if (!selection)
+            return;
+        if (selection.getRangeAt && selection.rangeCount) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            const lines = text.split(/\r\n|\r|\n/);
+            let lastLine = true;
+            for (let line of lines.reverse()) {
+                if (!lastLine)
+                    range.insertNode(document.createElement("br"));
+                //line = ChatMessageEditor.replaceHeadingSpaces(line);
+                range.insertNode(document.createTextNode(line));
+                lastLine = false;
+            }
+            selection.collapseToEnd();
+        }
     }
 
     private dispose() {
         this.input.removeEventListener('input', this.inputInputListener);
         this.input.removeEventListener('keydown', this.inputKeydownListener);
         this.input.removeEventListener('mousedown', this.inputMousedownListener);
+        this.input.removeEventListener('paste', this.inputPasteListener);
         this.postButton.removeEventListener('click', this.postClickListener);
         this.recordButton.removeEventListener('click', this.recordClickListener);
     }
