@@ -21,7 +21,7 @@ export class VoiceActivityChanged {
     }
 }
 
-export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate: number = 16000): VoiceActivityChanged {
+export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate = 16000): VoiceActivityChanged {
     return new VoiceActivityChanged(event.kind, event.offset / sampleRate, event.speechProb, event.duration === null ? null : event.duration / sampleRate);
 }
 
@@ -33,10 +33,10 @@ export class VoiceActivityDetector {
     private readonly modelUri: URL;
     private readonly movingAverages: ExponentialMovingAverage;
     private readonly streamedMedian: StreamedMedian;
-    private initPromise: Promise<void>;
+    private readonly initPromise: Promise<void>;
 
     private session: ort.InferenceSession = null;
-    private sampleCount: number = 0;
+    private sampleCount = 0;
     private lastActivityEvent: VoiceActivityChanged;
     private endOffset: number = null;
     private speechSteps = 0;
@@ -54,16 +54,16 @@ export class VoiceActivityDetector {
         this.streamedMedian = new StreamedMedian();
         this.lastActivityEvent = new VoiceActivityChanged('end', 0, 0);
 
-        this.h0 = new ort.Tensor(new Float32Array(2 * 1 * 64), [2, 1, 64]);
-        this.c0 = new ort.Tensor(new Float32Array(2 * 1 * 64), [2, 1, 64]);
+        this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
+        this.c0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
 
         ort.env.wasm.numThreads = 4;
         ort.env.wasm.simd = true;
         ort.env.wasm.wasmPaths = {
-            'ort-wasm.wasm': wasmPath,
-            'ort-wasm-threaded.wasm': wasmThreadedPath,
-            'ort-wasm-simd.wasm': wasmSimdPath,
-            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath,
+            'ort-wasm.wasm': wasmPath as string,
+            'ort-wasm-threaded.wasm': wasmThreadedPath as string,
+            'ort-wasm-simd.wasm': wasmSimdPath as string,
+            'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath as string,
         };
 
         this.initPromise = this.init();
