@@ -1,3 +1,4 @@
+import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
 import { VadMessage } from '../workers/audio-vad-worker-message';
 
@@ -5,7 +6,7 @@ const SAMPLES_PER_WINDOW = 768;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private buffer: AudioRingBuffer;
-    private bufferDeque: ArrayBuffer[];
+    private bufferDeque: Denque<ArrayBuffer>;
 
     private workerPort: MessagePort;
 
@@ -17,14 +18,14 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
 
     private init(): void {
         this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferDeque = [];
+        this.bufferDeque = new Denque<ArrayBuffer>();
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
     }
 
-    public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
+    public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         if (inputs == null
             || inputs.length === 0
             || inputs[0].length === 0

@@ -52,9 +52,9 @@ async function onInitNewStream(): Promise<void> {
         OUT_RATE,
         inputDatatype,
         outputDatatype,
-        SoxrQuality.SOXR_LQ
+        SoxrQuality.SOXR_MQ,
     );
-    await newResampler.init(SoxrModule, { 'locateFile': (path:string, directory: string) => SoxrWasm as string });
+    await newResampler.init(SoxrModule, { 'locateFile': () => SoxrWasm as string });
     resampler = newResampler;
 }
 
@@ -96,7 +96,7 @@ async function processQueue(): Promise<void> {
     try {
         isVadRunning = true;
 
-        const buffer = queue.pop();
+        const buffer = queue.shift();
         const dataToResample = new Uint8Array(buffer);
         const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
 
