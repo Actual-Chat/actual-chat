@@ -1,4 +1,4 @@
-﻿namespace ActualChat.UI.Blazor.Components.Dropdown;
+﻿namespace ActualChat.UI.Blazor.Components;
 
 public enum TooltipPosition
 {
