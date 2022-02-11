@@ -4,7 +4,8 @@ import { AudioContextPool } from 'audio-context-pool';
 import { EncoderResponseMessage } from './opus-media-recorder-message';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
-import { DoneMessage, EncoderMessage, InitMessage, LoadEncoderMessage } from './workers/opus-encoder-worker-message';
+import { DoneMessage, InitNewStreamMessage, LoadEncoderMessage } from './workers/opus-encoder-worker-message';
+import { VadMessage } from './workers/audio-vad-worker-message';
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding';
 
@@ -26,12 +27,15 @@ const SAMPLE_RATE = 48000;
 const mimeType = 'audio/webm';
 export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
     private readonly worker: Worker;
+    private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
-    private readonly workerChannel: MessageChannel;
+    private readonly encoderWorkerChannel: MessageChannel;
+    private readonly vadWorkerChannel: MessageChannel;
 
     private context: AudioContext = null;
     private workerState: WorkerState = 'inactive';
     private encoderWorklet: AudioWorkletNode = null;
+    private vadWorklet: AudioWorkletNode = null;
     private stopResolve: () => void = null;
 
     public source?: MediaStreamAudioSourceNode = null;
@@ -59,10 +63,14 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.sessionId = options.sessionId;
         this.chatId = options.chatId;
 
-        this.workerChannel = new MessageChannel();
+        const crossWorkerChannel = new MessageChannel();
+        this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
         this.worker.onerror = this.onWorkerError;
+
+        this.vadWorkerChannel = new MessageChannel();
+        this.vadWorker = new Worker('/dist/vadWorker.js');
 
         // Setting the url to the href property of an anchor tag handles normalization
         // for us. There are 3 main cases.
@@ -77,12 +85,18 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         const wasmPathUrl = aTag.href;
 
         const loadEncoder: LoadEncoderMessage = {
-            type: 'loadEncoder',
+            type: 'load-encoder',
             mimeType: 'audio/webm',
             wasmPath: wasmPathUrl,
             audioHubUrl: audioHubUrl,
         }
-        this.postMessageToWorker(loadEncoder);
+        // Expected 'readyToInit' event from the worker.
+        this.worker.postMessage(loadEncoder, [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
+
+        const initVadPort: VadMessage = {
+            type: 'init-port',
+        }
+        this.vadWorker.postMessage(initVadPort, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
     }
 
     public setSource(source: MediaStreamAudioSourceNode): void {
@@ -148,6 +162,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         // Stop stream first
         this.source.disconnect();
         this.encoderWorklet.disconnect();
+        this.vadWorklet.disconnect();
 
         const event = new Event('pause');
         this.dispatchEvent(event);
@@ -169,6 +184,7 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
+        this.source.connect(this.vadWorklet);
 
         const event = new Event('resume');
         this.dispatchEvent(event);
@@ -198,15 +214,17 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         // If the worker is already loaded then start
         if (this.workerState === 'readyToInit') {
             const { channelCount, audioBitsPerSecond, sessionId, chatId } = this;
-            const initMessage: InitMessage = {
-                type: 'init',
+            const initMessage: InitNewStreamMessage = {
+                type: 'init-new-stream',
                 sampleRate: SAMPLE_RATE,
                 channelCount: channelCount,
                 bitsPerSecond: audioBitsPerSecond,
                 sessionId: sessionId,
                 chatId: chatId,
             };
-            this.postMessageToWorker(initMessage);
+            // Initialize the worker
+            // Expected 'initCompleted' event from the worker.
+            this.worker.postMessage(initMessage);
         }
     }
 
@@ -233,15 +251,23 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         // If the worker is already loaded then start
         if (this.workerState === 'readyToInit') {
             const { channelCount, audioBitsPerSecond, sessionId, chatId } = this;
-            const initMessage: InitMessage = {
-                type: 'init',
+            const initMessage: InitNewStreamMessage = {
+                type: 'init-new-stream',
                 sampleRate: SAMPLE_RATE,
                 channelCount: channelCount,
                 bitsPerSecond: audioBitsPerSecond,
                 sessionId: sessionId,
                 chatId: chatId,
             };
-            this.postMessageToWorker(initMessage);
+            // Initialize the worker
+            // Expected 'initCompleted' event from the worker.
+            this.worker.postMessage(initMessage);
+
+            // Initialize new stream at the VAD worker
+            const vadInitMessage: VadMessage = {
+                type: 'init-new-stream',
+            }
+            this.vadWorker.postMessage(vadInitMessage);
         }
     }
 
@@ -253,12 +279,15 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         // Stop stream first
         this.source.disconnect();
         this.encoderWorklet.disconnect();
+        this.vadWorklet.disconnect();
 
         // Stop event will be triggered at _onmessageFromWorker(),
         const doneMessage: DoneMessage = {
             type: 'done'
         }
-        this.postMessageToWorker(doneMessage);
+        // Tell encoder finalize the job and destroy itself.
+        // Expected 'doneCompleted' event from the worker.
+        this.worker.postMessage(doneMessage);
 
         this.state = 'inactive';
     }
@@ -290,33 +319,20 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
             const initPortMessage: EncoderWorkletMessage = {
                 type: 'init-port',
             }
-            this.encoderWorklet.port.postMessage(initPortMessage, [this.workerChannel.port2]);
-        }
-    }
+            this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
 
-    private postMessageToWorker (encoderMessage: EncoderMessage) {
-        const { type } = encoderMessage;
-        switch (type) {
-            case 'loadEncoder':
-                // Expected 'readyToInit' event from the worker.
-                this.worker.postMessage(encoderMessage, [this.workerChannel.port1]);
-                break;
-
-            case 'init':
-                // Initialize the worker
-                // Expected 'initCompleted' event from the worker.
-                this.worker.postMessage(encoderMessage);
-                break;
-
-            case 'done':
-                // Tell encoder finalize the job and destroy itself.
-                // Expected 'doneCompleted' event from the worker.
-                this.worker.postMessage(encoderMessage);
-                break;
-
-            default:
-                // This is an error case
-                throw new Error('Internal Error: Incorrect postMessage requested.');
+            const vadWorkletOptions: AudioWorkletNodeOptions = {
+                numberOfInputs: 1,
+                numberOfOutputs: 1,
+                channelCount: 1,
+                channelInterpretation: 'speakers',
+                channelCountMode: 'explicit',
+            };
+            this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
+            const vadInitPortMessage: VadMessage = {
+                type: 'init-port',
+            }
+            this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
         }
     }
 
@@ -327,21 +343,30 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
                 this.workerState = 'readyToInit';
                 if (this.state === 'recording') {
                     const { channelCount, audioBitsPerSecond, sessionId, chatId } = this;
-                    const initMessage: InitMessage = {
-                        type: 'init',
+                    const initMessage: InitNewStreamMessage = {
+                        type: 'init-new-stream',
                         sampleRate: SAMPLE_RATE,
                         channelCount: channelCount,
                         bitsPerSecond: audioBitsPerSecond,
                         sessionId: sessionId,
                         chatId: chatId,
                     };
-                    this.postMessageToWorker(initMessage);
+                    // Initialize the worker
+                    // Expected 'initCompleted' event from the worker.
+                    this.worker.postMessage(initMessage);
+
+                    const vadInitPortMessage: VadMessage = {
+                        type: 'init-new-stream',
+                    }
+                    this.vadWorklet.port.postMessage(vadInitPortMessage);
                 }
                 break;
 
             case 'initCompleted':
                 // Start streaming
                 this.source.connect(this.encoderWorklet);
+                // It's OK to not wait for VAD worker init-new-stream message to be processed
+                this.source.connect(this.vadWorklet);
                 this.workerState = 'encoding';
                 this.dispatchEvent( new Event('start'));
                 break;
@@ -369,6 +394,8 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
             this.source.disconnect();
         if (this.encoderWorklet)
             this.encoderWorklet.disconnect();
+        if (this.vadWorklet)
+            this.vadWorklet.disconnect();
 
         this.workerState = 'readyToInit';
 
