@@ -3,9 +3,10 @@ import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 
-import { EncoderMessage, InitMessage, LoadEncoderMessage } from './opus-encoder-worker-message';
+import { EncoderMessage, InitNewStreamMessage, LoadEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { EncoderResponseMessage } from '../opus-media-recorder-message';
+import { VoiceActivityChanged } from './audio-vad';
 
 interface Encoder {
     init(inputSampleRate: number, channelCount: number, bitsPerSecond: number): void;
@@ -14,7 +15,7 @@ interface Encoder {
     close(): void;
 }
 
-type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'closed';
+type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'closed';
 
 type ModuleOverrides = {
     locateFile?: (path:string, scriptDirectory: string) => string;
@@ -28,18 +29,19 @@ let recordingSubject: signalR.Subject<Uint8Array>;
 
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
+let vadPort: MessagePort = null;
 let encoder: Encoder;
 let isEncoding = false;
 
 worker.onmessage = (ev: MessageEvent<EncoderMessage>) => {
     const { type } = ev.data;
     switch (type) {
-        case 'loadEncoder':
-            void onLoadEncoder(ev.data as LoadEncoderMessage, ev.ports[0]);
+        case 'load-encoder':
+            void onLoadEncoder(ev.data as LoadEncoderMessage, ev.ports[0], ev.ports[1]);
             break;
 
-        case 'init':
-            void onOnit(ev.data as InitMessage);
+        case 'init-new-stream':
+            void onInitNewStream(ev.data as InitNewStreamMessage);
             break;
 
         case 'done':
@@ -59,7 +61,7 @@ function onDone() {
     processQueue();
 }
 
-async function onOnit(message: InitMessage): Promise<void> {
+async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
     const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = message;
     encoder.init(sampleRate, channelCount, bitsPerSecond);
     state = 'encoding';
@@ -76,10 +78,12 @@ async function onOnit(message: InitMessage): Promise<void> {
     worker.postMessage(initCompletedMessage);
 }
 
-async function onLoadEncoder(message: LoadEncoderMessage, port: MessagePort): Promise<void> {
+async function onLoadEncoder(message: LoadEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     const { mimeType, wasmPath, audioHubUrl } = message;
-    workletPort = port;
+    workletPort = workletMessagePort;
+    vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
+    vadPort.onmessage = onVadMessage;
     connection = new signalR.HubConnectionBuilder()
         .withUrl(audioHubUrl)
         .withAutomaticReconnect([0, 300, 500, 1000, 3000, 10000])
@@ -122,7 +126,7 @@ async function onLoadEncoder(message: LoadEncoderMessage, port: MessagePort): Pr
         });
 }
 
-function onWorkletMessage(ev: MessageEvent<BufferEncoderWorkletMessage>) {
+const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
     const { type, buffer } = ev.data;
 
     let audioBuffer: ArrayBuffer;
@@ -138,7 +142,18 @@ function onWorkletMessage(ev: MessageEvent<BufferEncoderWorkletMessage>) {
 
         processQueue();
     }
-}
+};
+
+const onVadMessage = (ev: MessageEvent<VoiceActivityChanged>) => {
+    const vadEvent = ev.data;
+    if (state === 'encoding') {
+        if (vadEvent.kind === 'end') {
+            state = 'paused';
+        }
+    } else if (state == 'paused' && vadEvent.kind === 'start') {
+        state = 'encoding';
+    }
+};
 
 function processQueue(): void {
     if (queue.isEmpty()) {

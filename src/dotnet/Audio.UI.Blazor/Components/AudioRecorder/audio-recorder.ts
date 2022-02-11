@@ -1,13 +1,5 @@
 import { OpusMediaRecorder, OpusMediaRecorderOptions } from './opus-media-recorder';
 import { AudioContextPool } from 'audio-context-pool';
-import {
-    IRecordingEventQueue,
-    PauseRecordingEvent,
-    RecordingEventQueue,
-    ResumeRecordingEvent,
-} from './recording-event-queue';
-import { VoiceActivityChanged } from './audio-vad';
-import { toHexString } from './to-hex-string';
 
 const LogScope = 'AudioRecorder';
 
@@ -16,12 +8,9 @@ export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
     private readonly recorder: OpusMediaRecorder;
-    private readonly vadWorker: Worker;
-    private readonly vadChannel: MessageChannel;
 
     private context: {
         recorderContext: AudioContext,
-        vadWorkletNode: AudioWorkletNode,
     };
 
     private recording: {
@@ -47,24 +36,6 @@ export class AudioRecorder {
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             console.error(`${LogScope}.onerror: ${errorEvent['message']}`);
         };
-
-        this.vadWorker = new Worker('/dist/vadWorker.js');
-        this.vadChannel = new MessageChannel();
-        // this.vadWorker.onmessage = (ev: MessageEvent<VoiceActivityChanged>) => {
-        //     const vadEvent = ev.data;
-        //     if (this.debugMode)
-        //         console.log(`${LogScope}.startRecording: vadEvent =`, vadEvent);
-        //
-        //     if (this.isRecording()) {
-        //         if (vadEvent.kind === 'end') {
-        //             this.queue.append(new PauseRecordingEvent(Date.now(), vadEvent.offset));
-        //         }
-        //         else {
-        //             this.queue.append(new ResumeRecordingEvent(Date.now(), vadEvent.offset));
-        //         }
-        //     }
-        // };
-        this.vadWorker.postMessage({ topic: 'init-port' }, [this.vadChannel.port1]);
 
         if (blazorRef == null)
             console.error(`${LogScope}.constructor: blazorRef == null`);
@@ -100,19 +71,8 @@ export class AudioRecorder {
 
         if (this.context == null) {
             const recorderContext = await AudioContextPool.get('main') as AudioContext;
-            const audioWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
-                channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-            };
-            const vadWorkletNode = new AudioWorkletNode(recorderContext, 'audio-vad-worklet-processor', audioWorkletOptions);
-            vadWorkletNode.port.postMessage({ topic: 'init-port' }, [this.vadChannel.port2]);
-
             this.context = {
                 recorderContext: recorderContext,
-                vadWorkletNode: vadWorkletNode,
             };
         }
 
@@ -152,9 +112,7 @@ export class AudioRecorder {
                 video: false
             };
             const stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
-            this.vadWorker.postMessage({ topic: 'init-new-stream' });
             const source = this.context.recorderContext.createMediaStreamSource(stream);
-            source.connect(this.context.vadWorkletNode);
 
             this.recording = {
                 stream: stream,
@@ -178,7 +136,6 @@ export class AudioRecorder {
         if (recording !== null) {
             recording.source.disconnect();
             recording.source = null;
-            this.context.vadWorkletNode.disconnect();
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
             await this.recorder.stopAsync();
