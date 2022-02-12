@@ -8,7 +8,9 @@ internal class CodeInlineRenderer : MarkupObjectRenderer<CodeInline>
     {
         renderer.Parts.Add(new CodePart {
              Markup = renderer.Markup,
-             TextRange = new Range<int>(obj.ContentWithTrivia.Start, obj.ContentWithTrivia.End + 1)
+             Language = "",
+             TextRange = new Range<int>(obj.ContentWithTrivia.Start, obj.ContentWithTrivia.End + 1),
+             Code = obj.Content
         });
     }
 }

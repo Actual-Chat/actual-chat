@@ -92,6 +92,27 @@ public class MarkupParsingTest
         plainTextPart.Text.Should().Be("Variables declaration: ");
         var codePart = result.Parts[1].Should().BeOfType<CodePart>().Subject;
         codePart.Text.Should().Be("var x = 0;");
+        codePart.Code.Should().Be("var x = 0;");
+    }
+
+    [Fact]
+    public async Task CodeBlockTest()
+    {
+        var text = @"Small program example
+```cs
+var x = 0;
+var y = x + 1;
+```";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(2);
+        var plainTextPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart.Text.Should().Be("Small program example");
+        var codePart = result.Parts[1].Should().BeOfType<CodePart>().Subject;
+        codePart.Language.Should().Be("cs");
+        codePart.Code.Should().Be(@"var x = 0;
+var y = x + 1;");
+        codePart.Text.Should().Be(@"var x = 0;
+var y = x + 1;");
     }
 
     [Fact]

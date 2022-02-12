@@ -23,7 +23,7 @@ internal class MarkupRenderer : RendererBase
         this._markupProto = markupProto ?? throw new ArgumentNullException(nameof(markupProto));
 
         // // Default block renderers
-        // ObjectRenderers.Add(new CodeBlockRenderer());
+        ObjectRenderers.Add(new CodeBlockRenderer());
         // ObjectRenderers.Add(new ListRenderer());
         // ObjectRenderers.Add(new HeadingRenderer());
         // ObjectRenderers.Add(new HtmlBlockRenderer());

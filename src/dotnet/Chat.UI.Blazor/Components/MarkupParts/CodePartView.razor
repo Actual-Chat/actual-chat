@@ -5,9 +5,11 @@
 @{
     var part = (CodePart) Part;
     var cls = _class ??= this.DefaultClass();
+    var codeContent = part.Code.NullIfWhiteSpace() ?? part.Text;
+    var langCls = part.Language.IsNullOrEmpty() ? "" : "language-" + part.Language;
 }
 
-<pre class="mt-2 max-w-[90%]"><code class="@cls block bg-primary p-1 rounded-md border border-gray-300">@part.Text</code></pre>
+<pre class="mt-2 max-w-[90%]"><code class="@cls @langCls block bg-primary p-1 rounded-md border border-gray-300">@codeContent</code></pre>
 
 @code {
     private static string? _class;
