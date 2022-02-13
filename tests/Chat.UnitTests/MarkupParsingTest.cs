@@ -124,4 +124,14 @@ var y = x + 1;");
         var plainTextPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
         plainTextPart.Text.Should().Be(text);
     }
+
+    [Fact]
+    public async Task SanitizeLinkTest()
+    {
+        var text = "[test](javascript:alert(123))";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(1);
+        var linkPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        linkPart.Text.Should().Be("test");
+    }
 }
