@@ -10,6 +10,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 {
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
+    private bool ShouldStripWebM { get; init; }
 
     protected override AudioFormat DefaultFormat => new (){
         CodecSettings = "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwH/////////FUmpZrMq17GD"
@@ -24,12 +25,24 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
     public AudioSource(Task<AudioFormat> formatTask, IAsyncEnumerable<AudioFrame> frameStream, ILogger log, CancellationToken cancellationToken)
         : base(formatTask, frameStream, log, cancellationToken) { }
 
+    public AudioSource StripWebM(CancellationToken cancellationToken)
+    {
+        var byteStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
+        var audio = new AudioSource(byteStream, TimeSpan.Zero, Log, cancellationToken) {
+            ShouldStripWebM = true,
+        };
+        return audio;
+    }
+
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {
         if (skipTo < TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(skipTo));
         if (skipTo == TimeSpan.Zero)
             return this;
+
+        if (ShouldStripWebM)
+            throw new InvalidOperationException("SkipTo is not supported when WebM container has been stripped");
 
         var byteStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
         var audio = new AudioSource(byteStream, skipTo, Log, cancellationToken);
@@ -185,7 +198,10 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                     }
                     beforeFramesStart.CopyTo(formatBuffer[writtenAt..]);
 
-                    var format = CreateMediaFormat(ebml!, segment!, formatBuffer);
+                    var header = ShouldStripWebM
+                        ? segment?.Tracks?.TrackEntries[0].CodecPrivate ?? formatBuffer
+                        : formatBuffer;
+                    var format = CreateMediaFormat(ebml!, segment!, header);
                     formatTaskSource.SetResult(format);
                     framesStart = state.Position;
                 }
@@ -234,9 +250,13 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                     AudioFrame? mediaFrame = null;
                     if (skipToMs <= 0) {
                         // Simple case: nothing to skip
+                        // simpleBlock.Data
                         mediaFrame = new AudioFrame {
                             Offset = frameOffset,
-                            Data = webMReader.Span[framesStart..state.Position].ToArray(),
+                            Data = ShouldStripWebM
+                                ? simpleBlock.Data!
+                                : webMReader.Span[framesStart..state.Position].ToArray(),
+
                         };
                     }
                     else {
@@ -258,7 +278,9 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                             webMWriter.Write(simpleBlock);
                             mediaFrame = new AudioFrame {
                                 Offset = outputFrameOffset,
-                                Data = webMWriter.Written.ToArray(),
+                                Data = ShouldStripWebM
+                                    ? simpleBlock.Data!
+                                    : webMWriter.Written.ToArray(),
                             };
                             webMWriter = new WebMWriter(writeBuffer);
                         }
