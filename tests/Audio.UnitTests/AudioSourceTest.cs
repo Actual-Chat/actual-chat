@@ -30,6 +30,34 @@ public class AudioSourceTest
     }
 
     [Fact]
+    public async Task StripWebMTest()
+    {
+        var audio = await GetAudio("file.webm");
+        var offset = TimeSpan.Zero;
+        var stripped = audio.StripWebM(CancellationToken.None);
+        await stripped.WhenFormatAvailable;
+        stripped.Format.Serialize()
+            .Should()
+            .BeEquivalentTo( // OPUS header
+                new byte[] {
+                    0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64,
+                    0x01, 0x01, 0x00, 0x00, 0x80, 0xBB, 0x00, 0x00,
+                    0x00, 0x00, 0x00,
+                });
+        await foreach (var frame in stripped.GetFrames(default)) {
+            frame.Data[0].Should().BeOneOf(0xFB, 0x7B); // CELT-only FB 20 ms or Hybrid FB 20 ms
+            frame.Data.Should().NotBeNull();
+            frame.Data.Should().NotBeEmpty();
+            frame.Offset.Should().BeGreaterOrEqualTo(offset);
+            offset = frame.Offset > offset
+                ? frame.Offset
+                : offset;
+        }
+
+        offset.Should().Be(TimeSpan.FromMilliseconds(12240));
+    }
+
+    [Fact]
     public async Task ExtractFromFileWithMultipleClusters()
     {
         var audio = await GetAudio("large-file.webm");
