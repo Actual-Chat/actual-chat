@@ -6,10 +6,15 @@
     var part = (CodePart) Part;
     var cls = _class ??= this.DefaultClass();
     var codeContent = part.Code.NullIfWhiteSpace() ?? part.Text;
-    var langCls = part.Language.IsNullOrEmpty() ? "" : "language-" + part.Language;
+    if (!part.Language.IsNullOrEmpty())
+        cls += " language-" + part.Language;
 }
 
-<pre class="mt-2 max-w-[90%]"><code class="@cls @langCls block bg-primary p-1 rounded-md border border-gray-300">@codeContent</code></pre>
+@if (part.IsInline) {
+    <code class="@cls bg-primary p-1 rounded-md">@codeContent</code>
+} else {
+    <pre class="mt-2 max-w-[90%]"><code class="@cls block bg-primary p-1 rounded-md border border-gray-300">@codeContent</code></pre>
+}
 
 @code {
     private static string? _class;

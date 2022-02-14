@@ -93,6 +93,7 @@ public class MarkupParsingTest
         var codePart = result.Parts[1].Should().BeOfType<CodePart>().Subject;
         codePart.Text.Should().Be("var x = 0;");
         codePart.Code.Should().Be("var x = 0;");
+        codePart.IsInline.Should().BeTrue();
     }
 
     [Fact]
@@ -113,6 +114,7 @@ var y = x + 1;
 var y = x + 1;");
         codePart.Text.Should().Be(@"var x = 0;
 var y = x + 1;");
+        codePart.IsInline.Should().BeFalse();
     }
 
     [Fact]
