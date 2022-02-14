@@ -14,7 +14,8 @@ internal class CodeBlockRenderer : MarkupObjectRenderer<CodeBlock>
             Language = language,
             //TextRange = new Range<int>(stringSlice.Start, stringSlice.End),
             TextRange = obj.Lines.Count>0 ? new Range<int>(obj.Lines.Lines[0].Slice.Start, obj.Lines.Lines[obj.Lines.Count - 1].Slice.End + 1) : new Range<int>(0,0),
-            Code = obj.Lines.ToString()
+            Code = obj.Lines.ToString(),
+            IsInline = false
         });
     }
 }

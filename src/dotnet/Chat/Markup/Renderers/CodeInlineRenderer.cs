@@ -10,7 +10,8 @@ internal class CodeInlineRenderer : MarkupObjectRenderer<CodeInline>
              Markup = renderer.Markup,
              Language = "",
              TextRange = new Range<int>(obj.ContentWithTrivia.Start, obj.ContentWithTrivia.End + 1),
-             Code = obj.Content
+             Code = obj.Content,
+             IsInline = true
         });
     }
 }
