@@ -27,11 +27,11 @@ const queue = new Denque<ArrayBuffer | 'done'>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
 let recordingSubject: signalR.Subject<Uint8Array>;
-
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
+let lastNewStreamMessage: InitNewStreamMessage | null = null;
 let isEncoding = false;
 let debugMode = false;
 
@@ -65,6 +65,7 @@ function onDone() {
 
 async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
     const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = message;
+    lastNewStreamMessage = message;
     debugMode = message.debugMode;
 
     encoder.init(sampleRate, channelCount, bitsPerSecond);
@@ -126,6 +127,11 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
             }
             worker.postMessage(readyToInit);
             state = 'readyToInit';
+
+            if (debugMode) {
+                console.log('load module completed for recorder worker');
+            }
+
         }, reason => {
             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
             console.error(`Error loading Opus encoder: ${reason}`);
@@ -160,7 +166,7 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
     }
 };
 
-const onVadMessage = (ev: MessageEvent<VoiceActivityChanged>) => {
+const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     const vadEvent = ev.data;
     if (debugMode) {
         console.log(vadEvent);
@@ -169,8 +175,18 @@ const onVadMessage = (ev: MessageEvent<VoiceActivityChanged>) => {
     if (state === 'encoding') {
         if (vadEvent.kind === 'end') {
             state = 'paused';
+            recordingSubject.complete();
         }
     } else if (state == 'paused' && vadEvent.kind === 'start') {
+        if (!lastNewStreamMessage) {
+            throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
+        }
+
+        const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = lastNewStreamMessage;
+        encoder.init(sampleRate, channelCount, bitsPerSecond);
+        recordingSubject = new signalR.Subject<Uint8Array>();
+        await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+
         state = 'encoding';
         processQueue();
     }
