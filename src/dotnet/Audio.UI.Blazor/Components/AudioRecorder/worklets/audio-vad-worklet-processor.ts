@@ -1,6 +1,6 @@
 import Denque from 'denque';
 import { AudioRingBuffer } from './audio-ring-buffer';
-import { VadMessage } from '../workers/audio-vad-worker-message';
+import { BufferVadWorkletMessage, VadWorkletMessage } from './audio-vad-worklet-message';
 
 const SAMPLES_PER_WINDOW = 768;
 
@@ -55,7 +55,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.workerPort !== undefined) {
-                    const bufferMessage: VadMessage = {
+                    const bufferMessage: BufferVadWorkletMessage = {
                         type: 'buffer',
                         buffer: vadArrayBuffer,
                     };
@@ -71,7 +71,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
         return true;
     }
 
-    private onWorkerMessage = (ev: MessageEvent<VadMessage>) => {
+    private onWorkerMessage = (ev: MessageEvent<BufferVadWorkletMessage>) => {
         const { type, buffer } = ev.data;
 
         switch (type) {
@@ -83,7 +83,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
         }
     };
 
-    private onRecorderMessage = (ev: MessageEvent<VadMessage>) => {
+    private onRecorderMessage = (ev: MessageEvent<VadWorkletMessage>) => {
         const { type } = ev.data;
 
         switch (type) {

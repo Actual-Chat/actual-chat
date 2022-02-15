@@ -1,4 +1,4 @@
-import { OpusMediaRecorder, OpusMediaRecorderOptions } from './opus-media-recorder';
+import { OpusMediaRecorder } from './opus-media-recorder';
 import { AudioContextPool } from 'audio-context-pool';
 
 const LogScope = 'AudioRecorder';
@@ -8,6 +8,8 @@ export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
     private readonly recorder: OpusMediaRecorder;
+    private readonly sessionId: string;
+    private readonly chatId: string;
 
     private context: {
         recorderContext: AudioContext,
@@ -21,15 +23,15 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string, debugMode: boolean) {
         this.blazorRef = blazorRef;
         this.debugMode = debugMode;
+        this.sessionId = sessionId;
+        this.chatId = chatId;
         this.recording = null;
         this.isMicrophoneAvailable = false;
 
-        const options: OpusMediaRecorderOptions = {
+        const options: MediaRecorderOptions = {
             mimeType: 'audio/webm;codecs=opus',
             bitsPerSecond: 32000,
             audioBitsPerSecond: 32000,
-            sessionId: sessionId,
-            chatId: chatId,
         };
         this.recorder = new OpusMediaRecorder(options);
         this.recorder.onerror = (errorEvent: MediaRecorderErrorEvent) => {
@@ -120,8 +122,9 @@ export class AudioRecorder {
             };
         }
 
-        await this.recorder.startAsync(this.recording.source, 40);
-        await this.blazorRef.invokeMethodAsync('OnStartRecording');
+        const { blazorRef, sessionId, chatId, recording } = this;
+        await this.recorder.startAsync(recording.source, 40, sessionId, chatId);
+        await blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
     public async stopRecording(): Promise<void> {
