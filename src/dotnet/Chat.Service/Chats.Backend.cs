@@ -93,7 +93,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
         if (Constants.Chat.DefaultChatId == chatId) {
-            if (user != null && await _userInfos.IsAdmin(user.Id, cancellationToken))
+            if (user != null && await _userInfos.IsAdmin(user.Id, cancellationToken).ConfigureAwait(false))
                 return ChatPermissions.All;
             return ChatPermissions.None;
         }
