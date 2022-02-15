@@ -1,0 +1,88 @@
+{
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.git": true,
+    "**/.hg": true,
+    "**/.idea": true,
+    "**/.svn": true,
+    "**/.vs": true,
+    "**/bin": true,
+    "**/CVS": true,
+    "**/node_modules": true,
+    "**/obj": true,
+    "**/tmp": false,
+    "**/tools": false,
+    "**/*.cmd": true,
+    "src/dotnet/tsconfig.json": true
+  },
+  "typescript.enablePromptUseWorkspaceTsdk": false,
+  "typescript.tsdk": "./src/nodejs/node_modules/typescript/lib",
+  "eslint.enable": true,
+  "eslint.alwaysShowStatus": true,
+  "eslint.codeAction.showDocumentation": {
+    "enable": true
+  },
+  "eslint.options": {
+    "overrideConfigFile": "./src/nodejs/.eslintrc.yml"
+  },
+  "eslint.workingDirectories": [
+    {
+      "directory": "/",
+      "!cwd": false,
+    },
+  ],
+  "eslint.lintTask.enable": true,
+  "eslint.lintTask.options": "-c src/nodejs/.eslintrc.json --ignore-path src/nodejs/.eslintignore .",
+  "eslint.runtime": null,
+  "eslint.nodePath": "src/nodejs/node_modules",
+  "eslint.validate": [
+    "javascript",
+    "typescript"
+  ],
+  "eslint.packageManager": "npm",
+  "csharp.unitTestDebuggingOptions": {
+    "allowFastEvaluate": true,
+    "enableStepFiltering": true,
+    "logging": {
+      "programOutput": true,
+      "elapsedTiming": true,
+      "engineLogging": false,
+      "exceptions": true,
+      "moduleLoad": false,
+      "threadExit": false,
+      "browserStdOut": false,
+      "processExit": true
+    },
+    "requireExactSource": true,
+    "suppressJITOptimizations": false,
+    "justMyCode": true,
+    "sourceLinkOptions": {
+      "*": {
+        "enabled": true
+      }
+    },
+    "symbolOptions": {
+      "searchPaths": [],
+      "searchMicrosoftSymbolServer": false,
+      "searchNuGetOrgSymbolServer": false,
+      "moduleFilter": {
+        "mode": "loadOnlyIncluded",
+        "includeSymbolsNextToModules": false,
+        "includedModules": [
+          "*ActualChat*",
+          "*Stl*",
+        ],
+        "excludedModules": [
+          "*xunit*",
+          "*xunit*.*",
+          "*xunit*.dll",
+          "xunit.runner.visualstudio.dotnetcore.testadapter.dll",
+          "**/*/xunit.runner.visualstudio.dotnetcore.testadapter.dll",
+        ]
+      }
+    }
+  },
+  "cSpell.enableFiletypes": [
+    "aspnetcorerazor"
+  ]
+}
