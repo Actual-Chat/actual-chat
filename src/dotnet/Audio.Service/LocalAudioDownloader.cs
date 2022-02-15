@@ -18,11 +18,12 @@ public class LocalAudioDownloader : AudioDownloader
     public override async Task<AudioSource> Download(
         Uri audioUri,
         TimeSpan skipTo,
+        bool stripWebm,
         CancellationToken cancellationToken)
     {
         var match = AudioBlobIdRegex.Match(audioUri.ToString());
         if (!match.Success)
-            return await base.Download(audioUri, skipTo, cancellationToken).ConfigureAwait(false);
+            return await base.Download(audioUri, skipTo, stripWebm, cancellationToken).ConfigureAwait(false);
 
         var blobId = match.Groups["blobId"].Value;
         Log.LogInformation("Fetching blob #{BlobId}", blobId);
