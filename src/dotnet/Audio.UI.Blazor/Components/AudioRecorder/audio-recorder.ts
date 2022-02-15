@@ -1,13 +1,23 @@
-import { OpusMediaRecorder } from './opus-media-recorder';
+import { ObjectPool } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
+import { OpusMediaRecorder } from './opus-media-recorder';
 
 const LogScope = 'AudioRecorder';
 
 export class AudioRecorder {
+    private static recorderPool = new ObjectPool<OpusMediaRecorder>(() => {
+        const options: MediaRecorderOptions = {
+            mimeType: 'audio/webm;codecs=opus',
+            bitsPerSecond: 32000,
+            audioBitsPerSecond: 32000,
+        };
+        return new OpusMediaRecorder(options);
+    });
+
     private readonly debugMode: boolean;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
-    private readonly recorder: OpusMediaRecorder;
+    private recorder: OpusMediaRecorder;
     private readonly sessionId: string;
     private readonly chatId: string;
 
@@ -28,17 +38,6 @@ export class AudioRecorder {
         this.recording = null;
         this.isMicrophoneAvailable = false;
 
-        const options: MediaRecorderOptions = {
-            mimeType: 'audio/webm;codecs=opus',
-            bitsPerSecond: 32000,
-            audioBitsPerSecond: 32000,
-        };
-        this.recorder = new OpusMediaRecorder(options);
-        this.recorder.onerror = (errorEvent: MediaRecorderErrorEvent) => {
-            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            console.error(`${LogScope}.onerror: ${errorEvent['message']}`);
-        };
-
         if (blazorRef == null)
             console.error(`${LogScope}.constructor: blazorRef == null`);
 
@@ -58,6 +57,11 @@ export class AudioRecorder {
         return new AudioRecorder(blazorRef, sessionId, chatId, debugMode);
     }
 
+    public static async initRecorderPool(): Promise<void> {
+        const recorder = await this.recorderPool.get();
+        await this.recorderPool.release(recorder);
+    }
+
     public dispose() {
         this.recording = null;
     }
@@ -70,6 +74,12 @@ export class AudioRecorder {
             console.error(`${LogScope}.startRecording: microphone is unavailable.`);
             return;
         }
+
+        this.recorder = await AudioRecorder.recorderPool.get();
+        this.recorder.onerror = (errorEvent: MediaRecorderErrorEvent) => {
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            console.error(`${LogScope}.onerror: ${errorEvent['message']}`);
+        };
 
         if (this.context == null) {
             const recorderContext = await AudioContextPool.get('main') as AudioContext;
@@ -111,7 +121,7 @@ export class AudioRecorder {
                         { googAudioMirroring: { exact: false } },
                     ],
                 },
-                video: false
+                video: false,
             };
             const stream: MediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
             const source = this.context.recorderContext.createMediaStreamSource(stream);
@@ -142,6 +152,7 @@ export class AudioRecorder {
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
             await this.recorder.stopAsync();
+            await AudioRecorder.recorderPool.release(this.recorder);
         }
         await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
         if (this.debugMode)
@@ -152,3 +163,5 @@ export class AudioRecorder {
         return this.recording !== null && this.recording.stream !== null;
     }
 }
+
+void AudioRecorder.initRecorderPool();
