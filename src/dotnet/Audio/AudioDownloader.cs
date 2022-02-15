@@ -17,11 +17,14 @@ public class AudioDownloader
     public virtual async Task<AudioSource> Download(
         Uri audioUri,
         TimeSpan skipTo,
+        bool stripWebm,
         CancellationToken cancellationToken)
     {
         var byteStream = HttpClientFactory.DownloadByteStream(audioUri, Log, cancellationToken);
         var audioLog = Services.LogFor<AudioSource>();
         var audio = new AudioSource(byteStream, skipTo, audioLog, cancellationToken);
+        if(stripWebm)
+            audio = audio.StripWebM(cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
