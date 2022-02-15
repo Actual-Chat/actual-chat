@@ -24,11 +24,12 @@
         @* @key=... ensures child components are recreated on navigation to another chat *@
         <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
             <Header>
-                <ChatHeader />
+                <ChatHeader/>
             </Header>
             <Body>
-                <ChatView />
-                <HistoricalPlaybackPanel/>
+            <ChatHeaderPanel/>
+            <ChatView/>
+            <HistoricalPlaybackPanel/>
             </Body>
             <Footer>
                 <ChatFooter AutoJoin="@AutoJoin" />
