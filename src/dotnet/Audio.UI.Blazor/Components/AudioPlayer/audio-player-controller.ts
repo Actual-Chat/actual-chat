@@ -1,5 +1,5 @@
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
-import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from "./workers/opus-decoder-worker-message";
+import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
 import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
 import { isAecWorkaroundNeeded, enableChromiumAec } from "./chromiumEchoCancellation";
