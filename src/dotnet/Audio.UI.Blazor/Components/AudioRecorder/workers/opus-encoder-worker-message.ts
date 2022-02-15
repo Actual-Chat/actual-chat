@@ -18,6 +18,7 @@ export interface InitNewStreamMessage extends EncoderMessage {
     bitsPerSecond: number;
     sessionId: string;
     chatId: string;
+    debugMode: boolean;
 }
 
 export interface DoneMessage extends EncoderMessage {

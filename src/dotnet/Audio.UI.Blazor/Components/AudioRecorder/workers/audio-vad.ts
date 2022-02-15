@@ -47,7 +47,7 @@ export class VoiceActivityDetector {
     private c0: ort.Tensor;
 
 
-    constructor(modelUri: URL) {
+    constructor(modelUri: URL, initOnCreate = false) {
         this.modelUri = modelUri;
 
         this.movingAverages = new ExponentialMovingAverage(8);
@@ -66,7 +66,9 @@ export class VoiceActivityDetector {
             'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath as string,
         };
 
-        this.initPromise = this.init();
+        if (initOnCreate) {
+            this.initPromise = this.init();
+        }
     }
 
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged> {
