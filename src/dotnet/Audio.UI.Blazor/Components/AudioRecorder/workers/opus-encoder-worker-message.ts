@@ -1,11 +1,11 @@
-export type EncoderMessageType = 'load-encoder' | 'init-new-stream' | 'done';
+export type EncoderMessageType = 'load-module' | 'init-new-stream' | 'done';
 
 export interface EncoderMessage {
     type: EncoderMessageType;
 }
 
-export interface LoadEncoderMessage extends EncoderMessage {
-    type: 'load-encoder';
+export interface LoadModuleMessage extends EncoderMessage {
+    type: 'load-module';
     mimeType: 'audio/webm';
     wasmPath: string;
     audioHubUrl: string;
