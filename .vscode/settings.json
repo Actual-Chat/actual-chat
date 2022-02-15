@@ -23,12 +23,12 @@
     "enable": true
   },
   "eslint.options": {
-    "overrideConfigFile": "./src/nodejs/.eslintrc.yml"
+    "overrideConfigFile": "./src/nodejs/.eslintrc.yml",
+    "ignorePath": "./src/nodejs/.eslintignore"
   },
   "eslint.workingDirectories": [
     {
       "directory": "/",
-      "!cwd": false,
     },
   ],
   "eslint.lintTask.enable": true,
