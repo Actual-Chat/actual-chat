@@ -72,8 +72,7 @@
     public async ValueTask DisposeAsync()
     {
         if (JSRef != null!)
-            await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
-            await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
     }
