@@ -1,5 +1,6 @@
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Generators;
@@ -11,21 +12,6 @@ namespace ActualChat.Chat;
 public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-    private static readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) {
-        "alex.yakunin@actual.chat",
-        "alex.yakunin@gmail.com",
-        "alexey.kochetov@actual.chat",
-        "undead00@gmail.com",
-        "vladimir.chirikov@actual.chat",
-        "vovanchig@gmail.com",
-        "dmitry.filippov@actual.chat",
-        "crui3er@gmail.com",
-        "andrey.yakunin@actual.chat",
-        "iqmulator@gmail.com",
-        "alexis.kochetov@gmail.com",
-        "alexey.kochetov@actual.chat",
-        "vobewaf244@douwx.com", // Test account
-    };
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
     private const string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
     private readonly RandomStringGenerator _chatIdGenerator = new (10, ChatIdAlphabet);
@@ -34,6 +20,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IChatAuthors _chatAuthors;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
+    private readonly IUserInfos _userInfos;
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
 
     public ChatsBackend(IServiceProvider services) : base(services)
@@ -42,6 +29,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _chatAuthors = Services.GetRequiredService<IChatAuthors>();
         _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        _userInfos = Services.GetRequiredService<IUserInfos>();
         _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
     }
 
@@ -105,7 +93,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
         if (Constants.Chat.DefaultChatId == chatId) {
-            if (user != null && IsAdmin(user))
+            if (user != null && await _userInfos.IsAdmin(user.Id, cancellationToken))
                 return ChatPermissions.All;
             return ChatPermissions.None;
         }
@@ -424,17 +412,5 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             authorId = null;
             userId = chatPrincipalId;
         }
-    }
-
-    private bool IsAdmin(User user)
-    {
-        if (!user.IsAuthenticated)
-            return false;
-        if (user.Identities.Any(i =>
-                StringComparer.Ordinal.Equals(i.Key.Schema, "internal")
-                || StringComparer.Ordinal.Equals(i.Key.Schema, "test")))
-            return true;
-        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
-        return AdminEmails.Contains(email);
     }
 }

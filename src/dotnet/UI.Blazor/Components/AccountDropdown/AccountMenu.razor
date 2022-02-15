@@ -8,6 +8,10 @@
     </ButtonTemplate>
     <ContentTemplate>
         <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+            <AuthorizeView Policy="IsAdmin">
+                <MenuItem Title="New chat" Name="newChat" OnItemClick="NewChat">
+                </MenuItem>
+            </AuthorizeView>
             <MenuItem Title="Settings" Name="settings">
                 <Icon>
                     <svg class="fill-current h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 32 32">
@@ -50,5 +54,9 @@
 
     public void Avatars() {
         _navigator.NavigateTo("/user/avatars");
+    }
+
+    private void NewChat() {
+        _navigator.NavigateTo("/new/chat");
     }
 }

@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using Microsoft.AspNetCore.Authorization;
 using Stl.Plugins;
 
 namespace ActualChat.Users.UI.Blazor.Module;
@@ -18,6 +19,10 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
         });
 
         services.AddScoped<IAccountInfoProvider, AccountInfoProvider>();
+        services.AddSingleton<IAuthorizationHandler, IsAdminAuthorizationPolicyHandler>();
+
+        services.AddAuthorizationCore(options =>
+            options.AddPolicy("IsAdmin",
+                policy => policy.AddRequirements(new IsAdminAuthorizationPolicyRequirement())));
     }
 }
-
