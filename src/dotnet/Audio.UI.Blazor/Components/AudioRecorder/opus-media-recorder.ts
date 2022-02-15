@@ -9,15 +9,6 @@ import { VadMessage } from './workers/audio-vad-worker-message';
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding';
 
-export class DataEvent extends Event {
-    readonly data: Uint8Array;
-
-    constructor(data: Uint8Array) {
-        super('datarecorded');
-        this.data = data;
-    }
-}
-
 export interface OpusMediaRecorderOptions extends  MediaRecorderOptions {
     sessionId: string;
     chatId: string;
@@ -25,7 +16,7 @@ export interface OpusMediaRecorderOptions extends  MediaRecorderOptions {
 
 const SAMPLE_RATE = 48000;
 const mimeType = 'audio/webm';
-export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
+export class OpusMediaRecorder extends EventTarget {
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
@@ -40,21 +31,13 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream: MediaStream;
-    public readonly videoBitsPerSecond: number = NaN;
     public readonly audioBitsPerSecond: number;
     public readonly mimeType: string = mimeType;
     public readonly sessionId: string;
     public readonly chatId: string;
 
     public state: RecordingState = 'inactive';
-
-    public ondatarecorded: ((ev: DataEvent) => void) | null;
-    public ondataavailable: ((ev: BlobEvent) => void) | null;
     public onerror: ((ev: MediaRecorderErrorEvent) => void) | null;
-    public onpause: ((ev: Event) => void) | null;
-    public onresume: ((ev: Event) => void) | null;
-    public onstart: ((ev: Event) => void) | null;
-    public onstop: ((ev: Event) => void) | null;
 
     constructor(options: OpusMediaRecorderOptions) {
         super();
@@ -99,56 +82,15 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.vadWorker.postMessage(initVadPort, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
     }
 
-    public setSource(source: MediaStreamAudioSourceNode): void {
-        if (this.source === source) {
-            return;
-        }
-
-        if (this.source) {
-            this.source.disconnect();
-        }
-
-        this.source = source;
-        this.stream = source.mediaStream;
-    }
-
     public override dispatchEvent(event: Event): boolean {
         const { type } = event;
         switch (type) {
-            case 'datarecorded':
-                if (this.ondatarecorded) {
-                    this.ondatarecorded(event as DataEvent);
-                }
-                break;
-            case 'dataavailable':
-                if (this.ondataavailable) {
-                    this.ondataavailable(event as BlobEvent);
-                }
-                break;
             case 'error':
                 if (this.onerror) {
                     this.onerror(event as MediaRecorderErrorEvent);
                 }
                 break;
-            case 'pause':
-                if (this.onpause) {
-                    this.onpause(event);
-                }
-                break;
-            case 'resume':
-                if (this.onresume) {
-                    this.onresume(event);
-                }
-                break;
-            case 'start':
-                if (this.onstart) {
-                    this.onstart(event);
-                }
-                break;
-            case 'stop':
-                if (this.onstop) {
-                    this.onstop(event);
-                }
+            default:
                 break;
         }
         return super.dispatchEvent(event);
@@ -169,14 +111,6 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         this.state = 'paused';
     }
 
-    public requestData(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
-
-        throw new Error('method is unsupported');
-    }
-
     public resume(): void {
         if (this.state === 'inactive') {
             throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
@@ -189,43 +123,6 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         const event = new Event('resume');
         this.dispatchEvent(event);
         this.state = 'recording';
-    }
-
-    public start(timeSlice?: number): void {
-        if (this.state !== 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must be inactive.');
-        }
-        if (timeSlice < 0) {
-            throw new TypeError('invalid arguments, timeSlice should be 0 or higher.');
-        }
-        if (this.source == null) {
-            throw new Error('start: streamNode is not set');
-        }
-
-        const tracks = this.stream.getAudioTracks();
-        if (!tracks[0]) {
-            throw new Error('DOMException: UnknownError, media track not found.');
-        }
-
-        void this.initialize(timeSlice);
-
-        this.state = 'recording';
-
-        // If the worker is already loaded then start
-        if (this.workerState === 'readyToInit') {
-            const { channelCount, audioBitsPerSecond, sessionId, chatId } = this;
-            const initMessage: InitNewStreamMessage = {
-                type: 'init-new-stream',
-                sampleRate: SAMPLE_RATE,
-                channelCount: channelCount,
-                bitsPerSecond: audioBitsPerSecond,
-                sessionId: sessionId,
-                chatId: chatId,
-            };
-            // Initialize the worker
-            // Expected 'initCompleted' event from the worker.
-            this.worker.postMessage(initMessage);
-        }
     }
 
     public async startAsync(source: MediaStreamAudioSourceNode, timeSlice: number): Promise<void> {
@@ -271,31 +168,28 @@ export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
         }
     }
 
-    public stop(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
-
-        // Stop stream first
-        this.source.disconnect();
-        this.encoderWorklet.disconnect();
-        this.vadWorklet.disconnect();
-
-        // Stop event will be triggered at _onmessageFromWorker(),
-        const doneMessage: DoneMessage = {
-            type: 'done'
-        }
-        // Tell encoder finalize the job and destroy itself.
-        // Expected 'doneCompleted' event from the worker.
-        this.worker.postMessage(doneMessage);
-
-        this.state = 'inactive';
-    }
-
     public stopAsync(): Promise<void> {
         return new Promise(resolve => {
             this.stopResolve = resolve;
-            this.stop();
+
+            if (this.state === 'inactive') {
+                throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
+            }
+
+            // Stop stream first
+            this.source.disconnect();
+            this.encoderWorklet.disconnect();
+            this.vadWorklet.disconnect();
+
+            // Stop event will be triggered at _onmessageFromWorker(),
+            const doneMessage: DoneMessage = {
+                type: 'done'
+            }
+            // Tell encoder finalize the job and destroy itself.
+            // Expected 'doneCompleted' event from the worker.
+            this.worker.postMessage(doneMessage);
+
+            this.state = 'inactive';
         });
     }
 
