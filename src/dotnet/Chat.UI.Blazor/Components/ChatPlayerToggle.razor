@@ -18,6 +18,7 @@
     private static string? _class;
 
     [Inject] private MomentClockSet Clocks { get; set; } = null!;
+    [Inject] private ChatAuthorListeningChats ListeningChats { get; set; } = null!;
     [Parameter] public ChatPlayer Player { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -36,9 +37,14 @@
         return isPlaying ? Stop() : Play();
     }
 
-    private Task Play()
-        => Player.Play(Clocks.SystemClock.Now);
+    private Task Play() {
+        _ = ListeningChats.AddChat(Player.ChatId, CancellationToken.None);
+        return Player.Play(Clocks.SystemClock.Now);
+    }
 
-    private Task Stop()
-        => Player.Stop();
+    private Task Stop() {
+        _ = ListeningChats.RemoveChat(Player.ChatId, CancellationToken.None);
+        return Player.Stop();
+    }
+
 }
