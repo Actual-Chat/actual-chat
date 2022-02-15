@@ -11,4 +11,7 @@ public interface IUserInfos
 
     [ComputeMethod(KeepAliveTime = 10)]
     Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken);
+
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<bool> IsAdmin(string userId, CancellationToken cancellationToken);
 }

@@ -11,6 +11,8 @@ public interface IUserInfosClientDef
     Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
     [Get(nameof(GetGravatarHash))]
     Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken);
+    [Get(nameof(IsAdmin))]
+    Task<string?> IsAdmin(string userId, CancellationToken cancellationToken);
 }
 
 [BasePath("userStates")]
