@@ -33,6 +33,7 @@ let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
 let isEncoding = false;
+let debugMode = false;
 
 worker.onmessage = (ev: MessageEvent<EncoderMessage>) => {
     const { type } = ev.data;
@@ -64,6 +65,8 @@ function onDone() {
 
 async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
     const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = message;
+    debugMode = message.debugMode;
+
     encoder.init(sampleRate, channelCount, bitsPerSecond);
     state = 'encoding';
 
@@ -71,7 +74,9 @@ async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
     await connection.send('ProcessAudio',
         sessionId, chatId, Date.now() / 1000, recordingSubject);
 
-    console.log('init recorder worker!');
+    if (debugMode) {
+        console.log('init recorder worker!');
+    }
 
     const initCompletedMessage: EncoderResponseMessage = {
         type: 'initCompleted',
@@ -157,7 +162,9 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
 
 const onVadMessage = (ev: MessageEvent<VoiceActivityChanged>) => {
     const vadEvent = ev.data;
-    console.log(vadEvent);
+    if (debugMode) {
+        console.log(vadEvent);
+    }
 
     if (state === 'encoding') {
         if (vadEvent.kind === 'end') {
@@ -174,7 +181,7 @@ function processQueue(): void {
         return;
     }
 
-    if (isEncoding || state !== 'encoding') {
+    if (isEncoding || state === 'paused') {
         return;
     }
 

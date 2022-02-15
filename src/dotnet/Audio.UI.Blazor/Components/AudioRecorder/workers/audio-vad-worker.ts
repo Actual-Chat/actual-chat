@@ -11,15 +11,15 @@ const CHANNELS = 1;
 const IN_RATE = 48000;
 const OUT_RATE = 16000;
 
-const voiceDetector = new VoiceActivityDetector(OnnxModel as URL);
 const queue = new Denque<ArrayBuffer>();
 const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const resampleBuffer = new Uint8Array(512 * 4 * 2);
-
 let workletPort: MessagePort = null;
+
 let encoderPort: MessagePort = null;
 let resampler: SoxrResampler = null;
+let voiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 
 onmessage = (ev: MessageEvent<VadMessage>) => {
@@ -27,7 +27,7 @@ onmessage = (ev: MessageEvent<VadMessage>) => {
 
     switch (type) {
         case 'load-module':
-            onLoadModule(ev.ports[0], ev.ports[1]);
+            void onLoadModule(ev.ports[0], ev.ports[1]);
             break;
         case 'init-new-stream':
             void onInitNewStream();
@@ -38,16 +38,13 @@ onmessage = (ev: MessageEvent<VadMessage>) => {
     }
 };
 
-function onLoadModule(workletMessagePort: MessagePort, encoderMessagePort: MessagePort) {
+async function onLoadModule(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
     workletPort = workletMessagePort;
     encoderPort = encoderMessagePort;
     workletPort.onmessage = onWorkletMessage;
     encoderPort.onmessage = onEncoderMessage;
     queue.clear();
-}
-
-async function onInitNewStream(): Promise<void> {
-    const newResampler = new SoxrResampler(
+    resampler = new SoxrResampler(
         CHANNELS,
         IN_RATE,
         OUT_RATE,
@@ -55,8 +52,15 @@ async function onInitNewStream(): Promise<void> {
         outputDatatype,
         SoxrQuality.SOXR_MQ,
     );
-    await newResampler.init(SoxrModule, { 'locateFile': () => SoxrWasm as string });
-    resampler = newResampler;
+    await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm as string });
+    voiceDetector = new VoiceActivityDetector(OnnxModel as URL);
+    await voiceDetector.init();
+}
+
+async function onInitNewStream(): Promise<void> {
+    // resample silence to clean up internal state
+    const silence = new Uint8Array(768* 4);
+    resampler.processChunk(silence, resampleBuffer);
 }
 
 const onWorkletMessage = (ev: MessageEvent<BufferVadWorkletMessage>) => {
