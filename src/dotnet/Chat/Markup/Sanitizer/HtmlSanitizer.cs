@@ -14,9 +14,7 @@ internal class HtmlSanitizer
     public ISet<string> AllowedSchemes { get; }
 
     public HtmlSanitizer(IEnumerable<string>? allowedSchemes = null)
-    {
-        AllowedSchemes = new HashSet<string>(allowedSchemes ?? DefaultAllowedSchemes, StringComparer.OrdinalIgnoreCase);
-    }
+        => AllowedSchemes = new HashSet<string>(allowedSchemes ?? DefaultAllowedSchemes, StringComparer.OrdinalIgnoreCase);
 
     public virtual string? SanitizeUrl(string url, string baseUrl)
     {
