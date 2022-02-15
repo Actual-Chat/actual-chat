@@ -122,8 +122,8 @@ export class AudioRecorder {
             };
         }
 
-        const { blazorRef, sessionId, chatId, recording } = this;
-        await this.recorder.startAsync(recording.source, 40, sessionId, chatId);
+        const { blazorRef, sessionId, chatId, recording, debugMode } = this;
+        await this.recorder.startAsync(recording.source, 40, sessionId, chatId, debugMode);
         await blazorRef.invokeMethodAsync('OnStartRecording');
     }
 

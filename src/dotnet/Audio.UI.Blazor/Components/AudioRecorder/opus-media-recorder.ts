@@ -123,7 +123,7 @@ export class OpusMediaRecorder extends EventTarget {
         this.state = 'recording';
     }
 
-    public async startAsync(source: MediaStreamAudioSourceNode, timeSlice: number, sessionId: string, chatId: string): Promise<void> {
+    public async startAsync(source: MediaStreamAudioSourceNode, timeSlice: number, sessionId: string, chatId: string, debugMode = false): Promise<void> {
         if (this.source === source)
             return;
 
@@ -163,6 +163,7 @@ export class OpusMediaRecorder extends EventTarget {
                 bitsPerSecond: audioBitsPerSecond,
                 sessionId: sessionId,
                 chatId: chatId,
+                debugMode: debugMode,
             };
             // Initialize the worker
             // Expected 'initCompleted' event from the worker.
