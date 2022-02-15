@@ -3,7 +3,7 @@ import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 
-import { EncoderMessage, InitNewStreamMessage, LoadEncoderMessage } from './opus-encoder-worker-message';
+import { EncoderMessage, InitNewStreamMessage, LoadModuleMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { EncoderResponseMessage } from '../opus-media-recorder-message';
 import { VoiceActivityChanged } from './audio-vad';
@@ -37,8 +37,8 @@ let isEncoding = false;
 worker.onmessage = (ev: MessageEvent<EncoderMessage>) => {
     const { type } = ev.data;
     switch (type) {
-        case 'load-encoder':
-            void onLoadEncoder(ev.data as LoadEncoderMessage, ev.ports[0], ev.ports[1]);
+        case 'load-module':
+            void onLoadEncoder(ev.data as LoadModuleMessage, ev.ports[0], ev.ports[1]);
             break;
 
         case 'init-new-stream':
@@ -79,7 +79,7 @@ async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
     worker.postMessage(initCompletedMessage);
 }
 
-async function onLoadEncoder(message: LoadEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     const { mimeType, wasmPath, audioHubUrl } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;

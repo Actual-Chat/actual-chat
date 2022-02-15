@@ -1,4 +1,3 @@
 export interface VadMessage {
-    type: 'init-port' | 'init-new-stream' | 'buffer';
-    buffer?: ArrayBuffer;
+    type: 'load-module' | 'init-new-stream';
 }

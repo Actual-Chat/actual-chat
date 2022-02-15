@@ -5,6 +5,7 @@ import { VadMessage } from './audio-vad-worker-message';
 import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
+import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
 
 const CHANNELS = 1;
 const IN_RATE = 48000;
@@ -25,8 +26,8 @@ onmessage = (ev: MessageEvent<VadMessage>) => {
     const { type } = ev.data;
 
     switch (type) {
-        case 'init-port':
-            onInitPort(ev.ports[0], ev.ports[1]);
+        case 'load-module':
+            onLoadModule(ev.ports[0], ev.ports[1]);
             break;
         case 'init-new-stream':
             void onInitNewStream();
@@ -37,7 +38,7 @@ onmessage = (ev: MessageEvent<VadMessage>) => {
     }
 };
 
-function onInitPort(workletMessagePort: MessagePort, encoderMessagePort: MessagePort) {
+function onLoadModule(workletMessagePort: MessagePort, encoderMessagePort: MessagePort) {
     workletPort = workletMessagePort;
     encoderPort = encoderMessagePort;
     workletPort.onmessage = onWorkletMessage;
@@ -58,8 +59,8 @@ async function onInitNewStream(): Promise<void> {
     resampler = newResampler;
 }
 
-const onWorkletMessage = (ev: MessageEvent<VadMessage>) => {
-    const { type, buffer }: VadMessage = ev.data;
+const onWorkletMessage = (ev: MessageEvent<BufferVadWorkletMessage>) => {
+    const { type, buffer } = ev.data;
 
     let vadBuffer: ArrayBuffer;
     switch (type) {
@@ -100,7 +101,7 @@ async function processQueue(): Promise<void> {
         const dataToResample = new Uint8Array(buffer);
         const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
 
-        const bufferMessage: VadMessage = {
+        const bufferMessage: BufferVadWorkletMessage = {
             type: 'buffer',
             buffer: buffer,
         }
