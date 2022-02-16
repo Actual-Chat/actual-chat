@@ -3,7 +3,7 @@ import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 
-import { EncoderMessage, InitNewStreamMessage, LoadModuleMessage } from './opus-encoder-worker-message';
+import { DoneMessage, EncoderMessage, InitNewStreamMessage, LoadModuleMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { EncoderResponseMessage } from '../opus-media-recorder-message';
 import { VoiceActivityChanged } from './audio-vad';
@@ -22,9 +22,21 @@ type ModuleOverrides = {
     wasmBinary?: ArrayBuffer;
 }
 
+interface QueueItem {
+    type: 'buffer' | 'ended';
+}
+
+interface BufferQueueItem extends QueueItem {
+    buffer: ArrayBuffer;
+}
+
+interface EndQueueItem extends QueueItem {
+    callbackId: number;
+}
+
 const SAMPLE_RATE = 48000;
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
-const queue = new Denque<ArrayBuffer | 'ended'>();
+const queue = new Denque<BufferQueueItem | EndQueueItem>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
 let recordingSubject: signalR.Subject<Uint8Array>;
@@ -49,7 +61,7 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
                 break;
 
             case 'done':
-                onDone();
+                onDone(ev.data as DoneMessage);
                 break;
 
             default:
@@ -62,15 +74,15 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
     }
 };
 
-function onDone() {
+function onDone(message: DoneMessage) {
     state = 'closed';
 
-    queue.push('ended');
+    queue.push({ type: 'ended', callbackId: message.callbackId });
     processQueue();
 }
 
 async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
-    const { channelCount, bitsPerSecond, sessionId, chatId } = message;
+    const { channelCount, bitsPerSecond, sessionId, chatId, callbackId } = message;
     lastNewStreamMessage = message;
     debugMode = message.debugMode;
 
@@ -87,6 +99,7 @@ async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
 
     const initCompletedMessage: EncoderResponseMessage = {
         type: 'initCompleted',
+        callbackId
     };
     worker.postMessage(initCompletedMessage);
 }
@@ -99,7 +112,7 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
         throw new Error(`EncoderWorker: vadPort has already been specified.`);
     }
 
-    const { mimeType, wasmPath, audioHubUrl } = message;
+    const { mimeType, wasmPath, audioHubUrl, callbackId } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
@@ -136,7 +149,8 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
             encoder = Module;
             // Notify the host ready to accept 'init' message.
             const readyToInit: EncoderResponseMessage = {
-                type: 'loadCompleted'
+                type: 'loadCompleted',
+                callbackId
             }
             worker.postMessage(readyToInit);
             state = 'readyToInit';
@@ -165,15 +179,15 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         }
         if (audioBuffer.byteLength !== 0) {
             if (state === 'encoding') {
-                queue.push(buffer);
+                queue.push(ev.data);
                 processQueue();
             } else if (state === 'paused') {
-                queue.push(buffer);
+                queue.push(ev.data);
                 if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
                     const bufferOrEnded = queue.shift();
-                    if (bufferOrEnded === 'ended') {
+                    if (bufferOrEnded.type === 'ended') {
                         queue.shift();
-                        queue.unshift('ended');
+                        queue.unshift(bufferOrEnded);
                     }
                 }
             }
@@ -228,31 +242,32 @@ function processQueue(): void {
         isEncoding = true;
 
         const bufferOrEnded = queue.shift();
-        if (typeof bufferOrEnded === 'string') {
-            if (bufferOrEnded === 'ended') {
-                try {
-                    if (encoder) {
-                        encoder.close();
-                        const buffers = encoder.flush();
-                        sendEncodedData(buffers);
-                    }
+        if (bufferOrEnded.type === 'ended') {
+            const ended = bufferOrEnded as EndQueueItem;
+            try {
+                if (encoder) {
+                    encoder.close();
+                    const buffers = encoder.flush();
+                    sendEncodedData(buffers);
+                }
 
-                    const message: EncoderResponseMessage = {
-                        type: 'doneCompleted'
-                    };
-                    worker.postMessage(message);
-                }
-                finally {
-                    recordingSubject.complete();
-                }
+                const message: EncoderResponseMessage = {
+                    type: 'doneCompleted',
+                    callbackId: ended.callbackId,
+                };
+                worker.postMessage(message);
+            }
+            finally {
+                recordingSubject.complete();
             }
         }
         else {
-            const buffer = bufferOrEnded;
+            const bufferQueueItem = bufferOrEnded as BufferQueueItem;
+            const buffer = bufferQueueItem.buffer;
             const monoPcm = new Float32Array(buffer);
             encoder.encode([monoPcm]);
 
-            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer };
+            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer  };
             workletPort.postMessage(workletMessage, [buffer]);
 
             const buffers = encoder.flush();

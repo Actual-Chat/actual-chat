@@ -1,5 +1,6 @@
 export interface EncoderMessage {
     type: 'load' | 'init' | 'done';
+    callbackId: number;
 }
 
 export interface LoadModuleMessage extends EncoderMessage {
