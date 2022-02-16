@@ -10,6 +10,7 @@ export class ChatMessageEditor {
     private recordButton: HTMLButtonElement;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
+    private attachments: string[] = [];
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -56,6 +57,17 @@ export class ChatMessageEditor {
         if (pastedData.length>0) {
             this.pasteClipboardData(pastedData);
             event.preventDefault();
+            return;
+        }
+        for(let item of clipboardData.items) {
+            //if (item.kind==='file') {
+                if (item.type.startsWith('image')) {
+                    const blob = item.getAsFile();
+                    const objectURL = URL.createObjectURL(blob);
+                    const _ = this.addAttachment(objectURL, blob.name, blob.type, blob.size);
+                    event.preventDefault();
+                }
+            //}
         }
     })
 
@@ -82,7 +94,7 @@ export class ChatMessageEditor {
     }
 
     private changeMode() {
-        const isTextMode = this.input.innerText != "";
+        const isTextMode = this.input.innerText != "" || this.attachments.length > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
@@ -103,9 +115,32 @@ export class ChatMessageEditor {
         const _ = this.updateClientSideState();
     }
 
+    private onPostSucceeded()
+    {
+        this.setText("");
+        for (const attachment of this.attachments)
+            URL.revokeObjectURL(attachment);
+        this.attachments = [];
+        this.changeMode();
+    }
+
+    private async getAttachmentContent(fileUrl: string) {
+        console.log("getting data for " + fileUrl);
+        let blob = await fetch(fileUrl)
+            .then(r => r.blob());
+        let arrayBuffer = await blob.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+    }
+
     private updateClientSideState() : Promise<void> {
         //console.log("message editor: UpdateClientSideState")
         return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
+    }
+
+    private async addAttachment(url: string, fileName: string, fileType: string, length: Number) : Promise<void> {
+        await this.blazorRef.invokeMethodAsync("AddAttachment", url, fileName, fileType, length);
+        this.attachments.push(url);
+        this.changeMode();
     }
 
     private pasteClipboardData(pastedData: string) {

@@ -44,6 +44,10 @@ public interface IChats
         Session session,
         string chatId,
         CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        Session session, string chatId, long entryId,
+        CancellationToken cancellationToken);
 
     // Commands
 
@@ -65,6 +69,9 @@ public interface IChats
 
     public record UpdateChatCommand(Session Session, Chat Chat) : ISessionCommand<Unit>;
     public record JoinChatCommand(Session Session, string ChatId) : ISessionCommand<Unit>;
-    public record CreateTextEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>;
+    public record CreateTextEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>
+    {
+        public ImmutableArray<TextEntryUpload> Uploads { get; set; } = ImmutableArray<TextEntryUpload>.Empty;
+    }
     public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
 }

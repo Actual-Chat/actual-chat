@@ -14,20 +14,35 @@
 
 <div @ref="EditorRef" class="@(_class ??= this.DefaultClass()) chat-message-editor sticky bottom-0 self-end bg-secondary w-full px-2">
     <div class="flex flex-row justify-between px-1">
-        <div class="flex flex-row justify-center items-center justify-items-center outline-none bg-accent rounded-md w-full overflow-hidden mr-3">
-            <AttachDropdown/>
-            <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary block"
-                 autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
-                 aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
+        <div class="flex flex-col outline-none bg-accent rounded-md w-full mr-3">
+            @if (_attachments.Length > 0) {
+                <div class="message-attachments">
+                    <ul class="flex flex-row">
+                        @foreach (var attachment in _attachments) {
+                            <li class="attachment_item">
+                                @if (attachment.IsImage) {
+                                    <img class="object-contain" src="@attachment.Url" alt="upload image" />
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+            <div class="flex flex-row justify-center items-center justify-items-center">
+                <AttachDropdown/>
+                <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary block"
+                     autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
+                     aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
+                </div>
+                <div class="audio-wave flex-row w-full py-2 pr-2 outline-none justify-items-stretch hidden">
+                </div>
+                <button class="post-message sticky self-end outline-none text-secondary p-1 hidden"
+                        @onclick="_ => Post()">
+                    <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
+                    </svg>
+                </button>
             </div>
-            <div class="audio-wave flex-row w-full py-2 pr-2 outline-none justify-items-stretch hidden">
-            </div>
-            <button class="post-message sticky self-end outline-none text-secondary p-1 hidden"
-                    @onclick="_ => Post()">
-                <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
-                </svg>
-            </button>
         </div>
         <div class="flex flex-1 flex-row justify-center outline-none items-end">
             <div class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-md py-2">
@@ -53,6 +68,16 @@
 </div>
 
 @code {
+
+    private class MessageAttachment {
+        public string Url { get; set; } = "";
+        public string FileName { get; set; } = "";
+        public string FileType { get; set; } = "";
+        public int Length { get; set; }
+        public bool IsReal { get; set; }
+        public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
+    }
+
     private static string? _class;
 
     [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
@@ -62,12 +87,16 @@
     private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
+    private ImmutableArray<MessageAttachment> _attachments = ImmutableArray<MessageAttachment>.Empty;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
+    protected override async Task OnInitializedAsync() {
+        RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
+        //InnerAddAttachment("https://i.pinimg.com/736x/44/50/32/44503273af87d55ad6576e0429d33448--ship-paintings-pirate-ships.jpg", "pirate-ship.jpg", "image/jpg", 1, false);
+        //InnerAddAttachment("https://kartinkin.net/uploads/posts/2021-07/1625258587_8-kartinkin-com-p-piratskii-korabl-fon-krasivie-foni-10.jpg", "pirate-ship.jpg", "image/jpg", 1, false);
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -98,12 +127,43 @@
     {
         if (text != null)
             Text = text;
-        if (Text.IsNullOrEmpty())
+        if (Text.IsNullOrEmpty() && _attachments.Count(c => c.IsReal) == 0)
             return;
 
-        var (_, ce) = await _cmd.Run(new IChats.CreateTextEntryCommand(_session, Chat.Id, Text)).ConfigureAwait(true);
-        if (!ce.IsFailed)
-            await JSRef.InvokeVoidAsync("setText", "").ConfigureAwait(true);
+        var contentTasks = _attachments.Where(c => c.IsReal).ToDictionary(c => c, GetAttachmentContent);
+        await Task.WhenAll(contentTasks.Values).ConfigureAwait(true);
+        var uploads = contentTasks.Keys
+            .Select(c => new TextEntryUpload(c.FileName, c.FileType, contentTasks[c].Result))
+            .ToImmutableArray();
+        var command = new IChats.CreateTextEntryCommand(_session, Chat.Id, Text) { Uploads = uploads };
+        var (_, ce) = await _cmd.Run(command).ConfigureAwait(true);
+        if (!ce.IsFailed) {
+            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+            _attachments = _attachments.Clear();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task<byte[]> GetAttachmentContent(MessageAttachment messageAttachment) {
+        var bytes = await JSRef.InvokeAsync<byte[]>("getAttachmentContent", messageAttachment.Url).ConfigureAwait(true);
+        return bytes;
+    }
+
+    [JSInvokable]
+    public void AddAttachment(string url, string? fileName, string? fileType, int length) {
+        InnerAddAttachment(url, fileName, fileType, length, true);
+        StateHasChanged();
+    }
+
+    private void InnerAddAttachment(string url, string? fileName, string? fileType, int length, bool real)
+    {
+        _attachments = _attachments.Add(new MessageAttachment {
+            Url = url,
+            FileName = fileName ?? "",
+            FileType = fileType ?? "",
+            Length = length,
+            IsReal = real
+        });
     }
 
     private Task RecordingStateChanged(bool isRecording) {

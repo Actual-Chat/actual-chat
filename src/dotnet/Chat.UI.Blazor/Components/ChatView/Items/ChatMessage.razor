@@ -7,6 +7,7 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var entry = Model.Entry;
+    var attachments = Model.Attachments;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
 }
 @if (Model.DateLine.HasValue) {
@@ -43,6 +44,28 @@
                 <ChatMessageMarkup Model="@Model"/>
             }
         </div>
+        @if (attachments.Length > 0) {
+            <div class="message-attachments">
+                @foreach (var attachment in attachments) {
+                    var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                    var url = "/api/content/download/content-record/" + attachment.ContentId;
+                    @if (isImage) {
+                        var previewUrl = url;
+                        <div class="message-attachment-image">
+                            <a class="cursor-pointer" href="@url" target="_blank" role="button">
+                                <img style="max-width: 400px; max-height: 300px"  src="@previewUrl" alt="image" />
+                            </a>
+                        </div>
+                    } else {
+                        <div class="message-attachment-file">
+                            <a class="cursor-pointer" href="@url" target="_blank" role="button">
+                                @attachment.FileName
+                            </a>
+                        </div>
+                    }
+                }
+            </div>
+        }
     </div>
     @if (_hostInfo.IsDevelopmentInstance) {
         <MessageMenu Css="invisible group-hover:visible" />
