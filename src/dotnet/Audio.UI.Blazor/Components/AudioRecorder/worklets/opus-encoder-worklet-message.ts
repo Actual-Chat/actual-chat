@@ -1,5 +1,5 @@
 export interface EncoderWorkletMessage {
-    type: 'init-port' | 'buffer';
+    type: 'init' | 'buffer';
 }
 
 export interface BufferEncoderWorkletMessage extends EncoderWorkletMessage {

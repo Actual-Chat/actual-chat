@@ -1,5 +1,5 @@
 export interface VadWorkletMessage {
-    type: 'init-port' | 'buffer';
+    type: 'init' | 'buffer';
 }
 
 export interface BufferVadWorkletMessage extends VadWorkletMessage {
