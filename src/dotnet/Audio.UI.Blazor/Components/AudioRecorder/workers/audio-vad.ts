@@ -7,22 +7,20 @@ import wasmSimdThreadedPath from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wa
 
 export type VoiceActivityKind = 'start' | 'end';
 
-export class VoiceActivityChanged {
-    public readonly kind: VoiceActivityKind;
-    public readonly offset: number;
-    public readonly duration?: number;
-    public readonly speechProb: number;
-
-    constructor(kind: VoiceActivityKind, offset: number, speechProb: number, duration?: number) {
-        this.kind = kind;
-        this.offset = offset;
-        this.speechProb = speechProb;
-        this.duration = duration;
-    }
+export interface VoiceActivityChanged {
+    kind: VoiceActivityKind;
+    offset: number;
+    duration?: number;
+    speechProb: number;
 }
 
 export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleRate = 16000): VoiceActivityChanged {
-    return new VoiceActivityChanged(event.kind, event.offset / sampleRate, event.speechProb, event.duration === null ? null : event.duration / sampleRate);
+    return {
+        kind: event.kind,
+        offset: event.offset / sampleRate,
+        speechProb: event.speechProb,
+        duration: event.duration === null ? null : event.duration / sampleRate
+    };
 }
 
 const SAMPLES_PER_WINDOW = 512;
@@ -52,7 +50,7 @@ export class VoiceActivityDetector {
 
         this.movingAverages = new ExponentialMovingAverage(8);
         this.streamedMedian = new StreamedMedian();
-        this.lastActivityEvent = new VoiceActivityChanged('end', 0, 0);
+        this.lastActivityEvent = { kind: 'end', offset: 0, speechProb: 0 };
 
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
         this.c0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
@@ -100,8 +98,6 @@ export class VoiceActivityDetector {
         let currentEvent = this.lastActivityEvent;
         const currentOffset = this.sampleCount;
 
-        // console.log(prob);
-
         if (this.speechSteps >= ACCUMULATIVE_PERIOD_START) {
             // enough statistics to adjust trigSum \ negTrigSum
             const probMedian = streamedMedian.median;
@@ -120,7 +116,7 @@ export class VoiceActivityDetector {
         if ((smoothedProb >= trigSum || prob > 0.95) && currentEvent.kind === 'end') {
             const offset = Math.max(0, currentOffset - padSamples);
             const duration = offset - currentEvent.offset;
-            currentEvent = new VoiceActivityChanged('start', offset, smoothedProb, duration);
+            currentEvent = { kind: 'start', offset, speechProb: smoothedProb, duration };
             if (this.speechSteps++ < ACCUMULATIVE_PERIOD_END) {
                 this.streamedMedian.push(prob);
             }
@@ -137,7 +133,7 @@ export class VoiceActivityDetector {
                 if (currentSpeechSamples > minSpeechSamples) {
                     const offset = this.endOffset + padSamples;
                     const duration = offset - currentEvent.offset
-                    currentEvent = new VoiceActivityChanged('end', offset, smoothedProb, duration);
+                    currentEvent = { kind: 'end', offset, speechProb: smoothedProb, duration };
                     this.endOffset = null;
                 }
             }

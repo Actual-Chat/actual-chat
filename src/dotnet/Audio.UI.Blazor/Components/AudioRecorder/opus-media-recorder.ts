@@ -10,7 +10,6 @@ import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 
 type WorkerState = 'inactive'|'readyToInit'|'encoding';
 
-const SAMPLE_RATE = 48000;
 const mimeType = 'audio/webm';
 export class OpusMediaRecorder extends EventTarget {
     private readonly worker: Worker;
@@ -66,7 +65,7 @@ export class OpusMediaRecorder extends EventTarget {
         });
 
         const loadEncoder: LoadModuleMessage = {
-            type: 'load-module',
+            type: 'load',
             mimeType: 'audio/webm',
             wasmPath: wasmPathUrl,
             audioHubUrl: audioHubUrl,
@@ -75,7 +74,7 @@ export class OpusMediaRecorder extends EventTarget {
         this.worker.postMessage(loadEncoder, [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
 
         const loadVad: VadMessage = {
-            type: 'load-module',
+            type: 'load',
         }
         this.vadWorker.postMessage(loadVad, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
     }
@@ -157,8 +156,7 @@ export class OpusMediaRecorder extends EventTarget {
         if (this.workerState === 'readyToInit') {
             const { channelCount, audioBitsPerSecond } = this;
             const initMessage: InitNewStreamMessage = {
-                type: 'init-new-stream',
-                sampleRate: SAMPLE_RATE,
+                type: 'init',
                 channelCount: channelCount,
                 bitsPerSecond: audioBitsPerSecond,
                 sessionId: sessionId,
@@ -171,7 +169,7 @@ export class OpusMediaRecorder extends EventTarget {
 
             // Initialize new stream at the VAD worker
             const vadInitMessage: VadMessage = {
-                type: 'init-new-stream',
+                type: 'init',
             }
             this.vadWorker.postMessage(vadInitMessage);
         }
@@ -220,7 +218,7 @@ export class OpusMediaRecorder extends EventTarget {
             };
             this.encoderWorklet = new AudioWorkletNode(this.context, 'opus-encoder-worklet-processor', encoderWorkletOptions);
             const initPortMessage: EncoderWorkletMessage = {
-                type: 'init-port',
+                type: 'init',
             }
             this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
 
@@ -233,7 +231,7 @@ export class OpusMediaRecorder extends EventTarget {
             };
             this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
             const vadInitPortMessage: VadWorkletMessage = {
-                type: 'init-port',
+                type: 'init',
             }
             this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
         }
@@ -242,7 +240,7 @@ export class OpusMediaRecorder extends EventTarget {
     private onWorkerMessage = (ev: MessageEvent<EncoderResponseMessage>) => {
         const { type } = ev.data;
         switch (type) {
-            case 'readyToInit':
+            case 'loadCompleted':
                 this.workerState = 'readyToInit';
                 if (this.readyToInitResolve)
                     this.readyToInitResolve();

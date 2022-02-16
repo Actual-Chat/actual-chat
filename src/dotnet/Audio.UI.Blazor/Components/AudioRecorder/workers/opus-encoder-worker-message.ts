@@ -1,19 +1,16 @@
-export type EncoderMessageType = 'load-module' | 'init-new-stream' | 'done';
-
 export interface EncoderMessage {
-    type: EncoderMessageType;
+    type: 'load' | 'init' | 'done';
 }
 
 export interface LoadModuleMessage extends EncoderMessage {
-    type: 'load-module';
+    type: 'load';
     mimeType: 'audio/webm';
     wasmPath: string;
     audioHubUrl: string;
 }
 
 export interface InitNewStreamMessage extends EncoderMessage {
-    type: 'init-new-stream';
-    sampleRate: 48000;
+    type: 'init';
     channelCount: number;
     bitsPerSecond: number;
     sessionId: string;

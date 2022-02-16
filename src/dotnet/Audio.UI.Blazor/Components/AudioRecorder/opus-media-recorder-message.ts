@@ -1,3 +1,3 @@
 export interface EncoderResponseMessage {
-    type: 'readyToInit' | 'initCompleted' | 'doneCompleted';
+    type: 'loadCompleted' | 'initCompleted' | 'doneCompleted';
 }
