@@ -22,9 +22,9 @@ export class OpusMediaRecorder extends EventTarget {
     private workerState: WorkerState = 'inactive';
     private encoderWorklet: AudioWorkletNode = null;
     private vadWorklet: AudioWorkletNode = null;
-    private stopResolve: () => void = null;
-    private readyToInitResolve: () => void | null;
-    private readyToInitPromise: Promise<void> | null;
+    private loadCompleted: Promise<void>;
+    private lastCallbackId: number = 0;
+    private callbacks = new Map<number, Function>();
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream: MediaStream;
@@ -39,7 +39,6 @@ export class OpusMediaRecorder extends EventTarget {
 
         this.audioBitsPerSecond = options.audioBitsPerSecond;
 
-        const crossWorkerChannel = new MessageChannel();
         this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
@@ -48,35 +47,7 @@ export class OpusMediaRecorder extends EventTarget {
         this.vadWorkerChannel = new MessageChannel();
         this.vadWorker = new Worker('/dist/vadWorker.js');
 
-        // Setting the url to the href property of an anchor tag handles normalization
-        // for us. There are 3 main cases.
-        // 1. Relative path normalization e.g "b" -> "http://localhost:5000/a/b"
-        // 2. Absolute path normalization e.g "/a/b" -> "http://localhost:5000/a/b"
-        // 3. Network path reference normalization e.g "//localhost:5000/a/b" -> "http://localhost:5000/a/b"
-        const aTag = window.document.createElement('a');
-        aTag.href = '/api/hub/audio';
-        const audioHubUrl = aTag.href;
-
-        aTag.href = WebMOpusWasm as string;
-        const wasmPathUrl = aTag.href;
-
-        this.readyToInitPromise = new Promise<void>(resolve => {
-            this.readyToInitResolve = resolve;
-        });
-
-        const loadEncoder: LoadModuleMessage = {
-            type: 'load',
-            mimeType: 'audio/webm',
-            wasmPath: wasmPathUrl,
-            audioHubUrl: audioHubUrl,
-        }
-        // Expected 'readyToInit' event from the worker.
-        this.worker.postMessage(loadEncoder, [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
-
-        const loadVad: VadMessage = {
-            type: 'load',
-        }
-        this.vadWorker.postMessage(loadVad, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
+        this.loadCompleted = this.loadWorkers();
     }
 
     public override dispatchEvent(event: Event): boolean {
@@ -145,15 +116,16 @@ export class OpusMediaRecorder extends EventTarget {
 
         this.state = 'recording';
 
-        if (this.readyToInitPromise != null) {
-            await this.readyToInitPromise;
+        if (this.loadCompleted != null) {
+            await this.loadCompleted;
 
-            this.readyToInitPromise = null;
-            this.readyToInitResolve = null;
+            this.loadCompleted = null;
         }
 
-        // If the worker is already loaded then start
-        if (this.workerState === 'readyToInit') {
+        const callbackId = this.lastCallbackId++;
+        await new Promise<void>(resolve => {
+            this.callbacks.set(callbackId, resolve);
+
             const { channelCount, audioBitsPerSecond } = this;
             const initMessage: InitNewStreamMessage = {
                 type: 'init',
@@ -162,6 +134,7 @@ export class OpusMediaRecorder extends EventTarget {
                 sessionId: sessionId,
                 chatId: chatId,
                 debugMode: debugMode,
+                callbackId
             };
             // Initialize the worker
             // Expected 'initCompleted' event from the worker.
@@ -172,13 +145,13 @@ export class OpusMediaRecorder extends EventTarget {
                 type: 'init',
             }
             this.vadWorker.postMessage(vadInitMessage);
-        }
+        });
     }
 
     public stopAsync(): Promise<void> {
+        const callbackId = this.lastCallbackId++;
         return new Promise(resolve => {
-            this.stopResolve = resolve;
-
+            this.callbacks.set(callbackId, resolve);
             if (this.state === 'inactive') {
                 throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
             }
@@ -190,13 +163,50 @@ export class OpusMediaRecorder extends EventTarget {
 
             // Stop event will be triggered at _onmessageFromWorker(),
             const doneMessage: DoneMessage = {
-                type: 'done'
+                type: 'done',
+                callbackId
             }
             // Tell encoder finalize the job and destroy itself.
             // Expected 'doneCompleted' event from the worker.
             this.worker.postMessage(doneMessage);
 
             this.state = 'inactive';
+        });
+    }
+
+    private loadWorkers(): Promise<void> {
+        // Setting the url to the href property of an anchor tag handles normalization
+        // for us. There are 3 main cases.
+        // 1. Relative path normalization e.g "b" -> "http://localhost:5000/a/b"
+        // 2. Absolute path normalization e.g "/a/b" -> "http://localhost:5000/a/b"
+        // 3. Network path reference normalization e.g "//localhost:5000/a/b" -> "http://localhost:5000/a/b"
+        const aTag = window.document.createElement('a');
+        aTag.href = '/api/hub/audio';
+        const audioHubUrl = aTag.href;
+
+        aTag.href = WebMOpusWasm as string;
+        const wasmPathUrl = aTag.href;
+
+        const callbackId = this.lastCallbackId++;
+        return new Promise(resolve => {
+            this.callbacks.set(callbackId, resolve);
+
+            const loadEncoder: LoadModuleMessage = {
+                type: 'load',
+                mimeType: 'audio/webm',
+                wasmPath: wasmPathUrl,
+                audioHubUrl: audioHubUrl,
+                callbackId: callbackId,
+            }
+
+            const crossWorkerChannel = new MessageChannel();
+            // Expected 'loadCompleted' event from the worker.
+            this.worker.postMessage(loadEncoder, [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
+
+            const loadVad: VadMessage = {
+                type: 'load',
+            }
+            this.vadWorker.postMessage(loadVad, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
         });
     }
 
@@ -238,12 +248,10 @@ export class OpusMediaRecorder extends EventTarget {
     }
 
     private onWorkerMessage = (ev: MessageEvent<EncoderResponseMessage>) => {
-        const { type } = ev.data;
+        const { type, callbackId } = ev.data;
         switch (type) {
             case 'loadCompleted':
                 this.workerState = 'readyToInit';
-                if (this.readyToInitResolve)
-                    this.readyToInitResolve();
                 break;
 
             case 'initCompleted':
@@ -260,16 +268,21 @@ export class OpusMediaRecorder extends EventTarget {
                 this.dispatchEvent(new Event('stop'));
 
                 this.workerState = 'readyToInit';
-                if (this.stopResolve) {
-                    const resolve = this.stopResolve;
-                    this.stopResolve = null;
-                    resolve();
-                }
                 break;
 
             default:
                 break; // Ignore
         }
+        this.popCallback(callbackId)();
+    }
+
+    private popCallback(callbackId: number): Function {
+        const callback = this.callbacks.get(callbackId);
+        if (callback === undefined) {
+            throw new Error(`OpusMediaRecorder: Callback with id '${callbackId}' is not found.`);
+        }
+        this.callbacks.delete(callbackId);
+        return callback;
     }
 
     private onWorkerError = (error: ErrorEvent) => {
