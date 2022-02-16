@@ -72,28 +72,38 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     }
 
     private onWorkerMessage = (ev: MessageEvent<BufferVadWorkletMessage>) => {
-        const { type, buffer } = ev.data;
+        try {
+            const { type, buffer } = ev.data;
 
-        switch (type) {
-            case 'buffer':
-                this.bufferDeque.push(buffer);
-                break;
-            default:
-                break;
+            switch (type) {
+                case 'buffer':
+                    this.bufferDeque.push(buffer);
+                    break;
+                default:
+                    break;
+            }
+        }
+        catch (error) {
+            console.error(error);
         }
     };
 
     private onRecorderMessage = (ev: MessageEvent<VadWorkletMessage>) => {
-        const { type } = ev.data;
+        try {
+            const { type } = ev.data;
 
-        switch (type) {
-            case 'init-port':
-                this.init();
-                this.workerPort = ev.ports[0];
-                this.workerPort.onmessage = this.onWorkerMessage;
-                break;
-            default:
-                break;
+            switch (type) {
+                case 'init':
+                    this.init();
+                    this.workerPort = ev.ports[0];
+                    this.workerPort.onmessage = this.onWorkerMessage;
+                    break;
+                default:
+                    break;
+            }
+        }
+        catch (error) {
+            console.error(error);
         }
     }
 }

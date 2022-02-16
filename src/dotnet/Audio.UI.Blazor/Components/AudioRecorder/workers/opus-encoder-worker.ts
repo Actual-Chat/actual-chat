@@ -22,8 +22,9 @@ type ModuleOverrides = {
     wasmBinary?: ArrayBuffer;
 }
 
+const SAMPLE_RATE = 48000;
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
-const queue = new Denque<ArrayBuffer | 'done'>();
+const queue = new Denque<ArrayBuffer | 'ended'>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
 let recordingSubject: signalR.Subject<Uint8Array>;
@@ -35,40 +36,45 @@ let lastNewStreamMessage: InitNewStreamMessage | null = null;
 let isEncoding = false;
 let debugMode = false;
 
-worker.onmessage = (ev: MessageEvent<EncoderMessage>) => {
-    const { type } = ev.data;
-    switch (type) {
-        case 'load-module':
-            void onLoadEncoder(ev.data as LoadModuleMessage, ev.ports[0], ev.ports[1]);
-            break;
+worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
+    try {
+        const { type } = ev.data;
+        switch (type) {
+            case 'load':
+                await onLoadEncoder(ev.data as LoadModuleMessage, ev.ports[0], ev.ports[1]);
+                break;
 
-        case 'init-new-stream':
-            void onInitNewStream(ev.data as InitNewStreamMessage);
-            break;
+            case 'init':
+                await onInitNewStream(ev.data as InitNewStreamMessage);
+                break;
 
-        case 'done':
-            onDone();
-            break;
+            case 'done':
+                onDone();
+                break;
 
-        default:
-            // Ignore
-            break;
+            default:
+                // Ignore
+                break;
+        }
+    }
+    catch (error) {
+        console.error(error);
     }
 };
 
 function onDone() {
     state = 'closed';
 
-    queue.push('done');
+    queue.push('ended');
     processQueue();
 }
 
 async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
-    const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = message;
+    const { channelCount, bitsPerSecond, sessionId, chatId } = message;
     lastNewStreamMessage = message;
     debugMode = message.debugMode;
 
-    encoder.init(sampleRate, channelCount, bitsPerSecond);
+    encoder.init(SAMPLE_RATE, channelCount, bitsPerSecond);
     state = 'encoding';
 
     recordingSubject = new signalR.Subject<Uint8Array>();
@@ -86,6 +92,13 @@ async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
 }
 
 async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+    if (workletPort != null) {
+        throw new Error(`EncoderWorker: workletPort has already been specified.`);
+    }
+    if (vadPort != null) {
+        throw new Error(`EncoderWorker: vadPort has already been specified.`);
+    }
+
     const { mimeType, wasmPath, audioHubUrl } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;
@@ -111,7 +124,7 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
     const moduleOverrides: ModuleOverrides = {};
     if (wasmPath) {
         moduleOverrides.locateFile = (path, scriptDirectory) =>
-            path.match(/.wasm/) ? wasmPath : scriptDirectory + path;
+            path.match(/\.wasm/i) ? wasmPath : scriptDirectory + path;
 
         const response = await fetch(wasmPath);
         moduleOverrides.wasmBinary = await response.arrayBuffer();
@@ -123,7 +136,7 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
             encoder = Module;
             // Notify the host ready to accept 'init' message.
             const readyToInit: EncoderResponseMessage = {
-                type: 'readyToInit'
+                type: 'loadCompleted'
             }
             worker.postMessage(readyToInit);
             state = 'readyToInit';
@@ -139,56 +152,66 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
 }
 
 const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
-    const { type, buffer } = ev.data;
+    try {
+        const { type, buffer } = ev.data;
 
-    let audioBuffer: ArrayBuffer;
-    switch (type) {
-        case 'buffer':
-            audioBuffer = buffer;
-            break;
-        default:
-            break;
-    }
-    if (audioBuffer.byteLength !== 0) {
-        if (state === 'encoding'){
-            queue.push(buffer);
-            processQueue();
-        } else if (state === 'paused') {
-            queue.push(buffer);
-            if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
-                const bufferOrDone = queue.shift();
-                if (bufferOrDone === 'done') {
-                    queue.shift();
-                    queue.unshift('done');
+        let audioBuffer: ArrayBuffer;
+        switch (type) {
+            case 'buffer':
+                audioBuffer = buffer;
+                break;
+            default:
+                break;
+        }
+        if (audioBuffer.byteLength !== 0) {
+            if (state === 'encoding') {
+                queue.push(buffer);
+                processQueue();
+            } else if (state === 'paused') {
+                queue.push(buffer);
+                if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
+                    const bufferOrEnded = queue.shift();
+                    if (bufferOrEnded === 'ended') {
+                        queue.shift();
+                        queue.unshift('ended');
+                    }
                 }
             }
         }
     }
+    catch (error) {
+        console.error(error);
+    }
 };
 
 const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
-    const vadEvent = ev.data;
-    if (debugMode) {
-        console.log(vadEvent);
+    try {
+        const vadEvent = ev.data;
+        if (debugMode) {
+            console.log(vadEvent);
+        }
+
+        if (state === 'encoding') {
+            if (vadEvent.kind === 'end') {
+                state = 'paused';
+                recordingSubject.complete();
+            }
+        } else if (state == 'paused' && vadEvent.kind === 'start') {
+            if (!lastNewStreamMessage) {
+                throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
+            }
+
+            const { channelCount, bitsPerSecond, sessionId, chatId } = lastNewStreamMessage;
+            encoder.init(SAMPLE_RATE, channelCount, bitsPerSecond);
+            recordingSubject = new signalR.Subject<Uint8Array>();
+            await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+
+            state = 'encoding';
+            processQueue();
+        }
     }
-
-    if (state === 'encoding') {
-        if (vadEvent.kind === 'end') {
-            state = 'paused';
-            recordingSubject.complete();
-        }
-    } else if (state == 'paused' && vadEvent.kind === 'start') {
-        if (!lastNewStreamMessage) {
-            throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
-        }
-
-        const { sampleRate, channelCount, bitsPerSecond, sessionId, chatId } = lastNewStreamMessage;
-        encoder.init(sampleRate, channelCount, bitsPerSecond);
-        recordingSubject = new signalR.Subject<Uint8Array>();
-        await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
-
-        state = 'encoding';
-        processQueue();
+    catch(error) {
+        console.error(error);
     }
 };
 
@@ -204,9 +227,9 @@ function processQueue(): void {
     try {
         isEncoding = true;
 
-        const bufferOrDone = queue.shift();
-        if (typeof bufferOrDone === 'string') {
-            if (bufferOrDone === 'done') {
+        const bufferOrEnded = queue.shift();
+        if (typeof bufferOrEnded === 'string') {
+            if (bufferOrEnded === 'ended') {
                 try {
                     if (encoder) {
                         encoder.close();
@@ -225,7 +248,7 @@ function processQueue(): void {
             }
         }
         else {
-            const buffer = bufferOrDone;
+            const buffer = bufferOrEnded;
             const monoPcm = new Float32Array(buffer);
             encoder.encode([monoPcm]);
 

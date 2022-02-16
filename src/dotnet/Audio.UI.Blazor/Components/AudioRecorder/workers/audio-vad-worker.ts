@@ -1,6 +1,6 @@
 import Denque from 'denque';
 import SoxrResampler, { SoxrDatatype, SoxrQuality } from 'wasm-audio-resampler';
-import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from './audio-vad';
+import { adjustChangeEventsToSeconds, VoiceActivityDetector } from './audio-vad';
 import { VadMessage } from './audio-vad-worker-message';
 import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
@@ -22,23 +22,34 @@ let resampler: SoxrResampler = null;
 let voiceDetector: VoiceActivityDetector = null;
 let isVadRunning = false;
 
-onmessage = (ev: MessageEvent<VadMessage>) => {
-    const { type } = ev.data;
+onmessage = async (ev: MessageEvent<VadMessage>) => {
+    try {
+        const { type } = ev.data;
 
-    switch (type) {
-        case 'load-module':
-            void onLoadModule(ev.ports[0], ev.ports[1]);
-            break;
-        case 'init-new-stream':
-            void onInitNewStream();
-            break;
+        switch (type) {
+            case 'load':
+                await onLoadModule(ev.ports[0], ev.ports[1]);
+                break;
+            case 'init':
+                await onInitNewStream();
+                break;
 
-        default:
-            break;
+            default:
+                break;
+        }
+    } catch (error) {
+        console.error(error);
     }
 };
 
 async function onLoadModule(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
+    if (workletPort != null) {
+        throw new Error(`VADWorker: workletPort has already been specified.`);
+    }
+    if (encoderPort != null) {
+        throw new Error(`VADWorker: encoderPort has already been specified.`);
+    }
+
     workletPort = workletMessagePort;
     encoderPort = encoderMessagePort;
     workletPort.onmessage = onWorkletMessage;
@@ -59,29 +70,33 @@ async function onLoadModule(workletMessagePort: MessagePort, encoderMessagePort:
 
 async function onInitNewStream(): Promise<void> {
     // resample silence to clean up internal state
-    const silence = new Uint8Array(768* 4);
+    const silence = new Uint8Array(768 * 4);
     resampler.processChunk(silence, resampleBuffer);
 }
 
-const onWorkletMessage = (ev: MessageEvent<BufferVadWorkletMessage>) => {
-    const { type, buffer } = ev.data;
+const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
+    try {
+        const { type, buffer } = ev.data;
 
-    let vadBuffer: ArrayBuffer;
-    switch (type) {
-        case 'buffer':
-            vadBuffer = buffer;
-            break;
-        default:
-            break;
-    }
-    if (vadBuffer && vadBuffer.byteLength !== 0) {
-        queue.push(buffer);
+        let vadBuffer: ArrayBuffer;
+        switch (type) {
+            case 'buffer':
+                vadBuffer = buffer;
+                break;
+            default:
+                break;
+        }
+        if (vadBuffer && vadBuffer.byteLength !== 0) {
+            queue.push(buffer);
 
-        void processQueue();
+            await processQueue();
+        }
+    } catch (error) {
+        console.error(error);
     }
 };
 
-const onEncoderMessage = (ev: MessageEvent) => {
+const onEncoderMessage = (_: MessageEvent) => {
     // do nothing;
 };
 
@@ -108,7 +123,7 @@ async function processQueue(): Promise<void> {
         const bufferMessage: BufferVadWorkletMessage = {
             type: 'buffer',
             buffer: buffer,
-        }
+        };
 
         workletPort.postMessage(bufferMessage, [buffer]);
 
@@ -116,7 +131,7 @@ async function processQueue(): Promise<void> {
         const vadEvent = await voiceDetector.appendChunk(monoPcm);
         if (vadEvent) {
             const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
-            sendResult(adjustedVadEvent);
+            encoderPort.postMessage(adjustedVadEvent);
         }
 
     } catch (error) {
@@ -126,11 +141,5 @@ async function processQueue(): Promise<void> {
         isVadRunning = false;
     }
 
-
-    void processQueue();
-}
-
-
-function sendResult(result: VoiceActivityChanged): void {
-    encoderPort.postMessage(result);
+    await processQueue();
 }

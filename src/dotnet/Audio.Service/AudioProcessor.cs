@@ -16,7 +16,7 @@ public sealed class AudioProcessor : IAudioProcessor
     private static readonly Regex EmptyRegex = new("^\\s*$", RegexOptions.Compiled);
 
     private ILogger Log { get; }
-    private ILogger OpenAudioSegmentLog { get;  }
+    private ILogger OpenAudioSegmentLog { get; }
     private ILogger AudioSourceLog { get; }
     private bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -39,7 +39,6 @@ public sealed class AudioProcessor : IAudioProcessor
         Log = services.LogFor(GetType());
         Transcriber = services.GetRequiredService<ITranscriber>();
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
-        // AudioSplitter = services.GetRequiredService<AudioSplitter>();
         AudioStreamer = services.GetRequiredService<AudioStreamer>();
         TranscriptSplitter = services.GetRequiredService<TranscriptSplitter>();
         TranscriptPostProcessor = services.GetRequiredService<TranscriptPostProcessor>();
@@ -107,6 +106,7 @@ public sealed class AudioProcessor : IAudioProcessor
         async Task FinalizeAudioProcessing()
         {
             // TODO(AY): We should make sure finalization happens no matter what (later)!
+            // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
             await publishAudioTask.ConfigureAwait(false);
             var audioEntry = await audioEntryTask.ConfigureAwait(false);
             var audioBlobId = await saveAudioTask.ConfigureAwait(false);
