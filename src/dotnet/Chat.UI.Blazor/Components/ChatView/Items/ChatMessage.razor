@@ -51,13 +51,13 @@
                     var url = "/api/content/download/content-record/" + attachment.ContentId;
                     @if (isImage) {
                         var previewUrl = url;
-                        <div class="message-attachment-image">
+                        <div class="message-attachment-image mt-1">
                             <a class="cursor-pointer" href="@url" target="_blank" role="button">
                                 <img style="max-width: 400px; max-height: 300px"  src="@previewUrl" alt="image" />
                             </a>
                         </div>
                     } else {
-                        <div class="message-attachment-file">
+                        <div class="message-attachment-file mt-1">
                             <a class="cursor-pointer" href="@url" target="_blank" role="button">
                                 @attachment.FileName
                             </a>
