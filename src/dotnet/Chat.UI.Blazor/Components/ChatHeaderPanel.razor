@@ -43,7 +43,6 @@
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        // var chats = await Chats.GetChats(Session, cancellationToken);
         var chats = ListeningChats.ListeningChats;
         return new () {
             Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
