@@ -1,8 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stl.Versioning;
 
 namespace ActualChat.Chat.Db;
 
@@ -12,7 +9,8 @@ public class DbTextEntryAttachment
     public DbTextEntryAttachment() { }
     public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
 
-    [Key] public string Id { get; set; } = "";
+    // (ChatId, EntryId, Index)
+    [Key] public string CompositeId { get; set; } = "";
     public string ChatId { get; set; } = "";
     public long EntryId { get; set; }
     public int Index { get; set; }
@@ -22,9 +20,11 @@ public class DbTextEntryAttachment
     public string FileName { get; set; } = "";
     public string ContentType { get; set; } = "";
 
+    public static string GetCompositeId(string chatId, long entryId, int index)
+        => $"{chatId}:{entryId.ToString(CultureInfo.InvariantCulture)}:{index.ToString(CultureInfo.InvariantCulture)}";
+
     public TextEntryAttachment ToModel()
         => new () {
-            Id = Id,
             ChatId = ChatId,
             EntryId = EntryId,
             Index = Index,
@@ -36,11 +36,11 @@ public class DbTextEntryAttachment
             Length = Length
         };
 
-    private void UpdateFrom(TextEntryAttachment model)
+    public void UpdateFrom(TextEntryAttachment model)
     {
+        CompositeId = GetCompositeId(model.ChatId, model.EntryId, model.Index);
         ChatId = model.ChatId;
         EntryId = model.EntryId;
-        Id = model.Id;
         Index = model.Index;
         Version = model.Version;
         ContentId = model.ContentId;
