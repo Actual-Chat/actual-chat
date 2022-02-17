@@ -72,7 +72,12 @@ export class VoiceActivityDetector {
     public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged> {
         const { movingAverages, streamedMedian, h0, c0 } = this;
         if (this.session == null) {
-            await this.initPromise;
+            if (this.initPromise) {
+                await this.initPromise;
+            }
+            else {
+                await this.init();
+            }
         }
 
         if (monoPcm.length !== SAMPLES_PER_WINDOW) {
