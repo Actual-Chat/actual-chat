@@ -34,6 +34,7 @@
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private ChatAuthorListeningChats ListeningChats { get; set; } = null!;
 
     [Inject]
     private ChatPlayers Players { get; set; } = null!;
@@ -42,10 +43,11 @@
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await Chats.GetChats(Session, cancellationToken);
+        // var chats = await Chats.GetChats(Session, cancellationToken);
+        var chats = ListeningChats.ListeningChats;
         return new () {
             Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
-            AddDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId)
+            AddDefault = chats.Count == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId)
         };
     }
 }
