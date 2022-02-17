@@ -6,7 +6,7 @@ public class ChatAuthorListeningChats
 {
     private IChats Chats { get; set; } = null!;
     private Session Session { get; }
-    private List<Chat> ListeningChats { get; set; } = new ();
+    public List<Chat> ListeningChats { get; set; } = new ();
 
     public ChatAuthorListeningChats(IChats chats, Session session)
     {
