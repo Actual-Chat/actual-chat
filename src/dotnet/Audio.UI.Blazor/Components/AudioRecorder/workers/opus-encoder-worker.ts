@@ -2,10 +2,10 @@ import WebMOpusEncoder from 'opus-media-recorder/WebMOpusEncoder';
 import Denque from 'denque';
 import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { ResolveCallbackMessage } from 'resolve-callback-message';
 
 import { DoneMessage, EncoderMessage, InitNewStreamMessage, LoadModuleMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
-import { EncoderResponseMessage } from '../opus-media-recorder-message';
 import { VoiceActivityChanged } from './audio-vad';
 
 interface Encoder {
@@ -97,8 +97,7 @@ async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
         console.log('init recorder worker!');
     }
 
-    const initCompletedMessage: EncoderResponseMessage = {
-        type: 'initCompleted',
+    const initCompletedMessage: ResolveCallbackMessage = {
         callbackId
     };
     worker.postMessage(initCompletedMessage);
@@ -148,8 +147,7 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
         .then(Module => {
             encoder = Module;
             // Notify the host ready to accept 'init' message.
-            const readyToInit: EncoderResponseMessage = {
-                type: 'loadCompleted',
+            const readyToInit: ResolveCallbackMessage = {
                 callbackId
             }
             worker.postMessage(readyToInit);
@@ -251,8 +249,7 @@ function processQueue(): void {
                     sendEncodedData(buffers);
                 }
 
-                const message: EncoderResponseMessage = {
-                    type: 'doneCompleted',
+                const message: ResolveCallbackMessage = {
                     callbackId: ended.callbackId,
                 };
                 worker.postMessage(message);
