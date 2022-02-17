@@ -1,3 +1,5 @@
+import { AudioRecorder } from '../../dotnet/Audio.UI.Blazor/Components/AudioRecorder/audio-recorder';
+
 /**
  * We're only allowed to have 4-6 audio contexts on many browsers
  * and there's no way to discard them before GC, so we should reuse audio contexts.
@@ -62,6 +64,9 @@ export class AudioContextPool {
     }
 
     private static _initEventListener = () => {
+        // init first recorder
+        void AudioRecorder.initRecorderPool();
+
         AudioContextPool.removeInitListeners();
         AudioContextPool.audioContexts.forEach(async (obj, key) => {
             if (obj.audioContext != null)

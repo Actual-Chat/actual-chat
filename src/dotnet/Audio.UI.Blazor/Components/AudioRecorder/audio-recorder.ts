@@ -163,5 +163,3 @@ export class AudioRecorder {
         return this.recording !== null && this.recording.stream !== null;
     }
 }
-
-void AudioRecorder.initRecorderPool();
