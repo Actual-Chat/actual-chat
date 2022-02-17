@@ -192,12 +192,9 @@ export class OpusMediaRecorder extends EventTarget {
         // 1. Relative path normalization e.g "b" -> "http://localhost:5000/a/b"
         // 2. Absolute path normalization e.g "/a/b" -> "http://localhost:5000/a/b"
         // 3. Network path reference normalization e.g "//localhost:5000/a/b" -> "http://localhost:5000/a/b"
-        const aTag = window.document.createElement('a');
-        aTag.href = '/api/hub/audio';
-        const audioHubUrl = aTag.href;
-
-        aTag.href = WebMOpusWasm as string;
-        const wasmPathUrl = aTag.href;
+        const base = new URL('opus-media-recorder.ts', import.meta.url).origin;
+        const audioHubUrl = new URL('/api/hub/audio', base).toString();
+        const wasmPathUrl = new URL(WebMOpusWasm, base).toString();
 
         const callbackId = this.lastCallbackId++;
         return new Promise(resolve => {
