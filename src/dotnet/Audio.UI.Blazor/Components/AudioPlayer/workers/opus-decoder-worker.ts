@@ -3,7 +3,7 @@ import { OpusDecoder } from "./opus-decoder";
 
 const worker = self as unknown as Worker;
 const decoders = new Map<number, OpusDecoder>();
-const debug: boolean = false;
+const debug = false;
 const debugPushes: boolean = debug && true;
 
 worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
@@ -23,7 +23,7 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
                 onEnd(msg as EndDecoderMessage);
                 break;
             case 'stop':
-                await onStop(msg as StopDecoderMessage);
+                onStop(msg as StopDecoderMessage);
                 break;
             default:
                 throw new Error(`Decoder Worker: Unsupported DecoderMessage type: ${msg.type}`);
@@ -50,7 +50,7 @@ async function onCreate(message: CreateDecoderMessage) {
     const decoder = await OpusDecoder.create(workletPort);
     decoders.set(controllerId, decoder);
     const msg: OperationCompletedDecoderWorkerMessage = {
-        type: "operationCompleted",
+        type: 'operationCompleted',
         callbackId: callbackId,
     };
     worker.postMessage(msg);
@@ -67,7 +67,7 @@ async function onInit(message: InitDecoderMessage): Promise<void> {
     await decoder.init(data);
 
     const msg: OperationCompletedDecoderWorkerMessage = {
-        type: "operationCompleted",
+        type: 'operationCompleted',
         callbackId: callbackId,
     };
     worker.postMessage(msg);
@@ -93,12 +93,14 @@ function onEnd(message: EndDecoderMessage): void {
     decoder.pushEnd();
 }
 
-async function onStop(message: StopDecoderMessage): Promise<void> {
+function onStop(message: StopDecoderMessage): void {
     const { controllerId } = message;
     const decoder = getDecoder(controllerId);
     if (debug)
         console.debug(`Decoder(controllerId:${controllerId}): start stop`);
-    await decoder.stop();
+    decoder.stop();
     if (debug)
         console.debug(`Decoder(controllerId:${controllerId}): end stop`);
 }
+
+self['getDecoder'] = getDecoder;

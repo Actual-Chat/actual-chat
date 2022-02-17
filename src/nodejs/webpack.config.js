@@ -155,6 +155,13 @@ module.exports = (env, args) => {
           }
         },
         {
+          test: /\.map$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'wasm/[name][ext][query]'
+          }
+        },
+        {
           test: /\.onnx$/i,
           type: 'asset/resource',
           generator: {
