@@ -122,7 +122,7 @@ public sealed class AudioProcessor : IAudioProcessor
         var language = audioSegment.Languages.FirstOrDefault();
         if (language.IsNone)
             language = LanguageId.Default;
-        var altLanguages = language == LanguageId.English
+        var altLanguages = language == LanguageId.English || language == LanguageId.Russian
             ? Enumerable.Empty<LanguageId>()
             : audioSegment.Languages.Where(l => l != language);
         var transcriptionOptions = new TranscriptionOptions() {
