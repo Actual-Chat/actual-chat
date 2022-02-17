@@ -1,8 +1,10 @@
 @namespace ActualChat.Audio.UI.Blazor.Components
+@inherits ComputedStateComponent<LanguageId>
 @implements IAudioRecorderBackend
 @using ActualChat.Audio.UI.Blazor.Module
 @using ActualChat.Media
 @using System.Buffers.Binary
+@using ActualChat.Users
 @implements IAsyncDisposable
 
 @{
@@ -30,6 +32,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
 
     private IJSObjectReference? JSRef { get; set; }
     private DotNetObjectReference<IAudioRecorderBackend> BlazorRef { get; set; } = null!;
@@ -42,7 +45,9 @@
     [Parameter]
     public EventCallback<bool> RecordingStateChanged { get; set; }
 
-    public async ValueTask DisposeAsync() {
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync().ConfigureAwait(true);
+
         await StopRecording().ConfigureAwait(true);
         await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
         // ReSharper disable once ConstantConditionalAccessQualifier
@@ -57,6 +62,16 @@
                 BlazorRef, Session.Id, ChatId, DebugMode
                 ).ConfigureAwait(true);
         }
+    }
+
+    protected override async Task<LanguageId> ComputeState(CancellationToken cancellationToken) {
+        var settings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
+        var languageId = settings?.Language ?? State.LatestNonErrorValue;
+        if (languageId != State.LatestNonErrorValue) {
+            await ToggleRecording().ConfigureAwait(true);
+            await ToggleRecording().ConfigureAwait(true);
+        }
+        return  languageId;
     }
 
     private Task ToggleRecording()
