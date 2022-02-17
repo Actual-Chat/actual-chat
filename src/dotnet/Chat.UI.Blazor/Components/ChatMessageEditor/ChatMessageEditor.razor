@@ -89,13 +89,12 @@
 </div>
 
 @code {
-
     private class MessageAttachment {
         public string Url { get; set; } = "";
         public string FileName { get; set; } = "";
         public string FileType { get; set; } = "";
         public int Length { get; set; }
-        public bool IsReal { get; set; }
+        public bool IsReal => Url.StartsWith("blob:");
         public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
     }
 
@@ -115,8 +114,8 @@
 
     protected override async Task OnInitializedAsync() {
         RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
-        InnerAddAttachment("https://i.pinimg.com/736x/44/50/32/44503273af87d55ad6576e0429d33448--ship-paintings-pirate-ships.jpg", "pirate-ship.jpg", "image/jpg", 1, false);
-        InnerAddAttachment("https://kartinkin.net/uploads/posts/2021-07/1625258587_8-kartinkin-com-p-piratskii-korabl-fon-krasivie-foni-10.jpg", "pirate-ship.jpg", "image/jpg", 1, false);
+        //AddAttachment("https://i.pinimg.com/736x/44/50/32/44503273af87d55ad6576e0429d33448--ship-paintings-pirate-ships.jpg", "pirate-ship.jpg", "image/jpg", 1);
+        //AddAttachment("https://kartinkin.net/uploads/posts/2021-07/1625258587_8-kartinkin-com-p-piratskii-korabl-fon-krasivie-foni-10.jpg", "pirate-ship.jpg", "image/jpg", 1);
     }
 
     public async ValueTask DisposeAsync()
@@ -165,30 +164,25 @@
         }
     }
 
-    private async Task<byte[]> GetAttachmentContent(MessageAttachment messageAttachment) {
-        var bytes = await JSRef.InvokeAsync<byte[]>("getAttachmentContent", messageAttachment.Url).ConfigureAwait(true);
-        return bytes;
-    }
-
     [JSInvokable]
     public void AddAttachment(string url, string? fileName, string? fileType, int length) {
-        InnerAddAttachment(url, fileName, fileType, length, true);
-        StateHasChanged();
-    }
-
-    private void InnerAddAttachment(string url, string? fileName, string? fileType, int length, bool real)
-    {
         _attachments = _attachments.Add(new MessageAttachment {
             Url = url,
             FileName = fileName ?? "",
             FileType = fileType ?? "",
             Length = length,
-            IsReal = real
         });
+        StateHasChanged();
     }
 
-    private Task RemoveAttachment(MessageAttachment attachment) {
-        return Task.CompletedTask;
+    private async Task<byte[]> GetAttachmentContent(MessageAttachment messageAttachment) {
+        var bytes = await JSRef.InvokeAsync<byte[]>("getAttachmentContent", messageAttachment.Url).ConfigureAwait(true);
+        return bytes;
+    }
+
+    private async Task RemoveAttachment(MessageAttachment attachment) {
+        await JSRef.InvokeVoidAsync("removeAttachment", attachment.Url).ConfigureAwait(true);
+        _attachments = _attachments.Remove(attachment);
     }
 
     private Task RecordingStateChanged(bool isRecording) {

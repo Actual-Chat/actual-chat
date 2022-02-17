@@ -143,6 +143,15 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
+    private async removeAttachment(url: string) : Promise<void> {
+        const index = this.attachments.indexOf(url);
+        if (index >= -1) {
+            URL.revokeObjectURL(url);
+            this.attachments.splice(index, 1);
+        }
+        this.changeMode();
+    }
+
     private pasteClipboardData(pastedData: string) {
         // document.execCommand api is deprecated
         // (see https://developer.mozilla.org/ru/docs/Web/API/Document/execCommand)
