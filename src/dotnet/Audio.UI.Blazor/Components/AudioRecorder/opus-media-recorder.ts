@@ -1,7 +1,7 @@
 import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
 import { AudioContextPool } from 'audio-context-pool';
+import { ResolveCallbackMessage } from 'resolve-callback-message';
 
-import { EncoderResponseMessage } from './opus-media-recorder-message';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
 import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
 import { DoneMessage, InitNewStreamMessage, LoadModuleMessage } from './workers/opus-encoder-worker-message';
@@ -120,6 +120,7 @@ export class OpusMediaRecorder extends EventTarget {
             await this.loadCompleted;
 
             this.loadCompleted = null;
+            this.workerState = 'readyToInit';
         }
 
         const callbackId = this.lastCallbackId++;
@@ -146,11 +147,18 @@ export class OpusMediaRecorder extends EventTarget {
             }
             this.vadWorker.postMessage(vadInitMessage);
         });
+
+        // Start streaming
+        this.source.connect(this.encoderWorklet);
+        // It's OK to not wait for VAD worker init-new-stream message to be processed
+        this.source.connect(this.vadWorklet);
+        this.workerState = 'encoding';
+        this.dispatchEvent( new Event('start'));
     }
 
-    public stopAsync(): Promise<void> {
+    public async stopAsync(): Promise<void> {
         const callbackId = this.lastCallbackId++;
-        return new Promise(resolve => {
+        await new Promise(resolve => {
             this.callbacks.set(callbackId, resolve);
             if (this.state === 'inactive') {
                 throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
@@ -172,6 +180,10 @@ export class OpusMediaRecorder extends EventTarget {
 
             this.state = 'inactive';
         });
+
+        // Detect of stop() called before
+        this.dispatchEvent(new Event('stop'));
+        this.workerState = 'readyToInit';
     }
 
     private loadWorkers(): Promise<void> {
@@ -247,34 +259,10 @@ export class OpusMediaRecorder extends EventTarget {
         }
     }
 
-    private onWorkerMessage = (ev: MessageEvent<EncoderResponseMessage>) => {
-        const { type, callbackId } = ev.data;
-        switch (type) {
-            case 'loadCompleted':
-                this.workerState = 'readyToInit';
-                break;
-
-            case 'initCompleted':
-                // Start streaming
-                this.source.connect(this.encoderWorklet);
-                // It's OK to not wait for VAD worker init-new-stream message to be processed
-                this.source.connect(this.vadWorklet);
-                this.workerState = 'encoding';
-                this.dispatchEvent( new Event('start'));
-                break;
-
-            case 'doneCompleted':
-                // Detect of stop() called before
-                this.dispatchEvent(new Event('stop'));
-
-                this.workerState = 'readyToInit';
-                break;
-
-            default:
-                break; // Ignore
-        }
+    private onWorkerMessage = (ev: MessageEvent<ResolveCallbackMessage>) => {
+        const { callbackId } = ev.data;
         this.popCallback(callbackId)();
-    }
+    };
 
     private popCallback(callbackId: number): Function {
         const callback = this.callbacks.get(callbackId);
@@ -306,5 +294,5 @@ export class OpusMediaRecorder extends EventTarget {
         errorToPush['name'] = 'UnknownError';
         errorToPush['message'] = message;
         this.dispatchEvent(errorToPush);
-    }
+    };
 }
