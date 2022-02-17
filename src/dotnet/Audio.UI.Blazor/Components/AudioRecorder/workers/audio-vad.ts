@@ -101,8 +101,8 @@ export class VoiceActivityDetector {
         if (this.speechSteps >= ACCUMULATIVE_PERIOD_START) {
             // enough statistics to adjust trigSum \ negTrigSum
             const probMedian = streamedMedian.median;
-            trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
-            negTrigSum = 0.3 * probMedian;
+            this.speechProbabilityTrigger = trigSum = 0.80 * probMedian + 0.15; // 0.15 when median is zero, 0.95 when median is 1
+            this.silenceProbabilityTrigger = negTrigSum = 0.3 * probMedian;
         }
 
         if (smoothedProb >= trigSum && this.endOffset > 0) {
@@ -160,6 +160,13 @@ export class VoiceActivityDetector {
         this.session = session;
     }
 
+    public reset(): void {
+        this.lastActivityEvent = { kind: 'end', offset: 0, speechProb: 0 };
+        this.sampleCount = 0;
+        this.endOffset = null;
+        this.speechSteps = 0;
+        this.endResetCounter = 0;
+    }
 }
 
 class StreamedMedian {

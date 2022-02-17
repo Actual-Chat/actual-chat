@@ -72,6 +72,7 @@ async function onInitNewStream(): Promise<void> {
     // resample silence to clean up internal state
     const silence = new Uint8Array(768 * 4);
     resampler.processChunk(silence, resampleBuffer);
+    voiceDetector.reset();
 }
 
 const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
