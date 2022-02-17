@@ -340,7 +340,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var attachment = command.Attachment with {
-            Id = Ulid.NewUlid().ToString(),
             Version = VersionGenerator.NextVersion(),
         };
         var dbAttachment = new DbTextEntryAttachment(attachment);

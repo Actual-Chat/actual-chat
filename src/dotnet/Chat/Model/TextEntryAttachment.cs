@@ -4,7 +4,6 @@ public record TextEntryAttachment
 {
     public Symbol ChatId { get; init; }
     public long EntryId { get; init; }
-    public string Id { get; init; } = "";
     public int Index { get; init; }
     public long Version { get; init; }
     public string ContentId { get; init; } = "";
