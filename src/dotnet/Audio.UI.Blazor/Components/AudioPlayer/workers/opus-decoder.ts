@@ -1,37 +1,28 @@
 import Denque from 'denque';
-import codec from '../../../../../../../codec/artifacts/libopus/libopus/codec.js';
-import codecWasm from '../../../../../../../codec/artifacts/libopus/libopus/codec.wasm';
+import codec, { Decoder, Codec } from '../../../../../../../codec/artifacts/codec/codec.js';
+import codecWasm from '../../../../../../../codec/artifacts/codec/codec.wasm';
 
 // #ifdef DEBUG
-import codecWasmMap from '../../../../../../../codec/artifacts/libopus/libopus/codec.wasm.map';
+import codecWasmMap from '../../../../../../../codec/artifacts/codec/codec.wasm.map';
 // #endif
 
 import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-decoder-worker-message';
 
-interface Codec {
-    Decoder: any;
-}
-
 let codecModule: Codec | null = null;
-const codecModuleReady = (codec(getEmscriptenLoaderOptions()) as Promise<Codec>).then(val => {
+const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
     codecModule = val;
     self['codec'] = codecModule;
 });
-
-interface Decoder {
-    decode(buffer: BufferSource): Float32Array;
-    delete(): void;
-}
 
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
             if (filename === 'codec.wasm')
-                return codecWasm as string;
+                return codecWasm;
             // #ifdef DEBUG
             else if (filename === 'codec.wasm.map')
-                return codecWasmMap as string;
+                return codecWasmMap;
             // #endif
             // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
@@ -61,7 +52,7 @@ export class OpusDecoder {
             await codecModuleReady;
         }
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        const decoder = (new codecModule.Decoder()) as Decoder;
+        const decoder = new codecModule.Decoder();
         console.warn('create', decoder);
         return new OpusDecoder(decoder, workletPort);
     }
