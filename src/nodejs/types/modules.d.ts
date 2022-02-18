@@ -1,12 +1,12 @@
 declare module "*.wasm" {
-    const value: any;
-    export = value;
+    const url: string;
+    export default url;
 }
 declare module "*.map" {
-    const value: any;
-    export = value;
+    const url: string;
+    export default url;
 }
 declare module "*.onnx" {
-    const value: any;
-    export = value;
+    const url: string;
+    export default url;
 }
