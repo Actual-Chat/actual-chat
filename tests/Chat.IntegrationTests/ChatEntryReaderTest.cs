@@ -157,6 +157,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         result.Count.Should().Be(0);
 
         var cts2 = new CancellationTokenSource();
+        var resultTask = reader.ReadNewTiles(cts2.Token).TrimOnCancellation().ToListAsync();
         _ = Task.Run(() => AddChatEntries(chats,
                 session,
                 ChatId,
@@ -164,10 +165,47 @@ public class ChatEntryReaderTest : AppHostTestBase
                 (int)Constants.Chat.IdTileStack.MinTileSize)
             .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
 
-        result = await reader.ReadNewTiles(cts2.Token).TrimOnCancellation().ToListAsync();
+        result = await resultTask;
         result.Count.Should().Be(1);
         result[0].Value.Should().NotBeNull();
         result[0].Value.Entries.Length.Should().BeGreaterThanOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task ReadAllWaitingForNewTest()
+    {
+        using var appHost = await TestHostFactory.NewAppHost();
+        using var tester = appHost.NewWebClientTester();
+        var services = tester.ClientServices;
+        var user = await tester.SignIn(new User("", "Bob"));
+        var session = tester.Session;
+
+        var auth = services.GetRequiredService<IAuth>();
+        var u = await auth.GetUser(session, CancellationToken.None);
+        u.IsAuthenticated.Should().BeTrue();
+        u.Id.Should().Be(user.Id);
+        u.Name.Should().Be(user.Name);
+
+        var chats = services.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, ChatId, CancellationToken.None);
+        chat.Should().NotBeNull();
+        chat?.Title.Should().Be("The Actual One");
+
+        var idRange = chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
+        var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
+
+        var cts2 = new CancellationTokenSource();
+        var resultTask = reader.ReadAllWaitingForNew(idRange.Result.End - 1, cts2.Token).ToListAsync();
+
+        _ = Task.Run(() => AddChatEntries(chats,
+                session,
+                ChatId,
+                CancellationToken.None,
+                (int)Constants.Chat.IdTileStack.MinTileSize)
+            .ContinueWith(_ => cts2.CancelAfter(500), CancellationToken.None));
+
+        var result = await resultTask;
+        result.Count.Should().Be(1+(int)Constants.Chat.IdTileStack.MinTileSize);
     }
 
     [Fact]
