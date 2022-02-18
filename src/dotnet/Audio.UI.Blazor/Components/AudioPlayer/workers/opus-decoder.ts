@@ -1,9 +1,11 @@
 import Denque from 'denque';
-import codec, { Decoder, Codec } from '../../../../../../../codec/artifacts/codec/codec.js';
-import codecWasm from '../../../../../../../codec/artifacts/codec/codec.wasm';
-
-// #ifdef DEBUG
-import codecWasmMap from '../../../../../../../codec/artifacts/codec/codec.wasm.map';
+// #ifdef DEBUG // this doesn't work, just for clarity (should make a dynamic import or something)
+//import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
+//import codecWasm from '@actual-chat/codec/codec.debug.wasm';
+//import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
+// #else
+import codec, { Decoder, Codec } from '@actual-chat/codec';
+import codecWasm from '@actual-chat/codec/codec.wasm';
 // #endif
 
 import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-decoder-worker-message';
@@ -21,8 +23,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             if (filename === 'codec.wasm')
                 return codecWasm;
             // #ifdef DEBUG
-            else if (filename === 'codec.wasm.map')
-                return codecWasmMap;
+            // else if (filename === 'codec.wasm.map')
+            //     return codecWasmMap;
             // #endif
             // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
