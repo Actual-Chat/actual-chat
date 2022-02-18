@@ -23,6 +23,11 @@ export function adjustChangeEventsToSeconds(event: VoiceActivityChanged, sampleR
     };
 }
 
+const MIN_SILENCE_SAMPLES = 8000;
+const MAX_SILENCE_SAMPLES = 64000;
+const MIN_SPEECH_SAMPLES = 8000;
+const MAX_SPEECH_SAMPLES = 16000 * 60 * 2;
+const PAD_SAMPLES = 512;
 const SAMPLES_PER_WINDOW = 512;
 const ACCUMULATIVE_PERIOD_START = 100;
 const ACCUMULATIVE_PERIOD_END = 300;
@@ -91,10 +96,6 @@ export class VoiceActivityDetector {
         this.h0 = hn;
         this.c0 = cn;
 
-        const minSilenceSamples = 64000;
-        const minSpeechSamples = 8000;
-        const padSamples = 512;
-
         let trigSum = this.speechProbabilityTrigger;
         let negTrigSum = this.silenceProbabilityTrigger;
 
@@ -119,7 +120,7 @@ export class VoiceActivityDetector {
         }
 
         if ((smoothedProb >= trigSum || prob > 0.95) && currentEvent.kind === 'end') {
-            const offset = Math.max(0, currentOffset - padSamples);
+            const offset = Math.max(0, currentOffset - PAD_SAMPLES);
             const duration = offset - currentEvent.offset;
             currentEvent = { kind: 'start', offset, speechProb: smoothedProb, duration };
             if (this.speechSteps++ < ACCUMULATIVE_PERIOD_END) {
@@ -131,12 +132,22 @@ export class VoiceActivityDetector {
             if (this.endOffset === null) {
                 this.endOffset = currentOffset;
             }
-            if (currentOffset - this.endOffset < minSilenceSamples) {
-                // too short
+            const currentSpeechSamples = currentOffset - currentEvent.offset;
+            const currentSilenceSamples = currentOffset - this.endOffset;
+            if (currentSilenceSamples < MAX_SILENCE_SAMPLES) {
+                if (currentSpeechSamples > MAX_SPEECH_SAMPLES) {
+                    // try to break long speech at the nearest short pause
+                    if (currentSilenceSamples > MIN_SILENCE_SAMPLES) {
+                        const offset = this.endOffset + PAD_SAMPLES;
+                        const duration = offset - currentEvent.offset
+                        currentEvent = { kind: 'end', offset, speechProb: smoothedProb, duration };
+                        this.endOffset = null;
+                    }
+                }
+                // do nothing - current silence period is too short
             } else {
-                const currentSpeechSamples = currentOffset - currentEvent.offset;
-                if (currentSpeechSamples > minSpeechSamples) {
-                    const offset = this.endOffset + padSamples;
+                if (currentSpeechSamples > MIN_SPEECH_SAMPLES) {
+                    const offset = this.endOffset + PAD_SAMPLES;
                     const duration = offset - currentEvent.offset
                     currentEvent = { kind: 'end', offset, speechProb: smoothedProb, duration };
                     this.endOffset = null;
