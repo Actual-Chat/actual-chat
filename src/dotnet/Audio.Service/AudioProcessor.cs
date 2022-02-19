@@ -73,18 +73,15 @@ public sealed class AudioProcessor : IAudioProcessor
             0, record, audio,
             author, languages,
             OpenAudioSegmentLog);
+        openSegment.SetRecordedAt(Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset));
         Log.LogDebug(
             nameof(ProcessAudio) + ": record #{RecordId} got segment #{SegmentIndex} w/ stream #{SegmentStreamId}",
             record.Id, openSegment.Index, openSegment.StreamId);
 
+        // TODO(AK): RedisStreamer should return Task<Task> where first Task indicates success of creating Redis stream!
         var publishAudioTask = BackgroundTask.Run(
             () => AudioStreamer.Publish(openSegment.StreamId, openSegment.Audio, cancellationToken),
             Log, $"{nameof(AudioStreamer.Publish)} failed",
-            cancellationToken);
-
-        var saveAudioTask = BackgroundTask.Run(
-            () => SaveAudio(openSegment, cancellationToken),
-            Log, $"{nameof(SaveAudio)} failed",
             cancellationToken);
 
         var audioEntryTask = BackgroundTask.Run(
@@ -107,10 +104,20 @@ public sealed class AudioProcessor : IAudioProcessor
         {
             // TODO(AY): We should make sure finalization happens no matter what (later)!
             // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
+            // real-time audio transmission has been completed
             await publishAudioTask.ConfigureAwait(false);
+            // this should already have been completed by this time
             var audioEntry = await audioEntryTask.ConfigureAwait(false);
-            var audioBlobId = await saveAudioTask.ConfigureAwait(false);
-            await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, cancellationToken).ConfigureAwait(false);
+            // close open audio segment when the duration become available
+            await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
+            openSegment.Close(openSegment.Audio.Duration);
+            var closedSegment = await openSegment.ClosedSegmentTask.ConfigureAwait(false);
+            // we don't use cancellationToken there because we should finalize audio entry
+            // if it has been created successfully no matter of method cancellation
+            var audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false);
+            await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None).ConfigureAwait(false);
+
+            // we don't care much about transcription errors - basically we should finalize audio entry before
             await transcribeTask.ConfigureAwait(false);
         }
     }
@@ -161,12 +168,6 @@ public sealed class AudioProcessor : IAudioProcessor
         var publishTask = TranscriptStreamer.Publish(streamId, diffs.Replay(cancellationToken), cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(audioEntryTask, streamId, diffs.Replay(cancellationToken), cancellationToken);
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
-    }
-
-    private async Task<string> SaveAudio(OpenAudioSegment openAudioSegment, CancellationToken cancellationToken)
-    {
-        var audioSegment = await openAudioSegment.ClosedSegmentTask.ConfigureAwait(false);
-        return await AudioSegmentSaver.Save(audioSegment, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ChatEntry> CreateAudioEntry(
