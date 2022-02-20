@@ -94,8 +94,8 @@
         public string FileName { get; set; } = "";
         public string FileType { get; set; } = "";
         public int Length { get; set; }
-        public bool IsReal => Url.StartsWith("blob:");
         public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
+        public string Id { get; set; } = "";
     }
 
     private static string? _class;
@@ -147,26 +147,39 @@
     {
         if (text != null)
             Text = text;
-        if (Text.IsNullOrEmpty() && _attachments.Count(c => c.IsReal) == 0)
+        if (Text.IsNullOrEmpty() && !_attachments.Any())
             return;
 
-        var contentTasks = _attachments.Where(c => c.IsReal).ToDictionary(c => c, GetAttachmentContent);
+        // if (!await CreateTextEntry())
+        //     return;
+        await JSRef.InvokeAsync<string>("postMessage", Chat.Id).ConfigureAwait(true);
+    }
+
+    [JSInvokable]
+    public async Task OnPostMessageCompleted(bool succeeded, string result) {
+        if (!succeeded)
+            return;
+        await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+        _attachments = _attachments.Clear();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<bool> CreateTextEntry()
+    {
+        var contentTasks = _attachments.ToDictionary(c => c, GetAttachmentContent);
         await Task.WhenAll(contentTasks.Values).ConfigureAwait(true);
         var uploads = contentTasks.Keys
             .Select(c => new TextEntryUpload(c.FileName, c.FileType, contentTasks[c].Result))
             .ToImmutableArray();
         var command = new IChats.CreateTextEntryCommand(_session, Chat.Id, Text) { Uploads = uploads };
         var (_, ce) = await _cmd.Run(command).ConfigureAwait(true);
-        if (!ce.IsFailed) {
-            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
-            _attachments = _attachments.Clear();
-            await InvokeAsync(StateHasChanged);
-        }
+        return ce.IsCompletedSuccessfully;
     }
 
     [JSInvokable]
-    public void AddAttachment(string url, string? fileName, string? fileType, int length) {
+    public void AddAttachment(string id, string url, string? fileName, string? fileType, int length) {
         _attachments = _attachments.Add(new MessageAttachment {
+            Id = id,
             Url = url,
             FileName = fileName ?? "",
             FileType = fileType ?? "",
@@ -176,12 +189,12 @@
     }
 
     private async Task<byte[]> GetAttachmentContent(MessageAttachment messageAttachment) {
-        var bytes = await JSRef.InvokeAsync<byte[]>("getAttachmentContent", messageAttachment.Url).ConfigureAwait(true);
+        var bytes = await JSRef.InvokeAsync<byte[]>("getAttachmentContent", messageAttachment.Id).ConfigureAwait(true);
         return bytes;
     }
 
     private async Task RemoveAttachment(MessageAttachment attachment) {
-        await JSRef.InvokeVoidAsync("removeAttachment", attachment.Url).ConfigureAwait(true);
+        await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id).ConfigureAwait(true);
         _attachments = _attachments.Remove(attachment);
     }
 
