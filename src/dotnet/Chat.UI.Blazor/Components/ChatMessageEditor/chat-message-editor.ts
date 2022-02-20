@@ -111,50 +111,9 @@ export class ChatMessageEditor {
         const _ = this.updateClientSideState();
     }
 
-    private onPostSucceeded() {
-        this.setText("");
-        this.uploads.forEach(upload => {
-            if (upload.Url)
-                URL.revokeObjectURL(upload.Url);
-        });
-        this.uploads = new Uploads();
-        this.changeMode();
-    }
-
-    private async getAttachmentBlob(id: string) {
-        console.log("getting data with id=" + id);
-        const upload = this.uploads.get(id);
-        return upload.File;
-    }
-
-    private async getAttachmentContent(id: string) {
-        const blob = await this.getAttachmentBlob(id);
-        const arrayBuffer = await blob.arrayBuffer();
-        return new Uint8Array(arrayBuffer);
-    }
-
     private updateClientSideState() : Promise<void> {
         //console.log("message editor: UpdateClientSideState")
         return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
-    }
-
-    private async addAttachment(file: File) : Promise<void> {
-        const upload = new Upload(file);
-        if (file.type.startsWith('image')) {
-            upload.Url = URL.createObjectURL(file);
-        }
-
-        this.uploads.add(upload);
-        await this.blazorRef.invokeMethodAsync("AddAttachment", upload.Id, upload.Url, file.name, file.type, file.size);
-        this.changeMode();
-    }
-
-    public async removeAttachment(id: string) : Promise<void> {
-        const upload = this.uploads.remove(id);
-        if (upload && upload.Url) {
-            URL.revokeObjectURL(upload.Url);
-        }
-        this.changeMode();
     }
 
     private pasteClipboardData(pastedData: string) {
@@ -222,50 +181,72 @@ export class ChatMessageEditor {
         }
     }
 
-    private postMessage(chatId : string)
-    {
-        const self = this;
-        const formData = new FormData();
-        const attachmentsList = [];
-        const payload =  { "text": self.getText(), "attachments" : attachmentsList };
+    private async addAttachment(file: File) : Promise<void> {
+        const upload = new Upload(file);
+        if (file.type.startsWith('image'))
+            upload.Url = URL.createObjectURL(file);
 
-        if (self.uploads.length()>0) {
-            let i = 0;
-            self.uploads.forEach(upload => {
-                formData.append("files[" + i + "]", upload.File);
-                attachmentsList.push({ "id" : i, "filename" : upload.File.name, "filetype" : upload.File.type });
-                i++;
-            })
-        }
-
-        const payload_json = JSON.stringify(payload);
-        formData.append("payload_json", payload_json);
-
-        const request = new XMLHttpRequest();
-        const url = "api/chats/" + chatId + "/message";
-        request.open("POST", url);
-        request.onload = function() {
-            if (request.status === 200) {
-                // If successful, resolve the promise by passing back the request response
-                const responseText = request.responseText;
-                self.onPostMessageCompleted(true, responseText);
-            } else {
-                // If it fails, reject the promise with a error message
-                self.onPostMessageCompleted(false, 'Image didn\'t load successfully; error code:' + request.statusText);
-                //reject(Error('Image didn\'t load successfully; error code:' + request.statusText));
-            }
-        };
-        request.onerror = function() {
-            // Also deal with the case when the entire request fails to begin with
-            // This is probably a network error, so reject the promise with an appropriate message
-            //reject(Error('There was a network error.'));
-            self.onPostMessageCompleted(false, 'There was a network error.');
-        };
-        request.send(formData);
+        this.uploads.add(upload);
+        await this.blazorRef.invokeMethodAsync("AddAttachment", upload.Id, upload.Url, file.name, file.type, file.size);
+        this.changeMode();
     }
 
-    private onPostMessageCompleted(succeeded : boolean, result : string) : Promise<void> {
-        return this.blazorRef.invokeMethodAsync("OnPostMessageCompleted", succeeded, result);
+    public removeAttachment(id: string) {
+        const upload = this.uploads.remove(id);
+        if (upload && upload.Url)
+            URL.revokeObjectURL(upload.Url);
+        this.changeMode();
+    }
+
+    private postMessage(chatId : string) : Promise<string> {
+        const self = this;
+        return new Promise(function(resolve, reject) {
+            const formData = new FormData();
+            const attachmentsList = [];
+            const payload = {"text": self.getText(), "attachments": attachmentsList};
+
+            if (self.uploads.length() > 0) {
+                let i = 0;
+                self.uploads.forEach(upload => {
+                    formData.append("files[" + i + "]", upload.File);
+                    attachmentsList.push({"id": i, "filename": upload.File.name, "filetype": upload.File.type});
+                    i++;
+                })
+            }
+
+            const payload_json = JSON.stringify(payload);
+            formData.append("payload_json", payload_json);
+
+            const request = new XMLHttpRequest();
+            const url = "api/chats/" + chatId + "/message";
+            request.open("POST", url);
+            request.onload = function () {
+                if (request.status === 200) {
+                    resolve(request.responseText);
+                } else {
+                    let reason = request.statusText;
+                    if (!reason)
+                        reason = "unknown";
+                    reject(Error('Failed to send message. Reason: ' + reason));
+                }
+            };
+            request.onerror = function () {
+                // Also deal with the case when the entire request fails to begin with
+                // This is probably a network error, so reject the promise with an appropriate message
+                reject(Error('Failed to send message. There was a network error.'));
+            };
+            request.send(formData);
+        });
+    }
+
+    private onPostSucceeded() {
+        this.setText("");
+        this.uploads.forEach(upload => {
+            if (upload.Url)
+                URL.revokeObjectURL(upload.Url);
+        });
+        this.uploads = new Uploads();
+        this.changeMode();
     }
 
     private dispose() {
@@ -289,26 +270,22 @@ class Upload
     }
 }
 
-class Uploads
-{
+class Uploads {
     private uploads: Upload[] = [];
     private idSeed:number = 0;
 
-    public add(upload : Upload)
-    {
+    public add(upload : Upload) {
         upload.Id = this.idSeed.toString();
         this.idSeed++;
         this.uploads.push(upload);
     }
 
-    public forEach(action : (upload: Upload) => void)
-    {
+    public forEach(action : (upload: Upload) => void) {
         for (const upload of this.uploads)
             action(upload);
     }
 
-    public remove(id : string) : Upload
-    {
+    public remove(id : string) : Upload {
         const index = this.uploads.findIndex(element => {
             return element.Id===id;
         })
@@ -319,13 +296,11 @@ class Uploads
         }
     }
 
-    public get(id : string) : Upload
-    {
+    public get(id : string) : Upload {
         return this.uploads.find(element => element.Id===id);
     }
 
-    public length()
-    {
+    public length() {
         return this.uploads.length;
     }
 }
