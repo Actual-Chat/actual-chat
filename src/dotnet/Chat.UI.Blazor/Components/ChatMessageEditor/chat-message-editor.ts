@@ -1,7 +1,6 @@
 import './chat-message-editor.css';
 
 export class ChatMessageEditor {
-
     private blazorRef: DotNet.DotNetObject;
     private editorDiv: HTMLDivElement;
     private input: HTMLDivElement;
@@ -10,7 +9,7 @@ export class ChatMessageEditor {
     private recordButton: HTMLButtonElement;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
-    private attachments: string[] = [];
+    private uploads: Uploads = new Uploads();
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -59,15 +58,12 @@ export class ChatMessageEditor {
             event.preventDefault();
             return;
         }
-        for(let item of clipboardData.items) {
-            //if (item.kind==='file') {
-                if (item.type.startsWith('image')) {
-                    const blob = item.getAsFile();
-                    const objectURL = URL.createObjectURL(blob);
-                    const _ = this.addAttachment(objectURL, blob.name, blob.type, blob.size);
-                    event.preventDefault();
-                }
-            //}
+        for(const item of clipboardData.items) {
+            if (item.kind==='file') {
+                const file = item.getAsFile();
+                const _ = this.addAttachment(file);
+                event.preventDefault();
+            }
         }
     })
 
@@ -94,7 +90,7 @@ export class ChatMessageEditor {
     }
 
     private changeMode() {
-        const isTextMode = this.input.innerText != "" || this.attachments.length > 0;
+        const isTextMode = this.input.innerText != "" || this.uploads.length() > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
@@ -115,20 +111,25 @@ export class ChatMessageEditor {
         const _ = this.updateClientSideState();
     }
 
-    private onPostSucceeded()
-    {
+    private onPostSucceeded() {
         this.setText("");
-        for (const attachment of this.attachments)
-            URL.revokeObjectURL(attachment);
-        this.attachments = [];
+        this.uploads.forEach(upload => {
+            if (upload.Url)
+                URL.revokeObjectURL(upload.Url);
+        });
+        this.uploads = new Uploads();
         this.changeMode();
     }
 
-    private async getAttachmentContent(fileUrl: string) {
-        console.log("getting data for " + fileUrl);
-        let blob = await fetch(fileUrl)
-            .then(r => r.blob());
-        let arrayBuffer = await blob.arrayBuffer();
+    private async getAttachmentBlob(id: string) {
+        console.log("getting data with id=" + id);
+        const upload = this.uploads.get(id);
+        return upload.File;
+    }
+
+    private async getAttachmentContent(id: string) {
+        const blob = await this.getAttachmentBlob(id);
+        const arrayBuffer = await blob.arrayBuffer();
         return new Uint8Array(arrayBuffer);
     }
 
@@ -137,17 +138,21 @@ export class ChatMessageEditor {
         return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
     }
 
-    private async addAttachment(url: string, fileName: string, fileType: string, length: Number) : Promise<void> {
-        await this.blazorRef.invokeMethodAsync("AddAttachment", url, fileName, fileType, length);
-        this.attachments.push(url);
+    private async addAttachment(file: File) : Promise<void> {
+        const upload = new Upload(file);
+        if (file.type.startsWith('image')) {
+            upload.Url = URL.createObjectURL(file);
+        }
+
+        this.uploads.add(upload);
+        await this.blazorRef.invokeMethodAsync("AddAttachment", upload.Id, upload.Url, file.name, file.type, file.size);
         this.changeMode();
     }
 
-    private async removeAttachment(url: string) : Promise<void> {
-        const index = this.attachments.indexOf(url);
-        if (index >= -1) {
-            URL.revokeObjectURL(url);
-            this.attachments.splice(index, 1);
+    public async removeAttachment(id: string) : Promise<void> {
+        const upload = this.uploads.remove(id);
+        if (upload && upload.Url) {
+            URL.revokeObjectURL(upload.Url);
         }
         this.changeMode();
     }
@@ -217,6 +222,52 @@ export class ChatMessageEditor {
         }
     }
 
+    private postMessage(chatId : string)
+    {
+        const self = this;
+        const formData = new FormData();
+        const attachmentsList = [];
+        const payload =  { "text": self.getText(), "attachments" : attachmentsList };
+
+        if (self.uploads.length()>0) {
+            let i = 0;
+            self.uploads.forEach(upload => {
+                formData.append("files[" + i + "]", upload.File);
+                attachmentsList.push({ "id" : i, "filename" : upload.File.name, "filetype" : upload.File.type });
+                i++;
+            })
+        }
+
+        const payload_json = JSON.stringify(payload);
+        formData.append("payload_json", payload_json);
+
+        const request = new XMLHttpRequest();
+        const url = "api/chats/" + chatId + "/message";
+        request.open("POST", url);
+        request.onload = function() {
+            if (request.status === 200) {
+                // If successful, resolve the promise by passing back the request response
+                const responseText = request.responseText;
+                self.onPostMessageCompleted(true, responseText);
+            } else {
+                // If it fails, reject the promise with a error message
+                self.onPostMessageCompleted(false, 'Image didn\'t load successfully; error code:' + request.statusText);
+                //reject(Error('Image didn\'t load successfully; error code:' + request.statusText));
+            }
+        };
+        request.onerror = function() {
+            // Also deal with the case when the entire request fails to begin with
+            // This is probably a network error, so reject the promise with an appropriate message
+            //reject(Error('There was a network error.'));
+            self.onPostMessageCompleted(false, 'There was a network error.');
+        };
+        request.send(formData);
+    }
+
+    private onPostMessageCompleted(succeeded : boolean, result : string) : Promise<void> {
+        return this.blazorRef.invokeMethodAsync("OnPostMessageCompleted", succeeded, result);
+    }
+
     private dispose() {
         this.input.removeEventListener('input', this.inputInputListener);
         this.input.removeEventListener('keydown', this.inputKeydownListener);
@@ -224,5 +275,57 @@ export class ChatMessageEditor {
         this.input.removeEventListener('paste', this.inputPasteListener);
         this.postButton.removeEventListener('click', this.postClickListener);
         this.recordButton.removeEventListener('click', this.recordClickListener);
+    }
+}
+
+class Upload
+{
+    File: File;
+    Url: string;
+    Id : string;
+
+    constructor(File: File) {
+        this.File = File;
+    }
+}
+
+class Uploads
+{
+    private uploads: Upload[] = [];
+    private idSeed:number = 0;
+
+    public add(upload : Upload)
+    {
+        upload.Id = this.idSeed.toString();
+        this.idSeed++;
+        this.uploads.push(upload);
+    }
+
+    public forEach(action : (upload: Upload) => void)
+    {
+        for (const upload of this.uploads)
+            action(upload);
+    }
+
+    public remove(id : string) : Upload
+    {
+        const index = this.uploads.findIndex(element => {
+            return element.Id===id;
+        })
+        if (index >= -1) {
+            const upload = this.uploads[index];
+            this.uploads.splice(index, 1);
+            return upload;
+        }
+    }
+
+    public get(id : string) : Upload
+    {
+        return this.uploads.find(element => element.Id===id);
+    }
+
+    public length()
+    {
+        return this.uploads.length;
     }
 }
