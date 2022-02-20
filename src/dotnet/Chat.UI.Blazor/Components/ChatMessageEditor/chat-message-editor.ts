@@ -4,6 +4,7 @@ export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
     private editorDiv: HTMLDivElement;
     private input: HTMLDivElement;
+    private filesPicker: HTMLInputElement;
     private postButton: HTMLButtonElement;
     private recorderButtonDiv: HTMLDivElement;
     private recordButton: HTMLButtonElement;
@@ -18,6 +19,7 @@ export class ChatMessageEditor {
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.editorDiv = editorDiv;
         this.input = this.editorDiv.querySelector('div.message-input');
+        this.filesPicker = this.editorDiv.querySelector('input.files-picker');
         this.postButton = this.editorDiv.querySelector('button.post-message');
         this.blazorRef = blazorRef;
         this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
@@ -28,6 +30,7 @@ export class ChatMessageEditor {
         this.input.addEventListener('keydown', this.inputKeydownListener);
         this.input.addEventListener('mousedown', this.inputMousedownListener);
         this.input.addEventListener('paste', this.inputPasteListener);
+        this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
         this.recordButton.addEventListener('click', this.recordClickListener);
         this.changeMode();
@@ -65,6 +68,11 @@ export class ChatMessageEditor {
                 event.preventDefault();
             }
         }
+    })
+
+    private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
+        for (const file of this.filesPicker.files)
+            await this.addAttachment(file);
     })
 
     private postClickListener = ((event: MouseEvent & {target: Element; }) => {
@@ -249,18 +257,22 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
+    private showFilesPicker = () => {
+        this.filesPicker.click();
+    };
+
     private dispose() {
         this.input.removeEventListener('input', this.inputInputListener);
         this.input.removeEventListener('keydown', this.inputKeydownListener);
         this.input.removeEventListener('mousedown', this.inputMousedownListener);
         this.input.removeEventListener('paste', this.inputPasteListener);
+        this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
         this.recordButton.removeEventListener('click', this.recordClickListener);
     }
 }
 
-class Upload
-{
+class Upload {
     File: File;
     Url: string;
     Id : string;
@@ -286,9 +298,7 @@ class Uploads {
     }
 
     public remove(id : string) : Upload {
-        const index = this.uploads.findIndex(element => {
-            return element.Id===id;
-        })
+        const index = this.uploads.findIndex(element => element.Id===id);
         if (index >= -1) {
             const upload = this.uploads[index];
             this.uploads.splice(index, 1);
