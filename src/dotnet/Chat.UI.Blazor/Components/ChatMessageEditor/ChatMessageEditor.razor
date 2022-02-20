@@ -15,6 +15,7 @@
 <div @ref="EditorRef" class="@(_class ??= this.DefaultClass()) chat-message-editor sticky bottom-0 self-end bg-secondary w-full px-2">
     <div class="flex flex-row justify-between px-1">
         <div class="flex flex-col outline-none bg-accent rounded-md w-full mr-3">
+            <input class="files-picker" type="file" hidden multiple/>
             @if (_attachments.Length > 0) {
                 <ul class="message-attachments flex ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto">
                     @foreach (var attachment in _attachments) {
@@ -50,7 +51,7 @@
                 <div class="divider h-0 border-t border-stone-300"></div>
             }
             <div class="flex flex-row justify-center items-center justify-items-center">
-                <AttachDropdown/>
+                <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
                 <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary block"
                      autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                      aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
@@ -173,6 +174,10 @@
     private async Task RemoveAttachment(MessageAttachment attachment) {
         await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id).ConfigureAwait(true);
         _attachments = _attachments.Remove(attachment);
+    }
+
+    private async Task OnUploadFilesRequested() {
+        await JSRef.InvokeVoidAsync("showFilesPicker").ConfigureAwait(true);
     }
 
     private Task RecordingStateChanged(bool isRecording) {
