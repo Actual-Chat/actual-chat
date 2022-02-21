@@ -23,7 +23,7 @@ public class DbTextEntryAttachment
     public int Height { get; set; }
 
     public static string GetCompositeId(string chatId, long entryId, int index)
-        => $"{chatId}:{entryId.ToString(CultureInfo.InvariantCulture)}:{index.ToString(CultureInfo.InvariantCulture)}";
+        => Invariant($"{chatId}:{entryId}:{index}");
 
     public TextEntryAttachment ToModel()
         => new () {
