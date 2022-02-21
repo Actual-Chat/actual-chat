@@ -10,7 +10,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #endif
 
 /// #if MEM_LEAK_DETECTION
-console.warn('MEM_LEAK_DETECTION == true');
+console.info('MEM_LEAK_DETECTION == true');
 /// #endif
 
 let codecModule: Codec | null = null;
@@ -18,7 +18,6 @@ const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
     codecModule = val;
     self['codec'] = codecModule;
 });
-
 
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
@@ -56,7 +55,6 @@ export class OpusDecoder {
         if (codecModule == null) {
             await codecModuleReady;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         const decoder = new codecModule.Decoder();
         console.warn('create', decoder);
         return new OpusDecoder(decoder, workletPort);

@@ -27,7 +27,7 @@ export class AudioPlayer {
      */
     private initPromise?: Promise<void> = null;
     /** we can do this with state, but it's clearer */
-    private isBufferFull: boolean = false;
+    private isBufferFull = false;
 
 
     public static async create(blazorRef: DotNet.DotNetObject, debug: boolean): Promise<AudioPlayer> {
@@ -46,7 +46,7 @@ export class AudioPlayer {
     public init(header: Uint8Array): Promise<void> {
         const { debug, state } = this;
         this.state = 'initializing';
-        console.assert(state === 'uninitialized', "init: called in a wrong order");
+        console.assert(state === 'uninitialized', 'init: called in a wrong order');
 
         this.initPromise = this.controller.init(header, {
             onBufferLow: async () => {
@@ -71,7 +71,7 @@ export class AudioPlayer {
                 this.state = 'playing';
                 if (this.onStartPlaying !== null)
                     this.onStartPlaying();
-                self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
+                self.setTimeout(void this.onUpdateOffsetTick, this.updateOffsetMs);
             },
             onStopped: async () => {
                 if (debug)
@@ -108,7 +108,7 @@ export class AudioPlayer {
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
     public async data(bytes: Uint8Array): Promise<void> {
-        console.assert(this.controller !== null, "Controller must be presented. Lifetime error.");
+        console.assert(this.controller !== null, 'Controller must be presented. Lifetime error.');
         console.assert(this.initPromise !== null, `Player isn't initialized. controllerId:${this.controller.id}.`);
         await this.initPromise;
         this.controller.enqueue(bytes);
@@ -129,7 +129,7 @@ export class AudioPlayer {
         // blazor can call stop() between create() and init() calls (if cancelled by user/server)
         if (this.initPromise !== null) {
             await this.initPromise;
-            console.assert(this.controller !== null, "Controller must be created. Lifetime error.");
+            console.assert(this.controller !== null, 'Controller must be created. Lifetime error.');
             if (this.debug)
                 console.debug(`Call controller stop(). controllerId:${this.controller.id} state:${this.state}`);
             this.controller.stop();
@@ -137,27 +137,33 @@ export class AudioPlayer {
     }
 
     private onUpdateOffsetTick = async () => {
-        const { state, controller, debug } = this;
-        if (state === 'playing' && controller !== null) {
-            let state: PlaybackState = await controller.getState();
-            if (debug) {
-                console.debug(`onUpdateOffsetTick(controllerId:${controller.id}): ` +
-                    `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
+        try {
+            const { state, controller, debug } = this;
+            if (state === 'playing' && controller !== null) {
+                const state: PlaybackState = await controller.getState();
+                if (debug) {
+                    console.debug(`onUpdateOffsetTick(controllerId:${controller.id}): ` +
+                        `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
+                }
+                await this.invokeOnPlaybackTimeChanged(state.playbackTime);
+
+                self.setTimeout(void this.onUpdateOffsetTick, this.updateOffsetMs);
             }
-            await this.invokeOnPlaybackTimeChanged(state.playbackTime);
-            self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
+        }
+        catch (error) {
+            console.error('Unhandled error', error);
         }
     };
 
     private invokeOnPlaybackTimeChanged(time: number): Promise<void> {
-        return this.blazorRef.invokeMethodAsync("OnPlaybackTimeChanged", time);
+        return this.blazorRef.invokeMethodAsync('OnPlaybackTimeChanged', time);
     }
 
     private invokeOnPlaybackEnded(message: string | null = null): Promise<void> {
-        return this.blazorRef.invokeMethodAsync("OnPlaybackEnded", message);
+        return this.blazorRef.invokeMethodAsync('OnPlaybackEnded', message);
     }
 
     private invokeOnChangeReadiness(isBufferReady: boolean): Promise<void> {
-        return this.blazorRef.invokeMethodAsync("OnChangeReadiness", isBufferReady);
+        return this.blazorRef.invokeMethodAsync('OnChangeReadiness', isBufferReady);
     }
 }
