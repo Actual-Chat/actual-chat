@@ -36,33 +36,33 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private inputInputListener = ((event: Event & {target: Element; }) => {
+    private inputInputListener = ((event: Event & { target: Element; }) => {
         const _ = this.updateClientSideState();
         this.changeMode();
     })
 
-    private inputKeydownListener = ((event: KeyboardEvent & {target: Element; }) => {
+    private inputKeydownListener = ((event: KeyboardEvent & { target: Element; }) => {
         if (event.key != 'Enter' || event.shiftKey)
             return;
         event.preventDefault();
         this.blazorRef.invokeMethodAsync("Post", this.getText());
     })
 
-    private inputMousedownListener = ((event: MouseEvent & {target: Element; }) => {
+    private inputMousedownListener = ((event: MouseEvent & { target: Element; }) => {
         this.input.focus();
     })
 
-    private inputPasteListener = ((event: ClipboardEvent & {target: Element; }) => {
+    private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
         const clipboardData = event.clipboardData;
         const pastedData = clipboardData.getData('text/plain');
-        if (pastedData.length>0) {
+        if (pastedData.length > 0) {
             this.pasteClipboardData(pastedData);
             event.preventDefault();
             return;
         }
-        for(const item of clipboardData.items) {
-            if (item.kind==='file') {
+        for (const item of clipboardData.items) {
+            if (item.kind === 'file') {
                 const file = item.getAsFile();
                 const _ = this.addAttachment(file);
                 event.preventDefault();
@@ -76,12 +76,12 @@ export class ChatMessageEditor {
         this.filesPicker.value = '';
     })
 
-    private postClickListener = ((event: MouseEvent & {target: Element; }) => {
+    private postClickListener = ((event: MouseEvent & { target: Element; }) => {
         this.input.focus();
         this.changeMode();
     })
 
-    private recordClickListener = ((event: Event & {target: Element; }) => {
+    private recordClickListener = ((event: Event & { target: Element; }) => {
         this.syncLanguageButtonVisibility();
     })
 
@@ -91,7 +91,7 @@ export class ChatMessageEditor {
         if (this.isRecording === isRecording)
             return;
         this.isRecording = isRecording;
-        if (isRecording){
+        if (isRecording) {
             this.editorDiv.classList.add('record-mode');
         } else {
             this.editorDiv.classList.remove('record-mode');
@@ -120,7 +120,7 @@ export class ChatMessageEditor {
         const _ = this.updateClientSideState();
     }
 
-    private updateClientSideState() : Promise<void> {
+    private updateClientSideState(): Promise<void> {
         //console.log("message editor: UpdateClientSideState")
         return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
     }
@@ -138,7 +138,7 @@ export class ChatMessageEditor {
         const _ = this.updateClientSideState();
     }
 
-    private static replaceHeadingSpaces(text : string) : string {
+    private static replaceHeadingSpaces(text: string): string {
         let spacesNumber = 0;
         for (let i = 0; i < text.length; i++) {
             if (text.charAt(i) !== " ")
@@ -149,11 +149,11 @@ export class ChatMessageEditor {
         return "&nbsp; ".repeat(repeatNumber) + text.substr(spacesNumber);
     }
 
-    private static insertTextWithExecCommand(text : string) : boolean {
+    private static insertTextWithExecCommand(text: string): boolean {
         //return document.execCommand("insertText", false, text)
-        function escapetext(text : string) : string {
-            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
-            return text.replace(/[&<>"']/g, function(m) {
+        function escapetext(text: string): string {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, function (m) {
                 return map[m];
             });
         }
@@ -170,7 +170,7 @@ export class ChatMessageEditor {
         return document.execCommand('insertHtml', false, html);
     }
 
-    private static insertTextWithSelection(text : string) {
+    private static insertTextWithSelection(text: string) {
         const selection = window.getSelection();
         if (!selection)
             return;
@@ -190,7 +190,7 @@ export class ChatMessageEditor {
         }
     }
 
-    private async addAttachment(file: File) : Promise<void> {
+    private async addAttachment(file: File): Promise<void> {
         const attachment = new Attachment(file);
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
@@ -207,18 +207,18 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private postMessage(chatId : string) : Promise<string> {
+    private postMessage(chatId: string): Promise<string> {
         const self = this;
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
             const formData = new FormData();
             const attachmentsList = [];
-            const payload = {"text": self.getText(), "attachments": attachmentsList};
+            const payload = { "text": self.getText(), "attachments": attachmentsList };
 
             if (self.attachments.length() > 0) {
                 let i = 0;
                 self.attachments.forEach(attachment => {
                     formData.append("files[" + i + "]", attachment.File);
-                    attachmentsList.push({"id": i, "filename": attachment.File.name, "filetype": attachment.File.type});
+                    attachmentsList.push({ "id": i, "filename": attachment.File.name, "filetype": attachment.File.type });
                     i++;
                 })
             }
@@ -267,7 +267,7 @@ export class ChatMessageEditor {
         this.input.removeEventListener('keydown', this.inputKeydownListener);
         this.input.removeEventListener('mousedown', this.inputMousedownListener);
         this.input.removeEventListener('paste', this.inputPasteListener);
-        this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
+        this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
         this.recordButton.removeEventListener('click', this.recordClickListener);
     }
@@ -276,7 +276,7 @@ export class ChatMessageEditor {
 class Attachment {
     File: File;
     Url: string;
-    Id : string;
+    Id: string;
 
     constructor(File: File) {
         this.File = File;
@@ -285,21 +285,21 @@ class Attachment {
 
 class Attachments {
     private attachments: Attachment[] = [];
-    private idSeed:number = 0;
+    private idSeed: number = 0;
 
-    public add(attachment : Attachment) {
+    public add(attachment: Attachment) {
         attachment.Id = this.idSeed.toString();
         this.idSeed++;
         this.attachments.push(attachment);
     }
 
-    public forEach(action : (attachment: Attachment) => void) {
+    public forEach(action: (attachment: Attachment) => void) {
         for (const attachment of this.attachments)
             action(attachment);
     }
 
-    public remove(id : string) : Attachment {
-        const index = this.attachments.findIndex(element => element.Id===id);
+    public remove(id: string): Attachment {
+        const index = this.attachments.findIndex(element => element.Id === id);
         if (index >= -1) {
             const attachment = this.attachments[index];
             this.attachments.splice(index, 1);
@@ -307,8 +307,8 @@ class Attachments {
         }
     }
 
-    public get(id : string) : Attachment {
-        return this.attachments.find(element => element.Id===id);
+    public get(id: string): Attachment {
+        return this.attachments.find(element => element.Id === id);
     }
 
     public length() {
