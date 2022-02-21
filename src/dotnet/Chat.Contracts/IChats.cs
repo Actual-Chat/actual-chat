@@ -71,7 +71,7 @@ public interface IChats
     public record JoinChatCommand(Session Session, string ChatId) : ISessionCommand<Unit>;
     public record CreateTextEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>
     {
-        public ImmutableArray<TextEntryAttachmentUpload> Uploads { get; set; } = ImmutableArray<TextEntryAttachmentUpload>.Empty;
+        public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } = ImmutableArray<TextEntryAttachmentUpload>.Empty;
     }
     public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
 }
