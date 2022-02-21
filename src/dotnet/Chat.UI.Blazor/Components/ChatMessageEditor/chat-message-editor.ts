@@ -10,7 +10,8 @@ export class ChatMessageEditor {
     private recordButton: HTMLButtonElement;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
-    private attachments: Attachments = new Attachments();
+    private attachmentsIdSeed: number = 0;
+    private attachments: Map<string, Attachment> = new Map<string, Attachment>();
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -99,7 +100,7 @@ export class ChatMessageEditor {
     }
 
     private changeMode() {
-        const isTextMode = this.input.innerText != "" || this.attachments.length() > 0;
+        const isTextMode = this.input.innerText != "" || this.attachments.size > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
@@ -191,17 +192,21 @@ export class ChatMessageEditor {
     }
 
     private async addAttachment(file: File): Promise<void> {
+        const id = this.attachmentsIdSeed;
+        this.attachmentsIdSeed++;
         const attachment = new Attachment(file);
+        attachment.Id = id.toString();
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
 
-        this.attachments.add(attachment);
+        this.attachments.set(attachment.Id, attachment);
         await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
         this.changeMode();
     }
 
     public removeAttachment(id: string) {
-        const attachment = this.attachments.remove(id);
+        const attachment = this.attachments.get(id);
+        this.attachments.delete(id);
         if (attachment && attachment.Url)
             URL.revokeObjectURL(attachment.Url);
         this.changeMode();
@@ -214,7 +219,7 @@ export class ChatMessageEditor {
             const attachmentsList = [];
             const payload = { "text": self.getText(), "attachments": attachmentsList };
 
-            if (self.attachments.length() > 0) {
+            if (self.attachments.size > 0) {
                 let i = 0;
                 self.attachments.forEach(attachment => {
                     formData.append("files[" + i + "]", attachment.File);
@@ -254,7 +259,8 @@ export class ChatMessageEditor {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
         });
-        this.attachments = new Attachments();
+        this.attachments = new Map<string, Attachment>();
+        this.attachmentsIdSeed = 0;
         this.changeMode();
     }
 
@@ -280,38 +286,5 @@ class Attachment {
 
     constructor(File: File) {
         this.File = File;
-    }
-}
-
-class Attachments {
-    private attachments: Attachment[] = [];
-    private idSeed: number = 0;
-
-    public add(attachment: Attachment) {
-        attachment.Id = this.idSeed.toString();
-        this.idSeed++;
-        this.attachments.push(attachment);
-    }
-
-    public forEach(action: (attachment: Attachment) => void) {
-        for (const attachment of this.attachments)
-            action(attachment);
-    }
-
-    public remove(id: string): Attachment {
-        const index = this.attachments.findIndex(element => element.Id === id);
-        if (index >= -1) {
-            const attachment = this.attachments[index];
-            this.attachments.splice(index, 1);
-            return attachment;
-        }
-    }
-
-    public get(id: string): Attachment {
-        return this.attachments.find(element => element.Id === id);
-    }
-
-    public length() {
-        return this.attachments.length;
     }
 }
