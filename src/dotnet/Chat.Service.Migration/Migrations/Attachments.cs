@@ -4,7 +4,7 @@
 
 namespace ActualChat.Chat.Migrations.Migrations
 {
-    public partial class attachments : Migration
+    public partial class Attachments : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -25,11 +25,7 @@ namespace ActualChat.Chat.Migrations.Migrations
                     Index = table.Column<int>(type: "integer", nullable: false),
                     Version = table.Column<long>(type: "bigint", nullable: false),
                     ContentId = table.Column<string>(type: "text", nullable: false),
-                    Length = table.Column<long>(type: "bigint", nullable: false),
-                    FileName = table.Column<string>(type: "text", nullable: false),
-                    ContentType = table.Column<string>(type: "text", nullable: false),
-                    Width = table.Column<int>(type: "integer", nullable: false),
-                    Height = table.Column<int>(type: "integer", nullable: false)
+                    MetadataJson = table.Column<string>(type: "text", nullable: false),
                 },
                 constraints: table =>
                 {
