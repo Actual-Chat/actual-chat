@@ -4,32 +4,30 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatAuthorListeningChats
 {
-    private IChats Chats { get; set; } = null!;
     private Session Session { get; }
-    public List<Chat> ListeningChats { get; set; } = new ();
+    public List<string> ListeningChatIds { get; set; } = new ();
 
-    public ChatAuthorListeningChats(IChats chats, Session session)
+    public ChatAuthorListeningChats(Session session)
     {
-        Chats = chats;
         Session = session;
     }
 
-    public async Task AddChat(string chatId, CancellationToken cancellationToken)
+    public Task AddChat(string chatId)
     {
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat != null && !ListeningChats.Contains(chat)) {
-            ListeningChats.Add(chat);
-            Updated?.Invoke(this, EventArgs.Empty);
-        }
+        if (string.IsNullOrWhiteSpace(chatId) || ListeningChatIds.Contains(chatId, StringComparer.Ordinal))
+            return Task.CompletedTask;
+        ListeningChatIds.Add(chatId);
+        Updated?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
     }
 
-    public async Task RemoveChat(string chatId, CancellationToken cancellationToken)
+    public Task RemoveChat(string chatId)
     {
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat != null && ListeningChats.Contains(chat)) {
-            ListeningChats.Remove(chat);
-            Updated?.Invoke(this, EventArgs.Empty);
-        }
+        if (string.IsNullOrWhiteSpace(chatId) || !ListeningChatIds.Contains(chatId, StringComparer.Ordinal))
+            return Task.CompletedTask;
+        ListeningChatIds.Remove(chatId);
+        Updated?.Invoke(this, EventArgs.Empty);
+        return Task.CompletedTask;
     }
 
     public event EventHandler? Updated;
