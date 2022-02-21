@@ -27,10 +27,11 @@ public sealed class RealtimeChatPlayer : ChatPlayer
                 // Note that streaming entries have EndsAt == null, so we don't skip them.
                 continue;
 
-            var chatAuthor = await GetChatAuthor(cancellationToken).ConfigureAwait(false);
-            if (chatAuthor != null && entry.AuthorId == chatAuthor.Id) {
-                if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio)
+            if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
+                var chatAuthor = await GetChatAuthor(cancellationToken).ConfigureAwait(false);
+                if (chatAuthor != null && entry.AuthorId == chatAuthor.Id) {
                     continue;
+                }
             }
 
             var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
