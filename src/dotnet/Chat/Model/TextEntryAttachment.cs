@@ -10,4 +10,6 @@ public record TextEntryAttachment
     public long Length { get; init; }
     public string FileName { get; init; } = "";
     public string ContentType { get; init; } = "";
+    public int Width { get; init; }
+    public int Height { get; init; }
 }

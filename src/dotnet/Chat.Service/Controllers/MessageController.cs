@@ -68,6 +68,7 @@ public class MessageController : ControllerBase
     {
         var request = HttpContext.Request;
         //var cancellationToken = HttpContext.RequestAborted;
+        // TODO(DM): add entire request and parts size limit check
 
         // validation of Content-Type
         // 1. first, it must be a form-data request
@@ -175,6 +176,9 @@ public class MessageController : ControllerBase
         // {
         //     await section.Body.CopyToAsync(targetStream);
         // }
+
+        // TODO(DM): use stream/blob instead of byte array for upload content
+        // TODO(DM): add uploads processing: virus scan, content type verification, image size evaluation
 
         try {
             byte[] content;

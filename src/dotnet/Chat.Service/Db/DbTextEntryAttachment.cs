@@ -19,6 +19,8 @@ public class DbTextEntryAttachment
     public long Length { get; set; }
     public string FileName { get; set; } = "";
     public string ContentType { get; set; } = "";
+    public int Width { get; set; }
+    public int Height { get; set; }
 
     public static string GetCompositeId(string chatId, long entryId, int index)
         => $"{chatId}:{entryId.ToString(CultureInfo.InvariantCulture)}:{index.ToString(CultureInfo.InvariantCulture)}";
@@ -33,7 +35,9 @@ public class DbTextEntryAttachment
             ContentId = ContentId,
             ContentType = ContentType,
             FileName = FileName,
-            Length = Length
+            Length = Length,
+            Width = Width,
+            Height = Height
         };
 
     public void UpdateFrom(TextEntryAttachment model)
@@ -47,5 +51,7 @@ public class DbTextEntryAttachment
         Length = model.Length;
         FileName = model.FileName;
         ContentType = model.ContentType;
+        Width = model.Width;
+        Height = model.Height;
     }
 }
