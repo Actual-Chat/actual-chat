@@ -1,5 +1,5 @@
-import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from "./opus-decoder-worker-message";
-import { OpusDecoder } from "./opus-decoder";
+import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
+import { OpusDecoder } from './opus-decoder';
 
 const worker = self as unknown as Worker;
 const decoders = new Map<number, OpusDecoder>();

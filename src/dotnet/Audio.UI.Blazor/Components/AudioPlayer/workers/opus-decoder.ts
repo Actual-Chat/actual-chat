@@ -1,14 +1,17 @@
 import Denque from 'denque';
-// #ifdef DEBUG // this doesn't work, just for clarity (should make a dynamic import or something)
-//import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
-//import codecWasm from '@actual-chat/codec/codec.debug.wasm';
-//import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
-// #else
-import codec, { Decoder, Codec } from '@actual-chat/codec';
-import codecWasm from '@actual-chat/codec/codec.wasm';
-// #endif
-
 import { EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from './opus-decoder-worker-message';
+/// #if MEM_LEAK_DETECTION
+import codec, { Decoder, Codec } from '@actual-chat/codec/codec.debug';
+import codecWasm from '@actual-chat/codec/codec.debug.wasm';
+import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
+/// #else
+/// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
+/// #code import codecWasm from '@actual-chat/codec/codec.wasm';
+/// #endif
+
+/// #if MEM_LEAK_DETECTION
+console.warn('MEM_LEAK_DETECTION == true');
+/// #endif
 
 let codecModule: Codec | null = null;
 const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
@@ -20,12 +23,12 @@ const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
 function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     return {
         locateFile: (filename: string) => {
-            if (filename === 'codec.wasm')
+            if (filename.slice(-4) === 'wasm')
                 return codecWasm;
-            // #ifdef DEBUG
-            // else if (filename === 'codec.wasm.map')
-            //     return codecWasmMap;
-            // #endif
+            /// #if MEM_LEAK_DETECTION
+            else if (filename.slice(-3) === 'map')
+                return codecWasmMap;
+            /// #endif
             // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
             else if (filename.slice(0, 5) === 'data:')
