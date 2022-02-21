@@ -186,7 +186,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         for (var i = 0; i < command.Uploads.Length; i++) {
             var (fileName, fileType, content) = command.Uploads[i];
             var contentLocalId = Ulid.NewUlid().ToString();
-            var contentId = $"{chatId}/{contentLocalId}/{fileName}";
+            var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
 
             var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, fileType);
             await _commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);

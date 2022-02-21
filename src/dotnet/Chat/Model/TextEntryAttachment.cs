@@ -12,4 +12,6 @@ public record TextEntryAttachment
     public string ContentType { get; init; } = "";
     public int Width { get; init; }
     public int Height { get; init; }
+    public string Url => "/api/content/" + ContentId;
+    public string ProxyUrl => Url;
 }

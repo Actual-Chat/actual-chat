@@ -14,7 +14,7 @@ public class ContentSaverBackend : IContentSaverBackend
 
     public virtual async Task SaveContent(IContentSaverBackend.SaveContentCommand command, CancellationToken cancellationToken)
     {
-        var blobId = BlobPath.Format(BlobScope.ContentRecord, command.ContentId);
+        var blobId = command.ContentId;
         var stream = MemoryStreamManager.GetStream();
         await using var _ = stream.ConfigureAwait(false);
 
