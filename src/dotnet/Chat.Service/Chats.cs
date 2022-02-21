@@ -178,17 +178,18 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             AuthorId = author.Id,
             Content = text,
             Type = ChatEntryType.Text,
-            HasAttachments = command.Uploads.Length > 0
+            HasAttachments = command.Attachments.Length > 0
         };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         var textEntry =  await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-        for (var i = 0; i < command.Uploads.Length; i++) {
-            var (fileName, fileType, content) = command.Uploads[i];
+        for (var i = 0; i < command.Attachments.Length; i++) {
+            var attachmentUpload = command.Attachments[i];
+            var (fileName, content, contentType) = attachmentUpload;
             var contentLocalId = Ulid.NewUlid().ToString();
             var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
 
-            var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, fileType);
+            var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
             await _commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
 
             var attachment = new TextEntryAttachment {
@@ -196,7 +197,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 Length = content.Length,
                 ChatId = chatId,
                 EntryId = textEntry.Id,
-                ContentType = fileType,
+                ContentType = contentType,
                 FileName = fileName,
                 ContentId = contentId
             };

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Chat.Controllers;
@@ -9,29 +10,29 @@ namespace ActualChat.Chat.Controllers;
 [ApiController]
 public class MessageController : ControllerBase
 {
-    private record AttachedFile(int Id, byte[] Content)
+    private record FileInfo(int Id, byte[] Content)
     {
-        public string? FileName { get; init; }
-        public string? ContentType { get; init; }
+        public string FileName { get; init; } = "";
+        public string ContentType { get; init; } = "";
     }
 
-    private class Attachment
+    private class FileAttributes
     {
         public int Id { get; set; }
-        public string? FileName { get; set; }
-        public string? Description { get; set; }
+        public string FileName { get; set; } = "";
+        public string Description { get; set; } = "";
     }
 
     private class MessagePayload
     {
         public string Text { get; set; } = "";
-        public IList<Attachment> Attachments { get; set; } = new List<Attachment>();
+        public IList<FileAttributes> Attachments { get; set; } = new List<FileAttributes>();
     }
 
     private class MessagePost
     {
         public MessagePayload? Payload { get; set; }
-        public List<AttachedFile> Files { get; } = new ();
+        public List<FileInfo> Files { get; } = new ();
     }
 
     private readonly ISessionResolver _sessionResolver;
@@ -107,16 +108,24 @@ public class MessageController : ControllerBase
 
         var command = new IChats.CreateTextEntryCommand(_sessionResolver.Session, chatId, post.Payload!.Text);
         if (post.Files.Count > 0) {
-            command.Uploads = post.Files
-                .Select(c => new TextEntryAttachmentUpload(c.FileName ?? "", c.ContentType ?? "", c.Content))
-                .ToImmutableArray();
+            var uploads = new List<TextEntryAttachmentUpload>();
+            foreach (var file in post.Files) {
+                var attributes = post.Payload.Attachments.First(c => c.Id == file.Id);
+                var fileName = attributes.FileName.IsNullOrEmpty() ? file.FileName : attributes.FileName;
+                var description = attributes.Description ?? "";
+                var upload = new TextEntryAttachmentUpload(fileName, file.Content, file.ContentType) {
+                    Description = description
+                };
+                uploads.Add(upload);
+            }
+            command.Attachments = uploads.ToImmutableArray();
         }
 
         try {
             var chatEntry = await _commander.Call(command, true, CancellationToken.None);
             return Ok();
         }
-        catch (Exception e) {
+        catch {
             return BadRequest("Failed to process command");
         }
     }
@@ -169,14 +178,14 @@ public class MessageController : ControllerBase
                 targetStream.Position = 0;
                 content = targetStream.ToArray();
             }
-            var file = new AttachedFile(fileId, content) {
-                ContentType = section.ContentType,
-                FileName = contentDisposition.FileName.Value,
+            var file = new FileInfo(fileId, content) {
+                ContentType = section.ContentType ?? "",
+                FileName = contentDisposition.FileName.Value ?? "",
             };
             messagePost.Files.Add(file);
             return true;
         }
-        catch (Exception e) {
+        catch {
             return false;
         }
     }
@@ -209,7 +218,7 @@ public class MessageController : ControllerBase
             messagePost.Payload = payload;
             return true;
         }
-        catch(Exception e) {
+        catch {
             return false;
         }
     }
