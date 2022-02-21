@@ -8,6 +8,7 @@
 @inject IChats _chatService
 @inject Session _session
 @inject UICommandRunner _cmd
+@inject IUICommandTracker _cmdTracker
 @inject IJSRuntime _js
 @inject MomentClockSet _clocks
 @inject HostInfo _hostInfo
@@ -148,6 +149,8 @@
             Text = text;
         if (Text.IsNullOrEmpty() && !_attachments.Any())
             return;
+
+        IResult result = null;
         try {
             var response = await JSRef.InvokeAsync<string>("postMessage", Chat.Id).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
@@ -155,7 +158,14 @@
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception e) {
-            // TODO(DF): report error
+            result = Result.Error<string>(e);
+        }
+
+        if (result != null && result.HasError) {
+            // use standard error reporting approach
+            var command = new PostChatMessageSurrogateCommand();
+            var completedEvent = new UICommandEvent(command, result);
+            _ = _cmdTracker.ProcessEvent(completedEvent);
         }
     }
 
