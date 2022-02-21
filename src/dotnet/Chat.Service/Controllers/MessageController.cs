@@ -2,32 +2,14 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using System.Text.Json;
-using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Chat.Controllers;
 
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-internal class DisableFormValueModelBindingAttribute : Attribute, IResourceFilter
-{
-    public void OnResourceExecuting(ResourceExecutingContext context)
-    {
-        var factories = context.ValueProviderFactories;
-        factories.RemoveType<FormValueProviderFactory>();
-        factories.RemoveType<JQueryFormValueProviderFactory>();
-        factories.RemoveType<FormFileValueProviderFactory>();
-    }
-
-    public void OnResourceExecuted(ResourceExecutedContext context)
-    {
-    }
-}
-
 [ApiController]
 public class MessageController : ControllerBase
 {
-    private record Upload(int Id, byte[] Content)
+    private record AttachedFile(int Id, byte[] Content)
     {
         public string? FileName { get; init; }
         public string? ContentType { get; init; }
@@ -49,10 +31,10 @@ public class MessageController : ControllerBase
     private class MessagePost
     {
         public MessagePayload? Payload { get; set; }
-        public List<Upload> Uploads { get; } = new ();
+        public List<AttachedFile> Files { get; } = new ();
     }
 
-    private ISessionResolver _sessionResolver;
+    private readonly ISessionResolver _sessionResolver;
     private readonly ICommander _commander;
 
     public MessageController(ISessionResolver sessionResolver, ICommander commander)
@@ -124,9 +106,9 @@ public class MessageController : ControllerBase
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
 
         var command = new IChats.CreateTextEntryCommand(_sessionResolver.Session, chatId, post.Payload!.Text);
-        if (post.Uploads.Count > 0) {
-            command.Uploads = post.Uploads
-                .Select(c => new TextEntryUpload(c.FileName ?? "", c.ContentType ?? "", c.Content))
+        if (post.Files.Count > 0) {
+            command.Uploads = post.Files
+                .Select(c => new TextEntryAttachmentUpload(c.FileName ?? "", c.ContentType ?? "", c.Content))
                 .ToImmutableArray();
         }
 
@@ -143,12 +125,12 @@ public class MessageController : ControllerBase
     {
         if (post.Payload == null)
             return false;
-        if (post.Payload.Attachments.Count != post.Uploads.Count)
+        if (post.Payload.Attachments.Count != post.Files.Count)
             return false;
 
         foreach (var attachment in post.Payload.Attachments) {
-            var upload = post.Uploads.FirstOrDefault(c => c.Id == attachment.Id);
-            if (upload == null)
+            var file = post.Files.FirstOrDefault(c => c.Id == attachment.Id);
+            if (file == null)
                 return false;
         }
         return true;
@@ -177,8 +159,8 @@ public class MessageController : ControllerBase
         //     await section.Body.CopyToAsync(targetStream);
         // }
 
-        // TODO(DM): use stream/blob instead of byte array for upload content
-        // TODO(DM): add uploads processing: virus scan, content type verification, image size evaluation
+        // TODO(DM): use stream/blob instead of byte array for attached file content
+        // TODO(DM): add attached files processing: virus scan, content type verification, image size evaluation
 
         try {
             byte[] content;
@@ -187,11 +169,11 @@ public class MessageController : ControllerBase
                 targetStream.Position = 0;
                 content = targetStream.ToArray();
             }
-            var upload = new Upload(fileId, content) {
+            var file = new AttachedFile(fileId, content) {
                 ContentType = section.ContentType,
                 FileName = contentDisposition.FileName.Value,
             };
-            messagePost.Uploads.Add(upload);
+            messagePost.Files.Add(file);
             return true;
         }
         catch (Exception e) {
