@@ -8,18 +8,11 @@
     var chats = model.Chats;
 }
 
-<div class="absolute w-full z-20 bg-primary -mt-3 rounded-b-md border-accent md:bg-secondary shadow-lg text-left">
+<div class="w-full mx-1 justify-center z-20 bg-primary rounded-b-md border-accent md:bg-secondary shadow-md text-left">
     @foreach (var chat in chats) {
-        <div class="p-1 px-4 text-xs hover:bg-primary">
+        <div class="p-1 px-4 text-sm hover:bg-accent">
             <div>
                 <a href="/chat/@chat.Url">@chat.Name</a>
-            </div>
-        </div>
-    }
-    @if (model.AddDefault) {
-        <div class="p-1 px-4 text-xs text-sm hover:bg-primary">
-            <div>
-                <a href="@($"/chat/{Constants.Chat.DefaultChatId}")">The Actual One</a>
             </div>
         </div>
     }
@@ -29,24 +22,34 @@
     public class Model
     {
         public (string Name, string Url)[] Chats { get; set; } = new (string Name, string Url)[0];
-        public bool AddDefault { get; set; } = true;
     }
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private ChatAuthorListeningChats ListeningChats { get; set; } = null!;
 
-    [Inject]
-    private ChatPlayers Players { get; set; } = null!;
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = ListeningChats.ListeningChats;
-        return new () {
+        var model = new Model() {
             Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
-            AddDefault = chats.Count == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId)
         };
+        return Task.FromResult(model);
+    }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        ListeningChats.Updated += ListeningChatsOnUpdated;
+    }
+
+    private void ListeningChatsOnUpdated(object? sender, EventArgs e) {
+        State.Recompute();
+    }
+
+    public override ValueTask DisposeAsync() {
+        ListeningChats.Updated -= ListeningChatsOnUpdated;
+        return base.DisposeAsync();
     }
 }
