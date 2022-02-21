@@ -12,7 +12,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private DotNetObjectReference<IAudioPlayerBackend>? BlazorRef { get; set; }
     private IJSObjectReference? JSRef { get; set; }
     private Task<Unit> WhenBufferReady { get; set; } = TaskSource.New<Unit>(true).Task;
-    private bool _isStopSent = false;
+    private bool _isStopSent;
 
     public AudioSource AudioSource => (AudioSource)Source;
 
