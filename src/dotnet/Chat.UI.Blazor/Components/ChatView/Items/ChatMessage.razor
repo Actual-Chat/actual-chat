@@ -48,9 +48,9 @@
             <div class="message-attachments">
                 @foreach (var attachment in attachments) {
                     var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
-                    var url = "/api/content/download/content-record/" + attachment.ContentId;
+                    var url = attachment.Url;
                     @if (isImage) {
-                        var previewUrl = url;
+                        var previewUrl = attachment.ProxyUrl;
                         var imgStyle = "max-width: 400px; max-height: 300px";
                         if (attachment.Height > 0 && attachment.Width > 0) {
                             var width = attachment.Width;
@@ -62,6 +62,7 @@
                             }
                             imgStyle = $"width: {width}px; height: {height}px";
                             // TODO(DM): setup correct preview url to image proxy endpoint
+                            previewUrl += $"?width={width}&height={height}";
                         }
                         <div class="message-attachment-image mt-1">
                             <a class="cursor-pointer" href="@url" target="_blank" role="button">

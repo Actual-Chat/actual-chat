@@ -1,8 +1,8 @@
+using System.Net.Mime;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Content.Controllers;
 
-[Route("api/[controller]/[action]")]
 public class ContentController : ControllerBase
 {
     private readonly IBlobStorageProvider _blobs;
@@ -10,7 +10,7 @@ public class ContentController : ControllerBase
     public ContentController(IBlobStorageProvider blobs)
         => _blobs = blobs;
 
-    [HttpGet("{**blobId}")]
+    [HttpGet("api/content/{**blobId}")]
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {
@@ -19,7 +19,7 @@ public class ContentController : ControllerBase
         if (byteStream == null)
             return NotFound();
         var blob = (await blobStorage.GetBlobsAsync(new[] {blobId}, cancellationToken).ConfigureAwait(false)).Single();
-        string contentType = "application";
+        string contentType = MediaTypeNames.Application.Octet;
         if (blob != null && blob.IsFile && blob.Metadata.TryGetValue(Constants.Metadata.ContentType, out var metadataContentType))
             contentType = metadataContentType;
         return File(byteStream, contentType);
