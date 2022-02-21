@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Newtonsoft.Json;
 
 namespace ActualChat.Chat.Db;
 
@@ -16,11 +17,7 @@ public class DbTextEntryAttachment
     public int Index { get; set; }
     [ConcurrencyCheck] public long Version { get; set; }
     public string ContentId { get; set; } = "";
-    public long Length { get; set; }
-    public string FileName { get; set; } = "";
-    public string ContentType { get; set; } = "";
-    public int Width { get; set; }
-    public int Height { get; set; }
+    public string MetadataJson { get; set; } = "";
 
     public static string GetCompositeId(string chatId, long entryId, int index)
         => Invariant($"{chatId}:{entryId}:{index}");
@@ -31,13 +28,8 @@ public class DbTextEntryAttachment
             EntryId = EntryId,
             Index = Index,
             Version = Version,
-
             ContentId = ContentId,
-            ContentType = ContentType,
-            FileName = FileName,
-            Length = Length,
-            Width = Width,
-            Height = Height
+            MetadataJson = MetadataJson
         };
 
     public void UpdateFrom(TextEntryAttachment model)
@@ -48,10 +40,6 @@ public class DbTextEntryAttachment
         Index = model.Index;
         Version = model.Version;
         ContentId = model.ContentId;
-        Length = model.Length;
-        FileName = model.FileName;
-        ContentType = model.ContentType;
-        Width = model.Width;
-        Height = model.Height;
+        MetadataJson = model.MetadataJson;
     }
 }
