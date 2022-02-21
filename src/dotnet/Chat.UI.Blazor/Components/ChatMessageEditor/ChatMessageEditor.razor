@@ -97,13 +97,13 @@
 </div>
 
 @code {
-    private class MessageAttachment {
+    private class Attachment {
         public string Url { get; set; } = "";
         public string FileName { get; set; } = "";
         public string FileType { get; set; } = "";
         public int Length { get; set; }
         public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
-        public string Id { get; set; } = "";
+        public int Id { get; set; }
     }
 
     private static string? _class;
@@ -115,7 +115,7 @@
     private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
-    private ImmutableArray<MessageAttachment> _attachments = ImmutableArray<MessageAttachment>.Empty;
+    private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
@@ -156,7 +156,7 @@
         if (Text.IsNullOrEmpty() && !_attachments.Any())
             return;
 
-        IResult result = null;
+        IResult? result = null;
         try {
             var response = await JSRef.InvokeAsync<string>("postMessage", Chat.Id).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
@@ -168,7 +168,7 @@
         }
 
         if (result != null && result.HasError) {
-            // use standard error reporting approach
+            // use command error reporting approach
             var command = new PostChatMessageSurrogateCommand();
             var completedEvent = new UICommandEvent(command, result);
             _ = _cmdTracker.ProcessEvent(completedEvent);
@@ -176,8 +176,8 @@
     }
 
     [JSInvokable]
-    public void AddAttachment(string id, string url, string? fileName, string? fileType, int length) {
-        _attachments = _attachments.Add(new MessageAttachment {
+    public void AddAttachment(int id, string url, string? fileName, string? fileType, int length) {
+        _attachments = _attachments.Add(new Attachment {
             Id = id,
             Url = url,
             FileName = fileName ?? "",
@@ -187,7 +187,7 @@
         StateHasChanged();
     }
 
-    private async Task RemoveAttachment(MessageAttachment attachment) {
+    private async Task RemoveAttachment(Attachment attachment) {
         await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id).ConfigureAwait(true);
         _attachments = _attachments.Remove(attachment);
     }

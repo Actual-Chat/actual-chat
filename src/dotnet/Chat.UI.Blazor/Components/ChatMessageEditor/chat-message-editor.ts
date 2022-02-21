@@ -11,7 +11,7 @@ export class ChatMessageEditor {
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
     private attachmentsIdSeed: number = 0;
-    private attachments: Map<string, Attachment> = new Map<string, Attachment>();
+    private attachments: Map<number, Attachment> = new Map<number, Attachment>();
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -192,10 +192,8 @@ export class ChatMessageEditor {
     }
 
     private async addAttachment(file: File): Promise<void> {
-        const id = this.attachmentsIdSeed;
+        const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
         this.attachmentsIdSeed++;
-        const attachment = new Attachment(file);
-        attachment.Id = id.toString();
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
 
@@ -204,7 +202,7 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    public removeAttachment(id: string) {
+    public removeAttachment(id: number) {
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
         if (attachment && attachment.Url)
@@ -255,11 +253,11 @@ export class ChatMessageEditor {
 
     private onPostSucceeded() {
         this.setText("");
-        this.attachments.forEach(attachment => {
+        for (const attachment of this.attachments.values()) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
-        });
-        this.attachments = new Map<string, Attachment>();
+        }
+        this.attachments = new Map<number, Attachment>();
         this.attachmentsIdSeed = 0;
         this.changeMode();
     }
@@ -279,12 +277,8 @@ export class ChatMessageEditor {
     }
 }
 
-class Attachment {
+interface Attachment {
     File: File;
     Url: string;
-    Id: string;
-
-    constructor(File: File) {
-        this.File = File;
-    }
+    Id: number;
 }
