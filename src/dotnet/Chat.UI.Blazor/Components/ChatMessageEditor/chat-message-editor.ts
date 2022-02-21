@@ -73,6 +73,7 @@ export class ChatMessageEditor {
     private filesPickerChangeListener = (async (event: Event & { target: Element; }) => {
         for (const file of this.filesPicker.files)
             await this.addAttachment(file);
+        this.filesPicker.value = '';
     })
 
     private postClickListener = ((event: MouseEvent & {target: Element; }) => {
