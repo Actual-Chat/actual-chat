@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20220221102315_attachments")]
-    partial class attachments
+    [Migration("20220221102315_Attachments")]
+    partial class Attachments
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -230,32 +230,19 @@ namespace ActualChat.Chat.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<long>("EntryId")
                         .HasColumnType("bigint");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Height")
-                        .HasColumnType("integer");
 
                     b.Property<int>("Index")
                         .HasColumnType("integer");
 
-                    b.Property<long>("Length")
-                        .HasColumnType("bigint");
+                    b.Property<string>("MetadataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
-
-                    b.Property<int>("Width")
-                        .HasColumnType("integer");
 
                     b.HasKey("CompositeId");
 
