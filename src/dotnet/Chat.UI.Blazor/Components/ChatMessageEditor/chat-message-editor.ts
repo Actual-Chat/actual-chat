@@ -10,7 +10,7 @@ export class ChatMessageEditor {
     private recordButton: HTMLButtonElement;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
-    private uploads: Uploads = new Uploads();
+    private attachments: Attachments = new Attachments();
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
@@ -99,7 +99,7 @@ export class ChatMessageEditor {
     }
 
     private changeMode() {
-        const isTextMode = this.input.innerText != "" || this.uploads.length() > 0;
+        const isTextMode = this.input.innerText != "" || this.attachments.length() > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
@@ -191,19 +191,19 @@ export class ChatMessageEditor {
     }
 
     private async addAttachment(file: File) : Promise<void> {
-        const upload = new Upload(file);
+        const attachment = new Attachment(file);
         if (file.type.startsWith('image'))
-            upload.Url = URL.createObjectURL(file);
+            attachment.Url = URL.createObjectURL(file);
 
-        this.uploads.add(upload);
-        await this.blazorRef.invokeMethodAsync("AddAttachment", upload.Id, upload.Url, file.name, file.type, file.size);
+        this.attachments.add(attachment);
+        await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
         this.changeMode();
     }
 
     public removeAttachment(id: string) {
-        const upload = this.uploads.remove(id);
-        if (upload && upload.Url)
-            URL.revokeObjectURL(upload.Url);
+        const attachment = this.attachments.remove(id);
+        if (attachment && attachment.Url)
+            URL.revokeObjectURL(attachment.Url);
         this.changeMode();
     }
 
@@ -214,11 +214,11 @@ export class ChatMessageEditor {
             const attachmentsList = [];
             const payload = {"text": self.getText(), "attachments": attachmentsList};
 
-            if (self.uploads.length() > 0) {
+            if (self.attachments.length() > 0) {
                 let i = 0;
-                self.uploads.forEach(upload => {
-                    formData.append("files[" + i + "]", upload.File);
-                    attachmentsList.push({"id": i, "filename": upload.File.name, "filetype": upload.File.type});
+                self.attachments.forEach(attachment => {
+                    formData.append("files[" + i + "]", attachment.File);
+                    attachmentsList.push({"id": i, "filename": attachment.File.name, "filetype": attachment.File.type});
                     i++;
                 })
             }
@@ -250,11 +250,11 @@ export class ChatMessageEditor {
 
     private onPostSucceeded() {
         this.setText("");
-        this.uploads.forEach(upload => {
-            if (upload.Url)
-                URL.revokeObjectURL(upload.Url);
+        this.attachments.forEach(attachment => {
+            if (attachment.Url)
+                URL.revokeObjectURL(attachment.Url);
         });
-        this.uploads = new Uploads();
+        this.attachments = new Attachments();
         this.changeMode();
     }
 
@@ -273,7 +273,7 @@ export class ChatMessageEditor {
     }
 }
 
-class Upload {
+class Attachment {
     File: File;
     Url: string;
     Id : string;
@@ -283,35 +283,35 @@ class Upload {
     }
 }
 
-class Uploads {
-    private uploads: Upload[] = [];
+class Attachments {
+    private attachments: Attachment[] = [];
     private idSeed:number = 0;
 
-    public add(upload : Upload) {
-        upload.Id = this.idSeed.toString();
+    public add(attachment : Attachment) {
+        attachment.Id = this.idSeed.toString();
         this.idSeed++;
-        this.uploads.push(upload);
+        this.attachments.push(attachment);
     }
 
-    public forEach(action : (upload: Upload) => void) {
-        for (const upload of this.uploads)
-            action(upload);
+    public forEach(action : (attachment: Attachment) => void) {
+        for (const attachment of this.attachments)
+            action(attachment);
     }
 
-    public remove(id : string) : Upload {
-        const index = this.uploads.findIndex(element => element.Id===id);
+    public remove(id : string) : Attachment {
+        const index = this.attachments.findIndex(element => element.Id===id);
         if (index >= -1) {
-            const upload = this.uploads[index];
-            this.uploads.splice(index, 1);
-            return upload;
+            const attachment = this.attachments[index];
+            this.attachments.splice(index, 1);
+            return attachment;
         }
     }
 
-    public get(id : string) : Upload {
-        return this.uploads.find(element => element.Id===id);
+    public get(id : string) : Attachment {
+        return this.attachments.find(element => element.Id===id);
     }
 
     public length() {
-        return this.uploads.length;
+        return this.attachments.length;
     }
 }
