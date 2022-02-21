@@ -38,12 +38,12 @@
     }
 
     private Task Play() {
-        _ = ListeningChats.AddChat(Player.ChatId, new CancellationToken());
+        _ = ListeningChats.AddChat(Player.ChatId);
         return Player.Play(Clocks.SystemClock.Now);
     }
 
     private Task Stop() {
-        _ = ListeningChats.RemoveChat(Player.ChatId, new CancellationToken());
+        _ = ListeningChats.RemoveChat(Player.ChatId);
         return Player.Stop();
     }
 

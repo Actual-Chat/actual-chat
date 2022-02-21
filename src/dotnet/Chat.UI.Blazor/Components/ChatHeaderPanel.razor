@@ -31,12 +31,24 @@
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
 
-    protected override Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = ListeningChats.ListeningChats;
-        var model = new Model() {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatIds = ListeningChats.ListeningChatIds;
+        var chats = await GetListeningChatsByIds(chatIds, cancellationToken);
+        return new () {
             Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
         };
-        return Task.FromResult(model);
+    }
+
+    private async Task<List<Chat>> GetListeningChatsByIds(List<string> chatIds, CancellationToken cancellationToken) {
+        var chats = new List<Chat>();
+        foreach (var chatId in chatIds.Where(chatId => !string.IsNullOrWhiteSpace(chatId)))
+        {
+            var chat = await Chats.Get(Session, chatId, cancellationToken);
+            if (chat != null && !chats.Contains(chat)) {
+                chats.Add(chat);
+            }
+        }
+        return chats;
     }
 
     protected override void OnInitialized() {
