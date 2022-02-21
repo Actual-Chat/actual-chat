@@ -38,7 +38,7 @@ export class ChatMessageEditor {
     }
 
     private inputInputListener = ((event: Event & { target: Element; }) => {
-        const _ = this.updateClientSideState();
+        void this.updateClientSideState();
         this.changeMode();
     })
 
@@ -65,7 +65,7 @@ export class ChatMessageEditor {
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
                 const file = item.getAsFile();
-                const _ = this.addAttachment(file);
+                void this.addAttachment(file);
                 event.preventDefault();
             }
         }
@@ -118,7 +118,7 @@ export class ChatMessageEditor {
     private setText(text: string) {
         this.input.innerText = text;
         this.changeMode();
-        const _ = this.updateClientSideState();
+        void this.updateClientSideState();
     }
 
     private updateClientSideState(): Promise<void> {
@@ -136,7 +136,7 @@ export class ChatMessageEditor {
             return
         ChatMessageEditor.insertTextWithSelection(pastedData);
         this.changeMode();
-        const _ = this.updateClientSideState();
+        void this.updateClientSideState();
     }
 
     private static replaceHeadingSpaces(text: string): string {
@@ -210,61 +210,49 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private postMessage(chatId: string): Promise<string> {
-        const self = this;
-        return new Promise(function (resolve, reject) {
-            const formData = new FormData();
-            const attachmentsList = [];
-            const payload = { "text": self.getText(), "attachments": attachmentsList };
+    private postMessage = async (chatId: string): Promise<string> => {
+        const formData = new FormData();
+        const attachmentsList = [];
+        if (this.attachments.size > 0) {
+            let i = 0;
+            this.attachments.forEach(attachment => {
+                formData.append("files[" + i + "]", attachment.File);
+                attachmentsList.push({ "id": i, "filename": attachment.File.name, "description": '' });
+                i++;
+            })
+        }
 
-            if (self.attachments.size > 0) {
-                let i = 0;
-                self.attachments.forEach(attachment => {
-                    formData.append("files[" + i + "]", attachment.File);
-                    attachmentsList.push({ "id": i, "filename": attachment.File.name, "filetype": attachment.File.type });
-                    i++;
-                })
-            }
+        const payload = { "text": this.getText(), "attachments": attachmentsList };
+        const payloadJson = JSON.stringify(payload);
+        formData.append("payload_json", payloadJson);
 
-            const payload_json = JSON.stringify(payload);
-            formData.append("payload_json", payload_json);
+        console.log('about to send post message request with ' + attachmentsList.length  + ' attachments');
+        const url = "api/chats/" + chatId + "/message";
+        const response = await fetch(url, { method: 'POST', body: formData });
 
-            const request = new XMLHttpRequest();
-            const url = "api/chats/" + chatId + "/message";
-            request.open("POST", url);
-            request.onload = function () {
-                if (request.status === 200) {
-                    resolve(request.responseText);
-                } else {
-                    let reason = request.statusText;
-                    if (!reason)
-                        reason = "unknown";
-                    reject(Error('Failed to send message. Reason: ' + reason));
-                }
-            };
-            request.onerror = function () {
-                // Also deal with the case when the entire request fails to begin with
-                // This is probably a network error, so reject the promise with an appropriate message
-                reject(Error('Failed to send message. There was a network error.'));
-            };
-            request.send(formData);
-        });
+        if (!response.ok) {
+            let reason = response.statusText;
+            if (!reason)
+                reason = "unknown";
+            throw new Error('Failed to send message. Reason: ' + reason);
+        }
+        return response.statusText;
     }
 
-    private onPostSucceeded() {
+    private onPostSucceeded = () => {
         this.setText("");
         for (const attachment of this.attachments.values()) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
         }
-        this.attachments = new Map<number, Attachment>();
+        this.attachments.clear();
         this.attachmentsIdSeed = 0;
         this.changeMode();
     }
 
     private showFilesPicker = () => {
         this.filesPicker.click();
-    };
+    }
 
     private dispose() {
         this.input.removeEventListener('input', this.inputInputListener);
