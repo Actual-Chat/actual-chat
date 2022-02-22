@@ -12,16 +12,15 @@
     @foreach (var chat in chats) {
         <div class="p-1 px-4 text-sm hover:bg-accent">
             <div>
-                <a href="/chat/@chat.Url">@chat.Name</a>
+                <a href="/chat/@chat.Id">@chat.Title</a>
             </div>
         </div>
     }
 </div>
 
 @code {
-    public class Model
-    {
-        public (string Name, string Url)[] Chats { get; set; } = new (string Name, string Url)[0];
+    public class Model {
+        public Chat[] Chats { get; set; } = Array.Empty<Chat>();
     }
 
     [Inject] private Session Session { get; set; } = null!;
@@ -35,7 +34,7 @@
         var chatIds = await ListeningChats.GetChatIds(cancellationToken).ConfigureAwait(true);
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         return new () {
-            Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
+            Chats = chats.OrderBy(c => c.Title).ToArray(),
         };
     }
 
@@ -49,9 +48,5 @@
             }
         }
         return chats;
-    }
-
-    private void ListeningChatsOnUpdated(object? sender, EventArgs e) {
-        // State.Recompute();
     }
 }
