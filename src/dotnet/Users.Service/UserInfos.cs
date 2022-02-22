@@ -51,7 +51,7 @@ public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
         var email = user?.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
         if (email.IsNullOrEmpty())
             return null;
-        return CreateMD5(email.Trim().ToLowerInvariant());
+        return email.Trim().ToLowerInvariant().GetMD5HashCode();
     }
 
     public virtual async Task<bool> IsAdmin(string userId, CancellationToken cancellationToken)
@@ -65,17 +65,5 @@ public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
             return true;
         var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
         return AdminEmails.Contains(email);
-    }
-
-    private static string CreateMD5(string input)
-    {
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        var inputBytes = Encoding.ASCII.GetBytes(input);
-        var hashBytes = md5.ComputeHash(inputBytes);
-        var sb = new StringBuilder(32);
-        foreach (var @byte in hashBytes)
-#pragma warning disable MA0028
-            sb.Append(@byte.ToString("x2", CultureInfo.InvariantCulture));
-        return sb.ToString();
     }
 }
