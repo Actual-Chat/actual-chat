@@ -32,14 +32,14 @@
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatIds = ListeningChats.ListeningChatIds;
-        var chats = await GetListeningChatsByIds(chatIds, cancellationToken);
+        var chatIds = await ListeningChats.GetChatIds(cancellationToken).ConfigureAwait(true);
+        var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         return new () {
             Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
         };
     }
 
-    private async Task<List<Chat>> GetListeningChatsByIds(List<string> chatIds, CancellationToken cancellationToken) {
+    private async Task<List<Chat>> GetListeningChatsByIds(IEnumerable<string> chatIds, CancellationToken cancellationToken) {
         var chats = new List<Chat>();
         foreach (var chatId in chatIds.Where(chatId => !string.IsNullOrWhiteSpace(chatId)))
         {
@@ -51,17 +51,7 @@
         return chats;
     }
 
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        ListeningChats.Updated += ListeningChatsOnUpdated;
-    }
-
     private void ListeningChatsOnUpdated(object? sender, EventArgs e) {
-        State.Recompute();
-    }
-
-    public override ValueTask DisposeAsync() {
-        ListeningChats.Updated -= ListeningChatsOnUpdated;
-        return base.DisposeAsync();
+        // State.Recompute();
     }
 }
