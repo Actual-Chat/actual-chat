@@ -15,20 +15,16 @@ public class ChatAuthorListeningChats
         ListeningChatsState = stateFactory.NewMutable(ImmutableList<string>.Empty);
     }
 
-    public Task AddChat(string chatId)
+    public void Add(string chatId)
     {
-        if (string.IsNullOrWhiteSpace(chatId) || ListeningChats.Contains(chatId, StringComparer.Ordinal))
-            return Task.CompletedTask;
-        ListeningChatsState.Value = ListeningChats.Add(chatId);
-        return Task.CompletedTask;
+        if (!string.IsNullOrWhiteSpace(chatId) && !ListeningChats.Contains(chatId, StringComparer.Ordinal))
+            ListeningChatsState.Value = ListeningChats.Add(chatId);
     }
 
-    public Task RemoveChat(string chatId)
+    public void Remove(string chatId)
     {
-        if (string.IsNullOrWhiteSpace(chatId) || !ListeningChats.Contains(chatId, StringComparer.Ordinal))
-            return Task.CompletedTask;
-        ListeningChatsState.Value = ListeningChats.Remove(chatId, StringComparer.Ordinal);
-        return Task.CompletedTask;
+        if (!string.IsNullOrWhiteSpace(chatId) && ListeningChats.Contains(chatId, StringComparer.Ordinal))
+            ListeningChatsState.Value = ListeningChats.Remove(chatId, StringComparer.Ordinal);
     }
 
     public ValueTask<ImmutableList<string>> GetChatIds(CancellationToken cancellationToken)
