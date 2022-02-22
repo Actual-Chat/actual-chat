@@ -1,34 +1,36 @@
-﻿using ActualChat.MediaPlayback;
-
-namespace ActualChat.Chat.UI.Blazor.Services;
+﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatAuthorListeningChats
 {
     private Session Session { get; }
-    public List<string> ListeningChatIds { get; set; } = new ();
+    public IServiceProvider Services { get; }
+    public IMutableState<ImmutableList<string>> ListeningChatsState { get; }
+    public ImmutableList<string> ListeningChats => ListeningChatsState.Value;
 
-    public ChatAuthorListeningChats(Session session)
+    public ChatAuthorListeningChats(IServiceProvider services, Session session)
     {
         Session = session;
+        Services = services;
+        var stateFactory = services.StateFactory();
+        ListeningChatsState = stateFactory.NewMutable(ImmutableList<string>.Empty);
     }
 
     public Task AddChat(string chatId)
     {
-        if (string.IsNullOrWhiteSpace(chatId) || ListeningChatIds.Contains(chatId, StringComparer.Ordinal))
+        if (string.IsNullOrWhiteSpace(chatId) || ListeningChats.Contains(chatId, StringComparer.Ordinal))
             return Task.CompletedTask;
-        ListeningChatIds.Add(chatId);
-        Updated?.Invoke(this, EventArgs.Empty);
+        ListeningChatsState.Value = ListeningChats.Add(chatId);
         return Task.CompletedTask;
     }
 
     public Task RemoveChat(string chatId)
     {
-        if (string.IsNullOrWhiteSpace(chatId) || !ListeningChatIds.Contains(chatId, StringComparer.Ordinal))
+        if (string.IsNullOrWhiteSpace(chatId) || !ListeningChats.Contains(chatId, StringComparer.Ordinal))
             return Task.CompletedTask;
-        ListeningChatIds.Remove(chatId);
-        Updated?.Invoke(this, EventArgs.Empty);
+        ListeningChatsState.Value = ListeningChats.Remove(chatId, StringComparer.Ordinal);
         return Task.CompletedTask;
     }
 
-    public event EventHandler? Updated;
+    public ValueTask<ImmutableList<string>> GetChatIds(CancellationToken cancellationToken)
+        => ListeningChatsState.Use(cancellationToken);
 }
