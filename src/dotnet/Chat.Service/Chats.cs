@@ -103,6 +103,14 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return invited;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        Session session, string chatId, long entryId, CancellationToken cancellationToken)
+    {
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        return await _chatsBackend.GetTextEntryAttachments(chatId, entryId, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<Chat> CreateChat(IChats.CreateChatCommand command, CancellationToken cancellationToken)
     {
@@ -169,9 +177,33 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             AuthorId = author.Id,
             Content = text,
             Type = ChatEntryType.Text,
+            HasAttachments = command.Attachments.Length > 0
         };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
-        return await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var textEntry =  await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+
+        for (var i = 0; i < command.Attachments.Length; i++) {
+            var attachmentUpload = command.Attachments[i];
+            var (fileName, content, contentType) = attachmentUpload;
+            var contentLocalId = Ulid.NewUlid().ToString();
+            var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
+
+            var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
+            await _commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
+
+            var attachment = new TextEntryAttachment {
+                Index = i,
+                Length = content.Length,
+                ChatId = chatId,
+                EntryId = textEntry.Id,
+                ContentType = contentType,
+                FileName = fileName,
+                ContentId = contentId
+            };
+            var createAttachmentCommand = new IChatsBackend.CreateTextEntryAttachmentCommand(attachment);
+            await _commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+        return textEntry;
     }
 
     // [CommandHandler]

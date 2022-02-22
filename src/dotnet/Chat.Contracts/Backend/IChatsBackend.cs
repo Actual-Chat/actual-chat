@@ -37,6 +37,10 @@ public interface IChatsBackend
     Task<ChatPermissions> GetPermissions(
         string chatId, string chatPrincipalId,
         CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        string chatId, long entryId,
+        CancellationToken cancellationToken);
 
     // Commands
 
@@ -46,11 +50,12 @@ public interface IChatsBackend
     Task<Unit> UpdateChat(UpdateChatCommand command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatEntry> UpsertEntry(UpsertEntryCommand command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<TextEntryAttachment> CreateTextEntryAttachment(CreateTextEntryAttachmentCommand command, CancellationToken cancellationToken);
 
     public record CreateChatCommand(Chat Chat) : ICommand<Chat>, IBackendCommand;
     public record UpdateChatCommand(Chat Chat) : ICommand<Unit>, IBackendCommand;
     public record CreateAudioEntryCommand(ChatEntry AudioEntry) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
     public record UpsertEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>, IBackendCommand;
-
-
+    public record CreateTextEntryAttachmentCommand(TextEntryAttachment Attachment) : ICommand<TextEntryAttachment>, IBackendCommand;
 }
