@@ -1,26 +1,47 @@
-@namespace ActualChat.UI.Blazor.Components
-@inject IModalService _modalService
-@using BlazorContextMenu
+﻿@using BlazorContextMenu
+@inject NavigationManager _nav
+@inject Session _session
+@inject IChats _chats
 
-<ContextMenuTrigger MenuId="chatHeaderMenu">
-    <div class="px-2">
-        <span class="float-left">@Chat.Title</span>
-    </div>
-</ContextMenuTrigger>
-
-<ContextMenu Id="chatHeaderMenu" CssClass="text-secondary font-normal">
-    <Item OnClick="@OnEditChatAuthor">Edit your name, image and bio in this chat</Item>
-</ContextMenu>
+<Dropdown ContentPositionCss="left-1 top-7" Class="relative">
+    <ButtonTemplate>
+        <div class="px-2 inline-flex">
+            <span class="float-left text-secondary font-semibold chat-header-title">@Chat.Title</span>
+        </div>
+    </ButtonTemplate>
+    <ContentTemplate>
+        <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+            <MenuItem Title="Edit your name, image and bio in this chat" OnItemClick="OnEditChatAuthorAvatar"></MenuItem>
+            @if (_canEdit) {
+                <MenuItem Title="Edit chat" OnItemClick="OnEditChat"></MenuItem>
+            }
+            @if (_canInvite) {
+                <MenuItem Title="Invite people" OnItemClick="OnInvite"></MenuItem>
+            }
+        </Menu>
+    </ContentTemplate>
+</Dropdown>
 
 @code {
+    private bool _canEdit;
+    private bool _canInvite;
+
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    private void OnEditChatAuthor()
-    {
-        var options = new ModalOptions { UseCustomLayout = true };
-        var parameters = new ModalParameters();
-        parameters.Add(nameof(EditChatAuthor.ChatId), (string)Chat.Id);
-        _modalService.Show<EditChatAuthor>(string.Empty, parameters, options);
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        var permissions = await _chats.GetPermissions(_session, Chat.Id, default);
+        _canEdit = permissions.HasFlag(ChatPermissions.Admin);
+        _canInvite = permissions.HasFlag(ChatPermissions.Invite);
     }
+
+    private void OnEditChatAuthorAvatar()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
+
+    private void OnEditChat()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/edit");
+
+    private void OnInvite()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/invite");
 }

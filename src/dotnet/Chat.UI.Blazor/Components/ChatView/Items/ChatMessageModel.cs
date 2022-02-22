@@ -10,16 +10,14 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public Symbol Key { get; }
     public ChatEntry Entry { get; }
-    public Author Author { get; }
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
     public int CountAs { get; init; } = 1;
 
-    public ChatMessageModel(ChatEntry entry, Author author)
+    public ChatMessageModel(ChatEntry entry)
     {
         Entry = entry;
-        Author = author;
         Key = entry.Id.ToString(CultureInfo.InvariantCulture);
     }
 
@@ -35,7 +33,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         if (ReferenceEquals(this, other))
             return true;
         return Entry.Equals(other.Entry)
-            && Author.Equals(other.Author)
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd;
@@ -43,15 +40,14 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public override bool Equals(object? obj)
         => ReferenceEquals(this, obj) || obj is ChatMessageModel other && Equals(other);
     public override int GetHashCode()
-        => HashCode.Combine(Entry, Author, DateLine, IsBlockStart, IsBlockEnd);
+        => HashCode.Combine(Entry, DateLine, IsBlockStart, IsBlockEnd);
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
     public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
 
     // Static helpers
 
     public static List<ChatMessageModel> FromEntries(
-        List<ChatEntry> chatEntries,
-        Dictionary<Symbol, Author?> authors)
+        List<ChatEntry> chatEntries)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
@@ -72,7 +68,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var date = DateOnly.FromDateTime(entry.BeginsAt.ToDateTime().ToLocalTime());
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
-            var model = new ChatMessageModel(entry, authors[entry.AuthorId]!) {
+            var model = new ChatMessageModel(entry) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,

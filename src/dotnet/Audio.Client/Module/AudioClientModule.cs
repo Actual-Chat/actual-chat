@@ -21,7 +21,6 @@ public class AudioClientModule : HostModule
 
         services.AddSingleton<AudioDownloader>();
         services.AddSingleton<AudioClient>();
-        services.AddTransient<IAudioProcessor>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
         services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
     }

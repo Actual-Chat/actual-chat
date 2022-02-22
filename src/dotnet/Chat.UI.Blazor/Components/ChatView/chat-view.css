@@ -3,15 +3,23 @@
 }
 
 .chat-message:hover {
-    @apply bg-gray-100;
+    @apply bg-message-hover;
 }
 
 .chat-message:hover .author-avatar {
-    @apply bg-gray-100;
+    @apply bg-message-hover;
 }
 
 .chat-message:hover .chat-message-timestamp-secondary {
     @apply visible;
+}
+
+.chat-message:hover .message-menu {
+    @apply visible;
+}
+
+.chat-message:hover .menu-body {
+    @apply flex;
 }
 
 .chat-message-markup .playable {
@@ -25,4 +33,12 @@
 
 .chat-message-markup .playing {
     text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
+}
+
+.chat-header-title:hover {
+    @apply text-accent;
+}
+
+.whitespace-break-spaces {
+    white-space: break-spaces;
 }

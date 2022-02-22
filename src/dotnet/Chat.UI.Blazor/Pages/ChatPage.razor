@@ -28,12 +28,10 @@
             </Header>
             <Body>
                 <ChatView />
+                <HistoricalPlaybackPanel/>
             </Body>
             <Footer>
-                <div class="flex flex-col w-full py-2">
-                    <HistoricalPlaybackPanel />
-                    <ChatMessageEditor />
-                </div>
+                <ChatFooter AutoJoin="@AutoJoin" />
             </Footer>
         </PageWithHeaderAndFooter>
     </CascadingValue>
@@ -44,6 +42,8 @@
 @code {
     private Model? _renderedModel;
 
+    public const string AutoJoinQueryParameter = "auto-join";
+
     public record Model {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
@@ -52,6 +52,9 @@
 
     [Parameter]
     public string ChatId { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
+    public string? AutoJoin { get; set; }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_renderedModel, null)
@@ -59,12 +62,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var user = await _auth.GetUser(_session, cancellationToken).ConfigureAwait(true);
         var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        if (!user.IsAuthenticated && !chat.IsPublic)
-            return new () { MustLogin = true };
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _renderedModel?.Chat;

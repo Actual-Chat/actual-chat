@@ -25,9 +25,8 @@ public class AudioProcessorTest : AppHostTestBase
 
         var audioRecord = new AudioRecord(
             session.Id, "1",
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
-        await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<RecordingPart>(), CancellationToken.None);
+        await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<byte[]>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
         var readSizeOpt = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
@@ -131,13 +130,12 @@ public class AudioProcessorTest : AppHostTestBase
     {
         var record = new AudioRecord(
             session.Id, chatId,
-            new AudioFormat { CodecKind = AudioCodecKind.Opus, ChannelCount = 1, SampleRate = 48_000 },
             CpuClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath(fileName);
         var fileSize = (int) filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
-        await audioProcessor.ProcessAudio(record, byteStream.ToRecordingStream(), CancellationToken.None);
+        await audioProcessor.ProcessAudio(record, byteStream, CancellationToken.None);
         return (record, fileSize);
     }
 

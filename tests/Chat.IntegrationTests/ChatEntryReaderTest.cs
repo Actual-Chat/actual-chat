@@ -100,6 +100,6 @@ public class ChatEntryReaderTest : AppHostTestBase
             "it was a teenage wedding and the all folks wished them well",
         };
         foreach (var text in phrases)
-            _ = await chats.CreateEntry(new (session, chatId, text), cancellationToken).ConfigureAwait(false);
+            _ = await chats.CreateTextEntry(new (session, chatId, text), cancellationToken).ConfigureAwait(false);
     }
 }

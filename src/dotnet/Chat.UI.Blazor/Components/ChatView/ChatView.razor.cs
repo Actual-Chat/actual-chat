@@ -77,15 +77,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         }
         */
 
-        var authorIds = chatEntries.Select(e => e.AuthorId).Distinct();
-        var authorTasks = await Task
-            .WhenAll(authorIds.Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
-            .ConfigureAwait(false);
-        var authors = authorTasks
-            .Where(a => a != null)
-            .ToDictionary(a => a!.Id);
-
-        var chatMessages = ChatMessageModel.FromEntries(chatEntries, authors);
+        var chatMessages = ChatMessageModel.FromEntries(chatEntries);
         var result = VirtualListData.New(
             chatMessages,
             startId <= chatIdRange.Start,

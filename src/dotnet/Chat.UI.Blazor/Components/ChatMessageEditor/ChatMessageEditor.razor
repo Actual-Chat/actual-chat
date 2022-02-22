@@ -3,40 +3,38 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
+@using ActualChat.Hosting
 @implements IAsyncDisposable
 @inject IChats _chatService
 @inject Session _session
 @inject UICommandRunner _cmd
 @inject IJSRuntime _js
 @inject MomentClockSet _clocks
+@inject HostInfo _hostInfo
 
 <div @ref="EditorRef" class="@(_class ??= this.DefaultClass()) chat-message-editor sticky bottom-0 self-end bg-secondary w-full px-2">
     <div class="flex flex-row justify-between px-1">
-        <div class="block flex flex-row justify-center items-center justify-items-center outline-none bg-accent rounded-md w-full overflow-hidden mr-3">
-            <button class="attach-button sticky flex outline-none text-secondary hover:cursor-pointer text-primary px-3 py-2">
-                <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
-                </svg>
-            </button>
+        <div class="flex flex-row justify-center items-center justify-items-center outline-none bg-accent rounded-md w-full overflow-hidden mr-3">
+            <AttachDropdown/>
             <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 break-words py-2 md:mx-2 outline-none hover:cursor-text text-primary block"
                  autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                  aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
             </div>
-            <div class="audio-wave block flex-row w-full py-2 pr-2 outline-none justify-items-stretch hidden">
+            <div class="audio-wave flex-row w-full py-2 pr-2 outline-none justify-items-stretch hidden">
             </div>
-            <button class="post-message sticky self-end flex outline-none text-secondary p-1 hidden"
+            <button class="post-message sticky self-end outline-none text-secondary p-1 hidden"
                     @onclick="_ => Post()">
                 <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
         </div>
-        <div class="block flex flex-1 flex-row justify-center outline-none items-end">
+        <div class="flex flex-1 flex-row justify-center outline-none items-end">
             <div class="sticky bottom-0 flex flex-row justify-center items-center max-h-10 bg-accent rounded-md py-2">
                 <div class="chat-control-button language-button p-1 w-1/2 hidden">
                     <ChatLanguageToggle/>
                 </div>
-                <div class="chat-control-button recorder-button w-1/2 flex flex animate-display-from-right md:animate-none">
+                <div class="chat-control-button recorder-button w-1/2 flex animate-display-from-right md:animate-none">
                     @*
                         new EventCallback<bool>(null, ...) prevents StateHasChanged call
                         and thus re-rendering of a parent (this) component.
@@ -74,7 +72,7 @@
     public async ValueTask DisposeAsync()
     {
         if (JSRef != null!)
-            await JSRef.DisposeSilentlyAsync().ConfigureAwait(true);
+            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         // ReSharper disable once ConstantConditionalAccessQualifier
         BlazorRef?.Dispose();
     }
@@ -103,7 +101,7 @@
         if (Text.IsNullOrEmpty())
             return;
 
-        var (_, ce) = await _cmd.Run(new IChats.CreateEntryCommand(_session, Chat.Id, Text)).ConfigureAwait(true);
+        var (_, ce) = await _cmd.Run(new IChats.CreateTextEntryCommand(_session, Chat.Id, Text)).ConfigureAwait(true);
         if (!ce.IsFailed)
             await JSRef.InvokeVoidAsync("setText", "").ConfigureAwait(true);
     }

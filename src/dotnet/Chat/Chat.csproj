@@ -2,8 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
+    <ProjectReference Include="..\Markdown\Markdown.csproj" />
     <!-- Should be just User.csproj in the future -->
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
-
+  
 </Project>

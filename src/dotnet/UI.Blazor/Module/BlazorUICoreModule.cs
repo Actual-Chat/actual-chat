@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
 using Stl.Plugins;
 
@@ -32,6 +33,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
 
         services.AddBlazorContextMenu();
         services.AddBlazoredModal();
+        services.AddTransient<ClipboardService>();
     }
 }
 

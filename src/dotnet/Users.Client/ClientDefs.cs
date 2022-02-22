@@ -10,7 +10,9 @@ public interface IUserInfosClientDef
     [Get(nameof(GetByName))]
     Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
     [Get(nameof(GetGravatarHash))]
-    Task<string> GetGravatarHash(string userId, CancellationToken cancellationToken);
+    Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken);
+    [Get(nameof(IsAdmin))]
+    Task<string?> IsAdmin(string userId, CancellationToken cancellationToken);
 }
 
 [BasePath("userStates")]
@@ -29,3 +31,19 @@ public interface IUserAuthorsClientDef
     Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
 }
 
+[BasePath("userAvatars")]
+public interface IUserAvatarsClientDef
+{
+    [Get(nameof(Get))]
+    Task<UserAvatar?> Get(Session session, string avatarId, CancellationToken cancellationToken);
+    [Get(nameof(GetAvatarIds))]
+    Task<string[]> GetAvatarIds(Session session, CancellationToken cancellationToken);
+    [Get(nameof(GetDefaultAvatarId))]
+    Task<string> GetDefaultAvatarId(Session session, CancellationToken cancellationToken);
+    [Post(nameof(Create))]
+    Task<UserAvatar> Create([Body] IUserAvatars.CreateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Update))]
+    Task Update([Body] IUserAvatars.UpdateCommand command, CancellationToken cancellationToken);
+    [Post(nameof(SetDefault))]
+    Task SetDefault([Body] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
+}

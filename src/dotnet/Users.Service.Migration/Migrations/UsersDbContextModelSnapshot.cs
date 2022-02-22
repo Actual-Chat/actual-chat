@@ -27,6 +27,10 @@ namespace ActualChat.Users.Migrations.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("AvatarId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ChatId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -134,14 +138,14 @@ namespace ActualChat.Users.Migrations.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("text");
 
+                    b.Property<string>("AvatarId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsAnonymous")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Picture")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -152,6 +156,39 @@ namespace ActualChat.Users.Migrations.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("UserAuthors");
+                });
+
+            modelBuilder.Entity("ActualChat.Users.Db.DbUserAvatar", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Bio")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("LocalId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Picture")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserAvatars");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserState", b =>

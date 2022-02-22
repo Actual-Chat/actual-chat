@@ -59,7 +59,6 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             app.UseExceptionHandler("/Error");
             app.UseHsts();
         }
-        // app.UseCors("Default");
 
         // See
         // - https://docs.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins?view=aspnetcore-6.0
@@ -87,6 +86,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
 
         // API controllers
         app.UseRouting();
+        app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -141,6 +141,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         else {
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
         }
+        // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
         services.AddCors(options => {
             options.AddPolicy("Default", builder => builder.AllowAnyOrigin().WithFusionHeaders());
         });
@@ -176,14 +177,24 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
-                // .AddAspNetCoreInstrumentation()
+                .AddAspNetCoreInstrumentation()
                 .AddMeter(AppMeter.Name)
                 .AddMeter(FusionDiagnostics.FusionMeter.Name)
                 .AddMeter(CommanderDiagnostics.CommanderMeter.Name)
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.ExportProcessorType = ExportProcessorType.Batch;
+                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                        ExporterTimeoutMilliseconds = 10_000,
+                        MaxExportBatchSize = 256,
+                        MaxQueueSize = 1024,
+                        ScheduledDelayMilliseconds = 20_000,
+                    };
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.AggregationTemporality = AggregationTemporality.Cumulative;
+                    cfg.MetricReaderType = MetricReaderType.Periodic;
+                    cfg.PeriodicExportingMetricReaderOptions = new PeriodicExportingMetricReaderOptions() {
+                        ExportIntervalMilliseconds = 15_000,
+                    };
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
@@ -209,7 +220,13 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                 .AddGrpcClientInstrumentation()
                 .AddNpgsql()
                 .AddOtlpExporter(cfg => {
-                    cfg.ExportProcessorType = ExportProcessorType.Simple;
+                    cfg.ExportProcessorType = ExportProcessorType.Batch;
+                    cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
+                        ExporterTimeoutMilliseconds = 10_000,
+                        MaxExportBatchSize = 256,
+                        MaxQueueSize = 1024,
+                        ScheduledDelayMilliseconds = 20_000,
+                    };
                     cfg.Protocol = OtlpExportProtocol.Grpc;
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })

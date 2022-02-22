@@ -1,6 +1,7 @@
-﻿using ActualChat.Configuration;
+using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
+using StackExchange.Redis;
 using Stl.Plugins;
 using Stl.Redis;
 
@@ -37,6 +38,9 @@ public class RedisModule : HostModule<RedisSettings>
         Log.LogInformation("RedisDb<{Context}>: configuration = '{Configuration}', keyPrefix = '{KeyPrefix}'",
             typeof(TContext).Name, configuration, keyPrefix);
 
-        services.AddRedisDb<TContext>(configuration, keyPrefix);
+        var cfg = ConfigurationOptions.Parse(configuration);
+        cfg.SocketManager = SocketManager.ThreadPool;
+        services.AddRedisDb<TContext>(cfg, keyPrefix);
     }
 }
+
