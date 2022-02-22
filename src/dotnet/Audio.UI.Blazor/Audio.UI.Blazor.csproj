@@ -4,6 +4,7 @@
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
+    <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

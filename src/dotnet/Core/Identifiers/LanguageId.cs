@@ -4,7 +4,7 @@ public partial struct LanguageId
 {
     public static LanguageId English { get; } = new("en-US");
     public static LanguageId Russian { get; } = new("ru-RU");
-    public static LanguageId Default { get; } = Russian;
+    public static LanguageId Default { get; } = English;
 
     public bool IsValid
         => Value switch {

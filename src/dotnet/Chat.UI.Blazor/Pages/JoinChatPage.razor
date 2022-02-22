@@ -1,0 +1,32 @@
+﻿@page "/join/{InviteCode}"
+
+@if (_useResult != null && !_useResult.IsValid) {
+    <h3>Invite code is invalid or expired.</h3>
+}
+
+@code {
+    private InviteCodeUseResult? _useResult;
+
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private UICommandRunner Cmd { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    [Parameter]
+    public string InviteCode { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = ChatPage.AutoJoinQueryParameter)]
+    public string? AutoJoin { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        var cmd = new IInviteCodes.UseInviteCodeCommand(Session, InviteCode);
+        var runResult = await Cmd.Run(cmd);
+        _useResult = runResult.Result;
+        if (!_useResult.IsValid)
+            return;
+        var uri = $"/chat/{_useResult.ChatId}";
+        if (AutoJoin != null)
+            uri = uri + "?" + ChatPage.AutoJoinQueryParameter + "=" + AutoJoin;
+        Nav.NavigateTo(uri);
+    }
+}

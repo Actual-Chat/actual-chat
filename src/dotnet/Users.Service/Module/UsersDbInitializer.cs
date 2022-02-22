@@ -35,10 +35,18 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                     },
                 },
             });
-            dbContext.UserAuthors.Add(new DbUserAuthor() {
+            var avatarId = Ulid.NewUlid().ToString();
+            dbContext.UserAvatars.Add(new DbUserAvatar() {
+                Id = avatarId,
                 UserId = UserConstants.Admin.UserId,
                 Name = UserConstants.Admin.Name,
                 Picture = UserConstants.Admin.Picture,
+            });
+
+            dbContext.UserAuthors.Add(new DbUserAuthor() {
+                UserId = UserConstants.Admin.UserId,
+                Name = UserConstants.Admin.Name,
+                AvatarId = avatarId,
             });
             try {
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -1,35 +1,71 @@
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
+using Stl.Generators;
 using Stl.Versioning;
+using Stl.Redis;
 
 namespace ActualChat.Chat;
 
-public partial class Chats
+public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
-    private static readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) {
-        "alex.yakunin@actual.chat",
-        "alex.yakunin@gmail.com",
-        "alexey.kochetov@actual.chat",
-        "undead00@gmail.com",
-        "vladimir.chirikov@actual.chat",
-        "vovanchig@gmail.com",
-        "dmitry.filippov@actual.chat",
-        "crui3er@gmail.com",
-        "andrey.yakunin@actual.chat",
-        "iqmulator@gmail.com",
-        "alexis.kochetov@gmail.com",
-        "alexey.kochetov@actual.chat",
-        "vobewaf244@douwx.com", // Test account
-    };
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
+    private const string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
+    private readonly RandomStringGenerator _chatIdGenerator = new (10, ChatIdAlphabet);
+
+    private readonly IAuthBackend _authBackend;
+    private readonly IChatAuthors _chatAuthors;
+    private readonly IChatAuthorsBackend _chatAuthorsBackend;
+    private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
+    private readonly IUserInfos _userInfos;
+    private readonly RedisSequenceSet<ChatEntry> _idSequences;
+
+    public ChatsBackend(IServiceProvider services) : base(services)
+    {
+        _authBackend = Services.GetRequiredService<IAuthBackend>();
+        _chatAuthors = Services.GetRequiredService<IChatAuthors>();
+        _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
+        _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        _userInfos = Services.GetRequiredService<IUserInfos>();
+        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(string chatId, CancellationToken cancellationToken)
     {
         var dbChat = await _dbChatResolver.Get(chatId, cancellationToken).ConfigureAwait(false);
         return dbChat?.ToModel();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetOwnedChatIds(string userId, CancellationToken cancellationToken)
+    {
+        if (userId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        string[] ownedChatIds;
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false)) {
+            ownedChatIds = await dbContext.ChatOwners
+                .Where(a => a.UserId == userId)
+                .Select(a => a.ChatId)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        return ownedChatIds;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ChatPermissions> GetPermissions(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
+        return await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -44,7 +80,7 @@ public partial class Chats
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
 
-        ChatAuthor? author;
+        ChatAuthor? author = null;
         if (!authorId.IsNullOrEmpty()) {
             author = await _chatAuthorsBackend.Get(chatId, authorId!, false, cancellationToken).ConfigureAwait(false);
             userId = author?.UserId;
@@ -57,10 +93,12 @@ public partial class Chats
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
         if (Constants.Chat.DefaultChatId == chatId) {
-            if (user != null && IsAdmin(user))
+            if (user != null && await _userInfos.IsAdmin(user.Id, cancellationToken).ConfigureAwait(false))
                 return ChatPermissions.All;
             return ChatPermissions.None;
         }
+        if (author != null)
+            return ChatPermissions.Read | ChatPermissions.Write;
         if (chat.IsPublic)
             return ChatPermissions.Read;
 
@@ -182,14 +220,18 @@ public partial class Chats
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating())
-            return null!; // Nothing to invalidate
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            foreach(var userIdInv in invChat.OwnerIds)
+                _ = GetOwnedChatIds(userIdInv, default);
+            return null!;
+        }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var _ = dbContext.ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
         var chat = command.Chat with {
-            Id = Ulid.NewUlid().ToString(),
+            Id = _chatIdGenerator.Next(), // TODO: add reprocessing in case uniqueness conflicts
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
         };
@@ -200,6 +242,41 @@ public partial class Chats
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return chat;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Unit> UpdateChat(
+        IChatsBackend.UpdateChatCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var invChat = context.Operation().Items.Get<Chat>()!;
+            _ = Get(invChat.Id, default);
+            return default;
+        }
+
+        var chat = command.Chat;
+        var chatId = (string)chat.Id;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats
+            .SingleOrDefaultAsync(a => a.Id == chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChat == null)
+            throw new InvalidOperationException("chat does not exists");
+        if (dbChat.Version != chat.Version)
+            throw new InvalidOperationException("chat has been modified already");
+
+        dbChat.Title = chat.Title;
+        dbChat.IsPublic = chat.IsPublic;
+        dbChat.Version = VersionGenerator.NextVersion();
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        chat = dbChat.ToModel();
+        context.Operation().Items.Set(chat);
+        return default;
     }
 
     // [CommandHandler]
@@ -237,27 +314,6 @@ public partial class Chats
     }
 
     // Protected methods
-
-    protected async Task AssertHasPermissions(
-        Session session,
-        string chatId,
-        ChatPermissions permissions,
-        CancellationToken cancellationToken)
-    {
-        if (!await CheckHasPermissions(session, chatId, permissions, cancellationToken).ConfigureAwait(false))
-            throw new SecurityException("Not enough permissions.");
-    }
-
-    protected async Task<bool> CheckHasPermissions(
-        Session session,
-        string chatId,
-        ChatPermissions permissions,
-        CancellationToken cancellationToken)
-    {
-        var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-        var chatPermissions = await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
-        return (chatPermissions & permissions) == permissions;
-    }
 
     protected void InvalidateChatPages(string chatId, ChatEntryType entryType, long entryId, bool isUpdate)
     {
@@ -356,17 +412,5 @@ public partial class Chats
             authorId = null;
             userId = chatPrincipalId;
         }
-    }
-
-    private bool IsAdmin(User user)
-    {
-        if (!user.IsAuthenticated)
-            return false;
-        if (user.Identities.Any(i =>
-                StringComparer.Ordinal.Equals(i.Key.Schema, "internal")
-                || StringComparer.Ordinal.Equals(i.Key.Schema, "test")))
-            return true;
-        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
-        return AdminEmails.Contains(email);
     }
 }

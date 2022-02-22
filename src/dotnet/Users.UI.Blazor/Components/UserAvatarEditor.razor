@@ -1,0 +1,82 @@
+<div class="px-2 py-2">
+    <div>
+        <h3>Edit your Avatar:</h3>
+    </div>
+
+    <div class="mt-5">
+        <EditForm Model="@_model" OnValidSubmit="@OnSave" >
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div>
+                <label for="Name" class="block text-sm font-medium text-secondary">Name</label>
+                <div class="mt-1">
+                    <InputText @bind-Value="@_model.Name" id="Name"
+                               class="w-full px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500" />
+                </div>
+            </div>
+
+            <div class="mt-2">
+                <label for="Picture" class="block text-sm font-medium text-secondary">Picture</label>
+                <div class="mt-1">
+                    <InputText @bind-Value="_model.Picture" id="Picture"
+                               class="w-full px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500" />
+                </div>
+            </div>
+
+            <div class="mt-2">
+                <label for="Bio" class="block text-sm font-medium text-secondary">Bio</label>
+                <div class="mt-1">
+                    <InputText @bind-Value="_model.Bio" id="Bio"
+                               class="w-full px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500" />
+                </div>
+            </div>
+
+            <div class="mt-3 flex flex-row justify-end">
+                <button type="submit" class="bg-green-500 hover:bg-green-700 text-white py-1 px-4 rounded">Save</button>
+                <button class="bg-blue-500 hover:bg-blue-700 text-white py-1 px-4 rounded ml-3"
+                        @onclick="OnCancel">Cancel</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    public class Model
+    {
+        public string Name { get; set; } = "";
+        public string Picture { get; set; } = "";
+        public string Bio { get; set; } = "";
+    }
+
+    [Inject] private Session Session { get; set; } = default!;
+    [Inject] private IUserAvatars UserAvatars { get; set; } = default!;
+    [Inject] private UICommandRunner Cmd { get; set; } = default!;
+
+    private readonly Model _model = new();
+
+    [Parameter]
+    public string AvatarId { get; set; } = "";
+    [Parameter]
+    public Action? OnUpdated { get; set; } = default!;
+    [Parameter]
+    public Action? CancelRequested { get; set; } = default!;
+
+    protected override async Task OnParametersSetAsync() {
+        var userAvatar = await UserAvatars.Get(Session, AvatarId, default);
+
+        _model.Name = userAvatar?.Name ?? "";
+        _model.Picture = userAvatar?.Picture ?? "";
+        _model.Bio = userAvatar?.Bio ?? "";
+    }
+
+    private async void OnSave() {
+        var command = new IUserAvatars.UpdateCommand(Session, AvatarId, _model.Name, _model.Picture, _model.Bio);
+        await Cmd.Run(command, default);
+        OnUpdated?.Invoke();
+    }
+
+    private void OnCancel() {
+        CancelRequested?.Invoke();
+    }
+}

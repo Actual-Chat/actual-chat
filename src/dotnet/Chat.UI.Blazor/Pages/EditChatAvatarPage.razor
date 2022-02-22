@@ -1,0 +1,41 @@
+@page "/chat/{ChatId}/edit/avatar"
+
+@if (_pickUserAvatar) {
+    var title = $"Pick user avatar in \"<b>{_chatName}</b>\" chat:";
+    <UserAvatarsEditor Title="@title" ChatId="@ChatId" CancelRequested="NavigateToChat" />
+}
+else if (!_avatarId.IsNullOrEmpty()) {
+    <UserAvatarEditor AvatarId="@_avatarId" CancelRequested="NavigateToChat" OnUpdated="NavigateToChat" />
+}
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private Session Session { get; set; } = default!;
+    [Inject] private IChats Chats { get; set; } = default!;
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
+    [Inject] private IUserAvatars UserAvatars { get; set; } = default!;
+    [Inject] private IAuth Auth { get; set; } = default!;
+
+    [Parameter]
+    public string ChatId { get; set; } = "";
+
+    private string? _avatarId = "";
+    private bool _pickUserAvatar;
+    private string? _chatName;
+
+    protected override async Task OnParametersSetAsync() {
+        var user = await Auth.GetUser(Session, default);
+        _pickUserAvatar = user.IsAuthenticated;
+        if (user.IsAuthenticated) {
+            // pick one avatar from user's list
+            var chat = await Chats.Get(Session, ChatId, default);
+            _chatName = chat?.Title ?? "";
+        } else {
+            _avatarId = await ChatAuthors.GetChatAuthorAvatarId(Session, ChatId, default);
+        }
+    }
+
+    private void NavigateToChat() {
+        Nav.NavigateTo($"/chat/{ChatId}");
+    }
+}

@@ -1,0 +1,46 @@
+﻿@inherits ComputedStateComponent<Author>
+@inject IChatAuthors _chatAuthors
+
+@{
+    var model = State.LatestNonErrorValue;
+}
+@ChildContent(model)
+
+@code {
+    public static readonly Author NullAuthor = new();
+
+    [Parameter, EditorRequired]
+    public string AuthorId { get; set; } = "";
+    [Parameter]
+    public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired]
+    public RenderFragment<Author> ChildContent { get; set; } = default!;
+
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
+    protected override ComputedState<Author>.Options GetStateOptions()
+        => new() {InitialValue = NullAuthor};
+
+    protected override async Task<Author> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        if (chatId.IsNullOrEmpty()) {
+            // ChatId parameter is optional. If it's not specified, try to extract chatId from AuthorId.
+            var i = AuthorId.IndexOf(":", StringComparison.Ordinal);
+            if (i == -1)
+                throw new InvalidOperationException("Invalid AuthorId");
+            chatId = AuthorId.Substring(0, i);
+        }
+
+        var author = await _chatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken);
+        if (author == null)
+            return NullAuthor;
+
+        if (string.IsNullOrWhiteSpace(author.Picture)) {
+            // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
+            var picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
+            author = author with { Picture = picture };
+        }
+        return author;
+    }
+}

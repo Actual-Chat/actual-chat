@@ -1,42 +1,31 @@
-import { AudioRingBuffer } from "./audio-ring-buffer";
-import { VadMessage } from "../audio-vad-message";
+import Denque from 'denque';
+import { AudioRingBuffer } from './audio-ring-buffer';
+import { BufferVadWorkletMessage, VadWorkletMessage } from './audio-vad-worklet-message';
 
 const SAMPLES_PER_WINDOW = 768;
 
 export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
     private buffer: AudioRingBuffer;
-    private bufferDeque: ArrayBuffer[];
+    private bufferDeque: Denque<ArrayBuffer>;
 
     private workerPort: MessagePort;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
         this.init();
-        this.port.onmessage = (ev) => {
-            const { topic }: VadMessage = ev.data;
-
-            switch (topic) {
-                case 'init-port':
-                    this.init();
-                    this.workerPort = ev.ports[0];
-                    this.workerPort.onmessage = this.onWorkerMessage.bind(this);
-                    break;
-                default:
-                    break;
-            }
-        };
+        this.port.onmessage = this.onRecorderMessage;
     }
 
     private init(): void {
         this.buffer = new AudioRingBuffer(8192, 1);
-        this.bufferDeque = [];
+        this.bufferDeque = new Denque<ArrayBuffer>();
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
         this.bufferDeque.push(new ArrayBuffer(SAMPLES_PER_WINDOW * 4));
     }
 
-    public process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: { [name: string]: Float32Array; }): boolean {
+    public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         if (inputs == null
             || inputs.length === 0
             || inputs[0].length === 0
@@ -56,7 +45,7 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
 
         this.buffer.push(input);
         if (this.buffer.framesAvailable >= SAMPLES_PER_WINDOW) {
-            const vadBuffer = [];
+            const vadBuffer = new Array<Float32Array>();
             let vadArrayBuffer = this.bufferDeque.shift();
             if (vadArrayBuffer === undefined) {
                 vadArrayBuffer = new ArrayBuffer(SAMPLES_PER_WINDOW * 4);
@@ -66,7 +55,11 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
 
             if (this.buffer.pull(vadBuffer)) {
                 if (this.workerPort !== undefined) {
-                    this.workerPort.postMessage({ topic: 'buffer', buffer: vadArrayBuffer }, [vadArrayBuffer]);
+                    const bufferMessage: BufferVadWorkletMessage = {
+                        type: 'buffer',
+                        buffer: vadArrayBuffer,
+                    };
+                    this.workerPort.postMessage(bufferMessage, [vadArrayBuffer]);
                 } else {
                     console.log('worklet port is still undefined');
                 }
@@ -78,18 +71,43 @@ export class VadAudioWorkletProcessor extends AudioWorkletProcessor {
         return true;
     }
 
-    private onWorkerMessage(ev: MessageEvent<VadMessage>) {
-        const { topic, buffer } = ev.data;
+    private onWorkerMessage = (ev: MessageEvent<BufferVadWorkletMessage>) => {
+        try {
+            const { type, buffer } = ev.data;
 
-        switch (topic) {
-            case 'buffer':
-                this.bufferDeque.push(buffer);
-                break;
-            default:
-                break;
+            switch (type) {
+                case 'buffer':
+                    this.bufferDeque.push(buffer);
+                    break;
+                default:
+                    break;
+            }
+        }
+        catch (error) {
+            console.error(error);
+        }
+    };
+
+    private onRecorderMessage = (ev: MessageEvent<VadWorkletMessage>) => {
+        try {
+            const { type } = ev.data;
+
+            switch (type) {
+                case 'init':
+                    this.init();
+                    this.workerPort = ev.ports[0];
+                    this.workerPort.onmessage = this.onWorkerMessage;
+                    break;
+                default:
+                    break;
+            }
+        }
+        catch (error) {
+            console.error(error);
         }
     }
 }
 
-// @ts-ignore
+// @ts-expect-error  - registerProcessor exists
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('audio-vad-worklet-processor', VadAudioWorkletProcessor);

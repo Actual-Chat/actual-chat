@@ -9,6 +9,9 @@ public interface IChatsClientDef
     [Get(nameof(Get))]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
+    [Get(nameof(GetChats))]
+    Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
+
     [Get(nameof(GetIdRange))]
     Task<Range<long>> GetIdRange(
         Session session,
@@ -38,10 +41,20 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
+    [Get(nameof(CheckCanJoin))]
+    Task<bool> CheckCanJoin(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken);
+
     [Post(nameof(CreateChat))]
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
-    [Post(nameof(CreateEntry))]
-    Task<ChatEntry> CreateEntry([Body] IChats.CreateEntryCommand command, CancellationToken cancellationToken);
+    [Post(nameof(UpdateChat))]
+    Task<Unit> UpdateChat([Body] IChats.UpdateChatCommand command, CancellationToken cancellationToken);
+    [Post(nameof(JoinChat))]
+    Task<Unit> JoinChat([Body] IChats.JoinChatCommand command, CancellationToken cancellationToken);
+    [Post(nameof(CreateTextEntry))]
+    Task<ChatEntry> CreateTextEntry([Body] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken);
     [Post(nameof(RemoveTextEntry))]
     Task RemoveTextEntry([Body] IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken);
 }
@@ -55,9 +68,8 @@ public interface IChatAuthorsClientDef
     Task<string> GetChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken);
     [Get(nameof(GetAuthor))]
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
-
-    [Post(nameof(UpdateAuthor))]
-    Task UpdateAuthor([Body] IChatAuthors.UpdateAuthorCommand command, CancellationToken cancellationToken);
+    [Get(nameof(GetChatIds))]
+    Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]
@@ -74,4 +86,17 @@ public interface IUserAuthorsClientDef
 {
     [Get(nameof(Get))]
     Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
+}
+
+[BasePath("inviteCodes")]
+public interface IInviteCodesClientDef
+{
+    [Get(nameof(Get))]
+    Task<ImmutableArray<InviteCode>> Get(Session session, string chatId, CancellationToken cancellationToken);
+
+    [Post(nameof(Generate))]
+    Task<InviteCode> Generate([Body] IInviteCodes.GenerateCommand command, CancellationToken cancellationToken);
+
+    [Post(nameof(UseInviteCode))]
+    Task<InviteCodeUseResult> UseInviteCode([Body] IInviteCodes.UseInviteCodeCommand command, CancellationToken cancellationToken);
 }

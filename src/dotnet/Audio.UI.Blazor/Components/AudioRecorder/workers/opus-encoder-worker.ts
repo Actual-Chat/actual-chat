@@ -1,12 +1,12 @@
 import WebMOpusEncoder from 'opus-media-recorder/WebMOpusEncoder';
 import Denque from 'denque';
-import {
-    EncoderCommand,
-    EncoderMessage,
-    InitCommand,
-    LoadEncoderCommand,
-    EncoderWorkletMessage
-} from "../opus-media-recorder-message";
+import * as signalR from '@microsoft/signalr';
+import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
+import { ResolveCallbackMessage } from 'resolve-callback-message';
+
+import { DoneMessage, EncoderMessage, InitNewStreamMessage, LoadModuleMessage } from './opus-encoder-worker-message';
+import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
+import { VoiceActivityChanged } from './audio-vad';
 
 interface Encoder {
     init(inputSampleRate: number, channelCount: number, bitsPerSecond: number): void;
@@ -15,131 +15,281 @@ interface Encoder {
     close(): void;
 }
 
-type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'closed';
+type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'closed';
 
-const queue = new Denque<ArrayBuffer>();
+type ModuleOverrides = {
+    locateFile?: (path:string, scriptDirectory: string) => string;
+    wasmBinary?: ArrayBuffer;
+}
+
+interface QueueItem {
+    type: 'buffer' | 'ended';
+}
+
+interface BufferQueueItem extends QueueItem {
+    buffer: ArrayBuffer;
+}
+
+interface EndQueueItem extends QueueItem {
+    callbackId: number;
+}
+
+const SAMPLE_RATE = 48000;
+const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
+const queue = new Denque<BufferQueueItem | EndQueueItem>();
 const worker = self as unknown as Worker;
+let connection: signalR.HubConnection;
+let recordingSubject: signalR.Subject<Uint8Array>;
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
+let vadPort: MessagePort = null;
 let encoder: Encoder;
-let isEncoding: boolean = false;
+let lastNewStreamMessage: InitNewStreamMessage | null = null;
+let isEncoding = false;
+let debugMode = false;
 
-worker.onmessage = (ev: MessageEvent) => {
-    const {command}: EncoderCommand = ev.data;
-    switch (command) {
-        case 'loadEncoder':
-            const {mimeType, wasmPath}: LoadEncoderCommand = ev.data;
-            workletPort = ev.ports[0];
-            workletPort.onmessage = onWorkletMessage;
+worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
+    try {
+        const { type } = ev.data;
+        switch (type) {
+            case 'load':
+                await onLoadEncoder(ev.data as LoadModuleMessage, ev.ports[0], ev.ports[1]);
+                break;
 
-            // Setting encoder module
-            const mime = mimeType.toLowerCase();
-            let encoderModule;
-            if (mime.indexOf("audio/webm") >= 0) {
-                encoderModule = WebMOpusEncoder;
+            case 'init':
+                await onInitNewStream(ev.data as InitNewStreamMessage);
+                break;
+
+            case 'done':
+                onDone(ev.data as DoneMessage);
+                break;
+
+            default:
+                // Ignore
+                break;
+        }
+    }
+    catch (error) {
+        console.error(error);
+    }
+};
+
+function onDone(message: DoneMessage) {
+    state = 'closed';
+
+    queue.push({ type: 'ended', callbackId: message.callbackId });
+    processQueue();
+}
+
+async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
+    const { channelCount, bitsPerSecond, sessionId, chatId, callbackId } = message;
+    lastNewStreamMessage = message;
+    debugMode = message.debugMode;
+
+    encoder.init(SAMPLE_RATE, channelCount, bitsPerSecond);
+    state = 'encoding';
+
+    recordingSubject = new signalR.Subject<Uint8Array>();
+    await connection.send('ProcessAudio',
+        sessionId, chatId, Date.now() / 1000, recordingSubject);
+
+    if (debugMode) {
+        console.log('init recorder worker!');
+    }
+
+    const initCompletedMessage: ResolveCallbackMessage = {
+        callbackId
+    };
+    worker.postMessage(initCompletedMessage);
+}
+
+async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+    if (workletPort != null) {
+        throw new Error(`EncoderWorker: workletPort has already been specified.`);
+    }
+    if (vadPort != null) {
+        throw new Error(`EncoderWorker: vadPort has already been specified.`);
+    }
+
+    const { mimeType, wasmPath, audioHubUrl, callbackId } = message;
+    workletPort = workletMessagePort;
+    vadPort = vadMessagePort;
+    workletPort.onmessage = onWorkletMessage;
+    vadPort.onmessage = onVadMessage;
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl(audioHubUrl)
+        .withAutomaticReconnect([0, 300, 500, 1000, 3000, 10000])
+        .withHubProtocol(new MessagePackHubProtocol())
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+
+    // Connect to the hub endpoint
+    await connection.start();
+
+    // Setting encoder module
+    const mime = mimeType.toLowerCase();
+    let encoderModule: (overrides: ModuleOverrides) => Promise<Encoder>;
+    if (mime.indexOf('audio/webm') >= 0) {
+        encoderModule = WebMOpusEncoder;
+    }
+    // Override Emscripten configuration
+    const moduleOverrides: ModuleOverrides = {};
+    if (wasmPath) {
+        moduleOverrides.locateFile = (path, scriptDirectory) =>
+            path.match(/\.wasm/i) ? wasmPath : scriptDirectory + path;
+
+        const response = await fetch(wasmPath);
+        moduleOverrides.wasmBinary = await response.arrayBuffer();
+    }
+    // Initialize the module
+    // Do not use await - it doesnt' work!
+    void encoderModule(moduleOverrides)
+        .then(Module => {
+            encoder = Module;
+            // Notify the host ready to accept 'init' message.
+            const readyToInit: ResolveCallbackMessage = {
+                callbackId
             }
-            // Override Emscripten configuration
-            let moduleOverrides = {};
-            if (wasmPath) {
-                moduleOverrides['locateFile'] = function (path, scriptDirectory) {
-                    return path.match(/.wasm/) ? wasmPath : (scriptDirectory + path);
-                };
+            worker.postMessage(readyToInit);
+            state = 'readyToInit';
+
+            if (debugMode) {
+                console.log('load module completed for recorder worker');
             }
-            // Initialize the module
-            encoderModule(moduleOverrides).then(Module => {
-                encoder = Module;
-                // Notify the host ready to accept 'init' message.
-                worker.postMessage({command: 'readyToInit'});
-                state = 'readyToInit';
-            });
-            break;
 
-        case 'init':
-            const {sampleRate, channelCount, bitsPerSecond}: InitCommand = ev.data;
-            encoder.init(sampleRate, channelCount, bitsPerSecond);
-            state = 'encoding';
-            const message: EncoderMessage = {
-                command: 'initCompleted',
-            };
-            worker.postMessage(message);
-            break;
+        }, reason => {
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            console.error(`Error loading Opus encoder: ${reason}`);
+        });
+}
 
-        case 'getEncodedData':
-        case 'done':
-            if (command === 'done') {
-                if (encoder) {
-                    encoder.close();
+const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
+    try {
+        const { type, buffer } = ev.data;
+
+        let audioBuffer: ArrayBuffer;
+        switch (type) {
+            case 'buffer':
+                audioBuffer = buffer;
+                break;
+            default:
+                break;
+        }
+        if (audioBuffer.byteLength !== 0) {
+            if (state === 'encoding') {
+                queue.push(ev.data);
+                processQueue();
+            } else if (state === 'paused') {
+                queue.push(ev.data);
+                if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
+                    const bufferOrEnded = queue.shift();
+                    if (bufferOrEnded.type === 'ended') {
+                        queue.shift();
+                        queue.unshift(bufferOrEnded);
+                    }
                 }
-                state = 'closed';
             }
-
-            if (encoder) {
-                const buffers = encoder.flush();
-                const message: EncoderMessage = {
-                    command: command === 'done' ? 'lastEncodedData' : 'encodedData',
-                    buffers
-                };
-                worker.postMessage(message, buffers);
-            }
-
-            break;
-
-        default:
-            // Ignore
-            break;
+        }
+    }
+    catch (error) {
+        console.error(error);
     }
 };
 
-const onWorkletMessage = async (ev: MessageEvent<EncoderWorkletMessage>) => {
-    const { topic, buffer }: EncoderWorkletMessage = ev.data;
+const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
+    try {
+        const vadEvent = ev.data;
+        if (debugMode) {
+            console.log(vadEvent);
+        }
 
-    let audioBuffer: ArrayBuffer;
-    switch (topic) {
-        case 'buffer':
-            audioBuffer = buffer;
-            break;
-        default:
-            break;
+        if (state === 'encoding') {
+            if (vadEvent.kind === 'end') {
+                state = 'paused';
+                recordingSubject.complete();
+            }
+        } else if (state == 'paused' && vadEvent.kind === 'start') {
+            if (!lastNewStreamMessage) {
+                throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
+            }
+
+            const { channelCount, bitsPerSecond, sessionId, chatId } = lastNewStreamMessage;
+            encoder.init(SAMPLE_RATE, channelCount, bitsPerSecond);
+            recordingSubject = new signalR.Subject<Uint8Array>();
+            await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+
+            state = 'encoding';
+            processQueue();
+        }
     }
-    if (audioBuffer.byteLength !== 0 && state === 'encoding') {
-        queue.push(buffer);
-
-        const _ = processQueue();
+    catch(error) {
+        console.error(error);
     }
 };
 
-async function processQueue(): Promise<void> {
+function processQueue(): void {
     if (queue.isEmpty()) {
         return;
     }
 
-    if (isEncoding) {
+    if (isEncoding || state === 'paused') {
         return;
     }
 
     try {
         isEncoding = true;
 
-        const buffer = queue.pop();
-        const monoPcm = new Float32Array(buffer);
-        encoder.encode([monoPcm]);
+        const bufferOrEnded = queue.shift();
+        if (bufferOrEnded.type === 'ended') {
+            const ended = bufferOrEnded as EndQueueItem;
+            try {
+                if (encoder) {
+                    encoder.close();
+                    const buffers = encoder.flush();
+                    sendEncodedData(buffers);
+                }
 
-        const workletMessage: EncoderWorkletMessage = { topic: "buffer", buffer: buffer };
-        workletPort.postMessage(workletMessage, [buffer]);
+                const message: ResolveCallbackMessage = {
+                    callbackId: ended.callbackId,
+                };
+                worker.postMessage(message);
+            }
+            finally {
+                recordingSubject.complete();
+            }
+        }
+        else {
+            const bufferQueueItem = bufferOrEnded as BufferQueueItem;
+            const buffer = bufferQueueItem.buffer;
+            const monoPcm = new Float32Array(buffer);
+            encoder.encode([monoPcm]);
 
-        const buffers = encoder.flush();
-        const message: EncoderMessage = {
-            command: 'encodedData',
-            buffers
-        };
-        worker.postMessage(message, buffers);
+            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer  };
+            workletPort.postMessage(workletMessage, [buffer]);
+
+            const buffers = encoder.flush();
+            sendEncodedData(buffers);
+        }
 
     } catch (error) {
         isEncoding = false;
         throw error;
+
     } finally {
         isEncoding = false;
     }
 
-    const _ = processQueue();
+    processQueue();
+}
+
+function sendEncodedData(buffers: ArrayBuffer[]): void {
+    // TODO: free!!!
+    const totalLength = buffers.reduce((t,buffer) => t + buffer.byteLength, 0);
+    const data = new Uint8Array(totalLength);
+    buffers.reduce((offset, buffer)=>{
+        data.set(new Uint8Array(buffer),offset);
+        return offset + buffer.byteLength;
+    },0);
+
+    recordingSubject.next(data);
 }

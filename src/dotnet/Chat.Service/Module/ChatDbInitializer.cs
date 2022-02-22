@@ -57,7 +57,6 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 LocalId = 1,
                 Version = VersionGenerator.NextVersion(),
                 Name = UserConstants.Admin.Name,
-                Picture = UserConstants.Admin.Picture,
                 IsAnonymous = false,
                 UserId = adminUserId,
             };
@@ -120,7 +119,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         Moment? beginsAt,
         CancellationToken cancellationToken)
     {
-        var chats = (Chats) Services.GetRequiredService<IChatsBackend>();
+        var chats = (ChatsBackend) Services.GetRequiredService<IChatsBackend>();
         var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
         if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {

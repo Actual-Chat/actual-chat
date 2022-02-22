@@ -20,6 +20,10 @@ module.exports = {
   darkMode: 'media',
   theme: {
     extend: {
+      colors: {
+        'error-toast-header': 'var(--error-toast-header)',
+        'error-toast-body': 'var(--error-toast-body)',
+      },
       textColor: {
         'primary': 'var(--text-color-primary)',
         'primary-muted': 'var(--text-color-primary-muted)',
@@ -41,6 +45,7 @@ module.exports = {
         'accent-inverted': 'var(--text-color-accent)',
         'success': 'var(--button-color-success)',
         'success-muted': 'var(--button-color-success-hover)',
+        'separate-line': 'var(--background-separate-line)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -51,6 +56,10 @@ module.exports = {
         'button-success-hover': 'var(--button-color-success-hover)',
         'button-accent': 'var(--button-color-accent)',
         'button-accent-hover': 'var(--button-color-accent-hover)',
+        'button-error': 'var(--button-color-error)',
+        'button-error-hover': 'var(--button-color-error-hover)',
+        'message-hover': 'var(--background-message-hover)',
+        'separate-line': 'var(--background-separate-line)',
       },
     },
     screens: {
@@ -166,6 +175,9 @@ module.exports = {
       'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
       'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
       'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
+      'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
+      'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
+      'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -255,6 +267,7 @@ module.exports = {
       0: '0px',
       2: '2px',
       4: '4px',
+      5: '5px',
       8: '8px',
     },
     boxShadow: {
@@ -670,10 +683,24 @@ module.exports = {
       },
       'display-element-from-bottom': {
         from: {
-          transform: 'translateY(3rem)',
+          opacity: 0,
+          transform: 'translateY(1.5rem)',
         },
         to: {
+          opacity: 1,
           transform: 'translateY(0rem)',
+        },
+      },
+      'tooltip-vertical': {
+        to: {
+          transform: 'translate(-50%, 0)',
+          opacity: 1,
+        },
+      },
+      'tooltip-horizontal': {
+        to: {
+          transform: 'translate(0, -50%)',
+          opacity: 1,
         },
       },
     },
@@ -721,6 +748,7 @@ module.exports = {
     maxWidth: ({ theme, breakpoints }) => ({
       none: 'none',
       0: '0rem',
+      xxs: '10rem',
       xs: '20rem',
       sm: '24rem',
       md: '28rem',
@@ -749,6 +777,7 @@ module.exports = {
     },
     minWidth: {
       0: '0px',
+      12: '3rem',
       full: '100%',
       min: 'min-content',
       max: 'max-content',
