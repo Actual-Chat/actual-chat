@@ -6,14 +6,16 @@
 @implements IAsyncDisposable
 
 <div class="dropdown @Class" @ref="DropdownRef">
-    <button @onclick="@(() => _isOpened = !_isOpened)" class="dropdown-button relative flex outline-none hover:cursor-pointer @ButtonClass">
-        @ButtonTemplate
-    </button>
-    <div class="dropdown-content absolute @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
-        <div class="dropdown-content-body relative @(_isOpened ? "" : "hidden")">
-            @ContentTemplate
+    <CascadingValue Value="@this" IsFixed="true">
+        <button @onclick="@(() => _isOpened = !_isOpened)" class="dropdown-button relative flex outline-none hover:cursor-pointer @ButtonClass">
+            @ButtonTemplate
+        </button>
+        <div class="dropdown-content absolute @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
+            <div class="dropdown-content-body relative @(_isOpened ? "" : "hidden")">
+                @ContentTemplate
+            </div>
         </div>
-    </div>
+    </CascadingValue>
 </div>
 
 @code {

@@ -77,7 +77,19 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         }
         */
 
-        var chatMessages = ChatMessageModel.FromEntries(chatEntries);
+        var attachmentEntryIds = chatEntries
+            .Where(c => c.HasAttachments)
+            .Select(c => c.Id)
+            .ToList();
+
+        var attachmentTasks = await Task
+            .WhenAll(attachmentEntryIds.Select(id => Chats.GetTextEntryAttachments(Session, chatId, id, cancellationToken)))
+            .ConfigureAwait(false);
+        var attachments = attachmentTasks
+            .Where(c => c.Length > 0)
+            .ToDictionary(c => c[0].EntryId, c => c);
+
+        var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments);
         var result = VirtualListData.New(
             chatMessages,
             startId <= chatIdRange.Start,
