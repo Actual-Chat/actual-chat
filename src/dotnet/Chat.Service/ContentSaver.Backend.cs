@@ -1,11 +1,11 @@
-﻿using Content.Contracts;
-using Microsoft.IO;
+﻿using Microsoft.IO;
 using Storage.NetCore.Blobs;
 
-namespace ActualChat.Content;
+namespace ActualChat.Chat;
 
 public class ContentSaverBackend : IContentSaverBackend
 {
+    public const string ContentType = "Content-Type";
     private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
     private IBlobStorage BlobStorage { get; }
 
@@ -24,7 +24,7 @@ public class ContentSaverBackend : IContentSaverBackend
         var blob = (await BlobStorage.GetBlobsAsync(new[] {blobId}, cancellationToken).ConfigureAwait(false)).Single();
         if (blob == null)
             throw new InvalidOperationException("Application invariant violated");
-        blob.Metadata[Constants.Metadata.ContentType] = command.ContentType;
+        blob.Metadata[ContentType] = command.ContentType;
         await BlobStorage.SetBlobsAsync(new[] {blob}, cancellationToken).ConfigureAwait(false);
     }
 }

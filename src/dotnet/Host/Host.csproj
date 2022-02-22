@@ -30,7 +30,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
-    <ProjectReference Include="..\Content.Service\Content.Service.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
