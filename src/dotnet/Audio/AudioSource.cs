@@ -55,6 +55,18 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
+    //     var duration = TimeSpan.Zero;
+    //     var formatTaskSource = TaskSource.For(FormatTask);
+    //     var durationTaskSource = TaskSource.For(DurationTask);
+    //     throw new NotImplementedException();
+    //
+    // }
+    //
+    // private IAsyncEnumerable<AudioFrame> ParseWebM(
+    //     IAsyncEnumerable<byte[]> byteStream,
+    //     TimeSpan skipTo,
+    //     CancellationToken cancellationToken)
+    // {
         var duration = TimeSpan.Zero;
         var formatTaskSource = TaskSource.For(FormatTask);
         var durationTaskSource = TaskSource.For(DurationTask);

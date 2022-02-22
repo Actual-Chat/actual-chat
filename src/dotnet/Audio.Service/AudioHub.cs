@@ -34,6 +34,12 @@ public class AudioHub : Hub
     public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> recordingStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+        var result = await recordingStream.ToListAsync().ConfigureAwait(false);
+        using var stream = new FileStream("C:\\Users\\undead\\RiderProjects\\2.opus", FileMode.CreateNew);
+        foreach (var byteBlock in result) {
+            await stream.WriteAsync(byteBlock, 0, byteBlock.Length).ConfigureAwait(false);
+        }
+
         var audioRecord = new AudioRecord(sessionId, chatId, clientStartOffset);
         await _audioProcessor.ProcessAudio(audioRecord, recordingStream, default)
             .ConfigureAwait(false);

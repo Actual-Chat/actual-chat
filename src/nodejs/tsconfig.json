@@ -14,7 +14,8 @@
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts",
-    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts"
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder.ts"
   ],
   "compilerOptions": {
     "alwaysStrict": true,
