@@ -1,4 +1,4 @@
-﻿namespace Content.Contracts;
+﻿namespace ActualChat.Chat;
 
 public interface IContentSaverBackend
 {

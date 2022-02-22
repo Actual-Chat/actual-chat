@@ -1,6 +1,5 @@
 using System.Security;
 using ActualChat.Chat.Db;
-using Content.Contracts;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
