@@ -51,7 +51,7 @@ public class MessageController : ControllerBase
     {
         var request = HttpContext.Request;
         //var cancellationToken = HttpContext.RequestAborted;
-        // TODO(DM): add entire request and parts size limit check
+        // TODO(DF): add entire request and parts size limit check
 
         // validation of Content-Type
         // 1. first, it must be a form-data request
@@ -71,7 +71,7 @@ public class MessageController : ControllerBase
 
         var post = new MessagePost();
 
-        var ok = true;
+        var incorrectPart = false;
         while (section != null) {
             var hasContentDispositionHeader = ContentDispositionHeaderValue.TryParse(section.ContentDisposition,
                 out var contentDisposition);
@@ -80,28 +80,28 @@ public class MessageController : ControllerBase
                 var partName = contentDisposition.Name;
                 if (partName.Equals("payload_json", StringComparison.Ordinal)) {
                     if (!await HandlePayloadJsonPart(post, section))
-                        ok = false;
+                        incorrectPart = true;
                 }
                 else if (TryExtractFileId(partName, out var fileId)) {
                     if (!await HandleFilePart(post, section, contentDisposition, fileId))
-                        ok = false;
+                        incorrectPart = true;
                 }
                 else {
-                    ok = false; // unrecognized part
+                    incorrectPart = true; // unrecognized part
                 }
             }
             else {
-                ok = false;
+                incorrectPart = true;
             }
-            if (!ok)
+            if (incorrectPart)
                 break;
             section = await reader.ReadNextSectionAsync();
         }
 
-        if (ok)
-            ok = ValidatePost(post);
-        if (!ok)
-            return BadRequest();
+        if (incorrectPart)
+            return BadRequest("incorrect part");
+        if (!ValidatePost(post))
+            return BadRequest("required part is missing");
 
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures
@@ -168,8 +168,8 @@ public class MessageController : ControllerBase
         //     await section.Body.CopyToAsync(targetStream);
         // }
 
-        // TODO(DM): use stream/blob instead of byte array for attached file content
-        // TODO(DM): add attached files processing: virus scan, content type verification, image size evaluation
+        // TODO(DF): use stream/blob instead of byte array for attached file content
+        // TODO(DF): add attached files processing: virus scan, content type verification, image size evaluation
 
         try {
             byte[] content;
