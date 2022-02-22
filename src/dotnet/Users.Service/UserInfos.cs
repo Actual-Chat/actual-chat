@@ -45,13 +45,11 @@ public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
         return dbUser == null ? null : new UserInfo(dbUser.Id, dbUser.Name);
     }
 
-    public virtual async Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken)
+    public virtual async Task<string> GetGravatarHash(string userId, CancellationToken cancellationToken)
     {
         var user = await _authBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
         var email = user?.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
-        if (email.IsNullOrEmpty())
-            return null;
-        return email.Trim().ToLowerInvariant().GetMD5HashCode();
+        return email.IsNullOrEmpty() ? "" : email.Trim().ToLowerInvariant().GetMD5HashCode();
     }
 
     public virtual async Task<bool> IsAdmin(string userId, CancellationToken cancellationToken)

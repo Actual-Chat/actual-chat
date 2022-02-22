@@ -10,9 +10,9 @@ public interface IUserInfosClientDef
     [Get(nameof(GetByName))]
     Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
     [Get(nameof(GetGravatarHash))]
-    Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken);
+    Task<string> GetGravatarHash(string userId, CancellationToken cancellationToken);
     [Get(nameof(IsAdmin))]
-    Task<string?> IsAdmin(string userId, CancellationToken cancellationToken);
+    Task<bool> IsAdmin(string userId, CancellationToken cancellationToken);
 }
 
 [BasePath("userStates")]
