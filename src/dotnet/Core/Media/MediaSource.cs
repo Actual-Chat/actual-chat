@@ -8,8 +8,6 @@ public abstract class MediaSource<TFormat, TFrame> : IMediaSource
     protected Task<TFormat> FormatTask { get; }
     protected Task<TimeSpan> DurationTask { get; }
     protected ILogger Log { get; }
-    protected abstract TFormat DefaultFormat { get; }
-
     public bool IsCancelled => FormatTask.IsCanceled;
     MediaFormat IMediaSource.Format => Format;
 #pragma warning disable VSTHRD002

@@ -6,6 +6,8 @@ using ActualChat.Spans;
 
 namespace ActualChat.Audio;
 
+// TODO(AK): simplify this class and extract Parse \ Serialize
+// TODO(AK): get rid of WebM container support???
 public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 {
     private static readonly byte[] ActualOpusStreamHeader = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53 }; // A_OPUS_S
@@ -15,11 +17,8 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
     protected ILogger? DebugLog => DebugMode ? Log : null;
     private bool ShouldStripWebM { get; init; }
 
-    protected override AudioFormat DefaultFormat => new (){
-        CodecSettings = "GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwH/////////FUmpZrMq17GD"
-            + "D0JATYCTb3B1cy1tZWRpYS1yZWNvcmRlcldBk29wdXMtbWVkaWEtcmVjb3JkZXIWVK5rv66914EB"
-            + "c8WHtvVVEG3dyIOBAoaGQV9PUFVTY6KTT3B1c0hlYWQBAQAAgLsAAAAAAOGNtYRHO4AAn4EBYmSB"
-            + "IB9DtnUB/////////+eBAA==",
+    public static AudioFormat DefaultFormat => new() {
+        CodecSettings = Convert.ToBase64String(ActualOpusStreamFormat),
     };
 
     public AudioSource(
@@ -159,9 +158,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                         if (version != 1)
                             throw new NotSupportedException($"Actual Opus stream version is invalid - ${version}. Only version 1 is supported.");
 
-                        formatTaskSource.SetResult(new AudioFormat {
-                            CodecSettings = Convert.ToBase64String(ActualOpusStreamFormat),
-                        });
+                        formatTaskSource.SetResult(DefaultFormat);
                         position = ActualOpusStreamFormat.Length + 1;
                     }
 
