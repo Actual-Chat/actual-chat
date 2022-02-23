@@ -94,12 +94,10 @@ public sealed class ChatEntryReader
         if (thisTileComputed == null)
             throw new InvalidOperationException("Internal error: thisTileComputed == null!");
 
-        var newTiles = ReadNewTiles(cancellationToken);
-        var newTilesEnumerator = newTiles.GetAsyncEnumerator(cancellationToken);
         while (true) {
-            var hasNewTileTask = newTilesEnumerator.MoveNextAsync().AsTask();
+            var newTileTask = WaitForNewTile(lastId, cancellationToken);
             var thisTileInvalidated = thisTileComputed.WhenInvalidated(cancellationToken);
-            await Task.WhenAny(thisTileInvalidated, hasNewTileTask).ConfigureAwait(false);
+            await Task.WhenAny(thisTileInvalidated, newTileTask).ConfigureAwait(false);
             if (thisTileInvalidated.IsCompleted) {
                 await thisTileInvalidated.ConfigureAwait(false);
                 thisTileComputed = await thisTileComputed.Update(cancellationToken).ConfigureAwait(false);
@@ -112,12 +110,8 @@ public sealed class ChatEntryReader
                     lastId = entry.Id;
                 }
             }
-            if (hasNewTileTask.IsCompleted) {
-                var hasNextTile = await hasNewTileTask.ConfigureAwait(false);
-                if (!hasNextTile)
-                    break;
-
-                thisTileComputed = newTilesEnumerator.Current;
+            if (newTileTask.IsCompleted) {
+                thisTileComputed = await newTileTask.ConfigureAwait(false);
                 foreach (var entry in thisTileComputed.Value.Entries) {
                     if (entry.Id <= lastId)
                         continue;
@@ -249,7 +243,7 @@ public sealed class ChatEntryReader
             Exception? error = null;
             try {
                 var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
-                idRange = (minId, Math.Max(minId + 1, idRange.End));
+                idRange = (Math.Min(minId, idRange.End - 1), Math.Max(minId + 1, idRange.End));
 
                 await foreach (var tileComputed in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
                     if (thisTileComputed != null && enqueueTileForUpdate(thisTileComputed.Value, true))
@@ -263,7 +257,7 @@ public sealed class ChatEntryReader
                 if (thisTileComputed != null && enqueueTileForUpdate(thisTileComputed.Value, false))
                     await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
 
-                var newTiles = ReadNewTiles(cancellationToken);
+                var newTiles = ReadNewTiles(idRange.End - 1, cancellationToken);
                 var updatedTiles = InvalidateAndUpdate(activeTiles.Reader.ReadAllAsync(cancellationToken), cancellationToken);
                 await foreach (var tileComputed in newTiles.Merge(updatedTiles)
                            .WithCancellation(cancellationToken)
@@ -305,25 +299,30 @@ public sealed class ChatEntryReader
         }
     }
 
-    public async IAsyncEnumerable<IComputed<ChatTile>> ReadNewTiles(
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async Task<IComputed<ChatTile>> WaitForNewTile(long minId, CancellationToken cancellationToken)
     {
         var idTilesLayer0 = IdTileStack.FirstLayer;
-        var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
-        var tile = idTilesLayer0.GetTile(idRange.End - 1);
+        var tile = idTilesLayer0.GetTile(minId);
+        var nextTile = tile.Next();
+        var nextTileComputed = await Computed
+            .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, nextTile.Range, ct), cancellationToken)
+            .ConfigureAwait(false);
+        while (nextTileComputed.Value.IsEmpty) {
+            await nextTileComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            nextTileComputed = await nextTileComputed.Update(cancellationToken).ConfigureAwait(false);
+        }
+        return nextTileComputed;
+    }
 
-        // TODO(AK): there is NullReferenceException somewhere...
+    public async IAsyncEnumerable<IComputed<ChatTile>> ReadNewTiles(
+        long minId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         while (true) {
-            var nextTile = tile.Next();
-            var nextTileComputed = await Computed
-                .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, nextTile.Range, ct), cancellationToken)
-                .ConfigureAwait(false);
-            while (nextTileComputed.Value.IsEmpty) {
-                await nextTileComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-                nextTileComputed = await nextTileComputed.Update(cancellationToken).ConfigureAwait(false);
-            }
-            tile = nextTile;
-            yield return nextTileComputed;
+            var newTile = await WaitForNewTile(minId, cancellationToken).ConfigureAwait(false);
+            yield return newTile;
+
+            minId = newTile.Value.Entries[0].Id;
         }
         // ReSharper disable once IteratorNeverReturns
     }
