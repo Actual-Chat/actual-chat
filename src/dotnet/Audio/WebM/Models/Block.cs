@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Audio.WebM.Models;
+﻿using ActualChat.Spans;
+
+namespace ActualChat.Audio.WebM.Models;
 
 /// <summary>
 ///     http://matroska.sourceforge.net/technical/specs/index.html#block_structure

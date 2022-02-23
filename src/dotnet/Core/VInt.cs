@@ -20,7 +20,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-namespace ActualChat.Audio.WebM;
+namespace ActualChat;
 
 /// <summary>
 ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
@@ -135,11 +135,11 @@ public readonly struct VInt : IEquatable<VInt>
     }
 
     public static VInt FromValue(ulong value)
-        => new (value, (int)EbmlHelper.GetSize(value));
+        => new (value, 8);
 
     public static VInt FromValue(long value)
     {
-        var size = (int)EbmlHelper.GetSize(value);
+        const int size = 8;
         return value > 0 ? new VInt((ulong)value, size) : new VInt((ulong)-value | (1UL << ((8 * size) - 1)), size);
     }
 

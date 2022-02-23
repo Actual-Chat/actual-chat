@@ -79,6 +79,17 @@ public static class AsyncEnumerableExt
         }
     }
 
+    public static async IAsyncEnumerable<T> Prepend<T>(
+        this IAsyncEnumerator<T> enumerator,
+        T value,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        yield return value;
+
+        while (await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+            yield return enumerator.Current;
+    }
+
     /* This exists in Stl, though the impl. is different, so temp. keeping it here:
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,

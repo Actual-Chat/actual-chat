@@ -1,4 +1,4 @@
-namespace ActualChat.Audio.WebM;
+namespace ActualChat.Spans;
 
 [StructLayout(LayoutKind.Explicit)]
 internal struct Union
