@@ -96,7 +96,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         if (firstBlock.StartsWith(ActualOpusStreamHeader))
             reader = ParseActualOpusStream(restoredByteStream, skipTo, cancellationToken);
         else if (firstBlock.StartsWith(WebMHeader))
-            reader = ParseActualOpusStream(restoredByteStream, skipTo, cancellationToken);
+            reader = ParseWebMStream(restoredByteStream, skipTo, cancellationToken);
         else
             throw new NotSupportedException(
                 $"Invalid audio stream: ${string.Join('-', firstBlock.Take(10).Select(b => b.ToString("X2", CultureInfo.InvariantCulture)))}");
