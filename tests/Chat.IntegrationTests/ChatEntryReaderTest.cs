@@ -266,7 +266,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         while (true)
             foreach (var text in phrases) {
                 await chats.CreateTextEntry(new (session, chatId, text), cancellationToken).ConfigureAwait(false);
-                if (++count > entryCount)
+                if (++count >= entryCount)
                     return;
             }
     }
