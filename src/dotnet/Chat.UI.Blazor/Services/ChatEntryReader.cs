@@ -308,33 +308,22 @@ public sealed class ChatEntryReader
     public async IAsyncEnumerable<IComputed<ChatTile>> ReadNewTiles(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        using var _ = Computed.SuspendDependencyCapture();
         var idTilesLayer0 = IdTileStack.FirstLayer;
         var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
-        var thisTile = idTilesLayer0.GetTile(idRange.End - 1);
+        var tile = idTilesLayer0.GetTile(idRange.End - 1);
 
         // TODO(AK): there is NullReferenceException somewhere...
         while (true) {
-            var nextTile = thisTile.Next();
-
+            var nextTile = tile.Next();
             var nextTileComputed = await Computed
                 .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, nextTile.Range, ct), cancellationToken)
                 .ConfigureAwait(false);
-            while (true) {
-                Debug.Assert(nextTileComputed != null, "Computed.Capture should not return null result");
-                if (nextTileComputed.Value.IsEmpty) {
-                    await nextTileComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-                    nextTileComputed = await nextTileComputed.Update(cancellationToken).ConfigureAwait(false);
-                    Debug.Assert(nextTileComputed != null, "IComputed.Update should not return null result");
-                }
-                if (!nextTileComputed.Value.IsEmpty) {
-                    // Next tile is ready, so we're switching to it
-                    thisTile = nextTile;
-                    yield return nextTileComputed;
-                    break;
-                }
-                // nextTile is still empty, so let's continue watching thisTile/nextTile pair
+            while (nextTileComputed.Value.IsEmpty) {
+                await nextTileComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                nextTileComputed = await nextTileComputed.Update(cancellationToken).ConfigureAwait(false);
             }
+            tile = nextTile;
+            yield return nextTileComputed;
         }
         // ReSharper disable once IteratorNeverReturns
     }
