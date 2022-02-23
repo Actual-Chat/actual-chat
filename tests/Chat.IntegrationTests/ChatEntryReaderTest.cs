@@ -150,14 +150,15 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat?.Title.Should().Be("The Actual One");
 
         var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
+        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None).ConfigureAwait(false);
 
         var cts1 = new CancellationTokenSource();
         cts1.CancelAfter(500);
-        var result = await reader.ReadNewTiles(cts1.Token).TrimOnCancellation().ToListAsync();
+        var result = await reader.ReadNewTiles(idRange.End - 1, cts1.Token).TrimOnCancellation().ToListAsync();
         result.Count.Should().Be(0);
 
         var cts2 = new CancellationTokenSource();
-        var resultTask = reader.ReadNewTiles(cts2.Token).TrimOnCancellation().ToListAsync();
+        var resultTask = reader.ReadNewTiles(idRange.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
         _ = Task.Run(() => AddChatEntries(chats,
                 session,
                 ChatId,
@@ -195,7 +196,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
 
         var cts2 = new CancellationTokenSource();
-        var resultTask = reader.ReadAllWaitingForNew(idRange.Result.End - 1, cts2.Token).ToListAsync();
+        var resultTask = reader.ReadAllWaitingForNew(idRange.Result.End - 1, cts2.Token).TrimOnCancellation().ToListAsync();
 
         _ = Task.Run(() => AddChatEntries(chats,
                 session,
