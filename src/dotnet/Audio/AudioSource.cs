@@ -47,9 +47,13 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
     { }
 
     public AudioSource StripWebM(CancellationToken cancellationToken)
-        => new (FormatTask, GetFrames(cancellationToken), TimeSpan.Zero, Log, cancellationToken) {
+    {
+        var byteStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
+        var audio = new AudioSource(byteStream, TimeSpan.Zero, Log, cancellationToken) {
             ShouldStripWebM = true,
         };
+        return audio;
+    }
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {
@@ -74,22 +78,32 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         var blockList = new List<byte[]>();
         var byteBlockEnumerator = byteStream.GetAsyncEnumerator(cancellationToken);
         while (firstBlockLength <= 128) {
-            await byteBlockEnumerator.MoveNextAsync().ConfigureAwait(false);
+            var hasNext = await byteBlockEnumerator.MoveNextAsync().ConfigureAwait(false);
+            if (!hasNext) {
+                var formatTaskSource = TaskSource.For(FormatTask);
+                formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
+                var durationTaskSource = TaskSource.For(DurationTask);
+                durationTaskSource.TrySetResult(TimeSpan.Zero);
+                yield break;
+            }
+
             var byteBlock = byteBlockEnumerator.Current;
             firstBlockLength += byteBlock.Length;
             blockList.Add(byteBlock);
         }
 
-        var firstBlock = blockList.Aggregate(
-            (resultBlock: new byte[firstBlockLength], offset: 0),
-            (result, block) => {
-                Buffer.BlockCopy(block,
-                    0,
-                    result.resultBlock,
-                    result.offset,
-                    block.Length);
-                return (result.resultBlock, result.offset + block.Length);
-            }).resultBlock;
+        var firstBlock = blockList.Count == 1
+            ? blockList[0]
+            : blockList.Aggregate(
+                (resultBlock: new byte[firstBlockLength], offset: 0),
+                (result, block) => {
+                    Buffer.BlockCopy(block,
+                        0,
+                        result.resultBlock,
+                        result.offset,
+                        block.Length);
+                    return (result.resultBlock, result.offset + block.Length);
+                }).resultBlock;
         var restoredByteStream = byteBlockEnumerator.Prepend(firstBlock, cancellationToken);
 
         ChannelReader<AudioFrame> reader;
