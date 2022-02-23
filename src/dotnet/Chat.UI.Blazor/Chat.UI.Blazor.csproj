@@ -9,15 +9,10 @@
     <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <Using Include="ActualChat.Chat.UI.Blazor" />
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="System.Interactive.Async" />
-    <PackageReference Include="System.Reactive" />
   </ItemGroup>
 
 </Project>
