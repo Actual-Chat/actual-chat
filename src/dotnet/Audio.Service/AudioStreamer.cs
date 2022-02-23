@@ -28,9 +28,7 @@ public class AudioStreamer : AudioProcessorBase, IAudioStreamer
         // SkipTo via AudioSource is more efficient than SkipTo via GetAudioStream
         var audioStream = GetAudioStream(streamId, TimeSpan.Zero, cancellationToken);
         var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
-        if (skipTo >= TimeSpan.Zero)
-            audio = audio.SkipTo(skipTo, cancellationToken);
+        var audio = new AudioSource(formatTask, frames, skipTo, AudioSourceLog, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }
@@ -69,9 +67,9 @@ public class AudioStreamer : AudioProcessorBase, IAudioStreamer
         if (skipTo <= TimeSpan.Zero) return audioStream;
 
         var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
+        var audio = new AudioSource(formatTask, frames, skipTo, AudioSourceLog, cancellationToken);
         return ToAudioStream(formatTask,
-            audio.SkipTo(skipTo, cancellationToken).GetFrames(cancellationToken),
+            audio.GetFrames(cancellationToken),
             cancellationToken);
     }
 

@@ -215,12 +215,10 @@ public class AudioSourceTest
         FilePath fileName,
         TimeSpan skipTo = default,
         int blobSize = 128 * 1024,
-        int skipBytes = 0,
         CancellationToken cancellationToken = default)
     {
         var byteStream = GetAudioFilePath(fileName)
-            .ReadByteStream(blobSize, cancellationToken)
-            .SkipBytes(skipBytes, cancellationToken);
+            .ReadByteStream(blobSize, cancellationToken);
         var audio = new AudioSource(byteStream, skipTo, _logger, cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
