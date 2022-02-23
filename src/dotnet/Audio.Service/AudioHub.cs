@@ -31,17 +31,16 @@ public class AudioHub : Hub
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
-    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> recordingStream)
+    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> opusPacketStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        var result = await recordingStream.ToListAsync().ConfigureAwait(false);
-        using var stream = new FileStream("C:\\Users\\undead\\RiderProjects\\2.opus", FileMode.CreateNew);
-        foreach (var byteBlock in result) {
-            await stream.WriteAsync(byteBlock, 0, byteBlock.Length).ConfigureAwait(false);
-        }
-
         var audioRecord = new AudioRecord(sessionId, chatId, clientStartOffset);
-        await _audioProcessor.ProcessAudio(audioRecord, recordingStream, default)
+        var frameStream = opusPacketStream
+            .Select((packet, i) => new AudioFrame {
+                Data = packet,
+                Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
+            });
+        await _audioProcessor.ProcessAudio(audioRecord, frameStream, default)
             .ConfigureAwait(false);
     }
 }

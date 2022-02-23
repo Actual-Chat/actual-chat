@@ -26,7 +26,7 @@ public class AudioProcessorTest : AppHostTestBase
         var audioRecord = new AudioRecord(
             session.Id, "1",
             CpuClock.Now.EpochOffset.TotalSeconds);
-        await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<byte[]>(), CancellationToken.None);
+        await audioProcessor.ProcessAudio(audioRecord, AsyncEnumerable.Empty<AudioFrame>(), CancellationToken.None);
 
         using var cts = new CancellationTokenSource();
         var readSizeOpt = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
