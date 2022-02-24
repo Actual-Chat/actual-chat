@@ -25,6 +25,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Singletons
         services.TryAddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
         fusion.AddComputeService<VirtualListTestService>();
+        fusion.AddComputeService<ChatActivities>();
 
         // Scoped / Blazor Circuit services
         services.TryAddScoped<ChatPlayers>();

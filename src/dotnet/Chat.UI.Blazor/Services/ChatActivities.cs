@@ -79,7 +79,8 @@ public class ChatActivities
     private Task<ChatActivityStateWorker> CreateStateWorker(Symbol chatId)
         => Task.FromResult(new ChatActivityStateWorker(this, chatId));
 
-    private async Task<HashSet<Symbol>> GetRecordingActivityInternal(
+    [ComputeMethod]
+    protected virtual async Task<HashSet<Symbol>> GetRecordingActivityInternal(
         Symbol chatId,
         CancellationToken cancellationToken)
     {
