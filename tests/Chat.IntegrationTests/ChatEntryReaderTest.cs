@@ -209,52 +209,6 @@ public class ChatEntryReaderTest : AppHostTestBase
         result.Count.Should().Be(1+(int)Constants.Chat.IdTileStack.MinTileSize);
     }
 
-    [Fact]
-    public async Task ReadAllUpdatesTest()
-    {
-        using var appHost = await TestHostFactory.NewAppHost();
-        using var tester = appHost.NewWebClientTester();
-        var services = tester.ClientServices;
-        var user = await tester.SignIn(new User("", "Bob"));
-        var session = tester.Session;
-
-        var auth = services.GetRequiredService<IAuth>();
-        var u = await auth.GetUser(session, CancellationToken.None);
-        u.IsAuthenticated.Should().BeTrue();
-        u.Id.Should().Be(user.Id);
-        u.Name.Should().Be(user.Name);
-
-        var chats = services.GetRequiredService<IChats>();
-        var chat = await chats.Get(session, ChatId, CancellationToken.None);
-        chat.Should().NotBeNull();
-        chat?.Title.Should().Be("The Actual One");
-
-        var commander = tester.AppServices.GetRequiredService<ICommander>();
-        var reader = chats.CreateEntryReader(session, ChatId, ChatEntryType.Text);
-        await AddChatEntries(chats,
-            session,
-            ChatId,
-            CancellationToken.None,
-            1);
-        var idRange = await chats.GetIdRange(session, ChatId, ChatEntryType.Text, CancellationToken.None);
-
-        var updateCount = 0;
-        var cts = new CancellationTokenSource();
-        var id = idRange.End - 1;
-        var updates = reader.ReadAllUpdates(
-            id,
-            (_,_) => true,
-            cts.Token);
-        await foreach (var entry in updates.TrimOnCancellation()) {
-            entry.Id.Should().Be(id);
-            var updated = entry with { Content = entry.Content + " 1" };
-            var completeCommand = new IChatsBackend.UpsertEntryCommand(updated);
-            await commander.Call(completeCommand, true, default).ConfigureAwait(false);
-            if (++updateCount >= 3)
-                cts.Cancel();
-        }
-    }
-
     private async Task AddChatEntries(IChats chats, Session session, string chatId, CancellationToken cancellationToken, int entryCount = 3)
     {
         var phrases = new[] {
