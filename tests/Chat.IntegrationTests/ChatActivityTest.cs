@@ -29,7 +29,6 @@ public class ChatActivityTest : AppHostTestBase
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-
         var cts = new CancellationTokenSource();
         var ct = cts.Token;
         try {
