@@ -1,4 +1,3 @@
-using System.Reactive.Linq;
 using ActualChat.Pool;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -43,6 +42,7 @@ public class AuthorChatActivityState : IDisposable
 
 public class ChatActivities
 {
+    private static readonly HashSet<Symbol> _emptyHashSet = new ();
     private readonly IStateFactory _stateFactory;
     private readonly SharedPool<Symbol, ChatActivityStateWorker> _activeStatePool;
     private Session Session { get; }
@@ -76,19 +76,45 @@ public class ChatActivities
         return new AuthorChatActivityState(lease, authorRecordingState);
     }
 
-
     private Task<ChatActivityStateWorker> CreateStateWorker(Symbol chatId)
         => Task.FromResult(new ChatActivityStateWorker(this, chatId));
 
+    private async Task<HashSet<Symbol>> GetRecordingActivityInternal(
+        Symbol chatId,
+        CancellationToken cancellationToken)
+    {
+        var clock = Clocks.SystemClock;
+        var startAt = clock.Now;
+        var reader = Chats.CreateEntryReader(Session, chatId, ChatEntryType.Audio);
+        var idRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
+        var startEntry = await reader
+            .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .ConfigureAwait(false);
+        if (startEntry == null)
+            return _emptyHashSet;
+
+        var startId = startEntry.Id;
+        var endId = idRange.End;
+
+        var activeAuthors = new HashSet<Symbol>();
+        var recentEntries = reader.ReadAll(new Range<long>(startId, endId), cancellationToken);
+        await foreach (var chatEntry in recentEntries.ConfigureAwait(false))
+            if (chatEntry.IsStreaming)
+                activeAuthors.Add(chatId);
+
+        return activeAuthors.Count > 0
+            ? activeAuthors
+            : _emptyHashSet;
+    }
 
     private class ChatActivityStateWorker : IDisposable
     {
         private readonly CancellationTokenSource _cts;
         private readonly ConcurrentDictionary<Symbol, WeakReference<IMutableState<bool>>> _authorRecordingState;
-        public ChatActivities Owner { get; }
-        public Session Session => Owner.Session;
-        public MomentClockSet Clocks => Owner.Clocks;
-        public IChats Chats => Owner.Chats;
+        private ChatActivities Owner { get; }
+        private Session Session => Owner.Session;
+        private MomentClockSet Clocks => Owner.Clocks;
+        private IChats Chats => Owner.Chats;
 
         public IMutableState<ImmutableList<ChatActivityEntry>> State { get; }
 
@@ -124,37 +150,38 @@ public class ChatActivities
         {
             var activityState = State;
             var clock = Clocks.SystemClock;
-            var startAt = clock.Now;
-            var reader = Chats.CreateEntryReader(Session, chatId, ChatEntryType.Audio);
-            var idRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Audio, cancellationToken).ConfigureAwait(false);
-            var startEntry = await reader
-                .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            var activeAuthorsComputed = await Computed
+                .Capture(ct => Owner.GetRecordingActivityInternal(chatId, ct), cancellationToken)
                 .ConfigureAwait(false);
-            var startId = startEntry?.Id ?? idRange.End - 1;
 
-            var activeEntries = new ConcurrentDictionary<long, Symbol>();
-            var entryUpdates = reader
-                .ReadAllUpdates(
-                    startId,
-                    (tile, hasNext) => !hasNext || tile.Entries.Any(e => e.IsStreaming),
-                    cancellationToken)
-                .Where(entry => (entry.IsStreaming && activeEntries.TryAdd(entry.Id, entry.AuthorId)) || activeEntries.ContainsKey(entry.Id));
+            var activeAuthors = activeAuthorsComputed.Value;
+            if (activeAuthors.Count > 0)
+                activityState.Value = activeAuthors
+                    .Select(aid => new ChatActivityEntry(aid, ChatActivityKind.Recording, clock.Now))
+                    .ToImmutableList();
 
             var authorStatesToRemove = new List<Symbol>();
-            await foreach (var buffer in entryUpdates.Buffer(TimeSpan.FromMilliseconds(200), Clocks.CpuClock, cancellationToken).ConfigureAwait(false)) {
+            while (true) {
+                // TODO(AK): Throttle
                 authorStatesToRemove.Clear();
+                var prevActiveAuthors = activeAuthors;
+                await activeAuthorsComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                activeAuthorsComputed = await activeAuthorsComputed.Update(cancellationToken).ConfigureAwait(false);
+                activeAuthors = activeAuthorsComputed.Value;
+                if (prevActiveAuthors.SetEquals(activeAuthors))
+                    continue;
 
-                foreach (var entry in buffer.Where(entry => !entry.IsStreaming))
-                    activeEntries.TryRemove(entry.Id, out _);
-
+                // calculating chat recording state
+                var now = clock.Now;
+                var activeAuthors1 = activeAuthors;
                 var currentActivity = activityState.Value;
-                var activeAuthors = activeEntries.Values.ToHashSet();
-                foreach (var activityEntry in currentActivity)
-                    if (!activeAuthors.Remove(activityEntry.AuthorId))
-                        currentActivity = currentActivity.Remove(activityEntry);
-
+                var noLongerActiveEntries = currentActivity
+                    .Where(ae => !activeAuthors1.Contains(ae.AuthorId)
+                        && now - ae.StartedAt > TimeSpan.FromSeconds(10));
+                foreach (var activityEntry in noLongerActiveEntries)
+                    currentActivity = currentActivity.Remove(activityEntry);
                 currentActivity = currentActivity.AddRange(activeAuthors.Select(authorId
-                    => new ChatActivityEntry(authorId, ChatActivityKind.Recording, clock.Now)));
+                    => new ChatActivityEntry(authorId, ChatActivityKind.Recording, now)));
 
                 // maintaining author recording state
                 foreach (var pair in _authorRecordingState) {
@@ -173,11 +200,9 @@ public class ChatActivities
                     foreach (var authorId in authorStatesToRemove)
                         _authorRecordingState.TryRemove(authorId, out _);
 
-                if (currentActivity == activityState.Value)
-                    continue;
-
                 activityState.Value = currentActivity;
             }
+            // ReSharper disable once FunctionNeverReturns
         }
     }
 }

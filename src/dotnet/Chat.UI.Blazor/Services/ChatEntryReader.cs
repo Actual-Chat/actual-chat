@@ -124,66 +124,6 @@ public sealed class ChatEntryReader
         }
     }
 
-    public IAsyncEnumerable<ChatEntry> ReadAllUpdates(
-        long minId,
-        Func<ChatTile, bool, bool> enqueueTileForUpdate,
-        CancellationToken cancellationToken)
-    {
-        var activeTiles = Channel.CreateUnbounded<IComputed<ChatTile>>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-        });
-        var output = Channel.CreateBounded<ChatEntry>(new BoundedChannelOptions(100) {
-            SingleReader = true,
-            SingleWriter = true,
-            FullMode = BoundedChannelFullMode.Wait,
-        });
-
-        _ = Task.Run(() => GatherUpdates(output), cancellationToken);
-
-        return output.Reader.ReadAllAsync(cancellationToken);
-
-        async Task GatherUpdates(ChannelWriter<ChatEntry> writer)
-        {
-            IComputed<ChatTile>? thisTileComputed = null;
-            Exception? error = null;
-            try {
-                var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
-                idRange = (Math.Min(minId, idRange.End - 1), Math.Max(minId + 1, idRange.End));
-
-                await foreach (var tileComputed in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
-                    if (thisTileComputed != null && enqueueTileForUpdate(thisTileComputed.Value, true))
-                        await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
-
-                    thisTileComputed = tileComputed;
-
-                    foreach (var entry in tileComputed.Value.Entries.Where(entry => entry.Id >= minId))
-                        await writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
-                }
-                if (thisTileComputed != null && enqueueTileForUpdate(thisTileComputed.Value, false))
-                    await activeTiles.Writer.WriteAsync(thisTileComputed, cancellationToken).ConfigureAwait(false);
-
-                var newTiles = ReadNewTiles(idRange.End - 1, cancellationToken);
-                var updatedTiles = InvalidateAndUpdate(activeTiles.Reader.ReadAllAsync(cancellationToken), cancellationToken);
-                await foreach (var tileComputed in newTiles.Merge(updatedTiles)
-                           .WithCancellation(cancellationToken)
-                           .ConfigureAwait(false)) {
-                    if (enqueueTileForUpdate(tileComputed.Value, false))
-                        await activeTiles.Writer.WriteAsync(tileComputed, cancellationToken).ConfigureAwait(false);
-
-                    foreach (var entry in tileComputed.Value.Entries.Where(entry => entry.Id >= minId))
-                        await writer.WriteAsync(entry, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex) {
-                error = ex;
-            }
-            finally {
-                writer.Complete(error);
-            }
-        }
-    }
-
     public async IAsyncEnumerable<IComputed<ChatTile>> ReadAllTiles(
         Range<long> idRange,
         [EnumeratorCancellation] CancellationToken cancellationToken)
