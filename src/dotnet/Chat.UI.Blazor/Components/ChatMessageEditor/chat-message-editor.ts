@@ -193,13 +193,18 @@ export class ChatMessageEditor {
 
     private async addAttachment(file: File): Promise<void> {
         const attachment: Attachment = { Id: this.attachmentsIdSeed, File: file, Url: '' };
-        this.attachmentsIdSeed++;
         if (file.type.startsWith('image'))
             attachment.Url = URL.createObjectURL(file);
-
-        this.attachments.set(attachment.Id, attachment);
-        await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
-        this.changeMode();
+        const added = await this.blazorRef.invokeMethodAsync("AddAttachment", attachment.Id, attachment.Url, file.name, file.type, file.size);
+        if (!added) {
+            if (attachment.Url)
+                URL.revokeObjectURL(attachment.Url);
+        }
+        else {
+            this.attachmentsIdSeed++;
+            this.attachments.set(attachment.Id, attachment);
+            this.changeMode();
+        }
     }
 
     public removeAttachment(id: number) {
