@@ -333,6 +333,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
+            _ = GetTextEntryAttachments(command.Attachment.ChatId, command.Attachment.EntryId, default);
             return default!;
         }
 
