@@ -122,100 +122,6 @@ public sealed class ChatEntryReader
                 }
             }
         }
-
-        // return ReadAllUpdates(minId, (_, hasNext) => !hasNext, cancellationToken)
-        //     .Where(entry => {
-        //         if (entry.Id <= lastId)
-        //             return false;
-        //
-        //         lastId = entry.Id;
-        //         return true;
-        //     });
-
-        // var idTilesLayer0 = IdTileStack.FirstLayer;
-        // var lastId = minId - 1;
-        // var idRange = await Chats.GetIdRange(Session, ChatId, EntryType, cancellationToken).ConfigureAwait(false);
-        // idRange = (minId, Math.Max(minId + 1, idRange.End));
-        //
-        // ChatTile? thisTile = null;
-        // await foreach (var tile in ReadAllTiles(idRange, cancellationToken).ConfigureAwait(false)) {
-        //     thisTile = tile.Value;
-        //     foreach (var entry in thisTile.Entries) {
-        //         if (entry.Id <= lastId)
-        //             continue;
-        //         yield return entry;
-        //         lastId = entry.Id;
-        //     }
-        // }
-        // if (thisTile == null)
-        //     throw new InvalidOperationException("Internal error: tile == null!");
-        //
-        // while (true) {
-        //     var thisTileIdRange = thisTile.IdTileRange;
-        //     var nextTileIdRange = thisTile.IdTileRange.Move(idTilesLayer0.TileSize);
-        //     if (lastId >= thisTile.IdTileRange.End - 1) {
-        //         // We anyway have to move to the next tile
-        //         thisTile = await Chats.GetTile(Session, ChatId, EntryType, nextTileIdRange, cancellationToken)
-        //             .ConfigureAwait(false);
-        //         continue;
-        //     }
-        //
-        //     foreach (var entry in thisTile.Entries) {
-        //         if (entry.Id <= lastId)
-        //             continue;
-        //         yield return entry;
-        //         lastId = entry.Id;
-        //     }
-        //
-        //     var thisTileComputed = await Computed
-        //         .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, thisTileIdRange, ct), cancellationToken)
-        //         .ConfigureAwait(false);
-        //     if (!ReferenceEquals(thisTileComputed.Value, thisTile)) {
-        //         // We've got a new version of thisTile
-        //         thisTile = thisTileComputed.Value;
-        //         continue;
-        //     }
-        //
-        //     // It's still the same tile, so we need to wait for either its invalidation or the next tile
-        //     var thisTileInvalidatedTask = thisTileComputed.WhenInvalidated(cancellationToken);
-        //     var nextTileComputed = await Computed
-        //         .Capture(ct => Chats.GetTile(Session, ChatId, EntryType, nextTileIdRange, ct), cancellationToken)
-        //         .ConfigureAwait(false);
-        //     var nextTileInvalidatedTask = nextTileComputed.Value.IsEmpty
-        //         ? nextTileComputed.WhenInvalidated(cancellationToken)
-        //         : Task.CompletedTask; //
-        //     await Task.WhenAny(thisTileInvalidatedTask, nextTileInvalidatedTask).ConfigureAwait(false);
-        //
-        //     if (thisTileComputed.IsConsistent()) {
-        //         // nextTileComputed is either invalidated (i.e. likely non-empty) or non-empty here,
-        //         // but thisTileComputed is still the same.
-        //         // Let's give it a bit of extra time - maybe it's a rapid sequence
-        //         // of updates that invalidated both tiles, and we just need to wait
-        //         // a bit more to see the lastTileComputed invalidation.
-        //         await thisTileInvalidatedTask
-        //             .WithTimeout(ExtraChatTileInvalidationWaitTimeout, cancellationToken)
-        //             .ConfigureAwait(false);
-        //     }
-        //     if (!thisTileComputed.IsConsistent()) {
-        //         // thisTile was invalidated - let's update it
-        //         thisTileComputed = await thisTileComputed.Update(cancellationToken).ConfigureAwait(false);
-        //         thisTile = thisTileComputed.Value;
-        //         continue;
-        //     }
-        //
-        //     // We gave thisTileComputed every chance to get invalidated, but it didn't happen,
-        //     // and we know the next tile might be available, so...
-        //     if (nextTileComputed.Value.IsEmpty) {
-        //         // This means it was invalidated (see nextTileInvalidatedTask = ...), so let's update it first
-        //         nextTileComputed = await nextTileComputed.Update(cancellationToken).ConfigureAwait(false);
-        //     }
-        //     if (!nextTileComputed.Value.IsEmpty) {
-        //         // Next tile is ready, so we're switching to it
-        //         thisTile = nextTileComputed.Value;
-        //     }
-        //     // nextTile is still empty, so let's continue watching thisTile/nextTile pair
-        // }
-        // // ReSharper disable once IteratorNeverReturns
     }
 
     public IAsyncEnumerable<ChatEntry> ReadAllUpdates(
@@ -276,7 +182,6 @@ public sealed class ChatEntryReader
                 writer.Complete(error);
             }
         }
-
     }
 
     public async IAsyncEnumerable<IComputed<ChatTile>> ReadAllTiles(
