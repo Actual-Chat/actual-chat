@@ -83,8 +83,15 @@ public class MessageController : ControllerBase
                         incorrectPart = true;
                 }
                 else if (TryExtractFileId(partName, out var fileId)) {
-                    if (!await HandleFilePart(post, section, contentDisposition, fileId))
+                    var file = await HandleFilePart(section, contentDisposition, fileId);
+                    if (file == null)
                         incorrectPart = true;
+                    else if (file.Content.Length > Constants.Attachments.FileSizeLimit)
+                        incorrectPart = true;
+                    else if (post.Files.Count >= Constants.Attachments.FilesNumberLimit)
+                        incorrectPart = true;
+                    else
+                        post.Files.Add(file);
                 }
                 else {
                     incorrectPart = true; // unrecognized part
@@ -145,14 +152,13 @@ public class MessageController : ControllerBase
         return true;
     }
 
-    private async Task<bool> HandleFilePart(
-        MessagePost messagePost,
+    private async Task<FileInfo?> HandleFilePart(
         MultipartSection section,
         ContentDispositionHeaderValue contentDisposition,
         int fileId)
     {
         if (string.IsNullOrEmpty(contentDisposition.FileName.Value))
-            return false;
+            return null;
 
         // Don't trust any file name, file extension, and file data from the request unless you trust them completely
         // Otherwise, it is very likely to cause problems such as virus uploading, disk filling, etc
@@ -182,11 +188,10 @@ public class MessageController : ControllerBase
                 ContentType = section.ContentType ?? "",
                 FileName = contentDisposition.FileName.Value ?? "",
             };
-            messagePost.Files.Add(file);
-            return true;
+            return file;
         }
         catch {
-            return false;
+            return null;
         }
     }
 

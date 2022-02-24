@@ -156,7 +156,6 @@
         if (Text.IsNullOrEmpty() && !_attachments.Any())
             return;
 
-        IResult? result = null;
         try {
             var response = await JSRef.InvokeAsync<string>("postMessage", Chat.Id).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
@@ -164,19 +163,21 @@
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception e) {
-            result = Result.Error<string>(e);
-        }
-
-        if (result != null && result.HasError) {
-            // use command error reporting approach
-            var command = new PostChatMessageSurrogateCommand();
-            var completedEvent = new UICommandEvent(command, result);
-            _ = _cmdTracker.ProcessEvent(completedEvent);
+            ShowError(e);
         }
     }
 
     [JSInvokable]
-    public void AddAttachment(int id, string url, string? fileName, string? fileType, int length) {
+    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length) {
+        if (length > Constants.Attachments.FileSizeLimit) {
+            ShowError("File is too big. Max file size: 8Mb.");
+            return false;
+        }
+        if (_attachments.Length >= Constants.Attachments.FilesNumberLimit) {
+            ShowError("Too many files. Max allowed number is 10.");
+            return false;
+        }
+
         _attachments = _attachments.Add(new Attachment {
             Id = id,
             Url = url,
@@ -185,6 +186,7 @@
             Length = length,
         });
         StateHasChanged();
+        return true;
     }
 
     private async Task RemoveAttachment(Attachment attachment) {
@@ -205,5 +207,16 @@
         // We don't need to await for this here
         _ = RealtimePlayer.Play(_clocks.SystemClock.Now);
         return Task.CompletedTask;
+    }
+
+    private void ShowError(string error)
+        => ShowError(new Exception(error));
+
+    private void ShowError(Exception e) {
+    // use command error reporting approach
+        var result = Result.Error<string>(e);
+        var command = new PostChatMessageSurrogateCommand();
+        var completedEvent = new UICommandEvent(command, result);
+        _ = _cmdTracker.ProcessEvent(completedEvent);
     }
 }
