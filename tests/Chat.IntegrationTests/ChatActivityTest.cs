@@ -45,10 +45,6 @@ public class ChatActivityTest : AppHostTestBase
 
             await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: ct);
             await recordingActivity.CurrentActivity.Computed.Update(ct);
-            recordingActivity.CurrentActivity.Value.Should().HaveCount(1);
-
-            await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(20), cancellationToken: ct);
-            await recordingActivity.CurrentActivity.Computed.Update(ct);
             recordingActivity.CurrentActivity.Value.Should().HaveCount(0);
         }
         finally {

@@ -166,23 +166,33 @@ public class ChatActivities
             }
 
             var authorStatesToRemove = new List<Symbol>();
+            var previousCheckMoment = Moment.EpochStart;
+            var throttled = false;
             while (true) {
-                // TODO(AK): Throttle
                 authorStatesToRemove.Clear();
                 var prevActiveAuthors = activeAuthors;
-                await activeAuthorsComputed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+                var whenInvalidatedTask = activeAuthorsComputed.WhenInvalidated(cancellationToken);
+                if (throttled) {
+                    throttled = false;
+                    whenInvalidatedTask = whenInvalidatedTask.WithTimeout(TimeSpan.FromMilliseconds(250), cancellationToken);
+                }
+                await whenInvalidatedTask.ConfigureAwait(false);
                 activeAuthorsComputed = await activeAuthorsComputed.Update(cancellationToken).ConfigureAwait(false);
                 activeAuthors = activeAuthorsComputed.Value;
                 if (prevActiveAuthors.SetEquals(activeAuthors))
                     continue;
 
-                // calculating chat recording state
                 var now = clock.Now;
+                if (now - previousCheckMoment < TimeSpan.FromMilliseconds(250)) {
+                    throttled = true;
+                    continue;
+                }
+
+                // calculating chat recording state
                 var activeAuthors1 = activeAuthors;
                 var currentActivity = activityState.Value;
                 var noLongerActiveEntries = currentActivity
-                    .Where(ae => !activeAuthors1.Contains(ae.AuthorId)
-                        && now - ae.StartedAt > TimeSpan.FromSeconds(30)); // keep authors as active for 30 seconds
+                    .Where(ae => !activeAuthors1.Contains(ae.AuthorId));
                 foreach (var activityEntry in noLongerActiveEntries)
                     currentActivity = currentActivity.Remove(activityEntry);
                 currentActivity = currentActivity.AddRange(activeAuthors.Select(authorId
@@ -206,6 +216,7 @@ public class ChatActivities
                         _authorRecordingState.TryRemove(authorId, out _);
 
                 activityState.Value = currentActivity;
+                previousCheckMoment = now;
             }
             // ReSharper disable once FunctionNeverReturns
         }
