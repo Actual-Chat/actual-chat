@@ -42,3 +42,15 @@
 .whitespace-break-spaces {
     white-space: break-spaces;
 }
+
+.panel-menu {
+    @apply bg-transparent shadow-none;
+}
+
+.panel-menu-item {
+    @apply h-5;
+}
+
+.panel-menu-item:hover {
+    @apply bg-transparent;
+}
