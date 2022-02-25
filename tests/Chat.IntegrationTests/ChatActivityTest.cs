@@ -32,16 +32,22 @@ public class ChatActivityTest : AppHostTestBase
         var cts = new CancellationTokenSource();
         var ct = cts.Token;
         try {
-            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
             var chatActivity = clientServices.GetRequiredService<ChatActivities>();
             using var recordingActivity = await chatActivity.GetRecordingActivity(ChatId);
             recordingActivity.CurrentActivity.Value.Should().HaveCount(0);
+
+            // creates a streaming entry and completes it in 2 secs
+            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
 
             await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct);
             await recordingActivity.CurrentActivity.Computed.Update(ct);
             recordingActivity.CurrentActivity.Value.Should().HaveCount(1);
 
             await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(10), cancellationToken: ct);
+            await recordingActivity.CurrentActivity.Computed.Update(ct);
+            recordingActivity.CurrentActivity.Value.Should().HaveCount(1);
+
+            await recordingActivity.CurrentActivity.Computed.WhenInvalidated(ct).WithTimeout(TimeSpan.FromSeconds(20), cancellationToken: ct);
             await recordingActivity.CurrentActivity.Computed.Update(ct);
             recordingActivity.CurrentActivity.Value.Should().HaveCount(0);
         }
@@ -74,10 +80,12 @@ public class ChatActivityTest : AppHostTestBase
         var ct = cts.Token;
         try {
             var author = await chatAuthorsBackend.GetOrCreate(session, ChatId, ct);
-            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
             var chatActivity = clientServices.GetRequiredService<ChatActivities>();
             using var recordingActivity = await chatActivity.GetAuthorRecordingActivity(ChatId, author!.Id);
             recordingActivity.Recording.Value.Should().BeFalse();
+
+            // creates a streaming entry and completes it in 2 secs
+            _ = Task.Run(() => AddChatEntries(commander, chatAuthorsBackend, session, ct), ct);
 
             await recordingActivity.Recording.Computed.WhenInvalidated(ct);
             await recordingActivity.Recording.Computed.Update(ct);
@@ -99,6 +107,7 @@ public class ChatActivityTest : AppHostTestBase
         CancellationToken cancellationToken)
     {
         var testClock = new TestClock();
+        await testClock.Delay(2000, cancellationToken);
         var author = await chatAuthorsBackend.GetOrCreate(session, ChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;
         var entry = new ChatEntry {
