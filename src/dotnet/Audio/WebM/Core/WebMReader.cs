@@ -48,7 +48,7 @@ public ref struct WebMReader
         _spanReader = new SpanReader(span);
         _element = EbmlElement.Empty;
         _containers = state.Containers ?? new Stack<(BaseModel Container, EbmlElement ContainerElement)>(16);
-        _entry = state.Entry;
+        _entry = state.Entry ?? BaseModel.Empty;
         _resume = state.NotCompleted;
         ReadResultKind = WebMReadResultKind.None;
     }
@@ -354,7 +354,7 @@ public ref struct WebMReader
         public readonly bool NotCompleted;
         public readonly int Position;
         public readonly int Remaining;
-        public readonly BaseModel Entry;
+        public readonly BaseModel? Entry;
         public readonly Stack<(BaseModel Container, EbmlElement ContainerElement)>? Containers;
 
         public State(
