@@ -101,7 +101,7 @@ public class ChatActivities
         var recentEntries = reader.ReadAll(new Range<long>(startId, endId), cancellationToken);
         await foreach (var chatEntry in recentEntries.ConfigureAwait(false))
             if (chatEntry.IsStreaming)
-                activeAuthors.Add(chatId);
+                activeAuthors.Add(chatEntry.AuthorId);
 
         return activeAuthors.Count > 0
             ? activeAuthors
@@ -156,10 +156,14 @@ public class ChatActivities
                 .ConfigureAwait(false);
 
             var activeAuthors = activeAuthorsComputed.Value;
-            if (activeAuthors.Count > 0)
+            if (activeAuthors.Count > 0) {
                 activityState.Value = activeAuthors
                     .Select(aid => new ChatActivityEntry(aid, ChatActivityKind.Recording, clock.Now))
                     .ToImmutableList();
+
+                foreach (var authorId in activeAuthors)
+                    GetAuthorRecordingState(authorId).Value = true;
+            }
 
             var authorStatesToRemove = new List<Symbol>();
             while (true) {
@@ -178,7 +182,7 @@ public class ChatActivities
                 var currentActivity = activityState.Value;
                 var noLongerActiveEntries = currentActivity
                     .Where(ae => !activeAuthors1.Contains(ae.AuthorId)
-                        && now - ae.StartedAt > TimeSpan.FromSeconds(10));
+                        && now - ae.StartedAt > TimeSpan.FromSeconds(30)); // keep authors as active for 30 seconds
                 foreach (var activityEntry in noLongerActiveEntries)
                     currentActivity = currentActivity.Remove(activityEntry);
                 currentActivity = currentActivity.AddRange(activeAuthors.Select(authorId
