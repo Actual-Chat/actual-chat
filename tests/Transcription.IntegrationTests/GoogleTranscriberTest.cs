@@ -52,10 +52,13 @@ public class GoogleTranscriberTest : TestBase
         Out.WriteLine(transcript.ToString());
     }
 
-    private async Task<AudioSource> GetAudio(FilePath fileName, CancellationToken cancellationToken = default)
+    private async Task<AudioSource> GetAudio(FilePath fileName, bool webMStream = true)
     {
-        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, cancellationToken);
-        var audio = new AudioSource(byteStream, default, null, cancellationToken);
+        var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
+        var streamAdapter = webMStream
+            ? new WebMStreamAdapter(Log)
+            : new WebMStreamAdapter(Log);
+        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;
     }

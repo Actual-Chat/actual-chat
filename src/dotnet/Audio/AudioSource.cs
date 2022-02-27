@@ -21,12 +21,12 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
         CodecSettings = Convert.ToBase64String(ActualOpusStreamFormat),
     };
 
-    public AudioSource(
-        IAsyncEnumerable<byte[]> byteStream,
-        TimeSpan skipTo,
-        ILogger log,
-        CancellationToken cancellationToken) : base(byteStream, skipTo, log, cancellationToken)
-    { }
+    // public AudioSource(
+    //     IAsyncEnumerable<byte[]> byteStream,
+    //     TimeSpan skipTo,
+    //     ILogger log,
+    //     CancellationToken cancellationToken) : base(byteStream, skipTo, log, cancellationToken)
+    // { }
 
     public AudioSource(
         Task<AudioFormat> formatTask,
@@ -47,11 +47,12 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 
     public AudioSource StripWebM(CancellationToken cancellationToken)
     {
-        var byteStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
-        var audio = new AudioSource(byteStream, TimeSpan.Zero, Log, cancellationToken) {
-            ShouldStripWebM = true,
-        };
-        return audio;
+        throw new NotImplementedException();
+        // var byteStream = GetFrames(cancellationToken).ToByteStream(FormatTask, cancellationToken);
+        // var audio = new AudioSource(byteStream, TimeSpan.Zero, Log, cancellationToken) {
+        //     ShouldStripWebM = true,
+        // };
+        // return audio;
     }
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)

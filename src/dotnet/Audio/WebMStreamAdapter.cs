@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.IO.Pipelines;
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 
@@ -7,19 +6,13 @@ namespace ActualChat.Audio;
 
 public class WebMStreamAdapter : IAudioStreamAdapter
 {
-    private static readonly byte[] WebMHeader = { 0x1A, 0x45, 0xDF, 0xA3 };
-    public ILogger<WebMStreamAdapter> Log { get; }
+    public ILogger Log { get; }
 
-    public WebMStreamAdapter(ILogger<WebMStreamAdapter> log)
+    public WebMStreamAdapter(ILogger log)
         => Log = log;
 
-    public async Task<AudioSource> Read(Stream stream, CancellationToken cancellationToken)
+    public Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
     {
-        var reader = PipeReader.Create(stream);
-        var headerBlock = await reader.ReadAtLeastAsync(4, cancellationToken).ConfigureAwait(false);
-        if (!IsHeaderValid(headerBlock.Buffer))
-            throw new InvalidOperationException("Stream doesn't have valid WebM header");
-
         var formatTask = TaskSource.New<AudioFormat>(true).Task;
         var formatTaskSource = TaskSource.For(formatTask);
         var clusterOffsetMs = 0;
@@ -28,11 +21,11 @@ public class WebMStreamAdapter : IAudioStreamAdapter
         var formatBlocks = new List<byte[]>();
         var state = new WebMReader.State();
         var frameBuffer = new List<AudioFrame>();
+        var readBuffer = ArrayBuffer<byte>.Lease(false, 32 * 1024);
 
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
-
         var target = Channel.CreateBounded<AudioFrame>(new BoundedChannelOptions(128) {
             SingleWriter = true,
             SingleReader = true,
@@ -42,28 +35,21 @@ public class WebMStreamAdapter : IAudioStreamAdapter
 
         _ = BackgroundTask.Run(async () => {
             try {
-                while (true) {
-                    var result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-                    var buffer = result.Buffer;
+                await foreach (var data in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+                    AppendData(ref readBuffer, ref state, data);
                     frameBuffer.Clear();
                     state = FillFrameBuffer(
-                        state,
+                        WebMReader.FromState(state).WithNewSource(readBuffer.Span),
                         formatTaskSource,
                         formatBlocks,
                         frameBuffer,
-                        ref buffer,
                         ref ebml,
                         ref segment,
                         ref clusterOffsetMs);
 
                     foreach (var frame in frameBuffer)
                         await target.Writer.WriteAsync(frame, cancellationToken).ConfigureAwait(false);
-
-                    reader.AdvanceTo(buffer.Start, buffer.End);
-                    if (result.IsCompleted)
-                        break;
                 }
-                await reader.CompleteAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException e) {
                 target.Writer.TryComplete(e);
@@ -86,50 +72,34 @@ public class WebMStreamAdapter : IAudioStreamAdapter
             }
         }, CancellationToken.None);
 
-        return new AudioSource(formatTask, target.Reader.ReadAllAsync(cancellationToken), TimeSpan.Zero, Log, cancellationToken);
-
-        bool IsHeaderValid(in ReadOnlySequence<byte> buffer)
-        {
-            var slice = buffer.Slice(buffer.Start, 4);
-            if (slice.IsSingleSegment)
-                return slice.FirstSpan.StartsWith(WebMHeader);
-
-            Span<byte> stackBuffer = stackalloc byte[4];
-            slice.CopyTo(stackBuffer);
-            return stackBuffer.StartsWith(WebMHeader);
-        }
+        var audioSource = new AudioSource(formatTask, target.Reader.ReadAllAsync(cancellationToken), TimeSpan.Zero, Log, cancellationToken);
+        return Task.FromResult(audioSource);
     }
 
-    public Task Write(AudioSource source, Stream target, CancellationToken cancellationToken)
+    public IAsyncEnumerable<byte[]> Write(AudioSource source, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
 
+    private void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)
+    {
+        var remainder = buffer.Span.Slice(state.Position, state.Remaining);
+        var newLength = remainder.Length + data.Length;
+        buffer.EnsureCapacity(newLength);
+        buffer.Count = newLength;
+        remainder.CopyTo(buffer.Span);
+        data.CopyTo(buffer.Span[remainder.Length..]);
+    }
     private WebMReader.State FillFrameBuffer(
-        WebMReader.State prevState,
+        WebMReader webMReader,
         TaskSource<AudioFormat> formatTaskSource,
         List<byte[]> formatBlocks,
         List<AudioFrame> frames,
-        ref ReadOnlySequence<byte> buffer,
         ref EBML? ebml,
         ref Segment? segment,
         ref int clusterOffsetMs)
     {
-        WebMReader webMReader;
         using var bufferLease = MemoryPool<byte>.Shared.Rent(16 * 1024);
-
-        if (buffer.IsSingleSegment) {
-            webMReader = WebMReader.FromState(prevState).WithNewSource(buffer.FirstSpan[prevState.Position..]);
-            buffer = buffer.Slice(prevState.Position);
-        }
-        else {
-            var span = bufferLease.Memory.Span;
-            var length = Math.Min(buffer.Length, span.Length);
-            buffer.Slice(prevState.Position, length).CopyTo(span);
-            buffer = buffer.Slice(prevState.Position);
-            webMReader = WebMReader.FromState(prevState).WithNewSource(span);
-        }
-
         while (webMReader.Read()) {
             var state = webMReader.GetState();
             switch (webMReader.ReadResultKind) {
