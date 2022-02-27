@@ -37,7 +37,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         return Entry.Equals(other.Entry)
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
-            && IsBlockEnd == other.IsBlockEnd;
+            && IsBlockEnd == other.IsBlockEnd
+            && Attachments.SequenceEqual(other.Attachments);
     }
     public override bool Equals(object? obj)
         => ReferenceEquals(this, obj) || obj is ChatMessageModel other && Equals(other);
