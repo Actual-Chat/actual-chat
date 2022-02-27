@@ -212,7 +212,7 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
             audioEntry.ChatId, audioEntry.Id, skipTo.TotalSeconds);
         var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
         var audio = await AudioDownloader
-            .Download(audioBlobUri, skipTo, stripWebm: true, cancellationToken)
+            .Download(audioBlobUri, skipTo, cancellationToken)
             .ConfigureAwait(false);
         var audioWithoutWebM = audio.StripWebM(cancellationToken);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {

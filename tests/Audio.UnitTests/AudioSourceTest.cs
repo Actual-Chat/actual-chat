@@ -1,6 +1,7 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.Media;
+using Microsoft.Extensions.Logging.Abstractions;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
@@ -215,13 +216,18 @@ public class AudioSourceTest
         FilePath fileName,
         TimeSpan skipTo = default,
         int blobSize = 128 * 1024,
+        bool webMStream = true,
         CancellationToken cancellationToken = default)
     {
         var byteStream = GetAudioFilePath(fileName)
             .ReadByteStream(blobSize, cancellationToken);
-        var audio = new AudioSource(byteStream, skipTo, _logger, cancellationToken);
-        await audio.WhenFormatAvailable.ConfigureAwait(false);
-        return audio;
+        var streamAdapter = webMStream
+            ? new WebMStreamAdapter(_logger)
+            : new WebMStreamAdapter(_logger);
+        var audio = await streamAdapter.Read(byteStream, cancellationToken);
+        var skipped = audio.SkipTo(skipTo, cancellationToken);
+        await skipped.WhenFormatAvailable.ConfigureAwait(false);
+        return skipped;
     }
 
     private static FilePath GetAudioFilePath(FilePath fileName)

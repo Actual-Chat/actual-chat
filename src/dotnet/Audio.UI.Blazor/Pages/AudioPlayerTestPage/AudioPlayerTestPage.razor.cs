@@ -111,7 +111,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (_audioSource == null || !StringComparer.Ordinal.Equals(_audioBlobStreamUri, audioUri)) {
             var audioDownloader = new AudioDownloader(Services);
-            _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, stripWebm: true, cancellationToken);
+            _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioUri;
         }
         await _audioSource.WhenFormatAvailable.ConfigureAwait(true);

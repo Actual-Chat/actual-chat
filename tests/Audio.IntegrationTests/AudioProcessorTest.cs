@@ -1,7 +1,6 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
 using ActualChat.Host;
-using ActualChat.Media;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using Stl.IO;
@@ -10,7 +9,10 @@ namespace ActualChat.Audio.IntegrationTests;
 
 public class AudioProcessorTest : AppHostTestBase
 {
-    public AudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
+    private readonly ILogger _logger;
+
+    public AudioProcessorTest(ITestOutputHelper @out, ILogger logger) : base(@out)
+        => _logger = logger;
 
     [Fact]
     public async Task EmptyRecordingTest()
@@ -122,11 +124,12 @@ public class AudioProcessorTest : AppHostTestBase
         return sum;
     }
 
-    private static async Task<(AudioRecord AudioRecord, int FileSize)> ProcessAudioFile(
+    private async Task<(AudioRecord AudioRecord, int FileSize)> ProcessAudioFile(
         AudioProcessor audioProcessor,
         Session session,
         string chatId,
-        string fileName = "file.webm")
+        string fileName = "file.webm",
+        bool webMStream = true)
     {
         var record = new AudioRecord(
             session.Id, chatId,
@@ -135,7 +138,11 @@ public class AudioProcessorTest : AppHostTestBase
         var filePath = GetAudioFilePath(fileName);
         var fileSize = (int) filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
-        await audioProcessor.ProcessAudio(record, byteStream, CancellationToken.None);
+        var streamAdapter = webMStream
+            ? new WebMStreamAdapter(_logger)
+            : new WebMStreamAdapter(_logger);
+        var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
+        await audioProcessor.ProcessAudio(record, audio.GetFrames(CancellationToken.None), CancellationToken.None);
         return (record, fileSize);
     }
 
