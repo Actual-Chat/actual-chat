@@ -1,7 +1,3 @@
-using ActualChat.Audio.WebM;
-using ActualChat.Audio.WebM.Models;
-using ActualChat.Media;
-using Microsoft.Extensions.Logging.Abstractions;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
@@ -118,9 +114,12 @@ public class AudioSourceTest
 
     // Private methods
 
-    private static Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName)
+    private Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool webMStream = true)
     {
         var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
-        return stream.WriteByteStream(source.GetFrames(CancellationToken.None).ToByteStream(source.GetFormatTask(),default), true);
+        var streamAdapter = webMStream
+            ? new WebMStreamAdapter(_logger)
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_logger);
+        return stream.WriteByteStream(streamAdapter.Write(source, CancellationToken.None),true);
     }
 }
