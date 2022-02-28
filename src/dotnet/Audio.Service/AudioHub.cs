@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR;
 
@@ -20,7 +19,7 @@ public class AudioHub : Hub
         _transcriptStreamer = transcriptStreamer;
     }
 
-    public IAsyncEnumerable<AudioStreamPart> GetAudioStream(
+    public IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
