@@ -4,7 +4,7 @@
 @using System.Text.RegularExpressions
 @using ActualChat.Chat.UI.Blazor.Components.MarkupParts
 @using Stl.Extensibility
-@inherits ComputedStateComponent<ActualChat.MediaPlayback.TrackPlaybackState?>
+@inherits ComputedStateComponent<ActualChat.MediaPlayback.PlayerState?>
 @inject IActivePlaybackInfo _activePlaybackInfo
 
 @if (Markup != null) {
@@ -34,7 +34,7 @@
         _ = State.Recompute();
     }
 
-    protected override async Task<TrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<PlayerState?> ComputeState(CancellationToken cancellationToken) {
         var audioEntryId = Entry.AudioEntryId;
         if (audioEntryId == null)
             return null;

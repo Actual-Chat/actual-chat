@@ -15,8 +15,6 @@ export interface InitDecoderMessage extends DecoderMessage {
     type: 'init';
     controllerId: number,
     callbackId: number,
-    // ArrayBuffer sometimes can be bigger than Uint8Array and can be started not from the beginning
-    // so we should transfer offset and length too
     buffer: ArrayBuffer;
     offset: number;
     length: number;
@@ -25,6 +23,8 @@ export interface InitDecoderMessage extends DecoderMessage {
 export interface DataDecoderMessage extends DecoderMessage {
     type: 'data';
     controllerId: number;
+    // ArrayBuffer can be bigger than Uint8Array and can be started not from the beginning
+    // so we should transfer offset and length too
     buffer: ArrayBuffer;
     offset: number;
     length: number;

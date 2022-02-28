@@ -54,7 +54,7 @@
         var chatPlayers = Services.GetRequiredService<ChatPlayers>();
         var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
         var playback = historicalPlayer.Playback;
-        if (playback is { IsStopped: false }) {
+        if (playback is { IsPlaying: true }) {
             await historicalPlayer.Stop().ConfigureAwait(true);
             return;
         }
