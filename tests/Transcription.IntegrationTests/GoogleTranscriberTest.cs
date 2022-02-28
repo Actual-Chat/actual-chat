@@ -17,7 +17,7 @@ public class GoogleTranscriberTest : TestBase
     public async Task TranscribeTest(string fileName)
     {
         var transcriber = new GoogleTranscriber(Log);
-        var options = new TranscriptionOptions() {
+        var options = new TranscriptionOptions {
             Language = "ru-RU",
             IsDiarizationEnabled = false,
             IsPunctuationEnabled = true,
@@ -56,8 +56,8 @@ public class GoogleTranscriberTest : TestBase
     {
         var byteStream = GetAudioFilePath(fileName).ReadByteStream(1024, CancellationToken.None);
         var streamAdapter = webMStream
-            ? new WebMStreamAdapter(Log)
-            : new WebMStreamAdapter(Log);
+            ? (IAudioStreamAdapter)new WebMStreamAdapter(Log)
+            : new ActualOpusStreamAdapter(Log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         return audio;

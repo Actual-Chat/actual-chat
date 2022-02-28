@@ -3,6 +3,7 @@ using ActualChat.Chat;
 using ActualChat.Host;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
+using ActualChat.Users;
 using Stl.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
@@ -34,7 +35,8 @@ public class AudioProcessorTest : AppHostTestBase
         var readSizeOpt = await ReadAudio(audioRecord.Id, audioStreamer, cts.Token)
             .WithTimeout(TimeSpan.FromSeconds(1), CancellationToken.None);
 
-        readSizeOpt.HasValue.Should().BeFalse();
+        readSizeOpt.HasValue.Should().BeTrue();
+        readSizeOpt.Value.Should().Be(0);
         cts.Cancel();
     }
 
@@ -50,9 +52,14 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer = audioProcessor.AudioStreamer;
         var transcriptStreamer = audioProcessor.TranscriptStreamer;
         var chatService = services.GetRequiredService<IChats>();
+        var chatUserSettings = services.GetRequiredService<IChatUserSettings>();
 
         var chat = await chatService.CreateChat(new(session, "Test"), default);
         using var cts = new CancellationTokenSource();
+        await chatUserSettings.Set(new IChatUserSettings.SetCommand(session, chat.Id, new ChatUserSettings {
+            Language = LanguageId.Russian,
+        }), CancellationToken.None);
+
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, session, chat.Id);
 
         var readTask = ReadAudio(audioRecord.Id, audioStreamer);
@@ -60,7 +67,7 @@ public class AudioProcessorTest : AppHostTestBase
         var readSize = await readTask;
         var transcribed = await readTranscriptTask;
         transcribed.Should().BeGreaterThan(0);
-        readSize.Should().Be(writtenSize);
+        readSize.Should().BeLessThan(writtenSize);
     }
 
     [Fact]
@@ -80,7 +87,7 @@ public class AudioProcessorTest : AppHostTestBase
 
         var (audioRecord, writtenSize) = await ProcessAudioFile(audioProcessor, session, chat.Id);
         var readSize = await ReadAudio(audioRecord.Id, audioStreamer);
-        readSize.Should().Be(writtenSize);
+        readSize.Should().BeLessThan(writtenSize);
     }
 
     private static async Task<AppHost> NewAppHost()
@@ -115,9 +122,8 @@ public class AudioProcessorTest : AppHostTestBase
     {
         var streamId = OpenAudioSegment.GetStreamId(audioRecordId, 0);
         var audio = await audioStreamer.GetAudio(streamId, default, cancellationToken);
-        var header = audio.Format.Serialize();
 
-        var sum = header.Length;
+        var sum = 0;
         await foreach (var audioFrame in audio.GetFrames(default))
             sum += audioFrame.Data.Length;
 

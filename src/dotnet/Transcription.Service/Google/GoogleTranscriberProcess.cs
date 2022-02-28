@@ -81,7 +81,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>) recognizeRequests.GetResponseStream();
 
-            _ = BackgroundTask.Run(() => PushAudio(format, byteStream, recognizeRequests),
+            _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests),
                 Log,
                 $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
                 cancellationToken);
@@ -191,16 +191,10 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     }
 
     private async Task PushAudio(
-        AudioFormat format,
         IAsyncEnumerable<byte[]> webMByteStream,
         SpeechClient.StreamingRecognizeStream recognizeRequests)
     {
         try {
-            var formatRequest = new StreamingRecognizeRequest {
-                AudioContent = ByteString.CopyFrom(format.Serialize()),
-            };
-            await recognizeRequests.WriteAsync(formatRequest).ConfigureAwait(false);
-
             await foreach (var chunk in webMByteStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
                     AudioContent = ByteString.CopyFrom(chunk),
