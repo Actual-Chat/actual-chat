@@ -4,12 +4,12 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio;
 
-public class WebMStreamAdapter : IAudioStreamAdapter
+public sealed class WebMStreamAdapter : IAudioStreamAdapter
 {
-    public ILogger Log { get; }
+    private readonly ILogger _log;
 
     public WebMStreamAdapter(ILogger log)
-        => Log = log;
+        => _log = log;
 
     public Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
     {
@@ -60,7 +60,7 @@ public class WebMStreamAdapter : IAudioStreamAdapter
                 throw;
             }
             catch (Exception e) {
-                Log.LogError(e, "Parse failed");
+                _log.LogError(e, "Parse failed");
                 target.Writer.TryComplete(e);
                 formatTaskSource.TrySetException(e);
                 throw;
@@ -72,13 +72,100 @@ public class WebMStreamAdapter : IAudioStreamAdapter
             }
         }, CancellationToken.None);
 
-        var audioSource = new AudioSource(formatTask, target.Reader.ReadAllAsync(cancellationToken), TimeSpan.Zero, Log, cancellationToken);
+        var audioSource = new AudioSource(formatTask, target.Reader.ReadAllAsync(cancellationToken), TimeSpan.Zero, _log, cancellationToken);
         return Task.FromResult(audioSource);
     }
 
-    public IAsyncEnumerable<byte[]> Write(AudioSource source, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<byte[]> Write(AudioSource source, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var random = new Random();
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        var buffer = bufferLease.Memory;
+        var position = 0;
+        var header = new EBML {
+            EBMLVersion = 1,
+            EBMLReadVersion = 1,
+            EBMLMaxIDLength = 4,
+            EBMLMaxSizeLength = 8,
+            DocType = "webm",
+            DocTypeVersion = 2,
+            DocTypeReadVersion = 2,
+        };
+        position += WriteModel(header, buffer.Span[position..]);
+        var segment = new Segment {
+            Info = new Info {
+                TimestampScale = 1000000,
+                MuxingApp = "actual-chat",
+                WritingApp = "actual-chat",
+            },
+            Tracks = new Tracks {
+                TrackEntries = new[] {
+                    new TrackEntry {
+                        TrackNumber = 1,
+                        TrackUID = (ulong)Math.Abs(random.NextInt64()),
+                        TrackType = TrackType.Audio,
+                        CodecID = "A_OPUS",
+                        CodecPrivate = new byte[] {
+                            0x4F, 0x70, 0x75, 0x73, 0x48, 0x65, 0x61, 0x64,
+                            0x01, 0x01, 0x00, 0x00, 0x80, 0xBB, 0x00, 0x00,
+                            0x00, 0x00, 0x00,
+                        },
+                        Audio = new WebM.Models.Audio {
+                            SamplingFrequency = 48000,
+                            Channels = 1,
+                            BitDepth = 32,
+                        },
+                    },
+                },
+            },
+        };
+        position += WriteModel(segment, buffer.Span[position..]);
+        var cluster = new Cluster {
+            Timestamp = 0,
+        };
+        position += WriteModel(cluster, buffer.Span[position..]);
+        yield return buffer.Span[..position].ToArray();
+        position = 0;
+
+        var frames = source.GetFrames(cancellationToken);
+        short offsetMs = 0;
+        var frameInBlockCount = 0;
+        await foreach (var frame in frames.ConfigureAwait(false)) {
+            if (offsetMs == 30000) {
+                cluster = new Cluster {
+                    Timestamp = cluster.Timestamp + (ulong)offsetMs,
+                };
+                position += WriteModel(cluster, buffer.Span[position..]);
+                offsetMs = 0;
+            }
+            var block = new SimpleBlock {
+                TrackNumber = 1,
+                TimeCode = offsetMs,
+                IsKeyFrame = true,
+                Data = frame.Data,
+            };
+            position += WriteModel(block, buffer.Span[position..]);
+            offsetMs += (short)(frame.Offset.Ticks / 10_000);
+            frameInBlockCount++;
+
+            if (frameInBlockCount < 3)
+                continue;
+
+            frameInBlockCount = 0;
+            yield return buffer.Span[..position].ToArray();
+            position = 0;
+        }
+        if (position > 0)
+            yield return buffer.Span[..position].ToArray();
+
+        int WriteModel(BaseModel model, Span<byte> span)
+        {
+            var writer = new WebMWriter(span);
+            if (!writer.Write(model))
+                throw new InvalidOperationException("Error writing WebM stream. Buffer is too small.");
+
+            return writer.Position;
+        }
     }
 
     private void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)

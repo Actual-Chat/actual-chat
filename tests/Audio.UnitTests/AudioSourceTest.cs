@@ -88,7 +88,7 @@ public class AudioSourceTest
                 : offset;
         }
 
-        offset.Should().Be(TimeSpan.FromMilliseconds(7200));
+        offset.Should().Be(TimeSpan.FromMilliseconds(7240));
 
         await WriteToFile(audio, default, "file-with-offset.webm");
     }
