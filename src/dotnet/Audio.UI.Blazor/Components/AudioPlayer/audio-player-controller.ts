@@ -2,10 +2,10 @@ import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-w
 import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
 import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
-import { isAecWorkaroundNeeded, enableChromiumAec } from "./chromiumEchoCancellation";
+import { isAecWorkaroundNeeded, enableChromiumAec } from './chromiumEchoCancellation';
 
 const worker = new Worker('/dist/opusDecoderWorker.js');
-let workerLastCallbackId: number = 0;
+let workerLastCallbackId = 0;
 const workerCallbacks = new Map<number, () => void>();
 
 worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
@@ -34,7 +34,7 @@ function onOperationCompleted(message: OperationCompletedDecoderWorkerMessage) {
     callback();
 }
 
-let lastControllerId: number = 0;
+let lastControllerId = 0;
 
 /** The main class of audio player, that controls all parts of the playback */
 export class AudioPlayerController implements Resettable {
@@ -48,6 +48,7 @@ export class AudioPlayerController implements Resettable {
 
     private constructor() {
         this.id = lastControllerId++;
+        console.warn(`created controllerId:${this.id}`);
     }
 
     /**
@@ -108,7 +109,7 @@ export class AudioPlayerController implements Resettable {
 
     /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
     private async createNodes(): Promise<void> {
-        this.audioContext = await AudioContextPool.get("main") as AudioContext;
+        this.audioContext = await AudioContextPool.get('main') as AudioContext;
         const feederNodeOptions: AudioWorkletNodeOptions = {
             channelCount: 1,
             channelCountMode: 'explicit',
@@ -168,12 +169,12 @@ export class AudioPlayerController implements Resettable {
     }
 
     public async getState(): Promise<PlaybackState> {
-        console.assert(this.feederNode !== null, "Feeder node should be created. Lifetime error.");
+        console.assert(this.feederNode !== null, 'Feeder node should be created. Lifetime error.');
         return this.feederNode.getState();
     }
 
     public stop(): void {
-        console.assert(this.feederNode !== null, "Feeder node should be created. Lifetime error.");
+        console.assert(this.feederNode !== null, 'Feeder node should be created. Lifetime error.');
         const workerMsg: StopDecoderMessage = {
             type: 'stop',
             controllerId: this.id,

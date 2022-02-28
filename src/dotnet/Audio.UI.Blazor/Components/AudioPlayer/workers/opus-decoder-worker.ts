@@ -64,6 +64,7 @@ async function onInit(message: InitDecoderMessage): Promise<void> {
     const data = buffer.slice(offset, offset + length);
     if (debug)
         console.debug(`Decoder(controllerId:${controllerId}): start init, header - ${data.byteLength} bytes`);
+    // TODO: REMOVE THIS AFTER FIX REALTIME PLAYBACK
     await decoder.init(data);
 
     const msg: OperationCompletedDecoderWorkerMessage = {
@@ -102,5 +103,6 @@ function onStop(message: StopDecoderMessage): void {
     if (debug)
         console.debug(`Decoder(controllerId:${controllerId}): end stop`);
 }
-
+/// #if DEBUG
 self['getDecoder'] = getDecoder;
+/// #endif

@@ -1,17 +1,19 @@
 namespace ActualChat.MediaPlayback;
 
+// TODO: refactor this (?) / read below:
+// (for example save info about active playbacks or use something like PlaybackRegistry / Store)
+// or rename to ActiveTrackPlayingInfo (because it's not related with Playback object and can confuse a reader)
 public class ActivePlaybackInfo : IActivePlaybackInfo
 {
-    private readonly ConcurrentDictionary<Symbol, TrackPlaybackState> _trackPlaybackStates = new ();
+    private readonly ConcurrentDictionary<Symbol, PlayerState> _trackPlaybackStates = new();
 
-    public virtual Task<TrackPlaybackState?> GetTrackPlaybackState(
+    public virtual Task<PlayerState?> GetTrackPlaybackState(
         Symbol trackId,
         CancellationToken cancellationToken)
         => Task.FromResult(_trackPlaybackStates.GetValueOrDefault(trackId));
 
-    public void RegisterStateChange(TrackPlaybackState lastState, TrackPlaybackState state)
+    public void RegisterStateChange(Symbol trackId, PlayerState state)
     {
-        var trackId = state.Command.TrackId;
         if (state.IsCompleted)
             _trackPlaybackStates.TryRemove(trackId, out _);
         else

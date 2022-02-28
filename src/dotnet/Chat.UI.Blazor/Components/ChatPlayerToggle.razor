@@ -27,12 +27,12 @@
         var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (playback == null)
             return false;
-        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
-        return !isStopped;
+        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
+        return isPlaying;
     }
 
     private Task Toggle() {
-        var isPlaying = Player.PlaybackState.Value is { IsStopped: false };
+        var isPlaying = Player.PlaybackState.Value is { IsPlaying: true };
         return isPlaying ? Stop() : Play();
     }
 

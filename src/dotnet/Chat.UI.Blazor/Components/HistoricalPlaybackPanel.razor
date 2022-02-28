@@ -44,15 +44,16 @@
 
     private static string? _class;
 
-    [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     [Inject] IActivePlaybackInfo ActivePlaybackInfo { get; set; } = null!;
     private ChatPlayer Player { get; set; } = null!;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
+    // TODO: fix this
     protected override async Task OnInitializedAsync()
-        => Player = await ChatPlayers.GetHistoricalPlayer(Chat.Id);
+        => Player = ChatController.GetPlayer(Chat.Id, Symbol.Empty);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
@@ -63,8 +64,8 @@
         if (playback == null)
             return Model.NotPlaying;
 
-        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
-        if (isStopped)
+        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
+        if (!isPlaying)
             return Model.NotPlaying;
 
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
