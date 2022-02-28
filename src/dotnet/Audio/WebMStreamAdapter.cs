@@ -7,9 +7,15 @@ namespace ActualChat.Audio;
 public sealed class WebMStreamAdapter : IAudioStreamAdapter
 {
     private readonly ILogger _log;
+    private readonly string _writingApp;
+    private readonly ulong? _trackUid;
 
-    public WebMStreamAdapter(ILogger log)
-        => _log = log;
+    public WebMStreamAdapter(ILogger log, string writingApp = "actual-chat", ulong? trackUid = null)
+    {
+        _log = log;
+        _writingApp = writingApp;
+        _trackUid = trackUid;
+    }
 
     public Task<AudioSource> Read(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken)
     {
@@ -95,14 +101,14 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
         var segment = new Segment {
             Info = new Info {
                 TimestampScale = 1000000,
-                MuxingApp = "actual-chat",
-                WritingApp = "actual-chat",
+                MuxingApp = _writingApp,
+                WritingApp = _writingApp,
             },
             Tracks = new Tracks {
                 TrackEntries = new[] {
                     new TrackEntry {
                         TrackNumber = 1,
-                        TrackUID = (ulong)Math.Abs(random.NextInt64()),
+                        TrackUID = _trackUid ?? (ulong)Math.Abs(random.NextInt64()) & 0x0000FF_FFFF_FFFF_FFFF,
                         TrackType = TrackType.Audio,
                         CodecID = "A_OPUS",
                         CodecPrivate = new byte[] {
@@ -145,7 +151,7 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
                 Data = frame.Data,
             };
             position += WriteModel(block, buffer.Span[position..]);
-            offsetMs += (short)(frame.Offset.Ticks / 10_000);
+            offsetMs += 20;
             frameInBlockCount++;
 
             if (frameInBlockCount < 3)
