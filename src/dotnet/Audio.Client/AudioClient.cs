@@ -24,11 +24,19 @@ public class AudioClient : HubClientBase,
     {
         Log.LogDebug("GetAudio: StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var audioStream = HubConnection
-            .StreamAsync<AudioStreamPart>("GetAudioStream", streamId, skipTo, cancellationToken)
+        var opusPacketStream = HubConnection
+            .StreamAsync<byte[]>("GetAudioStream", streamId, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, TimeSpan.Zero, AudioSourceLog, cancellationToken);
+        var frameStream = opusPacketStream
+            .Select((packet, i) => new AudioFrame {
+                Data = packet,
+                Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
+            });
+        var audio = new AudioSource(Task.FromResult(AudioSource.DefaultFormat),
+            frameStream,
+            TimeSpan.Zero,
+            AudioSourceLog,
+            cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         Log.LogDebug("GetAudio: Exited; StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
         return audio;
