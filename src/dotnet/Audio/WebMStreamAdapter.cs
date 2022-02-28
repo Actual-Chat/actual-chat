@@ -78,7 +78,11 @@ public sealed class WebMStreamAdapter : IAudioStreamAdapter
             }
         }, CancellationToken.None);
 
-        var audioSource = new AudioSource(formatTask, target.Reader.ReadAllAsync(cancellationToken), TimeSpan.Zero, _log, cancellationToken);
+        var audioSource = new AudioSource(formatTask,
+            target.Reader.ReadAllAsync(cancellationToken),
+            TimeSpan.Zero,
+            _log,
+            cancellationToken);
         return Task.FromResult(audioSource);
     }
 
