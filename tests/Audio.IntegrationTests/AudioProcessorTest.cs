@@ -140,7 +140,7 @@ public class AudioProcessorTest : AppHostTestBase
         var byteStream = filePath.ReadByteStream();
         var streamAdapter = webMStream
             ? new WebMStreamAdapter(_logger)
-            : new WebMStreamAdapter(_logger);
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_logger);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
         await audioProcessor.ProcessAudio(record, audio.GetFrames(CancellationToken.None), CancellationToken.None);
         return (record, fileSize);
