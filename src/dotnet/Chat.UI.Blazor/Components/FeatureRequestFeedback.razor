@@ -1,0 +1,44 @@
+﻿<p>Help us to prioritize features.</p>
+<p>Please vote how this feature is important for you.</p>
+<p>1 = not important, 5 = very important!</p>
+
+<div>
+    @for (var i = 1; i <= 5; i++) {
+        var cls = _rating >= i ? "fa-star" : "fa-star-o";
+        var rating = i;
+        <button role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls" aria-hidden="true"></i></button>
+    }
+</div>
+<div>
+    <textarea class="border border-gray-300 w-full" rows="5" @bind="_comment" @bind:event="oninput" />
+</div>
+<div>
+    <button type="button" @onclick="OnSubmit"
+            class="bg-button-success group rounded-md border border-success
+                       hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+                       inline-flex px-3 py-1 text-sm font-medium leading-5
+                       transition duration-150 ease-in-out">
+        <span class="fill-current text-accent-muted group-hover:text-primary">Send feedback</span>
+    </button>
+</div>
+
+@code {
+    private int _rating = 0;
+    private string _comment = "";
+
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        ModalInstance.SetTitle("This feature is in development");
+    }
+
+    private void SetRating(int rating) {
+        _rating = rating == _rating ? 0 : rating;
+    }
+
+    private void OnSubmit() {
+        ModalInstance.CloseAsync(ModalResult.Ok((_rating, _comment)));
+    }
+}

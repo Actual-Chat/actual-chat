@@ -30,5 +30,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.TryAddScoped<ChatPlayers>();
 
         services.RegisterNavItems<ChatLinks>();
+
+        services.AddTransient<FeedbackService>();
     }
 }
