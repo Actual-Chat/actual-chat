@@ -196,12 +196,11 @@ public class ChatPlayer : IAsyncDisposable
             var audio = await _audioStreamer
                 .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
                 .ConfigureAwait(false);
-            var audioWithoutWebM = audio.StripWebM(cancellationToken);
             var trackInfo = new ChatAudioTrackInfo(audioEntry) {
                 RecordedAt = audioEntry.BeginsAt + skipTo,
                 ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
             };
-            await playback.Play(trackInfo, audioWithoutWebM, playAt, cancellationToken).ConfigureAwait(false);
+            await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
     }
@@ -215,14 +214,13 @@ public class ChatPlayer : IAsyncDisposable
     {
         var audioBlobUri = _mediaResolver.GetAudioBlobUri(audioEntry);
         var audio = await _audioDownloader
-            .Download(audioBlobUri, skipTo, stripWebm: true, cancellationToken)
+            .Download(audioBlobUri, skipTo, cancellationToken)
             .ConfigureAwait(false);
-        var audioWithoutWebM = audio.StripWebM(cancellationToken);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
-        await playback.Play(trackInfo, audioWithoutWebM, playAt, cancellationToken).ConfigureAwait(false);
+        await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
     public ValueTask DisposeAsync()

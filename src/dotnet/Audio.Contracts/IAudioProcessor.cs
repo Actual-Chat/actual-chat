@@ -4,6 +4,6 @@ public interface IAudioProcessor
 {
     Task ProcessAudio(
         AudioRecord record,
-        IAsyncEnumerable<byte[]> recordingStream,
+        IAsyncEnumerable<AudioFrame> recordingStream,
         CancellationToken cancellationToken);
 }

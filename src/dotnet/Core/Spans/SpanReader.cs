@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
 
-namespace ActualChat.Audio.WebM;
+namespace ActualChat.Spans;
 
 public ref struct SpanReader
 {
@@ -155,9 +155,8 @@ public ref struct SpanReader
             return new Union { UInt = (uint)num.Value }.Float;
         case 8:
             return (float?)new Union { ULong = num.Value }.Double;
-        // throw new NotSupportedException("Unable to read double (8-byte length)");
         default:
-            throw new EbmlDataFormatException("Incorrect float length");
+            throw new InvalidOperationException("Incorrect float length");
         }
     }
 

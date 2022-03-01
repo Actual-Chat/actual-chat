@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Audio.WebM.Models;
+﻿using ActualChat.Spans;
+
+namespace ActualChat.Audio.WebM.Models;
 
 public sealed class EncryptedBlock : Block
 {
