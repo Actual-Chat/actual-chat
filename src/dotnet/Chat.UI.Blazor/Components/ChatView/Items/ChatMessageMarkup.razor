@@ -51,12 +51,14 @@
             if (playbackState == null || playbackState.IsCompleted || partTimeRange.IsEmpty)
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 
-            var trackInfo = (ChatAudioTrackInfo) playbackState.Command.TrackInfo;
+#warning TODO: FIX THIS
+            var playingAt = playbackState.PlayingAt.TotalSeconds;
+            /* var trackInfo = (ChatAudioTrackInfo) playbackState.Command.TrackInfo;
             var audioEntry = trackInfo.AudioEntry;
             var playingAt = (trackInfo.RecordedAt + playbackState.PlayingAt - audioEntry.BeginsAt).TotalSeconds;
             var playingAtNearbyRange = new Range<double>(playingAt - 2, playingAt + 2);
             if (!playingAtNearbyRange.Overlaps(part.TimeRange))
-                return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
+                return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>; */
 
             return @<PlainTextPartView Entry="@Model.Entry" Part="@part" PlayingAt="@playingAt"/>;
         }

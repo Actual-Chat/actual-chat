@@ -72,10 +72,10 @@
         var model = new Model();
         var authorIds = model.AuthorIds;
         foreach (var playbackState in playbackStates) {
-            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.Command.TrackId, cancellationToken);
+            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
                 continue;
-            var trackInfo = (ChatAudioTrackInfo) actualPlaybackState.Command.TrackInfo;
+            var trackInfo = (ChatAudioTrackInfo) playbackState.TrackInfo;
             model.PlayingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
             var authorId = trackInfo.AudioEntry.AuthorId;
             if (!authorIds.Contains(authorId))
