@@ -54,14 +54,9 @@ public class ChatPlayer : IAsyncDisposable
     }
 
     // TODO: maybe we can refactor this & merge historical and realtime player or move them out like IChatEntryProvider
-    public Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken)
-    {
-        var runningTask = PlaybackState.Value.Run(cancellationToken);
-        _ = isRealtime
-            ? PlayRealtime(startAt, cancellationToken)
-            : PlayHistorical(startAt, cancellationToken);
-        return runningTask;
-    }
+    public Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken) => isRealtime
+        ? PlayRealtime(startAt, cancellationToken)
+        : PlayHistorical(startAt, cancellationToken);
 
     private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)
     {
@@ -150,7 +145,7 @@ public class ChatPlayer : IAsyncDisposable
         }
     }
 
-    public void Stop() => PlaybackState.Value.StopPlaying();
+    public void Stop() => PlaybackState.Value.Stop();
 
     protected async ValueTask EnqueueEntry(
             Playback playback,
