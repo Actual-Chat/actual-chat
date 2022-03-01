@@ -16,11 +16,11 @@ public sealed class AudioSegmentSaver : AudioProcessorBase
     {
         var streamIndex = closedAudioSegment.StreamId.Replace(
             $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".webm");
+        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".opuss");
 
+        var streamAdapter = new ActualOpusStreamAdapter(Log);
         var audioSource = closedAudioSegment.Audio;
-        var audioStream = audioSource.GetFrames(cancellationToken);
-        var byteStream = audioStream.ToByteStream(audioSource.Format, cancellationToken);
+        var byteStream = streamAdapter.Write(audioSource, cancellationToken);
         var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
         await blobStorage.UploadByteStream(blobId, byteStream, cancellationToken).ConfigureAwait(false);
         return blobId;

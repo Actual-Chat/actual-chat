@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Audio.WebM.Models;
+﻿using ActualChat.Spans;
+
+namespace ActualChat.Audio.WebM.Models;
 
 /// <summary>
 ///     http://matroska.sourceforge.net/technical/specs/index.html#block_structure
@@ -10,42 +12,35 @@ public class Block : BaseModel, IParseRawBinary
 
     public override EbmlElementDescriptor Descriptor => MatroskaSpecification.BlockDescriptor;
 
-    /// <summary>
-    ///     Track Number (Track Entry)
-    /// </summary>
-    public ulong TrackNumber { get; private set; }
-
-    public byte Flags { get; private set; }
+    public ulong TrackNumber { get;  set; }
+    public byte Flags { get; protected set; }
 
     /// <summary>
     ///     Number of frames in the lace-1 (uint8)
     /// </summary>
-    public int NumFrames { get; private set; }
+    public int NumFrames { get; set; }
 
     /// <summary>
     ///     Lace-coded size of each frame of the lace, except for the last one (multiple uint8).
     ///     *This is not used with Fixed-size lacing as it is calculated automatically from (total size of lace) / (number of
     ///     frames in lace).
     /// </summary>
-    public byte LaceCodedSizeOfEachFrame { get; private set; }
-
-    /// <summary>
-    ///     Timecode (relative to Cluster timecode, signed int16)
-    /// </summary>
+    public byte LaceCodedSizeOfEachFrame { get; set; }
     public short TimeCode { get; set; }
+    public bool IsInvisible  {
+        get => (Flags & InvisibleBit) == InvisibleBit;
+        set => Flags = (byte)(value
+            ? Flags | InvisibleBit
+            : Flags & ~InvisibleBit);
+    }
 
-    /// <summary>
-    ///     Invisible, the codec should decode this frame but not display it
-    /// </summary>
-    public bool IsInvisible { get; private set; }
-
-    /// <summary>
-    ///     Lacing
-    /// </summary>
-    public Lacing Lacing { get; private set; }
+    public Lacing Lacing {
+        get => (Lacing)(Flags & LacingBits);
+        set => Flags = (byte)((byte)(Flags & ~LacingBits) | ((byte)value & LacingBits));
+    }
 
     // TODO(AK): [OPTIMIZE] Try to get rid of byte array and replace with e.g. Memory<byte>
-    public byte[]? Data { get; private set; }
+    public byte[]? Data { get; set; }
 
     public virtual void Parse(ReadOnlySpan<byte> span)
     {
