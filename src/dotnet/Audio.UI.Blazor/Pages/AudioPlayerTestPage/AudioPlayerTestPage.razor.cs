@@ -47,7 +47,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public async Task OnToggleClick()
     {
         if (_isPlaying) {
-            Log.LogInformation("Stop playing");
+            Log.LogInformation("StopTask playing");
             _cts?.CancelAndDisposeSilently();
             _cts = null;
             _isPlaying = false;

@@ -13,13 +13,16 @@ public sealed class Playback : IAsyncDisposable
     private readonly ITrackPlayerFactory _trackPlayerFactory;
     private readonly Channel<IPlaybackCommand> _commands;
     private int _isDisposed;
-    private int _isRunning;
-    private Task? _runningTask;
+    private Task? _commandLoopTask;
     private CancellationTokenSource? _cancellationTokenSource;
     private TaskSource<bool>? _whenCompleted;
     private readonly object _locker = new();
+    private readonly object _runLocker = new();
 
     public readonly IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState;
+    /// <summary>
+    /// Is <see langword="true" /> if <see cref="PlayTrackCommand"/> is enqueued or a track is actually being played.
+    /// </summary>
     public readonly IMutableState<bool> IsPlayingState;
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
@@ -39,34 +42,38 @@ public sealed class Playback : IAsyncDisposable
         _log = log;
     }
 
-    public Task Run(CancellationToken cancellationToken = default)
+    private void RunCommandLoopIfNeeded()
     {
-        if (_isDisposed == 1)
-            throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(TrackPlayer)));
+        if (_commandLoopTask != null)
+            return;
+        lock (_runLocker) {
+            if (_commandLoopTask != null)
+                return;
 
-        if (Interlocked.CompareExchange(ref _isRunning, 1, 0) == 1)
-            throw new LifetimeException("Playback is already running.");
-        _whenCompleted = TaskSource.New<bool>(runContinuationsAsynchronously: true);
-        _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
-        _runningTask = RunInternal(_cancellationTokenSource.Token)
-                    .ContinueWith(task => {
-                        _cancellationTokenSource?.Dispose();
-                        _cancellationTokenSource = null;
-                        var exception = task.Exception?.InnerException ?? task.Exception;
-                        if (exception != null)
-                            _whenCompleted?.TrySetException(exception);
-                        else
-                            _whenCompleted?.TrySetResult(default);
-                        _whenCompleted = null;
-                        _runningTask = null;
-                        if (Interlocked.CompareExchange(ref _isRunning, 0, 1) == 0)
-                            throw new LifetimeException("Trying to stop playback, while playing wasn't started.");
-                        IsPlayingState.Value = false;
-                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-        return _runningTask;
+            if (_isDisposed == 1)
+                throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(TrackPlayer)));
+
+            _whenCompleted = TaskSource.New<bool>(runContinuationsAsynchronously: true);
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping);
+            _commandLoopTask = CommandLoop(_cancellationTokenSource.Token)
+                        .ContinueWith(task => {
+                            lock (_runLocker) {
+                                _cancellationTokenSource?.Dispose();
+                                _cancellationTokenSource = null;
+                                var exception = task.Exception?.InnerException ?? task.Exception;
+                                if (exception != null)
+                                    _whenCompleted?.TrySetException(exception);
+                                else
+                                    _whenCompleted?.TrySetResult(default);
+                                _whenCompleted = null;
+                                _commandLoopTask = null;
+                                IsPlayingState.Value = false;
+                            }
+                        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
     }
 
-    internal async Task RunInternal(CancellationToken cancellationToken)
+    internal async Task CommandLoop(CancellationToken cancellationToken)
     {
         var trackPlayers = new ConcurrentDictionary<PlayTrackCommand, (TrackPlayer Player, Task RunningTask)>();
         try {
@@ -120,38 +127,37 @@ public sealed class Playback : IAsyncDisposable
                 await player.DisposeAsync().ConfigureAwait(false);
             }
         }
-
         Task WhenAllPlayers() => Task.WhenAll(trackPlayers.Values.Select(x => x.RunningTask).ToArray());
     }
-    public void Stop() => _cancellationTokenSource?.Cancel();
 
     private ValueTask EnqueueCommand(IPlaybackCommand command, CancellationToken cancellationToken = default)
     {
         if (_isDisposed == 1)
             throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(Playback)));
-        if (_isRunning == 0)
-            throw new LifetimeException($"Trying to enqueue command: {command} while playback isn't running.");
+        RunCommandLoopIfNeeded();
         return _commands.Writer.WriteAsync(command, cancellationToken);
     }
 
-    public ValueTask Play(
+    public async ValueTask Play(
         TrackInfo trackInfo,
         IMediaSource source,
         Moment playAt, // By CpuClock
         CancellationToken cancellationToken = default)
     {
         var command = new PlayTrackCommand(trackInfo, source) { PlayAt = playAt };
-        return EnqueueCommand(command, cancellationToken);
+        await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
+        // we don't wait to actual playing for this flag (but if it's needed you can remove this line and it will wait)
+        IsPlayingState.Value = true;
     }
 
-    public ValueTask StopPlaying(CancellationToken cancellationToken = default)
+    public ValueTask Stop(CancellationToken cancellationToken = default)
         => EnqueueCommand(StopCommand.Instance, cancellationToken);
 
     private async ValueTask DisposeAsyncCore()
     {
-        var playing = Interlocked.Exchange(ref _runningTask, null);
+        var playing = Interlocked.Exchange(ref _commandLoopTask, null);
         if (playing != null) {
-            Stop();
+            _cancellationTokenSource?.Cancel();
             try {
                 await playing.ConfigureAwait(false);
             }
@@ -184,11 +190,17 @@ public sealed class Playback : IAsyncDisposable
         if (!prev.IsStarted && state.IsStarted) {
             lock (_locker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.Insert(0, (trackInfo, state));
+                if (!IsPlayingState.Value) {
+                    IsPlayingState.Value = true;
+                }
             }
         }
         else if (state.IsCompleted && !prev.IsCompleted) {
             lock (_locker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
+                if (PlayingTracksState.Value.Count == 0) {
+                    IsPlayingState.Value = false;
+                }
             }
         }
     }
