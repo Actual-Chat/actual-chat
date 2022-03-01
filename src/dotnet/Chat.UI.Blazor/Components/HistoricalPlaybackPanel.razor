@@ -53,7 +53,7 @@
 
     // TODO: fix this
     protected override async Task OnInitializedAsync()
-        => Player = ChatController.GetPlayer(Chat.Id, Symbol.Empty);
+        => Player = ChatController.GetPlayer(Chat.Id);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };

@@ -1,4 +1,5 @@
 ﻿using ActualChat.Hosting;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
 namespace ActualChat.MediaPlayback.Module;
@@ -13,6 +14,8 @@ public class PlaybackModule : HostModule
     {
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
+
+        services.TryAddScoped<IPlaybackFactory, PlaybackFactory>();
 
         var fusion = services.AddFusion();
         fusion.AddComputeService<IActivePlaybackInfo, ActivePlaybackInfo>(ServiceLifetime.Scoped);

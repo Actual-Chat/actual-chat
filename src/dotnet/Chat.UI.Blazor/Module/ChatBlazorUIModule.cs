@@ -28,10 +28,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        #warning FIX LIFETIME BUGS and leaks with transient IDisposable and so on
+
         services.TryAddScoped<ChatController>();
         services.TryAddScoped<IChatPlayerFactory, ChatPlayerFactory>();
-        services.TryAddTransient<Playback>();
 
         services.RegisterNavItems<ChatLinks>();
     }

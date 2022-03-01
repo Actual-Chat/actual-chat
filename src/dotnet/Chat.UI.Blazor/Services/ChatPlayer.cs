@@ -14,7 +14,7 @@ public class ChatPlayer : IAsyncDisposable
     private readonly MomentClockSet _clocks;
     private readonly Session _session;
     private readonly IChats _chats;
-
+    private int _isDisposed;
     /// <summary>
     /// Once enqueued, playback loop continues, so the larger is this duration,
     /// the higher is the chance to enqueue the next entry on time.
@@ -28,8 +28,8 @@ public class ChatPlayer : IAsyncDisposable
 
     public ChatPlayer(
         Symbol chatId,
+        IPlaybackFactory playbackFactory,
         IStateFactory stateFactory,
-        Playback playback,
         AudioDownloader audioDownloader,
         ILogger<ChatPlayer> log,
         IChatMediaResolver mediaResolver,
@@ -41,7 +41,7 @@ public class ChatPlayer : IAsyncDisposable
         )
     {
         PlaybackState = stateFactory.NewMutable<Playback>();
-        PlaybackState.Value = playback;
+        PlaybackState.Value = playbackFactory.Create();
         _chatId = chatId;
         _audioDownloader = audioDownloader;
         _log = log;
@@ -223,9 +223,14 @@ public class ChatPlayer : IAsyncDisposable
         await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
-    public ValueTask DisposeAsync()
+    protected virtual ValueTask DisposeAsyncCore()
+        => PlaybackState.Value.DisposeAsync();
+
+    public async ValueTask DisposeAsync()
     {
-        // TODO: implement
-        return default;
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 1)
+            return;
+        await DisposeAsyncCore().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
     }
 }

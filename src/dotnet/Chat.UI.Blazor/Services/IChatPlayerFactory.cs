@@ -3,28 +3,51 @@ using ActualChat.MediaPlayback;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
+/// <summary> Must be scoped service. </summary>
 public interface IChatPlayerFactory
 {
-    ChatPlayer Create(Symbol chatId, Symbol userId);
+    ChatPlayer Create(Symbol chatId);
 }
 
-public class ChatPlayerFactory : IChatPlayerFactory
+/// <inheritdoc cref="IChatPlayerFactory"/>
+internal class ChatPlayerFactory : IChatPlayerFactory
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IStateFactory _stateFactory;
+    private readonly IPlaybackFactory _playbackFactory;
+    private readonly AudioDownloader _audioDownloader;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly IChatMediaResolver _mediaResolver;
+    private readonly IAudioStreamer _audioStreamer;
+    private readonly IChatAuthors _chatAuthors;
+    private readonly MomentClockSet _clockSet;
+    private readonly Session _session;
+    private readonly IChats _chats;
 
-    public ChatPlayerFactory(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
+    public ChatPlayerFactory(IStateFactory stateFactory, IPlaybackFactory playbackFactory, AudioDownloader audioDownloader, ILoggerFactory loggerFactory, IChatMediaResolver chatMediaResolver, IAudioStreamer audioStreamer, IChatAuthors chatAuthors, MomentClockSet clockSet, Session session, IChats chats)
+    {
+        _stateFactory = stateFactory;
+        _playbackFactory = playbackFactory;
+        _audioDownloader = audioDownloader;
+        _loggerFactory = loggerFactory;
+        _mediaResolver = chatMediaResolver;
+        _audioStreamer = audioStreamer;
+        _chatAuthors = chatAuthors;
+        _clockSet = clockSet;
+        _session = session;
+        _chats = chats;
+    }
 
-    public ChatPlayer Create(Symbol chatId, Symbol userId) => new(
+    public ChatPlayer Create(Symbol chatId) => new(
         chatId,
-        _serviceProvider.GetRequiredService<IStateFactory>(),
-        _serviceProvider.GetRequiredService<Playback>(),
-        _serviceProvider.GetRequiredService<AudioDownloader>(),
-        _serviceProvider.GetRequiredService<ILogger<ChatPlayer>>(),
-        _serviceProvider.GetRequiredService<IChatMediaResolver>(),
-        _serviceProvider.GetRequiredService<IAudioStreamer>(),
-        _serviceProvider.GetRequiredService<IChatAuthors>(),
-        _serviceProvider.GetRequiredService<MomentClockSet>(),
-        _serviceProvider.GetRequiredService<Session>(),
-        _serviceProvider.GetRequiredService<IChats>()
+        _playbackFactory,
+        _stateFactory,
+        _audioDownloader,
+        _loggerFactory.CreateLogger<ChatPlayer>(),
+        _mediaResolver,
+        _audioStreamer,
+        _chatAuthors,
+        _clockSet,
+        _session,
+        _chats
     );
 }
