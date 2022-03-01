@@ -16,7 +16,7 @@ public sealed class AudioSegmentSaver : AudioProcessorBase
     {
         var streamIndex = closedAudioSegment.StreamId.Replace(
             $"{closedAudioSegment.AudioRecord.Id}-", "", StringComparison.Ordinal);
-        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".webm");
+        var blobId = BlobPath.Format(BlobScope.AudioRecord, closedAudioSegment.AudioRecord.Id, streamIndex + ".opuss");
 
         var streamAdapter = new ActualOpusStreamAdapter(Log);
         var audioSource = closedAudioSegment.Audio;
