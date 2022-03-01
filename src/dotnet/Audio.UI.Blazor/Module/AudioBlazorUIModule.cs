@@ -19,5 +19,6 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
             return; // Blazor UI only module
 
         services.AddScoped<ITrackPlayerFactory, AudioTrackPlayerFactory>();
+        services.AddTransient<Playback>();
     }
 }

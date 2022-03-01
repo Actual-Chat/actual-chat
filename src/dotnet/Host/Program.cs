@@ -15,7 +15,15 @@ internal static class Program
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
         using var appHost = new AppHost();
-        await appHost.Build().ConfigureAwait(false);
+        try {
+            await appHost.Build().ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Can't build application host. Exception: {ex}");
+            Console.ResetColor();
+        }
+
         Constants.HostInfo = appHost.Services.GetRequiredService<HostInfo>();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
