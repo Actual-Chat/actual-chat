@@ -51,11 +51,11 @@
 
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
-        var playback = historicalPlayer.Playback;
-        if (playback is { IsPlaying: true }) {
-            await historicalPlayer.Stop().ConfigureAwait(true);
+        var chatController = Services.GetRequiredService<ChatController>();
+        var historicalPlayer = chatController.GetPlayer(chatId, Symbol.Empty);
+        var playback = historicalPlayer.PlaybackState.Value;
+        if (playback is { IsPlayingState.Value: true }) {
+            historicalPlayer.Stop();
             return;
         }
 
@@ -69,7 +69,7 @@
         var startOffset = Math.Max(0, part.TimeRange.Start - 0.25);
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
         _ = BackgroundTask.Run(
-            () => historicalPlayer.Play(startAt),
+            () => historicalPlayer.Play(startAt, isRealtime: false, default),
             Log, "Historical playback failed");
     }
 }

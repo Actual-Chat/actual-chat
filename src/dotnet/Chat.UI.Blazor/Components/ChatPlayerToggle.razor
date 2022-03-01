@@ -31,14 +31,17 @@
         return isPlaying;
     }
 
-    private Task Toggle() {
-        var isPlaying = Player.PlaybackState.Value is { IsPlaying: true };
-        return isPlaying ? Stop() : Play();
+    private async Task Toggle() {
+        var isPlaying = Player.PlaybackState.Value is { IsPlayingState.Value: true };
+        if(isPlaying)
+         Stop();
+        else
+         await Play();
     }
 
     private Task Play()
-        => Player.Play(Clocks.SystemClock.Now);
+        => Player.Play(Clocks.SystemClock.Now, isRealtime: true, default);
 
-    private Task Stop()
+    private void Stop()
         => Player.Stop();
 }

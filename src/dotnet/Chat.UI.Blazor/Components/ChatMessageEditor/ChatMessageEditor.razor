@@ -42,9 +42,9 @@
                     <AudioRecorder ChatId="@Chat.Id"
                                    RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
-                @if (RealtimePlayer != null!) {
+                @if (Player != null!) {
                     <div class="chat-control-button player-button w-1/2 flex">
-                        <ChatPlayerToggle Player="RealtimePlayer"/>
+                        <ChatPlayerToggle Player="Player"/>
                     </div>
                 }
             </div>
@@ -68,7 +68,7 @@
 
     // TODO: fix
     protected override async Task OnInitializedAsync()
-        => Player = await ChatController.GetPlayer(Chat.Id, Symbol.None);
+        => Player = ChatController.GetPlayer(Chat.Id, Symbol.Empty);
 
     public async ValueTask DisposeAsync()
     {
@@ -110,11 +110,11 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        var isPlaying = RealtimePlayer.Playback is { IsPlaying: true };
+        var isPlaying = Player.PlaybackState.Value is { IsPlayingState.Value: true };
         if (isPlaying)
             return Task.CompletedTask;
         // We don't need to await for this here
-        _ = RealtimePlayer.Play(_clocks.SystemClock.Now);
+        _ = Player.Play(_clocks.SystemClock.Now, isRealtime: true, default);
         return Task.CompletedTask;
     }
 }
