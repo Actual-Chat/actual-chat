@@ -7,5 +7,6 @@ public interface IActivePlaybackInfo
         Symbol trackId,
         CancellationToken cancellationToken);
 
+    // TODO: change trackId to TrackInfo ?
     void RegisterStateChange(Symbol trackId, PlayerState state);
 }

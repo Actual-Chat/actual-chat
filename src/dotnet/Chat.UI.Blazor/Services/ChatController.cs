@@ -3,7 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 /// <summary> Must be scoped service. </summary>
 public sealed class ChatController : IAsyncDisposable
 {
-    private readonly ConcurrentDictionary<Symbol, ChatPlayer> _players = new();
+    private readonly ConcurrentDictionary<Symbol, Lazy<ChatPlayer>> _players = new();
     private readonly IChatPlayerFactory _factory;
     private readonly ILogger<ChatController> _log;
     private int _isDisposed;
@@ -14,13 +14,15 @@ public sealed class ChatController : IAsyncDisposable
         _factory = factory;
     }
 
-    public ChatPlayer GetPlayer(ChatAuthor author) => GetPlayer(author.ChatId, author.UserId);
-
-    public ChatPlayer GetPlayer(Symbol chatId, Symbol userId)
+    public ChatPlayer GetPlayer(Symbol chatId)
     {
         if (_isDisposed == 1)
             throw new ObjectDisposedException(nameof(ChatController));
-        return _players.GetOrAdd(chatId, static (key, arg) => arg.self._factory.Create(key, arg.userId), new { self = this, userId });
+        return _players.GetOrAdd(
+            chatId,
+            static (key, self) => new Lazy<ChatPlayer>(() => self._factory.Create(key)),
+            this
+        ).Value;
     }
 
     /// <summary> Disposes all resources allocated for <paramref name="chatId"/> </summary>
@@ -29,7 +31,7 @@ public sealed class ChatController : IAsyncDisposable
         if (_isDisposed == 1)
             throw new ObjectDisposedException(nameof(ChatController));
         if (_players.TryRemove(chatId, out var player)) {
-            await player.DisposeAsync().ConfigureAwait(false);
+            await player.Value.DisposeAsync().ConfigureAwait(false);
         }
     }
 
@@ -41,7 +43,7 @@ public sealed class ChatController : IAsyncDisposable
         GC.SuppressFinalize(this);
 
         var playerDisposeTasks = _players
-            .Select(kv => DisposePlayer(kv.Key, kv.Value))
+            .Select(kv => DisposePlayer(kv.Key, kv.Value.Value))
             .ToArray();
 
         _players.Clear();

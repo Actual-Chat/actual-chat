@@ -68,7 +68,7 @@
 
     // TODO: fix
     protected override async Task OnInitializedAsync()
-        => Player = ChatController.GetPlayer(Chat.Id, Symbol.Empty);
+        => Player = ChatController.GetPlayer(Chat.Id);
 
     public async ValueTask DisposeAsync()
     {

@@ -9,7 +9,7 @@ public sealed class Playback : IAsyncDisposable
 {
     private readonly ILogger<Playback> _log;
     private readonly CancellationToken _applicationStopping;
-    private readonly IActivePlaybackInfo _activePlaybackInfo;
+
     private readonly ITrackPlayerFactory _trackPlayerFactory;
     private readonly Channel<IPlaybackCommand> _commands;
     private int _isDisposed;
@@ -22,11 +22,9 @@ public sealed class Playback : IAsyncDisposable
     public readonly IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState;
     public readonly IMutableState<bool> IsPlayingState;
 
-    public Playback(
-        IStateFactory stateFactory,
-        IActivePlaybackInfo activePlaybackInfo,
-        ITrackPlayerFactory trackPlayerFactory,
-        ILogger<Playback> log)
+    public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
+
+    internal Playback(IStateFactory stateFactory, ITrackPlayerFactory trackPlayerFactory, ILogger<Playback> log)
     {
         _commands = Channel.CreateBounded<IPlaybackCommand>(
             new BoundedChannelOptions(128) {
@@ -37,8 +35,6 @@ public sealed class Playback : IAsyncDisposable
             });
         PlayingTracksState = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
         IsPlayingState = stateFactory.NewMutable(false);
-
-        _activePlaybackInfo = activePlaybackInfo;
         _trackPlayerFactory = trackPlayerFactory;
         _log = log;
     }
@@ -131,6 +127,8 @@ public sealed class Playback : IAsyncDisposable
 
     private ValueTask EnqueueCommand(IPlaybackCommand command, CancellationToken cancellationToken = default)
     {
+        if (_isDisposed == 1)
+            throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(Playback)));
         if (_isRunning == 0)
             throw new LifetimeException($"Trying to enqueue command: {command} while playback isn't running.");
         return _commands.Writer.WriteAsync(command, cancellationToken);
@@ -158,8 +156,9 @@ public sealed class Playback : IAsyncDisposable
                 await playing.ConfigureAwait(false);
             }
             catch { }
-            finally{
+            finally {
                 _commands.Writer.TryComplete();
+                OnTrackPlayingChanged = null;
             }
         }
         /// <see cref="_cancellationTokenSource"/> will be disposed by the continuation
@@ -176,7 +175,12 @@ public sealed class Playback : IAsyncDisposable
     private void TrackPlayerStateChanged(TrackInfo trackInfo, PlayerStateChangedEventArgs args)
     {
         var (prev, state) = args;
-        _activePlaybackInfo.RegisterStateChange(trackInfo.TrackId, state);
+        try {
+            OnTrackPlayingChanged?.Invoke(trackInfo, state);
+        }
+        catch (Exception ex) {
+            _log.LogError(ex, $"Unhandled exception in {nameof(OnTrackPlayingChanged)}");
+        }
         if (!prev.IsStarted && state.IsStarted) {
             lock (_locker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.Insert(0, (trackInfo, state));
