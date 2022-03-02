@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.MediaPlayback;
 
@@ -27,7 +28,7 @@ public sealed class Playback : IAsyncDisposable
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
-    internal Playback(IStateFactory stateFactory, ITrackPlayerFactory trackPlayerFactory, ILogger<Playback> log)
+    internal Playback(IHostApplicationLifetime lifetime, IStateFactory stateFactory, ITrackPlayerFactory trackPlayerFactory, ILogger<Playback> log)
     {
         _commands = Channel.CreateBounded<IPlaybackCommand>(
             new BoundedChannelOptions(128) {
@@ -39,6 +40,7 @@ public sealed class Playback : IAsyncDisposable
         PlayingTracksState = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
         IsPlayingState = stateFactory.NewMutable(false);
         _trackPlayerFactory = trackPlayerFactory;
+        _applicationStopping = lifetime.ApplicationStopping;
         _log = log;
     }
 
