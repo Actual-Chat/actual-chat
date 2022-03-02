@@ -3,15 +3,18 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Feedback;
 
-public class FeedbackService : DbServiceBase<FeedbackDbContext>, IFeedback
+public class Feedbacks : DbServiceBase<FeedbackDbContext>, IFeedbacks
 {
     private readonly IAuth _auth;
 
-    public FeedbackService(IServiceProvider services, IAuth auth) : base(services)
+    public Feedbacks(IServiceProvider services, IAuth auth) : base(services)
         => _auth = auth;
 
-    public virtual async Task CreateFeatureRequest(IFeedback.FeatureRequestCommand command, CancellationToken cancellationToken)
+    public virtual async Task CreateFeatureRequest(IFeedbacks.FeatureRequestCommand command, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return;
+
         var (session, feature) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         var userId = user.IsAuthenticated ? user.Id.ToString() : "";
@@ -27,7 +30,6 @@ public class FeedbackService : DbServiceBase<FeedbackDbContext>, IFeedback
             CreatedAt = Clocks.SystemClock.Now,
             Version = VersionGenerator.NextVersion(),
             Rating = command.Rating,
-            AnswerId = command.AnswerId,
             Comment = command.Comment
         };
 

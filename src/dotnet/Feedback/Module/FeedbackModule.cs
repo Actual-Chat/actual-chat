@@ -43,11 +43,11 @@ public class FeedbackModule : HostModule<FeedbackSettings>
                 return true;
             // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(IFeedback.FeatureRequestCommand).Assembly)
+            if (commandAssembly == typeof(IFeedbacks.FeatureRequestCommand).Assembly)
                 return true;
             return false;
         });
 
-        fusion.AddComputeService<IFeedback, FeedbackService>();
+        fusion.AddComputeService<IFeedbacks, Feedbacks>();
     }
 }

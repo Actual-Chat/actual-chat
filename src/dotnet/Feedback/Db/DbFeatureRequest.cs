@@ -22,8 +22,6 @@ public class DbFeatureRequest : IHasId<string>, IHasVersion<long>
 
     public int Rating { get; set; }
 
-    public int AnswerId { get; set; }
-
     public string Comment { get; set; } = "";
 
     public DateTime CreatedAt {

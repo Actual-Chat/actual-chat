@@ -117,6 +117,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback", "src\dotnet\Feed
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Contracts", "src\dotnet\Feedback.Contracts\Feedback.Contracts.csproj", "{F7AD92BE-C91F-4877-81E5-CC225CFA445E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Client", "src\dotnet\Feedback.Client\Feedback.Client.csproj", "{4BA1F384-E989-4738-B5E4-7430D712D710}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -303,6 +305,10 @@ Global
 		{F7AD92BE-C91F-4877-81E5-CC225CFA445E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F7AD92BE-C91F-4877-81E5-CC225CFA445E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F7AD92BE-C91F-4877-81E5-CC225CFA445E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4BA1F384-E989-4738-B5E4-7430D712D710}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4BA1F384-E989-4738-B5E4-7430D712D710}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4BA1F384-E989-4738-B5E4-7430D712D710}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4BA1F384-E989-4738-B5E4-7430D712D710}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -354,6 +360,7 @@ Global
 		{3E02F0CC-0AC2-4C00-BDE2-A97C78C1AABF} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{3722521C-A1B0-4966-B6FB-49CD434C707B} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{F7AD92BE-C91F-4877-81E5-CC225CFA445E} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{4BA1F384-E989-4738-B5E4-7430D712D710} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

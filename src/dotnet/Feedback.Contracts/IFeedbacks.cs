@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Feedback;
 
-public interface IFeedback
+public interface IFeedbacks
 {
     [CommandHandler]
     public Task CreateFeatureRequest(FeatureRequestCommand command, CancellationToken cancellationToken);
@@ -8,7 +8,6 @@ public interface IFeedback
     public record FeatureRequestCommand(Session Session, string Feature) : ISessionCommand<Unit>
     {
         public int Rating { get; init; }
-        public int AnswerId { get; init; }
         public string Comment { get; init; } = "";
     }
 }
