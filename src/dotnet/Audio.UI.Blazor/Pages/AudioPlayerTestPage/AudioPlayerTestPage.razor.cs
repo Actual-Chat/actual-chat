@@ -1,6 +1,5 @@
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
-using Storage.NetCore.Blobs;
 
 namespace ActualChat.Audio.UI.Blazor.Pages;
 
@@ -124,7 +123,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [JSInvokable]
     public async Task OnPlaybackEnded(string? errorMessage)
     {
-        Log.LogInformation("OnPlaybackEnded(errorMessage={ErrorMessage})", errorMessage);
+        Log.LogInformation("OnPlaybackEnded(msg:{ErrorMessage})", errorMessage);
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
             await _registration.DisposeAsync().ConfigureAwait(true);
@@ -134,7 +133,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     [JSInvokable]
     public Task OnPlaybackTimeChanged(double offset)
     {
-        if (false) {
+        if (true) {
             Log.LogInformation("OnPlaybackTimeChanged(offset={Offset}s)", offset);
         }
         _offset = offset;
