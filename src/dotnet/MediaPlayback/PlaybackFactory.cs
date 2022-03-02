@@ -37,7 +37,7 @@ public class PlaybackFactory : IPlaybackFactory
         // don't capture `this`, just in case
         var activePlaybackInfo = _activePlaybackInfo;
         playback.OnTrackPlayingChanged += (trackInfo, state) => {
-            activePlaybackInfo.RegisterStateChange(trackInfo.TrackId, state);
+            activePlaybackInfo.RegisterStateChange(trackInfo, state);
         };
         return playback;
     }
