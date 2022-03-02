@@ -1,16 +1,14 @@
 export interface EncoderMessage {
-    type: 'load' | 'init' | 'done';
+    type: 'create' | 'init' | 'end';
     callbackId: number;
 }
 
-export interface LoadModuleMessage extends EncoderMessage {
-    type: 'load';
-    mimeType: 'audio/webm';
-    wasmPath: string;
+export interface CreateEncoderMessage extends EncoderMessage {
+    type: 'create';
     audioHubUrl: string;
 }
 
-export interface InitNewStreamMessage extends EncoderMessage {
+export interface InitEncoderMessage extends EncoderMessage {
     type: 'init';
     channelCount: number;
     bitsPerSecond: number;
@@ -19,6 +17,6 @@ export interface InitNewStreamMessage extends EncoderMessage {
     debugMode: boolean;
 }
 
-export interface DoneMessage extends EncoderMessage {
-    type: 'done';
+export interface EndMessage extends EncoderMessage {
+    type: 'end';
 }

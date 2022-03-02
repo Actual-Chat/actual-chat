@@ -26,7 +26,6 @@
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
     "ifdef-loader": "^2.3.2",
     "mini-css-extract-plugin": "^2.4.6",
-    "opus-media-recorder": "^0.8.0",
     "postcss-loader": "^6.2.1",
     "prettier": "^2.5.1",
     "tailwindcss": "^3.0.12",

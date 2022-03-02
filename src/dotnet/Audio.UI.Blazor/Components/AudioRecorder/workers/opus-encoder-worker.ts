@@ -12,13 +12,15 @@ import * as signalR from '@microsoft/signalr';
 import { MessagePackHubProtocol } from '@microsoft/signalr-protocol-msgpack';
 import { ResolveCallbackMessage } from 'resolve-callback-message';
 
-import { DoneMessage, EncoderMessage, InitNewStreamMessage, LoadModuleMessage } from './opus-encoder-worker-message';
+import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } from './opus-encoder-worker-message';
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 
 /// #if MEM_LEAK_DETECTION
 console.info('MEM_LEAK_DETECTION == true');
 /// #endif
+
+// TODO: create wrapper around module for all workers
 
 let codecModule: Codec | null = null;
 const codecModuleReady = codec(getEmscriptenLoaderOptions()).then(val => {
@@ -44,8 +46,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     };
 }
 
-type WorkerState = 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'closed';
-
+// TODO: remove these types, use something like `const queue = new Denque<ArrayBuffer | number>();`
 interface QueueItem {
     type: 'buffer' | 'ended';
 }
@@ -63,33 +64,31 @@ const queue = new Denque<BufferQueueItem | EndQueueItem>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
-let state: WorkerState = 'inactive';
+let state: 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'closed' = 'inactive';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
-let lastNewStreamMessage: InitNewStreamMessage | null = null;
+let lastNewStreamMessage: InitEncoderMessage | null = null;
 let isEncoding = false;
 let debugMode = false;
 
 worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
     try {
-        const { type } = ev.data;
-        switch (type) {
-            case 'load':
-                await onLoadEncoder(ev.data as LoadModuleMessage, ev.ports[0], ev.ports[1]);
+        const msg = ev.data;
+        switch (msg.type) {
+            case 'create':
+                await onCreate(msg as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
                 break;
 
             case 'init':
-                await onInitNewStream(ev.data as InitNewStreamMessage);
+                await onInit(msg as InitEncoderMessage);
                 break;
 
-            case 'done':
-                onDone(ev.data as DoneMessage);
+            case 'end':
+                onEnd(msg as EndMessage);
                 break;
-
             default:
-                // Ignore
-                break;
+                throw new Error(`Encoder worker: Got unknown message type ${msg.type as string}`);
         }
     }
     catch (error) {
@@ -97,14 +96,14 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
     }
 };
 
-function onDone(message: DoneMessage) {
+function onEnd(message: EndMessage) {
     state = 'closed';
 
     queue.push({ type: 'ended', callbackId: message.callbackId });
     processQueue();
 }
 
-async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
+async function onInit(message: InitEncoderMessage): Promise<void> {
     const { sessionId, chatId, callbackId } = message;
     lastNewStreamMessage = message;
     debugMode = message.debugMode;
@@ -125,15 +124,15 @@ async function onInitNewStream(message: InitNewStreamMessage): Promise<void> {
     worker.postMessage(initCompletedMessage);
 }
 
-async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
+async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     if (workletPort != null) {
-        throw new Error(`EncoderWorker: workletPort has already been specified.`);
+        throw new Error('EncoderWorker: workletPort has already been specified.');
     }
     if (vadPort != null) {
-        throw new Error(`EncoderWorker: vadPort has already been specified.`);
+        throw new Error('EncoderWorker: vadPort has already been specified.');
     }
 
-    const { mimeType, wasmPath, audioHubUrl, callbackId } = message;
+    const { audioHubUrl, callbackId } = message;
     workletPort = workletMessagePort;
     vadPort = vadMessagePort;
     workletPort.onmessage = onWorkletMessage;
@@ -158,7 +157,7 @@ async function onLoadEncoder(message: LoadModuleMessage, workletMessagePort: Mes
     // Notify the host ready to accept 'init' message.
     const readyToInit: ResolveCallbackMessage = {
         callbackId
-    }
+    };
     worker.postMessage(readyToInit);
     state = 'readyToInit';
 }
@@ -221,7 +220,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             processQueue();
         }
     }
-    catch(error) {
+    catch (error) {
         console.error(error);
     }
 };
@@ -256,7 +255,7 @@ function processQueue(): void {
             const buffer = bufferQueueItem.buffer;
             const result = encoder.encode(buffer);
 
-            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer  };
+            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer };
             workletPort.postMessage(workletMessage, [buffer]);
 
             recordingSubject.next(result);
