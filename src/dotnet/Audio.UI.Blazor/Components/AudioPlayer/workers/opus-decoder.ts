@@ -59,14 +59,10 @@ export class OpusDecoder {
         console.warn('create', decoder);
         return new OpusDecoder(decoder, workletPort);
     }
-    // TODO: REMOVE THIS AFTER FIX REALTIME LIFETIME ISSUES
-    public init(header: ArrayBuffer): Promise<void> {
-        console.log('init', header);
+
+    public init(): void {
         console.assert(this.queue.length === 0, 'queue should be empty, check stop/reset logic');
-        // await this.decodeHeaderProcess(header);
-        // TODO: should call usual processing ? /no/
         this.state = 'waiting';
-        return Promise.resolve();
     }
 
     public pushData(data: ArrayBuffer): void {

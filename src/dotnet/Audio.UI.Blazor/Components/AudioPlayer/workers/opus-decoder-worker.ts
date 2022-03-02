@@ -14,7 +14,7 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
                 await onCreate(msg as CreateDecoderMessage);
                 break;
             case 'init':
-                await onInit(msg as InitDecoderMessage);
+                onInit(msg as InitDecoderMessage);
                 break;
             case 'data':
                 onData(msg as DataDecoderMessage);
@@ -58,14 +58,12 @@ async function onCreate(message: CreateDecoderMessage) {
         console.debug(`Decoder(controllerId:${controllerId}): end create`);
 }
 
-async function onInit(message: InitDecoderMessage): Promise<void> {
-    const { callbackId, controllerId, buffer, length, offset } = message;
+function onInit(message: InitDecoderMessage): void {
+    const { callbackId, controllerId } = message;
     const decoder = getDecoder(controllerId);
-    const data = buffer.slice(offset, offset + length);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): start init, header - ${data.byteLength} bytes`);
-    // TODO: REMOVE THIS AFTER FIX REALTIME PLAYBACK
-    await decoder.init(data);
+        console.debug(`Decoder(controllerId:${controllerId}): init`);
+    decoder.init();
 
     const msg: OperationCompletedDecoderWorkerMessage = {
         type: 'operationCompleted',

@@ -34,7 +34,9 @@ export class AudioPlayer {
         const controller = await this.controllerPool.get();
         if (AudioPlayer.debug)
             console.debug(`Created player with controllerId:${controller.id}`);
-        return new AudioPlayer(controller, blazorRef, debug);
+        const player = new AudioPlayer(controller, blazorRef, debug);
+        await player.init();
+        return player;
     }
 
     public constructor(controller: AudioPlayerController, blazorRef: DotNet.DotNetObject, debug: boolean) {
@@ -43,12 +45,12 @@ export class AudioPlayer {
         this.controller = controller;
     }
 
-    public init(header: Uint8Array): Promise<void> {
+    public init(): Promise<void> {
         const { debug, state } = this;
         this.state = 'initializing';
         console.assert(state === 'uninitialized', 'init: called in a wrong order');
 
-        this.initPromise = this.controller.init(header, {
+        this.initPromise = this.controller.init({
             onBufferLow: async () => {
                 if (this.isBufferFull) {
                     this.isBufferFull = false;

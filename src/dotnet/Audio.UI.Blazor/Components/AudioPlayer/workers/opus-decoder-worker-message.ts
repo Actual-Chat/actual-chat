@@ -15,9 +15,6 @@ export interface InitDecoderMessage extends DecoderMessage {
     type: 'init';
     controllerId: number,
     callbackId: number,
-    buffer: ArrayBuffer;
-    offset: number;
-    length: number;
 }
 
 export interface DataDecoderMessage extends DecoderMessage {
