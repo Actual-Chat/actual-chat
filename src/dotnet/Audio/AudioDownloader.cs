@@ -40,7 +40,7 @@ public class AudioDownloader
         if (head.StartsWith(WebMHeader))
             streamAdapter = new WebMStreamAdapter(audioLog);
         else if (head.StartsWith(ActualOpusStreamHeader))
-            streamAdapter = new WebMStreamAdapter(audioLog); //TODO(AK): implement actual opus stream adapter
+            streamAdapter = new ActualOpusStreamAdapter(audioLog);
         else
             throw new InvalidOperationException("Unsupported audio stream container");
 

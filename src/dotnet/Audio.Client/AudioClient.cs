@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualChat.SignalR.Client;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
