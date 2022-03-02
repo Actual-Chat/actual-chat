@@ -174,10 +174,15 @@ module.exports = (env, args) => {
           }
         },
         {
-          test: /\.map$/i,
+          test: /\.wasm\.map$/i,
           type: 'asset/resource',
           generator: {
-            filename: 'wasm/[name][ext][query]'
+            /*
+             * for some reason the browser (or the emscripten module loader (?))
+             * in one case ignores `locateFile` and attempts to load the source map from the directory of the script,
+             * therefore we can't put `.wasm.map` to the `wasm` subdirectory (it's used only for debugging so, it doesn't matter)
+             */
+            filename: '[name][ext][query]'
           }
         },
         {
