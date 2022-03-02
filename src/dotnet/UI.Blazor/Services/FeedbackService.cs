@@ -8,10 +8,10 @@ public class FeedbackService
 {
     private readonly Session _session;
     private readonly IModalService _modalService;
-    private readonly IFeedback _feedback;
+    private readonly IFeedbacks _feedback;
     private IModalReference? _modalReference;
 
-    public FeedbackService(Session session, IModalService modalService, IFeedback feedback)
+    public FeedbackService(Session session, IModalService modalService, IFeedbacks feedback)
     {
         _session = session;
         _modalService = modalService;
@@ -29,7 +29,7 @@ public class FeedbackService
             return;
 
         var data = ((int,string))result.Data;
-        var command = new IFeedback.FeatureRequestCommand(_session, feature) {
+        var command = new IFeedbacks.FeatureRequestCommand(_session, feature) {
             Rating = data.Item1,
             Comment = data.Item2
         };

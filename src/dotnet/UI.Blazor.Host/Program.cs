@@ -4,6 +4,7 @@ using ActualChat.Audio.WebM;
 using ActualChat.Chat.Client.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Feedback.Client.Module;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.MediaPlayback.Module;
@@ -79,7 +80,8 @@ public static class Program
             typeof(ChatClientModule),
             typeof(ChatBlazorUIModule),
             typeof(UsersClientModule),
-            typeof(UsersBlazorUIModule)
+            typeof(UsersBlazorUIModule),
+            typeof(FeedbackClientModule)
         );
         var plugins = await pluginHostBuilder.BuildAsync().ConfigureAwait(false);
         services.AddSingleton(plugins);
