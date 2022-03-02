@@ -31,7 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\Feedback\Feedback.csproj" />
+    <ProjectReference Include="..\Feedback.Service\Feedback.Service.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
