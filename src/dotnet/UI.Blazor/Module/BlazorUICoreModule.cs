@@ -34,7 +34,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddBlazorContextMenu();
         services.AddBlazoredModal();
         services.AddTransient<ClipboardService>();
-        services.AddTransient<FeedbackService>();
+        services.AddScoped<FeedbackService>();
     }
 }
 

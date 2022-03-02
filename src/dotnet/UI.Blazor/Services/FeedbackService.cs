@@ -1,4 +1,5 @@
 ﻿using ActualChat.Feedback;
+using Blazored.Modal;
 using Blazored.Modal.Services;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -8,6 +9,7 @@ public class FeedbackService
     private readonly Session _session;
     private readonly IModalService _modalService;
     private readonly IFeedback _feedback;
+    private IModalReference? _modalReference;
 
     public FeedbackService(Session session, IModalService modalService, IFeedback feedback)
     {
@@ -18,8 +20,11 @@ public class FeedbackService
 
     public async Task AskFeatureRequestFeedback(string feature)
     {
-        var modalRef = _modalService.Show<FeatureRequestFeedback>();
-        var result = await modalRef.Result.ConfigureAwait(false);
+        if (_modalReference != null)
+            return;
+        _modalReference = _modalService.Show<FeatureRequestFeedback>("", new ModalOptions { HideHeader = true});
+        var result = await _modalReference.Result.ConfigureAwait(false);
+        _modalReference = null;
         if (result.Cancelled)
             return;
 
