@@ -73,8 +73,6 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                                     _blazorRef,
                                     _debugMode
                                 ).ConfigureAwait(true);
-                        // TODO: REMOVE init call from JS / C#
-                        _ = _jsRef.InvokeVoidAsync("init", CancellationToken.None, Array.Empty<byte>());
                         break;
                     case StopCommand:
                         if (!_isStopSent) {

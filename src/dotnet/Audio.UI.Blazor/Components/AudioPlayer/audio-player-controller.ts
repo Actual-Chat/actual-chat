@@ -70,8 +70,12 @@ export class AudioPlayerController implements Resettable {
             worker.postMessage(msg, [controller.decoderChannel.port1]);
         });
     }
-
-    public async init(header: Uint8Array, callbacks: {
+    /**
+     * Setups create audio worklet nodes if needed and setups callbacks.
+     * You should initialize @type { AudioPlayerController } close to playing, after an user gesture
+     * because we might use the WebRTC workaround of echo cancellation bugs in chrome and so on.
+     */
+    public async init(callbacks: {
         onBufferTooMuch?: () => void,
         onBufferLow?: () => void,
         onStartPlaying?: () => void,
@@ -104,7 +108,7 @@ export class AudioPlayerController implements Resettable {
         else {
             feederNode.connect(audioContext.destination);
         }
-        await this.initWorker(header);
+        await this.initWorker();
     }
 
     /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
@@ -133,7 +137,7 @@ export class AudioPlayerController implements Resettable {
         }
     }
 
-    private initWorker(header: Uint8Array): Promise<void> {
+    private initWorker(): Promise<void> {
         const callbackId = workerLastCallbackId++;
         return new Promise<void>(resolve => {
             workerCallbacks.set(callbackId, resolve);
@@ -141,11 +145,8 @@ export class AudioPlayerController implements Resettable {
                 type: 'init',
                 controllerId: this.id,
                 callbackId: callbackId,
-                buffer: header.buffer,
-                length: header.byteLength,
-                offset: header.byteOffset,
             };
-            worker.postMessage(msg, [msg.buffer]);
+            worker.postMessage(msg);
         });
     }
 
