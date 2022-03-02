@@ -113,7 +113,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Redis.IntegrationTests", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Markdown", "src\dotnet\Markdown\Markdown.csproj", "{3E02F0CC-0AC2-4C00-BDE2-A97C78C1AABF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback", "src\dotnet\Feedback\Feedback.csproj", "{3722521C-A1B0-4966-B6FB-49CD434C707B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Service", "src\dotnet\Feedback.Service\Feedback.Service.csproj", "{3722521C-A1B0-4966-B6FB-49CD434C707B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Contracts", "src\dotnet\Feedback.Contracts\Feedback.Contracts.csproj", "{F7AD92BE-C91F-4877-81E5-CC225CFA445E}"
 EndProject
