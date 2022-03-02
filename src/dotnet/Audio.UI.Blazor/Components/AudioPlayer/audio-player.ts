@@ -73,7 +73,7 @@ export class AudioPlayer {
                 this.state = 'playing';
                 if (this.onStartPlaying !== null)
                     this.onStartPlaying();
-                self.setTimeout(void this.onUpdateOffsetTick, this.updateOffsetMs);
+                self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
             },
             onStopped: async () => {
                 if (debug)
@@ -149,7 +149,7 @@ export class AudioPlayer {
                 }
                 await this.invokeOnPlaybackTimeChanged(state.playbackTime);
 
-                self.setTimeout(void this.onUpdateOffsetTick, this.updateOffsetMs);
+                self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
             }
         }
         catch (error) {
