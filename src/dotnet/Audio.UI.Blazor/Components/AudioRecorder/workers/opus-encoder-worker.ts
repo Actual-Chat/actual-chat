@@ -34,8 +34,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
             /// #if MEM_LEAK_DETECTION
             else if (filename.slice(-3) === 'map')
                 return codecWasmMap;
-                /// #endif
-                // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
+            /// #endif
+            // Allow secondary resources like the .wasm payload to be loaded by the emscripten code.
             // emscripten 1.37.25 loads memory initializers as data: URI
             else if (filename.slice(0, 5) === 'data:')
                 return filename;
