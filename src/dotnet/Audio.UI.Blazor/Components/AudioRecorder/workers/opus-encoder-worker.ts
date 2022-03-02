@@ -62,7 +62,7 @@ const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
 const queue = new Denque<BufferQueueItem | EndQueueItem>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
-let recordingSubject: signalR.Subject<Uint8Array>;
+let recordingSubject = new signalR.Subject<Uint8Array>();
 let state: WorkerState = 'inactive';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
