@@ -9,6 +9,6 @@ public interface IFeedback
     {
         public int Rating { get; init; }
         public int AnswerId { get; init; }
-        public string Comment { get; init; }
+        public string Comment { get; init; } = "";
     }
 }

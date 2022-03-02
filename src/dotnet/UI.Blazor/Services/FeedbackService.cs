@@ -1,7 +1,7 @@
 ﻿using ActualChat.Feedback;
 using Blazored.Modal.Services;
 
-namespace ActualChat.Chat.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.Services;
 
 public class FeedbackService
 {
