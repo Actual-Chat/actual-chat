@@ -29,7 +29,6 @@ export class AudioPlayerTestPage {
     constructor(blazorRef: DotNet.DotNetObject, player: AudioPlayer) {
         this.stats.constructorStartTime = new Date().getTime();
         this.player = player;
-        this.player.onInitialized = () => this.stats.initializeEndTime = new Date().getTime();
         this.player.onStartPlaying = () => {
             this.stats.playingStartTime = new Date().getTime();
             console.warn('onStartPlaying called', this.stats);

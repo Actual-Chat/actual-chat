@@ -83,8 +83,7 @@ export class OpusDecoder {
     }
 
     public stop(): void {
-        const { state, queue } = this;
-        console.assert(state !== 'uninitialized', "Decoder isn't initialized but got stop message. Lifetime error.");
+        const { queue } = this;
         queue.clear();
         this.state = 'uninitialized';
     }

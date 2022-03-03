@@ -73,6 +73,7 @@ export class AudioPlayer {
                 this.state = 'playing';
                 if (this.onStartPlaying !== null)
                     this.onStartPlaying();
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
             },
             onStopped: async () => {

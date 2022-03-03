@@ -87,7 +87,6 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     StateHasChanged();
                 }
             });
-            _ = jsRef.InvokeVoidAsync("init", audioSource.Format.Serialize());
             var frames = await audioSource.GetFrames(_cts.Token).ToArrayAsync(_cts.Token).ConfigureAwait(true);
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
@@ -124,6 +123,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public async Task OnPlaybackEnded(string? errorMessage)
     {
         _log.LogInformation("OnPlaybackEnded(msg:{ErrorMessage})", errorMessage);
+        // might run stop()  after end(), we shouldn't do this, fix it later
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
             await _registration.DisposeAsync().ConfigureAwait(true);
