@@ -97,8 +97,8 @@ export class OpusDecoder {
 
         try {
             this.state = 'decoding';
-            const queueItem = queue.pop();
-            if (queueItem === 'end') {
+            const item = queue.shift();
+            if (item === 'end') {
                 if (debug) {
                     console.debug('Decoder: queue end is reached. Send end to worklet and stop queue processing');
                 }
@@ -109,15 +109,15 @@ export class OpusDecoder {
                 return;
             }
 
-            const samples = this.decoder.decode(queueItem);
+            const samples = this.decoder.decode(item);
             if (debug) {
                 if (!!samples && samples.length > 0) {
-                    console.debug(`Decoder: opusDecode(${queueItem.byteLength} bytes) `
+                    console.debug(`Decoder: opusDecode(${item.byteLength} bytes) `
                         + `returned ${samples.byteLength} `
                         + `bytes / ${samples.length} samples`);
                 }
                 else {
-                    console.error(`Decoder: opusDecode(${queueItem.byteLength} bytes) ` +
+                    console.error(`Decoder: opusDecode(${item.byteLength} bytes) ` +
                         'returned empty/unknown result');
                 }
             }
@@ -137,7 +137,8 @@ export class OpusDecoder {
             console.error(error);
         }
         finally {
-            this.state = 'waiting';
+            if (this.state === 'decoding')
+                this.state = 'waiting';
         }
 
         this.processQueue();
