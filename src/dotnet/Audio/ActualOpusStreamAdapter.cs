@@ -1,5 +1,5 @@
 using System.Buffers;
-using ActualChat.Spans;
+using System.Buffers.Binary;
 
 namespace ActualChat.Audio;
 
@@ -16,7 +16,6 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
     {
         var formatTask = TaskSource.New<AudioFormat>(true).Task;
         var formatTaskSource = TaskSource.For(formatTask);
-        var readBuffer = ArrayBuffer<byte>.Lease(false, 2 * 1024);
 
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
@@ -30,70 +29,69 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
 
         var _ = BackgroundTask.Run(async () => {
             try {
-                var buffered = 0;
-                var position = 0;
+                // var buffered = 0;
+                // var position = 0;
                 var offsetMs = -1;
                 var audioFrames = new List<AudioFrame>();
+                var sequence = new ReadOnlySequence<byte>();
+                // var pipeReader = PipeReader.Create(sequence);
                 await foreach (var data in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
-                    Buffer(ref readBuffer, data, ref position, ref buffered);
-
+                    sequence = sequence.Append(data);
                     if (!formatTask.IsCompleted) {
-                        if (buffered < ActualOpusStreamHeader.Length + 1)
+                        if (sequence.Length < ActualOpusStreamHeader.Length + 1)
                             continue;
 
-                        if (!readBuffer.Buffer.StartsWith(ActualOpusStreamHeader))
-                            throw new InvalidOperationException("Actual Opus stream header is invalid.");
-
-                        var version = readBuffer.Buffer[ActualOpusStreamHeader.Length];
-                        if (version != 1)
-                            throw new NotSupportedException($"Actual Opus stream version is invalid - ${version}. Only version 1 is supported.");
-
-                        formatTaskSource.SetResult(AudioSource.DefaultFormat);
-                        position = ActualOpusStreamFormat.Length + 1;
+                        ReadFormat(ref sequence, ref formatTaskSource);
                     }
 
-
-                    position += ReadFrames(readBuffer.Span[position..buffered], audioFrames, ref offsetMs);
+                    ReadFrames(ref sequence, audioFrames, ref offsetMs);
                     foreach (var audioFrame in audioFrames)
                         await target.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                     audioFrames.Clear();
 
-                    void Buffer(ref ArrayBuffer<byte> buffer, byte[] data1, ref int position1, ref int buffered1)
+                    void ReadFormat(ref ReadOnlySequence<byte> sequence1, ref TaskSource<AudioFormat> formatTaskSource1)
                     {
-                        var bufferedLength = buffered1 - position1;
-                        var newLength = bufferedLength + data.Length;
-                        buffer.EnsureCapacity(newLength);
-                        buffer.Count = newLength;
-                        if (position1 > 0) {
-                            var remainder = buffer.Span[position1..buffered1];
-                            remainder.CopyTo(buffer.Span);
-                        }
-                        data1.CopyTo(buffer.Span[bufferedLength..]);
-                        position1 = 0;
-                        buffered1 = newLength;
+                        Span<byte> buffer = stackalloc byte[ActualOpusStreamHeader.Length + 1];
+                        sequence1.Slice(0, ActualOpusStreamHeader.Length + 1).CopyTo(buffer);
+                        if (!buffer.StartsWith(ActualOpusStreamHeader))
+                            throw new InvalidOperationException("Actual Opus stream header is invalid.");
+
+                        var version = buffer[ActualOpusStreamHeader.Length];
+                        if (version != 1)
+                            throw new NotSupportedException($"Actual Opus stream version is invalid - ${version}. Only version 1 is supported.");
+
+                        formatTaskSource1.SetResult(AudioSource.DefaultFormat);
+                        sequence1 = sequence1.Slice(ActualOpusStreamHeader.Length + 1);
                     }
 
-                    int ReadFrames(ReadOnlySpan<byte> buffer, List<AudioFrame> frames1, ref int offsetMs1)
+                    void ReadFrames(ref ReadOnlySequence<byte> sequence1, List<AudioFrame> frames1, ref int offsetMs1)
                     {
-                        var reader = new SpanReader(buffer);
-                        var packetSize = reader.ReadVInt(4);
-                        while (packetSize.HasValue && reader.Position + (int)packetSize.Value.Value < reader.Length) {
-                            var packet = reader.ReadBytes((int)packetSize.Value.Value);
-                            if (packet == null)
-                                return reader.Position;
+                        Span<byte> buffer = stackalloc byte[2];
+                        while (true) {
+                            if (sequence1.Length < 2)
+                                return;
 
+                            var sizeSequence = sequence1.Slice(0, 2);
+                            ushort packetSize;
+                            if (sizeSequence.IsSingleSegment)
+                                packetSize = BinaryPrimitives.ReadUInt16LittleEndian(sizeSequence.FirstSpan);
+                            else {
+                                sizeSequence.CopyTo(buffer);
+                                packetSize = BinaryPrimitives.ReadUInt16LittleEndian(buffer);
+                            }
+                            sequence1 = sequence1.Slice(2);
+                            if (sequence1.Length < packetSize)
+                                return;
+
+                            var packetSequence = sequence1.Slice(0, packetSize);
+                            var packet = packetSequence.ToArray();
                             offsetMs1 += 20; // 20-ms frames
                             if (offsetMs1 >= 0)
                                 frames1.Add(new AudioFrame {
-                                    Data = packet!,
+                                    Data = packet,
                                     Offset = TimeSpan.FromMilliseconds(offsetMs1),
                                 });
-                            packetSize = reader.ReadVInt();
                         }
-                        if (!packetSize.HasValue && reader.Position + 4 < reader.Length)
-                            throw new InvalidOperationException("Unable to read Opus packet length.");
-
-                        return reader.Position;
                     }
                 }
             }
@@ -115,7 +113,6 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                 target.Writer.TryComplete();
                 if (!formatTask.IsCompleted)
                     formatTaskSource.TrySetException(new InvalidOperationException("Format wasn't parsed."));
-                readBuffer.Release();
             }
         }, CancellationToken.None);
 
@@ -145,10 +142,10 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
 
         int WriteFrame(byte[] frame, Span<byte> span)
         {
-            var spanWriter = new SpanWriter(span);
-            var sizeOfLength = spanWriter.WriteVInt((ulong)frame.Length);
-            frame.CopyTo(span[sizeOfLength..]);
-            return sizeOfLength + frame.Length;
+            ushort length = (ushort)frame.Length;
+            BinaryPrimitives.WriteUInt16LittleEndian(span, length);
+            frame.CopyTo(span[2..]);
+            return 2 + frame.Length;
         }
     }
 }
