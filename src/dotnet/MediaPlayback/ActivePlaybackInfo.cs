@@ -1,8 +1,5 @@
 namespace ActualChat.MediaPlayback;
 
-// TODO: refactor this (?) / read below:
-// (for example save info about active playbacks or use something like PlaybackRegistry / Store)
-// or rename to ActiveTrackPlayingInfo (because it's not related with Playback object and can confuse a reader)
 public class ActivePlaybackInfo : IActivePlaybackInfo
 {
     private readonly ConcurrentDictionary<Symbol, TrackInfo> _trackInfos = new();

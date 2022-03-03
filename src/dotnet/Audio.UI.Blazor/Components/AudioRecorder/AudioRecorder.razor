@@ -50,8 +50,7 @@
             BlazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                BlazorRef, Session.Id, ChatId, DebugMode
-                ).ConfigureAwait(true);
+                BlazorRef, Session.Id, ChatId).ConfigureAwait(true);
         }
     }
 

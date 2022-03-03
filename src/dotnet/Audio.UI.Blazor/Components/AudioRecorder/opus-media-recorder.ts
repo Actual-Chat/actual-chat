@@ -8,7 +8,33 @@ import { EndMessage, InitEncoderMessage, CreateEncoderMessage } from './workers/
 import { VadMessage } from './workers/audio-vad-worker-message';
 import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 
-export class OpusMediaRecorder extends EventTarget {
+/*
+┌─────────────────────────────────┐  ┌──────────────────────┐
+│                                 │  │            web worker│◄────────┐
+│ ┌───┐    ┌────────────┐    ┌────┼──►VAD worker            │         │
+│ │MIC├─┬─►│VAD worklet ├────┘    │  └──────────┬───────────┘         │
+│ └───┘ │  └────────────┘         │             │isVoiceFound         │
+│       │                         │ ┌───────────▼────────────┐        │
+│       │ ┌───────────────┐       │ │              web worker│        │    ┌───────┐
+│       └─►Encoder worklet├───────┼─►                        ├────────┼───►│SignalR│
+│         └───────────────┘       │ │ Encoder worker         │        │    └───────┘
+│               Audio thread      │ └────────────────────────┘        │
+└─────────────────────────────────┘              ▲                    │
+             ▲                                   │                    │
+             │                                   │                    │
+             │                                   │                    │
+             │                                   │                    │
+             └────────────────────────────┬──────┴────────────────────┘
+                                          │
+                                          │
+                                   ┌──────┴──────┐
+                                   │ Main thread │ <- You are here (OpusMediaRecorder)
+                                   └─────────────┘
+ */
+
+const AUDIO_BITS_PER_SECOND = 32000;
+
+export class OpusMediaRecorder {
     private readonly worker: Worker;
     private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
@@ -24,16 +50,12 @@ export class OpusMediaRecorder extends EventTarget {
 
     public source?: MediaStreamAudioSourceNode = null;
     public stream: MediaStream;
-    public readonly audioBitsPerSecond: number;
 
+    // TODO: clearer states
     public state: RecordingState = 'inactive';
     public onerror: ((ev: MediaRecorderErrorEvent) => void) | null;
 
-    constructor(options: MediaRecorderOptions) {
-        super();
-
-        this.audioBitsPerSecond = options.audioBitsPerSecond;
-
+    constructor() {
         this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
         this.worker.onmessage = this.onWorkerMessage;
@@ -45,55 +67,30 @@ export class OpusMediaRecorder extends EventTarget {
         this.loadCompleted = this.loadWorkers();
     }
 
-    public override dispatchEvent(event: Event): boolean {
-        const { type } = event;
-        switch (type) {
-            case 'error':
-                if (this.onerror) {
-                    this.onerror(event as MediaRecorderErrorEvent);
-                }
-                break;
-            default:
-                break;
-        }
-        return super.dispatchEvent(event);
-    }
 
     public pause(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
+        console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an pause() call. Lifetime error.");
 
         // Stop stream first
         this.source.disconnect();
         this.encoderWorklet.disconnect();
         this.vadWorklet.disconnect();
 
-        const event = new Event('pause');
-        this.dispatchEvent(event);
         this.state = 'paused';
     }
 
     public resume(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
-
+        console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an resume() call. Lifetime error.");
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
         this.source.connect(this.vadWorklet);
-
-        const event = new Event('resume');
-        this.dispatchEvent(event);
         this.state = 'recording';
     }
 
-    public async startAsync(source: MediaStreamAudioSourceNode, timeSlice: number, sessionId: string, chatId: string, debugMode = false): Promise<void> {
-        if (this.source === source)
-            return;
+    public async start(source: MediaStreamAudioSourceNode, timeSlice: number, sessionId: string, chatId: string): Promise<void> {
 
-        if (sessionId == '' || chatId == '')
-            throw new Error('OpusMediaRecorder.startAsync: sessionId and chatId both should have value specified.');
+        console.assert(sessionId != '' && chatId != '', 'sessionId and chatId both should have value specified.');
+        console.assert(this.source !== source, 'Recorder start got same source twice.');
 
         if (this.source)
             this.source.disconnect();
@@ -120,14 +117,13 @@ export class OpusMediaRecorder extends EventTarget {
         await new Promise<void>(resolve => {
             this.callbacks.set(callbackId, resolve);
 
-            const { channelCount, audioBitsPerSecond } = this;
+            const { channelCount } = this;
             const initMessage: InitEncoderMessage = {
                 type: 'init',
                 channelCount: channelCount,
-                bitsPerSecond: audioBitsPerSecond,
+                bitsPerSecond: AUDIO_BITS_PER_SECOND,
                 sessionId: sessionId,
                 chatId: chatId,
-                debugMode: debugMode,
                 callbackId
             };
             // Initialize the worker
@@ -143,16 +139,13 @@ export class OpusMediaRecorder extends EventTarget {
         this.source.connect(this.encoderWorklet);
         // It's OK to not wait for VAD worker init-new-stream message to be processed
         this.source.connect(this.vadWorklet);
-        this.dispatchEvent(new Event('start'));
     }
 
-    public async stopAsync(): Promise<void> {
+    public async stop(): Promise<void> {
         const callbackId = this.lastCallbackId++;
         await new Promise(resolve => {
+            console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an stop command. Lifetime error.");
             this.callbacks.set(callbackId, resolve);
-            if (this.state === 'inactive') {
-                throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-            }
 
             // Stop stream first
             this.source.disconnect();
@@ -165,14 +158,10 @@ export class OpusMediaRecorder extends EventTarget {
                 callbackId
             };
             // Tell encoder finalize the job and destroy itself.
-            // Expected 'doneCompleted' event from the worker.
+            // Expects callback event from the worker.
             this.worker.postMessage(msg);
-
-            this.state = 'inactive';
         });
-
-        // Detect of stop() called before
-        this.dispatchEvent(new Event('stop'));
+        this.state = 'inactive';
     }
 
     private loadWorkers(): Promise<void> {
@@ -201,7 +190,7 @@ export class OpusMediaRecorder extends EventTarget {
     private async initialize(timeSlice: number): Promise<void> {
         if (this.context == null) {
             this.context = await AudioContextPool.get('main') as AudioContext;
-            if (this.context.sampleRate != 48000) {
+            if (this.context.sampleRate !== 48000) {
                 throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
             }
             const encoderWorkletOptions: AudioWorkletNodeOptions = {
@@ -254,15 +243,6 @@ export class OpusMediaRecorder extends EventTarget {
         if (this.vadWorklet)
             this.vadWorklet.disconnect();
 
-        // Send message to host
-        const message = [
-            `FileName: ${error.filename}`,
-            `LineNumber: ${error.lineno}`,
-            `Message: ${error.message}`
-        ].join(' - ');
-        const errorToPush = new Event('error');
-        errorToPush['name'] = 'UnknownError';
-        errorToPush['message'] = message;
-        this.dispatchEvent(errorToPush);
+        console.error(`FileName: ${error.filename} LineNumber: ${error.lineno} Message: ${error.message}`);
     };
 }

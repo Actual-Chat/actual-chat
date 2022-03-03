@@ -5,16 +5,8 @@ import { OpusMediaRecorder } from './opus-media-recorder';
 const LogScope = 'AudioRecorder';
 
 export class AudioRecorder {
-    private static recorderPool = new ObjectPool<OpusMediaRecorder>(() => {
-        const options: MediaRecorderOptions = {
-            mimeType: 'audio/webm;codecs=opus',
-            bitsPerSecond: 32000,
-            audioBitsPerSecond: 32000,
-        };
-        return new OpusMediaRecorder(options);
-    });
-
-    private readonly debugMode: boolean;
+    private static recorderPool = new ObjectPool<OpusMediaRecorder>(() => new OpusMediaRecorder());
+    private readonly debug = false;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;
     private recorder: OpusMediaRecorder;
@@ -30,9 +22,8 @@ export class AudioRecorder {
         source: MediaStreamAudioSourceNode,
     };
 
-    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string, debugMode: boolean) {
+    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string) {
         this.blazorRef = blazorRef;
-        this.debugMode = debugMode;
         this.sessionId = sessionId;
         this.chatId = chatId;
         this.recording = null;
@@ -53,8 +44,8 @@ export class AudioRecorder {
         }
     }
 
-    public static create(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string, debugMode: boolean) {
-        return new AudioRecorder(blazorRef, sessionId, chatId, debugMode);
+    public static create(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string) {
+        return new AudioRecorder(blazorRef, sessionId, chatId);
     }
 
     public static async initRecorderPool(): Promise<void> {
@@ -76,10 +67,6 @@ export class AudioRecorder {
         }
 
         this.recorder = await AudioRecorder.recorderPool.get();
-        this.recorder.onerror = (errorEvent: MediaRecorderErrorEvent) => {
-            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-            console.error(`${LogScope}.onerror: ${errorEvent['message']}`);
-        };
 
         if (this.context == null) {
             const recorderContext = await AudioContextPool.get('main') as AudioContext;
@@ -132,15 +119,15 @@ export class AudioRecorder {
             };
         }
 
-        const { blazorRef, sessionId, chatId, recording, debugMode } = this;
-        await this.recorder.startAsync(recording.source, 20, sessionId, chatId, debugMode);
+        const { blazorRef, sessionId, chatId, recording } = this;
+        await this.recorder.start(recording.source, 20, sessionId, chatId);
         await blazorRef.invokeMethodAsync('OnStartRecording');
     }
 
     public async stopRecording(): Promise<void> {
         if (!this.isRecording())
             return;
-        if (this.debugMode)
+        if (this.debug)
             console.log(`${LogScope}.stopRecording: started`);
 
         const recording = this.recording;
@@ -151,11 +138,11 @@ export class AudioRecorder {
             recording.source = null;
             recording.stream.getAudioTracks().forEach(t => t.stop());
             recording.stream.getVideoTracks().forEach(t => t.stop());
-            await this.recorder.stopAsync();
+            await this.recorder.stop();
             await AudioRecorder.recorderPool.release(this.recorder);
         }
         await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
-        if (this.debugMode)
+        if (this.debug)
             console.log(`${LogScope}.stopRecording: completed`);
     }
 

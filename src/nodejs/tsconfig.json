@@ -49,7 +49,8 @@
       "es2018"
     ],
     "typeRoots": [
-      "node_modules/"
+      "node_modules/",
+      "node_modules/@types"
     ],
     "baseUrl": "../dotnet/",
     "rootDirs": [
