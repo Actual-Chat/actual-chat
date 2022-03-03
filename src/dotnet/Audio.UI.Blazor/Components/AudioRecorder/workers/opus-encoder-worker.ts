@@ -46,32 +46,23 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
     };
 }
 
-// TODO: remove these types, use something like `const queue = new Denque<ArrayBuffer | number>();`
-interface QueueItem {
-    type: 'buffer' | 'ended';
-}
-
-interface BufferQueueItem extends QueueItem {
-    buffer: ArrayBuffer;
-}
-
-interface EndQueueItem extends QueueItem {
-    callbackId: number;
-}
-
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 3;
-const queue = new Denque<BufferQueueItem | EndQueueItem>();
+/** buffer or callbackId: number of `end` message */
+const queue = new Denque<ArrayBuffer | number>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
-let state: 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'closed' = 'inactive';
+// TODO: check statuses / add an additional status field for VAD
+let state: 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'ended' = 'inactive';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
-let lastNewStreamMessage: InitEncoderMessage | null = null;
+let lastInitMessage: InitEncoderMessage | null = null;
 let isEncoding = false;
-let debugMode = false;
 
+const debug = false;
+
+/** control flow from the main thread */
 worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
     try {
         const msg = ev.data;
@@ -97,31 +88,25 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
 };
 
 function onEnd(message: EndMessage) {
-    state = 'closed';
-
-    queue.push({ type: 'ended', callbackId: message.callbackId });
+    state = 'ended';
+    queue.push(message.callbackId);
     processQueue();
 }
 
 async function onInit(message: InitEncoderMessage): Promise<void> {
     const { sessionId, chatId, callbackId } = message;
-    lastNewStreamMessage = message;
-    debugMode = message.debugMode;
+    lastInitMessage = message;
 
     state = 'encoding';
 
     recordingSubject = new signalR.Subject<Uint8Array>();
-    await connection.send('ProcessAudio',
-        sessionId, chatId, Date.now() / 1000, recordingSubject);
+    await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
 
-    if (debugMode) {
-        console.log('init recorder worker!');
+    if (debug) {
+        console.log('init recorder worker');
     }
-
-    const initCompletedMessage: ResolveCallbackMessage = {
-        callbackId
-    };
-    worker.postMessage(initCompletedMessage);
+    const msg: ResolveCallbackMessage = { callbackId };
+    worker.postMessage(msg);
 }
 
 async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
@@ -161,11 +146,11 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
     worker.postMessage(readyToInit);
     state = 'readyToInit';
 }
-
+// worklet sends messages with raw audio
 const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
     try {
         const { type, buffer } = ev.data;
-
+        // TODO: add offset & length to the message type
         let audioBuffer: ArrayBuffer;
         switch (type) {
             case 'buffer':
@@ -176,16 +161,17 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         }
         if (audioBuffer.byteLength !== 0) {
             if (state === 'encoding') {
-                queue.push(ev.data);
+                queue.push(buffer);
                 processQueue();
-            } else if (state === 'paused') {
-                queue.push(ev.data);
+            }
+            else if (state === 'ended') {
+                // nop, we don't need to save a buffer if the user call stop
+            }
+            else if (state === 'paused') {
+                // vad status is
+                queue.push(buffer);
                 if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
-                    const bufferOrEnded = queue.shift();
-                    if (bufferOrEnded.type === 'ended') {
-                        queue.shift();
-                        queue.unshift(bufferOrEnded);
-                    }
+                    queue.shift();
                 }
             }
         }
@@ -198,7 +184,7 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
 const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     try {
         const vadEvent = ev.data;
-        if (debugMode) {
+        if (debug) {
             console.log(vadEvent);
         }
 
@@ -208,14 +194,14 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
                 recordingSubject.complete();
             }
         } else if (state == 'paused' && vadEvent.kind === 'start') {
-            if (!lastNewStreamMessage) {
+            if (!lastInitMessage) {
                 throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
             }
 
-            const { sessionId, chatId } = lastNewStreamMessage;
+            const { sessionId, chatId } = lastInitMessage;
             recordingSubject = new signalR.Subject<Uint8Array>();
             await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
-
+            // TODO: after await we can override new state, fix this.
             state = 'encoding';
             processQueue();
         }
@@ -236,14 +222,10 @@ function processQueue(): void {
 
     try {
         isEncoding = true;
-
-        const bufferOrEnded = queue.shift();
-        if (bufferOrEnded.type === 'ended') {
-            const ended = bufferOrEnded as EndQueueItem;
+        const item = queue.shift();
+        if (typeof (item) === 'number') {
             try {
-                const message: ResolveCallbackMessage = {
-                    callbackId: ended.callbackId,
-                };
+                const message: ResolveCallbackMessage = { callbackId: item, };
                 worker.postMessage(message);
             }
             finally {
@@ -251,23 +233,17 @@ function processQueue(): void {
             }
         }
         else {
-            const bufferQueueItem = bufferOrEnded as BufferQueueItem;
-            const buffer = bufferQueueItem.buffer;
-            const result = encoder.encode(buffer);
-
-            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: buffer };
-            workletPort.postMessage(workletMessage, [buffer]);
-
+            const result = encoder.encode(item);
+            const workletMessage: BufferEncoderWorkletMessage = { type: 'buffer', buffer: item };
+            workletPort.postMessage(workletMessage, [item]);
             recordingSubject.next(result);
         }
-
-    } catch (error) {
-        isEncoding = false;
-        throw error;
-
-    } finally {
+    }
+    catch (error) {
+        console.error('Encoder worker: Unhandled processing error:', error);
+    }
+    finally {
         isEncoding = false;
     }
-
     processQueue();
 }

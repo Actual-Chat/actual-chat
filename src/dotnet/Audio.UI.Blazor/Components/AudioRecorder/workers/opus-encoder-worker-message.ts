@@ -14,7 +14,6 @@ export interface InitEncoderMessage extends EncoderMessage {
     bitsPerSecond: number;
     sessionId: string;
     chatId: string;
-    debugMode: boolean;
 }
 
 export interface EndMessage extends EncoderMessage {
