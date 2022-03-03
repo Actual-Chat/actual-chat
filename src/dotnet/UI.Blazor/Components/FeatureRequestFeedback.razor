@@ -1,4 +1,13 @@
-﻿<div class="relative">
+@using ActualChat.Hosting
+@using System.Net.Mime
+@using ActualChat.UI.Blazor.Module
+@implements IFeatureBackend
+@inject IJSRuntime _js
+@inject MomentClockSet _clocks
+@inject HostInfo _hostInfo
+
+
+<div class="relative">
     @{
         var featureTitle = FeatureTitle.IsNullOrEmpty() ? "This" : "'" + FeatureTitle + "'" ;
     }
@@ -8,7 +17,7 @@
     <p>Please vote how this feature is important for you.</p>
     <p>1 = not important, 5 = very important!</p>
 
-    <div>
+    <div @ref="FeedbackRef" >
         @for (var i = 1; i <= 5; i++) {
             var cls = _rating >= i ? "fa-star" : "fa-star-o";
             var rating = i;
@@ -17,7 +26,7 @@
     </div>
     <div class="mt-2">
         <label>Comment:</label>
-        <textarea class="border border-gray-300 w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
+        <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
     </div>
     <div class="mt-4">
         <button type="button" @onclick="OnSubmit"
@@ -37,6 +46,9 @@
 @code {
     private int _rating;
     private string _comment = "";
+    private ElementReference FeedbackRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<IFeatureBackend> BlazorRef { get; set; } = null!;
 
     [CascadingParameter]
     BlazoredModalInstance ModalInstance { get; set; } = null!;
@@ -54,5 +66,15 @@
 
     private void OnCancel() {
         ModalInstance.CloseAsync(ModalResult.Cancel());
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IFeatureBackend>(this);
+            JSRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.Feedback.create",
+                FeedbackRef, BlazorRef
+                ).ConfigureAwait(true);
+        }
     }
 }
