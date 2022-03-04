@@ -24,12 +24,11 @@ public class ChatPlayer : IAsyncDisposable
     /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
     private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
 
-    public IMutableState<Playback> PlaybackState { get; }
+    public Playback Playback { get; }
 
     public ChatPlayer(
         Symbol chatId,
         IPlaybackFactory playbackFactory,
-        IStateFactory stateFactory,
         AudioDownloader audioDownloader,
         ILogger<ChatPlayer> log,
         IChatMediaResolver mediaResolver,
@@ -40,8 +39,7 @@ public class ChatPlayer : IAsyncDisposable
         IChats chats
         )
     {
-        PlaybackState = stateFactory.NewMutable<Playback>();
-        PlaybackState.Value = playbackFactory.Create();
+        Playback = playbackFactory.Create();
         _chatId = chatId;
         _audioDownloader = audioDownloader;
         _log = log;
@@ -88,7 +86,7 @@ public class ChatPlayer : IAsyncDisposable
             var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
             var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
             var skipTo = entryBeginsAt - entry.BeginsAt;
-            await EnqueueEntry(PlaybackState.Value, cpuClock.Now, entry, skipTo, cancellationToken)
+            await EnqueueEntry(Playback, cpuClock.Now, entry, skipTo, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
@@ -140,12 +138,12 @@ public class ChatPlayer : IAsyncDisposable
             var enqueueDelay = playAt - now - EnqueueAheadDuration;
             if (enqueueDelay > TimeSpan.Zero)
                 await cpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
-            await EnqueueEntry(PlaybackState.Value, playAt, entry, skipTo, cancellationToken)
+            await EnqueueEntry(Playback, playAt, entry, skipTo, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
 
-    public void Stop() => PlaybackState.Value.Stop();
+    public void Stop() => Playback.Stop();
 
     protected async ValueTask EnqueueEntry(
             Playback playback,
@@ -219,7 +217,7 @@ public class ChatPlayer : IAsyncDisposable
     }
 
     protected virtual ValueTask DisposeAsyncCore()
-        => PlaybackState.Value.DisposeAsync();
+        => Playback.DisposeAsync();
 
     public async ValueTask DisposeAsync()
     {

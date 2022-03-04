@@ -12,7 +12,6 @@ public interface IChatPlayerFactory
 /// <inheritdoc cref="IChatPlayerFactory"/>
 internal class ChatPlayerFactory : IChatPlayerFactory
 {
-    private readonly IStateFactory _stateFactory;
     private readonly IPlaybackFactory _playbackFactory;
     private readonly AudioDownloader _audioDownloader;
     private readonly ILoggerFactory _loggerFactory;
@@ -23,9 +22,8 @@ internal class ChatPlayerFactory : IChatPlayerFactory
     private readonly Session _session;
     private readonly IChats _chats;
 
-    public ChatPlayerFactory(IStateFactory stateFactory, IPlaybackFactory playbackFactory, AudioDownloader audioDownloader, ILoggerFactory loggerFactory, IChatMediaResolver chatMediaResolver, IAudioStreamer audioStreamer, IChatAuthors chatAuthors, MomentClockSet clockSet, Session session, IChats chats)
+    public ChatPlayerFactory(IPlaybackFactory playbackFactory, AudioDownloader audioDownloader, ILoggerFactory loggerFactory, IChatMediaResolver chatMediaResolver, IAudioStreamer audioStreamer, IChatAuthors chatAuthors, MomentClockSet clockSet, Session session, IChats chats)
     {
-        _stateFactory = stateFactory;
         _playbackFactory = playbackFactory;
         _audioDownloader = audioDownloader;
         _loggerFactory = loggerFactory;
@@ -40,7 +38,6 @@ internal class ChatPlayerFactory : IChatPlayerFactory
     public ChatPlayer Create(Symbol chatId) => new(
         chatId,
         _playbackFactory,
-        _stateFactory,
         _audioDownloader,
         _loggerFactory.CreateLogger<ChatPlayer>(),
         _mediaResolver,

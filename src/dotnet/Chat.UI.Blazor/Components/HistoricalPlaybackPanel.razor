@@ -60,9 +60,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (playback == null)
-            return Model.NotPlaying;
+        var playback = Player.Playback;
 
         var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
         if (!isPlaying)
