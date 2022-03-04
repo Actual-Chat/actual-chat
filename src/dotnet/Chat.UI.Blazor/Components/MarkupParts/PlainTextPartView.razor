@@ -53,7 +53,7 @@
         var chats = Services.GetRequiredService<IChats>();
         var chatController = Services.GetRequiredService<ChatController>();
         var historicalPlayer = chatController.GetPlayer(chatId);
-        var playback = historicalPlayer.PlaybackState.Value;
+        var playback = historicalPlayer.Playback;
         if (playback is { IsPlayingState.Value: true }) {
             historicalPlayer.Stop();
             return;

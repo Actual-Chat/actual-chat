@@ -110,7 +110,7 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        var isPlaying = Player.PlaybackState.Value is { IsPlayingState.Value: true };
+        var isPlaying = Player.Playback is { IsPlayingState.Value: true };
         if (isPlaying)
             return Task.CompletedTask;
         // We don't need to await for this here
