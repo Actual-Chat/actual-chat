@@ -14,6 +14,9 @@ public class ChatPlayer : IAsyncDisposable
     private readonly MomentClockSet _clocks;
     private readonly Session _session;
     private readonly IChats _chats;
+    private readonly object _locker = new();
+    private CancellationTokenSource? _cancellationTokenSource;
+
     private int _isDisposed;
     /// <summary>
     /// Once enqueued, playback loop continues, so the larger is this duration,
@@ -52,9 +55,30 @@ public class ChatPlayer : IAsyncDisposable
     }
 
     // TODO: maybe we can refactor this & merge historical and realtime player or move them out like IChatEntryProvider
-    public Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken) => isRealtime
-        ? PlayRealtime(startAt, cancellationToken)
-        : PlayHistorical(startAt, cancellationToken);
+    public async Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken)
+    {
+        CancellationTokenSource cancellationTokenSource;
+        lock (_locker) {
+            if (_cancellationTokenSource != null)
+                throw new InvalidOperationException("ChatPlayer should be stopped before start playing");
+            cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _cancellationTokenSource = cancellationTokenSource;
+        }
+
+        try {
+            if (isRealtime)
+                await PlayRealtime(startAt, cancellationTokenSource.Token).ConfigureAwait(false);
+            else
+                await PlayHistorical(startAt, cancellationTokenSource.Token).ConfigureAwait(false);
+        }
+        finally {
+            cancellationTokenSource.CancelAndDisposeSilently();
+        }
+        lock (_locker) {
+            if (_cancellationTokenSource == cancellationTokenSource)
+                _cancellationTokenSource = null;
+        }
+    }
 
     private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)
     {
@@ -143,7 +167,17 @@ public class ChatPlayer : IAsyncDisposable
         }
     }
 
-    public void Stop() => Playback.Stop();
+    public void Stop()
+    {
+        CancellationTokenSource? cancellationTokenSource;
+        lock (_locker) {
+            cancellationTokenSource = _cancellationTokenSource;
+            _cancellationTokenSource = null;
+        }
+        if (cancellationTokenSource != null)
+            cancellationTokenSource.CancelAndDisposeSilently();
+        Playback.Stop();
+    }
 
     protected async ValueTask EnqueueEntry(
             Playback playback,
@@ -217,7 +251,13 @@ public class ChatPlayer : IAsyncDisposable
     }
 
     protected virtual ValueTask DisposeAsyncCore()
-        => Playback.DisposeAsync();
+    {
+        lock (_locker) {
+            if (_cancellationTokenSource != null)
+                _cancellationTokenSource.CancelAndDisposeSilently();
+        }
+        return Playback.DisposeAsync();
+    }
 
     public async ValueTask DisposeAsync()
     {
