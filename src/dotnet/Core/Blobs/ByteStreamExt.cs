@@ -22,6 +22,7 @@ public static class ByteStreamExt
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
         HttpResponseMessage response;
+        // WASM doesn't support PipeReader API directly from the HttpClient
         using (var httpClient = httpClientFactory.CreateClient())
         using (var request = new HttpRequestMessage(HttpMethod.Get, blobUri)) {
             if (OSInfo.IsWebAssembly) {

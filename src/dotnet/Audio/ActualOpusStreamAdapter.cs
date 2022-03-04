@@ -49,10 +49,10 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                         await target.Writer.WriteAsync(audioFrame, cancellationToken).ConfigureAwait(false);
                     audioFrames.Clear();
 
-                    void ReadFormat(ref ReadOnlySequence<byte> sequence1, ref TaskSource<AudioFormat> formatTaskSource1)
+                    static void ReadFormat(ref ReadOnlySequence<byte> sequence, ref TaskSource<AudioFormat> formatTaskSource)
                     {
                         Span<byte> buffer = stackalloc byte[ActualOpusStreamHeader.Length + 1];
-                        sequence1.Slice(0, ActualOpusStreamHeader.Length + 1).CopyTo(buffer);
+                        sequence.Slice(0, ActualOpusStreamHeader.Length + 1).CopyTo(buffer);
                         if (!buffer.StartsWith(ActualOpusStreamHeader))
                             throw new InvalidOperationException("Actual Opus stream header is invalid.");
 
@@ -60,18 +60,19 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                         if (version != 1)
                             throw new NotSupportedException($"Actual Opus stream version is invalid - ${version}. Only version 1 is supported.");
 
-                        formatTaskSource1.SetResult(AudioSource.DefaultFormat);
-                        sequence1 = sequence1.Slice(ActualOpusStreamHeader.Length + 1);
+                        formatTaskSource.SetResult(AudioSource.DefaultFormat);
+                        sequence = sequence.Slice(ActualOpusStreamHeader.Length + 1);
                     }
 
-                    void ReadFrames(ref ReadOnlySequence<byte> sequence1, List<AudioFrame> frames1, ref int offsetMs1)
+                    static void ReadFrames(ref ReadOnlySequence<byte> sequence, List<AudioFrame> frames1, ref int offsetMs)
                     {
-                        Span<byte> buffer = stackalloc byte[2];
+                        const int uShortSize = sizeof(ushort);
+                        Span<byte> buffer = stackalloc byte[uShortSize];
                         while (true) {
-                            if (sequence1.Length < 2)
+                            if (sequence.Length < uShortSize)
                                 return;
 
-                            var sizeSequence = sequence1.Slice(0, 2);
+                            var sizeSequence = sequence.Slice(0, uShortSize);
                             ushort packetSize;
                             if (sizeSequence.IsSingleSegment)
                                 packetSize = BinaryPrimitives.ReadUInt16LittleEndian(sizeSequence.FirstSpan);
@@ -79,17 +80,17 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                                 sizeSequence.CopyTo(buffer);
                                 packetSize = BinaryPrimitives.ReadUInt16LittleEndian(buffer);
                             }
-                            sequence1 = sequence1.Slice(2);
-                            if (sequence1.Length < packetSize)
+                            sequence = sequence.Slice(uShortSize);
+                            if (sequence.Length < packetSize)
                                 return;
 
-                            var packetSequence = sequence1.Slice(0, packetSize);
+                            var packetSequence = sequence.Slice(0, packetSize);
                             var packet = packetSequence.ToArray();
-                            offsetMs1 += 20; // 20-ms frames
-                            if (offsetMs1 >= 0)
+                            offsetMs += 20; // 20-ms frames
+                            if (offsetMs >= 0)
                                 frames1.Add(new AudioFrame {
                                     Data = packet,
-                                    Offset = TimeSpan.FromMilliseconds(offsetMs1),
+                                    Offset = TimeSpan.FromMilliseconds(offsetMs),
                                 });
                         }
                     }
