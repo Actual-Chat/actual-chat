@@ -16,9 +16,9 @@ public static class ReadOnlySequenceExt
 
         var start = source.Start;
         var end = source.End;
-        var endSegment = end.GetObject() as MemorySegment<T>;
-        var startSegment = end.GetObject() as MemorySegment<T>;
+        var startSegment = start.GetObject() as MemorySegment<T>;
         var startIndex = start.GetInteger();
+        var endSegment = end.GetObject() as MemorySegment<T>;
         if (startSegment == null || endSegment == null)
             throw new InvalidOperationException("ReadOnlySequence.Append supports only MemorySegment-based sources");
 

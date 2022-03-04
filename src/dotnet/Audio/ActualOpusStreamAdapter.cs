@@ -29,12 +29,9 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
 
         var _ = BackgroundTask.Run(async () => {
             try {
-                // var buffered = 0;
-                // var position = 0;
-                var offsetMs = -1;
+                var offsetMs = 0;
                 var audioFrames = new List<AudioFrame>();
                 var sequence = new ReadOnlySequence<byte>();
-                // var pipeReader = PipeReader.Create(sequence);
                 await foreach (var data in byteStream.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                     sequence = sequence.Append(data);
                     if (!formatTask.IsCompleted) {
@@ -75,17 +72,18 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
                             var sizeSequence = sequence.Slice(0, uShortSize);
                             ushort packetSize;
                             if (sizeSequence.IsSingleSegment)
-                                packetSize = BinaryPrimitives.ReadUInt16LittleEndian(sizeSequence.FirstSpan);
+                                packetSize = BinaryPrimitives.ReadUInt16BigEndian(sizeSequence.FirstSpan);
                             else {
                                 sizeSequence.CopyTo(buffer);
-                                packetSize = BinaryPrimitives.ReadUInt16LittleEndian(buffer);
+                                packetSize = BinaryPrimitives.ReadUInt16BigEndian(buffer);
                             }
-                            sequence = sequence.Slice(uShortSize);
-                            if (sequence.Length < packetSize)
+                            if (sequence.Length < packetSize + uShortSize)
                                 return;
 
+                            sequence = sequence.Slice(uShortSize);
                             var packetSequence = sequence.Slice(0, packetSize);
                             var packet = packetSequence.ToArray();
+                            sequence = sequence.Slice(packetSize);
                             offsetMs += 20; // 20-ms frames
                             if (offsetMs >= 0)
                                 frames1.Add(new AudioFrame {
@@ -144,7 +142,7 @@ public class ActualOpusStreamAdapter : IAudioStreamAdapter
         int WriteFrame(byte[] frame, Span<byte> span)
         {
             ushort length = (ushort)frame.Length;
-            BinaryPrimitives.WriteUInt16LittleEndian(span, length);
+            BinaryPrimitives.WriteUInt16BigEndian(span, length);
             frame.CopyTo(span[2..]);
             return 2 + frame.Length;
         }
