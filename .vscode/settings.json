@@ -17,6 +17,7 @@
   },
   "typescript.enablePromptUseWorkspaceTsdk": false,
   "typescript.tsdk": "./src/nodejs/node_modules/typescript/lib",
+  "typescript.preferences.quoteStyle": "single",
   "eslint.enable": true,
   "eslint.alwaysShowStatus": true,
   "eslint.codeAction.showDocumentation": {

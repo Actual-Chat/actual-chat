@@ -58,20 +58,20 @@ public sealed class Playback : IAsyncDisposable
             _whenCompleted = TaskSource.New<bool>(runContinuationsAsynchronously: true);
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping);
             _commandLoopTask = CommandLoop(_cancellationTokenSource.Token)
-                        .ContinueWith(task => {
-                            lock (_runLocker) {
-                                _cancellationTokenSource?.Dispose();
-                                _cancellationTokenSource = null;
-                                var exception = task.Exception?.InnerException ?? task.Exception;
-                                if (exception != null)
-                                    _whenCompleted?.TrySetException(exception);
-                                else
-                                    _whenCompleted?.TrySetResult(default);
-                                _whenCompleted = null;
-                                _commandLoopTask = null;
-                                IsPlayingState.Value = false;
-                            }
-                        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                .ContinueWith(task => {
+                    lock (_runLocker) {
+                        _cancellationTokenSource?.Dispose();
+                        _cancellationTokenSource = null;
+                        var exception = task.Exception?.InnerException ?? task.Exception;
+                        if (exception != null)
+                            _whenCompleted?.TrySetException(exception);
+                        else
+                            _whenCompleted?.TrySetResult(default);
+                        _whenCompleted = null;
+                        _commandLoopTask = null;
+                        IsPlayingState.Value = false;
+                    }
+                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
     }
 
