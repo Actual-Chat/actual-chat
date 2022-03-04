@@ -222,7 +222,7 @@ function processQueue(): void {
 
     try {
         isEncoding = true;
-        const item = queue.shift();
+        const item: ArrayBuffer | number = queue.shift();
         if (typeof (item) === 'number') {
             try {
                 const message: ResolveCallbackMessage = { callbackId: item, };
