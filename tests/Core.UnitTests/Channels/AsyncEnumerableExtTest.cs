@@ -9,50 +9,70 @@ public class AsyncEnumerableExtTest
     [Fact]
     public async Task BasicMergeTest()
     {
-        var clock = new TestClock();
+        var leftTcs1 = new TaskCompletionSource();
+        var leftTcs2 = new TaskCompletionSource();
+        var leftTcs3 = new TaskCompletionSource();
+        var leftTcs4 = new TaskCompletionSource();
+        var rightTcs1 = new TaskCompletionSource();
+        var rightTcs2 = new TaskCompletionSource();
+        var rightTcs3 = new TaskCompletionSource();
+        var rightTcs4 = new TaskCompletionSource();
+
         var left = Left();
         var right = Right();
         var result = left.Merge(right);
         var resultList = await result.ToListAsync();
         resultList.Should().BeEquivalentTo(new[] { 0, 1, 2, 10, 3, 4, 5, 20, 6, 30 }, options => options.WithStrictOrdering());
 
+
+        // ReSharper disable AccessToModifiedClosure
         async IAsyncEnumerable<int> Left()
         {
             yield return 0;
 
-            await clock.Delay(100);
+            rightTcs1.SetResult();
+            await leftTcs1.Task;
 
             yield return 10;
 
-            await clock.Delay(100);
+            rightTcs2.SetResult();
+            await leftTcs2.Task;
+            rightTcs3.SetResult();
+            await leftTcs3.Task;
 
             yield return 20;
 
-            await clock.Delay(300);
+            rightTcs4.SetResult();
+            await leftTcs4.Task;
 
             yield return 30;
         }
 
         async IAsyncEnumerable<int> Right()
         {
-            await clock.Delay(20);
+            await rightTcs1.Task;
 
             yield return 1;
             yield return 2;
 
-            await clock.Delay(150);
+            leftTcs1.SetResult();
+            await rightTcs2.Task;
 
             yield return 3;
             yield return 4;
 
-            await clock.Delay(10);
+            leftTcs2.SetResult();
+            await rightTcs3.Task;
 
             yield return 5;
 
-            await clock.Delay(100);
+            leftTcs3.SetResult();
+            await rightTcs4.Task;
 
             yield return 6;
+            leftTcs4.SetResult();
         }
+        // ReSharper enable AccessToModifiedClosure
     }
 
 
