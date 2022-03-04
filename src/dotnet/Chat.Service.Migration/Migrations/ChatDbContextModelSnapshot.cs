@@ -117,6 +117,9 @@ namespace ActualChat.Chat.Migrations.Migrations
                     b.Property<DateTime?>("EndsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("HasAttachments")
+                        .HasColumnType("boolean");
+
                     b.Property<long>("Id")
                         .HasColumnType("bigint");
 
@@ -210,6 +213,38 @@ namespace ActualChat.Chat.Migrations.Migrations
                         .HasFilter("\"State\" = 0");
 
                     b.ToTable("InviteCodes");
+                });
+
+            modelBuilder.Entity("ActualChat.Chat.Db.DbTextEntryAttachment", b =>
+                {
+                    b.Property<string>("CompositeId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("EntryId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MetadataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("CompositeId");
+
+                    b.ToTable("TextEntryAttachments");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
