@@ -1,5 +1,8 @@
 ﻿<div class="relative">
-    <h1 class="font-bold mb-8">This feature is in development</h1>
+    @{
+        var featureTitle = FeatureTitle.IsNullOrEmpty() ? "This" : "'" + FeatureTitle + "'" ;
+    }
+    <h1 class="font-bold mb-8">@featureTitle feature is in development</h1>
 
     <p>Help us to prioritize features.</p>
     <p>Please vote how this feature is important for you.</p>
@@ -27,16 +30,19 @@
     </div>
 
     <div class="absolute top-0 right-0 -mr-2 -mt-2 ">
-        <CloseButton Click="OnCancel" />
+        <CloseButton Click="OnCancel"/>
     </div>
 </div>
 
 @code {
-    private int _rating = 0;
+    private int _rating;
     private string _comment = "";
 
     [CascadingParameter]
     BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    [Parameter]
+    public string? FeatureTitle { get; set; }
 
     private void SetRating(int rating) {
         _rating = rating == _rating ? 0 : rating;

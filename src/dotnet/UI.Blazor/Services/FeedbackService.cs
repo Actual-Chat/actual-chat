@@ -18,11 +18,15 @@ public class FeedbackService
         _feedback = feedback;
     }
 
-    public async Task AskFeatureRequestFeedback(string feature)
+    public async Task AskFeatureRequestFeedback(string feature, string featureTitle = null)
     {
         if (_modalReference != null)
             return;
-        _modalReference = _modalService.Show<FeatureRequestFeedback>("", new ModalOptions { HideHeader = true});
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(FeatureRequestFeedback.FeatureTitle), featureTitle);
+        var modalOptions = new ModalOptions { HideHeader = true};
+        _modalReference = _modalService.Show<FeatureRequestFeedback>("", parameters, modalOptions);
         var result = await _modalReference.Result.ConfigureAwait(false);
         _modalReference = null;
         if (result.Cancelled)
