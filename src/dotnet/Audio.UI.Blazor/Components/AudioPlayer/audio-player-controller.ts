@@ -101,9 +101,10 @@ export class AudioPlayerController implements Resettable {
         if (isAecWorkaroundNeeded()) {
             feederNode.connect(destinationNode);
             const stream = await enableChromiumAec(destinationNode.stream);
+            audioElement.currentTime = 0;
             audioElement.srcObject = stream;
             audioElement.muted = false;
-            const _ = audioElement.play();
+            void audioElement.play();
         }
         else {
             feederNode.connect(audioContext.destination);
@@ -129,11 +130,16 @@ export class AudioPlayerController implements Resettable {
         );
 
         if (isAecWorkaroundNeeded()) {
+            console.warn('isAecWorkaroundNeeded == true');
             this.destinationNode = this.audioContext.createMediaStreamDestination();
             this.audioElement = new Audio();
             this.audioElement.autoplay = false;
             this.audioElement.muted = true;
             this.audioElement.pause();
+            this.audioElement.currentTime = 0;
+        }
+        else{
+            console.warn('isAecWorkaroundNeeded == false');
         }
     }
 
@@ -185,12 +191,20 @@ export class AudioPlayerController implements Resettable {
         if (this.audioElement !== null) {
             this.audioElement.muted = true;
             this.audioElement.pause();
+            this.audioElement.currentTime = 0;
+            this.audioElement.srcObject = null;
+            this.audioElement.remove();
+            this.audioElement = new Audio();
+            this.audioElement.autoplay = false;
+            this.audioElement.muted = true;
+            this.audioElement.pause();
+            this.audioElement.currentTime = 0;
         }
         // we sent the stop to worker and worklet (node->processor->onStopped->release to the pool->reset)
     }
 
     public reset(): void | PromiseLike<void> {
-        const { feederNode, destinationNode, audioElement } = this;
+        const { feederNode } = this;
         if (feederNode !== null) {
             feederNode.disconnect();
             feederNode.onBufferLow = null;
@@ -200,12 +214,20 @@ export class AudioPlayerController implements Resettable {
             feederNode.onStopped = null;
             feederNode.onEnded = null;
         }
-        if (destinationNode !== null) {
-            destinationNode.disconnect();
+        if (this.destinationNode !== null) {
+            this.destinationNode.disconnect();
+            this.destinationNode = null;
         }
-        if (audioElement !== null) {
-            audioElement.muted = true;
-            audioElement.pause();
+        if (this.audioElement !== null) {
+            this.audioElement.muted = true;
+            this.audioElement.pause();
+            this.audioElement.srcObject = null;
+            this.audioElement.remove();
+            this.audioElement = new Audio();
+            this.audioElement.autoplay = false;
+            this.audioElement.muted = true;
+            this.audioElement.pause();
+            this.audioElement.currentTime = 0;
         }
     }
 }

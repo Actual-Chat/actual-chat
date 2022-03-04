@@ -3,8 +3,8 @@ import { OpusDecoder } from './opus-decoder';
 
 const worker = self as unknown as Worker;
 const decoders = new Map<number, OpusDecoder>();
-const debug = true;
-const debugPushes: boolean = debug && true;
+const debug = false;
+const debugPushes: boolean = debug && false;
 
 worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
     try {

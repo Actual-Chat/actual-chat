@@ -38,7 +38,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 export class OpusDecoder {
-    private readonly debug: boolean = true;
+    private readonly debug: boolean = false;
     private readonly queue = new Denque<ArrayBuffer | 'end'>();
     private readonly decoder: Decoder;
 
