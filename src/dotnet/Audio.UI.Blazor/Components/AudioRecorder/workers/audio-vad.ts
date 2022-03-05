@@ -36,7 +36,6 @@ export class VoiceActivityDetector {
     private readonly modelUri: URL;
     private readonly movingAverages: ExponentialMovingAverage;
     private readonly streamedMedian: StreamedMedian;
-    private readonly initPromise: Promise<void>;
 
     private session: ort.InferenceSession = null;
     private sampleCount = 0;
@@ -50,7 +49,7 @@ export class VoiceActivityDetector {
     private c0: ort.Tensor;
 
 
-    constructor(modelUri: URL, initOnCreate = false) {
+    constructor(modelUri: URL) {
         this.modelUri = modelUri;
 
         this.movingAverages = new ExponentialMovingAverage(8);
@@ -68,21 +67,13 @@ export class VoiceActivityDetector {
             'ort-wasm-simd.wasm': wasmSimdPath as string,
             'ort-wasm-simd-threaded.wasm': wasmSimdThreadedPath as string,
         };
-
-        if (initOnCreate) {
-            this.initPromise = this.init();
-        }
     }
 
-    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged> {
+    public async appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChanged | null> {
         const { movingAverages, streamedMedian, h0, c0 } = this;
         if (this.session == null) {
-            if (this.initPromise) {
-                await this.initPromise;
-            }
-            else {
-                await this.init();
-            }
+            // skip processing until initialized
+            return null;
         }
 
         if (monoPcm.length !== SAMPLES_PER_WINDOW) {

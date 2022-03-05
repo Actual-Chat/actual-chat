@@ -17,6 +17,7 @@ const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const resampleBuffer = new Uint8Array(512 * 4 * 2);
 let workletPort: MessagePort = null;
 
+let state: 'inactive' | 'active' = 'inactive';
 let encoderPort: MessagePort = null;
 let resampler: SoxrResampler = null;
 let voiceDetector: VoiceActivityDetector = null;
@@ -52,7 +53,6 @@ async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: Mes
     workletPort = workletMessagePort;
     encoderPort = encoderMessagePort;
     workletPort.onmessage = onWorkletMessage;
-    encoderPort.onmessage = onEncoderMessage;
     queue.clear();
     resampler = new SoxrResampler(
         CHANNELS,
@@ -65,6 +65,7 @@ async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: Mes
     await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
     voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
     await voiceDetector.init();
+    state = 'active';
 }
 
 function onInit(): void {
@@ -75,6 +76,9 @@ function onInit(): void {
 }
 
 const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
+    if (state !== 'active')
+        return;
+
     try {
         const { type, buffer } = ev.data;
 
@@ -94,10 +98,6 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
     } catch (error) {
         console.error(error);
     }
-};
-
-const onEncoderMessage = (_: MessageEvent) => {
-    // do nothing;
 };
 
 async function processQueue(): Promise<void> {
