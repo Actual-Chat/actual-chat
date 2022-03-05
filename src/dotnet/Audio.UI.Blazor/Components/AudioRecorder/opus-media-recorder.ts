@@ -49,7 +49,7 @@ export class OpusMediaRecorder {
     private callbacks = new Map<number, Function>();
 
     public source?: MediaStreamAudioSourceNode = null;
-    public stream: MediaStream;
+    public stream?: MediaStream;
 
     // TODO: clearer states
     public state: RecordingState = 'inactive';
@@ -70,41 +70,33 @@ export class OpusMediaRecorder {
 
     public pause(): void {
         console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an pause() call. Lifetime error.");
+        console.assert(this.source != null, "Recorder: pause() call is invalid when source is null. Lifetime error.");
 
         // Stop stream first
         this.source.disconnect();
         this.encoderWorklet.disconnect();
         this.vadWorklet.disconnect();
-
         this.state = 'paused';
     }
 
     public resume(): void {
         console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an resume() call. Lifetime error.");
+        console.assert(this.source != null, "Recorder: resume() call is invalid when source is null. Lifetime error.");
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
         this.source.connect(this.vadWorklet);
         this.state = 'recording';
     }
 
-    public async start(source: MediaStreamAudioSourceNode, timeSlice: number, sessionId: string, chatId: string): Promise<void> {
-
+    public async start(sessionId: string, chatId: string): Promise<void> {
         console.assert(sessionId != '' && chatId != '', 'sessionId and chatId both should have value specified.');
-        console.assert(this.source !== source, 'Recorder start got same source twice.');
+
+        await this.initialize();
 
         if (this.source)
             this.source.disconnect();
-
-        this.source = source;
-        this.stream = source.mediaStream;
-
-        const tracks = this.stream.getAudioTracks();
-        if (!tracks[0]) {
-            throw new Error('DOMException: UnknownError, media track not found.');
-        }
-
-        // Start recording
-        await this.initialize(timeSlice);
+        this.stream = await OpusMediaRecorder.GetMicrophoneStream();
+        this.source = this.context.createMediaStreamSource(this.stream);
 
         this.state = 'recording';
 
@@ -152,6 +144,11 @@ export class OpusMediaRecorder {
             this.encoderWorklet.disconnect();
             this.vadWorklet.disconnect();
 
+            this.stream.getAudioTracks().forEach(t => t.stop());
+            this.stream.getVideoTracks().forEach(t => t.stop());
+            this.stream = null;
+            this.source = null;
+
             // Stop event will be triggered at _onmessageFromWorker(),
             const msg: EndMessage = {
                 type: 'end',
@@ -187,37 +184,83 @@ export class OpusMediaRecorder {
         });
     }
 
-    private async initialize(timeSlice: number): Promise<void> {
-        if (this.context == null) {
-            this.context = await AudioContextPool.get('main') as AudioContext;
-            if (this.context.sampleRate !== 48000) {
-                throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
-            }
-            const encoderWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
-                channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-                processorOptions: {
-                    timeSlice: timeSlice
-                } as ProcessorOptions,
-            };
-            this.encoderWorklet = new AudioWorkletNode(this.context, 'opus-encoder-worklet-processor', encoderWorkletOptions);
-            const initPortMessage: EncoderWorkletMessage = { type: 'init', };
-            this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
+    private async initialize(): Promise<void> {
+        if (this.context != null)
+            return;
 
-            const vadWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
-                channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-            };
-            this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
-            const vadInitPortMessage: VadWorkletMessage = { type: 'init', };
-            this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
+        this.context = await AudioContextPool.get('main') as AudioContext;
+        if (this.context.sampleRate !== 48000) {
+            throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
         }
+        const encoderWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+            processorOptions: {
+                timeSlice: 20, // hard-coded 20ms at the codec level
+            } as ProcessorOptions,
+        };
+        this.encoderWorklet = new AudioWorkletNode(
+            this.context,
+            'opus-encoder-worklet-processor',
+            encoderWorkletOptions);
+        const initPortMessage: EncoderWorkletMessage = { type: 'init' };
+        this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
+        const vadWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+        };
+        this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
+        const vadInitPortMessage: VadWorkletMessage = { type: 'init' };
+        this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
+    }
+
+    private static async GetMicrophoneStream(): Promise<MediaStream> {
+        /**
+         * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
+         * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
+         */
+        const constraints: MediaStreamConstraints & any = {
+            audio: {
+                channelCount: 1,
+                sampleRate: 48000,
+                sampleSize: 32,
+                autoGainControl: true,
+                echoCancellation: true,
+                noiseSuppression: true,
+                googEchoCancellation: true,
+                googEchoCancellation2: true,
+                latency: 0,
+                advanced: [
+                    { autoGainControl: { exact: true } },
+                    { echoCancellation: { exact: true } },
+                    { noiseSuppression: { exact: true } },
+                    { googEchoCancellation: { ideal: true } },
+                    { googEchoCancellation2: { ideal: true } },
+                    { googAutoGainControl: { ideal: true } },
+                    { googNoiseSuppression: { ideal: true } },
+                    { googNoiseSuppression2: { ideal: true } },
+                    { googExperimentalAutoGainControl: { ideal: true } },
+                    { googExperimentalEchoCancellation: { ideal: true } },
+                    { googExperimentalNoiseSuppression: { ideal: true } },
+                    { googHighpassFilter: { ideal: true } },
+                    { googTypingNoiseDetection: { ideal: true } },
+                    { googAudioMirroring: { exact: false } },
+                ],
+            },
+            video: false,
+        };
+        let mediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
+        const tracks = mediaStream.getAudioTracks();
+        if (!tracks[0]) {
+            throw new Error('DOMException: UnknownError, media track not found.');
+        }
+        return mediaStream;
     }
 
     private onWorkerMessage = (ev: MessageEvent<ResolveCallbackMessage>) => {

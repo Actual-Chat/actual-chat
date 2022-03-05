@@ -52,7 +52,7 @@ export class AudioRecorderTestPage extends AudioRecorder {
         recordNumber: number,
         sessionId: string,
         chatId: string) {
-        super(blazorRef, sessionId, chatId, debugMode);
+        super(blazorRef, sessionId, chatId);
         this._recordsRef = recordsRef;
         this._recordNumber = recordNumber;
     }
