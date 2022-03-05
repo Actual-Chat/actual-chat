@@ -21,7 +21,8 @@
         @for (var i = 1; i <= 5; i++) {
             var cls = _rating >= i ? "fa-star" : "fa-star-o";
             var rating = i;
-            <button role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls" aria-hidden="true"></i></button>
+            var id = "star-" + (rating - 1);
+            <button role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls" aria-hidden="true" id="@id"></i></button>
         }
     </div>
     <div class="mt-2">
@@ -56,8 +57,10 @@
     [Parameter]
     public string? FeatureTitle { get; set; }
 
-    private void SetRating(int rating) {
+    [JSInvokable]
+    private async Task SetRating(int rating) {
         _rating = rating == _rating ? 0 : rating;
+        await JSRef.InvokeVoidAsync("updateRating", _rating - 1).ConfigureAwait(true);
     }
 
     private void OnSubmit() {
