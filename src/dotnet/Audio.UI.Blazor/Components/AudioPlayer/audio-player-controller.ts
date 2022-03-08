@@ -216,7 +216,6 @@ export class AudioPlayerController implements Resettable {
         }
         if (this.destinationNode !== null) {
             this.destinationNode.disconnect();
-            this.destinationNode = null;
         }
         if (this.audioElement !== null) {
             this.audioElement.muted = true;
