@@ -17,12 +17,12 @@
     <p>Please vote how this feature is important for you.</p>
     <p>1 = not important, 5 = very important!</p>
 
-    <div @ref="FeedbackRef" >
+    <div @ref="FeedbackRef" class="py-2">
         @for (var i = 1; i <= 5; i++) {
             var cls = _rating >= i ? "fa-star" : "fa-star-o";
             var rating = i;
             var id = "star-" + (rating - 1);
-            <button role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls" aria-hidden="true" id="@id"></i></button>
+            <button role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls fa-2x rating-star" aria-hidden="true" id="@id"></i></button>
         }
     </div>
     <div class="mt-2">
