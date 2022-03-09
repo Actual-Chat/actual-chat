@@ -39,6 +39,10 @@ public abstract class TrackPlayer : IAsyncDisposable
         _source = source;
     }
 
+    /// <summary>
+    /// Starts playing the track which is represented by <see cref="IMediaSource"/> (from ctor).
+    /// </summary>
+    /// <returns>A running task, which will be completed after playing all media frames or on a cancel + disposing things</returns>
     public Task Play(CancellationToken cancellationToken = default)
     {
         if (_isDisposed == 1)
@@ -133,8 +137,16 @@ public abstract class TrackPlayer : IAsyncDisposable
             }
         }
     }
-
-    public void Stop() => _cancellationTokenSource?.Cancel();
+    /// <summary>
+    /// Stops the playing of a track.
+    /// </summary>
+    /// <returns>A running task which is completed when you can run <see cref="Play(CancellationToken)"/> again</returns>
+    public Task Stop()
+    {
+        var playingTask = _playingTask;
+        _cancellationTokenSource?.Cancel();
+        return playingTask ?? Task.CompletedTask;
+    }
 
     protected void UpdateState<TArg>(Func<TArg, PlayerState, PlayerState> updater, TArg arg)
     {

@@ -14,10 +14,13 @@ public class ChatPlayer : IAsyncDisposable
     private readonly MomentClockSet _clocks;
     private readonly Session _session;
     private readonly IChats _chats;
-    private readonly object _locker = new();
+
+    private readonly SemaphoreSlim _locker = new(1, 1);
     private CancellationTokenSource? _cancellationTokenSource;
 
     private int _isDisposed;
+    private bool _isPlaying;
+
     /// <summary>
     /// Once enqueued, playback loop continues, so the larger is this duration,
     /// the higher is the chance to enqueue the next entry on time.
@@ -54,16 +57,18 @@ public class ChatPlayer : IAsyncDisposable
         _chats = chats;
     }
 
-    // TODO: maybe we can refactor this & merge historical and realtime player or move them out like IChatEntryProvider
+    /// <summary>
+    /// Returns a <see cref="Task"/> which is completed when all <see cref="ChatEntry"/>
+    /// from <paramref name="startAt"/> are enqueued to <see cref="Playback"/>
+    /// </summary>
     public async Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken)
     {
-        CancellationTokenSource cancellationTokenSource;
-        lock (_locker) {
-            if (_cancellationTokenSource != null)
-                throw new InvalidOperationException("ChatPlayer should be stopped before start playing");
-            cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _cancellationTokenSource = cancellationTokenSource;
+        if (_isPlaying) {
+            await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
+            Playback.
         }
+
+
 
         try {
             if (isRealtime)
@@ -74,6 +79,7 @@ public class ChatPlayer : IAsyncDisposable
         finally {
             cancellationTokenSource.CancelAndDisposeSilently();
         }
+
         lock (_locker) {
             if (_cancellationTokenSource == cancellationTokenSource)
                 _cancellationTokenSource = null;
@@ -167,16 +173,22 @@ public class ChatPlayer : IAsyncDisposable
         }
     }
 
-    public void Stop()
+    public async Task Stop()
     {
-        CancellationTokenSource? cancellationTokenSource;
-        lock (_locker) {
-            cancellationTokenSource = _cancellationTokenSource;
-            _cancellationTokenSource = null;
+        if (!_isPlaying)
+            return;
+        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        try {
+            if (!_isPlaying)
+                return;
+            var execution = await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
+            await execution.WhenCommandProcessed.ConfigureAwait(false);
+            // TODO: cancellation token source cancel & dispose, but before we should run stop command and WAIT for it
+            _isPlaying = false;
         }
-        if (cancellationTokenSource != null)
-            cancellationTokenSource.CancelAndDisposeSilently();
-        Playback.Stop();
+        finally {
+            _locker.Release();
+        }
     }
 
     protected async ValueTask EnqueueEntry(
