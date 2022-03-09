@@ -52,8 +52,8 @@ const queue = new Denque<ArrayBuffer | number>();
 const worker = self as unknown as Worker;
 let connection: signalR.HubConnection;
 let recordingSubject = new signalR.Subject<Uint8Array>();
-// TODO: check statuses / add an additional status field for VAD
-let state: 'inactive' | 'readyToInit' | 'encoding' | 'paused' | 'ended' = 'inactive';
+let state: 'inactive' | 'readyToInit' | 'encoding' | 'ended' = 'inactive';
+let vadState: 'voice' | 'silence' = 'voice';
 let workletPort: MessagePort = null;
 let vadPort: MessagePort = null;
 let encoder: Encoder;
@@ -78,6 +78,7 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
             case 'end':
                 onEnd(msg as EndMessage);
                 break;
+
             default:
                 throw new Error(`Encoder worker: Got unknown message type ${msg.type as string}`);
         }
@@ -97,10 +98,12 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
     const { sessionId, chatId, callbackId } = message;
     lastInitMessage = message;
 
-    state = 'encoding';
 
     recordingSubject = new signalR.Subject<Uint8Array>();
     await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
+
+    state = 'encoding';
+    vadState = 'voice';
 
     if (debug) {
         console.log('init recorder worker');
@@ -159,20 +162,16 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
             default:
                 break;
         }
-        if (audioBuffer.byteLength !== 0) {
-            if (state === 'encoding') {
-                queue.push(buffer);
+        if (audioBuffer.byteLength === 0)
+            return;
+
+        if (state === 'encoding') {
+            queue.push(buffer);
+            if (vadState === 'voice') {
                 processQueue();
             }
-            else if (state === 'ended') {
-                // nop, we don't need to save a buffer if the user call stop
-            }
-            else if (state === 'paused') {
-                // vad status is
-                queue.push(buffer);
-                if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
-                    queue.shift();
-                }
+            else if (queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME) {
+                queue.shift();
             }
         }
     }
@@ -188,21 +187,31 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
             console.log(vadEvent);
         }
 
-        if (state === 'encoding') {
-            if (vadEvent.kind === 'end') {
-                state = 'paused';
-                recordingSubject.complete();
-            }
-        } else if (state == 'paused' && vadEvent.kind === 'start') {
+        const newVadState = vadEvent.kind === 'end'
+            ? 'silence'
+            : 'voice';
+
+        if (vadState === newVadState)
+            return;
+
+        if (state !== 'encoding')
+            return;
+
+        if (newVadState === 'silence') {
+            // set state, then complete the stream
+            vadState = newVadState;
+            recordingSubject.complete();
+        }
+        else {
             if (!lastInitMessage) {
                 throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
             }
 
+            // start new stream and then set state
             const { sessionId, chatId } = lastInitMessage;
             recordingSubject = new signalR.Subject<Uint8Array>();
             await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
-            // TODO: after await we can override new state, fix this.
-            state = 'encoding';
+            vadState = newVadState;
             processQueue();
         }
     }
@@ -216,7 +225,7 @@ function processQueue(): void {
         return;
     }
 
-    if (isEncoding || state === 'paused') {
+    if (isEncoding || vadState === 'silence') {
         return;
     }
 

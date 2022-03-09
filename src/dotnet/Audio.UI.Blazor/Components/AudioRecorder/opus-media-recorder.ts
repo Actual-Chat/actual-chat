@@ -140,9 +140,12 @@ export class OpusMediaRecorder {
             this.callbacks.set(callbackId, resolve);
 
             // Stop stream first
-            this.source.disconnect();
-            this.encoderWorklet.disconnect();
-            this.vadWorklet.disconnect();
+            if (this.source)
+                this.source.disconnect();
+            if (this.encoderWorklet)
+                this.encoderWorklet.disconnect();
+            if (this.vadWorklet)
+                this.vadWorklet.disconnect();
 
             this.stream.getAudioTracks().forEach(t => t.stop());
             this.stream.getVideoTracks().forEach(t => t.stop());
