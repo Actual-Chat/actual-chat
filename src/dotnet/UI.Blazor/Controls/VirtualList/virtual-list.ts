@@ -71,7 +71,7 @@ export class VirtualList {
         this._contentRef = this._ref.querySelector(":scope > .content");
         this._spacerRef = this._contentRef.querySelector(":scope > .spacer-start");
         this._endSpacerRef = this._contentRef.querySelector(":scope > .spacer-end");
-        this._renderIndexRef = this._contentRef.querySelector(":scope > .data.render-index")!;
+        this._renderIndexRef = this._contentRef.querySelector(":scope > .data.render-index");
 
         // Events & observers
         this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
