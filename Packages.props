@@ -2,17 +2,17 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
-    <AspNetCoreVersion>6.0.1</AspNetCoreVersion>
+    <AspNetCoreVersion>6.0.3</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>6.0.0</MicrosoftExtensionsVersion>
-    <EntityFrameworkCoreVersion>6.0.1</EntityFrameworkCoreVersion>
-    <NpgsqlVersion>6.0.2</NpgsqlVersion>
+    <EntityFrameworkCoreVersion>6.0.3</EntityFrameworkCoreVersion>
+    <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <MySqlVersion>2.1.5</MySqlVersion>
     <EntityFrameworkCoreNpgsqlVersion>6.0.3</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreMySqlVersion>6.0.1</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <BlazorVersion>6.0.1</BlazorVersion>
-    <SignalRVersion>6.0.1</SignalRVersion>
+    <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
+    <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <StlFusionVersion>2.3.23</StlFusionVersion>
     <OpenTelemetryVersion>1.2.0-rc2</OpenTelemetryVersion>
@@ -60,7 +60,6 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)"/>
-    <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.1.*"/>
     <PackageReference Update="MySqlConnector" Version="$(MySqlVersion)"/>
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)"/>
@@ -131,6 +130,7 @@
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="bunit" Version="1.4.15"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="1.2.0" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Analyzers -->
     <PackageReference Update="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
