@@ -69,6 +69,10 @@ async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: Mes
 }
 
 function onInit(): void {
+    // it is safe to skip init while it still not active
+    if (state !== 'active')
+        return;
+
     // resample silence to clean up internal state
     const silence = new Uint8Array(768 * 4);
     resampler.processChunk(silence, resampleBuffer);
