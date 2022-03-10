@@ -78,4 +78,13 @@ export class Feedback {
             this.stars[i].removeEventListener('mouseenter', this.starEnterListener);
         }
     }
+
+    private dispose() {
+        this.feedbackDiv.removeEventListener('mouseenter', this.feedbackEnterListener);
+        this.feedbackDiv.removeEventListener('mouseleave', this.feedbackLeaveListener);
+        for (let i = 0; i < this.stars.length; i++) {
+            let star = this.stars[i];
+            star.removeEventListener('mouseenter', this.starEnterListener);
+        }
+    }
 }
