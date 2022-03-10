@@ -130,7 +130,7 @@ export class AudioPlayerController implements Resettable {
         );
 
         if (isAecWorkaroundNeeded()) {
-            console.warn('isAecWorkaroundNeeded == true');
+            console.debug('isAecWorkaroundNeeded == true');
             this.destinationNode = this.audioContext.createMediaStreamDestination();
             this.audioElement = new Audio();
             this.audioElement.autoplay = false;
@@ -139,7 +139,7 @@ export class AudioPlayerController implements Resettable {
             this.audioElement.currentTime = 0;
         }
         else{
-            console.warn('isAecWorkaroundNeeded == false');
+            console.debug('isAecWorkaroundNeeded == false');
         }
     }
 

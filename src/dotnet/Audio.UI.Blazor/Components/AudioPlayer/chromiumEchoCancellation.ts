@@ -101,6 +101,7 @@ let isAecWorkaroundNeededCached: boolean | null = null;
 
 /** Chromium browsers don't apply echoCancellation to a Web Audio pipeline */
 export function isAecWorkaroundNeeded(): boolean {
+    return false;
     const force = self["forceEchoCancellation"];
     if (force !== null && force !== undefined)
         return force;
