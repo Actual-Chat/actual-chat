@@ -25,12 +25,12 @@
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var playback = Player.Playback;
-        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
-        return isPlaying;
+        var playbackKind = await playback.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        return playbackKind == PlaybackKind.Realtime;
     }
 
     private async Task Toggle() {
-        var isPlaying = Player.Playback is { IsPlayingState.Value: true };
+        var isPlaying = Player.Playback is { PlaybackState.Value: PlaybackKind.Realtime };
         if (isPlaying)
             Stop();
         else

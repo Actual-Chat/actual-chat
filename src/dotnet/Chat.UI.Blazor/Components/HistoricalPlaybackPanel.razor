@@ -63,8 +63,8 @@
     {
         var playback = Player.Playback;
 
-        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
-        if (!isPlaying)
+        var playbackKind = await playback.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        if (playbackKind != PlaybackKind.Historical)
             return Model.NotPlaying;
 
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);

@@ -21,10 +21,7 @@ public sealed class Playback : IAsyncDisposable
     private readonly object _runLocker = new();
 
     public readonly IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState;
-    /// <summary>
-    /// Is <see langword="true" /> if <see cref="PlayTrackCommand"/> is enqueued or a track is actually being played.
-    /// </summary>
-    public readonly IMutableState<bool> IsPlayingState;
+    public readonly IMutableState<PlaybackKind> PlaybackState;
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
@@ -38,7 +35,7 @@ public sealed class Playback : IAsyncDisposable
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
         PlayingTracksState = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
-        IsPlayingState = stateFactory.NewMutable(false);
+        PlaybackState = stateFactory.NewMutable(PlaybackKind.None);
         _trackPlayerFactory = trackPlayerFactory;
         _applicationStopping = lifetime.ApplicationStopping;
         _log = log;
@@ -69,7 +66,7 @@ public sealed class Playback : IAsyncDisposable
                             _whenCompleted?.TrySetResult(default);
                         _whenCompleted = null;
                         _commandLoopTask = null;
-                        IsPlayingState.Value = false;
+                        PlaybackState.Value = PlaybackKind.None;
                     }
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
@@ -114,7 +111,7 @@ public sealed class Playback : IAsyncDisposable
         async Task OnStopCommand()
         {
             await Task.WhenAll(trackPlayers.Values.Select(x => x.Player.Stop())).ConfigureAwait(false);
-            // after stop we should renew _playingCts, because user can send a next play command 
+            // after stop we should renew _playingCts, because user can send a next play command
         }
 
         async ValueTask OnPlayTrackCommand(PlayTrackCommand command, TaskCompletionSource tcs)
@@ -174,7 +171,9 @@ public sealed class Playback : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         // TODO: think about it, maybe it should be changed ?
-        IsPlayingState.Value = true;
+        PlaybackState.Value = trackInfo.IsRealtime
+            ? PlaybackKind.Realtime
+            : PlaybackKind.Historical;
         var command = new PlayTrackCommand(trackInfo, source, cancellationToken) { PlayAt = playAt };
         return await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
     }
@@ -226,17 +225,18 @@ public sealed class Playback : IAsyncDisposable
         if (!prev.IsStarted && state.IsStarted) {
             lock (_stateLocker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.Insert(0, (trackInfo, state));
-                if (!IsPlayingState.Value) {
-                    IsPlayingState.Value = true;
-                }
+                var playbackKind = trackInfo.IsRealtime
+                    ? PlaybackKind.Realtime
+                    : PlaybackKind.Historical;
+                if (PlaybackState.Value != playbackKind)
+                    PlaybackState.Value = playbackKind;
             }
         }
         else if (state.IsCompleted && !prev.IsCompleted) {
             lock (_stateLocker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
-                if (PlayingTracksState.Value.Count == 0) {
-                    IsPlayingState.Value = false;
-                }
+                if (PlayingTracksState.Value.Count == 0)
+                    PlaybackState.Value = PlaybackKind.None;
             }
         }
     }
