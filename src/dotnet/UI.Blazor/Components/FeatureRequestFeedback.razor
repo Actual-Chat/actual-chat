@@ -2,6 +2,7 @@
 @using System.Net.Mime
 @using ActualChat.UI.Blazor.Module
 @implements IFeatureBackend
+@implements IAsyncDisposable
 @inject IJSRuntime _js
 @inject MomentClockSet _clocks
 @inject HostInfo _hostInfo
@@ -79,5 +80,12 @@
                 FeedbackRef, BlazorRef
                 ).ConfigureAwait(true);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (JSRef != null!)
+            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        BlazorRef?.Dispose();
     }
 }
