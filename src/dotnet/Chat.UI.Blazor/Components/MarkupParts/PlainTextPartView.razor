@@ -53,12 +53,6 @@
         var chats = Services.GetRequiredService<IChats>();
         var chatController = Services.GetRequiredService<ChatController>();
         var historicalPlayer = chatController.GetPlayer(chatId);
-        var playback = historicalPlayer.Playback;
-        if (playback is { IsPlayingState.Value: true }) {
-            historicalPlayer.Stop();
-            return;
-        }
-
         var chatEntryReader = chats.CreateEntryReader(session, chatId, ChatEntryType.Audio);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
         if (audioEntry == null) {
