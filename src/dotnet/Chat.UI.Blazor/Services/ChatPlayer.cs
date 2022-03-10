@@ -207,7 +207,7 @@ public sealed class ChatPlayer : IAsyncDisposable
         }
     }
 
-    private async ValueTask EnqueueEntry(
+    private async ValueTask<Playback.CommandExecution> EnqueueEntry(
             Playback playback,
             Moment playAt,
             ChatEntry audioEntry,
@@ -218,21 +218,19 @@ public sealed class ChatPlayer : IAsyncDisposable
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
-            if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration) {
-                return;
-            }
-            if (audioEntry.IsStreaming) {
-                await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
+
+            if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration)
+                return Playback.CommandExecution.None;
+            if (audioEntry.IsStreaming)
+                return await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
                     .ConfigureAwait(false);
-            }
-            else {
-                await EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
-                    .ConfigureAwait(false);
-            }
+
+            return await EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             _log.LogError(e,
-                "Error playing audio entry; chat #{_chatId}, entry #{AudioEntryId}, stream #{StreamId}",
+                "Error playing audio entry; chat #{ChatId}, entry #{AudioEntryId}, stream #{StreamId}",
                 audioEntry.ChatId,
                 audioEntry.Id,
                 audioEntry.StreamId);
@@ -240,28 +238,25 @@ public sealed class ChatPlayer : IAsyncDisposable
         }
     }
 
-    private async ValueTask EnqueueStreamingEntry(
+    private async ValueTask<Playback.CommandExecution> EnqueueStreamingEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        try {
-            var audio = await _audioStreamer
-                .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
-                .ConfigureAwait(false);
-            var trackInfo = new ChatAudioTrackInfo(audioEntry) {
-                RecordedAt = audioEntry.BeginsAt + skipTo,
-                ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
-                IsRealtime = true,
-            };
-            await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+        var audio = await _audioStreamer
+            .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
+            .ConfigureAwait(false);
+        var trackInfo = new ChatAudioTrackInfo(audioEntry) {
+            RecordedAt = audioEntry.BeginsAt + skipTo,
+            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+            IsRealtime = true,
+        };
+        return await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask EnqueueNonStreamingEntry(
+    private async ValueTask<Playback.CommandExecution> EnqueueNonStreamingEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
@@ -276,10 +271,10 @@ public sealed class ChatPlayer : IAsyncDisposable
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
-        await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
+        return await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
-    protected async ValueTask DisposeAsyncCore()
+    private async ValueTask DisposeAsyncCore()
     {
         _locker.Dispose();
         try {
@@ -295,6 +290,5 @@ public sealed class ChatPlayer : IAsyncDisposable
         if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 1)
             return;
         await DisposeAsyncCore().ConfigureAwait(false);
-        GC.SuppressFinalize(this);
     }
 }
