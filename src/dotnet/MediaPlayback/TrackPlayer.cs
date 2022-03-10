@@ -178,8 +178,9 @@ public abstract class TrackPlayer : IAsyncDisposable
         };
     }, (offset, this));
 
-    protected virtual void OnStopped(Exception? exception = null)
-        => UpdateState(static (exception, state) => state with { IsCompleted = true, Error = exception }, exception);
+    protected virtual void OnStopped(Exception? exception = null) => UpdateState(static (exception, state) => {
+        return state with { IsCompleted = true, Error = exception };
+    }, exception);
 
     protected virtual async ValueTask DisposeAsyncCore()
     {

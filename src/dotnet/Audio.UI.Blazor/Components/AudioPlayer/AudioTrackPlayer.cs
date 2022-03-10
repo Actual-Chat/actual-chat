@@ -12,6 +12,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
     private readonly ILogger<AudioTrackPlayer> _log;
+    private readonly ILogger<AudioTrackPlayer>? _debugLog;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private Task<Unit> _whenBufferReady = TaskSource.New<Unit>(true).Task;
@@ -28,6 +29,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         _circuitContext = circuitContext;
         _js = jsRuntime;
         _log = log;
+        _debugLog = _debugMode ? _log : null;
         UpdateBufferReadyState(true);
     }
 
@@ -41,6 +43,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 null);
             _log.LogError(error, "Playback stopped with an error");
         }
+        _debugLog?.LogDebug("OnPlaybackEnded: {Message}", errorMessage);
         OnStopped(error);
         return Task.CompletedTask;
     }
@@ -48,6 +51,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     [JSInvokable]
     public Task OnPlaybackTimeChanged(double offset)
     {
+        _debugLog?.LogDebug("OnPlayedTo: {Offset}", offset);
         OnPlayedTo(TimeSpan.FromSeconds(offset));
         return Task.CompletedTask;
     }
@@ -67,6 +71,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         if (_jsRef != null)
                             throw new LifetimeException("Double start playback command");
                         _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                        _debugLog?.LogDebug("Create audio player in js");
                         _jsRef = await _js.InvokeAsync<IJSObjectReference>(
                                     $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                                     CancellationToken.None,
@@ -78,6 +83,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                         if (!_isStopSent) {
                             if (_jsRef == null)
                                 throw new LifetimeException($"{nameof(StopCommand)}: Start command should be called first.");
+                            _debugLog?.LogDebug("Send stop command to js");
                             _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
                             _isStopSent = true;
                         }
@@ -85,6 +91,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     case EndCommand:
                         if (_jsRef == null)
                             throw new LifetimeException($"{nameof(EndCommand)}: Start command should be called first.");
+                        _debugLog?.LogDebug("Send end command to js");
                         _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
                         break;
                     default:

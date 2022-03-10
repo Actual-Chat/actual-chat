@@ -22,7 +22,7 @@ public class LocalAudioDownloader : AudioDownloader
             return await base.Download(audioUri, skipTo, cancellationToken).ConfigureAwait(false);
 
         var blobId = match.Groups["blobId"].Value;
-        Log.LogInformation("Fetching blob #{BlobId}", blobId);
+        Log.LogDebug("Fetching blob #{BlobId}", blobId);
         var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
         var stream = await blobStorage.OpenReadAsync(blobId, cancellationToken).ConfigureAwait(false);
         var byteStream = stream.ReadByteStream(true, cancellationToken);
