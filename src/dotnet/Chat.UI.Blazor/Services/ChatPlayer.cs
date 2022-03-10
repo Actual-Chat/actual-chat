@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatPlayer : IAsyncDisposable
+public sealed class ChatPlayer : IAsyncDisposable
 {
     private readonly Symbol _chatId;
     private readonly AudioDownloader _audioDownloader;
@@ -207,7 +207,7 @@ public class ChatPlayer : IAsyncDisposable
         }
     }
 
-    protected async ValueTask EnqueueEntry(
+    private async ValueTask EnqueueEntry(
             Playback playback,
             Moment playAt,
             ChatEntry audioEntry,
@@ -254,6 +254,7 @@ public class ChatPlayer : IAsyncDisposable
             var trackInfo = new ChatAudioTrackInfo(audioEntry) {
                 RecordedAt = audioEntry.BeginsAt + skipTo,
                 ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+                IsRealtime = true,
             };
             await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
         }
@@ -278,7 +279,7 @@ public class ChatPlayer : IAsyncDisposable
         await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual async ValueTask DisposeAsyncCore()
+    protected async ValueTask DisposeAsyncCore()
     {
         _locker.Dispose();
         try {

@@ -147,8 +147,10 @@ export class OpusMediaRecorder {
             if (this.vadWorklet)
                 this.vadWorklet.disconnect();
 
-            this.stream.getAudioTracks().forEach(t => t.stop());
-            this.stream.getVideoTracks().forEach(t => t.stop());
+            if (this.stream) {
+                this.stream.getAudioTracks().forEach(t => t.stop());
+                this.stream.getVideoTracks().forEach(t => t.stop());
+            }
             this.stream = null;
             this.source = null;
 

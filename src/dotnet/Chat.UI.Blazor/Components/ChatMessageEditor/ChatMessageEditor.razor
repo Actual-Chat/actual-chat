@@ -4,6 +4,7 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Hosting
+@using ActualChat.MediaPlayback
 @implements IAsyncDisposable
 @inject IChats _chatService
 @inject Session _session
@@ -110,7 +111,7 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        var isPlaying = Player.Playback is { IsPlayingState.Value: true };
+        var isPlaying = Player.Playback is { PlaybackState.Value: PlaybackKind.Realtime };
         if (isPlaying)
             return Task.CompletedTask;
         // We don't need to await for this here
