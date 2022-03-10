@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -16,7 +17,8 @@ public class ChatPlayer : IAsyncDisposable
     private readonly IChats _chats;
 
     private readonly SemaphoreSlim _locker = new(1, 1);
-    private CancellationTokenSource? _cancellationTokenSource;
+    private CancellationTokenSource? _playingCancellation;
+    private readonly CancellationToken _applicationStopping;
 
     private int _isDisposed;
     private bool _isPlaying;
@@ -32,8 +34,10 @@ public class ChatPlayer : IAsyncDisposable
 
     public Playback Playback { get; }
 
+
     public ChatPlayer(
         Symbol chatId,
+        IHostApplicationLifetime lifetime,
         IPlaybackFactory playbackFactory,
         AudioDownloader audioDownloader,
         ILogger<ChatPlayer> log,
@@ -46,6 +50,7 @@ public class ChatPlayer : IAsyncDisposable
         )
     {
         Playback = playbackFactory.Create();
+        _applicationStopping = lifetime.ApplicationStopping;
         _chatId = chatId;
         _audioDownloader = audioDownloader;
         _log = log;
@@ -57,33 +62,62 @@ public class ChatPlayer : IAsyncDisposable
         _chats = chats;
     }
 
+
+    public async Task Stop()
+    {
+        if (_isDisposed == 1)
+            throw new ObjectDisposedException(nameof(ChatPlayer));
+        if (!_isPlaying)
+            return;
+        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        try {
+            await StopAndDisposeCancellation().ConfigureAwait(false);
+        }
+        finally {
+            _locker.Release();
+        }
+    }
+
+    private async Task StopAndDisposeCancellation()
+    {
+        if (!_isPlaying)
+            return;
+        var cts = _playingCancellation;
+        _playingCancellation = null;
+        if (cts != null) {
+            // add the stop command to the playback command queue and when discard all related commands (except added stop)
+            cts.CancelAndDisposeSilently();
+            var execution = await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
+            await execution.WhenCommandProcessed.ConfigureAwait(false);
+        }
+        _isPlaying = false;
+    }
+
     /// <summary>
     /// Returns a <see cref="Task"/> which is completed when all <see cref="ChatEntry"/>
     /// from <paramref name="startAt"/> are enqueued to <see cref="Playback"/>
     /// </summary>
     public async Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken)
     {
-        if (_isPlaying) {
-            await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
-            Playback.
-        }
-
-
-
+        if (_isDisposed == 1)
+            throw new ObjectDisposedException(nameof(ChatPlayer));
+        CancellationToken cancellation;
+        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         try {
-            if (isRealtime)
-                await PlayRealtime(startAt, cancellationTokenSource.Token).ConfigureAwait(false);
-            else
-                await PlayHistorical(startAt, cancellationTokenSource.Token).ConfigureAwait(false);
+            if (_isPlaying)
+                await StopAndDisposeCancellation().ConfigureAwait(false);
+            _playingCancellation = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
+            cancellation = _playingCancellation.Token;
+            _isPlaying = true;
         }
         finally {
-            cancellationTokenSource.CancelAndDisposeSilently();
+            _locker.Release();
         }
 
-        lock (_locker) {
-            if (_cancellationTokenSource == cancellationTokenSource)
-                _cancellationTokenSource = null;
-        }
+        if (isRealtime)
+            await PlayRealtime(startAt, cancellation).ConfigureAwait(false);
+        else
+            await PlayHistorical(startAt, cancellation).ConfigureAwait(false);
     }
 
     private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)
@@ -173,24 +207,6 @@ public class ChatPlayer : IAsyncDisposable
         }
     }
 
-    public async Task Stop()
-    {
-        if (!_isPlaying)
-            return;
-        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
-        try {
-            if (!_isPlaying)
-                return;
-            var execution = await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
-            await execution.WhenCommandProcessed.ConfigureAwait(false);
-            // TODO: cancellation token source cancel & dispose, but before we should run stop command and WAIT for it
-            _isPlaying = false;
-        }
-        finally {
-            _locker.Release();
-        }
-    }
-
     protected async ValueTask EnqueueEntry(
             Playback playback,
             Moment playAt,
@@ -262,13 +278,15 @@ public class ChatPlayer : IAsyncDisposable
         await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
-    protected virtual ValueTask DisposeAsyncCore()
+    protected virtual async ValueTask DisposeAsyncCore()
     {
-        lock (_locker) {
-            if (_cancellationTokenSource != null)
-                _cancellationTokenSource.CancelAndDisposeSilently();
+        _locker.Dispose();
+        try {
+            await StopAndDisposeCancellation().ConfigureAwait(false);
         }
-        return Playback.DisposeAsync();
+        finally {
+            await Playback.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public async ValueTask DisposeAsync()

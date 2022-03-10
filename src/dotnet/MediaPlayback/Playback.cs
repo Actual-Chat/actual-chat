@@ -15,9 +15,9 @@ public sealed class Playback : IAsyncDisposable
     private readonly Channel<CommandExecution> _commands;
     private int _isDisposed;
     private Task? _commandLoopTask;
-    private CancellationTokenSource? _cancellationTokenSource;
+    private CancellationTokenSource? _commandLoopCts;
     private TaskSource<bool>? _whenCompleted;
-    private readonly object _locker = new();
+    private readonly object _stateLocker = new();
     private readonly object _runLocker = new();
 
     public readonly IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState;
@@ -56,12 +56,12 @@ public sealed class Playback : IAsyncDisposable
                 throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(TrackPlayer)));
 
             _whenCompleted = TaskSource.New<bool>(runContinuationsAsynchronously: true);
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping);
-            _commandLoopTask = CommandLoop(_cancellationTokenSource.Token)
+            _commandLoopCts = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping);
+            _commandLoopTask = CommandLoop(_commandLoopCts.Token)
                 .ContinueWith(task => {
                     lock (_runLocker) {
-                        _cancellationTokenSource?.Dispose();
-                        _cancellationTokenSource = null;
+                        _commandLoopCts?.Dispose();
+                        _commandLoopCts = null;
                         var exception = task.Exception?.InnerException ?? task.Exception;
                         if (exception != null)
                             _whenCompleted?.TrySetException(exception);
@@ -82,6 +82,10 @@ public sealed class Playback : IAsyncDisposable
             var commands = _commands.Reader.ReadAllAsync(cancellationToken);
             await foreach (var execution in commands.ConfigureAwait(false).WithCancellation(cancellationToken)) {
                 try {
+                    // if a Play call was cancelled we should skip all enqueued commands from this call
+                    // note, that stop commands don't use the cancellation token at all
+                    if (execution.Command.CancellationToken.IsCancellationRequested)
+                        continue;
                     switch (execution.Command) {
                         case PlayTrackCommand playTrackCommand:
                             await OnPlayTrackCommand(playTrackCommand, execution._whenAsyncOperationEnded).ConfigureAwait(false);
@@ -107,7 +111,11 @@ public sealed class Playback : IAsyncDisposable
             await WhenAllPlayers().ConfigureAwait(false);
         }
 
-        Task OnStopCommand() => Task.WhenAll(trackPlayers.Values.Select(x => x.Player.Stop()));
+        async Task OnStopCommand()
+        {
+            await Task.WhenAll(trackPlayers.Values.Select(x => x.Player.Stop())).ConfigureAwait(false);
+            // after stop we should renew _playingCts, because user can send a next play command 
+        }
 
         async ValueTask OnPlayTrackCommand(PlayTrackCommand command, TaskCompletionSource tcs)
         {
@@ -163,25 +171,29 @@ public sealed class Playback : IAsyncDisposable
         TrackInfo trackInfo,
         IMediaSource source,
         Moment playAt, // By CpuClock
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        // TODO: think about it, maybe requires a change ?
+        // TODO: think about it, maybe it should be changed ?
         IsPlayingState.Value = true;
-        var command = new PlayTrackCommand(trackInfo, source) { PlayAt = playAt };
+        var command = new PlayTrackCommand(trackInfo, source, cancellationToken) { PlayAt = playAt };
         return await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Returns a <seealso cref="ValueTask{T}"/> which is completed when <seealso cref="StopCommand"/> is enqueued.
     /// </summary>
-    public ValueTask<CommandExecution> Stop(CancellationToken cancellationToken = default)
+    public ValueTask<CommandExecution> Stop(CancellationToken cancellationToken)
         => EnqueueCommand(StopCommand.Instance, cancellationToken);
 
     private async ValueTask DisposeAsyncCore()
     {
         var playing = Interlocked.Exchange(ref _commandLoopTask, null);
         if (playing != null) {
-            _cancellationTokenSource?.Cancel();
+            // cancel the command loop enumeration
+            // -> cancel + await running tasks of players
+            // -> send StopCommand
+            // -> await js callback
+            _commandLoopCts?.Cancel();
             try {
                 await playing.ConfigureAwait(false);
             }
@@ -191,7 +203,7 @@ public sealed class Playback : IAsyncDisposable
                 OnTrackPlayingChanged = null;
             }
         }
-        /// <see cref="_cancellationTokenSource"/> will be disposed by the continuation
+        /// <see cref="_commandLoopCts"/> will be disposed by the continuation
     }
 
     public async ValueTask DisposeAsync()
@@ -212,7 +224,7 @@ public sealed class Playback : IAsyncDisposable
             _log.LogError(ex, $"Unhandled exception in {nameof(OnTrackPlayingChanged)}");
         }
         if (!prev.IsStarted && state.IsStarted) {
-            lock (_locker) {
+            lock (_stateLocker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.Insert(0, (trackInfo, state));
                 if (!IsPlayingState.Value) {
                     IsPlayingState.Value = true;
@@ -220,7 +232,7 @@ public sealed class Playback : IAsyncDisposable
             }
         }
         else if (state.IsCompleted && !prev.IsCompleted) {
-            lock (_locker) {
+            lock (_stateLocker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
                 if (PlayingTracksState.Value.Count == 0) {
                     IsPlayingState.Value = false;
