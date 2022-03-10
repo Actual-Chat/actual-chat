@@ -22,69 +22,60 @@ export class Feedback {
         }
         this.stars = arr;
         this.defaultStars = defaultStars;
-        console.log('constructor this.defaultStars: ', this.defaultStars);
-        this.feedbackDiv.addEventListener('mouseout', this.feedbackOutListener);
-        this.feedbackDiv.addEventListener('mouseover', this.feedbackOverListener);
+        this.feedbackDiv.addEventListener('mouseleave', this.feedbackLeaveListener);
+        this.feedbackDiv.addEventListener('mouseenter', this.feedbackEnterListener);
     }
 
-    private starOverListener = ((event: Event & { target: Element; }) => {
+    private fillStar(star: HTMLElement) {
+        if (star.classList.contains('fa-star-o')) {
+            star.classList.replace('fa-star-o', 'fa-star');
+        }
+    }
+
+    private clearStar(star: HTMLElement) {
+        if (star.classList.contains('fa-star')) {
+            star.classList.replace('fa-star', 'fa-star-o');
+        }
+    }
+
+    private starEnterListener = ((event: Event & { target: Element; }) => {
         let star = event.target;
-        let idString = star.getAttribute('id');
+        let idString = star.querySelector('i').getAttribute('id');
         if (idString != null && idString.length > 5) {
             let id = parseInt(idString.substring(5));
-            let icon = this.stars[id].querySelector('i');
-            if (icon.classList.contains('fa-star-o'))
-            for (let i = 0; i <= id; i++) {
-                let star = this.stars[i].querySelector('i');
-                star.classList.replace('fa-star-o', 'fa-star');
+            for (let i = 0; i < this.stars.length; i++) {
+                if (i <= id) {
+                    this.fillStar(this.stars[i].querySelector('i'));
+                } else {
+                    this.clearStar(this.stars[i].querySelector('i'));
+                }
             }
         }
     })
 
-    private starOutListener = ((event: Event & { target: Element; }) => {
-        let star = event.target;
-        let idString = star.getAttribute('id');
-        if (idString != null && idString.length > 5) {
-            let id = parseInt(idString.substring(5));
-            let icon = this.stars[id].querySelector('i');
-            if (icon.classList.contains('fa-star'))
-                for (let i = 0; i <= id; i++) {
-                    let star = this.stars[i].querySelector('i');
-                    star.classList.replace('fa-star', 'fa-star-o');
-                }
-        }
-    })
-
-    private feedbackOutListener = ((event: Event & {target: Element; }) => {
-
+    private feedbackLeaveListener = ((event: Event & {target: Element; }) => {
         for (let i = 0; i < this.stars.length; i++) {
             let star = this.stars[i];
+            let icon = star.querySelector('i');
             let defaultClass = this.defaultStars[i];
-            if (star.querySelector('i').classList.contains('fa-star'))
-                star.classList.remove('fa-star');
-            if (star.querySelector('i').classList.contains('fa-star-o'))
-                star.classList.remove('fa-star-o');
-            star.querySelector('i').classList.add(defaultClass);
+            if (icon.classList.contains('fa-star'))
+                icon.classList.remove('fa-star');
+            if (icon.classList.contains('fa-star-o'))
+                icon.classList.remove('fa-star-o');
+            icon.classList.add(defaultClass);
         }
-        console.log('feedbackOutListener this.defaultStars: ', this.defaultStars);
     })
 
-    private feedbackOverListener = ((event: Event & {target: Element; }) => {
-
+    private feedbackEnterListener = ((event: Event & {target: Element; }) => {
         for (let i = 0; i < this.stars.length; i++) {
-            this.stars[i].addEventListener('mouseover', this.starOverListener);
-            this.stars[i].addEventListener('mouseout', this.starOutListener);
+            this.stars[i].addEventListener('mouseenter', this.starEnterListener);
         }
-        console.log('feedbackOutListener this.defaultStars: ', this.defaultStars);
     })
 
     private updateRating(id: number) {
-        console.log('id: ', id);
         for (let i = 0; i < this.defaultStars.length; i++) {
             this.defaultStars[i] = i <= id ? 'fa-star' : 'fa-star-o';
-            this.stars[i].removeEventListener('mouseover', this.starOverListener);
-            this.stars[i].removeEventListener('mouseout', this.starOutListener);
+            this.stars[i].removeEventListener('mouseenter', this.starEnterListener);
         }
-        console.log('this.defaultStars: ', this.defaultStars);
     }
 }
