@@ -171,9 +171,11 @@ public sealed class Playback : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         // TODO: think about it, maybe it should be changed ?
-        PlaybackState.Value = trackInfo.IsRealtime
-            ? PlaybackKind.Realtime
-            : PlaybackKind.Historical;
+        lock (_stateLocker) {
+            PlaybackState.Value = trackInfo.IsRealtime
+                ? PlaybackKind.Realtime
+                : PlaybackKind.Historical;
+        }
         var command = new PlayTrackCommand(trackInfo, source, cancellationToken) { PlayAt = playAt };
         return await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
     }
@@ -243,6 +245,8 @@ public sealed class Playback : IAsyncDisposable
 
     public sealed record CommandExecution
     {
+        public static readonly CommandExecution None = new ();
+
         public readonly IPlaybackCommand Command;
         internal readonly TaskCompletionSource _whenCommandProcessed;
         internal readonly TaskCompletionSource _whenAsyncOperationEnded;
@@ -253,6 +257,12 @@ public sealed class Playback : IAsyncDisposable
             /// TODO: use <see cref="TaskSource{T}"/> (?)
             _whenCommandProcessed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _whenAsyncOperationEnded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+
+        private CommandExecution() : this(new NoOpCommand())
+        {
+            _whenCommandProcessed.SetResult();
+            _whenAsyncOperationEnded.SetResult();
         }
 
         /// <summary>
@@ -268,5 +278,10 @@ public sealed class Playback : IAsyncDisposable
         /// after that you can enqueue the same track again)
         /// </summary>
         public Task WhenAsyncOperationEnded => _whenAsyncOperationEnded.Task;
+
+        private sealed class NoOpCommand : IPlaybackCommand
+        {
+            public CancellationToken CancellationToken => CancellationToken.None;
+        }
     }
 }
