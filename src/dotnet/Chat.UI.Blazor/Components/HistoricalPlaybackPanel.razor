@@ -38,8 +38,8 @@
     {
         public static readonly Model NotPlaying = new();
 
-        public DateTime? PlayingAt { get; set; }
-        public List<string> AuthorIds { get; } = new();
+        public DateTime? PlayingAt { get; init; }
+        public HashSet<Symbol> AuthorIds { get; init; } = null!;
     }
 
     private static string? _class;
@@ -51,9 +51,10 @@
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    // TODO: fix this
-    protected override async Task OnInitializedAsync()
-        => Player = ChatController.GetPlayer(Chat.Id);
+    protected override Task OnInitializedAsync() {
+        Player = ChatController.GetPlayer(Chat.Id);
+        return Task.CompletedTask;
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
@@ -67,18 +68,26 @@
             return Model.NotPlaying;
 
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
-        var model = new Model();
-        var authorIds = model.AuthorIds;
+        Moment? playingAt = null;
+        var authorIds = new HashSet<Symbol>();
         foreach (var playbackState in playbackStates) {
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
                 continue;
             var trackInfo = (ChatAudioTrackInfo) playbackState.TrackInfo;
-            model.PlayingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
+            if (trackInfo.AudioEntry.IsStreaming)
+                continue;
+
+            playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
             var authorId = trackInfo.AudioEntry.AuthorId;
-            if (!authorIds.Contains(authorId))
-                authorIds.Add(authorId);
+            authorIds.Add(authorId);
         }
-        return model;
+        if (authorIds.Count == 0)
+            return Model.NotPlaying;
+
+        return new () {
+            PlayingAt = playingAt,
+            AuthorIds = authorIds,
+        };
     }
 }

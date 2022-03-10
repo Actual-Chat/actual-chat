@@ -31,10 +31,10 @@
 
     private async Task Toggle() {
         var isPlaying = Player.Playback is { IsPlayingState.Value: true };
-        if(isPlaying)
-         Stop();
+        if (isPlaying)
+            Stop();
         else
-         await Play();
+            await Play();
     }
 
     private Task Play()
