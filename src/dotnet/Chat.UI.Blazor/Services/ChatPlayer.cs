@@ -32,8 +32,9 @@ public sealed class ChatPlayer : IAsyncDisposable
     /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
     private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
 
-    public Playback Playback { get; }
+    public readonly IMutableState<PlaybackKind> State;
 
+    public Playback Playback { get; }
 
     public ChatPlayer(
         Symbol chatId,
@@ -46,10 +47,11 @@ public sealed class ChatPlayer : IAsyncDisposable
         IChatAuthors chatAuthors,
         MomentClockSet clocks,
         Session session,
-        IChats chats
-        )
+        IChats chats,
+        IStateFactory stateFactory)
     {
         Playback = playbackFactory.Create();
+        State = stateFactory.NewMutable<PlaybackKind>();
         _applicationStopping = lifetime.ApplicationStopping;
         _chatId = chatId;
         _audioDownloader = audioDownloader;
@@ -61,7 +63,6 @@ public sealed class ChatPlayer : IAsyncDisposable
         _session = session;
         _chats = chats;
     }
-
 
     public async Task Stop()
     {
@@ -102,22 +103,33 @@ public sealed class ChatPlayer : IAsyncDisposable
         if (_isDisposed == 1)
             throw new ObjectDisposedException(nameof(ChatPlayer));
         CancellationToken cancellation;
-        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         try {
-            if (_isPlaying)
-                await StopAndDisposeCancellation().ConfigureAwait(false);
-            _playingCancellation = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
-            cancellation = _playingCancellation.Token;
-            _isPlaying = true;
+            await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+            try {
+                if (_isPlaying)
+                    await StopAndDisposeCancellation().ConfigureAwait(false);
+                _playingCancellation = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
+                cancellation = _playingCancellation.Token;
+                _isPlaying = true;
+            }
+            finally {
+                _locker.Release();
+            }
+
+            var newState = isRealtime
+                ? PlaybackKind.Realtime
+                : PlaybackKind.Historical;
+            if (State.Value != newState)
+                State.Value = newState;
+
+            if (isRealtime)
+                await PlayRealtime(startAt, cancellation).ConfigureAwait(false);
+            else
+                await PlayHistorical(startAt, cancellation).ConfigureAwait(false);
         }
         finally {
-            _locker.Release();
+            State.Value = PlaybackKind.None;
         }
-
-        if (isRealtime)
-            await PlayRealtime(startAt, cancellation).ConfigureAwait(false);
-        else
-            await PlayHistorical(startAt, cancellation).ConfigureAwait(false);
     }
 
     private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)

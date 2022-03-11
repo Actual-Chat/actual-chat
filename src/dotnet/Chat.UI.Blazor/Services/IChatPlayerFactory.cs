@@ -23,6 +23,7 @@ internal class ChatPlayerFactory : IChatPlayerFactory
     private readonly MomentClockSet _clockSet;
     private readonly Session _session;
     private readonly IChats _chats;
+    private readonly IStateFactory _stateFactory;
 
     public ChatPlayerFactory(
         IPlaybackFactory playbackFactory,
@@ -34,6 +35,7 @@ internal class ChatPlayerFactory : IChatPlayerFactory
         MomentClockSet clockSet,
         Session session,
         IChats chats,
+        IStateFactory stateFactory,
         IHostApplicationLifetime lifetime)
     {
         _playbackFactory = playbackFactory;
@@ -45,6 +47,7 @@ internal class ChatPlayerFactory : IChatPlayerFactory
         _clockSet = clockSet;
         _session = session;
         _chats = chats;
+        _stateFactory = stateFactory;
         _lifetime = lifetime;
     }
 
@@ -59,6 +62,7 @@ internal class ChatPlayerFactory : IChatPlayerFactory
         _chatAuthors,
         _clockSet,
         _session,
-        _chats
+        _chats,
+        _stateFactory
     );
 }
