@@ -283,5 +283,12 @@ public sealed class Playback : IAsyncDisposable
         {
             public CancellationToken CancellationToken => CancellationToken.None;
         }
+
+        public void Deconstruct(out IPlaybackCommand command, out Task whenCommandProcessed, out Task whenAsyncOperationEnded)
+        {
+            command = Command;
+            whenCommandProcessed = WhenCommandProcessed;
+            whenAsyncOperationEnded = WhenAsyncOperationEnded;
+        }
     }
 }

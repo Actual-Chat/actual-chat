@@ -44,34 +44,49 @@ export class AudioRecorder {
     }
 
     public async startRecording(): Promise<void> {
-        if (this.isRecording())
-            return;
+        try {
+            if (this.isRecording())
+                return;
 
-        if (!this.isMicrophoneAvailable) {
-            console.error(`${LogScope}.startRecording: microphone is unavailable.`);
-            return;
+            if (!this.isMicrophoneAvailable) {
+                console.error(`${LogScope}.startRecording: microphone is unavailable.`);
+                return;
+            }
+
+            this.recorder = await AudioRecorder.recorderPool.get();
+
+            const { blazorRef, sessionId, chatId } = this;
+            await this.recorder.start(sessionId, chatId);
+            await blazorRef.invokeMethodAsync('OnStartRecording');
         }
-
-        this.recorder = await AudioRecorder.recorderPool.get();
-
-        const { blazorRef, sessionId, chatId } = this;
-        await this.recorder.start(sessionId, chatId);
-        this.state = 'recording';
-        await blazorRef.invokeMethodAsync('OnStartRecording');
+        catch (e) {
+            console.error(e);
+        }
+        finally {
+            this.state = 'recording';
+        }
     }
 
     public async stopRecording(): Promise<void> {
-        if (!this.isRecording())
-            return;
-        if (this.debug)
-            console.log(`${LogScope}.stopRecording: started`);
+        try {
+            if (!this.isRecording())
+                return;
+            if (this.debug)
+                console.log(`${LogScope}.stopRecording: started`);
 
-        await this.recorder.stop();
-        await AudioRecorder.recorderPool.release(this.recorder);
-        this.state = 'inactive';
-        await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
-        if (this.debug)
-            console.log(`${LogScope}.stopRecording: completed`);
+            await this.recorder.stop();
+            await AudioRecorder.recorderPool.release(this.recorder);
+
+            await this.blazorRef.invokeMethodAsync('OnRecordingStopped');
+            if (this.debug)
+                console.log(`${LogScope}.stopRecording: completed`);
+        }
+        catch(e) {
+            console.error(e);
+        }
+        finally {
+            this.state = 'inactive';
+        }
     }
 
     private isRecording() {
