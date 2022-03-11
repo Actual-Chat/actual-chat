@@ -6,6 +6,6 @@
     @apply border-separate-line outline-none p-1;
 }
 
-.rating-star {
+.rating-icon {
     @apply text-rating;
 }
