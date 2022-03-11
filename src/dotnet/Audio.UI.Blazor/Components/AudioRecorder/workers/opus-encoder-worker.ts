@@ -225,7 +225,7 @@ function processQueue(): void {
         return;
     }
 
-    if (isEncoding || vadState === 'silence') {
+    if (isEncoding) {
         return;
     }
 

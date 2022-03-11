@@ -144,6 +144,7 @@ public sealed class ChatPlayer : IAsyncDisposable
         var startId = startEntry?.Id ?? idRange.End - 1;
 
         var entries = audioEntryReader.ReadAllWaitingForNew(startId, cancellationToken);
+        var playbackEndedQueue = new ConcurrentDictionary<Task, Task>();
         await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             if (entry.EndsAt < startAt)
                 // We're starting @ (startAt - ChatConstants.MaxEntryDuration),
@@ -162,9 +163,16 @@ public sealed class ChatPlayer : IAsyncDisposable
             var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
             var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
             var skipTo = entryBeginsAt - entry.BeginsAt;
-            await EnqueueEntry(Playback, cpuClock.Now, entry, skipTo, cancellationToken)
+            var (_, _, whenPlaybackEnded) =  await EnqueueEntry(Playback, cpuClock.Now, entry, skipTo, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (whenPlaybackEnded.IsCompleted) continue;
+
+            playbackEndedQueue.TryAdd(whenPlaybackEnded, whenPlaybackEnded);
+            _ = whenPlaybackEnded.ContinueWith(t => playbackEndedQueue.TryRemove(t, out _), cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
         }
+
+        await Task.WhenAll(playbackEndedQueue.Values).ConfigureAwait(false);
     }
 
     private async Task PlayHistorical(Moment startAt, CancellationToken cancellationToken)
@@ -186,6 +194,7 @@ public sealed class ChatPlayer : IAsyncDisposable
 
         idRange = (startEntry.Id, idRange.End);
         var entries = audioEntryReader.ReadAll(idRange, cancellationToken);
+        var playbackEndedQueue = new ConcurrentDictionary<Task, Task>();
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (!entry.StreamId.IsEmpty) // Streaming entry
                 continue;
@@ -214,9 +223,15 @@ public sealed class ChatPlayer : IAsyncDisposable
             var enqueueDelay = playAt - now - EnqueueAheadDuration;
             if (enqueueDelay > TimeSpan.Zero)
                 await cpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
-            await EnqueueEntry(Playback, playAt, entry, skipTo, cancellationToken)
+            var (_, _, whenPlaybackEnded) =  await EnqueueEntry(Playback, playAt, entry, skipTo, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (whenPlaybackEnded.IsCompleted) continue;
+
+            playbackEndedQueue.TryAdd(whenPlaybackEnded, whenPlaybackEnded);
+            _ = whenPlaybackEnded.ContinueWith(t => playbackEndedQueue.TryRemove(t, out _), cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
         }
+        await Task.WhenAll(playbackEndedQueue.Values).ConfigureAwait(false);
     }
 
     private async ValueTask<Playback.CommandExecution> EnqueueEntry(
