@@ -10,6 +10,7 @@ public class AudioTrackPlayerFactory : ITrackPlayerFactory
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
     private readonly ILoggerFactory _loggerFactory;
+    private ulong _lastCreatedId;
 
     public AudioTrackPlayerFactory(
         BlazorCircuitContext circuitContext,
@@ -25,8 +26,9 @@ public class AudioTrackPlayerFactory : ITrackPlayerFactory
     }
 
     public TrackPlayer Create(IMediaSource source) => new AudioTrackPlayer(
-        _lifetime,
+        Interlocked.Increment(ref _lastCreatedId).ToString(CultureInfo.InvariantCulture),
         source,
+        _lifetime,
         _circuitContext,
         _js,
         _loggerFactory.CreateLogger<AudioTrackPlayer>()
