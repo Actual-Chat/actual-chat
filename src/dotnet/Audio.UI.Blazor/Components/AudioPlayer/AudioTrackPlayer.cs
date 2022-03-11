@@ -80,7 +80,8 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                                     $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
                                     CancellationToken.None,
                                     _blazorRef,
-                                    _debugMode
+                                    _debugMode,
+                                    _id
                                 ).ConfigureAwait(true);
                         break;
                     case StopCommand:
