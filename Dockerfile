@@ -54,7 +54,7 @@ RUN npm -g config set user root && \
     npm -g config set loglevel warn && \
     npm -g config set depth 0 && \
     apk add --no-cache git
-COPY src/nodejs/package-lock.json src/nodejs/package.json ./
+COPY src/nodejs/package-lock.json src/nodejs/package.json src/nodejs/.npmrc ./
 RUN npm ci
 COPY src/nodejs/ ./
 
