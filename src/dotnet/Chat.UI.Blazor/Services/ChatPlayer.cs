@@ -278,7 +278,6 @@ public sealed class ChatPlayer : IAsyncDisposable
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
-            IsRealtime = true,
         };
         return await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }

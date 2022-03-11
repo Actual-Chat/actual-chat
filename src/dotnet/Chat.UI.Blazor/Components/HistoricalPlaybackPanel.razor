@@ -39,7 +39,6 @@
         public static readonly Model NotPlaying = new();
 
         public DateTime? PlayingAt { get; init; }
-        public HashSet<Symbol> AuthorIds { get; init; } = null!;
     }
 
     private static string? _class;
@@ -61,33 +60,25 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var playback = Player.Playback;
-
-        var playbackKind = await playback.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
         if (playbackKind != PlaybackKind.Historical)
             return Model.NotPlaying;
 
+        var playback = Player.Playback;
+
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
-        var authorIds = new HashSet<Symbol>();
         foreach (var playbackState in playbackStates) {
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
                 continue;
-            var trackInfo = (ChatAudioTrackInfo) playbackState.TrackInfo;
-            if (trackInfo.AudioEntry.IsStreaming)
-                continue;
+            var trackInfo = playbackState.TrackInfo;
 
             playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
-            var authorId = trackInfo.AudioEntry.AuthorId;
-            authorIds.Add(authorId);
         }
-        if (authorIds.Count == 0)
-            return Model.NotPlaying;
 
         return new () {
             PlayingAt = playingAt,
-            AuthorIds = authorIds,
         };
     }
 }
