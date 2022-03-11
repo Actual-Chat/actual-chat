@@ -65,6 +65,7 @@ export class AudioContextPool {
 
     private static _initEventListener = () => {
         // init first recorder
+        // TODO: create an application initializer and do not mix up listening and recording like this
         void AudioRecorder.initRecorderPool();
 
         AudioContextPool.removeInitListeners();

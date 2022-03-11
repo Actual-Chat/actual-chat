@@ -38,48 +38,47 @@
     {
         public static readonly Model NotPlaying = new();
 
-        public DateTime? PlayingAt { get; set; }
-        public List<string> AuthorIds { get; } = new();
+        public DateTime? PlayingAt { get; init; }
     }
 
     private static string? _class;
 
-    [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     [Inject] IActivePlaybackInfo ActivePlaybackInfo { get; set; } = null!;
     private ChatPlayer Player { get; set; } = null!;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-        => Player = await ChatPlayers.GetHistoricalPlayer(Chat.Id);
+    protected override Task OnInitializedAsync() {
+        Player = ChatController.GetPlayer(Chat.Id);
+        return Task.CompletedTask;
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (playback == null)
+        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
+        if (playbackKind != PlaybackKind.Historical)
             return Model.NotPlaying;
 
-        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
-        if (isStopped)
-            return Model.NotPlaying;
+        var playback = Player.Playback;
 
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
-        var model = new Model();
-        var authorIds = model.AuthorIds;
+        Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
-            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.Command.TrackId, cancellationToken);
+            var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);
             if (actualPlaybackState == null)
                 continue;
-            var trackInfo = (ChatAudioTrackInfo) actualPlaybackState.Command.TrackInfo;
-            model.PlayingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
-            var authorId = trackInfo.AudioEntry.AuthorId;
-            if (!authorIds.Contains(authorId))
-                authorIds.Add(authorId);
+            var trackInfo = playbackState.TrackInfo;
+
+            playingAt ??= trackInfo.RecordedAt + actualPlaybackState.PlayingAt;
         }
-        return model;
+
+        return new () {
+            PlayingAt = playingAt,
+        };
     }
 }

@@ -4,6 +4,7 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Hosting
+@using ActualChat.MediaPlayback
 @implements IAsyncDisposable
 @inject IChats _chatService
 @inject Session _session
@@ -86,9 +87,9 @@
                     <AudioRecorder ChatId="@Chat.Id"
                                    RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
-                @if (RealtimePlayer != null!) {
+                @if (Player != null!) {
                     <div class="chat-control-button player-button w-1/2 flex">
-                        <ChatPlayerToggle Player="RealtimePlayer"/>
+                        <ChatPlayerToggle Player="Player"/>
                     </div>
                 }
             </div>
@@ -108,11 +109,11 @@
 
     private static string? _class;
 
-    [Inject] private ChatPlayers ChatPlayers { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-    private RealtimeChatPlayer RealtimePlayer { get; set; } = null!;
+    private ChatPlayer Player { get; set; } = null!;
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
     private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
@@ -120,9 +121,8 @@
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        RealtimePlayer = await ChatPlayers.GetRealtimePlayer(Chat.Id);
-    }
+    protected override async Task OnInitializedAsync()
+        => Player = ChatController.GetPlayer(Chat.Id);
 
     public async ValueTask DisposeAsync()
     {
@@ -201,11 +201,11 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        var isPlaying = RealtimePlayer.Playback is { IsStopped: false };
+        var isPlaying = Player is { State.Value: PlaybackKind.Realtime };
         if (isPlaying)
             return Task.CompletedTask;
         // We don't need to await for this here
-        _ = RealtimePlayer.Play(_clocks.SystemClock.Now);
+        _ = Player.Play(_clocks.SystemClock.Now, isRealtime: true, default);
         return Task.CompletedTask;
     }
 

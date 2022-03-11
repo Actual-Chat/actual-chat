@@ -48,6 +48,21 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
 
 module.exports = (env, args) => {
+
+  const isDevelopment = args.mode === 'development';
+
+  /** Use this options to control /// #ifdef preprocessor */
+  const ifdef = {
+    DEBUG: isDevelopment,
+    MEM_LEAK_DETECTION: isDevelopment && false,
+    // TODO: define client js app version with NBGV (?)
+    version: 1.0,
+    "ifdef-verbose": false,
+    "ifdef-triple-slash": true,
+    "ifdef-fill-with-blanks": true,
+    "ifdef-uncomment-prefix": "/// #code "
+  };
+
   /**@type {import('webpack').Configuration}*/
   const config = {
     performance: {
@@ -89,9 +104,9 @@ module.exports = (env, args) => {
       }
     },
     // to enable ts debug uncomment the line below
-    devtool: args.mode === 'development' ? 'source-map' : false,
+    devtool: isDevelopment ? 'source-map' : false,
     // another type of inlined source maps
-    //devtool: args.mode === 'development' ? 'eval' : false,
+    //devtool: isDevelopment ? 'eval' : false,
     plugins: [
       // @ts-ignore
       new MiniCssExtractPlugin({
@@ -119,6 +134,10 @@ module.exports = (env, args) => {
                 experimentalWatchApi: true,
                 configFile: _('./tsconfig.json')
               },
+            },
+            {
+              loader: "ifdef-loader",
+              options: ifdef,
             }
           ],
         },
@@ -152,6 +171,18 @@ module.exports = (env, args) => {
           type: 'asset/resource',
           generator: {
             filename: 'wasm/[name][ext][query]'
+          }
+        },
+        {
+          test: /\.wasm\.map$/i,
+          type: 'asset/resource',
+          generator: {
+            /*
+             * for some reason the browser (or the emscripten module loader (?))
+             * in one case ignores `locateFile` and attempts to load the source map from the directory of the script,
+             * therefore we can't put `.wasm.map` to the `wasm` subdirectory (it's used only for debugging so, it doesn't matter)
+             */
+            filename: '[name][ext][query]'
           }
         },
         {

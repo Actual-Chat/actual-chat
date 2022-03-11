@@ -16,6 +16,8 @@ jobs:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
           lfs: true
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
       - name: Run unit tests

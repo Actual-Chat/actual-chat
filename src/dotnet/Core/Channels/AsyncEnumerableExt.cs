@@ -79,6 +79,17 @@ public static class AsyncEnumerableExt
         }
     }
 
+    public static async IAsyncEnumerable<T> Prepend<T>(
+        this IAsyncEnumerator<T> enumerator,
+        T value,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        yield return value;
+
+        while (await enumerator.MoveNextAsync(cancellationToken).ConfigureAwait(false))
+            yield return enumerator.Current;
+    }
+
     public static (IAsyncEnumerable<TSource> Matched, IAsyncEnumerable<TSource> NotMatched) Split<TSource>(
         this IAsyncEnumerable<TSource> source,
         Func<TSource,bool> splitPredicate,
@@ -263,7 +274,6 @@ public static class AsyncEnumerableExt
             }
         }
     }
-
 
     /* This exists in Stl, though the impl. is different, so temp. keeping it here:
 

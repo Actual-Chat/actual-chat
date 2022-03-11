@@ -20,7 +20,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-namespace ActualChat.Audio.WebM;
+namespace ActualChat;
 
 /// <summary>
 ///     Variable size integer implementation as of http://www.matroska.org/technical/specs/rfc/index.html
@@ -135,12 +135,54 @@ public readonly struct VInt : IEquatable<VInt>
     }
 
     public static VInt FromValue(ulong value)
-        => new (value, (int)EbmlHelper.GetSize(value));
+        => new (value, (int)GetSize(value));
 
     public static VInt FromValue(long value)
     {
-        var size = (int)EbmlHelper.GetSize(value);
+        var size = (int)GetSize(value);
         return value > 0 ? new VInt((ulong)value, size) : new VInt((ulong)-value | (1UL << ((8 * size) - 1)), size);
+    }
+
+    public static ulong GetSize(ulong value)
+    {
+        ulong length = 1;
+        if ((value & 0xFFFFFFFF00000000) != 0) {
+            length += 4;
+            value >>= 32;
+        }
+        if ((value & 0xFFFF0000) != 0) {
+            length += 2;
+            value >>= 16;
+        }
+        if ((value & 0xFF00) != 0) length++;
+        return length;
+    }
+
+    public static ulong GetSize(long value)
+    {
+        var v = (ulong)value;
+        if (value < 0)
+            v = ~v;
+        ulong length = 1;
+        if ((v & 0xFFFFFFFF00000000) != 0) {
+            length += 4;
+            v >>= 32;
+        }
+        if ((v & 0xFFFF0000) != 0) {
+            length += 2;
+            v >>= 16;
+        }
+        if ((v & 0xFF00) != 0) {
+            length += 1;
+            v >>= 8;
+        }
+        // We have at most 8 bits left.
+        // Is the most significant bit set (or cleared for a negative number),
+        // then we need an extra byte for the sign bit.
+        if ((v & 0x80) != 0)
+            length++;
+
+        return length;
     }
 
     public override int GetHashCode()

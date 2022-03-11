@@ -41,9 +41,10 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         try {
+            var webMStreamAdapter = new WebMStreamAdapter(Log);
             await AudioSource.WhenFormatAvailable.ConfigureAwait(false);
             var format = AudioSource.Format;
-            var frames = AudioSource.GetFrames(cancellationToken);
+            var byteStream = webMStreamAdapter.Write(AudioSource, cancellationToken);
             var builder = new SpeechClientBuilder();
             var speechClient = await builder.BuildAsync(cancellationToken).ConfigureAwait(false);
             var config = new RecognitionConfig {
@@ -80,7 +81,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
                 }).ConfigureAwait(false);
             var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>) recognizeRequests.GetResponseStream();
 
-            _ = BackgroundTask.Run(() => PushAudio(format, frames, recognizeRequests),
+            _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests),
                 Log,
                 $"{nameof(GoogleTranscriberProcess)}.{nameof(RunInternal)} failed",
                 cancellationToken);
@@ -190,19 +191,13 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     }
 
     private async Task PushAudio(
-        AudioFormat format,
-        IAsyncEnumerable<AudioFrame> audioStream,
+        IAsyncEnumerable<byte[]> webMByteStream,
         SpeechClient.StreamingRecognizeStream recognizeRequests)
     {
         try {
-            var formatRequest = new StreamingRecognizeRequest {
-                AudioContent = ByteString.CopyFrom(format.Serialize()),
-            };
-            await recognizeRequests.WriteAsync(formatRequest).ConfigureAwait(false);
-
-            await foreach (var part in audioStream.ConfigureAwait(false)) {
+            await foreach (var chunk in webMByteStream.ConfigureAwait(false)) {
                 var request = new StreamingRecognizeRequest {
-                    AudioContent = ByteString.CopyFrom(part.Data),
+                    AudioContent = ByteString.CopyFrom(chunk),
                 };
                 await recognizeRequests.WriteAsync(request).ConfigureAwait(false);
             }

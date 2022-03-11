@@ -22,6 +22,7 @@ public static class ByteStreamExt
     {
         log.LogInformation("Downloading: {Uri}", blobUri.ToString());
         HttpResponseMessage response;
+        // WASM doesn't support PipeReader API directly from the HttpClient
         using (var httpClient = httpClientFactory.CreateClient())
         using (var request = new HttpRequestMessage(HttpMethod.Get, blobUri)) {
             if (OSInfo.IsWebAssembly) {
@@ -65,6 +66,40 @@ public static class ByteStreamExt
     }
 
     // Read
+
+    public static async Task<(byte[] Head, IAsyncEnumerator<byte[]> Tail)> ReadAtLeast(
+        this IAsyncEnumerable<byte[]> byteStream,
+        int blockLength,
+        CancellationToken cancellationToken)
+    {
+        using var blockBufferLease = MemoryPool<byte>.Shared.Rent(blockLength);
+        var blockBuffer = blockBufferLease.Memory;
+        var position = 0;
+        IAsyncEnumerator<byte[]>? byteBlockEnumerator = null;
+        try {
+            byteBlockEnumerator = byteStream.GetAsyncEnumerator(cancellationToken);
+            while (position < blockLength) {
+                var hasNext = await byteBlockEnumerator.MoveNextAsync().ConfigureAwait(false);
+                if (!hasNext) {
+                    await byteBlockEnumerator.DisposeAsync().ConfigureAwait(false);
+                    return (blockBuffer[..position].ToArray(), byteBlockEnumerator);
+                }
+
+                var byteBlock = byteBlockEnumerator.Current;
+                if (position == 0 && byteBlock.Length >= blockLength)
+                    return (byteBlock, byteBlockEnumerator);
+
+                byteBlock.CopyTo(blockBuffer[position..]);
+                position += byteBlock.Length;
+            }
+            return (blockBuffer[..position].ToArray(), byteBlockEnumerator);
+        }
+        catch {
+            if (byteBlockEnumerator != null)
+                await byteBlockEnumerator.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
 
     public static IAsyncEnumerable<byte[]> ReadByteStream(
         this FilePath sourceFilePath,

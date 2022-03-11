@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
 
-namespace ActualChat.Audio.WebM;
+namespace ActualChat.Spans;
 
 public ref struct SpanWriter
 {
