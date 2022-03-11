@@ -70,6 +70,9 @@ COPY *.props *.targets ./
 RUN dotnet msbuild /t:GenerateAssemblyVersionInfo ActualChat.sln
 
 FROM base as dotnet-build
+RUN apt update \
+    && apt install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/Host/Host.csproj
 
 FROM runtime as app
