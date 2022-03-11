@@ -3,7 +3,7 @@ import codec, { Encoder, Codec } from '@actual-chat/codec/codec.debug';
 import codecWasm from '@actual-chat/codec/codec.debug.wasm';
 import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #else
-/// #code import codec, { Decoder, Codec } from '@actual-chat/codec';
+/// #code import codec, { Encoder, Codec } from '@actual-chat/codec';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 

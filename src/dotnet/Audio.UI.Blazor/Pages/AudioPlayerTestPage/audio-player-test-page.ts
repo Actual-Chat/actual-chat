@@ -20,7 +20,7 @@ export class AudioPlayerTestPage {
     }
 
     public static async create(blazorRef: DotNet.DotNetObject): Promise<AudioPlayerTestPage> {
-        const player = await AudioPlayer.create(blazorRef, true);
+        const player = await AudioPlayer.create(blazorRef, true, '0');
         return new AudioPlayerTestPage(blazorRef, player);
     }
 
