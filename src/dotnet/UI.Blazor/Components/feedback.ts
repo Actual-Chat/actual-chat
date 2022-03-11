@@ -5,20 +5,21 @@ export class Feedback {
     private feedbackDiv: HTMLDivElement;
     private stars: Array<HTMLButtonElement>;
     private defaultStars: Array<string>;
+    private readonly filledStar: string = 'fa-star';
+    private readonly emptyStar: string = 'fa-star-o';
 
-    static create(feedbackDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): Feedback {
+    public static create(feedbackDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): Feedback {
         return new Feedback(feedbackDiv, blazorRef);
     }
 
     constructor(feedbackDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.feedbackDiv = feedbackDiv;
-        let stars = this.feedbackDiv.querySelectorAll('button');
-        const arr = Array(5);
-        const defaultStars = Array(5);
+        const stars = this.feedbackDiv.querySelectorAll('.rating-button');
+        const arr = [];
+        const defaultStars = [];
         for(let i = 0; i < stars.length; i++) {
-            let starButton = stars[i];
-            arr[i] = starButton;
-            defaultStars[i] = 'fa-star-o';
+            arr[i] = stars[i];
+            defaultStars[i] = this.emptyStar;
         }
         this.stars = arr;
         this.defaultStars = defaultStars;
@@ -27,27 +28,23 @@ export class Feedback {
     }
 
     private fillStar(star: HTMLElement) {
-        if (star.classList.contains('fa-star-o')) {
-            star.classList.replace('fa-star-o', 'fa-star');
-        }
+        star.classList.replace(this.emptyStar, this.filledStar);
     }
 
     private clearStar(star: HTMLElement) {
-        if (star.classList.contains('fa-star')) {
-            star.classList.replace('fa-star', 'fa-star-o');
-        }
+        star.classList.replace(this.filledStar, this.emptyStar);
     }
 
     private starEnterListener = ((event: Event & { target: Element; }) => {
-        let star = event.target;
-        let idString = star.querySelector('i').getAttribute('id');
-        if (idString != null && idString.length > 5) {
-            let id = parseInt(idString.substring(5));
+        const star = event.target;
+        let idString = star.querySelector('.rating-icon').getAttribute('id');
+        if (idString != null && idString.length > 14) {
+            let id = parseInt(idString.substring(14));
             for (let i = 0; i < this.stars.length; i++) {
                 if (i <= id) {
-                    this.fillStar(this.stars[i].querySelector('i'));
+                    this.fillStar(this.stars[i].querySelector('.rating-icon'));
                 } else {
-                    this.clearStar(this.stars[i].querySelector('i'));
+                    this.clearStar(this.stars[i].querySelector('.rating-icon'));
                 }
             }
         }
@@ -55,13 +52,10 @@ export class Feedback {
 
     private feedbackLeaveListener = ((event: Event & {target: Element; }) => {
         for (let i = 0; i < this.stars.length; i++) {
-            let star = this.stars[i];
-            let icon = star.querySelector('i');
+            let icon = this.stars[i].querySelector('.rating-icon');
             let defaultClass = this.defaultStars[i];
-            if (icon.classList.contains('fa-star'))
-                icon.classList.remove('fa-star');
-            if (icon.classList.contains('fa-star-o'))
-                icon.classList.remove('fa-star-o');
+            icon.classList.remove(this.filledStar);
+            icon.classList.remove(this.emptyStar);
             icon.classList.add(defaultClass);
         }
     })
@@ -74,7 +68,7 @@ export class Feedback {
 
     private updateRating(id: number) {
         for (let i = 0; i < this.defaultStars.length; i++) {
-            this.defaultStars[i] = i <= id ? 'fa-star' : 'fa-star-o';
+            this.defaultStars[i] = i <= id ? this.filledStar : this.emptyStar;
             this.stars[i].removeEventListener('mouseenter', this.starEnterListener);
         }
     }
