@@ -78,16 +78,16 @@ public abstract class TrackPlayer : IAsyncDisposable
     {
         Exception? exception = null;
 
+        var isStarted = false;
+        var startTask = ProcessCommandWrapper(PlayCommand.Instance, cancellationToken);
         try {
             // we might send to js side small tracks even like 20-40ms (or without frames at all),
             // track might be less than js threshold, so js side should support this
-            var startTask = ProcessCommandWrapper(PlayCommand.Instance, cancellationToken);
             var frames = _source.GetFramesUntyped(cancellationToken);
-            var isStarted = false;
             await foreach (var frame in frames.ConfigureAwait(false).WithCancellation(cancellationToken)) {
                 if (!isStarted) {
-                    isStarted = true;
                     await startTask.ConfigureAwait(false);
+                    isStarted = true;
                 }
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             }
@@ -108,6 +108,10 @@ public abstract class TrackPlayer : IAsyncDisposable
             // that's why the exception handling is in the finally block
             if (exception != null && !Completed.IsCompletedSuccessfully) {
                 try {
+                    if (!isStarted) {
+                        await startTask.ConfigureAwait(false);
+                        isStarted = true;
+                    }
                     await ProcessCommand(StopCommand.Instance, default)
                         .AsTask()
                         .WaitAsync(StopTimeout, default)
