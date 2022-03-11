@@ -56,7 +56,6 @@ export class OpusDecoder {
             await codecModuleReady;
         }
         const decoder = new codecModule.Decoder();
-        console.warn('create', decoder);
         return new OpusDecoder(decoder, workletPort);
     }
 
