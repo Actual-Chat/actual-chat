@@ -36,6 +36,8 @@ module.exports = {
         'toggle-off': 'var(--text-color-toggle-off)',
         'toggle-on': 'var(--text-color-toggle-on)',
         'rating': 'var(--text-color-rating)',
+        'inline-code': 'var(--text-inline-code)',
+
       },
       borderColor: {
         'primary': 'var(--background-primary)',
