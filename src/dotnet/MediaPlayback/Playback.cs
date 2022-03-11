@@ -1,4 +1,3 @@
-using System.Threading.Tasks.Sources;
 using ActualChat.Media;
 using Microsoft.Extensions.Hosting;
 
@@ -21,7 +20,7 @@ public sealed class Playback : IAsyncDisposable
     private readonly object _runLocker = new();
 
     public readonly IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState;
-    public readonly IMutableState<PlaybackKind> PlaybackState;
+    public readonly IMutableState<bool> IsPlayingState;
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
@@ -35,7 +34,7 @@ public sealed class Playback : IAsyncDisposable
                 FullMode = BoundedChannelFullMode.DropOldest,
             });
         PlayingTracksState = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
-        PlaybackState = stateFactory.NewMutable(PlaybackKind.None);
+        IsPlayingState = stateFactory.NewMutable(false);
         _trackPlayerFactory = trackPlayerFactory;
         _applicationStopping = lifetime.ApplicationStopping;
         _log = log;
@@ -66,7 +65,7 @@ public sealed class Playback : IAsyncDisposable
                             _whenCompleted?.TrySetResult(default);
                         _whenCompleted = null;
                         _commandLoopTask = null;
-                        PlaybackState.Value = PlaybackKind.None;
+                        IsPlayingState.Value = false;
                     }
                 }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
@@ -171,11 +170,8 @@ public sealed class Playback : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         // TODO: think about it, maybe it should be changed ?
-        lock (_stateLocker) {
-            PlaybackState.Value = trackInfo.IsRealtime
-                ? PlaybackKind.Realtime
-                : PlaybackKind.Historical;
-        }
+        lock (_stateLocker)
+            IsPlayingState.Value = true;
         var command = new PlayTrackCommand(trackInfo, source, cancellationToken) { PlayAt = playAt };
         return await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
     }
@@ -227,18 +223,14 @@ public sealed class Playback : IAsyncDisposable
         if (!prev.IsStarted && state.IsStarted) {
             lock (_stateLocker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.Insert(0, (trackInfo, state));
-                var playbackKind = trackInfo.IsRealtime
-                    ? PlaybackKind.Realtime
-                    : PlaybackKind.Historical;
-                if (PlaybackState.Value != playbackKind)
-                    PlaybackState.Value = playbackKind;
+                IsPlayingState.Value = true;
             }
         }
         else if (state.IsCompleted && !prev.IsCompleted) {
             lock (_stateLocker) {
                 PlayingTracksState.Value = PlayingTracksState.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
                 if (PlayingTracksState.Value.Count == 0)
-                    PlaybackState.Value = PlaybackKind.None;
+                    IsPlayingState.Value = false;
             }
         }
     }
