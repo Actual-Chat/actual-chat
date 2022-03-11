@@ -7,6 +7,7 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var entry = Model.Entry;
+    var attachments = Model.Attachments;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
 }
 @if (Model.DateLine.HasValue) {
@@ -15,8 +16,8 @@
 <div class="@(_class ??= this.DefaultClass()) px-3 antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words group @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-            <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
-                <img src="@context.Picture" alt="@context.Name"/>
+            <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")">
+                <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
         </ChatAuthor>
     }
@@ -29,7 +30,7 @@
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
                 <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-                    <span class="font-bold text-secondary rounded">@context.Name</span>
+                    <span class="font-bold text-secondary rounded">@context.Author.Name</span>
                 </ChatAuthor>
                 <ChatMessageTimestamp Value="entry.BeginsAt"/>
                 &nbsp;
@@ -43,10 +44,63 @@
                 <ChatMessageMarkup Model="@Model"/>
             }
         </div>
+        @if (attachments.Length > 0) {
+            <div class="message-attachments">
+                @foreach (var attachment in attachments) {
+                    var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                    var url = attachment.Url;
+                    @if (isImage) {
+                        var previewUrl = attachment.ProxyUrl;
+                        var imgStyle = "max-width: 400px; max-height: 300px";
+                        if (attachment.Height > 0 && attachment.Width > 0) {
+                            var width = attachment.Width;
+                            var height = attachment.Height;
+                            if (width > 400 || height > 300) {
+                                var ratio = Math.Min(400d / width, 300d / height);
+                                width = (int) Math.Round(ratio * width);
+                                height = (int) Math.Round(ratio * height);
+                            }
+                            imgStyle = $"width: {width}px; height: {height}px";
+                            // TODO(DF): setup correct preview url to image proxy endpoint
+                            previewUrl += $"?width={width}&height={height}";
+                        }
+                        <div class="message-attachment-image mt-1">
+                            <a class="cursor-pointer" href="@url" target="_blank" role="button">
+                                <img class="inline" style="@imgStyle"  src="@previewUrl" alt="image" />
+                            </a>
+                        </div>
+                    } else {
+                        var fileSize = attachment.Length / (1024 * 1024d);
+                        <div class="message-attachment-file mt-1">
+                            <div class="flex w-full max-w-[400px] p-2 bg-zinc-200 rounded-md items-center">
+                                <div class="pr-2">
+                                    <svg class="text-indigo-400 fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M11.362 2c4.156 0 2.638 6 2.638 6s6-1.65 6 2.457v11.543h-16v-20h7.362zm.827-2h-10.189v24h20v-14.386c0-2.391-6.648-9.614-9.811-9.614zm4.811 13h-3v-1h3v1zm0 2h-3v1h3v-1zm0 3h-10v1h10v-1zm-5-6h-5v4h5v-4z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <div>
+                                        <a class="text-blue-700 cursor-pointer hover:underline" href="@url" target="_blank" role="button">@attachment.FileName</a>
+                                    </div>
+                                    <div class="text-secondary text-xs">@fileSize.ToString("N2") MB</div>
+                                </div>
+                                <div>
+                                    <a class="cursor-pointer" href="@url" target="_blank" role="button">
+                                        <svg class="text-secondary fill-current h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path d="M12 21l-8-9h6v-12h4v12h6l-8 9zm9-1v2h-18v-2h-2v4h22v-4h-2z"/>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+
+                        </div>
+                    }
+                }
+            </div>
+        }
     </div>
-    @if (_hostInfo.IsDevelopmentInstance) {
-        <MessageMenu Css="invisible group-hover:visible" />
-    }
+
+    <MessageMenu Css="invisible group-hover:visible" />
 </div>
 
 @code {

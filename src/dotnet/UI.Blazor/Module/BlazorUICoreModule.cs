@@ -36,6 +36,8 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddBlazorContextMenu();
         services.AddBlazoredModal();
         services.AddTransient<ClipboardService>();
+        services.AddScoped<FeedbackService>();
+
         if (OSInfo.IsWebAssembly)
             services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();
     }
