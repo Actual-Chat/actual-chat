@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Audio.WebM.Models;
+﻿using ActualChat.Spans;
+
+namespace ActualChat.Audio.WebM.Models;
 
 /// <summary>
 ///     http://matroska.sourceforge.net/technical/specs/index.html#simpleblock_structure
@@ -10,16 +12,18 @@ public sealed class SimpleBlock : Block
 
     public override EbmlElementDescriptor Descriptor => MatroskaSpecification.SimpleBlockDescriptor;
 
-    public bool IsKeyFrame { get; private set; }
+    public bool IsKeyFrame {
+        get => (Flags & KeyFrameBit) == KeyFrameBit;
+        set => Flags = (byte)(value
+            ? Flags | KeyFrameBit
+            : Flags & ~KeyFrameBit);
+    }
 
-    public bool IsDiscardable { get; private set; }
-
-    public override void Parse(ReadOnlySpan<byte> span)
-    {
-        base.Parse(span);
-
-        IsKeyFrame = (Flags & KeyFrameBit) == KeyFrameBit;
-        IsDiscardable = (Flags & DiscardableBit) == DiscardableBit;
+    public bool IsDiscardable {
+        get => (Flags & DiscardableBit) == DiscardableBit;
+        set => Flags = (byte)(value
+            ? Flags | DiscardableBit
+            : Flags & ~DiscardableBit);
     }
 
     public override bool Write(ref SpanWriter writer)

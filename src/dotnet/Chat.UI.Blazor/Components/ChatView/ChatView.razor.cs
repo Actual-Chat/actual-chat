@@ -9,7 +9,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private ChatPlayers ChatPlayers { get; set; } = default!;
+    [Inject] private ChatController ChatController { get; set; } = default!;
     [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
@@ -22,7 +22,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public Chat Chat { get; set; } = null!;
 
     public ValueTask DisposeAsync()
-        => ChatPlayers.DisposePlayers(Chat.Id);
+    {
+        GC.SuppressFinalize(this);
+        return ChatController.Close(Chat.Id);
+    }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,

@@ -3,9 +3,14 @@ namespace ActualChat.MediaPlayback;
 public interface IActivePlaybackInfo
 {
     [ComputeMethod]
-    Task<TrackPlaybackState?> GetTrackPlaybackState(
+    Task<PlayerState?> GetTrackPlaybackState(
         Symbol trackId,
         CancellationToken cancellationToken);
 
-    void RegisterStateChange(TrackPlaybackState lastState, TrackPlaybackState state);
+    [ComputeMethod]
+    Task<TrackInfo?> GetTrackInfo(
+        Symbol trackId,
+        CancellationToken cancellationToken);
+
+    void RegisterStateChange(TrackInfo trackInfo, PlayerState state);
 }

@@ -11,7 +11,7 @@ parserOptions:
   ecmaVersion: latest
   sourceType: module
   tsconfigRootDir: '.'
-  project: './tsconfig.json'
+  project: src/nodejs/tsconfig.json
 plugins:
   - '@typescript-eslint'
   - prettier
@@ -19,4 +19,5 @@ rules:
   indent: "off"
   "@typescript-eslint/indent": ["error", 4]
   quotes: ["error", "single", { "allowTemplateLiterals": true, "avoidEscape": true, }]
-  no-console: "warn"
+  no-console: off
+#  no-console: "warn"

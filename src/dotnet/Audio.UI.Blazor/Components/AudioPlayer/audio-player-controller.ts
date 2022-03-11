@@ -1,11 +1,11 @@
 import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-worklet-node';
-import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from "./workers/opus-decoder-worker-message";
+import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
 import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
-import { isAecWorkaroundNeeded, enableChromiumAec } from "./chromiumEchoCancellation";
+import { isAecWorkaroundNeeded, enableChromiumAec } from './chromiumEchoCancellation';
 
 const worker = new Worker('/dist/opusDecoderWorker.js');
-let workerLastCallbackId: number = 0;
+let workerLastCallbackId = 0;
 const workerCallbacks = new Map<number, () => void>();
 
 worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
@@ -34,7 +34,7 @@ function onOperationCompleted(message: OperationCompletedDecoderWorkerMessage) {
     callback();
 }
 
-let lastControllerId: number = 0;
+let lastControllerId = 0;
 
 /** The main class of audio player, that controls all parts of the playback */
 export class AudioPlayerController implements Resettable {
@@ -48,6 +48,7 @@ export class AudioPlayerController implements Resettable {
 
     private constructor() {
         this.id = lastControllerId++;
+        console.warn(`created controllerId:${this.id}`);
     }
 
     /**
@@ -69,8 +70,12 @@ export class AudioPlayerController implements Resettable {
             worker.postMessage(msg, [controller.decoderChannel.port1]);
         });
     }
-
-    public async init(header: Uint8Array, callbacks: {
+    /**
+     * Setups create audio worklet nodes if needed and setups callbacks.
+     * You should initialize @type { AudioPlayerController } close to playing, after an user gesture
+     * because we might use the WebRTC workaround of echo cancellation bugs in chrome and so on.
+     */
+    public async init(callbacks: {
         onBufferTooMuch?: () => void,
         onBufferLow?: () => void,
         onStartPlaying?: () => void,
@@ -80,10 +85,24 @@ export class AudioPlayerController implements Resettable {
         /** Called at the end of the queue, even if the playing wasn't started */
         onEnded?: () => void,
     }): Promise<void> {
+        /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
+        this.audioContext = await AudioContextPool.get('main') as AudioContext;
         if (this.feederNode === null) {
-            await this.createNodes();
+            const feederNodeOptions: AudioWorkletNodeOptions = {
+                channelCount: 1,
+                channelCountMode: 'explicit',
+                numberOfInputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [1],
+            };
+            this.feederNode = await FeederAudioWorkletNode.create(
+                this.decoderChannel.port2,
+                this.audioContext,
+                'feederWorklet',
+                feederNodeOptions
+            );
         }
-        const { feederNode, audioContext, destinationNode, audioElement } = this;
+        const { feederNode, audioContext } = this;
         feederNode.onBufferLow = callbacks.onBufferLow;
         feederNode.onStartPlaying = callbacks.onStartPlaying;
         feederNode.onBufferTooMuch = callbacks.onBufferTooMuch;
@@ -91,48 +110,29 @@ export class AudioPlayerController implements Resettable {
         feederNode.onStopped = callbacks.onStopped;
         feederNode.onEnded = callbacks.onEnded;
 
-        // we should use isAecWorkaroundNeeded() rather this.audioElement !== null
-        // because we should take an option to disable it
+        // recreating nodes due to memory leaks in not disconnected nodes
         if (isAecWorkaroundNeeded()) {
-            feederNode.connect(destinationNode);
-            const stream = await enableChromiumAec(destinationNode.stream);
-            audioElement.srcObject = stream;
-            audioElement.muted = false;
-            const _ = audioElement.play();
+            console.debug('isAecWorkaroundNeeded == true');
+            this.destinationNode = this.audioContext.createMediaStreamDestination();
+            feederNode.connect(this.destinationNode);
+            const stream = await enableChromiumAec(this.destinationNode.stream);
+            this.audioElement = new Audio();
+            this.audioElement.muted = true;
+            this.audioElement.autoplay = false;
+            this.audioElement.currentTime = 0;
+            this.audioElement.srcObject = stream;
+            this.audioElement.muted = false;
+            // TODO: work with rights & rejects of playing
+            void this.audioElement.play();
         }
         else {
+            console.debug('isAecWorkaroundNeeded == false');
             feederNode.connect(audioContext.destination);
         }
-        await this.initWorker(header);
+        await this.initWorker();
     }
 
-    /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
-    private async createNodes(): Promise<void> {
-        this.audioContext = await AudioContextPool.get("main") as AudioContext;
-        const feederNodeOptions: AudioWorkletNodeOptions = {
-            channelCount: 1,
-            channelCountMode: 'explicit',
-            numberOfInputs: 0,
-            numberOfOutputs: 1,
-            outputChannelCount: [1],
-        };
-        this.feederNode = await FeederAudioWorkletNode.create(
-            this.decoderChannel.port2,
-            this.audioContext,
-            'feederWorklet',
-            feederNodeOptions
-        );
-
-        if (isAecWorkaroundNeeded()) {
-            this.destinationNode = this.audioContext.createMediaStreamDestination();
-            this.audioElement = new Audio();
-            this.audioElement.autoplay = false;
-            this.audioElement.muted = true;
-            this.audioElement.pause();
-        }
-    }
-
-    private initWorker(header: Uint8Array): Promise<void> {
+    private initWorker(): Promise<void> {
         const callbackId = workerLastCallbackId++;
         return new Promise<void>(resolve => {
             workerCallbacks.set(callbackId, resolve);
@@ -140,11 +140,8 @@ export class AudioPlayerController implements Resettable {
                 type: 'init',
                 controllerId: this.id,
                 callbackId: callbackId,
-                buffer: header.buffer,
-                length: header.byteLength,
-                offset: header.byteOffset,
             };
-            worker.postMessage(msg, [msg.buffer]);
+            worker.postMessage(msg);
         });
     }
 
@@ -168,12 +165,12 @@ export class AudioPlayerController implements Resettable {
     }
 
     public async getState(): Promise<PlaybackState> {
-        console.assert(this.feederNode !== null, "Feeder node should be created. Lifetime error.");
+        console.assert(this.feederNode !== null, 'Feeder node should be created. Lifetime error.');
         return this.feederNode.getState();
     }
 
     public stop(): void {
-        console.assert(this.feederNode !== null, "Feeder node should be created. Lifetime error.");
+        console.assert(this.feederNode !== null, 'Feeder node should be created. Lifetime error.');
         const workerMsg: StopDecoderMessage = {
             type: 'stop',
             controllerId: this.id,
@@ -188,22 +185,28 @@ export class AudioPlayerController implements Resettable {
     }
 
     public reset(): void | PromiseLike<void> {
-        const { feederNode, destinationNode, audioElement } = this;
-        if (feederNode !== null) {
-            feederNode.disconnect();
-            feederNode.onBufferLow = null;
-            feederNode.onStartPlaying = null;
-            feederNode.onBufferTooMuch = null;
-            feederNode.onStarving = null;
-            feederNode.onStopped = null;
-            feederNode.onEnded = null;
+        if (this.feederNode != null) {
+            this.feederNode.disconnect();
+            this.feederNode.onBufferLow = null;
+            this.feederNode.onStartPlaying = null;
+            this.feederNode.onBufferTooMuch = null;
+            this.feederNode.onStarving = null;
+            this.feederNode.onStopped = null;
+            this.feederNode.onEnded = null;
         }
-        if (destinationNode !== null) {
-            destinationNode.disconnect();
+        if (this.destinationNode != null) {
+            this.destinationNode.disconnect();
+            this.destinationNode = null;
         }
-        if (audioElement !== null) {
-            audioElement.muted = true;
-            audioElement.pause();
+        if (this.audioElement != null) {
+            this.audioElement.muted = true;
+            this.audioElement.pause();
+            this.audioElement.srcObject = null;
+            this.audioElement.remove();
+            this.audioElement = null;
+        }
+        if (this.audioContext != null) {
+            this.audioContext = null;
         }
     }
 }

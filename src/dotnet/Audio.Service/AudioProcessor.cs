@@ -53,7 +53,7 @@ public sealed class AudioProcessor : IAudioProcessor
 
     public async Task ProcessAudio(
         AudioRecord record,
-        IAsyncEnumerable<byte[]> recordingStream,
+        IAsyncEnumerable<AudioFrame> recordingStream,
         CancellationToken cancellationToken)
     {
         Log.LogInformation(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
@@ -68,7 +68,12 @@ public sealed class AudioProcessor : IAudioProcessor
         var languages = ImmutableArray.Create(language, altLanguage);
 
         var author = await ChatAuthorsBackend.GetOrCreate(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
-        var audio = new AudioSource(recordingStream, TimeSpan.Zero, AudioSourceLog, cancellationToken);
+        var audio = new AudioSource(
+            Task.FromResult(AudioSource.DefaultFormat),
+            recordingStream,
+       TimeSpan.Zero,
+            AudioSourceLog,
+            cancellationToken);
         var openSegment = new OpenAudioSegment(
             0, record, audio,
             author, languages,

@@ -7,6 +7,9 @@ public record AudioFormat : MediaFormat
 {
     public override MediaType Type => MediaType.Audio;
 
+    [DataMember(Order = 0)]
+    public int ChannelCount { get; init; } = 1;
+
     [DataMember(Order = 1)]
     public AudioCodecKind CodecKind { get; init; } = AudioCodecKind.Opus;
     [DataMember(Order = 2)]

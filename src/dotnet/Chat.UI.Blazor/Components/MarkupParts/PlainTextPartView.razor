@@ -1,6 +1,7 @@
 @using Stl.Extensibility
 @using ActualChat.Mathematics
 @using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
 @using Microsoft.Extensions.DependencyInjection
 @implements IMarkupPartView
 @attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
@@ -49,16 +50,11 @@
         var chatId = entry.ChatId;
         var audioEntryId = entry.AudioEntryId.GetValueOrDefault(); // It's there for sure, otherwise click won't work
 
+        var clocks = Services.GetRequiredService<MomentClockSet>();
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
-        var playback = historicalPlayer.Playback;
-        if (playback is { IsStopped: false }) {
-            await historicalPlayer.Stop().ConfigureAwait(true);
-            return;
-        }
-
+        var chatController = Services.GetRequiredService<ChatController>();
+        var chatPlayer = chatController.GetPlayer(chatId);
         var chatEntryReader = chats.CreateEntryReader(session, chatId, ChatEntryType.Audio);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
         if (audioEntry == null) {
@@ -68,8 +64,16 @@
 
         var startOffset = Math.Max(0, part.TimeRange.Start - 0.25);
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
-        _ = BackgroundTask.Run(
-            () => historicalPlayer.Play(startAt),
+        var playbackKind = await chatPlayer.State.Use().ConfigureAwait(false);
+
+        var historyPlayTask = BackgroundTask.Run(
+            () => chatPlayer.Play(startAt, isRealtime: false, default),
             Log, "Historical playback failed");
+
+        // restore real-time playback
+        if (playbackKind == PlaybackKind.Realtime) {
+            _ = historyPlayTask.ContinueWith(
+                _ => chatPlayer.Play(clocks.SystemClock.Now, true, default));
+        }
     }
 }

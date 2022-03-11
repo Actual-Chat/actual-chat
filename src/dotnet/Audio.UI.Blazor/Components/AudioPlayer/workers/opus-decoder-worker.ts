@@ -1,10 +1,10 @@
-import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from "./opus-decoder-worker-message";
-import { OpusDecoder } from "./opus-decoder";
+import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
+import { OpusDecoder } from './opus-decoder';
 
 const worker = self as unknown as Worker;
 const decoders = new Map<number, OpusDecoder>();
-const debug: boolean = false;
-const debugPushes: boolean = debug && true;
+const debug = false;
+const debugPushes: boolean = debug && false;
 
 worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
     try {
@@ -14,7 +14,7 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
                 await onCreate(msg as CreateDecoderMessage);
                 break;
             case 'init':
-                await onInit(msg as InitDecoderMessage);
+                onInit(msg as InitDecoderMessage);
                 break;
             case 'data':
                 onData(msg as DataDecoderMessage);
@@ -23,7 +23,7 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
                 onEnd(msg as EndDecoderMessage);
                 break;
             case 'stop':
-                await onStop(msg as StopDecoderMessage);
+                onStop(msg as StopDecoderMessage);
                 break;
             default:
                 throw new Error(`Decoder Worker: Unsupported DecoderMessage type: ${msg.type}`);
@@ -50,7 +50,7 @@ async function onCreate(message: CreateDecoderMessage) {
     const decoder = await OpusDecoder.create(workletPort);
     decoders.set(controllerId, decoder);
     const msg: OperationCompletedDecoderWorkerMessage = {
-        type: "operationCompleted",
+        type: 'operationCompleted',
         callbackId: callbackId,
     };
     worker.postMessage(msg);
@@ -58,16 +58,15 @@ async function onCreate(message: CreateDecoderMessage) {
         console.debug(`Decoder(controllerId:${controllerId}): end create`);
 }
 
-async function onInit(message: InitDecoderMessage): Promise<void> {
-    const { callbackId, controllerId, buffer, length, offset } = message;
+function onInit(message: InitDecoderMessage): void {
+    const { callbackId, controllerId } = message;
     const decoder = getDecoder(controllerId);
-    const data = buffer.slice(offset, offset + length);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): start init, header - ${data.byteLength} bytes`);
-    await decoder.init(data);
+        console.debug(`Decoder(controllerId:${controllerId}): init`);
+    decoder.init();
 
     const msg: OperationCompletedDecoderWorkerMessage = {
-        type: "operationCompleted",
+        type: 'operationCompleted',
         callbackId: callbackId,
     };
     worker.postMessage(msg);
@@ -93,12 +92,15 @@ function onEnd(message: EndDecoderMessage): void {
     decoder.pushEnd();
 }
 
-async function onStop(message: StopDecoderMessage): Promise<void> {
+function onStop(message: StopDecoderMessage): void {
     const { controllerId } = message;
     const decoder = getDecoder(controllerId);
     if (debug)
         console.debug(`Decoder(controllerId:${controllerId}): start stop`);
-    await decoder.stop();
+    decoder.stop();
     if (debug)
         console.debug(`Decoder(controllerId:${controllerId}): end stop`);
 }
+/// #if DEBUG
+self['getDecoder'] = getDecoder;
+/// #endif

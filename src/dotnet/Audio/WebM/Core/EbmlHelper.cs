@@ -1,5 +1,6 @@
 using System.Text;
 using ActualChat.Audio.WebM.Models;
+using ActualChat.Spans;
 
 namespace ActualChat.Audio.WebM;
 
@@ -8,46 +9,10 @@ public static class EbmlHelper
     private const ulong UnknownSize = 0xFF_FFFF_FFFF_FFFF;
 
     public static ulong GetSize(ulong value)
-    {
-        ulong length = 1;
-        if ((value & 0xFFFFFFFF00000000) != 0) {
-            length += 4;
-            value >>= 32;
-        }
-        if ((value & 0xFFFF0000) != 0) {
-            length += 2;
-            value >>= 16;
-        }
-        if ((value & 0xFF00) != 0) length++;
-        return length;
-    }
+        => VInt.GetSize(value);
 
     public static ulong GetSize(long value)
-    {
-        var v = (ulong)value;
-        if (value < 0)
-            v = ~v;
-        ulong length = 1;
-        if ((v & 0xFFFFFFFF00000000) != 0) {
-            length += 4;
-            v >>= 32;
-        }
-        if ((v & 0xFFFF0000) != 0) {
-            length += 2;
-            v >>= 16;
-        }
-        if ((v & 0xFF00) != 0) {
-            length += 1;
-            v >>= 8;
-        }
-        // We have at most 8 bits left.
-        // Is the most significant bit set (or cleared for a negative number),
-        // then we need an extra byte for the sign bit.
-        if ((v & 0x80) != 0)
-            length++;
-
-        return length;
-    }
+        => VInt.GetSize(value);
 
     public static ulong GetSize(double value) => 8;
 

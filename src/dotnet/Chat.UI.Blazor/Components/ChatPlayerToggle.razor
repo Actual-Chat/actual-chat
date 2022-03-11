@@ -24,20 +24,20 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var playback = await Player.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
-        if (playback == null)
-            return false;
-        var isStopped = await playback.IsStoppedState.Use(cancellationToken).ConfigureAwait(false);
-        return !isStopped;
+        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
+        return playbackKind == PlaybackKind.Realtime;
     }
 
-    private Task Toggle() {
-        var isPlaying = Player.PlaybackState.Value is { IsStopped: false };
-        return isPlaying ? Stop() : Play();
+    private async Task Toggle() {
+        var isPlaying = Player is { State.Value: PlaybackKind.Realtime };
+        if (isPlaying)
+            await Stop();
+        else
+            await Play();
     }
 
     private Task Play()
-        => Player.Play(Clocks.SystemClock.Now);
+        => Player.Play(Clocks.SystemClock.Now, isRealtime: true, default);
 
     private Task Stop()
         => Player.Stop();
