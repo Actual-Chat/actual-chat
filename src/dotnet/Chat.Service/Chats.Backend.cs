@@ -212,6 +212,21 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return new ChatTile(idTileRange, true, entries);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        string chatId, long entryId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbAttachments = await dbContext.TextEntryAttachments
+            .Where(a => a.ChatId == chatId && a.EntryId == entryId)
+            .OrderBy(e => e.Index)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var attachments = dbAttachments.Select(e => e.ToModel()).ToImmutableArray();
+        return attachments;
+    }
+
     // Command handlers
 
     // [CommandHandler]
@@ -311,6 +326,30 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(entry);
         context.Operation().Items.Set(isNew);
         return entry;
+    }
+
+    public virtual async Task<TextEntryAttachment> CreateTextEntryAttachment(IChatsBackend.CreateTextEntryAttachmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            _ = GetTextEntryAttachments(command.Attachment.ChatId, command.Attachment.EntryId, default);
+            return default!;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var attachment = command.Attachment with {
+            Version = VersionGenerator.NextVersion(),
+        };
+        var dbAttachment = new DbTextEntryAttachment(attachment);
+        dbContext.Add(dbAttachment);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        attachment = dbAttachment.ToModel();
+        context.Operation().Items.Set(attachment);
+        return attachment;
     }
 
     // Protected methods

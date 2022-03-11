@@ -10,14 +10,16 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public Symbol Key { get; }
     public ChatEntry Entry { get; }
+    public ImmutableArray<TextEntryAttachment> Attachments { get; }
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
     public int CountAs { get; init; } = 1;
 
-    public ChatMessageModel(ChatEntry entry)
+    public ChatMessageModel(ChatEntry entry, ImmutableArray<TextEntryAttachment> attachments)
     {
         Entry = entry;
+        Attachments = attachments;
         Key = entry.Id.ToString(CultureInfo.InvariantCulture);
     }
 
@@ -35,7 +37,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         return Entry.Equals(other.Entry)
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
-            && IsBlockEnd == other.IsBlockEnd;
+            && IsBlockEnd == other.IsBlockEnd
+            && Attachments.SequenceEqual(other.Attachments);
     }
     public override bool Equals(object? obj)
         => ReferenceEquals(this, obj) || obj is ChatMessageModel other && Equals(other);
@@ -47,7 +50,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     // Static helpers
 
     public static List<ChatMessageModel> FromEntries(
-        List<ChatEntry> chatEntries)
+        List<ChatEntry> chatEntries,
+        IDictionary<long, ImmutableArray<TextEntryAttachment>> attachmentsLookup)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
@@ -68,7 +72,9 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var date = DateOnly.FromDateTime(entry.BeginsAt.ToDateTime().ToLocalTime());
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
-            var model = new ChatMessageModel(entry) {
+            if (!attachmentsLookup.TryGetValue(entry.Id, out var attachments))
+                attachments = ImmutableArray<TextEntryAttachment>.Empty;
+            var model = new ChatMessageModel(entry, attachments) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,

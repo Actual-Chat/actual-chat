@@ -47,6 +47,11 @@ public interface IChatsClientDef
         string chatId,
         CancellationToken cancellationToken);
 
+    [Get(nameof(GetTextEntryAttachments))]
+    Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        Session session, string chatId, long entryId,
+        CancellationToken cancellationToken);
+
     [Post(nameof(CreateChat))]
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(UpdateChat))]

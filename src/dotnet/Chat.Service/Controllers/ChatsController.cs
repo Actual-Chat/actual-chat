@@ -61,6 +61,12 @@ public class ChatsController : ControllerBase, IChats
     public Task<bool> CheckCanJoin(Session session, string chatId, CancellationToken cancellationToken)
         => _chats.CheckCanJoin(session, chatId, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        Session session, string chatId, long entryId,
+        CancellationToken cancellationToken)
+        => _chats.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
+
     // Commands
 
     [HttpPost]

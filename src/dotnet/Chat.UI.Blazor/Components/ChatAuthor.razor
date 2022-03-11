@@ -1,5 +1,6 @@
-﻿@inherits ComputedStateComponent<Author>
-@inject IChatAuthors _chatAuthors
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@inherits ComputedStateComponent<ChatAuthor.ChatAuthorState>
 
 @{
     var model = State.LatestNonErrorValue;
@@ -14,15 +15,27 @@
     [Parameter]
     public string ChatId { get; set; } = "";
     [Parameter, EditorRequired]
-    public RenderFragment<Author> ChildContent { get; set; } = default!;
+    public RenderFragment<ChatAuthorState> ChildContent { get; set; } = default!;
 
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Inject]
+    public IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject]
+    public ChatActivities ChatActivities { get; set; } = null!;
 
-    protected override ComputedState<Author>.Options GetStateOptions()
-        => new() {InitialValue = NullAuthor};
+    private AuthorChatActivityState? AuthorChatActivityState { get; set; }
 
-    protected override async Task<Author> ComputeState(CancellationToken cancellationToken) {
+    public override async Task SetParametersAsync(ParameterView parameters) {
+        if (!this.HasChangedParameters(parameters))
+            return;
+
+        await base.SetParametersAsync(parameters);
+        AuthorChatActivityState = await ChatActivities.GetAuthorRecordingActivity(ChatId, AuthorId);
+    }
+
+    protected override ComputedState<ChatAuthorState>.Options GetStateOptions()
+        => new() { InitialValue = new(NullAuthor, false) };
+
+    protected override async Task<ChatAuthorState> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         if (chatId.IsNullOrEmpty()) {
             // ChatId parameter is optional. If it's not specified, try to extract chatId from AuthorId.
@@ -32,15 +45,36 @@
             chatId = AuthorId.Substring(0, i);
         }
 
-        var author = await _chatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken);
+        var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken);
         if (author == null)
-            return NullAuthor;
+            return new(NullAuthor, false);
 
         if (string.IsNullOrWhiteSpace(author.Picture)) {
             // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
             var picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
             author = author with { Picture = picture };
         }
-        return author;
+
+        AuthorChatActivityState ??= await ChatActivities.GetAuthorRecordingActivity(ChatId, AuthorId);
+        var isRecording = await AuthorChatActivityState.Recording.Use(cancellationToken);
+
+        return new(author,isRecording);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+
+        AuthorChatActivityState?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    public class ChatAuthorState {
+        public Author Author { get; }
+        public bool IsRecording { get; }
+
+        public ChatAuthorState(Author author, bool isRecording) {
+            Author = author;
+            IsRecording = isRecording;
+        }
     }
 }

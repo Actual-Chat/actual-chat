@@ -76,5 +76,9 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<InviteCodes>();
         services.AddSingleton<IInviteCodes>(c => c.GetRequiredService<InviteCodes>());
         services.AddSingleton<IInviteCodesBackend>(c => c.GetRequiredService<InviteCodes>());
+
+        // ContentSaver
+        services.AddResponseCaching();
+        services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();
     }
 }
