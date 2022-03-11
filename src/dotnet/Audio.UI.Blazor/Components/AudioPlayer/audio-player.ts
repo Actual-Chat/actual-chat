@@ -147,7 +147,7 @@ export class AudioPlayer {
             if (state === 'playing' && controller !== null) {
                 const state: PlaybackState = await controller.getState();
                 if (debug) {
-                    console.debug(`onUpdateOffsetTick(controllerId:${controller.id}): ` +
+                    console.debug(`[audioTrackPlayerId:${this.id}] onUpdateOffsetTick(controllerId:${controller.id}): ` +
                         `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
                 }
                 await this.invokeOnPlaybackTimeChanged(state.playbackTime);
