@@ -85,10 +85,24 @@ export class AudioPlayerController implements Resettable {
         /** Called at the end of the queue, even if the playing wasn't started */
         onEnded?: () => void,
     }): Promise<void> {
+        /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
+        this.audioContext = await AudioContextPool.get('main') as AudioContext;
         if (this.feederNode === null) {
-            await this.createNodes();
+            const feederNodeOptions: AudioWorkletNodeOptions = {
+                channelCount: 1,
+                channelCountMode: 'explicit',
+                numberOfInputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [1],
+            };
+            this.feederNode = await FeederAudioWorkletNode.create(
+                this.decoderChannel.port2,
+                this.audioContext,
+                'feederWorklet',
+                feederNodeOptions
+            );
         }
-        const { feederNode, audioContext, destinationNode, audioElement } = this;
+        const { feederNode, audioContext } = this;
         feederNode.onBufferLow = callbacks.onBufferLow;
         feederNode.onStartPlaying = callbacks.onStartPlaying;
         feederNode.onBufferTooMuch = callbacks.onBufferTooMuch;
@@ -96,51 +110,26 @@ export class AudioPlayerController implements Resettable {
         feederNode.onStopped = callbacks.onStopped;
         feederNode.onEnded = callbacks.onEnded;
 
-        // we should use isAecWorkaroundNeeded() rather this.audioElement !== null
-        // because we should take an option to disable it
-        if (isAecWorkaroundNeeded()) {
-            feederNode.connect(destinationNode);
-            const stream = await enableChromiumAec(destinationNode.stream);
-            audioElement.currentTime = 0;
-            audioElement.srcObject = stream;
-            audioElement.muted = false;
-            void audioElement.play();
-        }
-        else {
-            feederNode.connect(audioContext.destination);
-        }
-        await this.initWorker();
-    }
-
-    /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
-    private async createNodes(): Promise<void> {
-        this.audioContext = await AudioContextPool.get('main') as AudioContext;
-        const feederNodeOptions: AudioWorkletNodeOptions = {
-            channelCount: 1,
-            channelCountMode: 'explicit',
-            numberOfInputs: 0,
-            numberOfOutputs: 1,
-            outputChannelCount: [1],
-        };
-        this.feederNode = await FeederAudioWorkletNode.create(
-            this.decoderChannel.port2,
-            this.audioContext,
-            'feederWorklet',
-            feederNodeOptions
-        );
-
+        // recreating nodes due to memory leaks in not disconnected nodes
         if (isAecWorkaroundNeeded()) {
             console.debug('isAecWorkaroundNeeded == true');
             this.destinationNode = this.audioContext.createMediaStreamDestination();
+            feederNode.connect(this.destinationNode);
+            const stream = await enableChromiumAec(this.destinationNode.stream);
             this.audioElement = new Audio();
-            this.audioElement.autoplay = false;
             this.audioElement.muted = true;
-            this.audioElement.pause();
+            this.audioElement.autoplay = false;
             this.audioElement.currentTime = 0;
+            this.audioElement.srcObject = stream;
+            this.audioElement.muted = false;
+            // TODO: work with rights & rejects of playing
+            void this.audioElement.play();
         }
-        else{
+        else {
             console.debug('isAecWorkaroundNeeded == false');
+            feederNode.connect(audioContext.destination);
         }
+        await this.initWorker();
     }
 
     private initWorker(): Promise<void> {
@@ -191,42 +180,33 @@ export class AudioPlayerController implements Resettable {
         if (this.audioElement !== null) {
             this.audioElement.muted = true;
             this.audioElement.pause();
-            this.audioElement.currentTime = 0;
-            this.audioElement.srcObject = null;
-            this.audioElement.remove();
-            this.audioElement = new Audio();
-            this.audioElement.autoplay = false;
-            this.audioElement.muted = true;
-            this.audioElement.pause();
-            this.audioElement.currentTime = 0;
         }
         // we sent the stop to worker and worklet (node->processor->onStopped->release to the pool->reset)
     }
 
     public reset(): void | PromiseLike<void> {
-        const { feederNode } = this;
-        if (feederNode !== null) {
-            feederNode.disconnect();
-            feederNode.onBufferLow = null;
-            feederNode.onStartPlaying = null;
-            feederNode.onBufferTooMuch = null;
-            feederNode.onStarving = null;
-            feederNode.onStopped = null;
-            feederNode.onEnded = null;
+        if (this.feederNode != null) {
+            this.feederNode.disconnect();
+            this.feederNode.onBufferLow = null;
+            this.feederNode.onStartPlaying = null;
+            this.feederNode.onBufferTooMuch = null;
+            this.feederNode.onStarving = null;
+            this.feederNode.onStopped = null;
+            this.feederNode.onEnded = null;
         }
-        if (this.destinationNode !== null) {
+        if (this.destinationNode != null) {
             this.destinationNode.disconnect();
+            this.destinationNode = null;
         }
-        if (this.audioElement !== null) {
+        if (this.audioElement != null) {
             this.audioElement.muted = true;
             this.audioElement.pause();
             this.audioElement.srcObject = null;
             this.audioElement.remove();
-            this.audioElement = new Audio();
-            this.audioElement.autoplay = false;
-            this.audioElement.muted = true;
-            this.audioElement.pause();
-            this.audioElement.currentTime = 0;
+            this.audioElement = null;
+        }
+        if (this.audioContext != null) {
+            this.audioContext = null;
         }
     }
 }
