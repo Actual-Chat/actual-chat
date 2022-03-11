@@ -24,13 +24,12 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var playback = Player.Playback;
-        var playbackKind = await playback.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
         return playbackKind == PlaybackKind.Realtime;
     }
 
     private async Task Toggle() {
-        var isPlaying = Player.Playback is { PlaybackState.Value: PlaybackKind.Realtime };
+        var isPlaying = Player is { State.Value: PlaybackKind.Realtime };
         if (isPlaying)
             Stop();
         else
