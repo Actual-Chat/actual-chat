@@ -18,7 +18,7 @@ public class FeedbackService
         _feedback = feedback;
     }
 
-    public async Task AskFeatureRequestFeedback(string feature, string featureTitle = null)
+    public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
     {
         if (_modalReference != null)
             return;
