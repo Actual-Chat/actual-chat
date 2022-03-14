@@ -1,19 +1,12 @@
 ﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatAuthorListeningChats
+public class ListeningChatsList
 {
-    private Session Session { get; }
-    public IServiceProvider Services { get; }
     public IMutableState<ImmutableList<string>> ListeningChatsState { get; }
     public ImmutableList<string> ListeningChats => ListeningChatsState.Value;
 
-    public ChatAuthorListeningChats(IServiceProvider services, Session session)
-    {
-        Session = session;
-        Services = services;
-        var stateFactory = services.StateFactory();
-        ListeningChatsState = stateFactory.NewMutable(ImmutableList<string>.Empty);
-    }
+    public ListeningChatsList(IStateFactory stateFactory)
+        => ListeningChatsState = stateFactory.NewMutable(ImmutableList<string>.Empty);
 
     public void Add(string chatId)
     {

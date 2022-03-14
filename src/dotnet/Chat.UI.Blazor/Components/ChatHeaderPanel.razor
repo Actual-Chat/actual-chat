@@ -41,7 +41,7 @@
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
-    [Inject] private ChatAuthorListeningChats ListeningChats { get; set; } = null!;
+    [Inject] private ListeningChatsList ListeningChats { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };

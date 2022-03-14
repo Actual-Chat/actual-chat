@@ -87,11 +87,9 @@
                     <AudioRecorder ChatId="@Chat.Id"
                                    RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
-                @if (Player != null!) {
-                    <div class="chat-control-button player-button w-1/2 flex">
-                        <ChatPlayerToggle Player="Player" ChatId="@Chat.Id"/>
-                    </div>
-                }
+                <div class="chat-control-button player-button w-1/2 flex">
+                    <ChatPlayerToggle ChatId="@Chat.Id"/>
+                </div>
             </div>
         </div>
     </div>
@@ -109,20 +107,16 @@
 
     private static string? _class;
 
-    [Inject] private ChatController ChatController { get; set; } = null!;
+    [Inject] private ChatController2 ChatController { get; set; } = null!;
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-    private ChatPlayer Player { get; set; } = null!;
     // TODO(AY): Add some store that remembers typed messages
     private string Text { get; set; } = "";
     private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
-
-    protected override void OnInitialized()
-        => Player = ChatController.GetPlayer(Chat.Id);
 
     public async ValueTask DisposeAsync()
     {
@@ -201,11 +195,8 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        var isPlaying = Player is { State.Value: PlaybackKind.Realtime };
-        if (isPlaying)
-            return Task.CompletedTask;
         // We don't need to await for this here
-        _ = Player.Play(_clocks.SystemClock.Now, isRealtime: true, default);
+        _ = ChatController.ActivateRealtimeListening(Chat.Id);
         return Task.CompletedTask;
     }
 

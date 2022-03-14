@@ -18,33 +18,20 @@
     private static string? _class;
 
     [Inject] private MomentClockSet Clocks { get; set; } = null!;
-    [Inject] private ChatAuthorListeningChats ListeningChats { get; set; } = null!;
-    [Parameter] public ChatPlayer Player { get; set; } = null!;
+    [Inject] private ChatController2 ChatController { get; set; } = null!;
     [Parameter] public string ChatId { get; set; } = "";
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
-        return playbackKind == PlaybackKind.Realtime;
-    }
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => ChatController.IsRealtimeListeningActivated(ChatId, cancellationToken);
 
     private async Task Toggle() {
-        var isPlaying = Player is { State.Value: PlaybackKind.Realtime };
+        var isPlaying = await ChatController.IsRealtimeListeningActivated(ChatId, default);
         if (isPlaying)
-            await Stop();
+            await ChatController.StopRealtimeListening(ChatId);
         else
-            await Play();
-    }
-
-    private Task Play() {
-        ListeningChats.Add(ChatId);
-        return Player.Play(Clocks.SystemClock.Now, isRealtime: true, default);
-    }
-
-    private Task Stop() {
-        ListeningChats.Remove(ChatId);
-        return Player.Stop();
+            await ChatController.ActivateRealtimeListening(ChatId);
     }
 }
