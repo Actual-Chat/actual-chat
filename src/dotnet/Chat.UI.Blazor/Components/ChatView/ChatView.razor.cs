@@ -9,22 +9,20 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private ChatController ChatController { get; set; } = default!;
+    [Inject] private ChatController2 ChatController { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
-    [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatView> Log { get; set; } = default!;
-    private ChatPlayer? RealtimePlayer { get; set; }
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         GC.SuppressFinalize(this);
-        return ChatController.Close(Chat.Id);
+        await ChatController.LeaveChat(Chat.Id);
     }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(

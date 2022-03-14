@@ -1,37 +1,54 @@
-namespace ActualChat.Chat.UI.Blazor.Services;
+﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
 /// <summary> Must be scoped service. </summary>
-public sealed class ChatController : IAsyncDisposable
+public class ChatPlayers : IAsyncDisposable
 {
     private readonly ConcurrentDictionary<Symbol, Lazy<ChatPlayer>> _players = new();
     private readonly IChatPlayerFactory _factory;
-    private readonly ILogger<ChatController> _log;
+    private readonly ILogger<ChatPlayers> _log;
     private int _isDisposed;
 
-    public ChatController(ILogger<ChatController> log, IChatPlayerFactory factory)
+    public ChatPlayers(ILogger<ChatPlayers> log, IChatPlayerFactory factory)
     {
         _log = log;
         _factory = factory;
     }
 
-    public ChatPlayer GetPlayer(Symbol chatId)
+    [ComputeMethod]
+    public virtual Task<ChatPlayer?> GetPlayer(Symbol chatId)
+    {
+        if (!_players.TryGetValue(chatId, out var player))
+            return Task.FromResult((ChatPlayer?)null);
+        return Task.FromResult((ChatPlayer?)player.Value);
+    }
+
+    public virtual ChatPlayer ActivatePlayer(Symbol chatId)
     {
         if (_isDisposed == 1)
-            throw new ObjectDisposedException(nameof(ChatController));
-        return _players.GetOrAdd(
+            throw new ObjectDisposedException(nameof(ChatPlayers));
+        var player = _players.GetOrAdd(
             chatId,
             static (key, self) => new Lazy<ChatPlayer>(() => self._factory.Create(key)),
             this
         ).Value;
+
+        using (Computed.Invalidate()) {
+            _ = GetPlayer(chatId);
+        }
+        return player;
     }
 
     /// <summary> Disposes all resources allocated for <paramref name="chatId"/> </summary>
     public async ValueTask Close(Symbol chatId)
     {
         if (_isDisposed == 1)
-            throw new ObjectDisposedException(nameof(ChatController));
+            throw new ObjectDisposedException(nameof(ChatPlayers));
         if (_players.TryRemove(chatId, out var player)) {
             await player.Value.DisposeAsync().ConfigureAwait(false);
+        }
+
+        using (Computed.Invalidate()) {
+            _ = GetPlayer(chatId);
         }
     }
 
@@ -42,11 +59,19 @@ public sealed class ChatController : IAsyncDisposable
 
         GC.SuppressFinalize(this);
 
-        var playerDisposeTasks = _players
+        var players = _players.ToArray();
+        _players.Clear();
+        using (Computed.Invalidate()) {
+            foreach (var player in players) {
+                _ = GetPlayer(player.Key);
+            }
+        }
+
+        var playerDisposeTasks = players
             .Select(kv => DisposePlayer(kv.Key, kv.Value.Value))
             .ToArray();
 
-        _players.Clear();
+
         if (playerDisposeTasks.Length > 0)
             await Task.WhenAll(playerDisposeTasks).ConfigureAwait(false);
 

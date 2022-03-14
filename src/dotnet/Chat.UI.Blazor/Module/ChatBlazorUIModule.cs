@@ -26,14 +26,15 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Singletons
         services.TryAddSingleton<IChatMediaResolver, BuiltInChatMediaResolver>();
         fusion.AddComputeService<VirtualListTestService>();
-        fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
 
         // Scoped / Blazor Circuit services
-        services.TryAddScoped<ChatController>();
         services.TryAddScoped<IChatPlayerFactory, ChatPlayerFactory>();
         services.TryAddScoped<ChatActivities>();
+        services.TryAddScoped<ChatController2>();
+        fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
 
         services.RegisterNavItems<ChatLinks>();
-        services.TryAddScoped<ChatAuthorListeningChats>();
+        services.TryAddScoped<ListeningChatsList>();
     }
 }

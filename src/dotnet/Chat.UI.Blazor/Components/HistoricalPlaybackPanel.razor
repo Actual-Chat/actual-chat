@@ -23,7 +23,7 @@
             </div>
             @* Stop button *@
             <div class="c-stop flex flex-row items-center">
-                <button @onclick="_ => Player.Stop()" class="text-secondary transition duration-300 ease-in-out hover:scale-110">
+                <button @onclick="_ => ChatController.StopHistoricalPlayer(Chat.Id)" class="text-secondary transition duration-300 ease-in-out hover:scale-110">
                     <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0 0h24v24h-24z"/>
                     </svg>
@@ -43,28 +43,21 @@
 
     private static string? _class;
 
-    [Inject] private ChatController ChatController { get; set; } = null!;
+    [Inject] private ChatController2 ChatController { get; set; } = null!;
     [Inject] IActivePlaybackInfo ActivePlaybackInfo { get; set; } = null!;
-    private ChatPlayer Player { get; set; } = null!;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    protected override Task OnInitializedAsync() {
-        Player = ChatController.GetPlayer(Chat.Id);
-        return Task.CompletedTask;
-    }
-
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
-    {
-        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
-        if (playbackKind != PlaybackKind.Historical)
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var player = await ChatController.GetHistoricalChatPlayer(Chat.Id, cancellationToken);
+        if (player == null)
             return Model.NotPlaying;
 
-        var playback = Player.Playback;
+        var playback = player.Playback;
 
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
