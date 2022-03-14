@@ -3,14 +3,14 @@
 @inject Session _session
 @inject IChats _chats
 
-<Dropdown ContentPositionCss="left-1 top-7" Class="relative">
+<Dropdown ContentPositionCss="md:left-1 top-7" Class="relative">
     <ButtonTemplate>
         <div class="px-2 inline-flex">
             <span class="float-left text-secondary font-semibold chat-header-title">@Chat.Title</span>
         </div>
     </ButtonTemplate>
     <ContentTemplate>
-        <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+        <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             <MenuItem Title="Edit your name, image and bio in this chat" OnItemClick="OnEditChatAuthorAvatar"></MenuItem>
             @if (_canEdit) {
                 <MenuItem Title="Edit chat" OnItemClick="OnEditChat"></MenuItem>

@@ -24,8 +24,16 @@
         @* @key=... ensures child components are recreated on navigation to another chat *@
         <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
             <Header>
-                <ChatHeader />
-                <ChatActivityPanel />
+                <div class="flex flex-col">
+                    <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
+                        <NavbarIcon/>
+                        <ChatHeader/>
+                        <ChatActivityPanel />
+                    </div>
+                    <div class="w-full flex justify-center px-2">
+                        <ChatHeaderPanel/>
+                    </div>
+                </div>
             </Header>
             <Body>
                 <ChatView />
