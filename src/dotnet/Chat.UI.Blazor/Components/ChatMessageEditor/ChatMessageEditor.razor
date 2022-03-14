@@ -89,7 +89,7 @@
                 </div>
                 @if (Player != null!) {
                     <div class="chat-control-button player-button w-1/2 flex">
-                        <ChatPlayerToggle Player="Player"/>
+                        <ChatPlayerToggle Player="Player" ChatId="@Chat.Id"/>
                     </div>
                 }
             </div>
@@ -121,7 +121,7 @@
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
         => Player = ChatController.GetPlayer(Chat.Id);
 
     public async ValueTask DisposeAsync()
