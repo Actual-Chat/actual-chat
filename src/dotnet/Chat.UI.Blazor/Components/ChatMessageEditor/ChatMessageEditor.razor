@@ -196,7 +196,7 @@
         if (isRecording == false)
             return Task.CompletedTask;
         // We don't need to await for this here
-        _ = ChatController.ActivateRealtimeListening(Chat.Id);
+        _ = ChatController.StartRealtimeListening(Chat.Id);
         return Task.CompletedTask;
     }
 
