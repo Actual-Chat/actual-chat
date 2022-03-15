@@ -107,7 +107,7 @@ public class ChatController
             _logger, "Historical playback failed");
 
         // restore real-time playback
-        if (!IsListeningToChat(chatId)) {
+        if (IsListeningToChat(chatId)) {
             _ = historyPlayTask.ContinueWith(
                 _ => StartRealtimeListening(chatId));
         }
