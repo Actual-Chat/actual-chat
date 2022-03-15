@@ -72,7 +72,6 @@ public class ChatPlayers : IAsyncDisposable
             .Select(kv => DisposePlayer(kv.Key, kv.Value.Value))
             .ToArray();
 
-
         if (playerDisposeTasks.Length > 0)
             await Task.WhenAll(playerDisposeTasks).ConfigureAwait(false);
 
