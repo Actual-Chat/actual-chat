@@ -107,8 +107,10 @@ public class ChatController2
     public virtual Task StopHistoricalPlayer(Symbol chatId)
         => StopPlaying(chatId, PlaybackKind.Historical);
 
-    public virtual Task LeaveChat(Symbol chatId)
+    public virtual async Task LeaveChat(Symbol chatId)
     {
-        return StopHistoricalPlayer(chatId);
+        await StopHistoricalPlayer(chatId).ConfigureAwait(false);
+        if (!_listeningChats.ListeningChats.Contains(chatId))
+            _ = _chatPlayers.Close(chatId);
     }
 }

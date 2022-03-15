@@ -45,6 +45,7 @@ public class ChatPlayers : IAsyncDisposable
             throw new ObjectDisposedException(nameof(ChatPlayers));
         if (_players.TryRemove(chatId, out var player)) {
             await player.Value.DisposeAsync().ConfigureAwait(false);
+            _log.LogDebug("Disposed player for chatId:{chatId}", chatId);
         }
 
         using (Computed.Invalidate()) {
@@ -79,6 +80,7 @@ public class ChatPlayers : IAsyncDisposable
         {
             try {
                 await player.DisposeAsync().ConfigureAwait(true);
+                _log.LogDebug("Disposed player for chatId:{chatId}", chatId);
             }
             catch (Exception e) {
                 _log.LogError(e, "Can't dispose player for chatId:{chatId}", chatId);
