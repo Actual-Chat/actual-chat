@@ -33,6 +33,6 @@
         if (realtimeMode == RealtimeListeningMode.Active || realtimeMode == RealtimeListeningMode.Muted)
             await ChatController.StopRealtimeListening(ChatId);
         else
-            await ChatController.ActivateRealtimeListening(ChatId);
+            await ChatController.StartRealtimeListening(ChatId);
     }
 }

@@ -62,18 +62,18 @@
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         var chatModels = new List<ChatModel>();
         foreach (var chat in chats.OrderBy(c => c.Title)) {
-            var activeListening = await ChatController.IsRealtimeListeningActivated(chat.Id, cancellationToken);
+            var mode = await ChatController.GetRealtimeListeningMode(chat.Id, cancellationToken);
             var chatModel = new ChatModel {
                 Chat = chat,
-                ActiveListening = activeListening,
+                ActiveListening = mode == RealtimeListeningMode.Active,
                 ToggleMute = async () => {
-                    if (activeListening)
+                    if (mode == RealtimeListeningMode.Active)
                         await ChatController.MuteRealtimeListening(chat.Id);
-                    else
+                    else if (mode == RealtimeListeningMode.Muted)
                         await ChatController.UnmuteRealtimeListening(chat.Id);
                 },
-                Focus = () => {
-                   return Task.CompletedTask;
+                Focus = async () => {
+                    await ChatController.FocusRealtimeListening(chat.Id);
                 }
             };
             chatModels.Add(chatModel);
