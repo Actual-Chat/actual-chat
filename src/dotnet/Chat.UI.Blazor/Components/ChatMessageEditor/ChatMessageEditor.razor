@@ -107,7 +107,7 @@
 
     private static string? _class;
 
-    [Inject] private ChatController2 ChatController { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;

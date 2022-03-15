@@ -2,15 +2,15 @@
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatController2
+public class ChatController
 {
     private readonly ChatPlayers _chatPlayers;
     private readonly ListeningChatsList _listeningChats;
     private readonly MomentClockSet _clocks;
-    private readonly ILogger<ChatController2> _logger;
+    private readonly ILogger<ChatController> _logger;
 
-    public ChatController2(ChatPlayers chatPlayers,
-        ListeningChatsList listeningChats, MomentClockSet clocks, ILogger<ChatController2> logger)
+    public ChatController(ChatPlayers chatPlayers,
+        ListeningChatsList listeningChats, MomentClockSet clocks, ILogger<ChatController> logger)
     {
         _chatPlayers = chatPlayers;
         _listeningChats = listeningChats;
