@@ -190,13 +190,14 @@ public class ChatActivities
 
                 // calculating chat recording state
                 var activeAuthors1 = activeAuthors;
-                var currentActivity = activityState.Value;
-                var noLongerActiveEntries = currentActivity
-                    .Where(ae => !activeAuthors1.Contains(ae.AuthorId));
-                foreach (var activityEntry in noLongerActiveEntries)
-                    currentActivity = currentActivity.Remove(activityEntry);
-                currentActivity = currentActivity.AddRange(activeAuthors.Select(authorId
-                    => new ChatActivityEntry(authorId, ChatActivityKind.Recording, now)));
+                var prevAuthors = activityState.Value
+                    .Select(e => e.AuthorId)
+                    .ToHashSet();
+                var currentActivity = activityState.Value
+                    .RemoveAll(e => !activeAuthors1.Contains(e.AuthorId))
+                    .AddRange(activeAuthors
+                        .Except(prevAuthors)
+                        .Select(authorId => new ChatActivityEntry(authorId, ChatActivityKind.Recording, now)));
 
                 // maintaining author recording state
                 foreach (var pair in _authorRecordingState) {
