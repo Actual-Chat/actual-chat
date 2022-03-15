@@ -43,6 +43,8 @@
     {
         var command = new IChats.CreateChatCommand(Session, _model.Title) { IsPublic = true };
         var result = await Cmd.Run(command, default);
+        if (!result.CommandEvent.IsCompletedSuccessfully)
+            return;
         var chatId = result.Result.Id;
         Nav.NavigateTo($"/chat/{chatId}");
     }
