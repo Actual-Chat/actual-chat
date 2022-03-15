@@ -43,7 +43,7 @@
 
     private static string? _class;
 
-    [Inject] private ChatController2 ChatController { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     [Inject] IActivePlaybackInfo ActivePlaybackInfo { get; set; } = null!;
 
     [CascadingParameter]

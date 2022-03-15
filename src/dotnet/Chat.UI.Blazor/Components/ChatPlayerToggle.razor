@@ -18,7 +18,7 @@
     private static string? _class;
 
     [Inject] private MomentClockSet Clocks { get; set; } = null!;
-    [Inject] private ChatController2 ChatController { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     [Parameter] public string ChatId { get; set; } = "";
 
     protected override ComputedState<bool>.Options GetStateOptions()

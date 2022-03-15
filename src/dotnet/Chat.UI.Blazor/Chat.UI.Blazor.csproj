@@ -15,8 +15,4 @@
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Services\ChatController.cs" />
-  </ItemGroup>
-
 </Project>
