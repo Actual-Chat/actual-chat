@@ -1,11 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<RealtimeListeningMode>
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 
 @{
-    var isPlaying = State.ValueOrDefault;
-    var cls = $"toggle-button{(isPlaying ? "-on" : "")}";
+    var mode = State.ValueOrDefault;
+    var sfx = mode == RealtimeListeningMode.Active ? "-on" : mode == RealtimeListeningMode.Muted ? "-on opacity-50" : "";
+    var cls = $"toggle-button{sfx}";
 }
 <button onclick="@Toggle"
         class="@(_class ??= this.DefaultClass()) p-1 transition-all duration-150">
@@ -21,15 +22,15 @@
     [Inject] private ChatController ChatController { get; set; } = null!;
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<RealtimeListeningMode>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
-        => ChatController.IsRealtimeListeningActivated(ChatId, cancellationToken);
+    protected override Task<RealtimeListeningMode> ComputeState(CancellationToken cancellationToken)
+        => ChatController.GetRealtimeListeningMode(ChatId, cancellationToken);
 
     private async Task Toggle() {
-        var isPlaying = await ChatController.IsRealtimeListeningActivated(ChatId, default);
-        if (isPlaying)
+        var realtimeMode = await ChatController.GetRealtimeListeningMode(ChatId, default);
+        if (realtimeMode == RealtimeListeningMode.Active || realtimeMode == RealtimeListeningMode.Muted)
             await ChatController.StopRealtimeListening(ChatId);
         else
             await ChatController.ActivateRealtimeListening(ChatId);
