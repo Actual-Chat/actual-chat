@@ -5,24 +5,27 @@
 
 @{
     var model = State.LatestNonErrorValue;
-    var chats = model.Chats;
+    var chatModels = model.Chats;
 }
 
 <div class="w-full mx-1 justify-center z-20 bg-primary rounded-b-md border-accent md:bg-secondary shadow-md text-left">
-    @foreach (var chat in chats) {
+    @foreach (var chatModel in chatModels) {
+        var chat = chatModel.Chat;
+        var muteCls = "text-toggle-on" + (chatModel.ActiveListening ? "" : " opacity-50");
+        var muteTitle = chatModel.ActiveListening ? "Mute This" : "Unmute This";
         <div class="p-1 px-4 text-sm hover:bg-accent flex flex-row">
             <div class="flex-1">
                 <a href="/chat/@chat.Id">@chat.Title</a>
             </div>
             <Menu Class="panel-menu h-5 right-0 flex flex-row rounded-md" ItemClass="text-left panel-menu-item mx-1" Orientation="Orientation.Horizontal">
-                <MenuItem Title="Mute This" Name="mute-this">
+                <MenuItem Title="@muteTitle" Name="mute-this" OnItemClick="@chatModel.ToggleMute">
                     <Icon>
-                        <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
+                        <svg class="w-5 h-5 fill-current @muteCls" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
                             <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm4.151 17.943l-4.143-4.102-4.117 4.159-1.833-1.833 4.104-4.157-4.162-4.119 1.833-1.833 4.155 4.102 4.106-4.16 1.849 1.849-4.1 4.141 4.157 4.104-1.849 1.849z"/>
                         </svg>
                     </Icon>
                 </MenuItem>
-                <MenuItem Title="Mute Other" Name="mute-other">
+                <MenuItem Title="Mute Other" Name="mute-other" OnItemClick="@chatModel.Focus">
                     <Icon>
                         <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -2 28 28">
                             <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-1 17l-5-5.299 1.399-1.43 3.574 3.736 6.572-7.007 1.455 1.403-8 8.597z"/>
@@ -35,13 +38,21 @@
 </div>
 
 @code {
+    public class ChatModel {
+        public Chat Chat { get; init; } = null!;
+        public bool ActiveListening { get; init; }
+        public Func<Task> ToggleMute { get; init; } = null!;
+        public Func<Task> Focus { get; init; } = null!;
+    }
+
     public class Model {
-        public Chat[] Chats { get; set; } = Array.Empty<Chat>();
+        public ChatModel[] Chats { get; set; } = new ChatModel[0];
     }
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private ListeningChatsList ListeningChats { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
@@ -49,8 +60,26 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatIds = await ListeningChats.GetChatIds(cancellationToken).ConfigureAwait(true);
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
+        var chatModels = new List<ChatModel>();
+        foreach (var chat in chats.OrderBy(c => c.Title)) {
+            var activeListening = await ChatController.IsRealtimeListeningActivated(chat.Id, cancellationToken);
+            var chatModel = new ChatModel {
+                Chat = chat,
+                ActiveListening = activeListening,
+                ToggleMute = async () => {
+                    if (activeListening)
+                        await ChatController.MuteRealtimeListening(chat.Id);
+                    else
+                        await ChatController.UnmuteRealtimeListening(chat.Id);
+                },
+                Focus = () => {
+                   return Task.CompletedTask;
+                }
+            };
+            chatModels.Add(chatModel);
+        }
         return new () {
-            Chats = chats.OrderBy(c => c.Title).ToArray(),
+            Chats = chatModels.ToArray(),
         };
     }
 
