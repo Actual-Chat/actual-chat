@@ -1,8 +1,5 @@
 <div class="@(_class ??= this.DefaultClass()) @Class h-full w-full flex flex-col flex-nowrap justify-between overflow-y-auto">
-    <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
-        <NavbarIcon/>
-        @Header
-    </div>
+    @Header
     <div class="flex flex-col-reverse h-full overflow-y-auto">
         <div class="flex sticky right-0 w-full border-t border-primary md:border-secondary z-10">
             @Footer

@@ -1,63 +1,193 @@
+﻿using ActualChat.MediaPlayback;
+using System.Linq;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-/// <summary> Must be scoped service. </summary>
-public sealed class ChatController : IAsyncDisposable
+public enum RealtimeListeningMode { None, Active, Muted }
+
+public class ChatController
 {
-    private readonly ConcurrentDictionary<Symbol, Lazy<ChatPlayer>> _players = new();
-    private readonly IChatPlayerFactory _factory;
-    private readonly ILogger<ChatController> _log;
-    private int _isDisposed;
+    private readonly ChatPlayers _chatPlayers;
+    private readonly ListeningChatsList _listeningChats;
+    private readonly MomentClockSet _clocks;
+    private readonly ILogger<ChatController> _logger;
 
-    public ChatController(ILogger<ChatController> log, IChatPlayerFactory factory)
+    public ChatController(ChatPlayers chatPlayers,
+        ListeningChatsList listeningChats, MomentClockSet clocks, ILogger<ChatController> logger)
     {
-        _log = log;
-        _factory = factory;
+        _chatPlayers = chatPlayers;
+        _listeningChats = listeningChats;
+        _clocks = clocks;
+        _logger = logger;
     }
 
-    public ChatPlayer GetPlayer(Symbol chatId)
+    public virtual async Task<RealtimeListeningMode> GetRealtimeListeningMode(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (_isDisposed == 1)
-            throw new ObjectDisposedException(nameof(ChatController));
-        return _players.GetOrAdd(
-            chatId,
-            static (key, self) => new Lazy<ChatPlayer>(() => self._factory.Create(key)),
-            this
-        ).Value;
-    }
-
-    /// <summary> Disposes all resources allocated for <paramref name="chatId"/> </summary>
-    public async ValueTask Close(Symbol chatId)
-    {
-        if (_isDisposed == 1)
-            throw new ObjectDisposedException(nameof(ChatController));
-        if (_players.TryRemove(chatId, out var player)) {
-            await player.Value.DisposeAsync().ConfigureAwait(false);
+        var chatIds = await _listeningChats.GetChatIds(cancellationToken).ConfigureAwait(false);
+        if (!chatIds.Contains((string)chatId, StringComparer.Ordinal))
+            return RealtimeListeningMode.None;
+        var playbackKind = await GetChatPlaybackKind(chatId, cancellationToken).ConfigureAwait(false);
+        switch (playbackKind) {
+            case PlaybackKind.None:
+                return RealtimeListeningMode.Muted;
+            case PlaybackKind.Realtime:
+                return RealtimeListeningMode.Active;
+            case PlaybackKind.Historical:
+                return RealtimeListeningMode.None;
+            default:
+                throw new NotSupportedException(playbackKind.ToString());
         }
     }
 
-    public async ValueTask DisposeAsync()
+    public virtual async Task<ChatPlayer?> GetHistoricalChatPlayer(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0)
+        var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
+        if (player == null)
+            return null;
+        var playbackKind = await player.State.Use(cancellationToken).ConfigureAwait(false);
+        if (playbackKind != PlaybackKind.Historical)
+            return null;
+        return player;
+    }
+
+    public virtual async Task StartRealtimeListening(Symbol chatId)
+    {
+        _listeningChats.Add(chatId);
+        await InnerStartRealtimeListening(chatId).ConfigureAwait(false);
+    }
+
+    public virtual async Task StopRealtimeListening(Symbol chatId)
+    {
+        _listeningChats.Remove(chatId);
+        await InnerStopRealtimeListening(chatId).ConfigureAwait(false);
+    }
+
+    public virtual async Task MuteRealtimeListening(Symbol chatId)
+    {
+        if (!IsListeningToChat(chatId))
+            return;
+        await InnerMuteRealtimeListening(chatId).ConfigureAwait(false);
+    }
+
+    public virtual async Task UnmuteRealtimeListening(Symbol chatId)
+    {
+        if (!IsListeningToChat(chatId))
+            return;
+        await InnerUnmuteRealtimeListening(chatId).ConfigureAwait(false);
+    }
+
+    public async Task FocusRealtimeListening(Symbol focusChatId)
+    {
+        var chatIds = await _listeningChats.GetChatIds(default).ConfigureAwait(false);
+        if (!chatIds.Contains((string)focusChatId, StringComparer.Ordinal))
             return;
 
-        GC.SuppressFinalize(this);
+        var tasks = new List<Task>();
+        foreach (var chatId in chatIds) {
+            tasks.Add(
+                chatId == focusChatId
+                    ? InnerUnmuteRealtimeListening(chatId)
+                    : InnerMuteRealtimeListening(chatId)
+            );
+        }
+        await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
+    }
 
-        var playerDisposeTasks = _players
-            .Select(kv => DisposePlayer(kv.Key, kv.Value.Value))
-            .ToArray();
-
-        _players.Clear();
-        if (playerDisposeTasks.Length > 0)
-            await Task.WhenAll(playerDisposeTasks).ConfigureAwait(false);
-
-        async Task DisposePlayer(Symbol chatId, ChatPlayer player)
+    public virtual void StartHistoricalPlayer(Symbol chatId, Moment startAt)
+    {
+        async Task InnerStartHistoricalPlayer(Symbol chatId, Moment startAt)
         {
-            try {
-                await player.DisposeAsync().ConfigureAwait(true);
-            }
-            catch (Exception e) {
-                _log.LogError(e, "Can't dispose player for chatId:{chatId}", chatId);
-            }
+            var player = _chatPlayers.ActivatePlayer(chatId);
+            await EnsureStopped(player).ConfigureAwait(false);
+            await player.Play(startAt, isRealtime: false, default).ConfigureAwait(false);
+        }
+
+        var historyPlayTask = BackgroundTask.Run(
+            () => InnerStartHistoricalPlayer(chatId, startAt),
+            _logger, "Historical playback failed");
+
+        // restore real-time playback
+        if (IsListeningToChat(chatId)) {
+            _ = historyPlayTask.ContinueWith(
+                _ => StartRealtimeListening(chatId));
         }
     }
+
+    public virtual Task StopHistoricalPlayer(Symbol chatId)
+        => StopPlaying(chatId, PlaybackKind.Historical);
+
+    public virtual async Task LeaveChat(Symbol chatId)
+    {
+        await StopHistoricalPlayer(chatId).ConfigureAwait(false);
+        if (!IsListeningToChat(chatId))
+            _ = _chatPlayers.Close(chatId);
+    }
+
+    private async Task StopPlaying(Symbol chatId, PlaybackKind playbackKind)
+    {
+        var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
+        if (player == null)
+            return;
+        var playbackKindCurrent = await player.State.Use(default).ConfigureAwait(false);
+        if (playbackKindCurrent != playbackKind)
+            return;
+        await player.Stop().ConfigureAwait(false);
+    }
+
+    private async Task EnsureStopped(ChatPlayer player)
+    {
+        // This method should be called before calling play method.
+        // Play method can do stopping automatically but this can lead invalid
+        // PlaybackKind of the chat player. Apparently this had to be fixed in ChatPlayer.
+        // But for me it's easier to fix here for now.
+        var computed = await player.State.Computed.Update().ConfigureAwait(false);
+        if (computed.ValueOrDefault == PlaybackKind.None)
+            return;
+        await player.Stop().ConfigureAwait(false);
+        while (computed.ValueOrDefault != PlaybackKind.None) {
+            await computed.WhenInvalidated().ConfigureAwait(false);
+            computed = await computed.Update().ConfigureAwait(false);
+        }
+    }
+
+    private Task InnerStartRealtimeListening(Symbol chatId)
+    {
+        async Task RealtimeListening(Symbol chatId)
+        {
+            var player = _chatPlayers.ActivatePlayer(chatId);
+            await EnsureStopped(player).ConfigureAwait(false);
+            await player.Play(_clocks.SystemClock.Now, isRealtime: true, default).ConfigureAwait(false);
+        }
+
+        var realtimePlayTask = BackgroundTask.Run(
+            () => RealtimeListening(chatId),
+            _logger, "Realtime playback failed");
+
+        return Task.CompletedTask;
+    }
+
+    private async Task<PlaybackKind> GetChatPlaybackKind(Symbol chatId, CancellationToken cancellationToken)
+    {
+        var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
+        if (player == null)
+            return PlaybackKind.None;
+        return await player.State.Use(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task InnerMuteRealtimeListening(Symbol chatId)
+        => await InnerStopRealtimeListening(chatId).ConfigureAwait(false);
+
+    private async Task InnerUnmuteRealtimeListening(Symbol chatId)
+    {
+        var playbackKind = await GetChatPlaybackKind(chatId, default).ConfigureAwait(false);
+        if (playbackKind == PlaybackKind.Realtime)
+            return;
+        await InnerStartRealtimeListening(chatId).ConfigureAwait(false);
+    }
+
+    private async Task InnerStopRealtimeListening(Symbol chatId)
+        => await StopPlaying(chatId, PlaybackKind.Realtime).ConfigureAwait(false);
+
+    private bool IsListeningToChat(Symbol chatId)
+        => _listeningChats.ListeningChats.Contains((string)chatId, StringComparer.Ordinal);
 }
