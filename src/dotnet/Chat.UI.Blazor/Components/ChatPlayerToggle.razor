@@ -1,11 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<RealtimeListeningMode>
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 
 @{
-    var isPlaying = State.ValueOrDefault;
-    var cls = $"toggle-button{(isPlaying ? "-on" : "")}";
+    var mode = State.ValueOrDefault;
+    var sfx = mode == RealtimeListeningMode.Active ? "-on" : mode == RealtimeListeningMode.Muted ? "-on opacity-50" : "";
+    var cls = $"toggle-button{sfx}";
 }
 <button onclick="@Toggle"
         class="@(_class ??= this.DefaultClass()) p-1 transition-all duration-150">
@@ -18,27 +19,20 @@
     private static string? _class;
 
     [Inject] private MomentClockSet Clocks { get; set; } = null!;
-    [Parameter] public ChatPlayer Player { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
+    [Parameter] public string ChatId { get; set; } = "";
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<RealtimeListeningMode>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var playbackKind = await Player.State.Use(cancellationToken).ConfigureAwait(false);
-        return playbackKind == PlaybackKind.Realtime;
-    }
+    protected override Task<RealtimeListeningMode> ComputeState(CancellationToken cancellationToken)
+        => ChatController.GetRealtimeListeningMode(ChatId, cancellationToken);
 
     private async Task Toggle() {
-        var isPlaying = Player is { State.Value: PlaybackKind.Realtime };
-        if (isPlaying)
-            await Stop();
+        var realtimeMode = await ChatController.GetRealtimeListeningMode(ChatId, default);
+        if (realtimeMode == RealtimeListeningMode.Active || realtimeMode == RealtimeListeningMode.Muted)
+            await ChatController.StopRealtimeListening(ChatId);
         else
-            await Play();
+            await ChatController.StartRealtimeListening(ChatId);
     }
-
-    private Task Play()
-        => Player.Play(Clocks.SystemClock.Now, isRealtime: true, default);
-
-    private Task Stop()
-        => Player.Stop();
 }

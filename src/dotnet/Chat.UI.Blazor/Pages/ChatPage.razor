@@ -20,22 +20,34 @@
 @if (error != null) {
     <WhenError Error="error"/>
 } else if (chat != null) {
-    <CascadingValue Value="chat">
-        @* @key=... ensures child components are recreated on navigation to another chat *@
-        <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
-            <Header>
-                <ChatHeader />
-                <ChatActivityPanel />
-            </Header>
-            <Body>
-                <ChatView />
+    @* @key=... ensures child components are recreated on navigation to another chat *@
+    <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
+        <Header>
+            <CascadingValue Value="chat">
+                <div class="flex flex-col">
+                    <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
+                        <NavbarIcon/>
+                        <ChatHeader/>
+                        <ChatActivityPanel/>
+                    </div>
+                    <div class="w-full flex justify-center px-2">
+                        <ChatHeaderPanel/>
+                    </div>
+                </div>
+            </CascadingValue>
+        </Header>
+        <Body>
+            <CascadingValue Value="chat">
+                <ChatView/>
                 <HistoricalPlaybackPanel/>
-            </Body>
-            <Footer>
-                <ChatFooter AutoJoin="@AutoJoin" />
-            </Footer>
-        </PageWithHeaderAndFooter>
-    </CascadingValue>
+            </CascadingValue>
+        </Body>
+        <Footer>
+            <CascadingValue Value="chat">
+                <ChatFooter AutoJoin="@AutoJoin"/>
+            </CascadingValue>
+        </Footer>
+    </PageWithHeaderAndFooter>
 } else {
     <div>Loading...</div>
 }
