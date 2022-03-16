@@ -1,8 +1,10 @@
-﻿.virtual-list::-webkit-scrollbar {
-    display: none;
-}
-
-.virtual-list {
+﻿.virtual-list {
+    height: 100%;
+    overflow-y: scroll;
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+.virtual-list::-webkit-scrollbar {
+    display: none;
 }

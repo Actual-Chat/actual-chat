@@ -24,7 +24,7 @@ public class VirtualListTestService
         var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
         var range = GetKeyRange(rangeSeedValue);
         if (query.InclusiveRange == default) {
-            var key = isEndAligned ? range.End : 0;
+            var key = range.End / 2;
             query = query with { InclusiveRange = new Range<string>(
                 key.ToString(CultureInfo.InvariantCulture),
                 (key + 20).ToString(CultureInfo.InvariantCulture)) };
