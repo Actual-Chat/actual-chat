@@ -19,12 +19,12 @@ public class VirtualListRenderPlan<TItem>
 
     // JsonIgnores are here solely to make JsonFormatter.Format work
     [JsonIgnore]
-    public VirtualList<TItem> VirtualList { get; set; } = null!;
+    public VirtualList<TItem> VirtualList { get; set; }
     public long RenderIndex { get; set; }
     [JsonIgnore]
     public VirtualListClientSideState? ClientSideState { get; set; }
     [JsonIgnore]
-    public VirtualListData<TItem> Data { get; set; } = null!;
+    public VirtualListData<TItem> Data { get; set; }
     [JsonIgnore]
     public Dictionary<Symbol, ItemRenderPlan> ItemByKey { get; set; }= null!;
     [JsonIgnore]
@@ -131,7 +131,7 @@ public class VirtualListRenderPlan<TItem>
                 newItem.Range = new Range<double>(0, newSize);
             }
             else if (prevItemByKey != null && prevItemByKey.TryGetValue(item.Key, out var oldItem))
-                newItem.Range = oldItem.Range; // Just to copy its size
+                newItem.Range = oldItem.Range; // Copying old item size
 
             Items.Add(newItem);
             ItemByKey.Add(item.Key, newItem);
