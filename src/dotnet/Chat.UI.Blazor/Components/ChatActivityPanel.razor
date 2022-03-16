@@ -2,19 +2,27 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @inherits ComputedStateComponent<ChatActivityPanel.ChatActivityPanelState>
 
-<div class="inline-flex">
+<div class="inline-flex mr-2">
 
     @{
         var speaking = State.LatestNonErrorValue?.Speaking;
         if (speaking != null) {
-            foreach (var author in speaking) {
+            var zIndex = MaxIconCount > speaking.Count ? speaking.Count + 2 : MaxIconCount + 2;
+            var range = MaxIconCount > speaking.Count ? speaking.Count : MaxIconCount;
+            for (var i = 0; i < range; i++) {
+                var author = speaking[i];
                 var picture = author.Picture;
                 if (string.IsNullOrWhiteSpace(picture))
                     // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
                     picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
-
-                <div class="author-avatar w-6 h-6 mx-1 select-none bg-secondary rounded-md">
-                    <img src="@picture" alt="@author.Name" title="@author.Name"/>
+                <div class="author-avatar w-6 h-6 -mr-1.5 select-none bg-secondary rounded-full" style="z-index: @zIndex;">
+                    <img src="@picture" alt="@author.Name" title="@author.Name" class="rounded-full"/>
+                </div>
+                zIndex--;
+            }
+            if (speaking.Count > MaxIconCount) {
+                <div class="author-avatar w-6 h-6 -mr-1.5 select-none bg-avatar rounded-full text-center text-accent-muted" style="z-index: 1;">
+                    <span class="ml-0.5 text-sm">+@(speaking.Count - MaxIconCount)</span>
                 </div>
             }
         }
@@ -24,6 +32,9 @@
 @code {
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
+
+    [Parameter]
+    public int MaxIconCount { get; set; } = 5;
 
     [Inject]
     public ChatActivities ChatActivities { get; set; } = null!;

@@ -63,6 +63,7 @@ module.exports = {
         'button-error-hover': 'var(--button-color-error-hover)',
         'message-hover': 'var(--background-message-hover)',
         'separate-line': 'var(--background-separate-line)',
+        'avatar': 'var(--background-avatar)',
       },
     },
     screens: {
