@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /**
  * Produces silence. We use the worklet to warm up a browser's audio pipeline.
  * Lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
-    private isStopped: boolean = false;
-    private wroteSilence: boolean = false;
+    private isStopped = false;
+    private wroteSilence = false;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -13,6 +14,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
     public process(
         _inputs: Float32Array[][],
         outputs: Float32Array[][],
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _parameters: { [name: string]: Float32Array; }
     ): boolean {
         // we should write silence at least once
@@ -25,7 +27,7 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
             return true;
         }
         const output = outputs[0];
-        let channel = output[0];
+        const channel = output[0];
 
         // write silence
         channel.fill(0);
@@ -41,4 +43,5 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
 }
 
 // @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 registerProcessor('warmUpWorklet', WarmUpAudioWorkletProcessor);

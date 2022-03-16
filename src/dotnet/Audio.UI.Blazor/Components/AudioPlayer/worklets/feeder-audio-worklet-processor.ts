@@ -203,7 +203,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             playbackTime: this.playbackTime,
         };
         if (debug)
-            console.debug('Feeder processor: get state', msg);
+            console.debug(`Feeder processor: get state ${JSON.stringify(msg)}`);
         this.port.postMessage(msg);
     }
 
