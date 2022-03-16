@@ -7,7 +7,7 @@
     @{
         var speaking = State.LatestNonErrorValue?.Speaking;
         if (speaking != null) {
-            var zIndex = MaxIconCount > speaking.Count ? speaking.Count + 2 : MaxIconCount + 2;
+            var zIndex = 1;
             var range = MaxIconCount > speaking.Count ? speaking.Count : MaxIconCount;
             for (var i = 0; i < range; i++) {
                 var author = speaking[i];
@@ -15,15 +15,21 @@
                 if (string.IsNullOrWhiteSpace(picture))
                     // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
                     picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
-                <div class="author-avatar w-6 h-6 -mr-1.5 select-none bg-secondary rounded-full" style="z-index: @zIndex;">
+                <div class="author-avatar w-6 h-6 -mr-2 select-none bg-secondary rounded-full border border-primary" style="z-index: @zIndex;">
                     <img src="@picture" alt="@author.Name" title="@author.Name" class="rounded-full"/>
                 </div>
-                zIndex--;
+                zIndex++;
             }
             if (speaking.Count > MaxIconCount) {
-                <div class="author-avatar w-6 h-6 -mr-1.5 select-none bg-avatar rounded-full text-center text-accent-muted" style="z-index: 1;">
-                    <span class="ml-0.5 text-sm">+@(speaking.Count - MaxIconCount)</span>
-                </div>
+                if (speaking.Count < 11) {
+                    <div class="author-avatar w-6 h-6 -mr-1.5 select-none bg-avatar rounded-full text-center text-accent-muted" style="z-index: @(range + 1);">
+                        <div class="text-sm">+@(speaking.Count - MaxIconCount)</div>
+                    </div>
+                } else {
+                    <div class="author-avatar w-6 h-6 -mr-2 select-none bg-avatar rounded-full border border-primary text-center text-accent-muted" style="z-index: @(range + 1);">
+                        <div class="text-sm">...</div>
+                    </div>
+                }
             }
         }
     }
