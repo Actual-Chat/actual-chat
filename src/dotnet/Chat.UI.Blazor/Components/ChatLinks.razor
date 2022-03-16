@@ -8,10 +8,13 @@
 <NavbarGroup Title="Chats">
     <ChildContent>
         @foreach(var chat in chats) {
-            <NavbarLink Title="@chat.Name" Url="@($"/chat/{chat.Url}")" />
-        }
-        @if (model.AddDefault) {
-            <NavbarLink Title="The Actual One" Url="@($"/chat/{Constants.Chat.DefaultChatId}")" />
+            <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")">
+                <PostFragment>
+                    <div class="justify-self-end flex-1 flex justify-end">
+                        <ChatPlayerToggle ChatId="@chat.Id" Size="ChatPlayerToggleSize.Small" />
+                    </div>
+                </PostFragment>
+            </NavbarLink>
         }
     </ChildContent>
 </NavbarGroup>
@@ -19,21 +22,24 @@
 @code {
     public class Model
     {
-        public (string Name, string Url)[] Chats { get; set; } = new (string Name, string Url)[0];
-        public bool AddDefault { get; set; } = true;
+        public (string Title, string Id)[] Chats { get; set; } = new (string Title, string Id)[0];
     }
 
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await Chats.GetChats(Session, cancellationToken);
+        var chatInfos = chats.OrderBy(c => c.Title).Select(c => (Title:c.Title, Id:(string) c.Id)).ToList();
+        var addDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId);
+        if (addDefault)
+            chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));
         return new () {
-            Chats = chats.OrderBy(c => c.Title).Select(c => (Name:c.Title, Url:(string)c.Id)).ToArray(),
-            AddDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId)
+            Chats = chatInfos.ToArray(),
         };
     }
 }

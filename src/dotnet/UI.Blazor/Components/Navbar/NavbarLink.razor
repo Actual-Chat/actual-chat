@@ -17,10 +17,12 @@
             <a href="@Url">@Title</a>
         }
     </span>
+    @PostFragment
 </div>
 
 @code {
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public bool? IsOnline { get; set; }
+    [Parameter] public RenderFragment? PostFragment { get; set; }
 }
