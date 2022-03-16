@@ -17,12 +17,18 @@ export class AudioContextPool {
         AudioContextPool.audioContexts.set(key, { audioContext: null, factory: factory });
     }
 
+    private static initPromise?: Promise<void> = null;
+
     /**
      * Use the function as close as possibly to the start of work,
      * not in constructor, because for creation of an audio context we should got an user gesture action.
      * Don't close the context, because it's shared across the app.
      */
     public static async get(key: string): Promise<BaseAudioContext> {
+        if (this.initPromise !== null) {
+            await this.initPromise;
+            this.initPromise = null;
+        }
         const obj = AudioContextPool.audioContexts.get(key);
         if (obj === undefined)
             throw new Error(`AudioContext factory with key "${key}" isn't registered.`);
@@ -36,9 +42,9 @@ export class AudioContextPool {
             return obj.audioContext;
         }
         if (obj.audioContext.state === 'suspended') {
-            console.warn(`AudioContextPool get(): trying to  resume, '${key}' ->`, obj.audioContext);
+            console.warn(`AudioContextPool get(): trying to  resume, '${key}' -> ${JSON.stringify(obj.audioContext)}`);
             await obj.audioContext.resume();
-            console.log(`AudioContextPool get(): resumed, '${key}' ->`, obj.audioContext);
+            console.log(`AudioContextPool get(): resumed, '${key}' -> ${JSON.stringify(obj.audioContext)}`);
         }
         return obj.audioContext;
     }
@@ -63,13 +69,12 @@ export class AudioContextPool {
         self.removeEventListener('pointerup', AudioContextPool._initEventListener);
     }
 
-    private static _initEventListener = () => {
-        // init first recorder
-        // TODO: create an application initializer and do not mix up listening and recording like this
-        void AudioRecorder.initRecorderPool();
+    private static _initEventListener = (): void => {
 
-        AudioContextPool.removeInitListeners();
-        AudioContextPool.audioContexts.forEach(async (obj, key) => {
+        const initializeMapItem = async (obj: {
+            audioContext: BaseAudioContext | null,
+            factory: () => Promise<BaseAudioContext>,
+        }, key: string): Promise<void> => {
             if (obj.audioContext != null)
                 return;
             obj.audioContext = await obj.factory();
@@ -96,16 +101,43 @@ export class AudioContextPool {
                     };
                 });
                 node.disconnect();
+                node.port.onmessage = null;
+                node.port.close();
                 console.debug(`AudioContextPool: End of warming up AudioContext "${key}"`);
             } else {
-                console.debug(`AudioContextPool: Can't warm up AudioContext:`, obj.audioContext);
+                console.debug(`AudioContextPool: Can't warm up AudioContext: ${JSON.stringify(obj.audioContext)}`);
             }
             console.debug(`AudioContextPool: AudioContext "${key}" is initialized.`);
-        });
+        };
+
+        const initialize = async (): Promise<void> => {
+            try {
+                // init first recorder
+                // TODO: create an application initializer and do not mix up listening and recording like this
+                void AudioRecorder.initRecorderPool();
+                AudioContextPool.removeInitListeners();
+                const promises: Promise<void>[] = [];
+
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                AudioContextPool.audioContexts.forEach((obj, key) => promises.push(initializeMapItem(obj, key)));
+                await Promise.all(promises);
+            }
+            catch (error) {
+                console.error(`Can't initialize audio contexts: ${JSON.stringify(error)}`);
+            }
+            finally{
+                this.initPromise = null;
+            }
+        };
+        this.initPromise = initialize();
     };
 }
 
-function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioContext {
+
+
+
+
+export function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioContext {
     return !!obj && typeof obj === 'object' && typeof obj['resume'] === 'function';
 }
 
@@ -125,3 +157,7 @@ AudioContextPool.register('main', async () => {
 });
 
 AudioContextPool.init();
+
+/// #if DEBUG
+self['AudioContextPool'] = AudioContextPool;
+/// #endif

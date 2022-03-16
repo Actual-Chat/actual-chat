@@ -29,13 +29,13 @@ class WatchRunPlugin {
           .filter((x, idx, self) => self.indexOf(x) === idx);
         const changedFilesStr = changedFiles.map(file => `\n  ${file}`).join('');
         console.log('\x1b[35m-----------------------');
-        console.log('CHANGED:', changedFilesStr);
+        console.log('CHANGED:' + changedFilesStr);
         console.log('-----------------------\x1b[0m');
       }
       if (comp.removedFiles && comp.removedFiles.size > 0) {
         const removedFilesStr = Array.from(comp.removedFiles, (file) => `\n  ${file}`).join('');
         console.log('\x1b[35m-----------------------');
-        console.log('REMOVED:', removedFilesStr);
+        console.log('REMOVED:' + removedFilesStr);
         console.log('-----------------------\x1b[0m');
       }
     });

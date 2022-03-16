@@ -184,7 +184,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     try {
         const vadEvent = ev.data;
         if (debug) {
-            console.log(vadEvent);
+            console.log(JSON.stringify(vadEvent));
         }
 
         const newVadState = vadEvent.kind === 'end'
