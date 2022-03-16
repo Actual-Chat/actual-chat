@@ -29,7 +29,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Scoped / Blazor Circuit services
         services.TryAddScoped<IChatPlayerFactory, ChatPlayerFactory>();
-        services.TryAddScoped<ChatActivities>();
         services.TryAddScoped<ChatController>();
         fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
