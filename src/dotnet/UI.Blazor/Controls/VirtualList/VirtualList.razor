@@ -1,11 +1,12 @@
 @namespace ActualChat.UI.Blazor.Controls
 @typeparam TItem
 @using ActualChat.UI.Blazor.Controls.Internal
+@using Microsoft.AspNetCore.Components.Rendering
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
     var plan = LastPlan = Plan;
     DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
-    var flexBase = "flex flex-nowrap items-stretch";
+    var flexBase = "flex flex-nowrap items-stretch content-start justify-start";
     var flexDir = Plan.IsEndAligned ? "flex-col-reverse" : "flex-col";
     var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     var flexClass = $"{flexBase} flex-col";
@@ -29,18 +30,19 @@
         UpdateData();
 }
 
-@* We want to drop irrelevant JS state changes, thus we send the render index to JS side *@
-<div @ref="RenderStateRef" class="hidden">
-    <div @key="@("<RenderState>:" + renderState.RenderIndex)"
-         class="data render-state">@SystemJsonSerializer.Default.Write(renderState)</div>
-</div>
 <div @ref="Ref"
-     class="virtual-list overflow-y-scroll h-full @scrollContainerFlexClass @Class @(CssClasses.Default[GetType()])"
+     class="virtual-list @scrollContainerFlexClass @Class @(CssClasses.Default[GetType()])"
      style="@Style">
-    <div @ref="ContentRef" @key="@("<Content>")" class="content @flexClass">
+    <div class="data render-state hidden @flexClass flex-none">
+        <div @key="@("<RenderState>:" + renderState.RenderIndex)"
+             class="data render-state-data">@SystemJsonSerializer.Default.Write(renderState)
+        </div>
+    </div>
+
+    @if (!plan.IsEndAligned) {
         <div @key="@("<Spacer>")"
-             class="spacer spacer-start overflow-y-hidden @invFlexClass"
-             style="height: @(Plan.SpacerSize)px">
+              class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
+              style="height: @(Plan.SpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = -SkeletonCount; i < 0; i++) {
                     <div @key="@i" class="skeleton px-4">
@@ -48,18 +50,11 @@
                     </div>
                 }
             </SkeletonContainer>
-        </div>
-        @foreach (var item in plan.Items) {
-            <div @key="item.Key"
-                 class="item"
-                 style="@(item.IsMeasured ? "" : "visibility: collapse")"
-                 data-key="@item.Key">
-                @Item(item.Item)
-            </div>
-        }
+        </div>;
+    } else {
         <div @key="@("<EndSpacer>")"
-             class="spacer spacer-end overflow-y-hidden @flexClass"
-             style="height: @(Plan.EndSpacerSize)px">
+              class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
+              style="height: @(Plan.EndSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     <div @key="@i" class="skeleton">
@@ -67,9 +62,45 @@
                     </div>
                 }
             </SkeletonContainer>
+        </div>;
+    }
+
+    @foreach (var item in plan.IsEndAligned ? plan.ReversedItems : plan.Items) {
+        <div @key="item.Key"
+             class="item flex-none"
+             data-key="@item.Key">
+            @Item(item.Item)
         </div>
-        <div @key="@("<RenderIndex>")"
-             data-render-index="@renderState.RenderIndex"
-             class="data render-index hidden"></div>
+    }
+
+    @if (plan.IsEndAligned) {
+        <div @key="@("<Spacer>")"
+              class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
+              style="height: @(Plan.SpacerSize)px">
+            <SkeletonContainer Class="@flexClass">
+                @for (var i = -SkeletonCount; i < 0; i++) {
+                    <div @key="@i" class="skeleton px-4">
+                        @Skeleton(i)
+                    </div>
+                }
+            </SkeletonContainer>
+        </div>;
+    } else {
+        <div @key="@("<EndSpacer>")"
+              class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
+              style="height: @(Plan.EndSpacerSize)px">
+            <SkeletonContainer Class="@flexClass">
+                @for (var i = 0; i < SkeletonCount; ++i) {
+                    <div @key="@i" class="skeleton">
+                        @Skeleton(i)
+                    </div>
+                }
+            </SkeletonContainer>
+        </div>;
+    }
+
+    <div @key="@("<RenderIndex>")"
+         data-render-index="@renderState.RenderIndex"
+         class="data render-index hidden @flexClass flex-none">
     </div>
 </div>

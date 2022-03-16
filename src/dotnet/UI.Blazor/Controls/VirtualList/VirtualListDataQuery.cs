@@ -4,9 +4,9 @@ public record VirtualListDataQuery(Range<string> InclusiveRange)
 {
     public double ExpandStartBy { get; init; }
     public double ExpandEndBy { get; init; }
-    public long ExpectedStartExpansion { get; init; }
-    public long ExpectedEndExpansion { get; init; }
+    public long PixelExpandStartBy { get; init; }
+    public long PixelExpandEndBy { get; init; }
 
     public override string ToString()
-        => $"(+{ExpandStartBy}/{ExpectedStartExpansion} | {InclusiveRange} | +{ExpandEndBy}/{ExpectedEndExpansion})";
+        => $"(+{ExpandStartBy}/{PixelExpandStartBy} | {InclusiveRange} | +{ExpandEndBy}/{PixelExpandEndBy})";
 }
