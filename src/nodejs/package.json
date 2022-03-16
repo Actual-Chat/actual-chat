@@ -40,6 +40,7 @@
     "@microsoft/signalr-protocol-msgpack": "^6.0.1",
     "buffer": "^6.0.3",
     "denque": "^2.0.1",
+    "firebase": "^9.6.8",
     "ogv": "^1.8.4",
     "onnxruntime-web": "^1.10.0",
     "readable-stream": "^3.6.0",
