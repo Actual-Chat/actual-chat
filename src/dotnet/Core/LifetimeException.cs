@@ -1,4 +1,4 @@
-namespace ActualChat.MediaPlayback;
+namespace ActualChat;
 
 [Serializable]
 public class LifetimeException : Exception

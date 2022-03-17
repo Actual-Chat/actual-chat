@@ -84,7 +84,7 @@
                         new EventCallback<bool>(null, ...) prevents StateHasChanged call
                         and thus re-rendering of a parent (this) component.
                     *@
-                    <AudioRecorder ChatId="@Chat.Id"
+                    <AudioRecorderToggle ChatId="@Chat.Id"
                                    RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
                 <div class="chat-control-button player-button w-1/2 flex">

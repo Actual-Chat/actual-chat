@@ -21,6 +21,7 @@ public class ChatController
         _logger = logger;
     }
 
+    [ComputeMethod]
     public virtual async Task<RealtimeListeningMode> GetRealtimeListeningMode(Symbol chatId, CancellationToken cancellationToken)
     {
         var chatIds = await _listeningChats.GetChatIds(cancellationToken).ConfigureAwait(false);
@@ -166,7 +167,8 @@ public class ChatController
         return Task.CompletedTask;
     }
 
-    private async Task<PlaybackKind> GetChatPlaybackKind(Symbol chatId, CancellationToken cancellationToken)
+    [ComputeMethod]
+    protected virtual async Task<PlaybackKind> GetChatPlaybackKind(Symbol chatId, CancellationToken cancellationToken)
     {
         var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
         if (player == null)

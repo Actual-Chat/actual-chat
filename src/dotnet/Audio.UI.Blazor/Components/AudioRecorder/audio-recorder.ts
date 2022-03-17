@@ -11,12 +11,10 @@ export class AudioRecorder {
     private recorder: OpusMediaRecorder;
     private state: 'inactive' | 'recording' = 'inactive';
     private readonly sessionId: string;
-    private readonly chatId: string;
 
-    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string) {
+    public constructor(blazorRef: DotNet.DotNetObject, sessionId: string) {
         this.blazorRef = blazorRef;
         this.sessionId = sessionId;
-        this.chatId = chatId;
         this.isMicrophoneAvailable = false;
 
         if (blazorRef == null)
@@ -34,8 +32,8 @@ export class AudioRecorder {
         }
     }
 
-    public static create(blazorRef: DotNet.DotNetObject, sessionId: string, chatId: string) {
-        return new AudioRecorder(blazorRef, sessionId, chatId);
+    public static create(blazorRef: DotNet.DotNetObject, sessionId: string) {
+        return new AudioRecorder(blazorRef, sessionId);
     }
 
     public static async initRecorderPool(): Promise<void> {
@@ -43,7 +41,7 @@ export class AudioRecorder {
         await this.recorderPool.release(recorder);
     }
 
-    public async startRecording(): Promise<void> {
+    public async startRecording(chatId : string): Promise<void> {
         try {
             if (this.isRecording())
                 return;
@@ -55,7 +53,7 @@ export class AudioRecorder {
 
             this.recorder = await AudioRecorder.recorderPool.get();
 
-            const { blazorRef, sessionId, chatId } = this;
+            const { blazorRef, sessionId } = this;
             await this.recorder.start(sessionId, chatId);
             await blazorRef.invokeMethodAsync('OnStartRecording');
         }

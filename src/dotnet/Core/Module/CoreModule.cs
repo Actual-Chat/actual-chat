@@ -36,6 +36,7 @@ public class CoreModule : HostModule<CoreSettings>
         var fusion = services.AddFusion();
         fusion.AddFusionTime();
         fusion.AddComputeService<ILiveTime, LiveTime>();
+        services.AddTransient<Commands.CommandQueueFactory>();
 
         if (HostInfo.RequiredServiceScopes.Contains(ServiceScope.Server))
             InjectServerServices(services);
