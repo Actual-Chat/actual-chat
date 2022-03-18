@@ -37,3 +37,7 @@
     scrollbar-width: 2px;
     scrollbar-color: #e2e7ec #F9FAFB;
 }
+
+.navbar-menu-icon:hover {
+    @apply scale-105 ease-in-out duration-150;
+}

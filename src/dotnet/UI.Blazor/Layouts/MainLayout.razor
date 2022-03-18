@@ -2,6 +2,9 @@
 @implements IDisposable
 @inject NavigationManager _navigator
 @inject UICommandFailureList _commandFailureList
+@implements INavbarBackend
+@using ActualChat.UI.Blazor.Module
+@inject IJSRuntime _js
 
 @{
     var failures = _commandFailureList.Items;
@@ -18,8 +21,13 @@
             <div class="md:hidden flex flex-row h-6 py-1">
                 <NavbarIcon/>
             </div>
-            <div class="flex-1 flex flex-col overflow-y-auto px-2 py-2 custom-scrollbar">
-                <NavbarLinks />
+            <div @ref="_navbarRef" class="flex flex-row">
+                <div class="flex flex-1 flex-col w-3/24 my-4 text-secondary">
+                    <NavbarShortcuts/>
+                </div>
+                <div class="flex flex-col w-21/24 overflow-y-auto px-2 py-2 custom-scrollbar">
+                    <NavbarLinks/>
+                </div>
             </div>
         </div>
         @* Bottom sticky panel *@
@@ -54,6 +62,10 @@
 </div>
 
 @code {
+    private ElementReference _navbarRef;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<INavbarBackend> _blazorRef = null!;
+
     protected override void OnInitialized() {
         _navigator.LocationChanged += OnLocationChanged;
         _commandFailureList.Changed += OnCommandFailureListChanged;
@@ -69,4 +81,14 @@
 
     private void OnCommandFailureListChanged()
         => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create<INavbarBackend>(this);
+            _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.Navbar.create",
+                _navbarRef, _blazorRef
+                ).ConfigureAwait(true);
+        }
+    }
 }
