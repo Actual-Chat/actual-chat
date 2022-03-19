@@ -15,6 +15,7 @@
     "@typescript-eslint/parser": "^5.10.2",
     "@typescript/lib-dom": "npm:@types/web@^0.0.48",
     "autoprefixer": "^10.4.2",
+    "copy-webpack-plugin": "^10.2.4",
     "css-loader": "^6.5.1",
     "cssnano": "^5.0.15",
     "eslint": "^8.8.0",
