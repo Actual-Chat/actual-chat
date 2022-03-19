@@ -3,6 +3,7 @@
 
 const path = require('path');
 const webpack = require('webpack');
+const CopyPlugin = require("copy-webpack-plugin");
 /**
  * @param {string} file
  */
@@ -108,6 +109,11 @@ module.exports = (env, args) => {
     // another type of inlined source maps
     //devtool: isDevelopment ? 'eval' : false,
     plugins: [
+      new CopyPlugin({
+        patterns: [
+          { from: _('../../firebase.config.json'), to: 'config/', noErrorOnMissing: true },
+        ],
+      }),
       // @ts-ignore
       new MiniCssExtractPlugin({
         filename: '[name].css',
@@ -261,6 +267,15 @@ module.exports = (env, args) => {
         runtime: false,
         library: {
           type: 'module',
+        }
+      },
+      messagingServiceWorker: {
+        import: './../dotnet/UI.Blazor/ServiceWorkers/messaging-service-worker.ts',
+        chunkLoading: false,
+        asyncChunks: false,
+        runtime: false,
+        library: {
+            type: 'module',
         }
       },
       bundle: {

@@ -14,5 +14,13 @@
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Feedback.Contracts\Feedback.Contracts.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ServiceWorker Include="ServiceWorkers\messaging-service-worker.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TypeScriptCompile Include="messaging-init.ts" />
+  </ItemGroup>
   
 </Project>

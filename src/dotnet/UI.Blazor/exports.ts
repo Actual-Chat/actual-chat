@@ -7,3 +7,5 @@ import './Components/Menu/menu.css'
 import './Components/tooltip.css'
 import './Components/feedback.css'
 import './Components/feedback'
+import './Components/Navbar/navbar'
+import './messaging-init';
