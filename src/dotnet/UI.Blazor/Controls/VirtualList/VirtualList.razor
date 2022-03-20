@@ -6,8 +6,10 @@
 @{
     var plan = LastPlan = Plan;
     DebugLog?.LogDebug("Rendering: #{RenderIndex}", Plan.RenderIndex);
+
+    var isEndAligned = plan.AlignmentEdge.IsEnd();
     var flexBase = "flex flex-nowrap items-stretch content-start justify-start";
-    var flexDir = Plan.IsEndAligned ? "flex-col-reverse" : "flex-col";
+    var flexDir = isEndAligned ? "flex-col-reverse" : "flex-col";
     var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     var flexClass = $"{flexBase} flex-col";
     var invFlexClass = $"{flexBase} flex-col-reverse";
@@ -16,17 +18,21 @@
 
         SpacerSize = plan.SpacerSize,
         EndSpacerSize = plan.EndSpacerSize,
-        ScrollHeight = plan.HasUnmeasuredItems ? null : plan.FullRange.Size(),
+        ScrollHeight = plan.FullRange?.Size(),
         ScrollTop = plan.Viewport?.Start,
         ViewportHeight = plan.Viewport?.Size(),
+        HasVeryFirstItem = plan.Data.HasVeryFirstItem,
+        HasVeryLastItem = plan.Data.HasVeryLastItem,
+
+        ScrollToKey = plan.ScrollToKey.Value.NullIfEmpty(),
+        UseSmoothScroll = plan.UseSmoothScroll,
 
         ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
-
-        MustScroll = plan.MustScroll,
-        NotifyWhenSafeToScroll = plan.NotifyWhenSafeToScroll,
+        HasUnmeasuredItems = plan.HasUnmeasuredItems,
+        StickyEdge = plan.StickyEdge,
     };
     ClientSideState = plan.ClientSideState ?? ClientSideState;
-    if (!(Plan.HasUnmeasuredItems || Plan.IsFullyLoaded()))
+    if (Plan.IsFullyLoaded() == false)
         UpdateData();
 }
 
@@ -39,7 +45,7 @@
         </div>
     </div>
 
-    @if (!plan.IsEndAligned) {
+    @if (!isEndAligned) {
         <div @key="@("<Spacer>")"
               class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
               style="height: @(Plan.SpacerSize)px">
@@ -65,7 +71,7 @@
         </div>;
     }
 
-    @foreach (var item in plan.IsEndAligned ? plan.ReversedItems : plan.Items) {
+    @foreach (var item in isEndAligned ? plan.ReversedItems : plan.Items) {
         <div @key="item.Key"
              class="item flex-none"
              data-key="@item.Key">
@@ -73,7 +79,7 @@
         </div>
     }
 
-    @if (plan.IsEndAligned) {
+    @if (isEndAligned) {
         <div @key="@("<Spacer>")"
               class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
               style="height: @(Plan.SpacerSize)px">

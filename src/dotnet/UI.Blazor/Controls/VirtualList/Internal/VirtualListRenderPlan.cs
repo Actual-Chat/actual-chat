@@ -36,26 +36,34 @@ public class VirtualListRenderPlan<TItem>
                 yield return Items[i];
         }
     }
+    [JsonIgnore]
+    public ItemRenderPlan? FirstItem => Items.Count > 0 ? Items[0] : null;
+    [JsonIgnore]
+    public ItemRenderPlan? LastItem => Items.Count > 0 ? Items[^1] : null;
+    [JsonIgnore]
+    public bool IsDataChanged { get; set; }
 
     /// <summary> Relative to the top item's top! </summary>
     public Range<double>? Viewport { get; set; }
-    public Range<double> ItemRange { get; set; }
-    public Range<double> FullRange => (-SpacerSize, ItemRange.End + EndSpacerSize);
-    public Range<double>? LoadZoneRange => Viewport.HasValue ? GetLoadZoneRange(Viewport.GetValueOrDefault()) : null;
+    public Range<double>? ItemRange { get; set; }
+    public Range<double>? FullRange => ItemRange is { } r ? (-SpacerSize, r.End + EndSpacerSize) : null;
+    public Range<double>? TrimmedLoadZoneRange => Viewport is { } v ? GetTrimmedLoadZoneRange(v) : null;
+    public bool HasUnmeasuredItems => !ItemRange.HasValue;
 
-    public bool HasUnmeasuredItems { get; set; }
-    public double SpacerSize { get; set; }
-    public double EndSpacerSize { get; set; }
-    public VirtualListEdge? TrackingEdge { get; set; }
-    public bool IsEndAligned => VirtualList.PreferredTrackingEdge == VirtualListEdge.End;
+    [JsonIgnore]
+    public VirtualListEdge AlignmentEdge => VirtualList.AlignmentEdge;
+    [JsonIgnore]
+    public double SpacerSize => Data.HasVeryFirstItem ? 0 : VirtualList.SpacerSize;
+    [JsonIgnore]
+    public double EndSpacerSize => Data.HasVeryLastItem ? 0 : VirtualList.SpacerSize;
 
-    /// <summary> Indicates whether JS backend must notify Blazor part when it's safe to scroll. </summary>
-    public bool NotifyWhenSafeToScroll { get; set; }
-    /// <summary> Forces programmatic scroll to the <see cref="Viewport"/>. </summary>
-    public bool MustScroll { get; set; }
+    public Symbol ScrollToKey { get; set; }
+    public bool UseSmoothScroll { get; set; }
+
+    [JsonIgnore]
+    public VirtualListStickyEdgeState? StickyEdge => ClientSideState?.StickyEdge;
 
     protected IVirtualListStatistics Statistics => VirtualList.Statistics;
-    protected VirtualListEdge PreferredTrackingEdge => VirtualList.PreferredTrackingEdge;
     protected ILogger Log => VirtualList.Log;
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected bool DebugMode => VirtualList.DebugMode;
@@ -64,24 +72,13 @@ public class VirtualListRenderPlan<TItem>
     {
         VirtualList = virtualList;
         RenderIndex = 1;
-        Data = new VirtualListData<TItem>();
-        SpacerSize = VirtualList.SpacerSize;
-        EndSpacerSize = VirtualList.SpacerSize;
-        TrackingEdge = VirtualList.InitialTrackingEdge;
+        Data = VirtualListData<TItem>.None;
+        IsDataChanged = true;
         Update(null);
     }
 
     // Misc. helpers
-    public bool IsVeryFirstItemMeasured() => Data.HasVeryFirstItem && (Items.Count == 0 || Items[0].IsMeasured);
-    public bool IsVeryLastItemMeasured() => Data.HasVeryLastItem && (Items.Count == 0 || Items[^1].IsMeasured);
-    public double GetPerfectSpacerSize() => IsVeryFirstItemMeasured() ? 0 : VirtualList.SpacerSize;
-    public double GetPerfectEndSpacerSize() => IsVeryLastItemMeasured() ? 0 : VirtualList.SpacerSize;
-    public bool IsViewportAtStart(Range<double> viewport) => viewport.Start <= ItemRange.Start + 4;
-    public bool IsViewportAtEnd(Range<double> viewport) => viewport.End >= ItemRange.End - 4;
-    public Range<double> GetStartViewport(Range<double> viewport) => new(0, viewport.Size());
-    public Range<double> GetEndViewport(Range<double> viewport) => new(ItemRange.End - viewport.Size(), ItemRange.End);
-    public Range<double> GetInitialViewport(Range<double> viewport) => IsEndAligned ? GetEndViewport(viewport) : GetStartViewport(viewport);
-    public Range<double> GetLoadZoneRange(Range<double> viewport)
+    public Range<double> GetTrimmedLoadZoneRange(Range<double> viewport)
         => new(
             viewport.Start - (Data.HasVeryFirstItem ? 0 : VirtualList.LoadZoneSize),
             viewport.End + (Data.HasVeryLastItem ? 0 : VirtualList.LoadZoneSize));
@@ -93,8 +90,6 @@ public class VirtualListRenderPlan<TItem>
             plan.RenderIndex++;
             plan.Data = VirtualList.Data;
             plan.ClientSideState = VirtualList.ClientSideState;
-            plan.NotifyWhenSafeToScroll = false;
-            plan.MustScroll = false;
             plan.Update(this);
             return plan;
         }
@@ -104,12 +99,11 @@ public class VirtualListRenderPlan<TItem>
         }
     }
 
-    public bool IsFullyLoaded()
+    public bool? IsFullyLoaded()
     {
-        if (Data.HasAllItems)
-            return true;
-        var loadZoneRange = LoadZoneRange;
-        return loadZoneRange.HasValue && ItemRange.Contains(loadZoneRange.GetValueOrDefault());
+        if (ItemRange is not { } itemRange || TrimmedLoadZoneRange is not { } loadZoneRange)
+            return null;
+        return Data.HasAllItems || itemRange.Contains(loadZoneRange);
     }
 
     // Protected & private methods
@@ -120,9 +114,10 @@ public class VirtualListRenderPlan<TItem>
         var newItemSizes = ClientSideState?.ItemSizes;
         var prevItemByKey = lastPlan?.ItemByKey;
 
+        IsDataChanged = lastPlan?.Data != Data;
         ItemByKey = new Dictionary<Symbol, ItemRenderPlan>();
         Items = new List<ItemRenderPlan>();
-        HasUnmeasuredItems = false;
+        var hasUnmeasuredItems = false;
         var itemRange = default(Range<double>);
         foreach (var item in Data.Items) {
             var newItem = new ItemRenderPlan(item);
@@ -140,11 +135,9 @@ public class VirtualListRenderPlan<TItem>
                 newItem.Range = itemRange;
             }
             else
-                HasUnmeasuredItems = true;
+                hasUnmeasuredItems = true;
         }
-        ItemRange = new Range<double>(0, itemRange.End);
-        SpacerSize = GetPerfectSpacerSize();
-        EndSpacerSize = GetPerfectEndSpacerSize();
+        ItemRange = hasUnmeasuredItems ? null : new Range<double>(0, itemRange.End);
 
         UpdateViewport(lastPlan);
         UpdateClientSideState();
@@ -152,79 +145,28 @@ public class VirtualListRenderPlan<TItem>
 
     private void UpdateViewport(VirtualListRenderPlan<TItem>? lastPlan)
     {
-        // Let's update the Viewport first
-        if (ClientSideState == null) {
-            // Never rendered
-            DebugLog?.LogDebug("ClientSideState == null");
-            return;
-        }
-        if (lastPlan != null) {
-            var itemsChanges = lastPlan.Items.Count != Items.Count;
-            if (!itemsChanges) {
-                foreach (var oldItem in lastPlan.Items) {
-                    var newItem = ItemByKey.GetValueOrDefault(oldItem.Key);
-                    if (newItem == null || !newItem.IsMeasured) {
-                        itemsChanges = true;
-                        break;
-                    }
-                }
-            }
-            if (itemsChanges) {
-                Viewport = null;
-                DebugLog?.LogDebug("Items changed; Viewport = null");
+        if (!TryGetClientSideViewport(ClientSideState, out var clientSideViewport)) {
+            DebugLog?.LogDebug("Viewport: ClientSideState doesn't contain viewport info");
+            if (!Viewport.HasValue) {
+                DebugLog?.LogDebug("Viewport: null (no saved viewport)");
                 return;
             }
-        }
-
-        if (!TryGetViewport(ClientSideState, out var clientSideViewport)) {
-            DebugLog?.LogDebug("ClientSideState: Viewport = n/a (DisplayedRange = {DisplayedRange})", ItemRange);
-            return;
-        }
-
-        DebugLog?.LogDebug("ClientSideState: Viewport = {ClientSideViewport} (DisplayedRange = {DisplayedRange})",
-            clientSideViewport, ItemRange);
-        var viewport = clientSideViewport.ScrollInto(FullRange, IsEndAligned);
-        if (DebugLog != null && viewport != clientSideViewport)
-            DebugLog.LogDebug("Viewport adjustment: {ClientSideViewport} -> {Viewport}", clientSideViewport, viewport);
-
-        if (ClientSideState.IsUserScrollDetected) {
-            var isViewportAtStart = IsViewportAtStart(viewport);
-            var isViewportAtEnd = IsViewportAtEnd(viewport);
-            if (IsVeryFirstItemMeasured() && isViewportAtStart)
-                TrackingEdge = VirtualListEdge.Start;
-            else if (IsVeryLastItemMeasured() && isViewportAtEnd)
-                TrackingEdge = VirtualListEdge.End;
-            else
-                TrackingEdge = null;
-            if (DebugLog != null) {
-                var position = isViewportAtStart
-                    ? isViewportAtEnd ? "start & end" : "start"
-                    : isViewportAtEnd ? "end" : "inside";
-                DebugLog.LogDebug("User scroll: now @ {Position}, TrackingEdge={TrackingEdge}", position, TrackingEdge);
+            if (HasUnmeasuredItems) {
+                DebugLog?.LogDebug("Viewport: null (HasItemSizeChanges | HasUnmeasuredItems)");
+                Viewport = null;
+                return;
             }
-        }
-
-        var gotVeryFirstItem = Data.HasVeryFirstItem && !(lastPlan?.Data.HasVeryFirstItem ?? false);
-        var gotVeryLastItem = Data.HasVeryLastItem && !(lastPlan?.Data.HasVeryLastItem ?? false);
-        var firstItemChanged = Data.HasVeryFirstItem
-            && Items.FirstOrDefault()?.Key != lastPlan?.Items.FirstOrDefault()?.Key;
-        var lastItemChanged = Data.HasVeryLastItem
-            && Items.LastOrDefault()?.Key != lastPlan?.Items.LastOrDefault()?.Key;
-
-        if (TrackingEdge == VirtualListEdge.Start && firstItemChanged) {
-            if (TrackingEdge == VirtualListEdge.End && lastItemChanged && PreferredTrackingEdge == VirtualListEdge.End)
-                ScrollTo(GetEndViewport(viewport), "tracking + last item changed");
-            else
-                ScrollTo(GetStartViewport(viewport), "tracking + first item changed");
-        }
-        else if (TrackingEdge == VirtualListEdge.End && lastItemChanged) {
-            ScrollTo(GetEndViewport(viewport), "tracking + last item changed");
-        }
-        else if (IsEndAligned ? gotVeryLastItem : gotVeryFirstItem) {
-            ScrollTo(GetInitialViewport(viewport), "just got very first/last item");
+            DebugLog?.LogDebug("Viewport: {Viewport} (saved viewport)", Viewport);
         }
         else {
-            Viewport = viewport;
+            DebugLog?.LogDebug("Viewport: ClientSideState viewport: {ClientSideStateViewport}", clientSideViewport);
+            if (FullRange is not { } fullRange) {
+                DebugLog?.LogDebug("Viewport: null (HasUnmeasuredItems)");
+                Viewport = null;
+                return;
+            }
+            Viewport = clientSideViewport.ScrollInto(fullRange, AlignmentEdge.IsEnd());
+            DebugLog?.LogDebug("Viewport: {Viewport} (new viewport)", Viewport);
         }
     }
 
@@ -236,25 +178,24 @@ public class VirtualListRenderPlan<TItem>
         var newClientSideState = MemberwiseCloner.Invoke(ClientSideState);
         newClientSideState.SpacerSize = SpacerSize;
         newClientSideState.EndSpacerSize = EndSpacerSize;
-        newClientSideState.ScrollHeight = HasUnmeasuredItems ? null : FullRange.Size();
+        newClientSideState.ScrollHeight = FullRange?.Size();
         newClientSideState.ScrollTop = Viewport?.Start;
         newClientSideState.ViewportHeight = Viewport?.Size();
         ClientSideState = newClientSideState;
     }
 
-    private void ScrollTo(Range<double> viewport, string why)
+    private void ScrollTo(ItemRenderPlan item, bool useSoftScroll, string why)
     {
-        DebugLog?.LogDebug("ScrollTo: {OldViewport} -> {Viewport}, {Why}", Viewport, viewport, why);
-        Viewport = viewport;
-        MustScroll = true;
+        DebugLog?.LogDebug("ScrollTo: {ScrollToKey} ({ScrollKind}), {Why}",
+            item.Key, useSoftScroll ? "soft" : "instant", why);
+        ScrollToKey = item.Key;
+        UseSmoothScroll = useSoftScroll;
     }
 
-    private bool TryGetViewport(VirtualListClientSideState clientSideState, out Range<double> viewport)
+    private bool TryGetClientSideViewport(VirtualListClientSideState? clientSideState, out Range<double> viewport)
     {
         viewport = default;
-        if (clientSideState.ViewportHeight is not { } viewportHeight)
-            return false;
-        if (clientSideState.ScrollTop is not { } scrollTop)
+        if (clientSideState is not { ViewportHeight: { } viewportHeight, ScrollTop: { } scrollTop })
             return false;
         viewport = (scrollTop, scrollTop + viewportHeight);
         return true;
