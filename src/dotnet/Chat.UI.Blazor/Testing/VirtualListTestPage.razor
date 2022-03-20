@@ -6,7 +6,7 @@
 <h1>VirtualList Test Page</h1>
 
 <VirtualList Style="height: 600px;"
-             PreferredTrackingEdge="@(IsEndAligned ? VirtualListEdge.End : VirtualListEdge.Start)"
+             AlignmentEdge="@(IsEndAligned ? VirtualListEdge.End : VirtualListEdge.Start)"
              SpacerSize="10_000"
              LoadZoneSize="500" BufferZoneSize="2_000" SkeletonCount="2"
              DataSource="GetVirtualListItems" KeyComparer="LongAsStringKeyComparer.Default">

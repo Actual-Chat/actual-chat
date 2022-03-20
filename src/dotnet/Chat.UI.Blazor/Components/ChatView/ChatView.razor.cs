@@ -32,19 +32,18 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
-        if (query.InclusiveRange == default)
-            query = query with {
-                InclusiveRange = new(
-                    (chatIdRange.End - IdTileStack.Layers[1].TileSize).ToString(CultureInfo.InvariantCulture),
-                    (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture)),
-            };
+        var queryRange = query.IsExpansionQuery
+            ? query.InclusiveRange
+            : new(
+                (chatIdRange.End - IdTileStack.Layers[1].TileSize).ToString(CultureInfo.InvariantCulture),
+                (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture));
 
-        var startId = long.Parse(ExtractRealId(query.InclusiveRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var startId = long.Parse(ExtractRealId(queryRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
         startId = Math.Clamp(startId, chatIdRange.Start, chatIdRange.End);
 
-        var endId = long.Parse(ExtractRealId(query.InclusiveRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var endId = long.Parse(ExtractRealId(queryRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
         endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
@@ -92,6 +91,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
         var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments);
         var result = VirtualListData.New(
+            query,
             chatMessages,
             startId <= chatIdRange.Start,
             endId + 1 >= chatIdRange.End);

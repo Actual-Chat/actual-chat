@@ -10,9 +10,13 @@ public class VirtualListRenderState
     public double? ScrollHeight { get; set; }
     public double? ScrollTop { get; set; }
     public double? ViewportHeight { get; set; }
+    public bool HasVeryFirstItem { get; set; }
+    public bool HasVeryLastItem { get; set; }
+
+    public string? ScrollToKey { get; set; }
+    public bool UseSmoothScroll { get; set; }
 
     public Dictionary<string, double> ItemSizes { get; set; } = null!;
-
-    public bool MustScroll { get; set; }
-    public bool NotifyWhenSafeToScroll { get; set; }
+    public bool HasUnmeasuredItems { get; set; }
+    public VirtualListStickyEdgeState? StickyEdge { get; set; }
 }

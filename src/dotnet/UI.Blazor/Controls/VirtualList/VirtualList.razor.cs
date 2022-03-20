@@ -24,14 +24,15 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     // ReSharper disable once StaticMemberInGenericType
     protected VirtualListRenderPlan<TItem>? LastPlan { get; set; } = null!;
     protected VirtualListRenderPlan<TItem> Plan { get; set; } = null!;
-    protected VirtualListDataQuery? LastQuery { get; set; }
-    protected VirtualListDataQuery Query { get; set; } = new(default);
+    protected VirtualListDataQuery LastQuery { get; set; } = VirtualListDataQuery.None;
+    protected VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
     protected internal VirtualListClientSideState ClientSideState { get; set; } = null!;
     protected internal IVirtualListStatistics Statistics { get; set; } = new VirtualListStatistics();
-    protected internal virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? new();
+    protected internal virtual VirtualListData<TItem> Data => State.LatestNonErrorValue ?? VirtualListData<TItem>.None;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
+    [Parameter] public VirtualListEdge AlignmentEdge { get; set; } = VirtualListEdge.Start;
     [Parameter, EditorRequired] public RenderFragment<TItem> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 32;
@@ -39,12 +40,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double LoadZoneSize { get; set; } = 2160;
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxPixelExpandBy { get; set; } = 1_000_000;
-    [Parameter] public VirtualListEdge PreferredTrackingEdge { get; set; } = VirtualListEdge.End;
-    [Parameter] public VirtualListEdge? InitialTrackingEdge { get; set; }
 
     [Parameter, EditorRequired]
     public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =
-        (_, _) => Task.FromResult(new VirtualListData<TItem>());
+        (_, _) => Task.FromResult(VirtualListData<TItem>.None);
     [Parameter]
     public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
 
@@ -89,7 +88,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                Ref, BlazorRef, plan!.IsEndAligned, DebugMode
+                Ref, BlazorRef, plan!.AlignmentEdge.IsEnd(), DebugMode
                 ).ConfigureAwait(true);
         }
     }
@@ -161,14 +160,13 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected virtual VirtualListDataQuery GetDataQuery(VirtualListRenderPlan<TItem> plan)
     {
         if (plan.HasUnmeasuredItems) // Let's wait for measurement to complete first
-            return LastQuery!;
+            return LastQuery;
         if (plan.Items.Count == 0) // No entries -> nothing to "align" the query to
-            return LastQuery!;
-        if (!plan.Viewport.HasValue)
-            return LastQuery!;
+            return LastQuery;
+        if (plan.Viewport is not { } viewport)
+            return LastQuery;
 
-        var viewport = plan.Viewport.GetValueOrDefault();
-        var loaderZone = new Range<double>(viewport.Start - LoadZoneSize, viewport.End + LoadZoneSize);
+        var loadZone = new Range<double>(viewport.Start - LoadZoneSize, viewport.End + LoadZoneSize);
         var bufferZone = new Range<double>(viewport.Start - BufferZoneSize, viewport.End + BufferZoneSize);
         var startIndex = -1;
         var endIndex = -1;
@@ -197,18 +195,15 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var lastItem = items[endIndex];
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": bufferZone fits {FirstItemId} ... {LastItemId} keys",
             firstItem.Key, lastItem.Key);
-        var startGap = Math.Max(0, firstItem.Range.Start - loaderZone.Start);
-        var endGap = Math.Max(0, loaderZone.End - lastItem.Range.End);
+        var startGap = Math.Max(0, firstItem.Range.Start - loadZone.Start);
+        var endGap = Math.Max(0, loadZone.End - lastItem.Range.End);
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": startGap={StartGap}, endGap={EndGap}", startGap, endGap);
 
         var pixelExpandStartBy = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxPixelExpandBy);
         var pixelExpandEndBy = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxPixelExpandBy);
-        if (plan.TrackingEdge == VirtualListEdge.Start)
-            pixelExpandStartBy = MaxPixelExpandBy;
-        else if (plan.TrackingEdge == VirtualListEdge.End)
-            pixelExpandEndBy = MaxPixelExpandBy;
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var query = new VirtualListDataQuery(keyRange) {
+            IsExpansionQuery = true,
             PixelExpandStartBy = pixelExpandStartBy,
             PixelExpandEndBy = pixelExpandEndBy,
             ExpandStartBy = pixelExpandStartBy / responseFulfillmentRatio,
