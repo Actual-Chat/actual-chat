@@ -30,7 +30,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
             var blazorRef = DotNetObjectReference.Create(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorderTestPage.createObj",
-                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++, Session.Id, ChatId
+                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++, Session.Id
                 ).ConfigureAwait(true);
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
@@ -38,7 +38,6 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                 Log.LogInformation("Recording was cancelled");
                 try {
                     await _jsRef.InvokeVoidAsync("stopRecording").ConfigureAwait(true);
-                    await _jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
                     await _jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
                     if (_registration != default) {
                         await _registration.DisposeAsync().ConfigureAwait(true);
@@ -55,7 +54,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                     StateHasChanged();
                 }
             });
-            await _jsRef.InvokeVoidAsync("startRecording").ConfigureAwait(true);
+            await _jsRef.InvokeVoidAsync("startRecording", ChatId).ConfigureAwait(true);
             IsRecording = true;
         }
         else {

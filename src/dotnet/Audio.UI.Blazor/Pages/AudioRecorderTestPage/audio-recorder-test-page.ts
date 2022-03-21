@@ -40,9 +40,8 @@ export class AudioRecorderTestPage extends AudioRecorder {
         debugMode: boolean,
         recordsRef: HTMLElement,
         recordNumber: number,
-        sessionId: string,
-        chatId: string) {
-        return new AudioRecorderTestPage(blazorRef, debugMode, recordsRef, recordNumber, sessionId, chatId);
+        sessionId: string) {
+        return new AudioRecorderTestPage(blazorRef, debugMode, recordsRef, recordNumber, sessionId);
     }
 
     public constructor(
@@ -50,9 +49,8 @@ export class AudioRecorderTestPage extends AudioRecorder {
         debugMode: boolean,
         recordsRef: HTMLElement,
         recordNumber: number,
-        sessionId: string,
-        chatId: string) {
-        super(blazorRef, sessionId, chatId);
+        sessionId: string) {
+        super(blazorRef, sessionId);
         this._recordsRef = recordsRef;
         this._recordNumber = recordNumber;
     }
