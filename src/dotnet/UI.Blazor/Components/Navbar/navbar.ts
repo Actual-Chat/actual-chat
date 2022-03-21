@@ -12,13 +12,15 @@ export class Navbar {
 
     constructor(navbarDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.navbarDiv = navbarDiv;
-        this.buttons = this.navbarDiv.querySelectorAll('.navbar-menu-icon');
+        this.buttons = this.navbarDiv.querySelectorAll('.navbar-menu-button');
         this.menus = this.navbarDiv.querySelectorAll('.navbar-menu-group');
         for (let i = 0; i < this.buttons.length; i++) {
             this.buttons[i].addEventListener('mousedown', this.buttonMouseDownListener)
         }
         let chats = this.navbarDiv.querySelector('.navbar-chats');
         chats.classList.replace('hidden', 'flex');
+        let chatShortcut = this.navbarDiv.querySelector('.navbar-chats-shortcut');
+        chatShortcut.classList.replace('bg-primary', 'bg-secondary');
     }
 
     public getMenuClass(buttonClass: string) : string {
@@ -42,6 +44,15 @@ export class Navbar {
                 elem.classList.replace('hidden', 'flex')
             else
                 elem.classList.replace('flex', 'hidden');
+        }
+        this.changeButtonColor(button);
+    }
+
+    private changeButtonColor(button : HTMLButtonElement) : void {
+        button.classList.replace('bg-primary', 'bg-secondary');
+        for (let i = 0; i < this.buttons.length; i++) {
+            if (this.buttons[i] != button)
+                this.buttons[i].classList.replace('bg-secondary', 'bg-primary');
         }
     }
 
