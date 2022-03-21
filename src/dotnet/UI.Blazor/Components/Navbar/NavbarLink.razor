@@ -9,7 +9,9 @@
 }
 
 <div class="flex flex-row items-center">
-    <span class="rounded-full block w-2 h-2 mr-2 @bulletClass"></span>
+    @if (IsOnline.HasValue) {
+        <span class="rounded-full block w-2 h-2 mr-2 @bulletClass"></span>
+    }
     <span class="text-primary-muted text-sm hover:text-primary;">
         @if (Url.IsNullOrEmpty()) {
             @Title
@@ -23,6 +25,6 @@
 @code {
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Url { get; set; } = "";
-    [Parameter] public bool? IsOnline { get; set; }
+    [Parameter] public bool? IsOnline { get; set; } = null;
     [Parameter] public RenderFragment? PostFragment { get; set; }
 }
