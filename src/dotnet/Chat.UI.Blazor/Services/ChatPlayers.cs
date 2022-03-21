@@ -4,14 +4,14 @@
 public class ChatPlayers : IAsyncDisposable
 {
     private readonly ConcurrentDictionary<Symbol, Lazy<ChatPlayer>> _players = new();
-    private readonly IChatPlayerFactory _factory;
+    private readonly IServiceProvider _services;
     private readonly ILogger<ChatPlayers> _log;
     private int _isDisposed;
 
-    public ChatPlayers(ILogger<ChatPlayers> log, IChatPlayerFactory factory)
+    public ChatPlayers(IServiceProvider services, ILogger<ChatPlayers> log)
     {
+        _services = services;
         _log = log;
-        _factory = factory;
     }
 
     [ComputeMethod]
@@ -28,7 +28,7 @@ public class ChatPlayers : IAsyncDisposable
             throw new ObjectDisposedException(nameof(ChatPlayers));
         var player = _players.GetOrAdd(
             chatId,
-            static (key, self) => new Lazy<ChatPlayer>(() => self._factory.Create(key)),
+            static (key, self) => new Lazy<ChatPlayer>(() => self._services.Activate<ChatPlayer>(key)),
             this
         ).Value;
 
