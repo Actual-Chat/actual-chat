@@ -112,7 +112,8 @@ export class VirtualList {
         this._renderStateRef.removeEventListener('DOMNodeRemoved', this.maybeOnRenderStart);
     }
 
-    private maybeOnRenderStart(e: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private maybeOnRenderStart = (e: Event) : void => {
         // if (this._debugMode)
         //     console.log(`${LogScope}.maybeOnRenderStart:`, event);
         const rsDataRef = this.getRenderStateDataRef();
@@ -128,7 +129,7 @@ export class VirtualList {
         if (this._nextRenderState != null && rs.renderIndex <= this._nextRenderState.renderIndex)
             return;
         this.onRenderStart(rs);
-    };
+    }
 
     private onRenderStart(rs: Required<IRenderState>) {
         this._isRendering = true;
