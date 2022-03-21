@@ -34,6 +34,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
 
         services.RegisterNavItems<ChatLinks>();
-        services.TryAddScoped<ListeningChatsList>();
+        services.TryAddScoped<ListeningChats>();
     }
 }

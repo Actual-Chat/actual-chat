@@ -8,12 +8,15 @@ public enum RealtimeListeningMode { None, Active, Muted }
 public class ChatController
 {
     private readonly ChatPlayers _chatPlayers;
-    private readonly ListeningChatsList _listeningChats;
+    private readonly ListeningChats _listeningChats;
     private readonly MomentClockSet _clocks;
     private readonly ILogger<ChatController> _logger;
 
-    public ChatController(ChatPlayers chatPlayers,
-        ListeningChatsList listeningChats, MomentClockSet clocks, ILogger<ChatController> logger)
+    public ChatController(
+        ChatPlayers chatPlayers,
+        ListeningChats listeningChats,
+        MomentClockSet clocks,
+        ILogger<ChatController> logger)
     {
         _chatPlayers = chatPlayers;
         _listeningChats = listeningChats;
@@ -191,5 +194,5 @@ public class ChatController
         => await StopPlaying(chatId, PlaybackKind.Realtime).ConfigureAwait(false);
 
     private bool IsListeningToChat(Symbol chatId)
-        => _listeningChats.ListeningChats.Contains((string)chatId, StringComparer.Ordinal);
+        => _listeningChats.ChatIds.Contains((string)chatId, StringComparer.Ordinal);
 }
