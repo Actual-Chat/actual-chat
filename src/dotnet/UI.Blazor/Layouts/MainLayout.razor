@@ -15,18 +15,18 @@
     <input id="navbar-toggle" class="hidden" type="checkbox" />
     <nav id="navbar-links" class="bg-primary text-primary z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition-all duration-200 ease-in-out">
         <div class="flex-1 flex flex-col overflow-y-auto">
-            <div class="hidden md:flex flex-row flex-nowrap justify-center">
-                <NavbarLogo />
-            </div>
             <div class="md:hidden flex flex-row h-6 py-1">
                 <NavbarIcon/>
             </div>
             <div @ref="_navbarRef" class="flex flex-row h-full overflow-y-hidden">
-                <div class="flex flex-1 flex-col mt-4 md:mt-0 pt-0.5 pr-0.5 text-secondary bg-accent rounded-r-md">
+                <div class="flex flex-1 flex-col mt-4 md:mt-0 pt-0.5 pr-0.5 text-secondary bg-accent">
                     <NavbarShortcuts/>
                 </div>
                 <div class="flex flex-col w-full h-full overflow-y-auto pt-2 custom-scrollbar">
-                    <div class="h-9/10 overflow-y-auto custom-scrollbar my-2 px-4 mr-1">
+                    <div class="hidden md:flex flex-row flex-nowrap justify-center">
+                        <NavbarLogo />
+                    </div>
+                    <div class="h-9/10 overflow-y-auto custom-scrollbar my-3 pl-4 pr-2 mr-2">
                         <NavbarLinks/>
                     </div>
                     @* Bottom sticky panel *@

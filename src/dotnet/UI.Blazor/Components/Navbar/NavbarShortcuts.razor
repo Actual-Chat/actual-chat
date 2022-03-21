@@ -9,9 +9,9 @@
     const string pagesShortcut = "M7 2c1.695 1.942 2.371 3 4 3h13v17h-24v-20h7zm6 11v-3h-2v3h-3v2h3v3h2v-3h3v-2h-3z";
 }
 
-<NavbarShortcut IconPath="@chatsShortcut" Css="navbar-chats-shortcut"/>
-<NavbarShortcut IconPath="@contactsShortcut" Css="navbar-contacts-shortcut"/>
-@* <NavbarShortcut IconPath="@settingsShortcut" Id="navbar-settings-shortcut"/> *@
+<NavbarShortcut IconPath="@chatsShortcut" Css="navbar-chats-shortcut" Title="Chats"/>
+<NavbarShortcut IconPath="@contactsShortcut" Css="navbar-contacts-shortcut" Title="Contacts"/>
+@* <NavbarShortcut IconPath="@settingsShortcut" Id="navbar-settings-shortcut" Title="Settings"/> *@
 @if (_hostInfo.IsDevelopmentInstance) {
-    <NavbarShortcut IconPath="@pagesShortcut" Css="navbar-pages-shortcut"/>
+    <NavbarShortcut IconPath="@pagesShortcut" Css="navbar-pages-shortcut" Title="Pages"/>
 }
