@@ -47,7 +47,9 @@ namespace Markdig.Renderers.Html
 
             Classes ??= new (2);// Use half list compare to default capacity (4), as we don't expect lots of classes
 
+ #pragma warning disable MA0002
             if (!Classes.Contains(name))
+ #pragma warning restore MA0002
             {
                 Classes.Add(name);
             }

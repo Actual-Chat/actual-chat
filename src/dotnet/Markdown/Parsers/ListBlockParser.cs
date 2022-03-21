@@ -270,7 +270,9 @@ namespace Markdig.Parsers
                 }
             }
 
+ #pragma warning disable MA0011
             int.TryParse(listInfo.OrderedStart, out int order);
+ #pragma warning restore MA0011
             var newListItem = new ListItemBlock(this)
             {
                 Column = initColumn,

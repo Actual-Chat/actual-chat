@@ -76,7 +76,9 @@ namespace Markdig.Parsers
         /// <param name="fenced">The fenced code block.</param>
         /// <param name="openingCharacter">The opening character for this fenced code block.</param>
         /// <returns><c>true</c> if parsing of the line is successfull; <c>false</c> otherwise</returns>
+ #pragma warning disable MA0018
         public static bool RoundtripInfoParser(BlockProcessor blockProcessor, ref StringSlice line, IFencedBlock fenced, char openingCharacter)
+ #pragma warning restore MA0018
         {
             var start = line.Start;
             var end = start - 1;
@@ -180,7 +182,9 @@ namespace Markdig.Parsers
         /// <param name="fenced">The fenced code block.</param>
         /// <param name="openingCharacter">The opening character for this fenced code block.</param>
         /// <returns><c>true</c> if parsing of the line is successfull; <c>false</c> otherwise</returns>
+ #pragma warning disable MA0018
         public static bool DefaultInfoParser(BlockProcessor state, ref StringSlice line, IFencedBlock fenced, char openingCharacter)
+ #pragma warning restore MA0018
         {
             string infoString;
             string? argString = null;

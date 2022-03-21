@@ -1,5 +1,5 @@
 // Copyright (c) Alexandre Mutel. All rights reserved.
-// This file is licensed under the BSD-Clause 2 license. 
+// This file is licensed under the BSD-Clause 2 license.
 // See the license.txt file in the project root for more information.
 
 using System;
@@ -62,13 +62,13 @@ namespace Markdig.Helpers
             if (!enableWithinWord)
             {
                 var temp = canOpen;
-                // A single _ character can open emphasis iff it is part of a left-flanking delimiter run and either 
-                // (a) not part of a right-flanking delimiter run or 
+                // A single _ character can open emphasis iff it is part of a left-flanking delimiter run and either
+                // (a) not part of a right-flanking delimiter run or
                 // (b) part of a right-flanking delimiter run preceded by punctuation.
                 canOpen = canOpen && (!canClose || prevIsPunctuation);
 
                 // A single _ character can close emphasis iff it is part of a right-flanking delimiter run and either
-                // (a) not part of a left-flanking delimiter run or 
+                // (a) not part of a left-flanking delimiter run or
                 // (b) part of a left-flanking delimiter run followed by punctuation.
                 canClose = canClose && (!temp || nextIsPunctuation);
             }
@@ -144,7 +144,7 @@ namespace Markdig.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsWhitespace(this char c)
         {
-            // 2.1 Characters and lines 
+            // 2.1 Characters and lines
             // A whitespace character is a space(U + 0020), tab(U + 0009), newline(U + 000A), line tabulation (U + 000B), form feed (U + 000C), or carriage return (U + 000D).
             return c <= ' ' && (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r');
         }
@@ -172,7 +172,7 @@ namespace Markdig.Helpers
         public static void CheckUnicodeCategory(this char c, out bool space, out bool punctuation)
         {
             // Credits: code from CommonMark.NET
-            // Copyright (c) 2014, Kārlis Gaņģis All rights reserved. 
+            // Copyright (c) 2014, Kārlis Gaņģis All rights reserved.
             // See license for details:  https://github.com/Knagis/CommonMark.NET/blob/master/LICENSE.md
             if (c <= 'ÿ')
             {
@@ -235,7 +235,7 @@ namespace Markdig.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsSpace(this char c)
         {
-            // 2.1 Characters and lines 
+            // 2.1 Characters and lines
             // A space is U+0020.
             return c == ' ';
         }
@@ -243,7 +243,7 @@ namespace Markdig.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsTab(this char c)
         {
-            // 2.1 Characters and lines 
+            // 2.1 Characters and lines
             // A space is U+0009.
             return c == '\t';
         }
@@ -288,7 +288,7 @@ namespace Markdig.Helpers
 
         public static bool IsAsciiPunctuation(this char c)
         {
-            // 2.1 Characters and lines 
+            // 2.1 Characters and lines
             // An ASCII punctuation character is !, ", #, $, %, &, ', (, ), *, +, ,, -, ., /, :, ;, <, =, >, ?, @, [, \, ], ^, _, `, {, |, }, or ~.
             switch (c)
             {
@@ -735,16 +735,5 @@ namespace Markdig.Helpers
             "10", "11", "12", "13", "14", "15", "16", "17", "18", "19",
             "20", "21", "22", "23", "24", "25", "26",
         };
-
-        internal static string SmallNumberToString(int number)
-        {
-            string[] cache = smallNumberStringCache;
-            if ((uint)number < (uint)cache.Length)
-            {
-                return cache[number];
-            }
-
-            return number.ToString();
-        }
     }
 }

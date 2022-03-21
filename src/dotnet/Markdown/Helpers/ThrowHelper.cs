@@ -1,12 +1,12 @@
 // Copyright (c) Alexandre Mutel. All rights reserved.
-// This file is licensed under the BSD-Clause 2 license. 
+// This file is licensed under the BSD-Clause 2 license.
 // See the license.txt file in the project root for more information.
 
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-
+#pragma warning disable MA0015
 namespace Markdig.Helpers
 {
     /// <summary>
@@ -106,7 +106,9 @@ namespace Markdig.Helpers
         [DoesNotReturn]
         public static void ThrowIndexOutOfRangeException()
         {
+ #pragma warning disable MA0012
             throw new IndexOutOfRangeException();
+ #pragma warning restore MA0012
         }
 
         private static string GetExceptionReason(ExceptionReason reason)
@@ -150,3 +152,4 @@ namespace Markdig.Helpers
         DuplicateKey,
     }
 }
+#pragma warning restore MA0015
