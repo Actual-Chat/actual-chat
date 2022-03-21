@@ -21,27 +21,29 @@
             <div class="md:hidden flex flex-row h-6 py-1">
                 <NavbarIcon/>
             </div>
-            <div @ref="_navbarRef" class="flex flex-row h-full overflow-y-hidden pr-1">
+            <div @ref="_navbarRef" class="flex flex-row h-full overflow-y-hidden">
                 <div class="flex flex-1 flex-col mt-4 md:mt-0 pt-0.5 pr-0.5 text-secondary bg-accent rounded-r-md">
                     <NavbarShortcuts/>
                 </div>
-                <div class="flex flex-col w-full overflow-y-auto px-4 py-2 custom-scrollbar">
-                    <NavbarLinks/>
+                <div class="flex flex-col w-full h-full overflow-y-auto pt-2 custom-scrollbar">
+                    <div class="h-9/10 overflow-y-auto custom-scrollbar my-2 px-4 mr-1">
+                        <NavbarLinks/>
+                    </div>
+                    @* Bottom sticky panel *@
+                    <div class="flex flex-1 bottom-2 flex-col items-stretch">
+                        <div class="text-xxs text-primary-muted w-auto h-auto block py-1 border-t-2 border-accent">
+                            <span><b class="text-primary font-medium px-4">@version</b></span>
+                        </div>
+                        <div class="flex-col text-xxs text-primary-muted w-auto h-auto block mb-2 py-1 border-b-2 border-accent">
+                            <div class="px-4">
+                                <BlazorModeToggle/>
+                            </div>
+                        </div>
+                        <div class="bg-primary flex flex-row justify-between items-center w-full px-4 h-12">
+                            <AccountDropdown/>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        @* Bottom sticky panel *@
-        <div class="flex flex-col sticky items-stretch mx-2">
-            <div class="text-xxs text-primary-muted w-auto h-auto block mt-2 border-t border-accent">
-                <span><b class="text-primary font-medium border-b border-accent">@version</b></span>
-            </div>
-            <div class="flex-col text-xxs text-primary-muted w-auto h-auto block mb-2 border-b border-accent">
-                <div>
-                    <BlazorModeToggle/>
-                </div>
-            </div>
-            <div class="bg-primary flex flex-row justify-between items-center w-full">
-                <AccountDropdown />
             </div>
         </div>
     </nav>
