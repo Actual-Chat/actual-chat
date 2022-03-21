@@ -1,6 +1,7 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Hosting;
+using ActualChat.MediaPlayback;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Plugins;
 
@@ -27,8 +28,11 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        services.TryAddScoped<ChatPlayers>();
+        fusion.AddComputeService<ChatController>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
 
         services.RegisterNavItems<ChatLinks>();
+        services.TryAddScoped<ListeningChats>();
     }
 }

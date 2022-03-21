@@ -4,20 +4,30 @@
   "scripts": {
     "build:Debug": "webpack --mode development",
     "build:Release": "webpack --mode production",
-    "watch": "webpack --mode development --watch"
+    "watch": "webpack --mode development --watch",
+    "lint": "eslint --ext .ts --config .eslintrc.yml ../"
   },
   "devDependencies": {
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
     "@types/recordrtc": "^5.6.8",
+    "@typescript-eslint/eslint-plugin": "^5.10.2",
+    "@typescript-eslint/parser": "^5.10.2",
     "@typescript/lib-dom": "npm:@types/web@^0.0.48",
     "autoprefixer": "^10.4.2",
     "css-loader": "^6.5.1",
     "cssnano": "^5.0.15",
+    "eslint": "^8.8.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^16.1.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-prettier": "^4.0.0",
     "fork-awesome": "github:ForkAwesome/Fork-Awesome",
+    "ifdef-loader": "^2.3.2",
     "mini-css-extract-plugin": "^2.4.6",
-    "opus-media-recorder": "^0.8.0",
     "postcss-loader": "^6.2.1",
+    "prettier": "^2.5.1",
     "tailwindcss": "^3.0.12",
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.4",
@@ -25,11 +35,22 @@
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
+    "@actual-chat/codec": "0.1.216",
+    "@microsoft/signalr": "^6.0.1",
+    "@microsoft/signalr-protocol-msgpack": "^6.0.1",
     "buffer": "^6.0.3",
     "denque": "^2.0.1",
     "ogv": "^1.8.4",
     "onnxruntime-web": "^1.10.0",
     "readable-stream": "^3.6.0",
     "wasm-audio-resampler": "^2.0.0"
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "tabWidth": 4,
+    "parser": "typescript",
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "useTabs": false
   }
 }

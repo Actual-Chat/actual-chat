@@ -4,7 +4,7 @@
 @using System.Text.RegularExpressions
 @using ActualChat.Chat.UI.Blazor.Components.MarkupParts
 @using Stl.Extensibility
-@inherits ComputedStateComponent<ActualChat.MediaPlayback.TrackPlaybackState?>
+@inherits ComputedStateComponent<ChatMessageMarkup.StateModel?>
 @inject IActivePlaybackInfo _activePlaybackInfo
 
 @if (Markup != null) {
@@ -17,6 +17,11 @@
 
 @code {
     private static string? _class;
+
+    public record StateModel {
+        public TrackInfo? TrackInfo { get; init; }
+        public PlayerState? PlayerState { get; init; }
+    }
 
     [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; set; } = null!;
     [Inject] private MarkupParser MarkupParser { get; set; } = null!;
@@ -34,24 +39,27 @@
         _ = State.Recompute();
     }
 
-    protected override async Task<TrackPlaybackState?> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<StateModel?> ComputeState(CancellationToken cancellationToken) {
         var audioEntryId = Entry.AudioEntryId;
         if (audioEntryId == null)
             return null;
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        return await _activePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+        var trackInfo = await _activePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false);
+        var playbackState = await _activePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+        return new StateModel { TrackInfo = trackInfo, PlayerState = playbackState };
     }
 
     // Private methods
 
     private RenderFragment RenderPart(MarkupPart part) {
         if (part is PlainTextPart) {
-            var playbackState = State.ValueOrDefault;
+            var state = State.ValueOrDefault;
+            var trackInfo = state?.TrackInfo as ChatAudioTrackInfo;
+            var playbackState = state?.PlayerState;
             var partTimeRange = part.TimeRange;
-            if (playbackState == null || playbackState.IsCompleted || partTimeRange.IsEmpty)
+            if (trackInfo == null || playbackState == null || playbackState.IsCompleted || partTimeRange.IsEmpty)
                 return @<PlainTextPartView Entry="@Model.Entry" Part="@part"/>;
 
-            var trackInfo = (ChatAudioTrackInfo) playbackState.Command.TrackInfo;
             var audioEntry = trackInfo.AudioEntry;
             var playingAt = (trackInfo.RecordedAt + playbackState.PlayingAt - audioEntry.BeginsAt).TotalSeconds;
             var playingAtNearbyRange = new Range<double>(playingAt - 2, playingAt + 2);

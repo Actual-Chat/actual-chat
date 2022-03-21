@@ -11,4 +11,3 @@ public record Chat
     public bool IsPublic { get; init; }
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
 }
-

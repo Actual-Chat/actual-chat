@@ -1,25 +1,32 @@
-﻿@page "/join/{ChatId}"
-<h3>About to join to '@ChatId'</h3>
-<p>
-    Please check if you need to log in first.
-</p>
-<p>
-    <button type="button"
-            class="bg-green-500 hover:bg-green-700 text-white py-1 px-4 rounded"
-            @onclick="@OnJoinClicked">Join</button>
-</p>
+﻿@page "/join/{InviteCode}"
+
+@if (_useResult != null && !_useResult.IsValid) {
+    <h3>Invite code is invalid or expired.</h3>
+}
 
 @code {
+    private InviteCodeUseResult? _useResult;
+
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
     [Inject] private NavigationManager Nav { get; set; } = null!;
 
     [Parameter]
-    public string ChatId { get; set; } = "";
+    public string InviteCode { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = ChatPage.AutoJoinQueryParameter)]
+    public string? AutoJoin { get; set; }
 
-    private async Task OnJoinClicked() {
-        var command = new IChats.JoinChatCommand(Session, ChatId);
-        await Cmd.Run(command, default);
-        Nav.NavigateTo($"/chat/{ChatId}");
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        var cmd = new IInviteCodes.UseInviteCodeCommand(Session, InviteCode);
+        var runResult = await Cmd.Run(cmd);
+        _useResult = runResult.Result;
+        if (!_useResult.IsValid)
+            return;
+        var uri = $"/chat/{_useResult.ChatId}";
+        if (AutoJoin != null)
+            uri = uri + "?" + ChatPage.AutoJoinQueryParameter + "=" + AutoJoin;
+        Nav.NavigateTo(uri);
     }
 }

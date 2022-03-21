@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualChat.SignalR.Client;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -6,7 +5,6 @@ using Microsoft.AspNetCore.SignalR.Client;
 namespace ActualChat.Audio.Client;
 
 public class AudioClient : HubClientBase,
-    IAudioProcessor,
     IAudioStreamer,
     ITranscriptStreamer
 {
@@ -25,27 +23,22 @@ public class AudioClient : HubClientBase,
     {
         Log.LogDebug("GetAudio: StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
         await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        var audioStream = HubConnection
-            .StreamAsync<AudioStreamPart>("GetAudioStream", streamId, skipTo, cancellationToken)
+        var opusPacketStream = HubConnection
+            .StreamAsync<byte[]>("GetAudioStream", streamId, skipTo, cancellationToken)
             .WithBuffer(StreamBufferSize, cancellationToken);
-        var (formatTask, frames) = audioStream.ToMediaFrames(cancellationToken);
-        var audio = new AudioSource(formatTask, frames, AudioSourceLog, cancellationToken);
+        var frameStream = opusPacketStream
+            .Select((packet, i) => new AudioFrame {
+                Data = packet,
+                Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
+            });
+        var audio = new AudioSource(Task.FromResult(AudioSource.DefaultFormat),
+            frameStream,
+            TimeSpan.Zero,
+            AudioSourceLog,
+            cancellationToken);
         await audio.WhenFormatAvailable.ConfigureAwait(false);
         Log.LogDebug("GetAudio: Exited; StreamId = {StreamId}, SkipTo = {SkipTo}", streamId, skipTo);
         return audio;
-    }
-
-    public async Task ProcessAudio(
-        AudioRecord record,
-        IAsyncEnumerable<RecordingPart> recordingStream,
-        CancellationToken cancellationToken)
-    {
-        Log.LogDebug("ProcessAudio: Record = {Record}", record);
-        await EnsureConnected(CancellationToken.None).ConfigureAwait(false);
-        recordingStream = recordingStream.WithBuffer(StreamBufferSize, cancellationToken);
-        await HubConnection
-            .SendAsync("ProcessAudio", record, recordingStream, cancellationToken)
-            .ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<Transcript> GetTranscriptDiffStream(

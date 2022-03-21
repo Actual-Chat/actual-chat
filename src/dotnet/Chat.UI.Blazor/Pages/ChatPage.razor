@@ -20,29 +20,42 @@
 @if (error != null) {
     <WhenError Error="error"/>
 } else if (chat != null) {
-    <CascadingValue Value="chat">
-        @* @key=... ensures child components are recreated on navigation to another chat *@
-        <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
-            <Header>
-                <ChatHeader />
-            </Header>
-            <Body>
-            <ChatView />
-            <HistoricalPlaybackPanel/>
-            </Body>
-            <Footer>
-                <div class="flex flex-col w-full py-2">
-                    <ChatMessageEditor />
+    @* @key=... ensures child components are recreated on navigation to another chat *@
+    <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
+        <Header>
+            <CascadingValue Value="chat">
+                <div class="flex flex-col">
+                    <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
+                        <NavbarIcon/>
+                        <ChatHeader/>
+                        <ChatActivityPanel/>
+                    </div>
+                    <div class="w-full flex justify-center px-2">
+                        <ChatHeaderPanel/>
+                    </div>
                 </div>
-            </Footer>
-        </PageWithHeaderAndFooter>
-    </CascadingValue>
+            </CascadingValue>
+        </Header>
+        <Body>
+            <CascadingValue Value="chat">
+                <ChatView/>
+                <HistoricalPlaybackPanel/>
+            </CascadingValue>
+        </Body>
+        <Footer>
+            <CascadingValue Value="chat">
+                <ChatFooter AutoJoin="@AutoJoin"/>
+            </CascadingValue>
+        </Footer>
+    </PageWithHeaderAndFooter>
 } else {
     <div>Loading...</div>
 }
 
 @code {
     private Model? _renderedModel;
+
+    public const string AutoJoinQueryParameter = "auto-join";
 
     public record Model {
         public bool IsUnavailable { get; init; }
@@ -52,6 +65,9 @@
 
     [Parameter]
     public string ChatId { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
+    public string? AutoJoin { get; set; }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_renderedModel, null)
@@ -59,12 +75,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
-        var user = await _auth.GetUser(_session, cancellationToken).ConfigureAwait(true);
         var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        if (!user.IsAuthenticated && !chat.IsPublic)
-            return new () { MustLogin = true };
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _renderedModel?.Chat;

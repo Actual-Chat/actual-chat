@@ -7,19 +7,37 @@
     @barItem.Content
 }
 
-    <NavbarGroup Title="Contacts">
+<NavbarGroup Title="Contacts" Css="navbar-contacts">
     <Icons>
         <svg class="fill-current h-4 w-4 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-            <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" />
+            <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
         </svg>
     </Icons>
     <ChildContent>
         <NavbarLink Title="Elon Musk" Url="#" IsOnline="true"/>
         <NavbarLink Title="Satoshi Nakamoto" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Arnold Schwarzenegger" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Tom Hanks" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Some Person" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Natasha Romanoff" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Batman" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Superman" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Spiderman" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Antman" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Katherin Zeta Johnes" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Some Person 2" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Some Person 3" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Some Person 4" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Some Person 5" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Some Person 6" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Some Person 7" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Some Person 8" Url="#" IsOnline="false"/>
+        <NavbarLink Title="Some Person 9" Url="#" IsOnline="true"/>
+        <NavbarLink Title="Last Person" Url="#" IsOnline="false"/>
     </ChildContent>
 </NavbarGroup>
 @if (_hostInfo.IsDevelopmentInstance) {
-    <NavbarGroup Title="Test pages">
+    <NavbarGroup Title="Test pages" Css="navbar-pages">
         <NavbarLink Title="Virtual List" Url="/test/virtual-list" />
         <NavbarLink Title="Audio Player" Url="/test/audio-player" />
         <NavbarLink Title="Audio Recorder" Url="/test/audio-recorder" />

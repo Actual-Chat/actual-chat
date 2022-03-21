@@ -1,0 +1,81 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Services
+@inherits ComputedStateComponent<ChatActivityPanel.ChatActivityPanelState>
+
+<div class="inline-flex mr-2">
+
+    @{
+        var speaking = State.LatestNonErrorValue?.Speaking;
+        if (speaking != null) {
+            var zIndex = 1;
+            var range = MaxIconCount > speaking.Count ? speaking.Count : MaxIconCount;
+            for (var i = 0; i < range; i++) {
+                var author = speaking[i];
+                var picture = author.Picture;
+                if (string.IsNullOrWhiteSpace(picture))
+                    // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
+                    picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
+                <div class="author-avatar w-6 h-6 -mr-2 select-none bg-secondary rounded-full border border-primary" style="z-index: @zIndex;">
+                    <img src="@picture" alt="@author.Name" title="@author.Name" class="rounded-full"/>
+                </div>
+                zIndex++;
+            }
+            if (speaking.Count > MaxIconCount) {
+                if (speaking.Count < 11) {
+                    <div class="author-avatar w-6 h-6 -mr-1.5 select-none bg-avatar rounded-full text-center text-accent-muted" style="z-index: @(range + 1);">
+                        <div class="text-sm">+@(speaking.Count - MaxIconCount)</div>
+                    </div>
+                } else {
+                    <div class="author-avatar w-6 h-6 -mr-2 select-none bg-avatar rounded-full border border-primary text-center text-accent-muted" style="z-index: @(range + 1);">
+                        <div class="text-sm">...</div>
+                    </div>
+                }
+            }
+        }
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    public Chat Chat { get; set; } = null!;
+
+    [Parameter]
+    public int MaxIconCount { get; set; } = 5;
+
+    [Inject]
+    public ChatActivities ChatActivities { get; set; } = null!;
+    [Inject]
+    public IChatAuthors ChatAuthors { get; set; } = null!;
+
+    private ChatActivityState? ChatActivityState { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        ChatActivityState = await ChatActivities.GetRecordingActivity(Chat.Id);
+    }
+
+    protected override async Task<ChatActivityPanelState> ComputeState(CancellationToken cancellationToken) {
+        if (ChatActivityState == null)
+            return new() { Speaking = new() };
+
+        var recordingActivity = await ChatActivityState.CurrentActivity.Use(cancellationToken);
+        var authorTasks = recordingActivity
+            .Select(ra => ChatAuthors.GetAuthor(Chat.Id, ra.AuthorId, true, cancellationToken));
+        var authors = await Task.WhenAll(authorTasks);
+
+        return new() {
+            Speaking = authors.Where(a => a != null).ToList()!,
+        };
+    }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+
+        ChatActivityState?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    public class ChatActivityPanelState {
+        public List<Author> Speaking { get; init; } = null!;
+    }
+}

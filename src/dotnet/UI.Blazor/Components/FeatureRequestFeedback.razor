@@ -1,0 +1,92 @@
+@using ActualChat.Hosting
+@using System.Net.Mime
+@using ActualChat.UI.Blazor.Module
+@implements IFeatureBackend
+@implements IAsyncDisposable
+@inject IJSRuntime _js
+@inject MomentClockSet _clocks
+@inject HostInfo _hostInfo
+
+
+<div class="relative">
+    @{
+        var featureTitle = FeatureTitle.IsNullOrEmpty() ? "This" : FeatureTitle;
+    }
+    <div class="flex flex-row mb-8">
+        <h1 class="font-bold text-center flex-1 left-0">Sorry, not implemented yet</h1>
+        <CloseButton Click="OnCancel" Css="w-6 h-6"/>
+    </div>
+
+    <div class="text-sm md:text-md">
+        <p>Help us to prioritize features.</p>
+        <p>Please vote how <span class="p-0.5 bg-secondary rounded-sm font-mono text-inline-code border">@featureTitle</span> feature is important for you.</p>
+        <p>1 = not important, 5 = very important!</p>
+    </div>
+
+    <div @ref="_feedbackRef" class="py-4 flex justify-center">
+        @for (var i = 1; i <= 5; i++) {
+            var cls = _rating >= i ? "fa-star" : "fa-star-o";
+            var rating = i;
+            var id = "rating-button-" + (rating - 1);
+            <button class="rating-button px-1 md:px-2" role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls fa-2x rating-icon" aria-hidden="true" id="@id"></i></button>
+        }
+    </div>
+    <div class="">
+        <label>Comment:</label>
+        <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
+    </div>
+    <div class="mt-4">
+        <button type="button" @onclick="OnSubmit"
+                class="bg-button-success group rounded-md border border-success
+                           hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+                           inline-flex px-3 py-1 text-sm font-medium leading-5
+                           transition duration-150 ease-in-out">
+            <span class="fill-current text-accent-muted group-hover:text-primary">Send feedback</span>
+        </button>
+    </div>
+</div>
+
+@code {
+    private int _rating;
+    private string _comment = "";
+    private ElementReference _feedbackRef;
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<IFeatureBackend> _blazorRef = null!;
+
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    [Parameter]
+    public string? FeatureTitle { get; set; }
+
+    [JSInvokable]
+    private async Task SetRating(int rating) {
+        _rating = rating == _rating ? 0 : rating;
+        await _jsRef.InvokeVoidAsync("updateRating", _rating - 1).ConfigureAwait(true);
+    }
+
+    private void OnSubmit() {
+        ModalInstance.CloseAsync(ModalResult.Ok((_rating, _comment)));
+    }
+
+    private void OnCancel() {
+        ModalInstance.CloseAsync(ModalResult.Cancel());
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create<IFeatureBackend>(this);
+            _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.Feedback.create",
+                _feedbackRef, _blazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsRef != null!)
+            await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        _blazorRef?.Dispose();
+    }
+}

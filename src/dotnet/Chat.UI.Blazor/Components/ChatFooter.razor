@@ -1,0 +1,93 @@
+﻿@using ActualChat.Chat.UI.Blazor.Pages
+@inherits ComputedStateComponent<ChatFooter.Model>
+@inject Session _session
+@inject IAuth _auth
+@inject IChats _chats
+@inject NavigationManager _nav
+@inject UICommandRunner _cmd
+
+@{
+    var model = State.LatestNonErrorValue ?? new();
+}
+
+@if (model.Display) {
+    <div class="flex flex-col w-full py-2">
+        @if (model.CanSend) {
+            <ChatMessageEditor/>
+        } else if (model.AutoJoin) {
+            if (_autoJoinTask == null) {
+                _autoJoinTask = OnJoin();
+                _nav.NavigateTo(_nav.GetUriWithQueryParameter(ChatPage.AutoJoinQueryParameter, (string?) null));
+            }
+        } else if (model.CanJoin) {
+            <div class="bg-accent rounded-md mx-3 py-1.5 px-2 flex justify-center">
+                <AuthorizeView>
+                    <Authorized>
+                        <div>
+                            <span class="inline-flex">To post or talk,</span>
+                            <button type="button" @onclick="@OnJoin"
+                                    class="bg-button-success group rounded-md
+                                           hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+                                           inline-flex px-3 py-1 text-sm font-medium leading-5
+                                           transition duration-150 ease-in-out">
+                                <span class="fill-current text-accent-muted group-hover:text-primary">Join this chat</span>
+                            </button>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <div>
+                            <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1" ContentPositionClass="left-0 bottom-10"/></div>
+                            <span class="inline-flex mx-1">or</span>
+                            <button type="button" @onclick="@OnJoin"
+                                    class="bg-button-success group rounded-md border border-success
+                                               hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
+                                               inline-flex px-3 py-1 text-sm font-medium leading-5
+                                               transition duration-150 ease-in-out">
+                                <span class="fill-current text-accent-muted group-hover:text-primary">Join this chat anonymously</span>
+                            </button>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private Task? _autoJoinTask = null;
+
+    public record Model {
+        public bool CanSend { get; init; }
+        public bool CanJoin { get; init; }
+        public bool AutoJoin { get; init; }
+        public bool Display => CanSend || CanJoin;
+    }
+
+    [Inject] private UICommandRunner Cmd { get; set; } = null!;
+
+    [CascadingParameter]
+    public Chat Chat { get; set; } = null!;
+    [Parameter]
+    public string? AutoJoin { get; set; }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        string chatId = Chat.Id;
+        var permissions = await _chats.GetPermissions(_session, chatId, cancellationToken);
+        var canSend = permissions.HasFlag(ChatPermissions.Write);
+        var canJoin = false;
+        var autoJoin = false;
+        if (!canSend) {
+            canJoin = await _chats.CheckCanJoin(_session, chatId, cancellationToken);
+            if (canJoin) {
+                autoJoin = string.Equals("1", AutoJoin);
+            }
+        }
+        return new () { CanSend = canSend, CanJoin = canJoin, AutoJoin = autoJoin };
+    }
+
+    private async Task OnJoin() {
+        string chatId = Chat.Id;
+        var command = new IChats.JoinChatCommand(_session, chatId);
+        await _cmd.Run(command, default);
+    }
+}

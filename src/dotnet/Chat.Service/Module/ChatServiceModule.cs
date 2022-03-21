@@ -61,9 +61,8 @@ public class ChatServiceModule : HostModule<ChatSettings>
             var chatRedisDb = c.GetRequiredService<RedisDb<ChatDbContext>>();
             return chatRedisDb.GetSequenceSet<ChatEntry>("seq." + nameof(ChatEntry));
         });
-        fusion.AddComputeService<Chats>();
-        services.AddSingleton<IChats>(c => c.GetRequiredService<Chats>());
-        services.AddSingleton<IChatsBackend>(c => c.GetRequiredService<Chats>());
+        fusion.AddComputeService<IChats, Chats>();
+        fusion.AddComputeService<IChatsBackend, ChatsBackend>();
 
         // ChatAuthorsService
         services.AddSingleton(c => {
@@ -73,5 +72,13 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<ChatAuthors>();
         services.AddSingleton<IChatAuthors>(c => c.GetRequiredService<ChatAuthors>());
         services.AddSingleton<IChatAuthorsBackend>(c => c.GetRequiredService<ChatAuthors>());
+
+        fusion.AddComputeService<InviteCodes>();
+        services.AddSingleton<IInviteCodes>(c => c.GetRequiredService<InviteCodes>());
+        services.AddSingleton<IInviteCodesBackend>(c => c.GetRequiredService<InviteCodes>());
+
+        // ContentSaver
+        services.AddResponseCaching();
+        services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();
     }
 }

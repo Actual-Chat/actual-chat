@@ -57,7 +57,6 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 LocalId = 1,
                 Version = VersionGenerator.NextVersion(),
                 Name = UserConstants.Admin.Name,
-                Picture = UserConstants.Admin.Picture,
                 IsAnonymous = false,
                 UserId = adminUserId,
             };
@@ -120,7 +119,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         Moment? beginsAt,
         CancellationToken cancellationToken)
     {
-        var chats = (Chats) Services.GetRequiredService<IChatsBackend>();
+        var chats = (ChatsBackend) Services.GetRequiredService<IChatsBackend>();
         var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
         if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {
@@ -271,10 +270,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         var filePath = GetAudioDataDir() & fileName;
         var sourceBlobStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
-        var audioLog = Services.LogFor<AudioSource>();
-        var audio = new AudioSource(sourceBlobStream.Replay(cancellationToken), TimeSpan.Zero, audioLog, CancellationToken.None);
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        // NOTE(AY): Shouldn't we simply write source blob stream here?
         await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
 
         static FilePath GetAudioDataDir()

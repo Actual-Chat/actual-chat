@@ -1,31 +1,28 @@
 using System.Security;
 using ActualChat.Chat.Db;
 using Stl.Fusion.EntityFramework;
-using Stl.Redis;
 
 namespace ActualChat.Chat;
 
-public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
+public class Chats : DbServiceBase<ChatDbContext>, IChats
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     private readonly ICommander _commander;
     private readonly IAuth _auth;
-    private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
-    private readonly RedisSequenceSet<ChatEntry> _idSequences;
+    private readonly IChatsBackend _chatsBackend;
+    private readonly IInviteCodesBackend _inviteCodesBackend;
 
     public Chats(IServiceProvider services) : base(services)
     {
         _commander = Services.Commander();
         _auth = Services.GetRequiredService<IAuth>();
-        _authBackend = Services.GetRequiredService<IAuthBackend>();
         _chatAuthors = Services.GetRequiredService<IChatAuthors>();
         _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
-        _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
+        _chatsBackend = Services.GetRequiredService<IChatsBackend>();
+        _inviteCodesBackend = Services.GetRequiredService<IInviteCodesBackend>();
     }
 
     // [ComputeMethod]
@@ -34,7 +31,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         var canRead = await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
         if (!canRead)
             return null;
-        return await Get(chatId, cancellationToken).ConfigureAwait(false);
+        return await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -43,7 +40,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         var chatIds = await _chatAuthors.GetChatIds(session, cancellationToken).ConfigureAwait(false);
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user.IsAuthenticated) {
-            var ownedChatIds = await GetOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
+            var ownedChatIds = await _chatsBackend.GetOwnedChatIds(user.Id, cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(ownedChatIds, StringComparer.Ordinal).ToArray();
         }
 
@@ -62,7 +59,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         CancellationToken cancellationToken)
     {
         await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetTile(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
+        return await _chatsBackend.GetTile(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -74,7 +71,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         CancellationToken cancellationToken)
     {
         await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetEntryCount(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
+        return await _chatsBackend.GetEntryCount(chatId, entryType, idTileRange, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Note that it returns (firstId, lastId + 1) range!
@@ -86,7 +83,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         CancellationToken cancellationToken)
     {
         await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        return await GetIdRange(chatId, entryType, cancellationToken).ConfigureAwait(false);
+        return await _chatsBackend.GetIdRange(chatId, entryType, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -94,9 +91,24 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         Session session,
         string chatId,
         CancellationToken cancellationToken)
+        => await _chatsBackend.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
+
+    // [ComputeMethod]
+    public virtual async Task<bool> CheckCanJoin(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatPrincipalId = await _chatAuthors.GetChatPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
-        return await GetPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat != null && chat.IsPublic)
+            return true;
+        var invited = await _inviteCodesBackend.CheckIfInviteCodeUsed(session, chatId, cancellationToken).ConfigureAwait(false);
+        return invited;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        Session session, string chatId, long entryId, CancellationToken cancellationToken)
+    {
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        return await _chatsBackend.GetTextEntryAttachments(chatId, entryId, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -125,7 +137,7 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chat) = command;
-        await AssertHasPermissions(session, chat.Id, ChatPermissions.Owner, cancellationToken).ConfigureAwait(false);
+        await AssertHasPermissions(session, chat.Id, ChatPermissions.Admin, cancellationToken).ConfigureAwait(false);
 
         var updateChatCommand = new IChatsBackend.UpdateChatCommand(chat);
         return await _commander.Call(updateChatCommand, true, cancellationToken).ConfigureAwait(false);
@@ -138,15 +150,18 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, chatId) = command;
-        // TODO: add permissions check
 
-        await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        var enoughPermissions = await CheckCanJoin(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!enoughPermissions)
+            PermissionsExt.Throw();
+
+        await JoinChat(session, chatId, cancellationToken).ConfigureAwait(false);
         return Unit.Default;
     }
 
     // [CommandHandler]
-    public virtual async Task<ChatEntry> CreateEntry(
-        IChats.CreateEntryCommand command,
+    public virtual async Task<ChatEntry> CreateTextEntry(
+        IChats.CreateTextEntryCommand command,
         CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -162,9 +177,33 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
             AuthorId = author.Id,
             Content = text,
             Type = ChatEntryType.Text,
+            HasAttachments = command.Attachments.Length > 0
         };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
-        return await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var textEntry =  await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+
+        for (var i = 0; i < command.Attachments.Length; i++) {
+            var attachmentUpload = command.Attachments[i];
+            var (fileName, content, contentType) = attachmentUpload;
+            var contentLocalId = Ulid.NewUlid().ToString();
+            var contentId = $"attachments/{chatId}/{contentLocalId}/{fileName}";
+
+            var saveCommand = new IContentSaverBackend.SaveContentCommand(contentId, content, contentType);
+            await _commander.Call(saveCommand, true, cancellationToken).ConfigureAwait(false);
+
+            var attachment = new TextEntryAttachment {
+                Index = i,
+                Length = content.Length,
+                ChatId = chatId,
+                EntryId = textEntry.Id,
+                ContentType = contentType,
+                FileName = fileName,
+                ContentId = contentId
+            };
+            var createAttachmentCommand = new IChatsBackend.CreateTextEntryAttachmentCommand(attachment);
+            await _commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+        return textEntry;
     }
 
     // [CommandHandler]
@@ -186,5 +225,28 @@ public partial class Chats : DbServiceBase<ChatDbContext>, IChats, IChatsBackend
         chatEntry = chatEntry with { IsRemoved = true };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Protected methods
+
+    private async Task JoinChat(Session session, string chatId, CancellationToken cancellationToken)
+        => await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+
+    private async Task AssertHasPermissions(Session session, string chatId,
+        ChatPermissions permissions, CancellationToken cancellationToken)
+    {
+        var enoughPermissions = await CheckHasPermissions(session, chatId, permissions, cancellationToken).ConfigureAwait(false);
+        if (!enoughPermissions)
+            PermissionsExt.Throw();
+    }
+
+    private async Task<bool> CheckHasPermissions(Session session, string chatId,
+        ChatPermissions requiredPermissions, CancellationToken cancellationToken)
+    {
+        var permissions = await _chatsBackend.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
+        var enoughPermissions = permissions.CheckHasPermissions(requiredPermissions);
+        if (!enoughPermissions && requiredPermissions==ChatPermissions.Read)
+            return await _inviteCodesBackend.CheckIfInviteCodeUsed(session, chatId, cancellationToken).ConfigureAwait(false);
+        return enoughPermissions;
     }
 }

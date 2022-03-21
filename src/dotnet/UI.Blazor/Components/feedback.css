@@ -1,0 +1,17 @@
+﻿.feedback-textarea {
+    @apply border-accent p-1;
+}
+
+.feedback-textarea:focus {
+    @apply border-separate-line outline-none p-1;
+}
+
+.rating-icon {
+    @apply text-rating;
+}
+
+.feature-modal {
+    z-index: 103;
+    max-width: 96%;
+    @apply flex flex-col bg-white border border-white rounded p-6 shadow-lg;
+}

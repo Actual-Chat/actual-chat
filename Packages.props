@@ -2,30 +2,32 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
-    <AspNetCoreVersion>6.0.1</AspNetCoreVersion>
+    <AspNetCoreVersion>6.0.3</AspNetCoreVersion>
     <MicrosoftExtensionsVersion>6.0.0</MicrosoftExtensionsVersion>
-    <EntityFrameworkCoreVersion>6.0.1</EntityFrameworkCoreVersion>
-    <NpgsqlVersion>6.0.2</NpgsqlVersion>
-    <MySqlVersion>2.1.2</MySqlVersion>
-    <EntityFrameworkCoreNpgsqlVersion>6.0.2</EntityFrameworkCoreNpgsqlVersion>
-    <EntityFrameworkCoreMySqlVersion>6.0.0</EntityFrameworkCoreMySqlVersion>
+    <EntityFrameworkCoreVersion>6.0.3</EntityFrameworkCoreVersion>
+    <NpgsqlVersion>6.0.3</NpgsqlVersion>
+    <MySqlVersion>2.1.5</MySqlVersion>
+    <EntityFrameworkCoreNpgsqlVersion>6.0.3</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreMySqlVersion>6.0.1</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <BlazorVersion>6.0.1</BlazorVersion>
-    <SignalRVersion>6.0.1</SignalRVersion>
+    <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
+    <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
-    <StlFusionVersion>2.3.1</StlFusionVersion>
-    <OpenTelemetryVersion>1.2.0-rc1</OpenTelemetryVersion>
-    <OpenTelemetryAspNetCoreVersion>1.0.0-rc8</OpenTelemetryAspNetCoreVersion>
+    <StlFusionVersion>2.3.23</StlFusionVersion>
+    <OpenTelemetryVersion>1.2.0-rc2</OpenTelemetryVersion>
+    <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Nupkg Versions">
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
     <PackageReference Update="Blazor.ContextMenu" Version="1.11.1" />
     <PackageReference Update="Blazored.Modal" Version="6.0.1" />
-    <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
-    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-*"/>
+    <!-- We use Grpc.Core from otlp exporter -->
+    <PackageReference Update="Grpc.Core" Version="2.43.0" />
+    <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
+    <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-beta07"/>
     <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha03" />
     <PackageReference Update="MessagePack" Version="2.3.*"/>
     <PackageReference Update="MessagePack.Annotations" Version="2.3.*"/>
@@ -41,6 +43,7 @@
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsVersion)"/>
@@ -58,7 +61,6 @@
     <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkCoreVersion)"/>
-    <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.Toolkit.HighPerformance" Version="7.1.*"/>
     <PackageReference Update="MySqlConnector" Version="$(MySqlVersion)"/>
     <PackageReference Update="Npgsql" Version="$(NpgsqlVersion)"/>
@@ -67,7 +69,7 @@
     <PackageReference Update="Pomelo.EntityFrameworkCore.MySql" Version="$(EntityFrameworkCoreMySqlVersion)"/>
     <PackageReference Update="RestEase" Version="1.5.*"/>
     <PackageReference Update="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
-    <PackageReference Update="StackExchange.Redis" Version="2.2.*"/>
+    <PackageReference Update="StackExchange.Redis" Version="2.5.18-prerelease"/>
     <PackageReference Update="Stl" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Stl.CommandR" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Stl.Plugins" Version="$(StlFusionVersion)"/>
@@ -95,7 +97,7 @@
     <PackageReference Update="Microsoft.AspNetCore.Routing" Version="2.2.*"/>
     <PackageReference Update="System.Reactive" Version="5.0.*"/>
 
-    <!-- OpenTelemetry -->
+    <!-- OpenTelemetry & Metrics-->
     <PackageReference Update="OpenTelemetry" Version="$(OpenTelemetryVersion)" />
     <PackageReference Update="OpenTelemetry.Api" Version="$(OpenTelemetryVersion)" />
     <PackageReference Update="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
@@ -118,23 +120,23 @@
     <PackageReference Update="xunit" Version="2.4.1"/>
     <PackageReference Update="Xunit.DependencyInjection" Version="8.3.0"/>
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="8.0.0"/>
-    <PackageReference Update="FluentAssertions" Version="6.3.*"/>
+    <PackageReference Update="FluentAssertions" Version="6.4.*"/>
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.0.0"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all"/>
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
-    <PackageReference Update="Microsoft.Playwright" Version="1.17.3"/>
+    <PackageReference Update="Microsoft.Playwright" Version="1.18.0"/>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="bunit" Version="1.4.15"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="1.2.0" />
 
     <!-- Analyzers -->
-    <PackageReference Update="Moq.Analyzers" Version="0.0.8" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.0.64" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Roslynator.Analyzers" Version="3.3.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Roslynator.Analyzers" Version="4.0.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Meziantou.Analyzer" Version="1.0.688" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
   </ItemGroup>
 

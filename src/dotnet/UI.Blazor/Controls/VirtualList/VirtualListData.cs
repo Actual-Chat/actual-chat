@@ -1,27 +1,39 @@
 namespace ActualChat.UI.Blazor.Controls;
 
-public record VirtualListData<TItem>(IReadOnlyCollection<TItem> Items)
+public class VirtualListData<TItem>
     where TItem : IVirtualListItem
 {
+    public static VirtualListData<TItem> None { get; } = new(VirtualListDataQuery.None, Array.Empty<TItem>());
+
+    public VirtualListDataQuery Query { get; }
+    public IReadOnlyCollection<TItem> Items { get; }
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
+    public Symbol ScrollToKey { get; init; }
 
-    public VirtualListData() : this(Array.Empty<TItem>()) { }
+    public VirtualListData(VirtualListDataQuery query, IReadOnlyCollection<TItem> items)
+    {
+        Query = query;
+        Items = items;
+    }
 }
 
 public static class VirtualListData
 {
     public static VirtualListData<TItem> New<TItem>(
+        VirtualListDataQuery query,
         IEnumerable<TItem> items,
         bool hasVeryFirstItem = false,
-        bool hasVeryLastItem = false)
+        bool hasVeryLastItem = false,
+        Symbol scrollToKey = default)
         where TItem : IVirtualListItem
     {
-        var readOnlyCollection = items as IReadOnlyCollection<TItem> ?? items.ToList();
-        return new(readOnlyCollection) {
+        var readOnlyItems = items as IReadOnlyCollection<TItem> ?? items.ToList();
+        return new(query, readOnlyItems) {
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
+            ScrollToKey = scrollToKey,
         };
     }
 }

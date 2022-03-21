@@ -9,20 +9,21 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     [Inject] private Session Session { get; set; } = default!;
-    [Inject] private ChatPlayers ChatPlayers { get; set; } = default!;
+    [Inject] private ChatController ChatController { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = default!;
     [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
     [Inject] private IAuth Auth { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
-    [Inject] private MomentClockSet Clocks { get; set; } = default!;
     [Inject] private ILogger<ChatView> Log { get; set; } = default!;
-    private ChatPlayer? RealtimePlayer { get; set; }
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    public ValueTask DisposeAsync()
-        => ChatPlayers.DisposePlayers(Chat.Id);
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+        await ChatController.LeaveChat(Chat.Id);
+    }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,
@@ -31,19 +32,18 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
-        if (query.InclusiveRange == default)
-            query = query with {
-                InclusiveRange = new(
-                    (chatIdRange.End - IdTileStack.Layers[1].TileSize).ToString(CultureInfo.InvariantCulture),
-                    (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture)),
-            };
+        var queryRange = query.IsExpansionQuery
+            ? query.InclusiveRange
+            : new(
+                (chatIdRange.End - IdTileStack.Layers[1].TileSize).ToString(CultureInfo.InvariantCulture),
+                (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture));
 
-        var startId = long.Parse(ExtractRealId(query.InclusiveRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var startId = long.Parse(ExtractRealId(queryRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
         startId = Math.Clamp(startId, chatIdRange.Start, chatIdRange.End);
 
-        var endId = long.Parse(ExtractRealId(query.InclusiveRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var endId = long.Parse(ExtractRealId(queryRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
         endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
@@ -77,16 +77,21 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         }
         */
 
-        var authorIds = chatEntries.Select(e => e.AuthorId).Distinct();
-        var authorTasks = await Task
-            .WhenAll(authorIds.Select(id => ChatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
-            .ConfigureAwait(false);
-        var authors = authorTasks
-            .Where(a => a != null)
-            .ToDictionary(a => a!.Id);
+        var attachmentEntryIds = chatEntries
+            .Where(c => c.HasAttachments)
+            .Select(c => c.Id)
+            .ToList();
 
-        var chatMessages = ChatMessageModel.FromEntries(chatEntries, authors);
+        var attachmentTasks = await Task
+            .WhenAll(attachmentEntryIds.Select(id => Chats.GetTextEntryAttachments(Session, chatId, id, cancellationToken)))
+            .ConfigureAwait(false);
+        var attachments = attachmentTasks
+            .Where(c => c.Length > 0)
+            .ToDictionary(c => c[0].EntryId, c => c);
+
+        var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments);
         var result = VirtualListData.New(
+            query,
             chatMessages,
             startId <= chatIdRange.Start,
             endId + 1 >= chatIdRange.End);

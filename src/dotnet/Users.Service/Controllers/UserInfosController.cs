@@ -25,6 +25,10 @@ public class UserInfosController : ControllerBase, IUserInfos
         => _userInfos.GetByName(name, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string?> GetGravatarHash(string userId, CancellationToken cancellationToken)
+    public Task<string> GetGravatarHash(string userId, CancellationToken cancellationToken)
         => _userInfos.GetGravatarHash(userId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<bool> IsAdmin(string userId, CancellationToken cancellationToken)
+        => _userInfos.IsAdmin(userId, cancellationToken);
 }

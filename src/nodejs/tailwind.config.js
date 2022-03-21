@@ -35,6 +35,9 @@ module.exports = {
         'success': 'var(--button-color-success)',
         'toggle-off': 'var(--text-color-toggle-off)',
         'toggle-on': 'var(--text-color-toggle-on)',
+        'rating': 'var(--text-color-rating)',
+        'inline-code': 'var(--text-inline-code)',
+
       },
       borderColor: {
         'primary': 'var(--background-primary)',
@@ -45,6 +48,7 @@ module.exports = {
         'accent-inverted': 'var(--text-color-accent)',
         'success': 'var(--button-color-success)',
         'success-muted': 'var(--button-color-success-hover)',
+        'separate-line': 'var(--background-separate-line)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -59,6 +63,7 @@ module.exports = {
         'button-error-hover': 'var(--button-color-error-hover)',
         'message-hover': 'var(--background-message-hover)',
         'separate-line': 'var(--background-separate-line)',
+        'avatar': 'var(--background-avatar)',
       },
     },
     screens: {
@@ -128,6 +133,7 @@ module.exports = {
     spacing: {
       px: '1px',
       0: '0px',
+      0.25: '0.065rem',
       0.5: '0.125rem',
       1: '0.25rem',
       1.5: '0.375rem',
@@ -175,6 +181,8 @@ module.exports = {
       'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
       'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
       'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
+      'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
+      'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -264,6 +272,7 @@ module.exports = {
       0: '0px',
       2: '2px',
       4: '4px',
+      5: '5px',
       8: '8px',
     },
     boxShadow: {
@@ -597,6 +606,7 @@ module.exports = {
       '3/6': '50%',
       '4/6': '66.666667%',
       '5/6': '83.333333%',
+      '9/10': '90%',
       full: '100%',
       screen: '100vh',
       min: 'min-content',
@@ -612,6 +622,7 @@ module.exports = {
       '1/4': '25%',
       '2/4': '50%',
       '3/4': '75%',
+      '1/24': '4.166667%',
       full: '100%',
     }),
     keyframes: {
@@ -687,6 +698,18 @@ module.exports = {
           transform: 'translateY(0rem)',
         },
       },
+      'tooltip-vertical': {
+        to: {
+          transform: 'translate(-50%, 0)',
+          opacity: 1,
+        },
+      },
+      'tooltip-horizontal': {
+        to: {
+          transform: 'translate(0, -50%)',
+          opacity: 1,
+        },
+      },
     },
     letterSpacing: {
       tighter: '-0.05em',
@@ -732,6 +755,7 @@ module.exports = {
     maxWidth: ({ theme, breakpoints }) => ({
       none: 'none',
       0: '0rem',
+      xxs: '10rem',
       xs: '20rem',
       sm: '24rem',
       md: '28rem',
@@ -760,6 +784,7 @@ module.exports = {
     },
     minWidth: {
       0: '0px',
+      12: '3rem',
       full: '100%',
       min: 'min-content',
       max: 'max-content',
@@ -1018,6 +1043,8 @@ module.exports = {
       '9/12': '75%',
       '10/12': '83.333333%',
       '11/12': '91.666667%',
+      '3/24': '12.5%',
+      '21/24': '87.5%',
       full: '100%',
       screen: '100vw',
       min: 'min-content',

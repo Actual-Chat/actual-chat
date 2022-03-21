@@ -1,173 +1,268 @@
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
+public sealed class ChatPlayer : IAsyncDisposable
 {
-    protected static readonly TimeSpan InfDuration = 2 * Constants.Chat.MaxEntryDuration;
-    private static long _playIndex;
+    private readonly Symbol _chatId;
+    private readonly AudioDownloader _audioDownloader;
+    private readonly ILogger<ChatPlayer> _log;
+    private readonly IChatMediaResolver _mediaResolver;
+    private readonly IAudioStreamer _audioStreamer;
+    private readonly IChatAuthors _chatAuthors;
+    private readonly MomentClockSet _clocks;
+    private readonly Session _session;
+    private readonly IChats _chats;
 
-    private ILogger? _log;
-    private ChatEntryReader? _audioEntryReader;
-    private ChatEntryReader? _textEntryReader;
-    private ChatAuthor? _chatAuthor;
+    private readonly SemaphoreSlim _locker = new(1, 1);
+    private CancellationTokenSource? _playingCancellation;
+    private readonly CancellationToken _applicationStopping;
 
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-    protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected bool DebugMode => Constants.DebugMode.AudioPlayback;
+    private int _isDisposed;
+    private bool _isPlaying;
 
-    protected IServiceProvider Services { get; }
-    protected MomentClockSet Clocks { get; }
-    protected IChats Chats { get; }
-    protected IChatAuthors ChatAuthors { get; }
-    protected IChatMediaResolver MediaResolver { get; }
-    protected AudioDownloader AudioDownloader { get; }
-    protected IAudioStreamer AudioStreamer { get; }
-    protected object Lock { get; } = new();
+    /// <summary>
+    /// Once enqueued, playback loop continues, so the larger is this duration,
+    /// the higher is the chance to enqueue the next entry on time.
+    /// </summary>
+    private static readonly TimeSpan EnqueueAheadDuration = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan InfDuration = 2 * Constants.Chat.MaxEntryDuration;
+    /// <summary> Min. delay is ~ 2.5*Ping, so we can skip something </summary>
+    private static readonly TimeSpan StreamingSkipTo = TimeSpan.Zero;
 
-    public Session Session { get; init; } = Session.Null;
-    public Symbol ChatId { get; init; } = default;
-    public ChatEntryReader AudioEntryReader =>
-        _audioEntryReader ??= Chats.CreateEntryReader(Session, ChatId, ChatEntryType.Audio);
-    public ChatEntryReader TextEntryReader =>
-        _textEntryReader ??= Chats.CreateEntryReader(Session, ChatId, ChatEntryType.Text);
+    public readonly IMutableState<PlaybackKind> State;
 
-    public IMutableState<Playback?> PlaybackState { get; }
-    public Playback? Playback => PlaybackState.Value;
-    public bool IsDisposeStarted { get; private set; }
+    public Playback Playback { get; }
 
-    protected ChatPlayer(IServiceProvider services)
+    public ChatPlayer(
+        Symbol chatId,
+        IHostApplicationLifetime lifetime,
+        IPlaybackFactory playbackFactory,
+        AudioDownloader audioDownloader,
+        ILogger<ChatPlayer> log,
+        IChatMediaResolver mediaResolver,
+        IAudioStreamer audioStreamer,
+        IChatAuthors chatAuthors,
+        MomentClockSet clocks,
+        Session session,
+        IChats chats,
+        IStateFactory stateFactory)
     {
-        // ReSharper disable once SuspiciousTypeConversion.Global
-        Services = services;
-        Clocks = Services.Clocks();
-        Chats = Services.GetRequiredService<IChats>();
-        ChatAuthors = Services.GetRequiredService<IChatAuthors>();
-        MediaResolver = Services.GetRequiredService<IChatMediaResolver>();
-        AudioDownloader = Services.GetRequiredService<AudioDownloader>();
-        AudioStreamer = Services.GetRequiredService<IAudioStreamer>();
-        PlaybackState = Services.StateFactory().NewMutable<Playback?>();
+        Playback = playbackFactory.Create();
+        State = stateFactory.NewMutable<PlaybackKind>();
+        _applicationStopping = lifetime.ApplicationStopping;
+        _chatId = chatId;
+        _audioDownloader = audioDownloader;
+        _log = log;
+        _mediaResolver = mediaResolver;
+        _audioStreamer = audioStreamer;
+        _chatAuthors = chatAuthors;
+        _clocks = clocks;
+        _session = session;
+        _chats = chats;
     }
 
-    public virtual ValueTask DisposeAsync()
+    public async Task Stop()
     {
-        if (IsDisposeStarted)
-            return ValueTask.CompletedTask;
-        Playback? playback;
-        lock (Lock) {
-            if (IsDisposeStarted)
-                return ValueTask.CompletedTask;
-            IsDisposeStarted = true;
-            playback = Playback;
-        }
-        return playback?.DisposeAsync() ?? ValueTask.CompletedTask;
-    }
-
-    public async Task Play(Moment startAt)
-    {
-        var playback = await Restart().ConfigureAwait(false);
-        var cancellationToken = playback.StopToken;
-
-        var playId = GetPlayId();
-        var debugStopReason = "n/a";
-        DebugLog?.LogDebug("Play #{PlayId}: started @ {StartAt}", playId, startAt);
+        if (_isDisposed == 1)
+            throw new ObjectDisposedException(nameof(ChatPlayer));
+        if (!_isPlaying)
+            return;
+        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         try {
-            await PlayInternal(startAt, playback, cancellationToken).ConfigureAwait(false);
-            await playback.Complete().ConfigureAwait(false);
-            debugStopReason = "no more entries";
-        }
-        catch (OperationCanceledException) {
-            debugStopReason = "cancellation";
-            throw;
-        }
-        catch (Exception e) {
-            debugStopReason = "error";
-            Log.LogError(e, "Play #{PlayId}: failed", playId);
-            try {
-                await playback.Stop().ConfigureAwait(false);
-            }
-            catch {
-                // Intended
-            }
-            throw;
+            await StopAndDisposeCancellation().ConfigureAwait(false);
         }
         finally {
-            DebugLog?.LogDebug("Play #{PlayId}: ended ({StopReason})", playId, debugStopReason);
+            _locker.Release();
         }
     }
 
-    public Task Complete()
+    private async Task StopAndDisposeCancellation()
     {
-        var playback = Playback;
-        return playback == null ? Task.CompletedTask : playback.Complete();
+        if (!_isPlaying)
+            return;
+        var cts = _playingCancellation;
+        _playingCancellation = null;
+        if (cts != null) {
+            // add the stop command to the playback command queue and when discard all related commands (except added stop)
+            cts.CancelAndDisposeSilently();
+            var execution = await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
+            await execution.WhenCommandProcessed.ConfigureAwait(false);
+        }
+        _isPlaying = false;
     }
 
-    public Task Stop()
+    /// <summary>
+    /// Returns a <see cref="Task"/> which is completed when all <see cref="ChatEntry"/>
+    /// from <paramref name="startAt"/> are enqueued to <see cref="Playback"/>
+    /// </summary>
+    public async Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken)
     {
-        var playback = Playback;
-        return playback == null ? Task.CompletedTask : playback.Stop();
-    }
-
-    // Protected & private methods
-
-    protected abstract Task PlayInternal(Moment startAt, Playback playback, CancellationToken cancellationToken);
-
-    protected string GetPlayId()
-        => $"{Interlocked.Increment(ref _playIndex)} (chat #{ChatId})";
-
-    protected async ValueTask<ChatAuthor?> GetChatAuthor(CancellationToken cancellationToken)
-    {
-        _chatAuthor ??= await ChatAuthors
-            .GetChatAuthor(Session, ChatId, cancellationToken)
-            .ConfigureAwait(false);
-        return _chatAuthor;
-    }
-
-    protected async Task<Playback> Restart()
-    {
-        Playback? playback;
-        while (true) {
-            playback = Playback;
-            if (playback is { IsStopped: false })
-                await playback.Stop().ConfigureAwait(false);
-            lock (Lock) {
-                if (Playback is { IsStopped: false })
-                    continue;
-                playback = new Playback(Services, false);
-                PlaybackState.Value = playback;
-                break;
+        if (_isDisposed == 1)
+            throw new ObjectDisposedException(nameof(ChatPlayer));
+        CancellationToken cancellation;
+        try {
+            await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+            try {
+                if (_isPlaying)
+                    await StopAndDisposeCancellation().ConfigureAwait(false);
+                _playingCancellation = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
+                cancellation = _playingCancellation.Token;
+                _isPlaying = true;
             }
-        }
+            finally {
+                _locker.Release();
+            }
 
-        playback.Start();
-        return playback;
+            var newState = isRealtime
+                ? PlaybackKind.Realtime
+                : PlaybackKind.Historical;
+            if (State.Value != newState)
+                State.Value = newState;
+
+            if (isRealtime)
+                await PlayRealtime(startAt, cancellation).ConfigureAwait(false);
+            else
+                await PlayHistorical(startAt, cancellation).ConfigureAwait(false);
+        }
+        catch (TaskCanceledException) {
+            throw;
+        }
+        catch(Exception e) {
+            _log.LogError(e, "ChatPlayer.Play failed");
+        }
+        finally {
+            State.Value = PlaybackKind.None;
+        }
     }
 
-    protected async ValueTask EnqueueEntry(
-        Playback playback,
-        Moment playAt,
-        ChatEntry audioEntry,
-        TimeSpan skipTo,
-        CancellationToken cancellationToken)
+    private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)
+    {
+        var cpuClock = _clocks.CpuClock;
+        var audioEntryReader = _chats.CreateEntryReader(_session, _chatId, ChatEntryType.Audio);
+        var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Audio, cancellationToken)
+            .ConfigureAwait(false);
+        var startEntry = await audioEntryReader
+            .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .ConfigureAwait(false);
+        var startId = startEntry?.Id ?? idRange.End - 1;
+
+        var entries = audioEntryReader.ReadAllWaitingForNew(startId, cancellationToken);
+        var playbackEndedQueue = new ConcurrentDictionary<Task, Task>();
+        await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            if (entry.EndsAt < startAt)
+                // We're starting @ (startAt - ChatConstants.MaxEntryDuration),
+                // so we need to skip a few entries.
+                // Note that streaming entries have EndsAt == null, so we don't skip them.
+                continue;
+
+            if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
+                var chatAuthor = await _chatAuthors.GetChatAuthor(_session, _chatId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (chatAuthor != null && entry.AuthorId == chatAuthor.Id) {
+                    continue;
+                }
+            }
+
+            var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
+            var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
+            var skipTo = entryBeginsAt - entry.BeginsAt;
+            var (_, _, whenPlaybackEnded) =  await EnqueueEntry(Playback, cpuClock.Now, entry, skipTo, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (whenPlaybackEnded.IsCompleted) continue;
+
+            playbackEndedQueue.TryAdd(whenPlaybackEnded, whenPlaybackEnded);
+            _ = whenPlaybackEnded.ContinueWith(t => playbackEndedQueue.TryRemove(t, out _), cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
+        }
+
+        await Task.WhenAll(playbackEndedQueue.Values).ConfigureAwait(false);
+    }
+
+    private async Task PlayHistorical(Moment startAt, CancellationToken cancellationToken)
+    {
+        var cpuClock = _clocks.CpuClock;
+        var audioEntryReader = _chats.CreateEntryReader(_session, _chatId, ChatEntryType.Audio);
+        var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Audio, cancellationToken)
+            .ConfigureAwait(false);
+        var startEntry = await audioEntryReader
+            .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
+            .ConfigureAwait(false);
+        if (startEntry == null) {
+            _log.LogWarning("Couldn't find start entry");
+            return;
+        }
+
+        var playbackBlockEnd = cpuClock.Now - TimeSpan.FromDays(1); // Any time in past
+        var playbackOffset = playbackBlockEnd - Moment.EpochStart; // now - playTime
+
+        idRange = (startEntry.Id, idRange.End);
+        var entries = audioEntryReader.ReadAll(idRange, cancellationToken);
+        var playbackEndedQueue = new ConcurrentDictionary<Task, Task>();
+        await foreach (var entry in entries.ConfigureAwait(false)) {
+            if (!entry.StreamId.IsEmpty) // Streaming entry
+                continue;
+            if (entry.EndsAt < startAt)
+                // We're normally starting @ (startAt - ChatConstants.MaxEntryDuration),
+                // so we need to skip a few entries.
+                continue;
+
+            var now = cpuClock.Now;
+            var entryBeginsAt = Moment.Max(entry.BeginsAt, startAt);
+            var entryEndsAt = entry.EndsAt ?? entry.BeginsAt + InfDuration;
+            entryEndsAt = Moment.Min(entryEndsAt, entry.ContentEndsAt ?? entryEndsAt);
+            var skipTo = entryBeginsAt - entry.BeginsAt;
+            if (playbackBlockEnd < entryBeginsAt + playbackOffset) {
+                // There is a gap between the currently playing "block" and the entry.
+                // This means we're still playing the "historical" block, and the new entry
+                // starts with some gap after it; we're going to nullify this gap here by
+                // adjusting realtimeOffset.
+                playbackBlockEnd = Moment.Max(now, playbackBlockEnd);
+                playbackOffset = playbackBlockEnd - entryBeginsAt;
+            }
+
+            var playAt = entryBeginsAt + playbackOffset;
+            playbackBlockEnd = Moment.Max(playbackBlockEnd, entryEndsAt + playbackOffset);
+
+            var enqueueDelay = playAt - now - EnqueueAheadDuration;
+            if (enqueueDelay > TimeSpan.Zero)
+                await cpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
+            var (_, _, whenPlaybackEnded) =  await EnqueueEntry(Playback, playAt, entry, skipTo, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (whenPlaybackEnded.IsCompleted) continue;
+
+            playbackEndedQueue.TryAdd(whenPlaybackEnded, whenPlaybackEnded);
+            _ = whenPlaybackEnded.ContinueWith(t => playbackEndedQueue.TryRemove(t, out _), cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default);
+        }
+        await Task.WhenAll(playbackEndedQueue.Values).ConfigureAwait(false);
+    }
+
+    private async ValueTask<Playback.CommandExecution> EnqueueEntry(
+            Playback playback,
+            Moment playAt,
+            ChatEntry audioEntry,
+            TimeSpan skipTo,
+            CancellationToken cancellationToken)
     {
         try {
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Type != ChatEntryType.Audio)
                 throw new NotSupportedException($"The entry's Type must be {ChatEntryType.Audio}.");
-            if (audioEntry.Duration is {} duration && skipTo.TotalSeconds > duration) {
-                DebugLog?.LogDebug(
-                    "EnqueueEntry: chat #{ChatId}, entry #{EntryId}: skipTo={SkipTo:N}s > duration={Duration:N}s",
-                    audioEntry.ChatId, audioEntry.Id, skipTo.TotalSeconds, duration);
-                return;
-            }
+
+            if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration)
+                return Playback.CommandExecution.None;
             if (audioEntry.IsStreaming)
-                await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
-            else
-                await EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken).ConfigureAwait(false);
+                return await EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
+                    .ConfigureAwait(false);
+
+            return await EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e,
+            _log.LogError(e,
                 "Error playing audio entry; chat #{ChatId}, entry #{AudioEntryId}, stream #{StreamId}",
                 audioEntry.ChatId,
                 audioEntry.Id,
@@ -176,47 +271,56 @@ public abstract class ChatPlayer : IAsyncDisposable, IHasDisposeStarted
         }
     }
 
-    private async ValueTask EnqueueStreamingEntry(
+    private async ValueTask<Playback.CommandExecution> EnqueueStreamingEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        try {
-            DebugLog?.LogDebug(
-                "EnqueueStreamingEntry: chat #{ChatId}, entry #{EntryId}, stream #{StreamId}, skipTo={SkipTo:N}",
-                audioEntry.ChatId, audioEntry.Id, audioEntry.StreamId, skipTo.TotalSeconds);
-            var audio = await AudioStreamer
-                .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
-                .ConfigureAwait(false);
-            var trackInfo = new ChatAudioTrackInfo(audioEntry) {
-                RecordedAt = audioEntry.BeginsAt + skipTo,
-                ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
-            };
-            await playback.AddMediaTrack(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
+        var audio = await _audioStreamer
+            .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
+            .ConfigureAwait(false);
+        var trackInfo = new ChatAudioTrackInfo(audioEntry) {
+            RecordedAt = audioEntry.BeginsAt + skipTo,
+            ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
+        };
+        return await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask EnqueueNonStreamingEntry(
+    private async ValueTask<Playback.CommandExecution> EnqueueNonStreamingEntry(
         Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
     {
-        DebugLog?.LogDebug(
-            "EnqueueNonStreamingEntry: chat #{ChatId}, entry #{EntryId}, skipTo={SkipTo:N}s",
-            audioEntry.ChatId, audioEntry.Id, skipTo.TotalSeconds);
-        var audioBlobUri = MediaResolver.GetAudioBlobUri(audioEntry);
-        var audio = await AudioDownloader
+        var audioBlobUri = _mediaResolver.GetAudioBlobUri(audioEntry);
+        var audio = await _audioDownloader
             .Download(audioBlobUri, skipTo, cancellationToken)
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
-        await playback.AddMediaTrack(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
+        return await playback.Play(trackInfo, audio, playAt, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask DisposeAsyncCore()
+    {
+        _locker.Dispose();
+        try {
+            await StopAndDisposeCancellation().ConfigureAwait(false);
+        }
+        finally {
+            await Playback.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 1)
+            return;
+        await DisposeAsyncCore().ConfigureAwait(false);
     }
 }

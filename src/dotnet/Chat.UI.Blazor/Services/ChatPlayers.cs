@@ -1,78 +1,83 @@
-namespace ActualChat.Chat.UI.Blazor.Services;
+﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
-// This service can be used only from the UI thread
+/// <summary> Must be scoped service. </summary>
 public class ChatPlayers : IAsyncDisposable
 {
-    private ILogger? _log;
+    private readonly ConcurrentDictionary<Symbol, ChatPlayer> _players = new();
+    private readonly IServiceProvider _services;
+    private readonly ILogger<ChatPlayers> _log;
+    private int _isDisposed;
 
-    private Dictionary<Symbol, RealtimeChatPlayer> RealtimePlayers { get; } = new();
-    private Dictionary<Symbol, HistoricalChatPlayer> HistoricalPlayers { get; } = new();
-
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-    private IServiceProvider Services { get; }
-    private BlazorCircuitContext CircuitContext { get; }
-    private Session Session { get; }
-
-    public ChatPlayers(IServiceProvider services)
+    public ChatPlayers(IServiceProvider services, ILogger<ChatPlayers> log)
     {
-        Services = services;
-        CircuitContext = Services.GetRequiredService<BlazorCircuitContext>();
-        Session = Services.GetRequiredService<Session>();
+        _services = services;
+        _log = log;
+    }
+
+    [ComputeMethod]
+    public virtual Task<ChatPlayer?> GetPlayer(Symbol chatId)
+        => Task.FromResult(_players.GetValueOrDefault(chatId));
+
+    public virtual ChatPlayer ActivatePlayer(Symbol chatId)
+    {
+        if (_isDisposed == 1)
+            throw new ObjectDisposedException(nameof(ChatPlayers));
+        var player = _players.GetOrAdd(chatId,
+            static (key, self) => self._services.Activate<ChatPlayer>(key),
+            this);
+
+        using (Computed.Invalidate()) {
+            _ = GetPlayer(chatId);
+        }
+        return player;
+    }
+
+    /// <summary> Disposes all resources allocated for <paramref name="chatId"/> </summary>
+    public async ValueTask Close(Symbol chatId)
+    {
+        if (_isDisposed == 1)
+            throw new ObjectDisposedException(nameof(ChatPlayers));
+        if (_players.TryRemove(chatId, out var player)) {
+            await player.DisposeAsync().ConfigureAwait(false);
+            _log.LogDebug("Disposed player for chat #{ChatId}", chatId);
+        }
+
+        using (Computed.Invalidate()) {
+            _ = GetPlayer(chatId);
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
-        var players = RealtimePlayers.Values.Cast<ChatPlayer>()
-            .Concat(HistoricalPlayers.Values).ToList();
-        RealtimePlayers.Clear();
-        HistoricalPlayers.Clear();
-        foreach (var player in players.OrderBy(p => p.ChatId)) {
-            try {
-                await player.DisposeAsync().ConfigureAwait(true);
-            }
-            catch (Exception e) {
-                Log.LogError(e, "ChatPlayer.DisposeAsync() failed");
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0)
+            return;
+
+        GC.SuppressFinalize(this);
+
+        var players = _players.ToArray();
+        _players.Clear();
+        using (Computed.Invalidate()) {
+            foreach (var player in players) {
+                _ = GetPlayer(player.Key);
             }
         }
-    }
 
-    public ValueTask<RealtimeChatPlayer> GetRealtimePlayer(
-        Symbol chatId, CancellationToken cancellationToken = default)
-    {
-        var player = RealtimePlayers.GetValueOrDefault(chatId);
-        if (player is { IsDisposeStarted: false })
-            return ValueTask.FromResult(player);
+        var playerDisposeTasks = players
+            .Select(kv => DisposePlayer(kv.Key, kv.Value))
+            .ToArray();
 
-        player = new RealtimeChatPlayer(Services) {
-            ChatId = chatId,
-            Session = Session,
-        };
-        RealtimePlayers[chatId] = player;
-        return ValueTask.FromResult(player);
-    }
+        if (playerDisposeTasks.Length > 0)
+            await Task.WhenAll(playerDisposeTasks).ConfigureAwait(false);
 
-    public ValueTask<HistoricalChatPlayer> GetHistoricalPlayer(
-        Symbol chatId, CancellationToken cancellationToken = default)
-    {
-        var player = HistoricalPlayers.GetValueOrDefault(chatId);
-        if (player is { IsDisposeStarted: false })
-            return ValueTask.FromResult(player);
-
-        player = new HistoricalChatPlayer(Services) {
-            ChatId = chatId,
-            Session = Session,
-        };
-        HistoricalPlayers[chatId] = player;
-        return ValueTask.FromResult(player);
-    }
-
-    public async ValueTask DisposePlayers(string chatId)
-    {
-        var chatPlayer = (ChatPlayer?) RealtimePlayers.GetValueOrDefault(chatId);
-        if (chatPlayer != null)
-            await chatPlayer.DisposeAsync().ConfigureAwait(false);
-        chatPlayer = HistoricalPlayers.GetValueOrDefault(chatId);
-        if (chatPlayer != null)
-            await chatPlayer.DisposeAsync().ConfigureAwait(false);
+        async Task DisposePlayer(Symbol chatId, ChatPlayer player)
+        {
+            try {
+                await player.DisposeAsync().ConfigureAwait(true);
+                _log.LogDebug("Disposed player for chat #{ChatId}", chatId);
+            }
+            catch (Exception e) {
+                _log.LogError(e, "Can't dispose player for chat #{ChatId}", chatId);
+            }
+        }
     }
 }

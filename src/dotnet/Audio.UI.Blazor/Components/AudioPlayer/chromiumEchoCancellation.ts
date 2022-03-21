@@ -1,3 +1,4 @@
+import { isAudioContext } from 'audio-context-pool';
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.
  * The workaround is using a loopback webrtc connection.
@@ -12,7 +13,7 @@ const offerOptions = {
 };
 
 const onError = (e: any) => {
-    console.error("enableChromiumAec: RTCPeerConnection loopback initialization error", e);
+    console.error(`enableChromiumAec: RTCPeerConnection loopback initialization error: ${JSON.stringify(e)}`);
 };
 
 let delayedReconnectTimeout: number | null = null;
@@ -25,49 +26,72 @@ let delayedReconnectTimeout: number | null = null;
  * {@link https://bugs.chromium.org/p/chromium/issues/detail?id=933677}
  * {@link https://bugs.chromium.org/p/chromium/issues/detail?id=687574}
  * @param {MediaStream} stream Audio input
- * @returns {Promise<MediaStream>} Audio output with applied echoCancellation
+ * @returns {Promise<() => void>} cleanup function.
  */
-export async function enableChromiumAec(stream: MediaStream): Promise<MediaStream> {
-    const loopbackStream = new MediaStream();
+export async function enableChromiumAec(stream: MediaStream): Promise<() => void> {
+    const audioElement = new Audio();
+    audioElement.muted = true;
+    audioElement.setAttribute('playsinline', 'playsinline');
+    audioElement.autoplay = false;
+    audioElement.muted = false;
     const outboundPeerConnection = new RTCPeerConnection();
     /** loopback connection */
     const inboundPeerConnection = new RTCPeerConnection();
 
     outboundPeerConnection.onicecandidate = (e) => e.candidate
         && inboundPeerConnection.addIceCandidate(e.candidate).catch(onError);
-
-    outboundPeerConnection.addEventListener("iceconnectionstatechange", () => {
-        if (outboundPeerConnection.iceConnectionState === "disconnected") {
-            delayedReconnect(stream);
+    // prevents memory leaks with RTCPeerConnection's
+    const cleanup = (): void => {
+        audioElement.muted = true;
+        audioElement.pause();
+        audioElement.currentTime = 0;
+        audioElement.srcObject = null;
+        audioElement.remove();
+        closeSilently(inboundPeerConnection);
+        closeSilently(outboundPeerConnection);
+    };
+    const outboundOnIceConnectionStateChange = () => {
+        if (outboundPeerConnection.iceConnectionState === 'disconnected') {
+            delayedReconnect(cleanup, stream);
         }
-        if (outboundPeerConnection.iceConnectionState === "connected") {
+        if (outboundPeerConnection.iceConnectionState === 'connected') {
             if (delayedReconnectTimeout) {
                 // The RTCPeerConnection reconnected by itself, cancel recreating the local connection.
                 clearTimeout(delayedReconnectTimeout);
             }
         }
-    });
+    };
+    outboundPeerConnection.addEventListener('iceconnectionstatechange', outboundOnIceConnectionStateChange);
 
     inboundPeerConnection.onicecandidate = (e) => e.candidate
         && outboundPeerConnection.addIceCandidate(e.candidate).catch(onError);
-    inboundPeerConnection.addEventListener("iceconnectionstatechange", () => {
-        if (inboundPeerConnection.iceConnectionState === "disconnected") {
-            delayedReconnect(stream);
+
+    const inboundOnIceConnectionStateChange = () => {
+        if (inboundPeerConnection.iceConnectionState === 'disconnected') {
+            delayedReconnect(cleanup, stream);
         }
-        if (inboundPeerConnection.iceConnectionState === "connected") {
+        if (inboundPeerConnection.iceConnectionState === 'connected') {
             if (delayedReconnectTimeout) {
                 // The RTCPeerConnection reconnected by itself, cancel recreating the local connection.
                 clearTimeout(delayedReconnectTimeout);
             }
         }
-    });
-    try {
+    };
+    inboundPeerConnection.addEventListener('iceconnectionstatechange', inboundOnIceConnectionStateChange);
 
-        inboundPeerConnection.ontrack = (e) =>
-            e.streams[0].getTracks().forEach((track) => loopbackStream.addTrack(track));
+    try {
+        inboundPeerConnection.ontrack = (e) => {
+            audioElement.srcObject = e.streams[0];
+            audioElement.muted = false;
+            // TODO: work with rights & rejects of playing
+            void audioElement.play();
+        };
 
         // setup the loopback
-        stream.getTracks().forEach((track) => outboundPeerConnection.addTrack(track, stream));
+        const tracks: RTCRtpSender[] = [];
+        stream.getTracks().forEach((track) => {
+            tracks.push(outboundPeerConnection.addTrack(track, stream));
+        });
 
         const offer = await outboundPeerConnection.createOffer(offerOptions);
         await outboundPeerConnection.setLocalDescription(offer);
@@ -78,30 +102,77 @@ export async function enableChromiumAec(stream: MediaStream): Promise<MediaStrea
         await inboundPeerConnection.setLocalDescription(answer);
         await outboundPeerConnection.setRemoteDescription(answer);
 
-        return loopbackStream;
+        const onStop = (): void => {
+            console.warn('onStop from AEC');
+            inboundPeerConnection.removeEventListener('iceconnectionstatechange', inboundOnIceConnectionStateChange);
+            outboundPeerConnection.removeEventListener('iceconnectionstatechange', outboundOnIceConnectionStateChange);
+            tracks.forEach(track => outboundPeerConnection.removeTrack(track));
+            cleanup();
+        };
+
+        return onStop;
     }
     catch (e) {
         onError(e);
     }
 }
 
-function delayedReconnect(stream: MediaStream): void {
+function closeSilently(connection: RTCPeerConnection) {
+    try {
+        connection.onicecandidate = null;
+        connection.onconnectionstatechange = null;
+        connection.ondatachannel = null;
+        connection.onicecandidateerror = null;
+        connection.oniceconnectionstatechange = null;
+        connection.onicegatheringstatechange = null;
+        connection.onnegotiationneeded = null;
+        connection.onsignalingstatechange = null;
+        connection.ontrack = null;
+        connection.close();
+    }
+    catch (error) {
+        console.error(`enableChromiumAec: can't close peer connection(${JSON.stringify(connection)}), error: ${JSON.stringify(error)}`);
+    }
+}
+
+function delayedReconnect(cleanup: () => void, stream: MediaStream): void {
     if (delayedReconnectTimeout)
         clearTimeout(delayedReconnectTimeout);
 
     delayedReconnectTimeout = self.setTimeout(() => {
         delayedReconnectTimeout = null;
-        console.warn("enableChromiumAec: recreate RTCPeerConnection loopback "
-            + "because the local connection was disconnected for 10s");
-        enableChromiumAec(stream);
+        console.warn('enableChromiumAec: recreate RTCPeerConnection loopback '
+            + 'because the local connection was disconnected for 10s');
+        cleanup();
+        void enableChromiumAec(stream);
     }, 10000);
 }
 
+let isAecWorkaroundNeededCached: boolean | null = null;
 
 /** Chromium browsers don't apply echoCancellation to a Web Audio pipeline */
 export function isAecWorkaroundNeeded(): boolean {
-    const force = self["forceEchoCancellation"];
+    const force = self['forceEchoCancellation'] as boolean;
     if (force !== null && force !== undefined)
         return force;
-    return window.navigator.userAgent.includes('Chrome');
+    if (isAecWorkaroundNeededCached !== null)
+        return isAecWorkaroundNeededCached;
+    const navigatorUAData: { mobile: boolean; } = self.navigator['userAgentData'] as { mobile: boolean; };
+    // mobile phones have a good echoCancellation by default, we don't need anything to do
+    if (navigatorUAData != null && navigatorUAData.mobile != null && navigatorUAData.mobile === true) {
+        isAecWorkaroundNeededCached = false;
+        return isAecWorkaroundNeededCached;
+    }
+    const isChromium = window.navigator.userAgent.indexOf('Chrome') !== -1;
+    if (!isChromium) {
+        isAecWorkaroundNeededCached = false;
+        return isAecWorkaroundNeededCached;
+    }
+    // additional checks for mobile phones + chrome, that don't support userAgentData yet
+    if (/Android|Mobile|Phone|webOS|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent)) {
+        isAecWorkaroundNeededCached = false;
+        return isAecWorkaroundNeededCached;
+    }
+    isAecWorkaroundNeededCached = true;
+    return isAecWorkaroundNeededCached;
 }

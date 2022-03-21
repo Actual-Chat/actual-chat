@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import {
     GetStateNodeMessage,
     InitNodeMessage,
@@ -6,7 +7,7 @@ import {
     StateChangedProcessorMessage,
     StateProcessorMessage,
     StopNodeMessage
-} from "./feeder-audio-worklet-message";
+} from './feeder-audio-worklet-message';
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
@@ -20,7 +21,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     /** Called at the end of the queue, even if the playing wasn't started */
     public onEnded?: () => void = null;
 
-    private lastCallbackId: number = 0;
+    private lastCallbackId = 0;
     private callbacks = new Map<number, Function>();
 
     private constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
@@ -50,7 +51,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     }
 
     public stop(): void {
-        const msg: StopNodeMessage = { type: "stop" };
+        const msg: StopNodeMessage = { type: 'stop' };
         this.port.postMessage(msg);
     }
 
@@ -59,7 +60,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         return new Promise<PlaybackState>(resolve => {
             this.callbacks.set(callbackId, resolve);
             const msg: GetStateNodeMessage = {
-                type: "getState",
+                type: 'getState',
                 callbackId: callbackId,
             };
             this.port.postMessage(msg);
@@ -134,7 +135,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     }
 
     private onProcessorError = (ev: Event) => {
-        console.error("Feeder node: Unhandled feeder processor error: ", ev);
+        console.error('Feeder node: Unhandled feeder processor error: ', ev);
     };
 }
 

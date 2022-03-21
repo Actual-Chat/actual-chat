@@ -1,0 +1,11 @@
+﻿@page "/user/avatars"
+
+<UserAvatarsEditor Title="User avatars" CancelRequested="NavigateHome" />
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private void NavigateHome() {
+        Nav.NavigateTo("/");
+    }
+}

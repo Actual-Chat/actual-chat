@@ -8,8 +8,10 @@ public class ChatDbContext : DbContextBase
 {
     public DbSet<DbChat> Chats { get; protected set; } = null!;
     public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
+    public DbSet<DbTextEntryAttachment> TextEntryAttachments { get; protected set; } = null!;
     public DbSet<DbChatOwner> ChatOwners { get; protected set; } = null!;
     public DbSet<DbChatAuthor> ChatAuthors { get; protected set; } = null!;
+    public DbSet<DbInviteCode> InviteCodes { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;

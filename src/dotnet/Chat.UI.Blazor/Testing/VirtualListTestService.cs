@@ -18,29 +18,31 @@ public class VirtualListTestService
         VirtualListDataQuery query,
         int? rangeSeed,
         int? contentSeed,
-        bool isEndAligned,
+        bool isReverseRendered,
         CancellationToken cancellationToken)
     {
         var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
         var range = GetKeyRange(rangeSeedValue);
-        if (query.InclusiveRange == default) {
-            var key = isEndAligned ? range.End : 0;
-            query = query with { InclusiveRange = new Range<string>(
+        var queryRange = query.InclusiveRange;
+        if (!query.IsExpansionQuery) {
+            var key = range.End / 2;
+            queryRange = new Range<string>(
                 key.ToString(CultureInfo.InvariantCulture),
-                (key + 20).ToString(CultureInfo.InvariantCulture)) };
+                (key + 20).ToString(CultureInfo.InvariantCulture));
         }
 
-        var start = int.Parse(query.InclusiveRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             start -= (int) query.ExpandStartBy;
         start = Math.Max(range.Start, start);
 
-        var end = int.Parse(query.InclusiveRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        var end = int.Parse(queryRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             end += (int) query.ExpandEndBy;
         end = Math.Min(range.End, end);
 
         var result = VirtualListData.New(
+            query,
             Enumerable
                 .Range(start, end - start + 1)
                 .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed)),

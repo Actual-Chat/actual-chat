@@ -57,6 +57,16 @@ public class ChatsController : ControllerBase, IChats
         CancellationToken cancellationToken)
         => _chats.GetPermissions(session, chatId, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<bool> CheckCanJoin(Session session, string chatId, CancellationToken cancellationToken)
+        => _chats.CheckCanJoin(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
+        Session session, string chatId, long entryId,
+        CancellationToken cancellationToken)
+        => _chats.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
+
     // Commands
 
     [HttpPost]
@@ -66,6 +76,7 @@ public class ChatsController : ControllerBase, IChats
         return _chats.CreateChat(command, cancellationToken);
     }
 
+    [HttpPost]
     public Task<Unit> UpdateChat(IChats.UpdateChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
@@ -74,13 +85,16 @@ public class ChatsController : ControllerBase, IChats
 
     [HttpPost]
     public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
-        => _chats.JoinChat(command, cancellationToken);
-
-    [HttpPost]
-    public Task<ChatEntry> CreateEntry([FromBody] IChats.CreateEntryCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
-        return _chats.CreateEntry(command, cancellationToken);
+        return _chats.JoinChat(command, cancellationToken);
+    }
+
+    [HttpPost]
+    public Task<ChatEntry> CreateTextEntry([FromBody] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _chats.CreateTextEntry(command, cancellationToken);
     }
 
     [HttpPost]

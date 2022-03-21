@@ -1,38 +1,47 @@
-@namespace ActualChat.UI.Blazor.Components
+﻿@using BlazorContextMenu
 @inject NavigationManager _nav
-@using BlazorContextMenu
+@inject Session _session
+@inject IChats _chats
 
-@{
-    var cls = _isOpen ? "rotate-180" : "";
-}
-
-<ContextMenuTrigger MenuId="chatHeaderMenu" MouseButtonTrigger="MouseButtonTrigger.Both">
-    <div class="px-2 inline-flex">
-        <span class="float-left">@Chat.Title</span>
-        <svg class="ml-1 -mr-2 w-5 h-5 @cls" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="-12 -12 48 48"><path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/></svg>
-    </div>
-</ContextMenuTrigger>
-
-<ContextMenu Id="chatHeaderMenu" CssClass="text-secondary font-normal" OnAppearing="OnMenuAppearing" OnHiding="OnMenuHiding">
-    <Item OnClick="@OnEditChatAuthor">Edit your name, image and bio in this chat</Item>
-    <Item OnClick="@OnEditChat">Edit chat</Item>
-</ContextMenu>
+<Dropdown ContentPositionCss="md:left-1 top-7" Class="relative">
+    <ButtonTemplate>
+        <div class="px-2 inline-flex">
+            <span class="float-left text-secondary font-semibold chat-header-title">@Chat.Title</span>
+        </div>
+    </ButtonTemplate>
+    <ContentTemplate>
+        <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+            <MenuItem Title="Edit your name, image and bio in this chat" OnItemClick="OnEditChatAuthorAvatar"></MenuItem>
+            @if (_canEdit) {
+                <MenuItem Title="Edit chat" OnItemClick="OnEditChat"></MenuItem>
+            }
+            @if (_canInvite) {
+                <MenuItem Title="Invite people" OnItemClick="OnInvite"></MenuItem>
+            }
+        </Menu>
+    </ContentTemplate>
+</Dropdown>
 
 @code {
-    private bool _isOpen;
+    private bool _canEdit;
+    private bool _canInvite;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 
-    private void OnEditChatAuthor()
-        => _nav.NavigateTo($"/chat/{Chat.Id}/edit/author");
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        var permissions = await _chats.GetPermissions(_session, Chat.Id, default);
+        _canEdit = permissions.HasFlag(ChatPermissions.Admin);
+        _canInvite = permissions.HasFlag(ChatPermissions.Invite);
+    }
+
+    private void OnEditChatAuthorAvatar()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
 
     private void OnEditChat()
         => _nav.NavigateTo($"/chat/{Chat.Id}/edit");
 
-    private void OnMenuAppearing()
-        => _isOpen = true;
-
-    private void OnMenuHiding()
-        => _isOpen = false;
+    private void OnInvite()
+        => _nav.NavigateTo($"/chat/{Chat.Id}/invite");
 }

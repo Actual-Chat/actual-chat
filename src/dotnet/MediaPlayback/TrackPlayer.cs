@@ -1,123 +1,161 @@
 using ActualChat.Media;
+using Microsoft.Extensions.Hosting;
+using Microsoft.JSInterop;
 
 namespace ActualChat.MediaPlayback;
 
-public abstract class TrackPlayer : AsyncProcessBase, IHasServices
+public abstract class TrackPlayer : IAsyncDisposable
 {
-    private static readonly TimeSpan MaxReportedDelay = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(3);
+    private readonly CancellationToken _applicationStopping;
+    private int _isDisposed;
+    private int _isPlaying;
+    private Task? _playingTask;
+    private CancellationTokenSource? _cancellationTokenSource;
+    private readonly IMediaSource _source;
+    private readonly ILogger<TrackPlayer> _log;
 
-    private volatile TrackPlaybackState _state;
-    private readonly TaskSource<Unit> _whenCompletedSource;
-    private Moment _playbackDelayReportTime;
-    private Moment _playedToDelayReportTime;
-    private ILogger? _log;
+    private volatile PlayerState _state = new();
+    /// <summary>
+    /// Struct <see cref="TaskCompletionSource"/> which signals when an actual processing is completed.
+    /// For example audio (or video) playing on js side is ended or is stopped by an exception.
+    /// </summary>
+    private TaskSource<bool>? _whenCompleted;
+    private readonly object _locker = new();
 
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-    protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected bool DebugMode => Constants.DebugMode.AudioPlayback;
-    protected readonly TimeSpan DelayReportPeriod = TimeSpan.FromSeconds(2);
-    protected MomentClockSet Clocks { get; }
+    public PlayerState State => _state;
+    /// <summary>
+    /// Returns a <see cref="Task"/> which is completed when actual playing is completed.
+    /// For example audio (or video) playing on js side is ended or is stopped by an exception.
+    /// </summary>
+    public Task Completed => _whenCompleted?.Task ?? Task.CompletedTask;
 
-    public IServiceProvider Services { get; }
-    public Playback Playback { get; }
-    public PlayTrackCommand Command { get; }
-    public IMediaSource Source => Command.Source;
-    public Task WhenCompleted => _whenCompletedSource.Task;
+    public event Action<PlayerStateChangedEventArgs>? StateChanged;
 
-    // ReSharper disable once InconsistentlySynchronizedField
-    public TrackPlaybackState State => _state;
-
-    public event Action<TrackPlaybackState, TrackPlaybackState>? StateChanged;
-
-    protected TrackPlayer(Playback playback, PlayTrackCommand command)
+    protected TrackPlayer(IHostApplicationLifetime lifetime, IMediaSource source, ILogger<TrackPlayer> log)
     {
-        Playback = playback;
-        Services = Playback.Services;
-        Clocks = Services.Clocks();
-        Command = command;
-        _state = new(this);
-        _whenCompletedSource = TaskSource.New<Unit>(true);
+        _applicationStopping = lifetime.ApplicationStopping;
+        _log = log;
+        _source = source;
     }
 
-    public ValueTask EnqueueCommand(TrackPlayerCommand command)
-        => ProcessCommand(command);
+    /// <summary>
+    /// Starts playing the track which is represented by <see cref="IMediaSource"/> (from ctor).
+    /// </summary>
+    /// <returns>A running task, which will be completed after playing all media frames or on a cancel + disposing things</returns>
+    public Task Play(CancellationToken cancellationToken = default)
+    {
+        if (_isDisposed == 1)
+            throw new LifetimeException("Player is disposed.", new ObjectDisposedException(nameof(TrackPlayer)));
 
-    // Protected methods
+        if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 1)
+            throw new LifetimeException("Playing is already started.");
+        _whenCompleted = TaskSource.New<bool>(runContinuationsAsynchronously: true);
+        _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
+        _playingTask = PlayInternal(_cancellationTokenSource.Token)
+            .ContinueWith(task => {
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+                var exception = task.Exception?.InnerException ?? task.Exception;
+                if (exception != null)
+                    _whenCompleted?.TrySetException(exception);
+                else
+                    _whenCompleted?.TrySetResult(default);
+                OnStopped(exception);
+                _whenCompleted = null;
+                _playingTask = null;
+                // should be the last action in the continuation
+                if (Interlocked.CompareExchange(ref _isPlaying, 0, 1) == 0)
+                    throw new LifetimeException("Trying to reset playing, while playing wasn't started.");
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        return _playingTask;
+    }
 
-    protected abstract ValueTask ProcessCommand(TrackPlayerCommand command);
+    protected abstract ValueTask ProcessCommand(IPlayerCommand command, CancellationToken cancellationToken);
     protected abstract ValueTask ProcessMediaFrame(MediaFrame frame, CancellationToken cancellationToken);
 
-    protected override async Task RunInternal(CancellationToken cancellationToken)
+    protected internal virtual async Task PlayInternal(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Track #{TrackId}: started, Command={Command}, delay={Delay}",
-            Command.TrackId, Command, GetDelayInfo(TimeSpan.Zero));
-        Exception? error = null;
+        Exception? exception = null;
+
         var isStarted = false;
+        var startTask = ProcessCommandWrapper(PlayCommand.Instance, cancellationToken);
         try {
-            var initializeTask = ProcessCommand(new InitializeCommand(this));
-            // Actual playback
-            var cpuClock = Clocks.CpuClock;
-            var frames = Source.GetFramesUntyped(cancellationToken);
-            // TODO: shouldn't run playing if frames less than threshold (for example 20-40 ms only)
-            await foreach (var frame in frames.ConfigureAwait(false)) {
+            // we might send to js side small tracks even like 20-40ms (or without frames at all),
+            // track might be less than js threshold, so js side should support this
+            var frames = _source.GetFramesUntyped(cancellationToken);
+            await foreach (var frame in frames.ConfigureAwait(false).WithCancellation(cancellationToken)) {
                 if (!isStarted) {
-                    // We do this here because we want to start buffering as early as possible
+                    await startTask.ConfigureAwait(false);
                     isStarted = true;
-                    var playbackDelay = Command.PlayAt - cpuClock.Now;
-                    if (playbackDelay > TimeSpan.FromMilliseconds(10))
-                        await cpuClock.Delay(playbackDelay, cancellationToken).ConfigureAwait(false);
-                    OnPlayedTo(TimeSpan.Zero);
-                    await initializeTask.ConfigureAwait(false);
-                    var startPlaybackTask = ProcessCommand(new StartPlaybackCommand(this));
-                    Log.LogInformation("Track #{TrackId}: StartPlaybackCommand, delay={Delay}",
-                        Command.TrackId, GetDelayInfo(TimeSpan.Zero));
-                    await startPlaybackTask.ConfigureAwait(false);
                 }
-                var processMediaFrameTask = ProcessMediaFrame(frame, cancellationToken);
-                GetDelayReportLog(ref _playbackDelayReportTime)
-                    ?.LogInformation("Track #{TrackId}: ProcessMediaFrame, delay={Delay}",
-                        Command.TrackId, GetDelayInfo(frame.Offset));
-                await processMediaFrameTask.ConfigureAwait(false);
+                await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             }
-            Log.LogInformation("Track #{TrackId}: EndCommand", Command.TrackId);
-            await ProcessCommand(new EndCommand(this)).ConfigureAwait(false);
-            await WhenCompleted.WithFakeCancellation(cancellationToken).ConfigureAwait(false);
+            /// note, that end command shouldn't be cancelled with <param name="cancellationToken" />
+            /// this prevents sending (end + stop) commands simultaneously, don't change this.
+            /// change to get (end + stop) exists for example with a thread abort exception,
+            /// but it's a pretty rare situation
+            await ProcessCommandWrapper(EndCommand.Instance, default).ConfigureAwait(false);
+            // now we're waiting for a report when the client side has actually played all frames or Cancel()
+            await Completed.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException e) {
-            error = e;
-            throw;
-        }
-        catch (Exception e) {
-            error = e;
-            Log.LogError(e, "Media track playback failed");
+        catch (Exception ex) {
+            exception = ex;
             throw;
         }
         finally {
-            if (!WhenCompleted.IsCompleted) {
+            // we should send stop command & await it even if thread is aborted,
+            // that's why the exception handling is in the finally block
+            if (exception != null && !Completed.IsCompletedSuccessfully) {
                 try {
-                    await ProcessCommand(new StopPlaybackCommand(this))
+                    if (!isStarted) {
+                        await startTask.ConfigureAwait(false);
+                        isStarted = true;
+                    }
+                    await ProcessCommand(StopCommand.Instance, default)
                         .AsTask()
-                        .WithTimeout(StopTimeout, default)
+                        .WaitAsync(StopTimeout, default)
                         .ConfigureAwait(false);
-                    await WhenCompleted.WithTimeout(StopTimeout, default).ConfigureAwait(false);
-                    if (!WhenCompleted.IsCompleted)
-                        OnStopped();
+                    // try to wait for processing the stop command
+                    await Completed.WaitAsync(StopTimeout, default).ConfigureAwait(false);
                 }
-                catch (Exception e) {
-                    if (!WhenCompleted.IsCompleted)
-                        OnStopped(e);
+                catch (Exception ex) {
+                    if (ex is not JSDisconnectedException)
+                        _log.LogError(ex, $"Unhandled exception in {nameof(TrackPlayer)}, while sending stop command");
                 }
             }
-            // AY: It's a self-disposing thing
-            _ = DisposeAsync();
+        }
+
+        async ValueTask ProcessCommandWrapper(IPlayerCommand command, CancellationToken cancellationToken)
+        {
+            try {
+                await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                throw new ProcessingException($"Processing command {command.GetType().Name} is failed.", ex) {
+                    Command = command,
+                };
+            }
         }
     }
-
-    protected void UpdateState<TArg>(TArg arg, Func<TArg, TrackPlaybackState, TrackPlaybackState> updater)
+    /// <summary>
+    /// Stops the playing of a track.
+    /// </summary>
+    /// <returns>A running task which is completed when you can run <see cref="Play(CancellationToken)"/> again</returns>
+    public Task Stop()
     {
-        TrackPlaybackState state;
-        lock (Lock) {
+        var playingTask = _playingTask;
+        _cancellationTokenSource?.Cancel();
+        return playingTask ?? Task.CompletedTask;
+    }
+
+    protected void UpdateState<TArg>(Func<TArg, PlayerState, PlayerState> updater, TArg arg)
+    {
+        PlayerState state;
+        lock (_locker) {
             var lastState = _state;
             if (lastState.IsCompleted)
                 return; // No need to update it further
@@ -126,59 +164,60 @@ public abstract class TrackPlayer : AsyncProcessBase, IHasServices
                 return;
             _state = state;
             try {
-                StateChanged?.Invoke(lastState, state);
+                StateChanged?.Invoke(new(lastState, state));
             }
-            catch (Exception e) {
-                Log.LogError(e, "Error on StateChanged handler(s) invocation");
+            catch (Exception ex) {
+                _log.LogError(ex, "Error on StateChanged handler(state) invocation");
             }
         }
         if (state.IsCompleted)
-            _whenCompletedSource.TrySetResult(default);
+            _whenCompleted?.TrySetResult(default);
     }
 
-    protected virtual void OnPlayedTo(TimeSpan offset)
+    protected virtual void OnPlayedTo(TimeSpan offset) => UpdateState(static (arg, state) => {
+        var (offset1, self) = arg;
+        return state with {
+            IsStarted = true,
+            PlayingAt = TimeSpanExt.Max(state.PlayingAt, offset1),
+        };
+    }, (offset, this));
+
+    protected virtual void OnStopped(Exception? exception = null) => UpdateState(static (exception, state) => {
+        return state with { IsCompleted = true, Error = exception };
+    }, exception);
+
+    protected virtual async ValueTask DisposeAsyncCore()
     {
-        UpdateState((offset, this), static (arg, s) => {
-            var (offset1, self) = arg;
-            self.GetDelayReportLog(ref self._playedToDelayReportTime)
-                ?.LogInformation("Track #{TrackId}: OnPlayedTo({Offset}), delay={Delay}",
-                    self.Command.TrackId, offset1, self.GetDelayInfo(offset1));
-            return s with {
-                IsStarted = true,
-                PlayingAt = TimeSpanExt.Max(s.PlayingAt, offset1),
-            };
-        });
+        var playing = Interlocked.Exchange(ref _playingTask, null);
+        if (playing != null) {
+            _ = Stop();
+            try {
+                await playing.ConfigureAwait(false);
+            }
+            catch { }
+        }
+        /// <see cref="_cancellationTokenSource"/> will be disposed by the continuation
     }
 
-    protected virtual void OnStopped(Exception? error = null)
-        => UpdateState(error, (e, s) => s with { IsCompleted = true, Error = e });
-
-    protected virtual void OnVolumeSet(double volume)
-        => UpdateState(volume, (v, s) => s with { Volume = v });
-
-
-    // Delay reporting
-
-    protected ILogger? GetDelayReportLog(ref Moment delayReportTime)
+    public async ValueTask DisposeAsync()
     {
-        var now = Clocks.CpuClock.Now;
-        if (now - delayReportTime < DelayReportPeriod)
-            return null;
-        delayReportTime = now;
-        return Log;
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 1)
+            return;
+        await DisposeAsyncCore().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
     }
 
-    protected string GetDelayInfo(TimeSpan frameOffset)
+    [Serializable]
+    public class ProcessingException : Exception
     {
-        var recordedAt = Command.TrackInfo.RecordedAt + frameOffset;
-        var clientSideRecordedAt = Command.TrackInfo.ClientSideRecordedAt + frameOffset;
-        var now = Clocks.SystemClock.Now;
-        var delay = now - recordedAt;
-        if (delay > MaxReportedDelay)
-            return "n/a";
-        if (clientSideRecordedAt == recordedAt)
-            return $"{delay.TotalMilliseconds:N1}ms @ {frameOffset.TotalSeconds:N}s";
-        var clientSideDelay = now - clientSideRecordedAt;
-        return $"{delay.TotalMilliseconds:N1}ms / {clientSideDelay.TotalMilliseconds:N1}ms @ {frameOffset.TotalSeconds:N}s";
+        public IPlayerCommand? Command { get; init; }
+        public Exception? OriginalException { get; init; }
+        public ProcessingException() { }
+        public ProcessingException(string? message) : base(message) { }
+        public ProcessingException(string? message, Exception? innerException) : base(message, innerException) { }
+        protected ProcessingException(SerializationInfo serializationInfo, StreamingContext streamingContext)
+            : base(serializationInfo, streamingContext) { }
     }
 }
+
+public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, PlayerState State);

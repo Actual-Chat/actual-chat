@@ -1,0 +1,73 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@using System.Net.NetworkInformation
+@using ActualChat.UI.Blazor.Module
+@inject IJSRuntime _js
+@implements IDropdownBackend
+@implements IAsyncDisposable
+
+<div class="dropdown @Class" @ref="DropdownRef">
+    <CascadingValue Value="@this" IsFixed="true">
+        <button @onclick="@(() => _isOpened = !_isOpened)" class="dropdown-button relative flex outline-none hover:cursor-pointer @ButtonClass">
+            @ButtonTemplate
+        </button>
+        <div class="dropdown-content absolute @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
+            <div class="dropdown-content-body relative @(_isOpened ? "" : "hidden")">
+                @ContentTemplate
+            </div>
+        </div>
+    </CascadingValue>
+</div>
+
+@code {
+    private bool _isOpened;
+
+    [Parameter]
+    public string Class { get; set; } = "";
+    [Parameter]
+    public string Name { get; set; } = "";
+    [Parameter]
+    public RenderFragment ContentTemplate { get; set; } = default!;
+    [Parameter]
+    public RenderFragment ButtonTemplate { get; set; } = default!;
+    [Parameter]
+    public string ButtonClass { get; set; } = "";
+    [Parameter]
+    public string ContentPositionCss { get; set; } = "";
+
+    private DotNetObjectReference<IDropdownBackend>? BlazorRef { get; set; } = null!;
+    private ElementReference DropdownRef { get; set; }
+    private IJSObjectReference? JSRef { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IDropdownBackend>(this);
+            JSRef = await _js.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.Dropdown.create",
+                DropdownRef, BlazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+
+    [JSInvokable]
+    public Task HideContent() {
+        _isOpened = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (JSRef != null) {
+            try {
+                await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
+                await JSRef.DisposeAsync().ConfigureAwait(true);
+            }
+            catch (JSDisconnectedException) { }
+            JSRef = null;
+        }
+        if (BlazorRef != null) {
+            BlazorRef.Dispose();
+            BlazorRef = null;
+        }
+    }
+}

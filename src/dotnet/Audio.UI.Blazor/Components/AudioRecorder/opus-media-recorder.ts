@@ -1,361 +1,296 @@
-import WebMOpusWasm from 'opus-media-recorder/WebMOpusEncoder.wasm';
+/* eslint-disable @typescript-eslint/ban-types */
 import { AudioContextPool } from 'audio-context-pool';
+import { ResolveCallbackMessage } from 'resolve-callback-message';
 
-import {
-    DoneCommand,
-    EncoderCommand,
-    EncoderMessage,
-    GetEncodedDataCommand,
-    InitCommand,
-    LoadEncoderCommand,
-} from "./opus-media-recorder-message";
+import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
+import { EncoderWorkletMessage } from './worklets/opus-encoder-worklet-message';
+import { EndMessage, InitEncoderMessage, CreateEncoderMessage } from './workers/opus-encoder-worker-message';
+import { VadMessage } from './workers/audio-vad-worker-message';
+import { VadWorkletMessage } from './worklets/audio-vad-worklet-message';
 
-type WorkerState = 'inactive'|'readyToInit'|'encoding';
+/*
+┌─────────────────────────────────┐  ┌──────────────────────┐
+│                                 │  │            web worker│◄────────┐
+│ ┌───┐    ┌────────────┐    ┌────┼──►VAD worker            │         │
+│ │MIC├─┬─►│VAD worklet ├────┘    │  └──────────┬───────────┘         │
+│ └───┘ │  └────────────┘         │             │isVoiceFound         │
+│       │                         │ ┌───────────▼────────────┐        │
+│       │ ┌───────────────┐       │ │              web worker│        │    ┌───────┐
+│       └─►Encoder worklet├───────┼─►                        ├────────┼───►│SignalR│
+│         └───────────────┘       │ │ Encoder worker         │        │    └───────┘
+│               Audio thread      │ └────────────────────────┘        │
+└─────────────────────────────────┘              ▲                    │
+             ▲                                   │                    │
+             │                                   │                    │
+             │                                   │                    │
+             │                                   │                    │
+             └────────────────────────────┬──────┴────────────────────┘
+                                          │
+                                          │
+                                   ┌──────┴──────┐
+                                   │ Main thread │ <- You are here (OpusMediaRecorder)
+                                   └─────────────┘
+ */
 
-export class DataEvent extends Event {
-    readonly data: Uint8Array;
+const AUDIO_BITS_PER_SECOND = 32000;
 
-    constructor(data: Uint8Array) {
-        super('datarecorded');
-        this.data = data;
-    }
-}
-
-const SAMPLE_RATE: number = 48000;
-const mimeType: string = 'audio/webm';
-export class OpusMediaRecorder extends EventTarget implements MediaRecorder {
+export class OpusMediaRecorder {
     private readonly worker: Worker;
+    private readonly vadWorker: Worker;
     private readonly channelCount: number = 1;
-    private readonly workerChannel: MessageChannel;
+    private readonly encoderWorkerChannel: MessageChannel;
+    private readonly vadWorkerChannel: MessageChannel;
 
     private context: AudioContext = null;
-    private workerState: WorkerState = 'inactive';
     private encoderWorklet: AudioWorkletNode = null;
-    private stopResolve: () => void = null;
+    private vadWorklet: AudioWorkletNode = null;
+    private loadCompleted: Promise<void>;
+    private lastCallbackId = 0;
+    private callbacks = new Map<number, Function>();
 
     public source?: MediaStreamAudioSourceNode = null;
-    public stream: MediaStream;
-    public readonly videoBitsPerSecond: number = NaN;
-    public readonly audioBitsPerSecond: number;
-    public readonly mimeType: string = mimeType;
+    public stream?: MediaStream;
 
+    // TODO: clearer states
     public state: RecordingState = 'inactive';
+    public onerror: ((ev: MediaRecorderErrorEvent) => void) | null;
 
-    public ondatarecorded: ((ev: DataEvent) => any) | null;
-    public ondataavailable: ((ev: BlobEvent) => any) | null;
-    public onerror: ((ev: MediaRecorderErrorEvent) => any) | null;
-    public onpause: ((ev: Event) => any) | null;
-    public onresume: ((ev: Event) => any) | null;
-    public onstart: ((ev: Event) => any) | null;
-    public onstop: ((ev: Event) => any) | null;
-
-    constructor(options: MediaRecorderOptions) {
-        super();
-
-        this.audioBitsPerSecond = options.audioBitsPerSecond;
-
-        this.workerChannel = new MessageChannel();
+    constructor() {
+        this.encoderWorkerChannel = new MessageChannel();
         this.worker = new Worker('/dist/opusEncoderWorker.js');
-        this.worker.onmessage = (e) => this.onWorkerMessage(e);
-        this.worker.onerror = (e) => this.onWorkerError(e);
+        this.worker.onmessage = this.onWorkerMessage;
+        this.worker.onerror = this.onWorkerError;
 
-        this.postMessageToWorker(new LoadEncoderCommand(WebMOpusWasm));
+        this.vadWorkerChannel = new MessageChannel();
+        this.vadWorker = new Worker('/dist/vadWorker.js');
+
+        this.loadCompleted = this.loadWorkers();
     }
 
-    public setSource(source: MediaStreamAudioSourceNode): void {
-        if (this.source === source) {
-            return;
-        }
-
-        if (this.source) {
-            this.source.disconnect();
-        }
-
-        this.source = source;
-        this.stream = source.mediaStream;
-    }
-
-    public override dispatchEvent(event: Event): boolean {
-        const { type } = event;
-        switch (type) {
-            case 'datarecorded':
-                if (this.ondatarecorded) {
-                    this.ondatarecorded(event as DataEvent);
-                }
-                break;
-            case 'dataavailable':
-                if (this.ondataavailable) {
-                    this.ondataavailable(event as BlobEvent);
-                }
-                break;
-            case 'error':
-                if (this.onerror) {
-                    this.onerror(event as MediaRecorderErrorEvent);
-                }
-                break;
-            case 'pause':
-                if (this.onpause) {
-                    this.onpause(event);
-                }
-                break;
-            case 'resume':
-                if (this.onresume) {
-                    this.onresume(event);
-                }
-                break;
-            case 'start':
-                if (this.onstart) {
-                    this.onstart(event);
-                }
-                break;
-            case 'stop':
-                if (this.onstop) {
-                    this.onstop(event);
-                }
-                break;
-        }
-        return super.dispatchEvent(event);
-    }
 
     public pause(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
+        console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an pause() call. Lifetime error.");
+        console.assert(this.source != null, "Recorder: pause() call is invalid when source is null. Lifetime error.");
 
         // Stop stream first
         this.source.disconnect();
         this.encoderWorklet.disconnect();
-
-        let event = new Event('pause');
-        this.dispatchEvent(event);
+        this.vadWorklet.disconnect();
         this.state = 'paused';
     }
 
-    public requestData(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
-
-        // dataavailable event will be triggerd at onmessageFromWorker()
-        this.postMessageToWorker(new GetEncodedDataCommand());
-    }
-
     public resume(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
-
+        console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an resume() call. Lifetime error.");
+        console.assert(this.source != null, "Recorder: resume() call is invalid when source is null. Lifetime error.");
         // Restart streaming data
         this.source.connect(this.encoderWorklet);
-
-        let event = new Event('resume');
-        this.dispatchEvent(event);
+        this.source.connect(this.vadWorklet);
         this.state = 'recording';
     }
 
-    public start(timeSlice?: number): void {
-        if (this.state !== 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must be inactive.');
-        }
-        if (timeSlice < 0) {
-            throw new TypeError('invalid arguments, timeSlice should be 0 or higher.');
-        }
-        if (this.source == null) {
-            throw new Error('start: streamNode is not set');
-        }
+    public async start(sessionId: string, chatId: string): Promise<void> {
+        console.assert(sessionId != '' && chatId != '', 'sessionId and chatId both should have value specified.');
 
-        let tracks = this.stream.getAudioTracks();
-        if (!tracks[0]) {
-            throw new Error('DOMException: UnknownError, media track not found.');
-        }
-
-        const _ = this.initialize(timeSlice);
-
-        this.state = 'recording';
-
-        // If the worker is already loaded then start
-        if (this.workerState === 'readyToInit') {
-            const { channelCount, audioBitsPerSecond } = this;
-            const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
-            this.postMessageToWorker(initCommand);
-        }
-    }
-
-    public async startAsync(source: MediaStreamAudioSourceNode, timeSlice: number): Promise<void> {
-        if (this.source === source)
-            return;
+        await this.initialize();
 
         if (this.source)
             this.source.disconnect();
-
-        this.source = source;
-        this.stream = source.mediaStream;
-
-        let tracks = this.stream.getAudioTracks();
-        if (!tracks[0]) {
-            throw new Error('DOMException: UnknownError, media track not found.');
-        }
-
-        // Start recording
-        await this.initialize(timeSlice);
+        this.stream = await OpusMediaRecorder.GetMicrophoneStream();
+        this.source = this.context.createMediaStreamSource(this.stream);
 
         this.state = 'recording';
 
-        // If the worker is already loaded then start
-        if (this.workerState === 'readyToInit') {
-            const { channelCount, audioBitsPerSecond } = this;
-            const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
-            this.postMessageToWorker(initCommand);
+        if (this.loadCompleted != null) {
+            await this.loadCompleted;
+            this.loadCompleted = null;
         }
+
+        const callbackId = this.lastCallbackId++;
+        await new Promise<void>(resolve => {
+            this.callbacks.set(callbackId, resolve);
+
+            const { channelCount } = this;
+            const initMessage: InitEncoderMessage = {
+                type: 'init',
+                channelCount: channelCount,
+                bitsPerSecond: AUDIO_BITS_PER_SECOND,
+                sessionId: sessionId,
+                chatId: chatId,
+                callbackId
+            };
+            // Initialize the worker
+            // Expected 'initCompleted' event from the worker.
+            this.worker.postMessage(initMessage);
+
+            // Initialize new stream at the VAD worker
+            const vadInitMessage: VadMessage = { type: 'init', };
+            this.vadWorker.postMessage(vadInitMessage);
+        });
+
+        // Start streaming
+        this.source.connect(this.encoderWorklet);
+        // It's OK to not wait for VAD worker init-new-stream message to be processed
+        this.source.connect(this.vadWorklet);
     }
 
-    public stop(): void {
-        if (this.state === 'inactive') {
-            throw new Error('DOMException: INVALID_STATE_ERR, state must NOT be inactive.');
-        }
+    public async stop(): Promise<void> {
+        const callbackId = this.lastCallbackId++;
+        await new Promise(resolve => {
+            console.assert(this.state !== 'inactive', "Recorder isn't initialized but got an stop command. Lifetime error.");
+            this.callbacks.set(callbackId, resolve);
 
-        // Stop stream first
-        this.source.disconnect();
-        this.encoderWorklet.disconnect();
+            // Stop stream first
+            if (this.source)
+                this.source.disconnect();
+            if (this.encoderWorklet)
+                this.encoderWorklet.disconnect();
+            if (this.vadWorklet)
+                this.vadWorklet.disconnect();
 
-        // Stop event will be triggered at _onmessageFromWorker(),
-        this.postMessageToWorker(new DoneCommand());
+            if (this.stream) {
+                this.stream.getAudioTracks().forEach(t => t.stop());
+                this.stream.getVideoTracks().forEach(t => t.stop());
+            }
+            this.stream = null;
+            this.source = null;
 
+            // Stop event will be triggered at _onmessageFromWorker(),
+            const msg: EndMessage = {
+                type: 'end',
+                callbackId
+            };
+            // Tell encoder finalize the job and destroy itself.
+            // Expects callback event from the worker.
+            this.worker.postMessage(msg);
+        });
         this.state = 'inactive';
     }
 
-    public stopAsync(): Promise<void> {
+    private loadWorkers(): Promise<void> {
+        const origin = new URL('opus-media-recorder.ts', import.meta.url).origin;
+        const audioHubUrl = new URL('/api/hub/audio', origin).toString();
+
+        const callbackId = this.lastCallbackId++;
         return new Promise(resolve => {
-            this.stopResolve = resolve;
-            this.stop();
+            this.callbacks.set(callbackId, resolve);
+
+            const msg: CreateEncoderMessage = {
+                type: 'create',
+                audioHubUrl: audioHubUrl,
+                callbackId: callbackId,
+            };
+
+            const crossWorkerChannel = new MessageChannel();
+            // Expected 'loadCompleted' event from the worker.
+            this.worker.postMessage(msg, [this.encoderWorkerChannel.port1, crossWorkerChannel.port1]);
+
+            const msgVad: VadMessage = { type: 'create', };
+            this.vadWorker.postMessage(msgVad, [this.vadWorkerChannel.port1, crossWorkerChannel.port2]);
         });
     }
 
-    private async initialize(timeSlice: number): Promise<void> {
-        if (this.context == null) {
-            this.context = await AudioContextPool.get('main') as AudioContext;
-            if (this.context.sampleRate != 48000) {
-                throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${ this.context.sampleRate }`);
-            }
-            const encoderWorkletOptions: AudioWorkletNodeOptions = {
-                numberOfInputs: 1,
-                numberOfOutputs: 1,
+    private async initialize(): Promise<void> {
+        if (this.context != null)
+            return;
+
+        this.context = await AudioContextPool.get('main') as AudioContext;
+        if (this.context.sampleRate !== 48000) {
+            throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
+        }
+        const encoderWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+            processorOptions: {
+                timeSlice: 20, // hard-coded 20ms at the codec level
+            } as ProcessorOptions,
+        };
+        this.encoderWorklet = new AudioWorkletNode(
+            this.context,
+            'opus-encoder-worklet-processor',
+            encoderWorkletOptions);
+        const initPortMessage: EncoderWorkletMessage = { type: 'init' };
+        this.encoderWorklet.port.postMessage(initPortMessage, [this.encoderWorkerChannel.port2]);
+        const vadWorkletOptions: AudioWorkletNodeOptions = {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            channelCount: 1,
+            channelInterpretation: 'speakers',
+            channelCountMode: 'explicit',
+        };
+        this.vadWorklet = new AudioWorkletNode(this.context, 'audio-vad-worklet-processor', vadWorkletOptions);
+        const vadInitPortMessage: VadWorkletMessage = { type: 'init' };
+        this.vadWorklet.port.postMessage(vadInitPortMessage, [this.vadWorkerChannel.port2]);
+    }
+
+    private static async GetMicrophoneStream(): Promise<MediaStream> {
+        /**
+         * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
+         * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
+         */
+        const constraints: MediaStreamConstraints & any = {
+            audio: {
                 channelCount: 1,
-                channelInterpretation: 'speakers',
-                channelCountMode: 'explicit',
-                processorOptions: {
-                    timeSlice: timeSlice
-                }
-            };
-            this.encoderWorklet = new AudioWorkletNode(this.context, 'opus-encoder-worklet-processor', encoderWorkletOptions);
-            this.encoderWorklet.port.postMessage({ topic: 'init-port' }, [this.workerChannel.port2]);
+                sampleRate: 48000,
+                sampleSize: 32,
+                autoGainControl: true,
+                echoCancellation: true,
+                noiseSuppression: true,
+                googEchoCancellation: true,
+                googEchoCancellation2: true,
+                latency: 0,
+                advanced: [
+                    { autoGainControl: { exact: true } },
+                    { echoCancellation: { exact: true } },
+                    { noiseSuppression: { exact: true } },
+                    { googEchoCancellation: { ideal: true } },
+                    { googEchoCancellation2: { ideal: true } },
+                    { googAutoGainControl: { ideal: true } },
+                    { googNoiseSuppression: { ideal: true } },
+                    { googNoiseSuppression2: { ideal: true } },
+                    { googExperimentalAutoGainControl: { ideal: true } },
+                    { googExperimentalEchoCancellation: { ideal: true } },
+                    { googExperimentalNoiseSuppression: { ideal: true } },
+                    { googHighpassFilter: { ideal: true } },
+                    { googTypingNoiseDetection: { ideal: true } },
+                    { googAudioMirroring: { exact: false } },
+                ],
+            },
+            video: false,
+        };
+        let mediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
+        const tracks = mediaStream.getAudioTracks();
+        if (!tracks[0]) {
+            throw new Error('DOMException: UnknownError, media track not found.');
         }
+        return mediaStream;
     }
 
-    private postMessageToWorker (encoderCommand: EncoderCommand) {
-        const { command } = encoderCommand;
-        switch (command) {
-            case 'loadEncoder':
-                this.worker.postMessage(encoderCommand, [this.workerChannel.port1]);
-                break;
+    private onWorkerMessage = (ev: MessageEvent<ResolveCallbackMessage>) => {
+        const { callbackId } = ev.data;
+        this.popCallback(callbackId)();
+    };
 
-            case 'init':
-                // Initialize the worker
-                this.worker.postMessage(encoderCommand);
-                break;
-
-            case 'getEncodedData':
-                // Request encoded result.
-                // Expected 'encodedData' event from the worker
-                this.worker.postMessage(encoderCommand);
-                break;
-
-            case 'done':
-                // Tell encoder finalize the job and destroy itself.
-                // Expected 'lastEncodedData' event from the worker.
-                this.worker.postMessage(encoderCommand);
-                break;
-
-            default:
-                // This is an error case
-                throw new Error('Internal Error: Incorrect postMessage requested.');
+    private popCallback(callbackId: number): Function {
+        const callback = this.callbacks.get(callbackId);
+        if (callback === undefined) {
+            throw new Error(`OpusMediaRecorder: Callback with id '${callbackId}' is not found.`);
         }
+        this.callbacks.delete(callbackId);
+        return callback;
     }
 
-    private onWorkerMessage(ev: MessageEvent<EncoderMessage>) {
-        const { command, buffers } = ev.data;
-        switch (command) {
-            case 'readyToInit':
-                this.workerState = 'readyToInit';
-                if (this.state === 'recording') {
-                    const {channelCount, audioBitsPerSecond} = this;
-                    const initCommand = new InitCommand(SAMPLE_RATE, channelCount, audioBitsPerSecond);
-                    this.postMessageToWorker(initCommand);
-                }
-                break;
-
-            case 'initCompleted':
-                // Start streaming
-                this.source.connect(this.encoderWorklet);
-                this.workerState = 'encoding';
-                this.dispatchEvent( new Event('start'));
-                break;
-
-            case 'encodedData':
-            case 'lastEncodedData':
-                if (this.ondataavailable) {
-                    let data = new Blob(buffers, {'type': mimeType});
-                    let eventToPush;
-                    eventToPush = new Event('dataavailable');
-                    eventToPush.data = data;
-
-                    this.dispatchEvent(eventToPush);
-                }
-                else if (this.ondatarecorded) {
-                    const totalLength = buffers.reduce((t,buffer) => t + buffer.byteLength, 0);
-                    const data = new Uint8Array(totalLength);
-                    buffers.reduce((offset, buffer)=>{
-                        data.set(new Uint8Array(buffer),offset);
-                        return offset + buffer.byteLength;
-                    },0);
-                    const dataEvent = new DataEvent(data);
-
-                    this.dispatchEvent(dataEvent);
-                }
-
-                // Detect of stop() called before
-                if (command === 'lastEncodedData') {
-                    this.dispatchEvent(new Event('stop'));
-
-                    this.workerState = 'readyToInit';
-                    if (this.stopResolve) {
-                        const resolve = this.stopResolve;
-                        this.stopResolve = null;
-                        resolve();
-                    }
-                }
-                break;
-
-            default:
-                break; // Ignore
-        }
-    }
-
-    onWorkerError (error) {
+    private onWorkerError = (error: ErrorEvent) => {
         // Stop stream first
-        this.source.disconnect();
-        this.encoderWorklet.disconnect();
-        this.workerState = 'readyToInit'
+        if (this.source)
+            this.source.disconnect();
+        if (this.encoderWorklet)
+            this.encoderWorklet.disconnect();
+        if (this.vadWorklet)
+            this.vadWorklet.disconnect();
 
-        // Send message to host
-        let message = [
-            'FileName: ' + error.filename,
-            'LineNumber: ' + error.lineno,
-            'Message: ' + error.message
-        ].join(' - ');
-        let errorToPush = new Event('error');
-        errorToPush["name"] = 'UnknownError';
-        errorToPush["message"] = message;
-        this.dispatchEvent(errorToPush);
-    }
+        console.error(`FileName: ${error.filename} LineNumber: ${error.lineno} Message: ${error.message}`);
+    };
 }

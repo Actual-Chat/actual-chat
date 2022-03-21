@@ -1,16 +1,21 @@
 {
   "include": [
-    "index.ts",
+    /* vscode + eslint in some cases uses cwd from workspace root, but ts-loader is not */
+    "./index.ts",
+    "src/nodejs/index.ts",
     "types/",
-    "src/",
-    "src/worklets/warm-up-worklet-processor.ts",
+    "src/nodejs/types/",
+    "./src/",
+    "src/nodejs/src/",
+    "./src/worklets/warm-up-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/worklets/feeder-audio-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioPlayer/workers/opus-decoder-worker.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/audio-vad-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/worklets/opus-encoder-worklet-processor.ts",
     "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/audio-vad-worker.ts",
-    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts"
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder-worker.ts",
+    "./../dotnet/Audio.UI.Blazor/Components/AudioRecorder/workers/opus-encoder.ts"
   ],
   "compilerOptions": {
     "alwaysStrict": true,
@@ -44,7 +49,7 @@
       "es2018"
     ],
     "typeRoots": [
-      "node_modules/@types/"
+      "./node_modules/@types"
     ],
     "baseUrl": "../dotnet/",
     "rootDirs": [

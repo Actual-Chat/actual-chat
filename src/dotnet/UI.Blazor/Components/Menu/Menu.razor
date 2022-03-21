@@ -1,0 +1,41 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Components
+
+<div class="menu @Class" name="@Name">
+    <div class="select-none flex @MenuDirection()">
+        <CascadingValue Value="@this" IsFixed="true">
+            @ChildContent
+        </CascadingValue>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Class { get; set; } = "";
+    [Parameter]
+    public string ItemClass { get; set; } = "";
+    [Parameter]
+    public string Title { get; set; } = "";
+    [Parameter]
+    public string Icon { get; set; } = "";
+    [Parameter]
+    public Orientation Orientation { get; set; } = Orientation.Vertical;
+    [Parameter]
+    public IconPosition IconPosition { get; set; } = IconPosition.Right;
+    [Parameter]
+    public TooltipPosition TooltipPosition { get; set; } = TooltipPosition.Top;
+    [Parameter]
+    public string Name { get; set; } = "";
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    [CascadingParameter]
+    public Dropdown? Dropdown { get; set; }
+
+    private string MenuDirection()
+        => Orientation == Orientation.Vertical ? "flex-col" : "flex-row";
+
+    internal async Task OnItemClicking(MenuItem item) {
+        if (Dropdown != null)
+            await Dropdown.HideContent();
+    }
+}

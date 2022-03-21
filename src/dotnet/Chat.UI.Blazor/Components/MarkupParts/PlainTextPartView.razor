@@ -1,6 +1,7 @@
 @using Stl.Extensibility
 @using ActualChat.Mathematics
 @using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.MediaPlayback
 @using Microsoft.Extensions.DependencyInjection
 @implements IMarkupPartView
 @attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
@@ -19,9 +20,9 @@
     }
 }
 @if (isPlayable) {
-    <span class="@cls" @onclick="Play">@Part.Text</span>
+    <span class="@cls whitespace-break-spaces" @onclick="Play">@Part.Text</span>
 } else {
-    <span class="@cls">@Part.Text</span>
+    <span class="@cls whitespace-break-spaces">@Part.Text</span>
 }
 
 @code {
@@ -51,14 +52,6 @@
 
         var session = Services.GetRequiredService<Session>();
         var chats = Services.GetRequiredService<IChats>();
-        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
-        var historicalPlayer = await chatPlayers.GetHistoricalPlayer(chatId).ConfigureAwait(false);
-        var playback = historicalPlayer.Playback;
-        if (playback is { IsStopped: false }) {
-            await historicalPlayer.Stop().ConfigureAwait(true);
-            return;
-        }
-
         var chatEntryReader = chats.CreateEntryReader(session, chatId, ChatEntryType.Audio);
         var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
         if (audioEntry == null) {
@@ -68,8 +61,8 @@
 
         var startOffset = Math.Max(0, part.TimeRange.Start - 0.25);
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
-        _ = BackgroundTask.Run(
-            () => historicalPlayer.Play(startAt),
-            Log, "Historical playback failed");
+
+        var chatController = Services.GetRequiredService<ChatController>();
+        chatController.StartHistoricalPlayer(chatId, startAt);
     }
 }

@@ -1,69 +1,106 @@
 import Denque from 'denque';
-import SoxrResampler, {SoxrDatatype, SoxrQuality} from 'wasm-audio-resampler';
-import { adjustChangeEventsToSeconds, VoiceActivityChanged, VoiceActivityDetector } from "../audio-vad";
-import { VadMessage } from "../audio-vad-message";
-import OnnxModel from '../vad.onnx';
+import SoxrResampler, { SoxrDatatype, SoxrQuality } from 'wasm-audio-resampler';
+import { adjustChangeEventsToSeconds, VoiceActivityDetector } from './audio-vad';
+import { VadMessage } from './audio-vad-worker-message';
+import OnnxModel from './vad.onnx';
 import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
-
+import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
 
 const CHANNELS = 1;
 const IN_RATE = 48000;
 const OUT_RATE = 16000;
 
-const voiceDetector = new VoiceActivityDetector(OnnxModel);
 const queue = new Denque<ArrayBuffer>();
 const inputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const outputDatatype = SoxrDatatype.SOXR_FLOAT32;
 const resampleBuffer = new Uint8Array(512 * 4 * 2);
-
 let workletPort: MessagePort = null;
+
+let state: 'inactive' | 'active' = 'inactive';
+let encoderPort: MessagePort = null;
 let resampler: SoxrResampler = null;
-let isVadRunning: boolean = false;
+let voiceDetector: VoiceActivityDetector = null;
+let isVadRunning = false;
 
-onmessage = async (ev) => {
-    const { topic }: VadMessage = ev.data;
+onmessage = async (ev: MessageEvent<VadMessage>) => {
+    try {
+        const { type } = ev.data;
 
-    switch (topic) {
-        case 'init-port':
-            workletPort = ev.ports[0];
-            workletPort.onmessage = onWorkletMessage;
-            queue.clear();
-            break;
-        case 'init-new-stream':
-            const newResampler = new SoxrResampler(
-                CHANNELS,
-                IN_RATE,
-                OUT_RATE,
-                inputDatatype,
-                outputDatatype,
-                SoxrQuality.SOXR_MQ
-            );
-            await newResampler.init(SoxrModule, { 'locateFile': (path:string, directory: string) => SoxrWasm });
-            resampler = newResampler;
-            break;
-
-        default:
-            break;
-
+        switch (type) {
+            case 'create':
+                await onCreate(ev.ports[0], ev.ports[1]);
+                break;
+            case 'init':
+                onInit();
+                break;
+            default:
+                throw new Error(`Unknown message type: ${type as string}`);
+        }
+    } catch (error) {
+        console.error(error);
     }
 };
 
-const onWorkletMessage = async (ev: MessageEvent<VadMessage>) => {
-    const { topic, buffer }: VadMessage = ev.data;
-
-    let vadBuffer: ArrayBuffer;
-    switch (topic) {
-        case 'buffer':
-            vadBuffer = buffer;
-            break;
-        default:
-            break;
+async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
+    if (workletPort != null) {
+        throw new Error('VADWorker: workletPort has already been specified.');
     }
-    if (vadBuffer.byteLength !== 0) {
-        queue.push(buffer);
+    if (encoderPort != null) {
+        throw new Error('VADWorker: encoderPort has already been specified.');
+    }
 
-        const _ = processQueue();
+    workletPort = workletMessagePort;
+    encoderPort = encoderMessagePort;
+    workletPort.onmessage = onWorkletMessage;
+    queue.clear();
+    resampler = new SoxrResampler(
+        CHANNELS,
+        IN_RATE,
+        OUT_RATE,
+        inputDatatype,
+        outputDatatype,
+        SoxrQuality.SOXR_MQ,
+    );
+    await resampler.init(SoxrModule, { 'locateFile': () => SoxrWasm });
+    voiceDetector = new VoiceActivityDetector(OnnxModel as unknown as URL);
+    await voiceDetector.init();
+    state = 'active';
+}
+
+function onInit(): void {
+    // it is safe to skip init while it still not active
+    if (state !== 'active')
+        return;
+
+    // resample silence to clean up internal state
+    const silence = new Uint8Array(768 * 4);
+    resampler.processChunk(silence, resampleBuffer);
+    voiceDetector.reset();
+}
+
+const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
+    if (state !== 'active')
+        return;
+
+    try {
+        const { type, buffer } = ev.data;
+
+        let vadBuffer: ArrayBuffer;
+        switch (type) {
+            case 'buffer':
+                vadBuffer = buffer;
+                break;
+            default:
+                break;
+        }
+        if (vadBuffer && vadBuffer.byteLength !== 0) {
+            queue.push(buffer);
+
+            await processQueue();
+        }
+    } catch (error) {
+        console.error(error);
     }
 };
 
@@ -83,17 +120,22 @@ async function processQueue(): Promise<void> {
     try {
         isVadRunning = true;
 
-        const buffer = queue.pop();
+        const buffer = queue.shift();
         const dataToResample = new Uint8Array(buffer);
         const resampled = resampler.processChunk(dataToResample, resampleBuffer).buffer;
 
-        workletPort.postMessage({ topic: "buffer", buffer: buffer }, [buffer]);
+        const bufferMessage: BufferVadWorkletMessage = {
+            type: 'buffer',
+            buffer: buffer,
+        };
+
+        workletPort.postMessage(bufferMessage, [buffer]);
 
         const monoPcm = new Float32Array(resampled, 0, 512);
         const vadEvent = await voiceDetector.appendChunk(monoPcm);
         if (vadEvent) {
             const adjustedVadEvent = adjustChangeEventsToSeconds(vadEvent);
-            sendResult(adjustedVadEvent);
+            encoderPort.postMessage(adjustedVadEvent);
         }
 
     } catch (error) {
@@ -103,11 +145,5 @@ async function processQueue(): Promise<void> {
         isVadRunning = false;
     }
 
-
-    const _ = processQueue();
-}
-
-
-function sendResult(result: VoiceActivityChanged): void {
-    postMessage(result);
+    await processQueue();
 }

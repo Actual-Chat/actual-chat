@@ -1,4 +1,3 @@
-using ActualChat.Media;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR;
 
@@ -20,7 +19,7 @@ public class AudioHub : Hub
         _transcriptStreamer = transcriptStreamer;
     }
 
-    public IAsyncEnumerable<AudioStreamPart> GetAudioStream(
+    public IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
@@ -31,12 +30,16 @@ public class AudioHub : Hub
         CancellationToken cancellationToken)
         => _transcriptStreamer.GetTranscriptDiffStream(streamId, cancellationToken);
 
-    public Task ProcessAudio(
-        AudioRecord audioRecord,
-        IAsyncEnumerable<RecordingPart> recordingStream)
+    public async Task ProcessAudio(string sessionId, string chatId, double clientStartOffset, IAsyncEnumerable<byte[]> opusPacketStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
-        recordingStream = recordingStream.TrimOnCancellation();
-        return _audioProcessor.ProcessAudio(audioRecord, recordingStream.TrimOnCancellation(), default);
+        var audioRecord = new AudioRecord(sessionId, chatId, clientStartOffset);
+        var frameStream = opusPacketStream
+            .Select((packet, i) => new AudioFrame {
+                Data = packet,
+                Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
+            });
+        await _audioProcessor.ProcessAudio(audioRecord, frameStream, default)
+            .ConfigureAwait(false);
     }
 }
