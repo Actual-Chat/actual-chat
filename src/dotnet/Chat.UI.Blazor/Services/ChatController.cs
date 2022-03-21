@@ -113,7 +113,7 @@ public class ChatController
         // restore real-time playback
         if (IsListeningToChat(chatId)) {
             _ = historyPlayTask.ContinueWith(
-                _ => StartRealtimeListening(chatId));
+                _ => StartRealtimeListening(chatId), TaskScheduler.Current);
         }
     }
 

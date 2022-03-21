@@ -190,7 +190,7 @@ public abstract class TrackPlayer : IAsyncDisposable
     {
         var playing = Interlocked.Exchange(ref _playingTask, null);
         if (playing != null) {
-            Stop();
+            _ = Stop();
             try {
                 await playing.ConfigureAwait(false);
             }

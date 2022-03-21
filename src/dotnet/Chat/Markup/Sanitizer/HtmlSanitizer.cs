@@ -6,7 +6,9 @@ namespace ActualChat.Chat.Sanitizer;
 internal class HtmlSanitizer
 {
     private static readonly Regex SchemeRegex
+ #pragma warning disable MA0023
         = new(@"^\s*([^\/#]*?)(?:\:|&#0*58|&#x0*3a)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+ #pragma warning restore MA0023
 
     public static ISet<string> DefaultAllowedSchemes { get; }
         = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "http", "https", "tel", "mailto" };
