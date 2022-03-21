@@ -2,22 +2,18 @@
 @namespace ActualChat.UI.Blazor.Components
 @inject HostInfo _hostInfo
 
-<button class="navbar-menu-button h-10 w-10 rounded-r-md my-0.25 bg-primary flex justify-center grid content-center cursor-pointer @Css">
+<button title="@Title" class="navbar-menu-button h-10 w-10 rounded-r-sm my-0.25 bg-primary flex justify-center grid content-center cursor-pointer shadow-md @Css">
     <svg xmlns="http://www.w3.org/2000/svg" class="navbar-menu-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
         <path d="@IconPath"></path>
     </svg>
 </button>
 
 @code {
-    [Parameter]
-    public string? IconPath { get; set; }
-    [Parameter]
-    public int IconHeight { get; set; } = 6;
-    [Parameter]
-    public int IconWidth { get; set; } = 6;
-    [Parameter]
-    public string ViewBox { get; set; } = "0 0 24 24";
-    [Parameter]
-    public string? Css { get; set; } = "";
+    [Parameter] public string? IconPath { get; set; }
+    [Parameter] public int IconHeight { get; set; } = 6;
+    [Parameter] public int IconWidth { get; set; } = 6;
+    [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
+    [Parameter] public string? Css { get; set; } = "";
+    [Parameter] public string? Title { get; set; }
 
 }
