@@ -47,7 +47,6 @@ ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=$GITHUB_TOKEN
 WORKDIR /src/src/nodejs
 RUN echo $GITHUB_TOKEN && \
-    cat .npmrc && \
     npm -g config set user root && \
     npm -g config set audit false && \
     npm -g config set audit-level critical && \
@@ -59,7 +58,7 @@ RUN echo $GITHUB_TOKEN && \
     npm -g config set depth 0 && \
     apk add --no-cache git
 COPY src/nodejs/package-lock.json src/nodejs/package.json src/nodejs/.npmrc ./
-RUN npm ci
+RUN cat .npmrc && npm ci
 COPY src/nodejs/ ./
 
 FROM nodejs-restore as nodejs-build
