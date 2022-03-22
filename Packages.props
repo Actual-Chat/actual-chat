@@ -9,6 +9,7 @@
     <EntityFrameworkCoreMySqlVersion>6.0.1</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>6.0.1</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsPrevVersion>6.0.0</MicrosoftExtensionsPrevVersion>
     <MySqlVersion>2.1.8</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
@@ -47,16 +48,16 @@
     <PackageReference Update="Microsoft.Extensions.ObjectPool" Version="6.0.3"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsPrevVersion)"/>
     <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsPrevVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsPrevVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsPrevVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsPrevVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
