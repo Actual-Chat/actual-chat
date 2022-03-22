@@ -4,18 +4,18 @@ using Blazored.Modal.Services;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class FeedbackService
+public class FeedbackUI
 {
     private readonly Session _session;
     private readonly IModalService _modalService;
-    private readonly IFeedbacks _feedback;
+    private readonly IFeedbacks _feedbacks;
     private IModalReference? _modalReference;
 
-    public FeedbackService(Session session, IModalService modalService, IFeedbacks feedback)
+    public FeedbackUI(Session session, IModalService modalService, IFeedbacks feedbacks)
     {
         _session = session;
         _modalService = modalService;
-        _feedback = feedback;
+        _feedbacks = feedbacks;
     }
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
@@ -37,6 +37,6 @@ public class FeedbackService
             Rating = data.Item1,
             Comment = data.Item2
         };
-        await _feedback.CreateFeatureRequest(command, default).ConfigureAwait(false);
+        await _feedbacks.CreateFeatureRequest(command, default).ConfigureAwait(false);
     }
 }

@@ -90,7 +90,7 @@
     [Inject] private IInviteCodes InviteCodes { get; set; } = default!;
     [Inject] private UICommandRunner Cmd { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
-    [Inject] private ClipboardService Clipboard { get; set; } = default!;
+    [Inject] private Clipboard Clipboard { get; set; } = default!;
 
     [Parameter]
     public string ChatId { get; set; } = "";
@@ -137,5 +137,5 @@
         => Nav.NavigateTo($"/chat/{ChatId}");
 
     private async Task Copy(string link)
-        => await Clipboard.WriteTextAsync(link);
+        => await Clipboard.WriteText(link);
 }
