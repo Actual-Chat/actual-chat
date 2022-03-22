@@ -43,6 +43,8 @@ RUN dotnet run --project build --configuration Release -- restore restore-tools
 
 # node:16-alpine because it's [cached on gh actions VM](https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#cached-docker-images)
 FROM node:16-alpine as nodejs-restore
+ARG GITHUB_TOKEN
+ENV GITHUB_TOKEN=$GITHUB_TOKEN
 WORKDIR /src/src/nodejs
 RUN npm -g config set user root && \
     npm -g config set audit false && \
