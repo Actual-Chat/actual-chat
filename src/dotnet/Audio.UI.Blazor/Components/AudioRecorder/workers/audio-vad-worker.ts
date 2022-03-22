@@ -7,6 +7,8 @@ import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
 
+const LogScope: string = 'AudioVadWorker'
+
 const CHANNELS = 1;
 const IN_RATE = 48000;
 const OUT_RATE = 16000;
@@ -35,19 +37,19 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
                 onInit();
                 break;
             default:
-                throw new Error(`Unknown message type: ${type as string}`);
+                throw new Error(`Unsupported message type: ${type as string}`);
         }
     } catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.onmessage error:`, error);
     }
 };
 
 async function onCreate(workletMessagePort: MessagePort, encoderMessagePort: MessagePort): Promise<void> {
     if (workletPort != null) {
-        throw new Error('VADWorker: workletPort has already been specified.');
+        throw new Error('workletPort has already been specified.');
     }
     if (encoderPort != null) {
-        throw new Error('VADWorker: encoderPort has already been specified.');
+        throw new Error('encoderPort has already been specified.');
     }
 
     workletPort = workletMessagePort;
@@ -100,7 +102,7 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
             await processQueue();
         }
     } catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.onWorkletMessage error:`, error);
     }
 };
 

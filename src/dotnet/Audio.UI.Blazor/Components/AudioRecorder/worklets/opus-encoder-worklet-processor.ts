@@ -21,8 +21,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
         const { timeSlice } = options.processorOptions as ProcessorOptions;
 
         if (!OpusEncoderWorkletProcessor.allowedTimeSlice.some(val => val === timeSlice)) {
-            throw new Error(`OpusEncoderWorkletProcessor supports only ${
-                JSON.stringify(OpusEncoderWorkletProcessor.allowedTimeSlice)  } timeSlice argument`);
+            const allowedTimeSliceJson = JSON.stringify(OpusEncoderWorkletProcessor.allowedTimeSlice);
+            throw new Error(`OpusEncoderWorkletProcessor supports only ${ allowedTimeSliceJson } options as timeSlice argument.`);
         }
 
         this.samplesPerWindow = timeSlice * SAMPLES_PER_MS;

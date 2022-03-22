@@ -135,7 +135,7 @@ export class VirtualList {
         this._isRendering = true;
         this._nextRenderState = rs;
         if (this._debugMode)
-            console.log(`${LogScope}.onRenderStart, renderIndex = #${rs.renderIndex}, renderState = ${JSON.stringify(rs)}`);
+            console.log(`${LogScope}.onRenderStart, renderIndex #${rs.renderIndex}, renderState:`, rs);
 
         this.stopResizeTracking();
         this._scrollTopPivotRef = null;
@@ -390,7 +390,7 @@ export class VirtualList {
         }
 
         if (this._debugMode)
-            console.log(`${LogScope}.updateClientSideStateImpl: server call, state = ${JSON.stringify(state)}`);
+            console.log(`${LogScope}.updateClientSideStateImpl: server call, state:`, state);
         const result: number = await this._blazorRef.invokeMethodAsync('UpdateClientSideState', state);
         if (result > this._updateClientSideStateRenderIndex)
             this._updateClientSideStateRenderIndex = result;

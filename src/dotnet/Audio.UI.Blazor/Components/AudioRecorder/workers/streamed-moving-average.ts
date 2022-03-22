@@ -10,7 +10,7 @@ export class ExponentialMovingAverage {
         this.lastMovingAverage = NaN;
 
         if (window < 1 || window > 2000) {
-            throw new Error('window should be in range [1;2000]');
+            throw new Error('window should be in [1;2000] range');
         }
     }
 

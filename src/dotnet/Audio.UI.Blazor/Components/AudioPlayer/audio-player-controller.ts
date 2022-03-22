@@ -4,9 +4,11 @@ import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromiumEchoCancellation';
 
+const LogScope: string = 'AudioPlayerController'
+
 const worker = new Worker('/dist/opusDecoderWorker.js');
-let workerLastCallbackId = 0;
 const workerCallbacks = new Map<number, () => void>();
+let workerLastCallbackId = 0;
 
 worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
     const msg = ev.data;
@@ -16,21 +18,21 @@ worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
                 onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
                 break;
             default:
-                throw new Error(`Unsupported message from the decoder worker. Message type: ${msg.type}`);
+                throw new Error(`Unsupported message type: ${msg.type}`);
         }
     }
     catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.worker.onmessage error:`, error);
     }
 };
 
 function onOperationCompleted(message: OperationCompletedDecoderWorkerMessage) {
-    const { callbackId: id } = message;
-    const callback = workerCallbacks.get(id);
+    const { callbackId: callbackId } = message;
+    const callback = workerCallbacks.get(callbackId);
     if (callback === undefined) {
-        throw new Error(`Decoder worker: callback with id '${id}' is not found.`);
+        throw new Error(`Callback #${callbackId} is not found.`);
     }
-    workerCallbacks.delete(id);
+    workerCallbacks.delete(callbackId);
     callback();
 }
 
@@ -49,7 +51,7 @@ export class AudioPlayerController implements Resettable {
 
     private constructor() {
         this.id = lastControllerId++;
-        console.warn(`created controllerId:${this.id}`);
+        console.warn(`${LogScope}.constructor: #${this.id}`);
     }
 
     /**
@@ -114,13 +116,13 @@ export class AudioPlayerController implements Resettable {
 
         // recreating nodes due to memory leaks in not disconnected nodes
         if (isAecWorkaroundNeeded()) {
-            console.debug('isAecWorkaroundNeeded == true');
+            console.debug(`${LogScope}.init: isAecWorkaroundNeeded == true`);
             this.destinationNode = this.audioContext.createMediaStreamDestination();
             feederNode.connect(this.destinationNode);
             this.cleanup = await enableChromiumAec(this.destinationNode.stream);
         }
         else {
-            console.debug('isAecWorkaroundNeeded == false');
+            console.debug(`${LogScope}.init: isAecWorkaroundNeeded == false`);
             feederNode.connect(audioContext.destination);
         }
         await this.initWorker();
@@ -159,12 +161,12 @@ export class AudioPlayerController implements Resettable {
     }
 
     public async getState(): Promise<PlaybackState> {
-        console.assert(this.feederNode !== null, 'Feeder node should be created. Lifetime error.');
+        console.assert(this.feederNode !== null, `${LogScope}.getState: feederNode isn't created yet. Lifetime error.`);
         return this.feederNode.getState();
     }
 
     public stop(): void {
-        console.assert(this.feederNode !== null, 'Feeder node should be created. Lifetime error.');
+        console.assert(this.feederNode !== null, `${LogScope}.stop: feederNode isn't created yet. Lifetime error.`);
         const workerMsg: StopDecoderMessage = {
             type: 'stop',
             controllerId: this.id,

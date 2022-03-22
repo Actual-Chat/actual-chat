@@ -1,4 +1,7 @@
 import { isAudioContext } from 'audio-context-pool';
+
+const LogScope: string = 'ChromiumEchoCancellation'
+
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.
  * The workaround is using a loopback webrtc connection.
@@ -12,8 +15,8 @@ const offerOptions = {
     offerToReceiveVideo: false
 };
 
-const onError = (e: any) => {
-    console.error(`enableChromiumAec: RTCPeerConnection loopback initialization error: ${JSON.stringify(e)}`);
+const onChromiumAecError = (e: any) => {
+    console.error(`${LogScope}: RTCPeerConnection loopback initialization error:`, e);
 };
 
 let delayedReconnectTimeout: number | null = null;
@@ -39,7 +42,7 @@ export async function enableChromiumAec(stream: MediaStream): Promise<() => void
     const inboundPeerConnection = new RTCPeerConnection();
 
     outboundPeerConnection.onicecandidate = (e) => e.candidate
-        && inboundPeerConnection.addIceCandidate(e.candidate).catch(onError);
+        && inboundPeerConnection.addIceCandidate(e.candidate).catch(onChromiumAecError);
     // prevents memory leaks with RTCPeerConnection's
     const cleanup = (): void => {
         audioElement.muted = true;
@@ -64,7 +67,7 @@ export async function enableChromiumAec(stream: MediaStream): Promise<() => void
     outboundPeerConnection.addEventListener('iceconnectionstatechange', outboundOnIceConnectionStateChange);
 
     inboundPeerConnection.onicecandidate = (e) => e.candidate
-        && outboundPeerConnection.addIceCandidate(e.candidate).catch(onError);
+        && outboundPeerConnection.addIceCandidate(e.candidate).catch(onChromiumAecError);
 
     const inboundOnIceConnectionStateChange = () => {
         if (inboundPeerConnection.iceConnectionState === 'disconnected') {
@@ -103,7 +106,7 @@ export async function enableChromiumAec(stream: MediaStream): Promise<() => void
         await outboundPeerConnection.setRemoteDescription(answer);
 
         const onStop = (): void => {
-            console.warn('onStop from AEC');
+            console.warn(`${LogScope}: onStop`);
             inboundPeerConnection.removeEventListener('iceconnectionstatechange', inboundOnIceConnectionStateChange);
             outboundPeerConnection.removeEventListener('iceconnectionstatechange', outboundOnIceConnectionStateChange);
             tracks.forEach(track => outboundPeerConnection.removeTrack(track));
@@ -113,7 +116,7 @@ export async function enableChromiumAec(stream: MediaStream): Promise<() => void
         return onStop;
     }
     catch (e) {
-        onError(e);
+        onChromiumAecError(e);
     }
 }
 
@@ -131,7 +134,7 @@ function closeSilently(connection: RTCPeerConnection) {
         connection.close();
     }
     catch (error) {
-        console.error(`enableChromiumAec: can't close peer connection(${JSON.stringify(connection)}), error: ${JSON.stringify(error)}`);
+        console.error(`${LogScope}: can't close peer connection, error:`, error, ', connection:', connection);
     }
 }
 
@@ -141,8 +144,8 @@ function delayedReconnect(cleanup: () => void, stream: MediaStream): void {
 
     delayedReconnectTimeout = self.setTimeout(() => {
         delayedReconnectTimeout = null;
-        console.warn('enableChromiumAec: recreate RTCPeerConnection loopback '
-            + 'because the local connection was disconnected for 10s');
+        console.warn(`${LogScope}: recreate RTCPeerConnection loopback `
+            + `because the local connection was disconnected for 10s`);
         cleanup();
         void enableChromiumAec(stream);
     }, 10000);

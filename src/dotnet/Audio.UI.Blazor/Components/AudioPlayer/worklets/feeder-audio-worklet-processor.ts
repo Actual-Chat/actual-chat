@@ -9,7 +9,9 @@ import {
 } from './feeder-audio-worklet-message';
 import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from '../workers/opus-decoder-worker-message';
 
+const LogScope: string = 'FeederProcessor'
 const SAMPLE_RATE = 48000;
+
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */
 class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
@@ -67,7 +69,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         // we only support mono output at the moment
         const channel = output[0];
         if (debug) {
-            console.assert(channel.length === 128, "Feeder processor: WebAudio's render quantum size must be 128");
+            console.assert(channel.length === 128, `${LogScope}.process: WebAudio's render quantum size must be 128`);
         }
 
         if (!isPlaying) {
@@ -169,7 +171,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                 break;
 
             default:
-                throw new Error(`Feeder processor: Unsupported message type: ${msg.type}`);
+                throw new Error(`Unsupported message type: ${msg.type}`);
         }
     };
 
@@ -186,7 +188,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private reset(): void {
         const { debug } = this;
         if (debug)
-            console.debug('Feeder processor: clear');
+            console.debug(`${LogScope}: reset`);
         this.isPlaying = false;
         this.isStarving = false;
         this.chunks.clear();
@@ -203,7 +205,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
             playbackTime: this.playbackTime,
         };
         if (debug)
-            console.debug(`Feeder processor: get state ${JSON.stringify(msg)}`);
+            console.debug(`${LogScope}: onGetState, message =`, msg);
         this.port.postMessage(msg);
     }
 
@@ -213,7 +215,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
 
         if (wasPlaying) {
             if (debug)
-                console.debug('Feeder processor: stopping');
+                console.debug(`${LogScope}: onStopMessage`);
             const message: StateChangedProcessorMessage = {
                 type: 'stateChanged',
                 state: 'stopped',
@@ -249,7 +251,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
                     this.onEndDecoderWorkerMessage(msg as EndDecoderWorkerMessage);
                     break;
                 default:
-                    throw new Error(`Feeder processor: Unsupported worker message type: ${msg.type}`);
+                    throw new Error(`Unsupported message type: ${msg.type}`);
             }
         }
         catch (error) {

@@ -11,7 +11,7 @@ export class AudioRingBuffer {
         this._framesAvailable = 0;
 
         if (bufferSize < 1024) {
-            throw new Error(`ctor: Min buffer size is 1024, but passed bufferSize=${bufferSize}`);
+            throw new Error(`Min. buffer size is 1024, but specified bufferSize is ${bufferSize}.`);
         }
         this.channelCount = channelCount;
         this.bufferSize = bufferSize;
@@ -28,20 +28,20 @@ export class AudioRingBuffer {
 
     public push(multiChannelData: Float32Array[]): void {
         if (multiChannelData == null) {
-            throw new Error(`push: multiChannelData is null or undefined`);
+            throw new Error(`multiChannelData is null or undefined.`);
         }
         if (multiChannelData.length == 0) {
-            throw new Error(`push: multiChannelData is empty`);
+            throw new Error(`multiChannelData is empty.`);
         }
         const sourceLength = multiChannelData[0].length;
         if (sourceLength > this.bufferSize / 2) {
-            throw new Error(`push: multiChannelData should not contain frames more than half of the bufferSize, length of multichannelData=${sourceLength}, bufferSize=${this.bufferSize}`);
+            throw new Error(`multiChannelData should not contain frames more than half of the bufferSize, length of multichannelData=${sourceLength}, bufferSize=${this.bufferSize}.`);
         }
 
         const writeIndex = this.writeIndex;
         const endWriteIndex = (writeIndex + sourceLength) % this.bufferSize;
         if (endWriteIndex < writeIndex && endWriteIndex > this.readIndex) {
-            throw new Error(`push: buffer can't be overwritten`);
+            throw new Error(`Buffer can't be overwritten.`);
         }
 
         for (let channel = 0; channel < this.channelCount; channel++) {
@@ -62,14 +62,14 @@ export class AudioRingBuffer {
 
     public pull(multiChannelData: Float32Array[]): boolean {
         if (multiChannelData == null) {
-            throw new Error(`pull: multiChannelData is null or undefined`);
+            throw new Error(`multiChannelData is null or undefined.`);
         }
         if (multiChannelData.length == 0) {
-            throw new Error(`pull: multiChannelData is empty`);
+            throw new Error(`multiChannelData is empty.`);
         }
         const destinationLength = multiChannelData[0].length;
         if (destinationLength > this.bufferSize / 2) {
-            throw new Error(`pull: multiChannelData should not have length longer than half of the bufferSize, length of multichannelData=${destinationLength}, bufferSize=${this.bufferSize}`);
+            throw new Error(`multiChannelData should not have length longer than half of the bufferSize, length of multichannelData=${destinationLength}, bufferSize=${this.bufferSize}.`);
         }
         if (this._framesAvailable === 0) {
             return false;

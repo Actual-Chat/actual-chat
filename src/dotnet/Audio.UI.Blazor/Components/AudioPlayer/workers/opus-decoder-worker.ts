@@ -1,6 +1,7 @@
 import { CreateDecoderMessage, DataDecoderMessage, DecoderMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './opus-decoder-worker-message';
 import { OpusDecoder } from './opus-decoder';
 
+const LogScope: string = 'OpusDecoderWorker'
 const worker = self as unknown as Worker;
 const decoders = new Map<number, OpusDecoder>();
 const debug = false;
@@ -26,18 +27,18 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
                 onStop(msg as StopDecoderMessage);
                 break;
             default:
-                throw new Error(`Decoder Worker: Unsupported DecoderMessage type: ${msg.type}`);
+                throw new Error(`Unsupported message type: ${msg.type}`);
         }
     }
     catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.worker.onmessage error:`, error);
     }
 };
 
 function getDecoder(controllerId: number): OpusDecoder {
     const decoder = decoders.get(controllerId);
     if (decoder === undefined) {
-        throw new Error(`Can't find decoder object for controllerId:${controllerId}`);
+        throw new Error(`Can't find decoder object for controller #${controllerId}`);
     }
     return decoder;
 }
@@ -46,7 +47,7 @@ async function onCreate(message: CreateDecoderMessage) {
     const { callbackId, workletPort, controllerId } = message;
     // decoders are pooled with the parent object, so we don't need an object pool here
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): start create`);
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onCreate`);
     const decoder = await OpusDecoder.create(workletPort);
     decoders.set(controllerId, decoder);
     const msg: OperationCompletedDecoderWorkerMessage = {
@@ -55,14 +56,14 @@ async function onCreate(message: CreateDecoderMessage) {
     };
     worker.postMessage(msg);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): end create`);
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onCreate completed`);
 }
 
 function onInit(message: InitDecoderMessage): void {
     const { callbackId, controllerId } = message;
     const decoder = getDecoder(controllerId);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): init`);
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onInit`);
     decoder.init();
 
     const msg: OperationCompletedDecoderWorkerMessage = {
@@ -71,7 +72,7 @@ function onInit(message: InitDecoderMessage): void {
     };
     worker.postMessage(msg);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): end init`);
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onInit completed`);
 }
 
 function onData(message: DataDecoderMessage): void {
@@ -79,7 +80,7 @@ function onData(message: DataDecoderMessage): void {
     const decoder = getDecoder(controllerId);
     const data = buffer.slice(offset, offset + length);
     if (debugPushes)
-        console.debug(`Decoder(controllerId:${controllerId}): push ${data.byteLength} data bytes`);
+        console.debug(`${LogScope}.onData(#${controllerId}): pushing ${data.byteLength} byte(s)`);
     decoder.pushData(data);
 }
 
@@ -87,8 +88,7 @@ function onEnd(message: EndDecoderMessage): void {
     const { controllerId } = message;
     const decoder = getDecoder(controllerId);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): push end`);
-
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onEnd`);
     decoder.pushEnd();
 }
 
@@ -96,10 +96,10 @@ function onStop(message: StopDecoderMessage): void {
     const { controllerId } = message;
     const decoder = getDecoder(controllerId);
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): start stop`);
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onStop`);
     decoder.stop();
     if (debug)
-        console.debug(`Decoder(controllerId:${controllerId}): end stop`);
+        console.debug(`${LogScope}.onCreate(#${controllerId}): onStop completed`);
 }
 /// #if DEBUG
 self['getDecoder'] = getDecoder;
