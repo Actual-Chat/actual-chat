@@ -3,7 +3,7 @@
 @inject FeedbackUI _feedbackUI;
 
 @{
-    var menuCss = "message-menu h-8 absolute right-0 flex flex-row bg-message-hover shadow-lg rounded-md mr-6 -mt-7 " + Css;
+    var menuCss = "message-menu h-8 absolute right-0 flex flex-row bg-message-hover shadow-lg rounded-md mr-6 -mt-7 " + Class;
 }
 
 <Menu Class="@menuCss" ItemClass="p-1 text-left" Orientation="Orientation.Horizontal">
@@ -40,5 +40,5 @@
 
 @code {
     [Parameter]
-    public string Css { get; set; } = "";
+    public string Class { get; set; } = "";
 }

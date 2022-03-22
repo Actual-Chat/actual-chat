@@ -1,9 +1,7 @@
-using System.Reactive.Concurrency;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using Microsoft.Extensions.Hosting;
 using Stl.Locking;
-using AsyncLock = Stl.Locking.AsyncLock;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

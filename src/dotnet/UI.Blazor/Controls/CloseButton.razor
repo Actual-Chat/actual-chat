@@ -1,5 +1,5 @@
 ﻿<div class="flex-col content-center">
-    <button class="@Css flex justify-center items-center
+    <button class="@Class flex justify-center items-center
                    hover:bg-primary hover:scale-110 ease-in-out duration-150"
             aria-label="@Title" role="button" tabindex="0" title="@Title"
             @onclick="Click">
@@ -16,7 +16,7 @@
     // [Parameter]
     // public bool ShowKeyBind { get; set; } = true;
     [Parameter]
-    public string Css { get; set; } = "border-2 rounded-full w-10 h-10 text-primary";
+    public string Class { get; set; } = "border-2 rounded-full w-10 h-10 text-primary";
     [Parameter]
     public string Title { get; set; } = "Close";
     [Parameter]

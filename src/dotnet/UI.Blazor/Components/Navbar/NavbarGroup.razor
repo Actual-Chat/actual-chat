@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="navbar-menu-group flex-col space-y-2 @Css hidden">
+<div class="@(Class ?? (_class ??= this.DefaultClass())) navbar-menu-group flex-col space-y-2 hidden">
     <div class="flex justify-between items-center">
         <div class="text-secondary-muted text-sm uppercase font-medium">@Title</div>
         @Icons
@@ -10,8 +10,10 @@
 
 
 @code{
+    private static string? _class;
+
+    [Parameter] public string? Class { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Icons { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public string? Css { get; set; } = "";
 }
