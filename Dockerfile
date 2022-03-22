@@ -46,9 +46,7 @@ FROM node:16-alpine as nodejs-restore
 ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=$GITHUB_TOKEN
 WORKDIR /src/src/nodejs
-RUN echo $GITHUB_TOKEN && \
-    npm install -g npm@latest && \
-    npm -g config set user root && \
+RUN npm -g config set user root && \
     npm -g config set audit false && \
     npm -g config set audit-level critical && \
     npm -g config set fund false && \
