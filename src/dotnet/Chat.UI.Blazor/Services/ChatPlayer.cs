@@ -1,6 +1,9 @@
+using System.Reactive.Concurrency;
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using Microsoft.Extensions.Hosting;
+using Stl.Locking;
+using AsyncLock = Stl.Locking.AsyncLock;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -16,8 +19,8 @@ public sealed class ChatPlayer : IAsyncDisposable
     private readonly Session _session;
     private readonly IChats _chats;
 
-    private readonly SemaphoreSlim _locker = new(1, 1);
-    private CancellationTokenSource? _playingCancellation;
+    private readonly AsyncLock _stoppingLock = new(ReentryMode.CheckedFail);
+    private CancellationTokenSource? _playCts;
     private readonly CancellationToken _applicationStopping;
 
     private int _isDisposed;
@@ -38,29 +41,29 @@ public sealed class ChatPlayer : IAsyncDisposable
 
     public ChatPlayer(
         Symbol chatId,
+        Session session,
         IHostApplicationLifetime lifetime,
         IPlaybackFactory playbackFactory,
         AudioDownloader audioDownloader,
-        ILogger<ChatPlayer> log,
         IChatMediaResolver mediaResolver,
         IAudioStreamer audioStreamer,
         IChatAuthors chatAuthors,
-        MomentClockSet clocks,
-        Session session,
         IChats chats,
-        IStateFactory stateFactory)
+        IStateFactory stateFactory,
+        MomentClockSet clocks,
+        ILogger<ChatPlayer> log)
     {
+        _log = log;
+        _clocks = clocks;
+        _chatId = chatId;
+        _session = session;
         Playback = playbackFactory.Create();
         State = stateFactory.NewMutable<PlaybackKind>();
         _applicationStopping = lifetime.ApplicationStopping;
-        _chatId = chatId;
         _audioDownloader = audioDownloader;
-        _log = log;
         _mediaResolver = mediaResolver;
         _audioStreamer = audioStreamer;
         _chatAuthors = chatAuthors;
-        _clocks = clocks;
-        _session = session;
         _chats = chats;
     }
 
@@ -70,24 +73,19 @@ public sealed class ChatPlayer : IAsyncDisposable
             throw new ObjectDisposedException(nameof(ChatPlayer));
         if (!_isPlaying)
             return;
-        await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
-        try {
-            await StopAndDisposeCancellation().ConfigureAwait(false);
-        }
-        finally {
-            _locker.Release();
-        }
+        using var _ = await _stoppingLock.Lock(CancellationToken.None).ConfigureAwait(false);
+        await StopAndDisposeCancellation().ConfigureAwait(false);
     }
 
     private async Task StopAndDisposeCancellation()
     {
         if (!_isPlaying)
             return;
-        var cts = _playingCancellation;
-        _playingCancellation = null;
-        if (cts != null) {
+        var playCts = _playCts;
+        _playCts = null;
+        if (playCts != null) {
             // add the stop command to the playback command queue and when discard all related commands (except added stop)
-            cts.CancelAndDisposeSilently();
+            playCts.CancelAndDisposeSilently();
             var execution = await Playback.Stop(CancellationToken.None).ConfigureAwait(false);
             await execution.WhenCommandProcessed.ConfigureAwait(false);
         }
@@ -102,35 +100,26 @@ public sealed class ChatPlayer : IAsyncDisposable
     {
         if (_isDisposed == 1)
             throw new ObjectDisposedException(nameof(ChatPlayer));
-        CancellationToken cancellation;
         try {
-            await _locker.WaitAsync(CancellationToken.None).ConfigureAwait(false);
-            try {
+            CancellationToken playCancellationToken;
+            using (await _stoppingLock.Lock(CancellationToken.None).ConfigureAwait(false)) {
                 if (_isPlaying)
                     await StopAndDisposeCancellation().ConfigureAwait(false);
-                _playingCancellation = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
-                cancellation = _playingCancellation.Token;
+                _playCts = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping, cancellationToken);
+                playCancellationToken = _playCts.Token;
                 _isPlaying = true;
             }
-            finally {
-                _locker.Release();
-            }
 
-            var newState = isRealtime
+            State.Value = isRealtime
                 ? PlaybackKind.Realtime
                 : PlaybackKind.Historical;
-            if (State.Value != newState)
-                State.Value = newState;
 
             if (isRealtime)
-                await PlayRealtime(startAt, cancellation).ConfigureAwait(false);
+                await PlayRealtime(startAt, playCancellationToken).ConfigureAwait(false);
             else
-                await PlayHistorical(startAt, cancellation).ConfigureAwait(false);
+                await PlayHistorical(startAt, playCancellationToken).ConfigureAwait(false);
         }
-        catch (TaskCanceledException) {
-            throw;
-        }
-        catch(Exception e) {
+        catch (Exception e) when (e is not OperationCanceledException) {
             _log.LogError(e, "ChatPlayer.Play failed");
         }
         finally {
@@ -308,7 +297,6 @@ public sealed class ChatPlayer : IAsyncDisposable
 
     private async ValueTask DisposeAsyncCore()
     {
-        _locker.Dispose();
         try {
             await StopAndDisposeCancellation().ConfigureAwait(false);
         }
