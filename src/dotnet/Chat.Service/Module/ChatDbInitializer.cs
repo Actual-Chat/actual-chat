@@ -76,7 +76,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
 
             var now = Clocks.SystemClock.Now;
-            await AddRandomEntries(dbContext, dbChat, dbAuthor, 0.5, 1000, null, cancellationToken).ConfigureAwait(false);
+            await AddRandomEntries(dbContext, dbChat, dbAuthor, 0.5, 300, null, cancellationToken).ConfigureAwait(false);
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {

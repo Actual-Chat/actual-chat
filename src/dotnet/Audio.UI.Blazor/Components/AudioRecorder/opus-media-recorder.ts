@@ -195,7 +195,7 @@ export class OpusMediaRecorder {
 
         this.context = await AudioContextPool.get('main') as AudioContext;
         if (this.context.sampleRate !== 48000) {
-            throw new Error(`initialize: AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
+            throw new Error(`AudioContext sampleRate should be 48000, but sampleRate=${this.context.sampleRate}`);
         }
         const encoderWorkletOptions: AudioWorkletNodeOptions = {
             numberOfInputs: 1,
@@ -276,7 +276,7 @@ export class OpusMediaRecorder {
     private popCallback(callbackId: number): Function {
         const callback = this.callbacks.get(callbackId);
         if (callback === undefined) {
-            throw new Error(`OpusMediaRecorder: Callback with id '${callbackId}' is not found.`);
+            throw new Error(`Callback #${callbackId} is not found.`);
         }
         this.callbacks.delete(callbackId);
         return callback;

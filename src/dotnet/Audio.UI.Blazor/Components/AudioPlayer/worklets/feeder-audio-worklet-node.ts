@@ -9,6 +9,8 @@ import {
     StopNodeMessage
 } from './feeder-audio-worklet-message';
 
+const LogScope: string = 'FeederNode'
+
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {
 
@@ -82,7 +84,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
                     this.onOperationCompleted(msg as OperationCompletedProcessorMessage);
                     break;
                 default:
-                    throw new Error(`Feeder node: Unsupported message type: ${msg.type}`);
+                    throw new Error(`Unsupported message type: ${msg.type}`);
             }
         }
         catch (error) {
@@ -93,7 +95,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     private popCallback(callbackId: number): Function {
         const callback = this.callbacks.get(callbackId);
         if (callback === undefined) {
-            throw new Error(`Feeder node: Callback with id '${callbackId}' is not found.`);
+            throw new Error(`Callback #${callbackId} is not found.`);
         }
         this.callbacks.delete(callbackId);
         return callback;
@@ -135,7 +137,7 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
     }
 
     private onProcessorError = (ev: Event) => {
-        console.error('Feeder node: Unhandled feeder processor error: ', ev);
+        console.error(`${LogScope}: Unhandled feeder processor error:`, ev);
     };
 }
 

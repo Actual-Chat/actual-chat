@@ -36,14 +36,14 @@ public class FeedbackModule : HostModule<FeedbackSettings>
         // Fusion services
         var fusion = services.AddFusion();
         services.AddCommander().AddHandlerFilter((handler, commandType) => {
-            // 1. Check if this is DbOperationScopeProvider<UsersDbContext> handler
+            // 1. Check if this is DbOperationScopeProvider<FeedbackDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<FeedbackDbContext>))
                 return true;
-            // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
+            // 2. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(IFeedbacks.FeatureRequestCommand).Assembly)
+            if (commandAssembly == typeof(IFeedbacks).Assembly) // Feedback.Contracts assembly
                 return true;
             return false;
         });

@@ -16,8 +16,10 @@ import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } 
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 
+const LogScope: string = 'OpusEncoderWorker'
+
 /// #if MEM_LEAK_DETECTION
-console.info('MEM_LEAK_DETECTION == true');
+console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);
 /// #endif
 
 // TODO: create wrapper around module for all workers
@@ -80,11 +82,11 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
                 break;
 
             default:
-                throw new Error(`Encoder worker: Got unknown message type ${msg.type as string}`);
+                throw new Error(`Unsupported message type: ${msg.type as string}`);
         }
     }
     catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.worker.onmessage error:`, error);
     }
 };
 
@@ -98,6 +100,9 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
     const { sessionId, chatId, callbackId } = message;
     lastInitMessage = message;
 
+    if (debug) {
+        console.log(`${LogScope}.onInit`);
+    }
 
     recordingSubject = new signalR.Subject<Uint8Array>();
     await connection.send('ProcessAudio', sessionId, chatId, Date.now() / 1000, recordingSubject);
@@ -105,19 +110,16 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
     state = 'encoding';
     vadState = 'voice';
 
-    if (debug) {
-        console.log('init recorder worker');
-    }
     const msg: ResolveCallbackMessage = { callbackId };
     worker.postMessage(msg);
 }
 
 async function onCreate(message: CreateEncoderMessage, workletMessagePort: MessagePort, vadMessagePort: MessagePort): Promise<void> {
     if (workletPort != null) {
-        throw new Error('EncoderWorker: workletPort has already been specified.');
+        throw new Error('workletPort has already been specified.');
     }
     if (vadPort != null) {
-        throw new Error('EncoderWorker: vadPort has already been specified.');
+        throw new Error('vadPort has already been specified.');
     }
 
     const { audioHubUrl, callbackId } = message;
@@ -140,7 +142,7 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
         await codecModuleReady;
     }
     encoder = new codecModule.Encoder();
-    console.warn('create', encoder);
+    console.warn(`${LogScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
     const readyToInit: ResolveCallbackMessage = {
@@ -176,7 +178,7 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         }
     }
     catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.onWorkletMessage error:`, error);
     }
 };
 
@@ -184,7 +186,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     try {
         const vadEvent = ev.data;
         if (debug) {
-            console.log(JSON.stringify(vadEvent));
+            console.log(`${LogScope}.onVadMessage, data:`, vadEvent);
         }
 
         const newVadState = vadEvent.kind === 'end'
@@ -204,7 +206,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
         }
         else {
             if (!lastInitMessage) {
-                throw new Error('OpusEncoderWorker: unable to resume streaming lastNewStreamMessage is null');
+                throw new Error('Unable to resume streaming lastNewStreamMessage is null');
             }
 
             // start new stream and then set state
@@ -216,7 +218,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
         }
     }
     catch (error) {
-        console.error(error);
+        console.error(`${LogScope}.onVadMessage error:`, error);
     }
 };
 
@@ -249,7 +251,7 @@ function processQueue(): void {
         }
     }
     catch (error) {
-        console.error('Encoder worker: Unhandled processing error:', error);
+        console.error(`${LogScope}.processQueue error:`, error);
     }
     finally {
         isEncoding = false;

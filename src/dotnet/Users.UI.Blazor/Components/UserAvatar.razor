@@ -4,7 +4,7 @@
     var state = State.LatestNonErrorValue ?? new Model();
 }
 
-<div class="bg-white font-semibold text-center rounded-3xl border shadow-lg p-3 w-80 max-w-xs @Css">
+<div class="bg-white font-semibold text-center rounded-3xl border shadow-lg p-3 w-80 max-w-xs @Class">
     @if (!@state.Picture.IsNullOrEmpty()) {
         <img class="mb-3 w-24 h-24 rounded-full shadow-lg mx-auto" src="@state.Picture" alt="avatar pic">
     } else {
@@ -26,7 +26,7 @@
     [Inject] Session Session { get; set; } = null!;
 
     [Parameter]
-    public string Css { get; set; } = "";
+    public string Class { get; set; } = "";
     [Parameter]
     public string AvatarId { get; set; } = "";
     [Parameter]

@@ -15,7 +15,7 @@
         var brdCls = !string.IsNullOrEmpty(ChatId) && item.IsUserDefault ? "border border-green-300" : "";
         <li class="group m-4">
             <div class="relative">
-                <UserAvatar AvatarId="@item.AvatarId" Css="@brdCls">
+                <UserAvatar AvatarId="@item.AvatarId" Class="@brdCls">
                     <ActionsTemplate>
                         <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary"
                                 @onclick="@(() => EditAvatar(item.AvatarId))">Edit</button>

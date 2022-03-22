@@ -11,7 +11,5 @@ public class ChatModule : HostModule
     public ChatModule(IPluginHost plugins) : base(plugins) { }
 
     public override void InjectServices(IServiceCollection services)
-    {
-        services.AddSingleton<MarkupParser>();
-    }
+        => services.AddSingleton<MarkupParser>();
 }

@@ -9,8 +9,9 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 
+const LogScope: string = 'OpusDecoder'
 /// #if MEM_LEAK_DETECTION
-console.info('MEM_LEAK_DETECTION == true');
+console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);
 /// #endif
 
 let codecModule: Codec | null = null;
@@ -60,23 +61,23 @@ export class OpusDecoder {
     }
 
     public init(): void {
-        console.assert(this.queue.length === 0, 'queue should be empty, check stop/reset logic');
+        console.assert(this.queue.length === 0, `${LogScope}.init: queue should be empty, check stop/reset logic`);
         this.state = 'waiting';
     }
 
     public pushData(data: ArrayBuffer): void {
         if (this.debug)
-            console.debug(`Decoder: push data bytes: ${data.byteLength}`);
+            console.debug(`${LogScope}.pushData: data size: ${data.byteLength} byte(s)`);
         const { state, queue } = this;
-        console.assert(state !== 'uninitialized', "Decoder isn't initialized but got a data. Lifetime error.");
-        console.assert(data.byteLength, 'Decoder got an empty data message.');
+        console.assert(state !== 'uninitialized', `${LogScope}.pushData: uninitialized but got data!`);
+        console.assert(data.byteLength, `${LogScope}.pushData: got zero length data message!`);
         queue.push(data);
         this.processQueue();
     }
 
     public pushEnd(): void {
         const { state, queue } = this;
-        console.assert(state !== 'uninitialized', "Decoder isn't initialized but got an end of data. Lifetime error.");
+        console.assert(state !== 'uninitialized', `${LogScope}.pushEnd: Uninitialized but got "end of data" message!`);
         queue.push('end');
         this.processQueue();
     }
@@ -98,7 +99,7 @@ export class OpusDecoder {
             const item = queue.shift();
             if (item === 'end') {
                 if (debug) {
-                    console.debug('Decoder: queue end is reached. Send end to worklet and stop queue processing');
+                    console.debug(`${LogScope}.processQueue: end is reached, sending end to worklet and stopping queue processing`);
                 }
                 // tell the worklet, that we are at the end of playing
                 const msg: EndDecoderWorkerMessage = { type: 'end' };
@@ -110,13 +111,13 @@ export class OpusDecoder {
             const samples = this.decoder.decode(item);
             if (debug) {
                 if (!!samples && samples.length > 0) {
-                    console.debug(`Decoder: opusDecode(${item.byteLength} bytes) `
+                    console.debug(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
                         + `returned ${samples.byteLength} `
                         + `bytes / ${samples.length} samples`);
                 }
                 else {
-                    console.error(`Decoder: opusDecode(${item.byteLength} bytes) ` +
-                        'returned empty/unknown result');
+                    console.error(`${LogScope}.processQueue: opusDecode(${item.byteLength} bytes) `
+                        + 'returned empty/unknown result');
                 }
             }
 
@@ -132,7 +133,7 @@ export class OpusDecoder {
             workletPort.postMessage(msg, [samples.buffer]);
         }
         catch (error) {
-            console.error(error);
+            console.error(`${LogScope}.processQueue error:`, error);
         }
         finally {
             if (this.state === 'decoding')
