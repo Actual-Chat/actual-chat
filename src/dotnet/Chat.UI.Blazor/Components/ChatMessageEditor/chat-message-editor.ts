@@ -8,6 +8,8 @@ export class ChatMessageEditor {
     private postButton: HTMLButtonElement;
     private recorderButtonDiv: HTMLDivElement;
     private recordButton: HTMLButtonElement;
+    private recordIcon: SVGSVGElement;
+    private recordIconObserver : MutationObserver;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
     private attachmentsIdSeed: number = 0;
@@ -25,6 +27,7 @@ export class ChatMessageEditor {
         this.blazorRef = blazorRef;
         this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
         this.recordButton = this.recorderButtonDiv.querySelector('button');
+        this.recordIcon = this.recordButton.querySelector('svg');
 
         // Wiring up event listeners
         this.input.addEventListener('input', this.inputInputListener);
@@ -33,7 +36,13 @@ export class ChatMessageEditor {
         this.input.addEventListener('paste', this.inputPasteListener);
         this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
-        this.recordButton.addEventListener('click', this.recordClickListener);
+        this.recordIconObserver = new MutationObserver(this.syncLanguageButtonVisibility);
+        const recordIconObserverConfig = {
+            attributes: true,
+            childList: false,
+            subtree: false
+        };
+        this.recordIconObserver.observe(this.recordIcon, recordIconObserverConfig);
         this.changeMode();
     }
 
@@ -82,13 +91,8 @@ export class ChatMessageEditor {
         this.changeMode();
     })
 
-    private recordClickListener = ((event: Event & { target: Element; }) => {
-        this.syncLanguageButtonVisibility();
-    })
-
-    private syncLanguageButtonVisibility() {
-        const recordIcon = this.recordButton.querySelector('svg');
-        const isRecording = recordIcon.classList.contains('not-recording');
+    private syncLanguageButtonVisibility = () => {
+        const isRecording = this.recordIcon.classList.contains('recording');
         if (this.isRecording === isRecording)
             return;
         this.isRecording = isRecording;
@@ -266,7 +270,7 @@ export class ChatMessageEditor {
         this.input.removeEventListener('paste', this.inputPasteListener);
         this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
-        this.recordButton.removeEventListener('click', this.recordClickListener);
+        this.recordIconObserver.disconnect();
     }
 }
 
