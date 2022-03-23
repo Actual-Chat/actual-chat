@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
+using Blazored.SessionStorage;
 using Microsoft.Extensions.Hosting;
 using Stl.OS;
 using Stl.Plugins;
@@ -37,6 +38,8 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddBlazoredModal();
         services.AddTransient<Clipboard>();
         services.AddScoped<FeedbackUI>();
+        services.AddBlazoredSessionStorage();
+        services.AddScoped<InteractionUI>();
 
         if (OSInfo.IsWebAssembly)
             services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();

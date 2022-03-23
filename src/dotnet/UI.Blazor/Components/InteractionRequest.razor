@@ -1,0 +1,18 @@
+<div class="max-w-[400px]">
+    <div class="my-8 mx-8">
+        <h3 class="font-bold mb-3">INTERACTION REQUIRED</h3>
+        <p>Your action is required to start audio playback in the browser. Click 'OK' to continue.</p>
+    </div>
+
+    <div class="bg-gray-200 py-5 px-5">
+        <button class="bg-blue-500 text-white w-full h-10"
+                @onclick="OnOkClicked">OK</button>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    private void OnOkClicked() => ModalInstance.CloseAsync();
+}

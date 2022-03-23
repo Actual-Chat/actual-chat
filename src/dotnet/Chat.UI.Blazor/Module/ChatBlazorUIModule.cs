@@ -34,5 +34,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         services.RegisterNavItems<ChatLinks>();
         services.TryAddScoped<ListeningChats>();
+
+        services.RegisterStateRetainHandler<ChatControllerStateRestoreHandler>();
+        services.RegisterStateRetainHandler<RecorderControllerStateRestoreHandler>();
     }
 }

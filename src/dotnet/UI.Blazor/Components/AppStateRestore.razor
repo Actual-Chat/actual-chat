@@ -1,0 +1,28 @@
+@using Blazored.SessionStorage
+@using ActualChat.UI.Blazor.Services
+
+@ChildContent
+
+@code {
+    [Inject]
+    private ILogger<AppStateRestore> Log { get; set; } = null!;
+    [Inject]
+    private ISessionStorageService SessionStorage { get; set; } = null!;
+    [Inject]
+    private IEnumerable<IStateRestoreHandler> Handlers { get; set; } = null!;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+        try {
+            foreach (var handler in Handlers.OrderBy(c => c.Priority)) {
+                await handler.Execute().ConfigureAwait(true);
+            }
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "An error occurred on state restore");
+        }
+    }
+}

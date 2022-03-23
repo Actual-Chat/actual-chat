@@ -137,7 +137,7 @@ public sealed class ChatPlayer : IAsyncDisposable
                 await PlayHistorical(startAt, playCancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            _log.LogError(e, "ChatPlayer.Play failed");
+            _log.LogError(e, "ChatPlayer.Play failed. ChatId: {ChatId}", _chatId);
         }
         finally {
             State.Value = PlaybackKind.None;
