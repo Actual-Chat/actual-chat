@@ -24,8 +24,15 @@ public abstract class StateRestoreHandler<TItemValue> : IStateRestoreHandler
 
     public async Task Execute()
     {
-        var itemValue = await _storage.GetItemAsync<TItemValue>(StoreItemKey).ConfigureAwait(false);
-        await Restore(itemValue).ConfigureAwait(false);
+        TItemValue? itemValue = default;
+        bool fetched = false;
+        try {
+            itemValue = await _storage.GetItemAsync<TItemValue?>(StoreItemKey).ConfigureAwait(false);
+            fetched = true;
+        }
+        catch { }
+        if (fetched)
+            await Restore(itemValue).ConfigureAwait(false);
         await _storage.RemoveItemAsync(StoreItemKey).ConfigureAwait(false);
         _computed = _stateFactory.NewComputed<TItemValue>(UpdateDelayer, Compute);
         _computed.Updated += ComputedOnUpdated;

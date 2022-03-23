@@ -58,7 +58,7 @@
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatIds = await ListeningChats.GetChatIds(cancellationToken).ConfigureAwait(true);
+        var chatIds = await ListeningChats.GetChatIds().ConfigureAwait(true);
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         var chatModels = new List<ChatModel>();
         foreach (var chat in chats.OrderBy(c => c.Title)) {
@@ -83,9 +83,9 @@
         };
     }
 
-    private async Task<List<Chat>> GetListeningChatsByIds(IEnumerable<string> chatIds, CancellationToken cancellationToken) {
+    private async Task<List<Chat>> GetListeningChatsByIds(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken) {
         var chats = new List<Chat>();
-        foreach (var chatId in chatIds.Where(chatId => !string.IsNullOrWhiteSpace(chatId)))
+        foreach (var chatId in chatIds.Where(chatId => !chatId.IsEmpty))
         {
             var chat = await Chats.Get(Session, chatId, cancellationToken);
             if (chat != null && !chats.Contains(chat)) {

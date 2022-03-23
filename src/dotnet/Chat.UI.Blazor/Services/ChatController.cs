@@ -27,8 +27,8 @@ public class ChatController
     [ComputeMethod]
     public virtual async Task<RealtimeListeningMode> GetRealtimeListeningMode(Symbol chatId, CancellationToken cancellationToken)
     {
-        var chatIds = await _listeningChats.GetChatIds(cancellationToken).ConfigureAwait(false);
-        if (!chatIds.Contains((string)chatId, StringComparer.Ordinal))
+        var chatIds = await _listeningChats.GetChatIds().ConfigureAwait(false);
+        if (!chatIds.Contains(chatId))
             return RealtimeListeningMode.None;
         var playbackKind = await GetChatPlaybackKind(chatId, cancellationToken).ConfigureAwait(false);
         switch (playbackKind) {
@@ -54,10 +54,14 @@ public class ChatController
         return player;
     }
 
-    public virtual async Task StartRealtimeListening(Symbol chatId)
+    public virtual Task StartRealtimeListening(Symbol chatId)
+        => StartRealtimeListening(chatId, ListenChatMode.Active);
+
+    public virtual async Task StartRealtimeListening(Symbol chatId, ListenChatMode mode)
     {
-        _listeningChats.Add(chatId);
-        await InnerStartRealtimeListening(chatId).ConfigureAwait(false);
+        _listeningChats.Set(chatId, mode);
+        if (mode == ListenChatMode.Active)
+            await InnerStartRealtimeListening(chatId).ConfigureAwait(false);
     }
 
     public virtual async Task StopRealtimeListening(Symbol chatId)
@@ -68,22 +72,24 @@ public class ChatController
 
     public virtual async Task MuteRealtimeListening(Symbol chatId)
     {
-        if (!IsListeningToChat(chatId))
+        if (!await IsListeningToChat(chatId).ConfigureAwait(false))
             return;
+        _listeningChats.Set(chatId, ListenChatMode.Muted);
         await InnerMuteRealtimeListening(chatId).ConfigureAwait(false);
     }
 
     public virtual async Task UnmuteRealtimeListening(Symbol chatId)
     {
-        if (!IsListeningToChat(chatId))
+        if (!await IsListeningToChat(chatId).ConfigureAwait(false))
             return;
+        _listeningChats.Set(chatId, ListenChatMode.Active);
         await InnerUnmuteRealtimeListening(chatId).ConfigureAwait(false);
     }
 
     public async Task FocusRealtimeListening(Symbol focusChatId)
     {
-        var chatIds = await _listeningChats.GetChatIds(default).ConfigureAwait(false);
-        if (!chatIds.Contains((string)focusChatId, StringComparer.Ordinal))
+        var chatIds = await _listeningChats.GetChatIds().ConfigureAwait(false);
+        if (!chatIds.Contains(focusChatId))
             return;
 
         var tasks = new List<Task>();
@@ -97,7 +103,7 @@ public class ChatController
         await Task.WhenAll(tasks.ToArray()).ConfigureAwait(false);
     }
 
-    public virtual void StartHistoricalPlayer(Symbol chatId, Moment startAt)
+    public virtual async Task StartHistoricalPlayer(Symbol chatId, Moment startAt)
     {
         async Task InnerStartHistoricalPlayer(Symbol chatId, Moment startAt)
         {
@@ -111,7 +117,7 @@ public class ChatController
             _logger, "Historical playback failed");
 
         // restore real-time playback
-        if (IsListeningToChat(chatId)) {
+        if (await IsListeningToChat(chatId).ConfigureAwait(false)) {
             _ = historyPlayTask.ContinueWith(
                 _ => StartRealtimeListening(chatId), TaskScheduler.Current);
         }
@@ -123,7 +129,7 @@ public class ChatController
     public virtual async Task LeaveChat(Symbol chatId)
     {
         await StopHistoricalPlayer(chatId).ConfigureAwait(false);
-        if (!IsListeningToChat(chatId))
+        if (!await IsListeningToChat(chatId).ConfigureAwait(false))
             _ = _chatPlayers.Close(chatId);
     }
 
@@ -193,6 +199,9 @@ public class ChatController
     private async Task InnerStopRealtimeListening(Symbol chatId)
         => await StopPlaying(chatId, PlaybackKind.Realtime).ConfigureAwait(false);
 
-    private bool IsListeningToChat(Symbol chatId)
-        => _listeningChats.ChatIds.Contains((string)chatId, StringComparer.Ordinal);
+    private async Task<bool> IsListeningToChat(Symbol chatId)
+    {
+        var chatIds = await _listeningChats.GetChatIds().ConfigureAwait(false);
+        return chatIds.Contains(chatId);
+    }
 }

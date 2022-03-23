@@ -33,7 +33,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
 
         services.RegisterNavItems<ChatLinks>();
-        services.TryAddScoped<ListeningChats>();
+        fusion.AddComputeService<ListeningChats>(ServiceLifetime.Scoped);
 
         services.RegisterStateRetainHandler<ChatControllerStateRestoreHandler>();
         services.RegisterStateRetainHandler<RecorderControllerStateRestoreHandler>();
