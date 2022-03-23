@@ -41,3 +41,7 @@
 .navbar-menu-button:hover .navbar-menu-icon {
     @apply scale-105 ease-in-out duration-150;
 }
+
+.navbar-link:hover .menu-chat-player-toggle {
+    @apply visible;
+}
