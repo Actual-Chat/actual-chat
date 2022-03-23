@@ -15,11 +15,11 @@
     <input id="navbar-toggle" class="hidden" type="checkbox" />
     <nav id="navbar-links" class="bg-primary text-primary z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition-all duration-200 ease-in-out">
         <div class="flex-1 flex flex-col overflow-y-auto">
-            <div class="md:hidden flex flex-row h-6 py-1">
+            <div class="md:hidden flex flex-row h-11 py-2 bg-accent">
                 <NavbarIcon/>
             </div>
             <div @ref="_navbarRef" class="flex flex-row h-full overflow-y-hidden">
-                <div class="flex flex-1 flex-col mt-4 md:mt-0 pt-0.5 pr-0.5 text-secondary bg-accent">
+                <div class="flex flex-1 flex-col md:pt-0.5 pr-0.5 text-secondary bg-accent">
                     <NavbarShortcuts/>
                 </div>
                 <div class="flex flex-col w-full h-full overflow-y-auto pt-2 custom-scrollbar">
