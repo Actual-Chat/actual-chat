@@ -134,6 +134,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C
 		src\nodejs\styles\utils.css = src\nodejs\styles\utils.css
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification.Client", "src\dotnet\Notification.Client\Notification.Client.csproj", "{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification.Contracts", "src\dotnet\Notification.Contracts\Notification.Contracts.csproj", "{18F78214-B24B-42A9-85AC-84F14AEBD6C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification.Service", "src\dotnet\Notification.Service\Notification.Service.csproj", "{BA5873E5-ADC5-4928-8352-E16EC61658E2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification.Service.Migration", "src\dotnet\Notification.Service.Migration\Notification.Service.Migration.csproj", "{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notification.UI.Blazor", "src\dotnet\Notification.UI.Blazor\Notification.UI.Blazor.csproj", "{82B8C66C-5EBA-4337-8D24-420E27D97F6B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -328,6 +338,26 @@ Global
 		{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18F78214-B24B-42A9-85AC-84F14AEBD6C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18F78214-B24B-42A9-85AC-84F14AEBD6C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18F78214-B24B-42A9-85AC-84F14AEBD6C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18F78214-B24B-42A9-85AC-84F14AEBD6C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA5873E5-ADC5-4928-8352-E16EC61658E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA5873E5-ADC5-4928-8352-E16EC61658E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA5873E5-ADC5-4928-8352-E16EC61658E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA5873E5-ADC5-4928-8352-E16EC61658E2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82B8C66C-5EBA-4337-8D24-420E27D97F6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82B8C66C-5EBA-4337-8D24-420E27D97F6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82B8C66C-5EBA-4337-8D24-420E27D97F6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82B8C66C-5EBA-4337-8D24-420E27D97F6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -383,6 +413,11 @@ Global
 		{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{609C47B5-30E6-4B2A-A8DB-1B1FD644948F} = {BEC9AC19-13D3-4573-85CF-DCF5BA27377C}
 		{747A6C53-98F6-45B2-8717-15B35A59AFDC} = {609C47B5-30E6-4B2A-A8DB-1B1FD644948F}
+		{A69CC1D0-DEC4-412C-BA14-3DD4E0DB3595} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{18F78214-B24B-42A9-85AC-84F14AEBD6C4} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{BA5873E5-ADC5-4928-8352-E16EC61658E2} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{F9D0701D-0A70-42C5-9FCD-7CC20C7B1DF4} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{82B8C66C-5EBA-4337-8D24-420E27D97F6B} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
