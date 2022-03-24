@@ -10,4 +10,6 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     public Notifications(IServiceProvider services, IAuth auth) : base(services)
         => _auth = auth;
 
+//     public Task<NotificationEntry> Create(INotifications.CreateCommand command, CancellationToken cancellationToken)
+//         => throw new NotImplementedException();
 }
