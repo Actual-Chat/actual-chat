@@ -22,7 +22,7 @@ public class InteractionUI
             return;
         var modalReference = _modalService.Show<InteractionRequest>(
             null,
-            new ModalOptions { HideHeader = true, Class = "blazored-modal-p0"}
+            new ModalOptions { HideHeader = true, Class = "blazored-modal-p0 bg-secondary shadow-lg"}
             //z-102 bg-white flex flex-column border rounded
         );
         await modalReference.Result.ConfigureAwait(false);
