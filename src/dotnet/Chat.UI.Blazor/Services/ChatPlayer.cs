@@ -9,13 +9,14 @@ public sealed class ChatPlayer : IAsyncDisposable
 {
     private readonly Symbol _chatId;
     private readonly AudioDownloader _audioDownloader;
-    private readonly ILogger<ChatPlayer> _log;
     private readonly IChatMediaResolver _mediaResolver;
     private readonly IAudioStreamer _audioStreamer;
     private readonly IChatAuthors _chatAuthors;
-    private readonly MomentClockSet _clocks;
     private readonly Session _session;
     private readonly IChats _chats;
+
+    private readonly MomentClockSet _clocks;
+    private readonly ILogger<ChatPlayer> _log;
 
     private readonly AsyncLock _stoppingLock = new(ReentryMode.CheckedFail);
     private CancellationTokenSource? _playCts;
@@ -53,6 +54,7 @@ public sealed class ChatPlayer : IAsyncDisposable
     {
         _log = log;
         _clocks = clocks;
+
         _chatId = chatId;
         _session = session;
         Playback = playbackFactory.Create();

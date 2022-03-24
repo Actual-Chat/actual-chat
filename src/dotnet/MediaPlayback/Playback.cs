@@ -24,7 +24,11 @@ public sealed class Playback : IAsyncDisposable
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
-    internal Playback(IHostApplicationLifetime lifetime, IStateFactory stateFactory, ITrackPlayerFactory trackPlayerFactory, ILogger<Playback> log)
+    internal Playback(
+        IStateFactory stateFactory,
+        ITrackPlayerFactory trackPlayerFactory,
+        IHostApplicationLifetime lifetime,
+        ILogger<Playback> log)
     {
         _commands = Channel.CreateBounded<CommandExecution>(
             new BoundedChannelOptions(128) {
@@ -200,7 +204,7 @@ public sealed class Playback : IAsyncDisposable
                 OnTrackPlayingChanged = null;
             }
         }
-        /// <see cref="_commandLoopCts"/> will be disposed by the continuation
+        // <see cref="_commandLoopCts"/> will be disposed by the continuation
     }
 
     public async ValueTask DisposeAsync()
@@ -246,7 +250,7 @@ public sealed class Playback : IAsyncDisposable
         public CommandExecution(IPlaybackCommand command)
         {
             Command = command;
-            /// TODO: use <see cref="TaskSource{T}"/> (?)
+            // TODO: use <see cref="TaskSource{T}"/> (?)
             _whenCommandProcessed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _whenAsyncOperationEnded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         }
