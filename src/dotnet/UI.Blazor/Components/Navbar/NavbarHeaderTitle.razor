@@ -1,4 +1,16 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inject NavbarService _navbarService
 
-<div class="mobile-menu-header-title absolute flex flex-1 right-6">CHATS</div>
+@{
+    var title = _navbarService.ActiveGroupTitle.ToUpper();
+}
+
+<div class="mobile-menu-header-title absolute flex flex-1 right-6">@title</div>
+
+@code {
+    protected override void OnInitialized() {
+        _navbarService.ActiveGroupChanged += (s, e) => StateHasChanged();
+    }
+}
 

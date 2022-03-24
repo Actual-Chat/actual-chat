@@ -9,9 +9,8 @@
     const string testPagesShortcut = "M7 2c1.695 1.942 2.371 3 4 3h13v17h-24v-20h7zm6 11v-3h-2v3h-3v2h3v3h2v-3h3v-2h-3z";
 }
 
-<NavbarShortcut IconPath="@chatsShortcut" Class="navbar-chats-shortcut" Title="Chats"/>
-<NavbarShortcut IconPath="@contactsShortcut" Class="navbar-contacts-shortcut" Title="Contacts"/>
-@* <NavbarShortcut IconPath="@settingsShortcut" Id="navbar-settings-shortcut" Title="Settings"/> *@
+<NavbarShortcut IconPath="@chatsShortcut" Class="navbar-chats-shortcut" Title="Chats" Id="chats"/>
+<NavbarShortcut IconPath="@contactsShortcut" Class="navbar-contacts-shortcut" Title="Contacts" Id="contacts"/>
 @if (_hostInfo.IsDevelopmentInstance) {
-    <NavbarShortcut IconPath="@testPagesShortcut" Class="navbar-pages-shortcut" Title=" Test Pages"/>
+    <NavbarShortcut IconPath="@testPagesShortcut" Class="navbar-pages-shortcut" Title="Test Pages" Id="testPages"/>
 }

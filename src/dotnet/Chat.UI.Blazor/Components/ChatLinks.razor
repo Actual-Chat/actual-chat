@@ -5,7 +5,7 @@
     var chats = model.Chats;
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats">
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
     <ChildContent>
         @foreach(var chat in chats) {
             <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")">
