@@ -7,4 +7,7 @@ namespace ActualChat.Notification.Controllers;
 [ApiController, JsonifyErrors]
 public class NotificationsController : ControllerBase, INotifications
 {
+    // [HttpPost]
+    // public Task<NotificationEntry> Create(INotifications.CreateCommand command, CancellationToken cancellationToken)
+    //     => throw new NotImplementedException();
 }
