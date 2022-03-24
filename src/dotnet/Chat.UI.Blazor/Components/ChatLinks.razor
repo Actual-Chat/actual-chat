@@ -5,12 +5,12 @@
     var chats = model.Chats;
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats">
+<NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
     <ChildContent>
         @foreach(var chat in chats) {
             <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")">
                 <PostFragment>
-                    <div class="justify-self-end flex-1 flex justify-end">
+                    <div class="menu-chat-player-toggle justify-self-end flex-1 flex justify-end invisible">
                         <ChatPlayerToggle ChatId="@chat.Id" Size="ChatPlayerToggleSize.Small" />
                     </div>
                 </PostFragment>
