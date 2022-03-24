@@ -47,7 +47,7 @@ public class AudioRecorderCommandProcessor : CommandProcessor<IAudioRecorderComm
         async Task OnStopCommand()
         {
             if (!_recorder.Initialization.IsCompletedSuccessfully)
-                throw new LifetimeException("recorder is not initialized yet");
+                throw new LifetimeException("Recorder is not initialized yet.");
             await _recorder.StopRecording().ConfigureAwait(false);
         }
     }

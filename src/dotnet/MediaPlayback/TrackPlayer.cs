@@ -46,7 +46,7 @@ public abstract class TrackPlayer : IAsyncDisposable
     public Task Play(CancellationToken cancellationToken = default)
     {
         if (_isDisposed == 1)
-            throw new LifetimeException("Player is disposed.", new ObjectDisposedException(nameof(TrackPlayer)));
+            throw new ObjectDisposedException(nameof(TrackPlayer));
 
         if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 1)
             throw new LifetimeException("Playing is already started.");

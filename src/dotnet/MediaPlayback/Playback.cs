@@ -11,13 +11,13 @@ public sealed class Playback : IAsyncDisposable
     private readonly ILogger<Playback> _log;
     private readonly CancellationToken _applicationStopping;
     private readonly ITrackPlayerFactory _trackPlayerFactory;
-    private readonly Channel<CommandExecution> _commands;
-    private int _isDisposed;
+    private readonly Channel<PlaybackCommandState> _commandStates;
     private Task? _commandLoopTask;
     private CancellationTokenSource? _commandLoopCts;
     private TaskSource<bool>? _whenCompleted;
     private readonly object _stateLocker = new();
-    private readonly object _runLocker = new();
+    private readonly object _lock = new();
+    private volatile bool _isDisposed;
 
     public readonly IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState;
     public readonly IMutableState<bool> IsPlayingState;
@@ -30,7 +30,7 @@ public sealed class Playback : IAsyncDisposable
         IHostApplicationLifetime lifetime,
         ILogger<Playback> log)
     {
-        _commands = Channel.CreateBounded<CommandExecution>(
+        _commandStates = Channel.CreateBounded<PlaybackCommandState>(
             new BoundedChannelOptions(128) {
                 SingleReader = true,
                 SingleWriter = false,
@@ -44,22 +44,75 @@ public sealed class Playback : IAsyncDisposable
         _log = log;
     }
 
-    private void RunCommandLoopIfNeeded()
+    public async ValueTask DisposeAsync()
+    {
+        lock (_lock) {
+            if (_isDisposed)
+                return;
+            _isDisposed = true;
+        }
+        await DisposeAsyncCore().ConfigureAwait(false);
+        // GC.SuppressFinalize(this);
+    }
+
+    private async ValueTask DisposeAsyncCore()
+    {
+        var playing = Interlocked.Exchange(ref _commandLoopTask, null);
+        if (playing != null) {
+            // cancel the command loop enumeration
+            // -> cancel + await running tasks of players
+            // -> send StopCommand
+            // -> await js callback
+            _commandLoopCts?.Cancel();
+            try {
+                await playing.ConfigureAwait(false);
+            }
+            catch { }
+            finally {
+                _commandStates.Writer.TryComplete();
+                OnTrackPlayingChanged = null;
+            }
+        }
+        // <see cref="_commandLoopCts"/> will be disposed by the continuation
+    }
+
+    /// <summary>
+    /// Returns a <seealso cref="ValueTask{T}"/> which is completed when <seealso cref="PlayTrackCommand"/> is enqueued.
+    /// </summary>
+    public async ValueTask<PlaybackCommandState> Play(
+        TrackInfo trackInfo,
+        IMediaSource source,
+        Moment playAt, // By CpuClock
+        CancellationToken cancellationToken)
+    {
+        // TODO: think about it, maybe it should be changed ?
+        lock (_stateLocker)
+            IsPlayingState.Value = true;
+        var command = new PlayTrackCommand(trackInfo, source, cancellationToken) { PlayAt = playAt };
+        return await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Returns a <seealso cref="ValueTask{T}"/> which is completed when <seealso cref="StopCommand"/> is enqueued.
+    /// </summary>
+    public ValueTask<PlaybackCommandState> Stop(CancellationToken cancellationToken)
+        => EnqueueCommand(StopCommand.Instance, cancellationToken);
+
+    private void StartCommandLoop()
     {
         if (_commandLoopTask != null)
             return;
-        lock (_runLocker) {
+        lock (_lock) {
             if (_commandLoopTask != null)
                 return;
-
-            if (_isDisposed == 1)
-                throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(TrackPlayer)));
+            if (_isDisposed)
+                throw new ObjectDisposedException(nameof(TrackPlayer));
 
             _whenCompleted = TaskSource.New<bool>(runContinuationsAsynchronously: true);
             _commandLoopCts = CancellationTokenSource.CreateLinkedTokenSource(_applicationStopping);
             _commandLoopTask = CommandLoop(_commandLoopCts.Token)
                 .ContinueWith(task => {
-                    lock (_runLocker) {
+                    lock (_lock) {
                         _commandLoopCts?.Dispose();
                         _commandLoopCts = null;
                         var exception = task.Exception?.InnerException ?? task.Exception;
@@ -75,34 +128,33 @@ public sealed class Playback : IAsyncDisposable
         }
     }
 
-    internal async Task CommandLoop(CancellationToken cancellationToken)
+    private async Task CommandLoop(CancellationToken cancellationToken)
     {
         var trackPlayers = new ConcurrentDictionary<PlayTrackCommand, (TrackPlayer Player, Task RunningTask)>();
         try {
-            var commands = _commands.Reader.ReadAllAsync(cancellationToken);
-            await foreach (var execution in commands.ConfigureAwait(false).WithCancellation(cancellationToken)) {
+            var commandStates = _commandStates.Reader.ReadAllAsync(cancellationToken);
+            await foreach (var commandState in commandStates.ConfigureAwait(false)) {
                 try {
                     // if a Play call was cancelled we should skip all enqueued commands from this call
                     // note, that stop commands don't use the cancellation token at all
-                    if (execution.Command.CancellationToken.IsCancellationRequested)
+                    if (commandState.Command.CancellationToken.IsCancellationRequested)
                         continue;
-                    switch (execution.Command) {
+                    switch (commandState.Command) {
                         case PlayTrackCommand playTrackCommand:
-                            await OnPlayTrackCommand(playTrackCommand, execution._whenAsyncOperationEnded).ConfigureAwait(false);
+                            await OnPlayTrackCommand(playTrackCommand, commandState).ConfigureAwait(false);
                             break;
                         case StopCommand:
                             await OnStopCommand().ConfigureAwait(false);
-                            execution._whenAsyncOperationEnded.TrySetResult();
+                            commandState.MarkCompleted();
                             break;
                         default:
-                            throw new NotSupportedException($"Unsupported command type: '{execution.Command.GetType()}'.");
+                            throw new NotSupportedException($"Unsupported command type: '{commandState.Command.GetType()}'.");
                     }
                     // notify that the command processing is done
-                    execution._whenCommandProcessed.TrySetResult();
+                    commandState.MarkStarted();
                 }
                 catch (Exception ex) {
-                    execution._whenCommandProcessed.TrySetException(ex);
-                    execution._whenAsyncOperationEnded.TrySetException(ex);
+                    commandState.MarkCompleted(ex);
                     throw;
                 }
             }
@@ -111,13 +163,15 @@ public sealed class Playback : IAsyncDisposable
             await WhenAllPlayers().ConfigureAwait(false);
         }
 
+        // There is no more method code from here - just local functions
+
         async Task OnStopCommand()
         {
             await Task.WhenAll(trackPlayers.Values.Select(x => x.Player.Stop())).ConfigureAwait(false);
             // after stop we should renew _playingCts, because user can send a next play command
         }
 
-        async ValueTask OnPlayTrackCommand(PlayTrackCommand command, TaskCompletionSource tcs)
+        async ValueTask OnPlayTrackCommand(PlayTrackCommand command, PlaybackCommandState commandState)
         {
             if (trackPlayers.ContainsKey(command)) {
                 // fail fast in case of wrong app logic, this shouldn't happen
@@ -134,14 +188,14 @@ public sealed class Playback : IAsyncDisposable
                 throw new InvalidOperationException($"Can't add player for command {command}.");
             }
 
-            async Task RunPlayer(TrackPlayer player, CancellationToken cancellationToken)
+            async Task RunPlayer(TrackPlayer player, CancellationToken cancellationToken1)
             {
                 try {
-                    await player.Play(cancellationToken).ConfigureAwait(false);
-                    tcs.TrySetResult();
+                    await player.Play(cancellationToken1).ConfigureAwait(false);
+                    commandState.MarkCompleted();
                 }
                 catch (Exception ex) {
-                    tcs.TrySetException(ex);
+                    commandState.MarkCompleted(ex);
                     throw;
                 }
                 finally {
@@ -151,68 +205,17 @@ public sealed class Playback : IAsyncDisposable
                 }
             }
         }
-        Task WhenAllPlayers() => Task.WhenAll(trackPlayers.Values.Select(x => x.RunningTask).ToArray());
+
+        Task WhenAllPlayers()
+            => Task.WhenAll(trackPlayers.Values.Select(x => x.RunningTask).ToArray());
     }
 
-    private async ValueTask<CommandExecution> EnqueueCommand(IPlaybackCommand command, CancellationToken cancellationToken = default)
+    private async ValueTask<PlaybackCommandState> EnqueueCommand(IPlaybackCommand command, CancellationToken cancellationToken = default)
     {
-        if (_isDisposed == 1)
-            throw new LifetimeException("Playback is disposed.", new ObjectDisposedException(nameof(Playback)));
-        RunCommandLoopIfNeeded();
-        CommandExecution execution = new(command);
-        await _commands.Writer.WriteAsync(execution, cancellationToken).ConfigureAwait(false);
-        return execution;
-    }
-
-    /// <summary>
-    /// Returns a <seealso cref="ValueTask{T}"/> which is completed when <seealso cref="PlayTrackCommand"/> is enqueued.
-    /// </summary>
-    public async ValueTask<CommandExecution> Play(
-        TrackInfo trackInfo,
-        IMediaSource source,
-        Moment playAt, // By CpuClock
-        CancellationToken cancellationToken)
-    {
-        // TODO: think about it, maybe it should be changed ?
-        lock (_stateLocker)
-            IsPlayingState.Value = true;
-        var command = new PlayTrackCommand(trackInfo, source, cancellationToken) { PlayAt = playAt };
-        return await EnqueueCommand(command, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Returns a <seealso cref="ValueTask{T}"/> which is completed when <seealso cref="StopCommand"/> is enqueued.
-    /// </summary>
-    public ValueTask<CommandExecution> Stop(CancellationToken cancellationToken)
-        => EnqueueCommand(StopCommand.Instance, cancellationToken);
-
-    private async ValueTask DisposeAsyncCore()
-    {
-        var playing = Interlocked.Exchange(ref _commandLoopTask, null);
-        if (playing != null) {
-            // cancel the command loop enumeration
-            // -> cancel + await running tasks of players
-            // -> send StopCommand
-            // -> await js callback
-            _commandLoopCts?.Cancel();
-            try {
-                await playing.ConfigureAwait(false);
-            }
-            catch { }
-            finally {
-                _commands.Writer.TryComplete();
-                OnTrackPlayingChanged = null;
-            }
-        }
-        // <see cref="_commandLoopCts"/> will be disposed by the continuation
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 1)
-            return;
-        await DisposeAsyncCore().ConfigureAwait(false);
-        GC.SuppressFinalize(this);
+        StartCommandLoop();
+        PlaybackCommandState commandState = new(command);
+        await _commandStates.Writer.WriteAsync(commandState, cancellationToken).ConfigureAwait(false);
+        return commandState;
     }
 
     private void TrackPlayerStateChanged(TrackInfo trackInfo, PlayerStateChangedEventArgs args)
@@ -239,52 +242,4 @@ public sealed class Playback : IAsyncDisposable
         }
     }
 
-    public sealed record CommandExecution
-    {
-        public static readonly CommandExecution None = new ();
-
-        public readonly IPlaybackCommand Command;
-        internal readonly TaskCompletionSource _whenCommandProcessed;
-        internal readonly TaskCompletionSource _whenAsyncOperationEnded;
-
-        public CommandExecution(IPlaybackCommand command)
-        {
-            Command = command;
-            // TODO: use <see cref="TaskSource{T}"/> (?)
-            _whenCommandProcessed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            _whenAsyncOperationEnded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        }
-
-        private CommandExecution() : this(new NoOpCommand())
-        {
-            _whenCommandProcessed.SetResult();
-            _whenAsyncOperationEnded.SetResult();
-        }
-
-        /// <summary>
-        /// Represents a task which will be completed when enqueued command is completed. <br/>
-        /// For example for <seealso cref="PlayTrackCommand"/> when playing of a track is started (and after that you
-        /// can get state changes from <see cref="PlayingTracksState"/> )
-        /// </summary>
-        public Task WhenCommandProcessed => _whenCommandProcessed.Task;
-
-        /// <summary>
-        /// Represents a task which will be completed when an async operation created by processed command is ended. <br/>
-        /// For example for <seealso cref="PlayTrackCommand"/> when actual playing of a track is ended (on js side and
-        /// after that you can enqueue the same track again)
-        /// </summary>
-        public Task WhenAsyncOperationEnded => _whenAsyncOperationEnded.Task;
-
-        private sealed class NoOpCommand : IPlaybackCommand
-        {
-            public CancellationToken CancellationToken => CancellationToken.None;
-        }
-
-        public void Deconstruct(out IPlaybackCommand command, out Task whenCommandProcessed, out Task whenAsyncOperationEnded)
-        {
-            command = Command;
-            whenCommandProcessed = WhenCommandProcessed;
-            whenAsyncOperationEnded = WhenAsyncOperationEnded;
-        }
-    }
 }
