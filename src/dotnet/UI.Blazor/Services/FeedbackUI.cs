@@ -25,7 +25,7 @@ public class FeedbackUI
 
         var parameters = new ModalParameters();
         parameters.Add(nameof(FeatureRequestFeedback.FeatureTitle), featureTitle);
-        var modalOptions = new ModalOptions { HideHeader = true, DisableBackgroundCancel = true, Class = "feature-modal"};
+        var modalOptions = new ModalOptions { HideHeader = true, DisableBackgroundCancel = false, Class = "feature-modal"};
         _modalReference = _modalService.Show<FeatureRequestFeedback>("", parameters, modalOptions);
         var result = await _modalReference.Result.ConfigureAwait(false);
         _modalReference = null;
