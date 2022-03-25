@@ -81,6 +81,20 @@ public partial class ChatAuthors
         return chatAuthor;
     }
 
+    public async Task<string[]> GetAuthorIds(string chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false))
+            return await dbContext.ChatAuthors
+                .Where(a => a.ChatId == chatId)
+                .Select(a => a.Id)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {

@@ -9,6 +9,8 @@ public interface IChatAuthorsBackend
     [ComputeMethod(KeepAliveTime = 10)]
     Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken);
     Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<string[]> GetAuthorIds(string chatId, CancellationToken cancellationToken);
 
     // Commands
 

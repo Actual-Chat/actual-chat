@@ -2,9 +2,10 @@ using ActualChat.Chat.Events;
 
 namespace ActualChat.Notification;
 
-public interface IChatEventHandler<in T> where T : IChatEvent
+public interface IChatEventHandler<T> where T : IChatEvent
 {
-    Task<IReadOnlyCollection<NotificationEntry>> GenerateNotifications(
-        T chatEvent,
-        CancellationToken cancellationToken);
+    [CommandHandler]
+    public Task Notify(NotifyCommand command, CancellationToken cancellationToken);
+
+    public record NotifyCommand(T Event) : ICommand<Unit>, IBackendCommand;
 }
