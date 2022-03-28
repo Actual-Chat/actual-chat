@@ -16,10 +16,10 @@ import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } 
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 
-const LogScope: string = 'OpusEncoderWorker';
+const logScope = 'OpusEncoderWorker'
 
 /// #if MEM_LEAK_DETECTION
-console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);
+console.info(`${logScope}: MEM_LEAK_DETECTION == true`);
 /// #endif
 
 // TODO: create wrapper around module for all workers
@@ -86,7 +86,7 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.worker.onmessage error:`, error);
+        console.error(`${logScope}.worker.onmessage error:`, error);
     }
 };
 
@@ -101,7 +101,7 @@ async function onInit(message: InitEncoderMessage): Promise<void> {
     lastInitMessage = message;
 
     if (debug) {
-        console.log(`${LogScope}.onInit`);
+        console.log(`${logScope}.onInit`);
     }
 
     recordingSubject = new signalR.Subject<Uint8Array>();
@@ -142,7 +142,7 @@ async function onCreate(message: CreateEncoderMessage, workletMessagePort: Messa
         await codecModuleReady;
     }
     encoder = new codecModule.Encoder();
-    console.warn(`${LogScope}.onCreate, encoder:`, encoder);
+    console.warn(`${logScope}.onCreate, encoder:`, encoder);
 
     // Notify the host ready to accept 'init' message.
     const readyToInit: ResolveCallbackMessage = {
@@ -178,7 +178,7 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.onWorkletMessage error:`, error);
+        console.error(`${logScope}.onWorkletMessage error:`, error);
     }
 };
 
@@ -186,7 +186,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
     try {
         const vadEvent = ev.data;
         if (debug) {
-            console.log(`${LogScope}.onVadMessage, data:`, vadEvent);
+            console.log(`${logScope}.onVadMessage, data:`, vadEvent);
         }
 
         const newVadState = vadEvent.kind === 'end'
@@ -218,7 +218,7 @@ const onVadMessage = async (ev: MessageEvent<VoiceActivityChanged>) => {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.onVadMessage error:`, error);
+        console.error(`${logScope}.onVadMessage error:`, error);
     }
 };
 
@@ -251,7 +251,7 @@ function processQueue(): void {
         }
     }
     catch (error) {
-        console.error(`${LogScope}.processQueue error:`, error);
+        console.error(`${logScope}.processQueue error:`, error);
     }
     finally {
         isEncoding = false;

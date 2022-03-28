@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Web.WebView2.Core;
 using WebView2Control = Microsoft.UI.Xaml.Controls.WebView2;
 namespace ActualChat.ClientApp;
@@ -9,17 +8,23 @@ public partial class MauiBlazorWebViewHandler
     protected override WebView2Control CreatePlatformView()
     {
         var webview = new WebView2Control();
-        webview.NavigationStarting += static (WebView2Control sender, CoreWebView2NavigationStartingEventArgs args) => {
-            Debug.WriteLine($"webview.NavigationStarting: {args.Uri}");
-        };
         var baseUri = _settings.BaseUri;
         if (!_settings.BaseUri.EndsWith('/'))
             baseUri += '/';
-
         webview.EnsureCoreWebView2Async().AsTask().ContinueWith((t, state) => {
             var ctrl = (WebView2Control)state!;
+#pragma warning disable VSTHRD101 // Avoid unsupported async delegates
+            ctrl.CoreWebView2.DOMContentLoaded += async (_, __) => {
+                try {
+                    await webview.CoreWebView2.ExecuteScriptAsync($"audio.OpusMediaRecorder.origin='{baseUri}';");
+                }
+                catch (Exception ex) {
+                    Debug.WriteLine(ex.ToString());
+                }
+            };
+#pragma warning restore VSTHRD101 // Avoid unsupported async delegates
             ctrl.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
-            ctrl.CoreWebView2.WebResourceRequested += (CoreWebView2 sender, CoreWebView2WebResourceRequestedEventArgs args) => {
+            ctrl.CoreWebView2.WebResourceRequested += (CoreWebView2 _sender, CoreWebView2WebResourceRequestedEventArgs args) => {
                 using var deferral = args.GetDeferral();
                 /// wss:// can't be rewrited, so we should change SignalR script on the fly
                 /// <see href="https://github.com/MicrosoftEdge/WebView2Feedback/issues/172" />
