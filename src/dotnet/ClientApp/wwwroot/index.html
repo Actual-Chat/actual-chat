@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Actual Chat</title>
+    <base href="/" />
+    <link href="/dist/bundle.css" rel="stylesheet" />
+    <link href="_content/Blazor.ContextMenu/blazorContextMenu.min.css" rel="stylesheet" />
+    <link href="_content/Blazored.Modal/blazored-modal.css" rel="stylesheet" />
+    <script src="_content/Stl.Fusion.Blazor/scripts/fusionAuth.js"></script>
+    <script>
+        window.FusionAuth.schemas = 'Google|Google|Microsoft|Microsoft';
+    </script>
+</head>
+
+<body>
+    <div id="blazor-error-ui" class="hidden fixed inset-x-0 mt-12" style="z-index:100000;">
+        <div class="flex w-full justify-center">
+            <div class="flex flex-1 max-w-3xl bg-red-100 shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
+                <div class="bg-red-500 w-16 text-white justify-center flex items-center">
+                    <i class="fa fa-2x fa-exclamation-triangle"></i>
+                </div>
+                <div class="h-full flex-1 flex border-r-8 border-red-500">
+                    <div class="flex-1 px-4 py-2 break-words">
+                        <p class="text-grey-dark font-bold">Error</p>
+                        <p class="text-grey-dark">
+                            <environment include="Staging,Production">
+                                An error has occurred. This application may no longer respond until reloaded.
+                            </environment>
+                            <environment include="Development">
+                                An unhandled exception has occurred. See browser dev tools for details.
+                            </environment>
+                        </p>
+                    </div>
+                    <div class="flex-col w-8 items-start mx-auto pt-2 px-1 text-right text-grey-dark ml-3 mr-1">
+                        <i class="block dismiss cursor-pointer fa fa-times fa-fw"></i>
+                        <i class="reload block cursor-pointer fa fa-repeat fa-fw"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="components-reconnect-modal">
+        <div class="loading">
+            <div class="loading-caption">Unable to connect to server. Reconnecting...</div>
+            <div class="loading-progress-ring"></div>
+        </div>
+    </div>
+
+
+    <div id="app" class="flex flex-col h-full">Loading...</div>
+
+    <script src="/dist/bundle.js"></script>
+    <script src="_content/Blazored.Modal/blazored.modal.js"></script>
+    <script src="_content/Blazor.ContextMenu/blazorContextMenu.min.js"></script>
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+</body>
+
+</html>

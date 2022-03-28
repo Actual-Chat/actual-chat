@@ -8,15 +8,6 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
-  <!-- Extra trimming roots -->
-  <ItemGroup>
-    <TrimmerRootAssembly Include="Stl.Fusion" />
-    <TrimmerRootAssembly Include="Stl.Fusion.Client" />
-    <TrimmerRootAssembly Include="Stl.Fusion.Blazor" />
-    <TrimmerRootAssembly Include="System.Collections.Immutable" />
-    <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
-    <TrimmerRootAssembly Include="System.Text.Json" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />

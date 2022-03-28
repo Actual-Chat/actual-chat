@@ -1,0 +1,52 @@
+@using Stl.Plugins
+@using Blazored.Modal
+@namespace ActualChat.ClientApp
+@implements IDisposable
+@inject IPluginHost _plugins
+@inject BlazorCircuitContext _circuitContext
+
+@{
+	var moduleAssemblies = _plugins.GetPlugins<IBlazorUIModule>()
+		.Select(p => p.GetType().Assembly)
+		.ToArray();
+}
+
+<CascadingAuthState SessionId="@SessionId">
+	<CascadingBlazoredModal>
+		<Router AppAssembly="@typeof(Main).Assembly" AdditionalAssemblies="moduleAssemblies">
+			<Found>
+				<CascadingValue Value="@context">
+					<RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)" />
+				</CascadingValue>
+			</Found>
+			<NotFound>
+				<LayoutView Layout="@typeof(MainLayout)">
+					<p>Sorry, there's nothing here.</p>
+				</LayoutView>
+			</NotFound>
+		</Router>
+	</CascadingBlazoredModal>
+</CascadingAuthState>
+
+@code {
+	[Parameter]
+	public string SessionId { get; set; } = "";
+
+	protected override async Task OnInitializedAsync()
+	{
+		if (!_circuitContext.IsPrerendering)
+			_circuitContext.RootComponent = this;
+		await base.OnInitializedAsync().ConfigureAwait(true);
+		if (string.IsNullOrWhiteSpace(SessionId)) {
+			// TODO: make it better
+			SessionId = Session.Default.Id.Value;
+			string path = Path.Combine(FileSystem.AppDataDirectory, "session.txt");
+			if (File.Exists(path)){
+				SessionId = await File.ReadAllTextAsync(path, CancellationToken.None).ConfigureAwait(true);
+			}
+		}
+	}
+
+	public void Dispose()
+		=> _circuitContext.Dispose();
+}

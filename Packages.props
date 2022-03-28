@@ -9,7 +9,7 @@
     <EntityFrameworkCoreMySqlVersion>6.0.1</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>6.0.1</MicrosoftExtensionsVersion>
-    <MicrosoftExtensionsPrevVersion>6.0.0</MicrosoftExtensionsPrevVersion>
+    <MicrosoftExtensionsAbstractionsVersion>6.0.0</MicrosoftExtensionsAbstractionsVersion>
     <MySqlVersion>2.1.8</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
@@ -55,20 +55,19 @@
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Client" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="$(SignalRVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Caching.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="6.0.0"/>
+    <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsPrevVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsPrevVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsAbstractionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsAbstractionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsAbstractionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Http" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Hosting.Abstractions" Version="$(MicrosoftExtensionsAbstractionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="Microsoft.Extensions.Logging.Abstractions" Version="$(MicrosoftExtensionsVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsPrevVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsPrevVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsPrevVersion)"/>
-    <PackageReference Update="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Logging" Version="$(MicrosoftExtensionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Logging.Console" Version="$(MicrosoftExtensionsAbstractionsVersion)"/>
+    <PackageReference Update="Microsoft.Extensions.Logging.Debug" Version="$(MicrosoftExtensionsAbstractionsVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)"/>
@@ -104,6 +103,10 @@
     <PackageReference Update="System.Threading.Channels" Version="$(AspNetCoreVersion)"/>
     <PackageReference Update="Ulid" Version="1.2.6"/>
     <PackageReference Update="ZString" Version="2.4.*"/>
+
+    <!-- MAUI -->
+    <PackageReference Update="Microsoft.WindowsAppSDK" Version="1.0.0" />
+    <PackageReference Update="Microsoft.Graphics.Win2D" Version="1.0.0.30" />
 
     <!-- TODO: Remove or migrate from these -->
     <PackageReference Update="Microsoft.AspNetCore.Authentication.Cookies" Version="2.2.*"/>
