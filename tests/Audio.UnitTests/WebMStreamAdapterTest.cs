@@ -6,15 +6,15 @@ namespace ActualChat.Audio.UnitTests;
 
 public class WebMStreamAdapterTest
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _log;
 
-    public WebMStreamAdapterTest(ILogger logger)
-        => _logger = logger;
+    public WebMStreamAdapterTest(ILogger log)
+        => _log = log;
 
     [Fact]
     public async Task WrittenStreamIsValid()
     {
-        var streamAdapter = new WebMStreamAdapter(_logger);
+        var streamAdapter = new WebMStreamAdapter(_log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024);
         var audio = await streamAdapter.Read(byteStream, default);
@@ -35,7 +35,7 @@ public class WebMStreamAdapterTest
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var streamAdapter = new WebMStreamAdapter(_logger, "opus-media-recorder", 0x00B6F555106DDDC8);
+        var streamAdapter = new WebMStreamAdapter(_log, "opus-media-recorder", 0x00B6F555106DDDC8);
         var byteStreamMemoized = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(128 * 1024)
             .Memoize();
@@ -49,7 +49,7 @@ public class WebMStreamAdapterTest
     [Fact]
     public async Task OneByteSequenceCanBeRead()
     {
-        var streamAdapter = new WebMStreamAdapter(_logger);
+        var streamAdapter = new WebMStreamAdapter(_log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1);
         var audio = await streamAdapter.Read(byteStream, default);

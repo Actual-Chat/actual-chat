@@ -1,5 +1,4 @@
 ﻿using ActualChat.MediaPlayback;
-using System.Linq;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -10,18 +9,18 @@ public class ChatController
     private readonly ChatPlayers _chatPlayers;
     private readonly ListeningChats _listeningChats;
     private readonly MomentClockSet _clocks;
-    private readonly ILogger<ChatController> _logger;
+    private readonly ILogger<ChatController> _log;
 
     public ChatController(
         ChatPlayers chatPlayers,
         ListeningChats listeningChats,
         MomentClockSet clocks,
-        ILogger<ChatController> logger)
+        ILogger<ChatController> log)
     {
         _chatPlayers = chatPlayers;
         _listeningChats = listeningChats;
         _clocks = clocks;
-        _logger = logger;
+        _log = log;
     }
 
     [ComputeMethod]
@@ -114,7 +113,7 @@ public class ChatController
 
         var historyPlayTask = BackgroundTask.Run(
             () => InnerStartHistoricalPlayer(chatId, startAt),
-            _logger, "Historical playback failed");
+            _log, "Historical playback failed");
 
         // restore real-time playback
         if (await IsListeningToChat(chatId).ConfigureAwait(false)) {
@@ -171,7 +170,7 @@ public class ChatController
 
         var realtimePlayTask = BackgroundTask.Run(
             () => RealtimeListening(chatId),
-            _logger, "Realtime playback failed");
+            _log, "Realtime playback failed");
 
         return Task.CompletedTask;
     }

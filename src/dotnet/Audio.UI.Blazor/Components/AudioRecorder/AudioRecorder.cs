@@ -20,8 +20,8 @@ public class AudioRecorderStatus
 
 public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
 {
-    private readonly ILogger<AudioRecorder> _logger;
-    private ILogger? DebugLog => DebugMode ? _logger : null;
+    private readonly ILogger<AudioRecorder> _log;
+    private ILogger? DebugLog => DebugMode ? _log : null;
     private bool DebugMode => Constants.DebugMode.AudioRecording;
 
     private readonly Session _session;
@@ -35,12 +35,12 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
     public Task Initialization { get; }
 
     public AudioRecorder(
-        ILogger<AudioRecorder> logger,
+        ILogger<AudioRecorder> log,
         Session session,
         IJSRuntime js,
         AudioRecorderStatus statusService)
     {
-        _logger = logger;
+        _log = log;
         _session = session;
         _js = js;
         _statusService = statusService;
@@ -77,7 +77,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
                 if (Recording != recording)
                     return; // We don't want to stop the next recording here :)
 
-                _logger.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by _js backend");
+                _log.LogWarning(nameof(OnRecordingStopped) + " wasn't invoked on time by _js backend");
                 await OnRecordingStopped().ConfigureAwait(true);
             }, TaskScheduler.Current);
 

@@ -4,11 +4,12 @@ using Cysharp.Text;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V1P1Beta1;
 using Google.Protobuf;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ActualChat.Transcription.Google;
 
-public class GoogleTranscriberProcess : AsyncProcessBase
+public class GoogleTranscriberProcess : WorkerBase
 {
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -22,6 +23,7 @@ public class GoogleTranscriberProcess : AsyncProcessBase
     public GoogleTranscriberProcess(
         TranscriptionOptions options,
         AudioSource audioSource,
+        CancellationToken stopToken,
         ILogger? log = null)
     {
         Log = log ?? NullLogger.Instance;
