@@ -17,7 +17,7 @@
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
             <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")"
-                 @ondblclick="AddContact">
+                 @onclick="ShowChatAuthorCard">
                 <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
         </ChatAuthor>
@@ -108,6 +108,7 @@
     [Inject] private IChats Chats { get; set; }
     [Inject] private Session Session { get; set; }
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
+    [Inject] private IModalService ModalService { get; set; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
@@ -115,7 +116,10 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    private async Task AddContact() {
-        var (_, e) = await Cmd.Run(new IChats.AddToContactsCommand(Session, Model.Entry.AuthorId));
+    private void ShowChatAuthorCard() {
+        var modalParameters = new ModalParameters();
+        modalParameters.Add(nameof(ChatAuthorCard.ChatId), (string)Model.Entry.ChatId);
+        modalParameters.Add(nameof(ChatAuthorCard.ChatAuthorId), (string)Model.Entry.AuthorId);
+        ModalService.Show<ChatAuthorCard>(null, modalParameters);
     }
 }
