@@ -9,7 +9,8 @@ public class NavbarService
 
     public void CheckNavbar(bool navbarChecked)
     {
-        if (navbarChecked == NavbarChecked) return;
+        if (navbarChecked == NavbarChecked)
+            return;
         NavbarChecked = navbarChecked;
     }
 
