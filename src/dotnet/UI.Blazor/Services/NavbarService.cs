@@ -4,7 +4,15 @@ public class NavbarService
 {
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
+    public bool NavbarChecked { get; set; }
     public event EventHandler ActiveGroupChanged = (s, e) => { };
+
+    public void CheckNavbar(bool navbarChecked)
+    {
+        if (navbarChecked == NavbarChecked)
+            return;
+        NavbarChecked = navbarChecked;
+    }
 
     public void ActivateGroup(string id, string title)
     {
