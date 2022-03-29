@@ -16,7 +16,7 @@ public class DbDevice : IHasId<string>, IHasVersion<long>
     [ConcurrencyCheck]
     public long Version { get; set; }
 
-    public string UserId { get; set; }
+    public string UserId { get; set; } = null!;
 
-    public string Type { get; set; }
+    public string Type { get; set; } = null!;
 }
