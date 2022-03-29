@@ -6,6 +6,9 @@ namespace ActualChat.Notification.Db;
 
 public class NotificationDbContext : DbContextBase
 {
+    public DbSet<DbDevice> Devices { get; protected set; } = null!;
+    public DbSet<DbChatSubscription> ChatSubscriptions { get; protected set; } = null!;
+
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
