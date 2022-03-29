@@ -46,7 +46,9 @@ namespace ActualChat.Notification.Migrations.Migrations
                     Id = table.Column<string>(type: "text", nullable: false),
                     Version = table.Column<long>(type: "bigint", nullable: false),
                     UserId = table.Column<string>(type: "text", nullable: false),
-                    Type = table.Column<string>(type: "text", nullable: false)
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AccessedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {

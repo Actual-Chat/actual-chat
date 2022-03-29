@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Notification.Backend;
 using Microsoft.EntityFrameworkCore;
 using Stl.Versioning;
 
@@ -9,6 +10,9 @@ namespace ActualChat.Notification.Db;
 [Index(nameof(UserId))]
 public class DbDevice : IHasId<string>, IHasVersion<long>
 {
+    private DateTime _createdAt;
+    private DateTime _accessedAt;
+
     public DbDevice() { }
 
     [Key] public string Id { get; set; } = null!;
@@ -18,5 +22,17 @@ public class DbDevice : IHasId<string>, IHasVersion<long>
 
     public string UserId { get; set; } = null!;
 
-    public string Type { get; set; } = null!;
+    public DeviceType Type { get; set; }
+
+    public DateTime CreatedAt {
+        get => _createdAt.DefaultKind(DateTimeKind.Utc);
+        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    public DateTime AccessedAt {
+        get => _accessedAt.DefaultKind(DateTimeKind.Utc);
+        set => _accessedAt = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    public Device ToModel() => new (Id, Type, CreatedAt, AccessedAt);
 }

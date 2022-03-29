@@ -1,4 +1,5 @@
-﻿using ActualChat.Db.Module;
+﻿using ActualChat.Chat.Events;
+using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -49,5 +50,10 @@ public class NotificationModule : HostModule<NotificationSettings>
         });
 
         fusion.AddComputeService<INotifications, Notifications>();
+
+        services.AddSingleton<INotificationPublisher, NotificationPublisher>();
+        services.AddSingleton<IChatEventHandler<NewChatEntryEvent>, ChatEventHandler<NewChatEntryEvent>>();
+        // services.AddSingleton<IChatEventHandler<InviteToChatEvent>, ChatEventHandler<InviteToChatEvent>>();
+        services.AddSingleton<IChatEventNotificationGenerator<NewChatEntryEvent>, NewChatEntryNotificationGenerator>();
     }
 }

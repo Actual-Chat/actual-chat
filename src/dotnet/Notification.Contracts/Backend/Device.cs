@@ -1,3 +1,3 @@
 namespace ActualChat.Notification.Backend;
 
-public record Device(string DeviceId, DeviceType DeviceType);
+public record Device(string DeviceId, DeviceType DeviceType, Moment CreatedAt, Moment AccessedAt);
