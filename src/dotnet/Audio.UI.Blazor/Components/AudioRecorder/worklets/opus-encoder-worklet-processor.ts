@@ -89,11 +89,11 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             const { type, buffer } = ev.data;
 
             switch (type) {
-                case 'buffer':
-                    this.bufferDeque.push(buffer);
-                    break;
-                default:
-                    break;
+            case 'buffer':
+                this.bufferDeque.push(buffer);
+                break;
+            default:
+                break;
             }
         }
         catch (error) {
@@ -106,12 +106,12 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor {
             const { type } = ev.data;
 
             switch (type) {
-                case 'init':
-                    this.workerPort = ev.ports[0];
-                    this.workerPort.onmessage = this.onWorkerMessage;
-                    break;
-                default:
-                    break;
+            case 'init':
+                this.workerPort = ev.ports[0];
+                this.workerPort.onmessage = this.onWorkerMessage;
+                break;
+            default:
+                break;
             }
         }
         catch (error) {

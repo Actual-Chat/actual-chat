@@ -39,7 +39,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddTransient<Clipboard>();
         services.AddScoped<FeedbackUI>();
         services.AddBlazoredSessionStorage();
-        services.AddScoped<InteractionUI>();
+        services.AddScoped<UserInteractionUI>();
         services.AddScoped<NavbarService>();
 
         if (OSInfo.IsWebAssembly)

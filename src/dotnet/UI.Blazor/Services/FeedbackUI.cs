@@ -9,7 +9,7 @@ public class FeedbackUI
     private readonly Session _session;
     private readonly IModalService _modalService;
     private readonly IFeedbacks _feedbacks;
-    private IModalReference? _modalReference;
+    private IModalReference? _modal;
 
     public FeedbackUI(Session session, IModalService modalService, IFeedbacks feedbacks)
     {
@@ -20,15 +20,15 @@ public class FeedbackUI
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
     {
-        if (_modalReference != null)
+        if (_modal != null)
             return;
 
         var parameters = new ModalParameters();
-        parameters.Add(nameof(FeatureRequestFeedback.FeatureTitle), featureTitle);
+        parameters.Add(nameof(FeatureRequestFeedbackModal.FeatureTitle), featureTitle);
         var modalOptions = new ModalOptions { HideHeader = true, DisableBackgroundCancel = false, Class = "feature-modal"};
-        _modalReference = _modalService.Show<FeatureRequestFeedback>("", parameters, modalOptions);
-        var result = await _modalReference.Result.ConfigureAwait(false);
-        _modalReference = null;
+        _modal = _modalService.Show<FeatureRequestFeedbackModal>("", parameters, modalOptions);
+        var result = await _modal.Result.ConfigureAwait(false);
+        _modal = null;
         if (result.Cancelled)
             return;
 

@@ -2,18 +2,19 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatControllerStateRestoreHandler : StateRestoreHandler<ListenChatInfo[]>
+// ReSharper disable once ClassNeverInstantiated.Global
+public class ChatControllerStatePersister : StatePersister<ListenChatInfo[]>
 {
     private readonly ListeningChats _listeningChats;
     private readonly ChatController _chatController;
     private readonly IChats _chats;
     private readonly Session _session;
-    private readonly InteractionUI _interactionUi;
+    private readonly UserInteractionUI _userInteractionUI;
 
-    public ChatControllerStateRestoreHandler(
+    public ChatControllerStatePersister(
         ListeningChats listeningChats,
         ChatController chatController,
-        InteractionUI interactionUi,
+        UserInteractionUI userInteractionUI,
         IChats chats,
         Session session,
         IServiceProvider services)
@@ -21,23 +22,21 @@ public class ChatControllerStateRestoreHandler : StateRestoreHandler<ListenChatI
     {
         _listeningChats = listeningChats;
         _chatController = chatController;
-        _interactionUi = interactionUi;
+        _userInteractionUI = userInteractionUI;
         _chats = chats;
         _session = session;
     }
 
-    protected override string StoreItemKey => "listeningChats";
-
-    protected override async Task Restore(ListenChatInfo[]? itemValue)
+    protected override async Task Restore(ListenChatInfo[]? state)
     {
-        var listeningChats = itemValue;
+        var listeningChats = state;
         if (listeningChats == null || listeningChats.Length == 0)
             return;
         listeningChats = await FilterCanRead(listeningChats).ConfigureAwait(false);
         if (listeningChats.Length == 0)
             return;
         if (listeningChats.Any(c => c.Mode == ListenChatMode.Active))
-            await _interactionUi.RequestInteraction().ConfigureAwait(false);
+            await _userInteractionUI.RequestInteraction().ConfigureAwait(false);
         var tasks = new List<Task>();
         foreach (var chatInfo in listeningChats) {
             var task = _chatController.StartRealtimeListening(chatInfo.ChatId, chatInfo.Mode);

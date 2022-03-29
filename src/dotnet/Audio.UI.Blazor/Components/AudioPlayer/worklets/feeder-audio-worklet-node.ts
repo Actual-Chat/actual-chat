@@ -74,17 +74,17 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         const msg = ev.data;
         try {
             switch (msg.type) {
-                case 'stateChanged':
-                    this.onStateChanged(msg as StateChangedProcessorMessage);
-                    break;
-                case 'state':
-                    this.onState(msg as StateProcessorMessage);
-                    break;
-                case 'operationCompleted':
-                    this.onOperationCompleted(msg as OperationCompletedProcessorMessage);
-                    break;
-                default:
-                    throw new Error(`Unsupported message type: ${msg.type}`);
+            case 'stateChanged':
+                this.onStateChanged(msg as StateChangedProcessorMessage);
+                break;
+            case 'state':
+                this.onState(msg as StateProcessorMessage);
+                break;
+            case 'operationCompleted':
+                this.onOperationCompleted(msg as OperationCompletedProcessorMessage);
+                break;
+            default:
+                throw new Error(`Unsupported message type: ${msg.type}`);
             }
         }
         catch (error) {

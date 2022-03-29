@@ -69,20 +69,20 @@ worker.onmessage = async (ev: MessageEvent<EncoderMessage>) => {
     try {
         const msg = ev.data;
         switch (msg.type) {
-            case 'create':
-                await onCreate(msg as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
-                break;
+        case 'create':
+            await onCreate(msg as CreateEncoderMessage, ev.ports[0], ev.ports[1]);
+            break;
 
-            case 'init':
-                await onInit(msg as InitEncoderMessage);
-                break;
+        case 'init':
+            await onInit(msg as InitEncoderMessage);
+            break;
 
-            case 'end':
-                onEnd(msg as EndMessage);
-                break;
+        case 'end':
+            onEnd(msg as EndMessage);
+            break;
 
-            default:
-                throw new Error(`Unsupported message type: ${msg.type as string}`);
+        default:
+            throw new Error(`Unsupported message type: ${msg.type as string}`);
         }
     }
     catch (error) {
@@ -158,11 +158,11 @@ const onWorkletMessage = (ev: MessageEvent<BufferEncoderWorkletMessage>) => {
         // TODO: add offset & length to the message type
         let audioBuffer: ArrayBuffer;
         switch (type) {
-            case 'buffer':
-                audioBuffer = buffer;
-                break;
-            default:
-                break;
+        case 'buffer':
+            audioBuffer = buffer;
+            break;
+        default:
+            break;
         }
         if (audioBuffer.byteLength === 0)
             return;

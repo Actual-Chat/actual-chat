@@ -71,36 +71,36 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 switch (command) {
-                    case PlayCommand:
-                        if (_jsRef != null)
-                            throw new LifetimeException($"[AudioTrackPlayer #{_id}] Double start playback command");
-                        _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-                        _debugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Create audio player in js", _id);
-                        _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                                    $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                                    CancellationToken.None,
-                                    _blazorRef,
-                                    _debugMode,
-                                    _id
-                                ).ConfigureAwait(true);
-                        break;
-                    case StopCommand:
-                        if (!_isStopSent) {
-                            if (_jsRef == null)
-                                throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(StopCommand)}: Start command should be called first.");
-                            _debugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Send stop command to js", _id);
-                            _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
-                            _isStopSent = true;
-                        }
-                        break;
-                    case EndCommand:
+                case PlayCommand:
+                    if (_jsRef != null)
+                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] Double start playback command");
+                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                    _debugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Create audio player in js", _id);
+                    _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                                CancellationToken.None,
+                                _blazorRef,
+                                _debugMode,
+                                _id
+                            ).ConfigureAwait(true);
+                    break;
+                case StopCommand:
+                    if (!_isStopSent) {
                         if (_jsRef == null)
-                            throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(EndCommand)}: Start command should be called first.");
-                        _debugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Send end command to js", _id);
-                        _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
-                        break;
-                    default:
-                        throw new NotSupportedException($"[AudioTrackPlayer #{_id}] Unsupported command type: '{command.GetType()}'.");
+                            throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(StopCommand)}: Start command should be called first.");
+                        _debugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Send stop command to js", _id);
+                        _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
+                        _isStopSent = true;
+                    }
+                    break;
+                case EndCommand:
+                    if (_jsRef == null)
+                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(EndCommand)}: Start command should be called first.");
+                    _debugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Send end command to js", _id);
+                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
+                    break;
+                default:
+                    throw new NotSupportedException($"[AudioTrackPlayer #{_id}] Unsupported command type: '{command.GetType()}'.");
                 }
             }).ConfigureAwait(false);
 

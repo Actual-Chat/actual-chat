@@ -160,18 +160,18 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
     private onNodeMessage = (ev: MessageEvent<NodeMessage>): void => {
         const msg = ev.data;
         switch (msg.type) {
-            case 'init':
-                this.onInitMessage(msg as InitNodeMessage);
-                break;
-            case 'stop':
-                this.onStopMessage();
-                break;
-            case 'getState':
-                this.onGetState(msg as GetStateNodeMessage);
-                break;
+        case 'init':
+            this.onInitMessage(msg as InitNodeMessage);
+            break;
+        case 'stop':
+            this.onStopMessage();
+            break;
+        case 'getState':
+            this.onGetState(msg as GetStateNodeMessage);
+            break;
 
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
+        default:
+            throw new Error(`Unsupported message type: ${msg.type}`);
         }
     };
 
@@ -244,14 +244,14 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor {
         const msg = ev.data;
         try {
             switch (msg.type) {
-                case 'samples':
-                    this.onSamplesDecoderWorkerMessage(msg as SamplesDecoderWorkerMessage);
-                    break;
-                case 'end':
-                    this.onEndDecoderWorkerMessage(msg as EndDecoderWorkerMessage);
-                    break;
-                default:
-                    throw new Error(`Unsupported message type: ${msg.type}`);
+            case 'samples':
+                this.onSamplesDecoderWorkerMessage(msg as SamplesDecoderWorkerMessage);
+                break;
+            case 'end':
+                this.onEndDecoderWorkerMessage(msg as EndDecoderWorkerMessage);
+                break;
+            default:
+                throw new Error(`Unsupported message type: ${msg.type}`);
             }
         }
         catch (error) {

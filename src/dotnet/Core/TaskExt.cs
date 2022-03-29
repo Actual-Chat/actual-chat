@@ -120,6 +120,27 @@ public static class TaskExt
         }
     }
 
+    // PublishTo
+
+#pragma warning disable VSTHRD105
+    public static void PublishTo<T>(this Task<T> source, Task<T> target, CancellationToken cancellationToken = default)
+        => _ = source.ContinueWith(s => {
+            var ts = TaskSource.For(target);
+            ts.TrySetFromTask(s, cancellationToken);
+        }, TaskContinuationOptions.ExecuteSynchronously);
+
+    public static void PublishTo(this Task source, Task<Unit> target, CancellationToken cancellationToken = default)
+        => _ = source.ContinueWith(s => {
+            var ts = TaskSource.For(target);
+            if (source.IsCanceled)
+                ts.SetCanceled(cancellationToken.IsCancellationRequested ? cancellationToken : CancellationToken.None);
+            else if (source.Exception != null)
+                ts.SetException(source.Exception);
+            else
+                ts.SetResult(default);
+        }, TaskContinuationOptions.ExecuteSynchronously);
+#pragma warning restore VSTHRD105
+
     // WithErrorLog
 
     public static Task WithErrorLog(this Task task, ILogger errorLog, string message)
@@ -183,8 +204,7 @@ public static class TaskExt
             _ready = new Queue<int>(n); // NB: Should never exceed this length, so we won't see dynamic realloc.
             _onReady = new Action[n];
 
-            for (var i = 0; i < n; i++)
-            {
+            for (var i = 0; i < n; i++) {
                 //
                 // Cache these delegates, for they have closures (over `this` and `index`), and we need them
                 // for each replacement of a task, to hook up the continuation.
@@ -201,8 +221,7 @@ public static class TaskExt
         /// </summary>
         public void Start()
         {
-            for (var i = 0; i < _tasks.Length; i++)
-            {
+            for (var i = 0; i < _tasks.Length; i++) {
                 //
                 // Register a callback with the task, which will enqueue the index of the completed task
                 // for consumption by awaiters.
@@ -247,8 +266,7 @@ public static class TaskExt
 
             var oldLength = _tasks.Length;
             _tasks = tasks;
-            for (var i = oldLength; i < _tasks.Length; i++)
-            {
+            for (var i = oldLength; i < _tasks.Length; i++) {
                 //
                 // Register a callback with the task, which will enqueue the index of the completed task
                 // for consumption by awaiters.
@@ -265,12 +283,10 @@ public static class TaskExt
         {
             Action? onCompleted = null;
 
-            lock (_ready)
-            {
+            lock (_ready) {
                 //
                 // Store the index of the task that has completed. This will be picked up from GetResult.
                 //
-
                 _ready.Enqueue(index);
 
                 //
@@ -279,8 +295,7 @@ public static class TaskExt
                 // task completions that occur while no awaiter is active will end up being enqueued in _ready.
                 //
 
-                if (_onCompleted != null)
-                {
+                if (_onCompleted != null) {
                     onCompleted = _onCompleted;
                     _onCompleted = null;
                 }
@@ -297,9 +312,7 @@ public static class TaskExt
         {
             // REVIEW: Evaluate options to reduce locking, so the single consuming awaiter has limited contention
             //         with the multiple concurrent completing enumerator tasks, e.g. using ConcurrentQueue<T>.
-
-            lock (_ready)
-            {
+            lock (_ready) {
                 return _ready.Count > 0;
             }
         }
@@ -312,8 +325,7 @@ public static class TaskExt
         /// <returns>Index of the earliest task that has completed.</returns>
         private int GetResult()
         {
-            lock (_ready)
-            {
+            lock (_ready) {
                 return _ready.Dequeue();
             }
         }
@@ -326,8 +338,7 @@ public static class TaskExt
         {
             bool shouldInvoke = false;
 
-            lock (_ready)
-            {
+            lock (_ready) {
                 //
                 // Check if we have anything ready (which could happen in the short window between checking
                 // for IsCompleted and calling OnCompleted). If so, we should invoke the action directly. Not
@@ -336,12 +347,10 @@ public static class TaskExt
                 // delegate, whose subsequent call to GetResult would pick up the lost index).
                 //
 
-                if (_ready.Count > 0)
-                {
+                if (_ready.Count > 0) {
                     shouldInvoke = true;
                 }
-                else
-                {
+                else {
                     Debug.Assert(_onCompleted == null, "Only a single awaiter is allowed.");
 
                     _onCompleted = action;
@@ -355,9 +364,7 @@ public static class TaskExt
             //     synchronous completion of the await operation (which may be in a loop that awaits the
             //     current instance again).
             //
-
-            if (shouldInvoke)
-            {
+            if (shouldInvoke) {
                 action();
             }
         }
@@ -365,7 +372,7 @@ public static class TaskExt
         /// <summary>
         /// Awaiter type used to await completion of any task.
         /// </summary>
-        public struct Awaiter : INotifyCompletion
+        public readonly struct Awaiter : INotifyCompletion
         {
             private readonly WhenAnyValueTask<T> _parent;
 
@@ -376,5 +383,4 @@ public static class TaskExt
             public void OnCompleted(Action action) => _parent.OnCompleted(action);
         }
     }
-
 }

@@ -130,26 +130,26 @@ export class RecordingEventQueue implements IRecordingEventQueue {
 
         let sendImmediately = false;
         switch (event.type) {
-            case RecordingEventType.Pause:
-                if (this.state === 'paused')
-                    return;
+        case RecordingEventType.Pause:
+            if (this.state === 'paused')
+                return;
 
-                this.state = "paused";
-                sendImmediately = true;
-                break;
-            case RecordingEventType.Resume:
-                if (this.state === "running")
-                    return;
-                break;
-            case RecordingEventType.Data:
-                if (this.state === "paused") {
-                    const queueLength = this.lastEvents.push(event as DataRecordingEvent);
-                    if (queueLength > 20) {
-                        this.lastEvents.shift();
-                    }
-                    return;
+            this.state = "paused";
+            sendImmediately = true;
+            break;
+        case RecordingEventType.Resume:
+            if (this.state === "running")
+                return;
+            break;
+        case RecordingEventType.Data:
+            if (this.state === "paused") {
+                const queueLength = this.lastEvents.push(event as DataRecordingEvent);
+                if (queueLength > 20) {
+                    this.lastEvents.shift();
                 }
-                break;
+                return;
+            }
+            break;
         }
 
         if (event.type == RecordingEventType.Resume) {

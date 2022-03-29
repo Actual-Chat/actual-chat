@@ -10,25 +10,23 @@
         .ToArray();
 }
 
+<StateRestoreTrigger/>
 <CascadingAuthState SessionId="@SessionId">
     <CascadingBlazoredModal>
-        <AppStateRestore>
-            <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
-                <Found>
-                    <CascadingValue Value="@context">
-                        <RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
-                    </CascadingValue>
-                </Found>
-                <NotFound>
-                    <LayoutView Layout="@typeof(MainLayout)">
-                        <p>Sorry, there's nothing here.</p>
-                    </LayoutView>
-                </NotFound>
-            </Router>
-        </AppStateRestore>
+        <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
+            <Found>
+                <CascadingValue Value="@context">
+                    <RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
+                </CascadingValue>
+            </Found>
+            <NotFound>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <p>Sorry, there's nothing here.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
     </CascadingBlazoredModal>
 </CascadingAuthState>
-
 
 @code {
     [Parameter]

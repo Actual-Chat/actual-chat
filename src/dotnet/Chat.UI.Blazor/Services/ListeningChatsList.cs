@@ -10,8 +10,7 @@ public class ListeningChats
     private readonly object _syncObject = new ();
 
     public ListeningChats()
-    {
-    }
+    { }
 
     public void Add(Symbol chatId)
         => Set(chatId, ListenChatMode.Active);

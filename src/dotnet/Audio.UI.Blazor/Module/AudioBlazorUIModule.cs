@@ -18,13 +18,10 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        services.AddScoped<ITrackPlayerFactory, AudioTrackPlayerFactory>();
-
         var fusion = services.AddFusion();
-        fusion.AddComputeService<AudioRecorderService>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<AudioRecorderStatus>(ServiceLifetime.Scoped);
-        services.AddScoped<AudioRecorderController>();
+
+        services.AddScoped<ITrackPlayerFactory, AudioTrackPlayerFactory>();
         services.AddScoped<AudioRecorder>();
-        services.AddScoped<AudioRecorderCommandProcessor>();
+        fusion.AddComputeService<AudioRecorderState>(ServiceLifetime.Scoped);
     }
 }

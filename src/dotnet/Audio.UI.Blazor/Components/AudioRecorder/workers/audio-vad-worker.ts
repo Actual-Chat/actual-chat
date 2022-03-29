@@ -30,14 +30,14 @@ onmessage = async (ev: MessageEvent<VadMessage>) => {
         const { type } = ev.data;
 
         switch (type) {
-            case 'create':
-                await onCreate(ev.ports[0], ev.ports[1]);
-                break;
-            case 'init':
-                onInit();
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${type as string}`);
+        case 'create':
+            await onCreate(ev.ports[0], ev.ports[1]);
+            break;
+        case 'init':
+            onInit();
+            break;
+        default:
+            throw new Error(`Unsupported message type: ${type as string}`);
         }
     } catch (error) {
         console.error(`${LogScope}.onmessage error:`, error);
@@ -90,11 +90,11 @@ const onWorkletMessage = async (ev: MessageEvent<BufferVadWorkletMessage>) => {
 
         let vadBuffer: ArrayBuffer;
         switch (type) {
-            case 'buffer':
-                vadBuffer = buffer;
-                break;
-            default:
-                break;
+        case 'buffer':
+            vadBuffer = buffer;
+            break;
+        default:
+            break;
         }
         if (vadBuffer && vadBuffer.byteLength !== 0) {
             queue.push(buffer);

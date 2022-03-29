@@ -63,6 +63,6 @@
         var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startOffset);
 
         var chatController = Services.GetRequiredService<ChatController>();
-        chatController.StartHistoricalPlayer(chatId, startAt);
+        _ = chatController.StartHistoricalPlayer(chatId, startAt);
     }
 }

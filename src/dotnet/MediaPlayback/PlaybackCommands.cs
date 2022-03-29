@@ -1,34 +1,25 @@
 using ActualChat.Media;
+using ActualChat.Messaging;
 
 namespace ActualChat.MediaPlayback;
 
 public interface IPlaybackCommand
-{
-    /// <summary>
-    /// The token passed to <see cref="Playback.Play"/> call.
-    /// </summary>
-    CancellationToken CancellationToken { get; }
-}
+{ }
 
-public sealed class PlayTrackCommand
-    : IPlaybackCommand
+public sealed class PlayTrackCommand : IPlaybackCommand
 {
+    public static PlayTrackCommand PlayNothing { get; } = new(null!, null!);
+    public static IMessageProcess<PlayTrackCommand> PlayNothingProcess { get; } =
+        new MessageProcess<PlayTrackCommand>(PlayNothing, default, Task.FromResult(default(Unit)), Task.FromResult((object?) null));
+
     public TrackInfo TrackInfo { get; }
     public IMediaSource Source { get; }
-    public CancellationToken CancellationToken { get; }
     public Moment PlayAt { get; init; } // rel. to CpuClock.Now
     public Symbol TrackId => TrackInfo.TrackId;
 
-    public PlayTrackCommand(TrackInfo trackInfo, IMediaSource source, CancellationToken cancellationToken)
+    public PlayTrackCommand(TrackInfo trackInfo, IMediaSource source)
     {
         TrackInfo = trackInfo;
         Source = source;
-        CancellationToken = cancellationToken;
     }
 }
-
-public sealed class PlayNothingCommand : IPlaybackCommand
-{
-    public CancellationToken CancellationToken => CancellationToken.None;
-}
-

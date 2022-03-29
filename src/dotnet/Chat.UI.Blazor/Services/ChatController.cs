@@ -4,6 +4,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public enum RealtimeListeningMode { None, Active, Muted }
 
+// ReSharper disable once ClassNeverInstantiated.Global
 public class ChatController
 {
     private readonly ChatPlayers _chatPlayers;
@@ -31,14 +32,14 @@ public class ChatController
             return RealtimeListeningMode.None;
         var playbackKind = await GetChatPlaybackKind(chatId, cancellationToken).ConfigureAwait(false);
         switch (playbackKind) {
-            case PlaybackKind.None:
-                return RealtimeListeningMode.Muted;
-            case PlaybackKind.Realtime:
-                return RealtimeListeningMode.Active;
-            case PlaybackKind.Historical:
-                return RealtimeListeningMode.None;
-            default:
-                throw new NotSupportedException(playbackKind.ToString());
+        case PlaybackKind.None:
+            return RealtimeListeningMode.Muted;
+        case PlaybackKind.Realtime:
+            return RealtimeListeningMode.Active;
+        case PlaybackKind.Historical:
+            return RealtimeListeningMode.None;
+        default:
+            throw new NotSupportedException(playbackKind.ToString());
         }
     }
 

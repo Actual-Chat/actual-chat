@@ -14,11 +14,11 @@ worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
     const msg = ev.data;
     try {
         switch (msg.type) {
-            case 'operationCompleted':
-                onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
+        case 'operationCompleted':
+            onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
+            break;
+        default:
+            throw new Error(`Unsupported message type: ${msg.type}`);
         }
     }
     catch (error) {

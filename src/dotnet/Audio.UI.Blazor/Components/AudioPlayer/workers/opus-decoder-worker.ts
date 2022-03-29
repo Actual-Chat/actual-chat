@@ -11,23 +11,23 @@ worker.onmessage = async (ev: MessageEvent<DecoderMessage>): Promise<void> => {
     try {
         const msg = ev.data;
         switch (msg.type) {
-            case 'create':
-                await onCreate(msg as CreateDecoderMessage);
-                break;
-            case 'init':
-                onInit(msg as InitDecoderMessage);
-                break;
-            case 'data':
-                onData(msg as DataDecoderMessage);
-                break;
-            case 'end':
-                onEnd(msg as EndDecoderMessage);
-                break;
-            case 'stop':
-                onStop(msg as StopDecoderMessage);
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
+        case 'create':
+            await onCreate(msg as CreateDecoderMessage);
+            break;
+        case 'init':
+            onInit(msg as InitDecoderMessage);
+            break;
+        case 'data':
+            onData(msg as DataDecoderMessage);
+            break;
+        case 'end':
+            onEnd(msg as EndDecoderMessage);
+            break;
+        case 'stop':
+            onStop(msg as StopDecoderMessage);
+            break;
+        default:
+            throw new Error(`Unsupported message type: ${msg.type}`);
         }
     }
     catch (error) {

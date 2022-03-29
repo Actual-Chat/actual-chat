@@ -80,29 +80,29 @@ public class WebMStreamAdapterTest
     {
         var lastTimeCode = clusterOffsetMs + blockOffsetMs;
         while (reader.Read()) {
-            switch (reader.ReadResultKind) {
-                case WebMReadResultKind.BeginCluster:
-                    var cluster = (Cluster)reader.ReadResult;
-                    clusterOffsetMs = (int)cluster.Timestamp;
+        switch (reader.ReadResultKind) {
+            case WebMReadResultKind.BeginCluster:
+                var cluster = (Cluster)reader.ReadResult;
+                clusterOffsetMs = (int)cluster.Timestamp;
 
-                    clusterOffsetMs.Should().BeGreaterThan(lastTimeCode);
-                    break;
-                case WebMReadResultKind.Block:
-                    var block = (Block)reader.ReadResult;
-                    blockOffsetMs = block.TimeCode;
+                clusterOffsetMs.Should().BeGreaterThan(lastTimeCode);
+                break;
+            case WebMReadResultKind.Block:
+                var block = (Block)reader.ReadResult;
+                blockOffsetMs = block.TimeCode;
 
-                    var newTimeCode = clusterOffsetMs + blockOffsetMs;
-                    newTimeCode.Should().BeGreaterThan(lastTimeCode);
-                    lastTimeCode = newTimeCode;
-                    break;
-                case WebMReadResultKind.None:
-                case WebMReadResultKind.Ebml:
-                case WebMReadResultKind.Segment:
-                    break;
-                case WebMReadResultKind.CompleteCluster:
-                case WebMReadResultKind.BlockGroup:
-                default:
-                    break;
+                var newTimeCode = clusterOffsetMs + blockOffsetMs;
+                newTimeCode.Should().BeGreaterThan(lastTimeCode);
+                lastTimeCode = newTimeCode;
+                break;
+            case WebMReadResultKind.None:
+            case WebMReadResultKind.Ebml:
+            case WebMReadResultKind.Segment:
+                break;
+            case WebMReadResultKind.CompleteCluster:
+            case WebMReadResultKind.BlockGroup:
+            default:
+                break;
             }
         }
         lastTimeCode = clusterOffsetMs + blockOffsetMs;
