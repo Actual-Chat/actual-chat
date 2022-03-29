@@ -111,7 +111,9 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
             .ConfigureAwait(false);
         if (companion == null || companion.UserId.IsEmpty)
             return false;
-        return !await _userContactsBackend.IsInContactList(user.Id, companion.UserId, cancellationToken);
+        if (user.Id == companion.UserId)
+            return false;
+        return !await _userContactsBackend.IsInContactList(user.Id, companion.UserId, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<UserContact> AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
