@@ -46,6 +46,19 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     }
 
     [HttpGet, Publish]
+    public Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken)
+    {
+        session ??= _sessionResolver.Session;
+        return _service.CanAddToContacts(session, chatAuthorId, cancellationToken);
+    }
+
+    [HttpGet, Publish]
     public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
         => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
+
+    // Commands
+
+    [HttpPost]
+    public Task<UserContact> AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+        => _service.AddToContacts(command, cancellationToken);
 }

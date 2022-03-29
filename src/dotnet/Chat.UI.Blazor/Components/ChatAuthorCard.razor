@@ -12,16 +12,21 @@
             </ChatAuthor>
         </div>
     </div>
-    <div class="mt-4 hover:bg-gray-200">
-        <button type="button" class="text-toggle-on" @onclick="AddContact">Add to Contacts</button>
-    </div>
+    @if (_canAddContact && !_addedContact) {
+        <div class="mt-4 hover:bg-gray-200">
+            <button type="button" class="text-toggle-on" disabled="@_addingContact" @onclick="AddContact">Add to Contacts</button>
+        </div>
+    }
 </div>
 
 @code {
     private string? _chatId;
+    private bool _canAddContact;
+    private bool _addedContact;
+    private bool _addingContact;
     //private Author? _author;
 
-    //[Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
 
@@ -41,12 +46,17 @@
         if (!string.IsNullOrEmpty(ChatId))
             _chatId = ChatId;
         else if (!ActualChat.Chat.ChatAuthor.TryGetChatId(ChatAuthorId, out _chatId))
-            throw new InvalidOperationException("Invalid chat author id specified");
-        //_author = await ChatAuthors.GetAuthor(chatId, ChatAuthorId, true, default);
-
+            throw new InvalidOperationException("Invalid chat author id given");
+        _canAddContact = await ChatAuthors.CanAddToContacts(Session, ChatAuthorId, default);
     }
 
     private async Task AddContact() {
-        var (_, e) = await Cmd.Run(new IChats.AddToContactsCommand(Session, ChatAuthorId));
+        if (_addingContact)
+            return;
+        _addingContact = true;
+        var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, ChatAuthorId));
+        if (e.IsCompletedSuccessfully)
+            _addedContact = true;
+        _addingContact = false;
     }
 }

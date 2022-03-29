@@ -34,6 +34,20 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return chatIds;
     }
 
+    public virtual async Task<bool> IsInContactList(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
+    {
+        if (ownerUserId.IsNullOrEmpty() || targetUserId.IsNullOrEmpty())
+            return false;
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbUserContact = await dbContext.UserContacts
+            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetUserId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbUserContact != null;
+    }
+
     public virtual async Task<UserContact> CreateContact(IUserContactsBackend.CreateContactCommand command, CancellationToken cancellationToken)
     {
         var contact = command.Contact;
@@ -41,6 +55,9 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         if (Computed.IsInvalidating()) {
             _ = Get(ownerUserId, default);
             _ = GetContactIds(ownerUserId, default);
+            var invUserContact = CommandContext.GetCurrent().Operation().Items.Get<UserContact>()!;
+            _ = IsInContactList(invUserContact.OwnerUserId, invUserContact.TargetUserId, default);
+            _ = Get(invUserContact.Id, default);
             return default!;
         }
 

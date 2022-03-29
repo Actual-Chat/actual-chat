@@ -17,6 +17,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     private readonly IRandomNameGenerator _randomNameGenerator;
     private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
     private readonly IChatUserSettingsBackend _chatUserSettingsBackend;
+    private readonly IUserContactsBackend _userContactsBackend;
 
     public ChatAuthors(IServiceProvider services) : base(services)
     {
@@ -28,6 +29,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
         _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
         _chatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
+        _userContactsBackend = services.GetRequiredService<IUserContactsBackend>();
     }
 
     // [ComputeMethod]
@@ -95,5 +97,46 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         var avatar = await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, "", cancellationToken)
             .ConfigureAwait(false);
         return avatar.Id;
+    }
+
+    public virtual async Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return false;
+        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
+            throw new InvalidOperationException("Invalid chatAuthorId");
+
+        var companion = await Get(chatId, chatAuthorId, false, cancellationToken)
+            .ConfigureAwait(false);
+        if (companion == null || companion.UserId.IsEmpty)
+            return false;
+        return !await _userContactsBackend.IsInContactList(user.Id, companion.UserId, cancellationToken);
+    }
+
+    public virtual async Task<UserContact> AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, chatAuthorId) = command;
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            throw new InvalidOperationException("No contact list. User is not authenticated.");
+
+        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
+            throw new InvalidOperationException("Invalid chatAuthorId");
+        var companion = await Get(chatId, chatAuthorId, false, cancellationToken)
+            .ConfigureAwait(false);
+        if (companion == null || companion.UserId.IsEmpty)
+            throw new InvalidOperationException("Given chat author is not associated with a user.");
+
+        var createCommand = new IUserContactsBackend.CreateContactCommand(
+            new UserContact {
+                OwnerUserId = user.Id,
+                TargetUserId = companion.UserId,
+                Name = companion.Name
+            });
+        return await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

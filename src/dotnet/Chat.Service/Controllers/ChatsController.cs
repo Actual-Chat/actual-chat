@@ -70,13 +70,6 @@ public class ChatsController : ControllerBase, IChats
     // Commands
 
     [HttpPost]
-    public Task AddToContacts(IChats.AddToContactsCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.AddToContacts(command, cancellationToken);
-    }
-
-    [HttpPost]
     public Task<Chat> CreateChat([FromBody] IChats.CreateChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);

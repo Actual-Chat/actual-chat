@@ -8,6 +8,9 @@ public interface IUserContactsBackend
     [ComputeMethod]
     public Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<bool> IsInContactList(string ownerUserId, string targetUserId, CancellationToken cancellationToken);
+
     [CommandHandler]
     public Task<UserContact> CreateContact(CreateContactCommand command, CancellationToken cancellationToken);
 

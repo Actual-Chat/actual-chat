@@ -75,6 +75,10 @@ public interface IChatAuthorsClientDef
     Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [Get(nameof(GetChatIds))]
     Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken);
+    [Get(nameof(CanAddToContacts))]
+    Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    [Post(nameof(AddToContacts))]
+    Task<UserContact> AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]
@@ -104,4 +108,11 @@ public interface IInviteCodesClientDef
 
     [Post(nameof(UseInviteCode))]
     Task<InviteCodeUseResult> UseInviteCode([Body] IInviteCodes.UseInviteCodeCommand command, CancellationToken cancellationToken);
+}
+
+[BasePath("userContacts")]
+public interface IUserContactsClientDef
+{
+    [Get(nameof(GetContacts))]
+    Task<ImmutableArray<UserContact>> GetContacts(Session session, CancellationToken cancellationToken);
 }
