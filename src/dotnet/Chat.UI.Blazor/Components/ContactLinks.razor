@@ -10,7 +10,7 @@
     <ChildContent>
     @foreach(var contact in contacts) {
         var encodedUrl = WebUtility.UrlEncode(contact.Id);
-        <NavbarLink Title="@contact.Name" Url="@($"/chat/pm/{encodedUrl}")" IsOnline="true" />
+        <NavbarLink Title="@contact.Name" Url="@($"/direct/{encodedUrl}")" IsOnline="true" />
     }
     </ChildContent>
 </NavbarGroup>

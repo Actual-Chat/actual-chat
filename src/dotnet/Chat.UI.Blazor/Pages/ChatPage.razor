@@ -1,5 +1,6 @@
 @page "/chat"
 @page "/chat/{ChatId}"
+@page "/direct/{ContactId}"
 @inherits ComputedStateComponent<ChatPage.Model>
 @inject Session _session
 @inject IAuth _auth
@@ -58,6 +59,11 @@
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter, SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
+    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter]
+    public string ContactId { get; set; } = "";
+    [Parameter]
+    [SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
     public string? AutoJoin { get; set; }
 
     protected override bool ShouldRender()
@@ -65,8 +71,11 @@
             || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-        var chat = await _chats.Get(_session, chatId, cancellationToken).ConfigureAwait(true);
+        Chat? chat = null;
+        if (!string.IsNullOrEmpty(ChatId))
+            chat = await _chats.Get(_session, ChatId, cancellationToken).ConfigureAwait(true);
+        else if (!string.IsNullOrEmpty(ContactId))
+            chat = await _chats.GetDirectChat(_session, ContactId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
 

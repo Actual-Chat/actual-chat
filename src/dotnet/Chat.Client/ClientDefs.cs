@@ -9,6 +9,9 @@ public interface IChatsClientDef
     [Get(nameof(Get))]
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
+    [Get(nameof(GetDirectChat))]
+    Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken);
+
     [Get(nameof(GetChats))]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
