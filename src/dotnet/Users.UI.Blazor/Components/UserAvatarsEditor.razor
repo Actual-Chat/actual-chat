@@ -4,7 +4,8 @@
     var items = State.LatestNonErrorValue.Items;
     var title = new MarkupString(Title);
 }
-<h3 class="ml-4 mt-4 mb-6">@title</h3>
+
+<PageHeader Title="Avatars"/>
 @if (items.Length == 0) {
     <div class="absolute top-0 left-0 h-full w-full grid justify-items-center items-center">
         <span>Create your first Avatar</span>
@@ -51,7 +52,7 @@
     </span>
 </button>
 
-<div class="absolute top-0 right-0 mr-4 mt-4 ">
+<div class="absolute top-0 right-0 mr-4 mt-14">
     <CloseButton Click="OnCancel" />
 </div>
 
