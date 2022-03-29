@@ -74,4 +74,9 @@ public interface IChats
         public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } = ImmutableArray<TextEntryAttachmentUpload>.Empty;
     }
     public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
+
+    public record AddToContactsCommand(Session Session, string ChatAuthorId) : ISessionCommand<Unit>;
+
+    [CommandHandler]
+    Task AddToContacts(AddToContactsCommand command, CancellationToken cancellationToken);
 }

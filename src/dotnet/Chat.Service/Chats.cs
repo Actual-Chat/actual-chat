@@ -1,5 +1,6 @@
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -225,6 +226,33 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         chatEntry = chatEntry with { IsRemoved = true };
         var upsertCommand = new IChatsBackend.UpsertEntryCommand(chatEntry);
         await _commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task AddToContacts(IChats.AddToContactsCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatAuthorId) = command;
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            throw new InvalidOperationException("No contact list. User is not authenticated.");
+
+        var chatIdLength = chatAuthorId.IndexOf(":", StringComparison.Ordinal);
+        var chatId = chatAuthorId.Substring(0, chatIdLength);
+        //var me = await _chatAuthors.GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var companion = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken)
+            .ConfigureAwait(false);
+        if (companion == null || companion.UserId.IsEmpty)
+            throw new InvalidOperationException("Given chat author is not associated with a user.");
+
+        var createCommand = new IUserContactsBackend.CreateContactCommand(
+            new UserContact {
+                OwnerUserId = user.Id,
+                TargetUserId = companion.UserId,
+                Name = companion.Name
+            });
+        await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Protected methods

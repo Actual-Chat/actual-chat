@@ -1,0 +1,37 @@
+@using System.Net
+@inherits ComputedStateComponent<ContactLinks.Model>
+
+@{
+    var model = State.LatestNonErrorValue;
+    var contacts = model.Contacts;
+}
+
+<NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
+    <ChildContent>
+    @foreach(var contact in contacts) {
+        var encodedUrl = WebUtility.UrlEncode(contact.Id);
+        <NavbarLink Title="@contact.Name" Url="@($"/chat/pm/{encodedUrl}")" IsOnline="true" />
+    }
+    </ChildContent>
+</NavbarGroup>
+
+@code {
+    public class Model
+    {
+        public UserContact[] Contacts { get; set; } = new UserContact[0];
+    }
+
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private IUserContacts Contacts { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new () };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var contacts = await Contacts.GetContacts(Session, cancellationToken).ConfigureAwait(false);
+        return new () {
+            Contacts = contacts.OrderBy(c => c.Name).ToArray(),
+        };
+    }
+}

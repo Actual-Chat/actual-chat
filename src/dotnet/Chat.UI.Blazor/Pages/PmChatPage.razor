@@ -1,0 +1,9 @@
+@page "/chat/pm/{PmChatId}"
+
+<h3>PmChatPage</h3>
+<h4>Id: @PmChatId</h4>
+
+@code {
+    [Parameter]
+    public string PmChatId { get; set; } = "";
+}

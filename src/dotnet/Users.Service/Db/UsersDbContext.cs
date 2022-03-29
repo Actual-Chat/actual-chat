@@ -13,6 +13,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbUser> Users { get; protected set; } = null!;
     public DbSet<DbUserAuthor> UserAuthors { get; protected set; } = null!;
     public DbSet<DbUserAvatar> UserAvatars { get; protected set; } = null!;
+    public DbSet<DbUserContact> UserContacts { get; protected set; } = null!;
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbChatUserSettings> ChatUserSettings { get; protected set; } = null!;
