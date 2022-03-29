@@ -11,6 +11,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
 
     private readonly ICommander _commander;
     private readonly IAuth _auth;
+    private readonly IAuthBackend _authBackend;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
     private readonly RedisSequenceSet<ChatAuthor> _idSequences;
@@ -23,6 +24,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
     {
         _commander = services.Commander();
         _auth = Services.GetRequiredService<IAuth>();
+        _authBackend = Services.GetRequiredService<IAuthBackend>();
         _userAuthorsBackend = services.GetRequiredService<IUserAuthorsBackend>();
         _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
@@ -132,12 +134,27 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
             .ConfigureAwait(false);
         if (companion == null || companion.UserId.IsEmpty)
             throw new InvalidOperationException("Given chat author is not associated with a user.");
+        var companionUser = await _authBackend.GetUser(companion.UserId, cancellationToken).ConfigureAwait(false);
+        if (companionUser == null)
+            throw new InvalidOperationException("Chat author is missing");
 
+        var result = await AddToContacts(user, companionUser, cancellationToken).ConfigureAwait(false);
+        if (!await _userContactsBackend.IsInContactList(companion.UserId, user.Id, cancellationToken)
+                .ConfigureAwait(false)) {
+            _ = await AddToContacts(companionUser, user, cancellationToken).ConfigureAwait(false);
+        }
+        return result;
+    }
+
+    private async Task<UserContact> AddToContacts(User user, User companion, CancellationToken cancellationToken)
+    {
+        var companionAuthor = await _userAuthorsBackend.Get(companion.Id, true, cancellationToken).ConfigureAwait(false);
+        var companionName = companionAuthor?.Name ?? companion.Name;
         var createCommand = new IUserContactsBackend.CreateContactCommand(
             new UserContact {
                 OwnerUserId = user.Id,
-                TargetUserId = companion.UserId,
-                Name = companion.Name
+                TargetUserId = companion.Id,
+                Name = companionName
             });
         return await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
     }
