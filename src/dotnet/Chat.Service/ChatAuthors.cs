@@ -128,7 +128,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
 
         if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
             throw new InvalidOperationException("Invalid chatAuthorId");
-        var companion = await Get(chatId, chatAuthorId, false, cancellationToken)
+        var companion = await Get(chatId, chatAuthorId, true, cancellationToken)
             .ConfigureAwait(false);
         if (companion == null || companion.UserId.IsEmpty)
             throw new InvalidOperationException("Given chat author is not associated with a user.");
