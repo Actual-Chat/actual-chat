@@ -81,7 +81,8 @@ public partial class ChatAuthors
         return chatAuthor;
     }
 
-    public async Task<string[]> GetAuthorIds(string chatId, CancellationToken cancellationToken)
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetAuthorIds(string chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNullOrEmpty())
             return Array.Empty<string>();
@@ -95,6 +96,21 @@ public partial class ChatAuthors
                 .ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetUserIds(string chatId, CancellationToken cancellationToken)
+    {
+        if (chatId.IsNullOrEmpty())
+            return Array.Empty<string>();
+
+        var dbContext = CreateDbContext();
+        await using (var _ = dbContext.ConfigureAwait(false))
+            return await dbContext.ChatAuthors
+                .Where(a => a.ChatId == chatId && a.UserId != null)
+                .Select(a => a.UserId!)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<ChatAuthor> Create(IChatAuthorsBackend.CreateCommand command, CancellationToken cancellationToken)
     {
@@ -104,7 +120,9 @@ public partial class ChatAuthors
                 _ = GetByUserId(chatId, userId, true, default);
                 _ = GetByUserId(chatId, userId, false, default);
                 _ = GetChatIdsByUserId(userId, default);
+                _ = GetUserIds(chatId, default);
             }
+            _ = GetAuthorIds(chatId, default);
             return default!;
         }
 

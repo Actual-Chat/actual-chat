@@ -2,10 +2,12 @@
 
 public interface INotifications
 {
+    [CommandHandler]
+    Task RegisterDevice(RegisterDeviceCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task SubscribeToChat(SubscribeToChatCommand command, CancellationToken cancellationToken);
 
-    // [CommandHandler]
-    // Task<NotificationEntry> Create(CreateCommand command, CancellationToken cancellationToken);
-    //
-    // public record CreateCommand(Session Session) : ISessionCommand<NotificationEntry>;
+    public record RegisterDeviceCommand(Session Session, string DeviceId, DeviceType DeviceType) : ISessionCommand;
+    public record SubscribeToChatCommand(Session Session, string ChatId) : ISessionCommand;
 }
