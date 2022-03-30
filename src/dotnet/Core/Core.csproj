@@ -13,6 +13,7 @@
     <PackageReference Include="Stl.Plugins" />
     <PackageReference Include="Storage.NetCore" />
     <PackageReference Include="Storage.NetCore.Gcp.CloudStorage" />
+    <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
   <ItemGroup>

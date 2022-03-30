@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>ActualChat.Notification.Migrations</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

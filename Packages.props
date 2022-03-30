@@ -28,6 +28,13 @@
     <PackageReference Update="Blazored.SessionStorage" Version="2.2.0" />
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
     <PackageReference Update="FirebaseAdmin" Version="2.3.0" />
+    <PackageReference Update="Google.Api.Gax" Version="3.7.0" />
+    <PackageReference Update="Google.Api.Gax.Rest" Version="3.7.0" />
+    <PackageReference Update="Google.Api.Gax.Grpc" Version="3.7.0" />
+    <PackageReference Update="Google.Api.Gax.Grpc.GrpcCore" Version="3.7.0" />
+    <PackageReference Update="Google.Apis.Auth" Version="1.57.0" />
+    <PackageReference Update="Google.Cloud.Storage.V1" Version="3.7.0" />
+
     <!-- We use Grpc.Core from otlp exporter -->
     <PackageReference Update="Grpc.Core" Version="2.45.0" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
