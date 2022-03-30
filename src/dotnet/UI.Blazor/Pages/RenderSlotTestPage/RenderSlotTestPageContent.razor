@@ -1,0 +1,23 @@
+@inherits ComputedStateComponent<Moment>
+@{
+    var time = State.ValueOrDefault;
+}
+
+<RenderIntoSlot Name="TestHeader">
+    Header: <TestTimer UpdatePeriod="1"/>
+</RenderIntoSlot>
+
+@if (time.ToDateTime().Second / 30 % 2 == 0) {
+    <RenderIntoSlot Name="TestFooter">
+        Footer: <TestTimer UpdatePeriod="10"/>
+    </RenderIntoSlot>
+}
+
+Content: @DateTime.Now.ToString("F")
+
+@code {
+    [Inject] private IFusionTime FusionTime { get; set; } = null!;
+
+    protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
+        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+}

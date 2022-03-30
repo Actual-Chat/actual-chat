@@ -5,7 +5,7 @@ public class NavbarService
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
     public bool NavbarChecked { get; set; }
-    public event EventHandler ActiveGroupChanged = (s, e) => { };
+    public event EventHandler? ActiveGroupChanged;
 
     public void CheckNavbar(bool navbarChecked)
     {
@@ -19,6 +19,6 @@ public class NavbarService
         if (string.Equals(id, ActiveGroupId, StringComparison.Ordinal)) return;
         ActiveGroupId = id;
         ActiveGroupTitle = title;
-        ActiveGroupChanged.Invoke(this, EventArgs.Empty);
+        ActiveGroupChanged?.Invoke(this, EventArgs.Empty);
     }
 }

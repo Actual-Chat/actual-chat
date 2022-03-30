@@ -34,12 +34,13 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddTransient<IUpdateDelayer>(c =>
             new UpdateDelayer(c.UICommandTracker(), 0.2));
 
-        services.AddBlazorContextMenu();
-        services.AddBlazoredModal();
-        services.AddTransient<Clipboard>();
-        services.AddScoped<FeedbackUI>();
         services.AddBlazoredSessionStorage();
+        services.AddBlazoredModal();
+        services.AddBlazorContextMenu();
+        services.AddScoped<RenderSlotRegistry>();
+        services.AddScoped<Clipboard>();
         services.AddScoped<UserInteractionUI>();
+        services.AddScoped<FeedbackUI>();
         services.AddScoped<NavbarService>();
 
         if (OSInfo.IsWebAssembly)

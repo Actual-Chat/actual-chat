@@ -1,0 +1,15 @@
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<RenderFragment?>
+
+@State.ValueOrDefault
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Inject] private RenderSlotRegistry Registry { get; set; } = null!;
+
+    protected override ComputedState<RenderFragment?>.Options GetStateOptions()
+        => new () { UpdateDelayer = UpdateDelayer.ZeroDelay };
+
+    protected override async Task<RenderFragment?> ComputeState(CancellationToken cancellationToken)
+        => await Registry.GetState(Name).Use(cancellationToken);
+}
