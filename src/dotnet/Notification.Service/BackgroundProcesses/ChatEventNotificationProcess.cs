@@ -4,7 +4,7 @@ using ActualChat.Notification.Backend;
 
 namespace ActualChat.Notification.BackgroundProcesses;
 
-public class ChatEventNotificationProcess<T> : AsyncProcessBase where T: IChatEvent
+public class ChatEventNotificationProcess<T> : WorkerBase where T: IChatEvent
 {
     private readonly IChatEventStreamer<T> _chatEventStreamer;
     private readonly IChatEventHandler<T> _chatEventHandler;

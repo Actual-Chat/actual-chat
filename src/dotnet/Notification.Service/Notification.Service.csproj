@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>ActualChat.Notification</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +14,7 @@
 
   <ItemGroup>
     <PackageReference Include="FirebaseAdmin" />
+    <PackageReference Include="Google.Api.Gax.Rest" />
   </ItemGroup>
 
 </Project>
