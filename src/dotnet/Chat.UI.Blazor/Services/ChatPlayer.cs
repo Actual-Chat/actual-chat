@@ -1,7 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
-using Microsoft.Extensions.Hosting;
 using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
