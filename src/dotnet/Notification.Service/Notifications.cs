@@ -17,7 +17,11 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [ComputeMethod]
-    public async Task<Device[]> GetDevices(string userId, CancellationToken cancellationToken)
+    public virtual Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken)
+        => throw new NotImplementedException();
+
+    // [ComputeMethod]
+    public virtual async Task<Device[]> GetDevices(string userId, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -72,5 +76,9 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
 
     // [CommandHandler]
     public virtual async Task SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
+        => throw new NotImplementedException();
+
+    // [CommandHandler]
+    public virtual async Task UnsubscribeToChat(INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken)
         => throw new NotImplementedException();
 }
