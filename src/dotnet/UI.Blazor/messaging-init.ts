@@ -34,27 +34,31 @@ export async function initializeMessaging(): Promise<void> {
 }
 
 export function askNotificationPermission(): boolean {
-    function handlePermission(permission) {
-        // Whatever the user answers, we make sure Chrome stores the information
-        if(!('permission' in Notification)) {
-            Notification.permission = permission;
-        }
-    }
-
     // Let's check if the browser supports notifications
-    if (!"Notification" in window) {
-        console.log("This browser does not support notifications.");
+    if (!('Notification' in window)) {
+        console.log('This browser does not support notifications.');
     } else {
-        if(checkNotificationPromise()) {
+        if (checkNotificationPromise()) {
             Notification.requestPermission()
                 .then((permission) => {
                     handlePermission(permission);
-                })
+                });
         } else {
+            // Legacy browsers / safari
             Notification.requestPermission(function(permission) {
                 handlePermission(permission);
             });
         }
+
+        return Notification.permission === 'granted';
+    }
+}
+
+function handlePermission(permission) {
+    // Whatever the user answers, we make sure Chrome stores the information
+    if (!('permission' in Notification)) {
+        // @ts-ignore readonly property
+        Notification['permission'] = permission;
     }
 }
 
@@ -69,6 +73,3 @@ function checkNotificationPromise(): boolean {
 
     return true;
 }
-
-
-void initializeMessaging();

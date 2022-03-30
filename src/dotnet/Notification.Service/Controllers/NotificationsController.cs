@@ -7,11 +7,37 @@ namespace ActualChat.Notification.Controllers;
 [ApiController, JsonifyErrors]
 public class NotificationsController : ControllerBase, INotifications
 {
-    [HttpPost]
-    public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    private readonly INotifications _service;
+    private readonly ISessionResolver _sessionResolver;
+
+    public NotificationsController(INotifications service, ISessionResolver sessionResolver)
+    {
+        _service = service;
+        _sessionResolver = sessionResolver;
+    }
+
+    [HttpGet]
+    public Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.IsSubscribedToChat(session, chatId, cancellationToken);
 
     [HttpPost]
-    public virtual async Task SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
-        => throw new NotImplementedException();
+    public Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _service.RegisterDevice(command, cancellationToken);
+    }
+
+    [HttpPost]
+    public Task SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _service.SubscribeToChat(command, cancellationToken);
+    }
+
+    [HttpPost]
+    public Task UnsubscribeToChat(INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken)
+    {
+        command.UseDefaultSession(_sessionResolver);
+        return _service.UnsubscribeToChat(command, cancellationToken);
+    }
 }
