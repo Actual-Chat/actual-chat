@@ -29,12 +29,12 @@ public sealed class ChatPlayer : ProcessorBase
     private readonly MomentClockSet _clocks;
     private readonly ILogger<ChatPlayer> _log;
 
-    private readonly AsyncLock _stoppingLock = new(ReentryMode.CheckedFail);
-    private CancellationTokenSource? _playStopTokenSource;
-    private bool _isPlaying;
+    private readonly AsyncLock _playStateLock = new(ReentryMode.CheckedFail);
+    private volatile CancellationTokenSource? _playTokenSource;
 
-    public readonly IMutableState<PlaybackKind> State;
     public Playback Playback { get; }
+    public IMutableState<bool> IsPlayingState => Playback.IsPlayingState;
+    public IMutableState<PlaybackKind> PlaybackKindState { get; }
 
     public ChatPlayer(
         Symbol chatId,
@@ -46,18 +46,16 @@ public sealed class ChatPlayer : ProcessorBase
         IChatAuthors chatAuthors,
         IChats chats,
         IStateFactory stateFactory,
-        IHostApplicationLifetime lifetime,
         MomentClockSet clocks,
         ILogger<ChatPlayer> log)
-        : base(CancellationTokenSource.CreateLinkedTokenSource(lifetime.ApplicationStopping))
     {
         _log = log;
         _clocks = clocks;
 
         _chatId = chatId;
         _session = session;
+        PlaybackKindState = stateFactory.NewMutable<PlaybackKind>();
         Playback = playbackFactory.Create();
-        State = stateFactory.NewMutable<PlaybackKind>();
         _audioDownloader = audioDownloader;
         _mediaResolver = mediaResolver;
         _audioStreamer = audioStreamer;
@@ -76,35 +74,17 @@ public sealed class ChatPlayer : ProcessorBase
         await Playback.DisposeAsync().ConfigureAwait(false);
     }
 
-    public async Task Stop()
-    {
-        this.ThrowIfDisposedOrDisposing();
-        if (!_isPlaying)
-            return;
-        using var _ = await _stoppingLock.Lock(CancellationToken.None).ConfigureAwait(false);
-        await StopInternal().ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Returns a <see cref="Task"/> which is completed when all <see cref="ChatEntry"/>
-    /// from <paramref name="startAt"/> are enqueued to <see cref="Playback"/>
-    /// </summary>
     public async Task Play(Moment startAt, bool isRealtime, CancellationToken cancellationToken)
     {
         this.ThrowIfDisposedOrDisposing();
         try {
             CancellationToken playStopToken;
-            using (await _stoppingLock.Lock(CancellationToken.None).ConfigureAwait(false)) {
-                if (_isPlaying)
-                    await StopInternal().ConfigureAwait(false);
-                _playStopTokenSource = cancellationToken.LinkWith(StopToken);
-                playStopToken = _playStopTokenSource.Token;
-                _isPlaying = true;
+            using (await _playStateLock.Lock(cancellationToken).ConfigureAwait(false)) {
+                await StopInternal().ConfigureAwait(false);
+                _playTokenSource = cancellationToken.LinkWith(StopToken);
+                playStopToken = _playTokenSource.Token;
+                PlaybackKindState.Value = isRealtime ? PlaybackKind.Realtime : PlaybackKind.Historical;
             }
-
-            State.Value = isRealtime
-                ? PlaybackKind.Realtime
-                : PlaybackKind.Historical;
 
             if (isRealtime)
                 await PlayRealtime(startAt, playStopToken).ConfigureAwait(false);
@@ -115,25 +95,33 @@ public sealed class ChatPlayer : ProcessorBase
             _log.LogError(e, "ChatPlayer.Play failed. ChatId: {ChatId}", _chatId);
         }
         finally {
-            State.Value = PlaybackKind.None;
+            using (await _playStateLock.Lock(cancellationToken).ConfigureAwait(false)) {
+                _playTokenSource.CancelAndDisposeSilently();
+                _playTokenSource = null;
+                PlaybackKindState.Value = PlaybackKind.None;
+            }
         }
+    }
+
+    public async Task Stop()
+    {
+        using (await _playStateLock.Lock(CancellationToken.None).ConfigureAwait(false))
+            await StopInternal().ConfigureAwait(false);
     }
 
     // Private methods
 
     private async Task StopInternal()
     {
-        if (!_isPlaying)
+        // This method should be always called from _playStateLock block
+        var playTokenSource = _playTokenSource;
+        if (playTokenSource == null)
             return;
-        var playStopTokenSource = _playStopTokenSource;
-        _playStopTokenSource = null;
-        if (playStopTokenSource != null) {
-            // add the stop command to the playback command queue and when discard all related commands (except added stop)
-            playStopTokenSource.CancelAndDisposeSilently();
-            var stopProcess = Playback.Stop(CancellationToken.None);
-            await stopProcess.WhenStarted.ConfigureAwait(false);
-        }
-        _isPlaying = false;
+        _playTokenSource = null;
+        playTokenSource.CancelAndDisposeSilently();
+        var stopProcess = Playback.Stop(CancellationToken.None);
+        await stopProcess.WhenCompleted.ConfigureAwait(false);
+        PlaybackKindState.Value = PlaybackKind.None;
     }
 
     private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)
@@ -159,25 +147,22 @@ public sealed class ChatPlayer : ProcessorBase
             if (!Constants.DebugMode.AudioPlaybackPlayMyOwnAudio) {
                 var chatAuthor = await _chatAuthors.GetChatAuthor(_session, _chatId, cancellationToken)
                     .ConfigureAwait(false);
-                if (chatAuthor != null && entry.AuthorId == chatAuthor.Id) {
+                if (chatAuthor != null && entry.AuthorId == chatAuthor.Id)
                     continue;
-                }
             }
 
             var skipToOffset = entry.IsStreaming ? StreamingSkipTo : TimeSpan.Zero;
             var entryBeginsAt = Moment.Max(entry.BeginsAt + skipToOffset, startAt);
             var skipTo = entryBeginsAt - entry.BeginsAt;
 
-            var playProcess = await EnqueueEntry(Playback, cpuClock.Now, entry, skipTo, cancellationToken).ConfigureAwait(false);
+            var playProcess = await EnqueueEntry(cpuClock.Now, entry, skipTo, cancellationToken).ConfigureAwait(false);
             if (playProcess.WhenCompleted.IsCompleted)
                 continue;
 
             playProcesses.TryAdd(playProcess, default);
-#pragma warning disable VSTHRD105
             _ = playProcess.WhenCompleted.ContinueWith(
                 t => playProcesses.TryRemove(playProcess, out _),
-                TaskContinuationOptions.ExecuteSynchronously);
-#pragma warning restore VSTHRD105
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         await Task.WhenAll(playProcesses.Keys.Select(s => s.WhenCompleted)).ConfigureAwait(false);
@@ -232,23 +217,20 @@ public sealed class ChatPlayer : ProcessorBase
             if (enqueueDelay > TimeSpan.Zero)
                 await cpuClock.Delay(enqueueDelay, cancellationToken).ConfigureAwait(false);
 
-            var playProcess = await EnqueueEntry(Playback, playAt, entry, skipTo, cancellationToken).ConfigureAwait(false);
+            var playProcess = await EnqueueEntry(playAt, entry, skipTo, cancellationToken).ConfigureAwait(false);
             if (playProcess.WhenCompleted.IsCompleted)
                 continue;
 
             playProcesses.TryAdd(playProcess, default);
-#pragma warning disable VSTHRD105
             _ = playProcess.WhenCompleted.ContinueWith(
                 t => playProcesses.TryRemove(playProcess, out _),
-                TaskContinuationOptions.ExecuteSynchronously);
-#pragma warning restore VSTHRD105
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         await Task.WhenAll(playProcesses.Keys.Select(s => s.WhenCompleted)).ConfigureAwait(false);
     }
 
     private async Task<IMessageProcess<PlayTrackCommand>> EnqueueEntry(
-            Playback playback,
             Moment playAt,
             ChatEntry audioEntry,
             TimeSpan skipTo,
@@ -261,8 +243,8 @@ public sealed class ChatPlayer : ProcessorBase
             if (audioEntry.Duration is { } duration && skipTo.TotalSeconds > duration)
                 return PlayTrackCommand.PlayNothingProcess;
             return await (audioEntry.IsStreaming
-                ? EnqueueStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
-                : EnqueueNonStreamingEntry(playback, playAt, audioEntry, skipTo, cancellationToken)
+                ? EnqueueStreamingEntry(playAt, audioEntry, skipTo, cancellationToken)
+                : EnqueueNonStreamingEntry(playAt, audioEntry, skipTo, cancellationToken)
                 ).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -276,7 +258,6 @@ public sealed class ChatPlayer : ProcessorBase
     }
 
     private async Task<IMessageProcess<PlayTrackCommand>> EnqueueStreamingEntry(
-        Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
         TimeSpan skipTo,
@@ -289,11 +270,10 @@ public sealed class ChatPlayer : ProcessorBase
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
-        return playback.Play(trackInfo, audio, playAt, cancellationToken);
+        return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }
 
     private async Task<IMessageProcess<PlayTrackCommand>> EnqueueNonStreamingEntry(
-        Playback playback,
         Moment playAt,
         ChatEntry audioEntry,
         TimeSpan skipTo,
@@ -307,6 +287,6 @@ public sealed class ChatPlayer : ProcessorBase
             RecordedAt = audioEntry.BeginsAt + skipTo,
             ClientSideRecordedAt = (audioEntry.ClientSideBeginsAt ?? audioEntry.BeginsAt) + skipTo,
         };
-        return playback.Play(trackInfo, audio, playAt, cancellationToken);
+        return Playback.Play(trackInfo, audio, playAt, cancellationToken);
     }
 }

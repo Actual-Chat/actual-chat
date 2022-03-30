@@ -97,7 +97,6 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
         whenCompleted.TrySetFromResult(result, CancellationToken);
     }
 
-#pragma warning disable VSTHRD105
     public override void MarkCompletedAfter(Task<object?> resultTask)
         => resultTask.ContinueWith(async t => {
             try {
@@ -107,8 +106,7 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
             catch (Exception e) {
                 MarkFailed(e);
             }
-        }, TaskContinuationOptions.ExecuteSynchronously);
-#pragma warning restore VSTHRD105
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
 
     public override void MarkFailed(Exception error)
     {

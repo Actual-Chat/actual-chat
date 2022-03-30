@@ -92,7 +92,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             foreach (var frame in frames) {
                 if (false) {
                     _log.LogInformation(
-                        "Send the frame data to js side ({FrameLength} bytes, offset={FrameOffset}s, duration={FrameDuration}s)",
+                        "Send the frame data to JS side ({FrameLength} bytes, offset={FrameOffset}s, duration={FrameDuration}s)",
                          frame.Data.Length,
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
@@ -120,9 +120,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public Task OnChangeReadiness(bool isBufferReady) => Task.CompletedTask;
 
     [JSInvokable]
-    public async Task OnPlaybackEnded(string? errorMessage)
+    public async Task OnPlayEnded(string? errorMessage)
     {
-        _log.LogInformation("OnPlaybackEnded(msg:{ErrorMessage})", errorMessage);
+        _log.LogInformation("OnPlayEnded(msg:{ErrorMessage})", errorMessage);
         // might run stop()  after end(), we shouldn't do this, fix it later
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
@@ -131,10 +131,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnPlaybackTimeChanged(double offset)
+    public Task OnPlayTimeChanged(double offset)
     {
         if (true) {
-            _log.LogInformation("OnPlaybackTimeChanged(offset={Offset}s)", offset);
+            _log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);
         }
         _offset = offset;
         StateHasChanged();

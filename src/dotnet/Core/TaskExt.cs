@@ -120,27 +120,6 @@ public static class TaskExt
         }
     }
 
-    // PublishTo
-
-#pragma warning disable VSTHRD105
-    public static void PublishTo<T>(this Task<T> source, Task<T> target, CancellationToken cancellationToken = default)
-        => _ = source.ContinueWith(s => {
-            var ts = TaskSource.For(target);
-            ts.TrySetFromTask(s, cancellationToken);
-        }, TaskContinuationOptions.ExecuteSynchronously);
-
-    public static void PublishTo(this Task source, Task<Unit> target, CancellationToken cancellationToken = default)
-        => _ = source.ContinueWith(s => {
-            var ts = TaskSource.For(target);
-            if (source.IsCanceled)
-                ts.SetCanceled(cancellationToken.IsCancellationRequested ? cancellationToken : CancellationToken.None);
-            else if (source.Exception != null)
-                ts.SetException(source.Exception);
-            else
-                ts.SetResult(default);
-        }, TaskContinuationOptions.ExecuteSynchronously);
-#pragma warning restore VSTHRD105
-
     // WithErrorLog
 
     public static Task WithErrorLog(this Task task, ILogger errorLog, string message)

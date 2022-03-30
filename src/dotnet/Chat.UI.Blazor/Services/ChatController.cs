@@ -62,7 +62,7 @@ public class ChatController
         var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
         if (player == null)
             return null;
-        var playbackKind = await player.State.Use(cancellationToken).ConfigureAwait(false);
+        var playbackKind = await player.PlaybackKindState.Use(cancellationToken).ConfigureAwait(false);
         if (playbackKind != PlaybackKind.Historical)
             return null;
         return player;
@@ -132,8 +132,7 @@ public class ChatController
 
         // restore real-time playback
         if (await IsListeningToChat(chatId).ConfigureAwait(false)) {
-            _ = historyPlayTask.ContinueWith(
-                _ => StartRealtimeListening(chatId), TaskScheduler.Current);
+            _ = historyPlayTask.ContinueWith(_ => StartRealtimeListening(chatId), TaskScheduler.Current);
         }
     }
 
@@ -152,7 +151,7 @@ public class ChatController
         var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
         if (player == null)
             return;
-        var playbackKindCurrent = await player.State.Use(default).ConfigureAwait(false);
+        var playbackKindCurrent = await player.PlaybackKindState.Use(default).ConfigureAwait(false);
         if (playbackKindCurrent != playbackKind)
             return;
         await player.Stop().ConfigureAwait(false);
@@ -164,7 +163,7 @@ public class ChatController
         // Play method can do stopping automatically but this can lead invalid
         // PlaybackKind of the chat player. Apparently this had to be fixed in ChatPlayer.
         // But for me it's easier to fix here for now.
-        var computed = await player.State.Computed.Update().ConfigureAwait(false);
+        var computed = await player.PlaybackKindState.Computed.Update().ConfigureAwait(false);
         if (computed.ValueOrDefault == PlaybackKind.None)
             return;
         await player.Stop().ConfigureAwait(false);
@@ -196,7 +195,7 @@ public class ChatController
         var player = await _chatPlayers.GetPlayer(chatId).ConfigureAwait(false);
         if (player == null)
             return PlaybackKind.None;
-        return await player.State.Use(cancellationToken).ConfigureAwait(false);
+        return await player.PlaybackKindState.Use(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task InnerMuteRealtimeListening(Symbol chatId)

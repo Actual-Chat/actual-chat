@@ -18,6 +18,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     public int QueueSize { get; init; } = 128;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
+    public bool UseMessageProcessingWrapper { get; init; } = false;
 
     protected MessageProcessorBase(CancellationTokenSource? stopTokenSource = null)
         : base(stopTokenSource) { }
@@ -79,7 +80,9 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
             process.MarkStarted();
             try {
                 process.CancellationToken.ThrowIfCancellationRequested();
-                var result = await Process(message, process.CancellationToken).ConfigureAwait(false);
+                var result = UseMessageProcessingWrapper
+                    ? MessageProcessingWrapper.Process(message, Process, process.CancellationToken)
+                    : await Process(message, process.CancellationToken).ConfigureAwait(false);
                 if (result is Task<object?> resultTask) {
                     // Special case: Process may return Task<Task<object?>>,
                     // in this case we assume the rest of the processing will

@@ -99,7 +99,7 @@ export class AudioPlayer {
                     this.controller = null;
                     if (debug)
                         console.debug(`[AudioTrackPlayer #${this.id}] onEnded, release controllerId:${controller.id} to the pool`);
-                    await Promise.all([AudioPlayer.controllerPool.release(controller), this.invokeOnPlaybackEnded()]);
+                    await Promise.all([AudioPlayer.controllerPool.release(controller), this.invokeOnPlayEnded()]);
                 }
             }
         }).then(() => {
@@ -150,7 +150,7 @@ export class AudioPlayer {
                     console.debug(`[AudioTrackPlayer #${this.id}] onUpdateOffsetTick(controllerId:${controller.id}): ` +
                         `playbackTime = ${state.playbackTime}, bufferedTime = ${state.bufferedTime}`);
                 }
-                await this.invokeOnPlaybackTimeChanged(state.playbackTime);
+                await this.invokeOnPlayTimeChanged(state.playbackTime);
 
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 self.setTimeout(this.onUpdateOffsetTick, this.updateOffsetMs);
@@ -161,12 +161,12 @@ export class AudioPlayer {
         }
     };
 
-    private invokeOnPlaybackTimeChanged(time: number): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnPlaybackTimeChanged', time);
+    private invokeOnPlayTimeChanged(time: number): Promise<void> {
+        return this.blazorRef.invokeMethodAsync('OnPlayTimeChanged', time);
     }
 
-    private invokeOnPlaybackEnded(message: string | null = null): Promise<void> {
-        return this.blazorRef.invokeMethodAsync('OnPlaybackEnded', message);
+    private invokeOnPlayEnded(message: string | null = null): Promise<void> {
+        return this.blazorRef.invokeMethodAsync('OnPlayEnded', message);
     }
 
     private invokeOnChangeReadiness(isBufferReady: boolean): Promise<void> {
