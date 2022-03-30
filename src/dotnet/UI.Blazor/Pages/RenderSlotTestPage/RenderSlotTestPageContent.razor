@@ -4,7 +4,7 @@
 }
 
 <RenderIntoSlot Name="TestHeader">
-    Header: <TestTimer UpdatePeriod="1"/>
+    Header: <TestTimer UpdatePeriod="3"/> + @time.ToString("F")
 </RenderIntoSlot>
 
 @if (time.ToDateTime().Second / 30 % 2 == 0) {
@@ -19,5 +19,5 @@ Content: @DateTime.Now.ToString("F")
     [Inject] private IFusionTime FusionTime { get; set; } = null!;
 
     protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
-        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
 }
