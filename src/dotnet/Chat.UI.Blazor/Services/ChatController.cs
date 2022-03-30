@@ -12,6 +12,8 @@ public class ChatController
     private readonly MomentClockSet _clocks;
     private readonly ILogger<ChatController> _log;
 
+    private Symbol _activeChatId;
+
     public ChatController(
         ChatPlayers chatPlayers,
         ListeningChats listeningChats,
@@ -22,6 +24,18 @@ public class ChatController
         _listeningChats = listeningChats;
         _clocks = clocks;
         _log = log;
+    }
+
+    [ComputeMethod]
+    public virtual Task<Symbol> GetActiveChatId()
+        => Task.FromResult(_activeChatId);
+
+    public void SetActiveChatId(Symbol chatId)
+    {
+        _activeChatId = chatId;
+        using (Computed.Invalidate()) {
+            _ = GetActiveChatId();
+        }
     }
 
     [ComputeMethod]

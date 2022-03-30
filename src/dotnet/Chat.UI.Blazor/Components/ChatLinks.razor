@@ -8,7 +8,8 @@
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
     <ChildContent>
         @foreach(var chat in chats) {
-            <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")">
+            var isActive = model.ActiveChatId == chat.Id;
+            <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
                 <PostFragment>
                     <div class="menu-chat-player-toggle justify-self-end flex-1 flex justify-end invisible">
                         <ChatPlayerToggle ChatId="@chat.Id" Size="ChatPlayerToggleSize.Small" />
@@ -23,6 +24,7 @@
     public class Model
     {
         public (string Title, string Id)[] Chats { get; set; } = new (string Title, string Id)[0];
+        public Symbol ActiveChatId { get; set; } = Constants.Chat.DefaultChatId;
     }
 
     [Inject] private Session Session { get; set; } = null!;
@@ -40,6 +42,7 @@
             chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));
         return new () {
             Chats = chatInfos.ToArray(),
+            ActiveChatId = await ChatController.GetActiveChatId(),
         };
     }
 }

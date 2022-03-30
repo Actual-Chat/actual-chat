@@ -5,6 +5,7 @@
 @inject IAuth _auth
 @inject IChats _chats
 @inject NavigationManager _nav
+@inject ChatController _controller
 
 @{
     _renderedModel = State.LatestNonErrorValue ?? new();
@@ -84,5 +85,17 @@
         if (renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version)
             return _renderedModel!;
         return new () { Chat = chat };
+    }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        _controller.SetActiveChatId(ChatId);
+    }
+
+    public override async ValueTask DisposeAsync() {
+        if (ChatId == await _controller.GetActiveChatId()) {
+            _controller.SetActiveChatId("");
+        }
+        await base.DisposeAsync();
     }
 }
