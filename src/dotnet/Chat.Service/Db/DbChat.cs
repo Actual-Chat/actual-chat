@@ -18,6 +18,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>
     [ConcurrencyCheck] public long Version { get; set; }
     public string Title { get; set; } = "";
     public bool IsPublic { get; set; }
+    public ChatType ChatType { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
@@ -33,6 +34,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>
             Title = Title,
             CreatedAt = CreatedAt,
             IsPublic = IsPublic,
+            ChatType = ChatType,
             OwnerIds = Owners.Select(o => (Symbol)o.UserId).ToImmutableArray(),
         };
 
@@ -43,6 +45,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>
         Title = model.Title;
         CreatedAt = model.CreatedAt;
         IsPublic = model.IsPublic;
+        ChatType = model.ChatType;
         Owners = model.OwnerIds.Select(x => new DbChatOwner() {
             ChatId = model.Id,
             UserId = x.Value,

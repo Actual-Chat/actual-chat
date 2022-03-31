@@ -1,0 +1,61 @@
+<div class="w-[200px]">
+    <div class="flex flex-row">
+        <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
+            <div class="author-avatar w-9 h-9 select-none bg-secondary rounded-md">
+                <img src="@context.Author.Picture" alt="@context.Author.Name"/>
+            </div>
+        </ChatAuthor>
+
+        <div class="ml-2 self-end">
+            <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
+                <span class="text-secondary rounded">@context.Author.Name</span>
+            </ChatAuthor>
+        </div>
+    </div>
+    @if (_canAddContact && !_addedContact) {
+        <div class="mt-4 hover:bg-gray-200">
+            <button type="button" class="text-toggle-on" disabled="@_addingContact" @onclick="AddContact">Add to Contacts</button>
+        </div>
+    }
+</div>
+
+@code {
+    private string? _chatId;
+    private bool _canAddContact;
+    private bool _addedContact;
+    private bool _addingContact;
+
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private UICommandRunner Cmd { get; set; } = null!;
+
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    [Parameter]
+    public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired]
+    public string ChatAuthorId { get; set; } = "";
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+
+        ModalInstance.SetTitle("User Info");
+
+        if (!string.IsNullOrEmpty(ChatId))
+            _chatId = ChatId;
+        else if (!ActualChat.Chat.ChatAuthor.TryGetChatId(ChatAuthorId, out _chatId))
+            throw new InvalidOperationException("Invalid chat author id given");
+        _canAddContact = await ChatAuthors.CanAddToContacts(Session, ChatAuthorId, default);
+    }
+
+    private async Task AddContact() {
+        if (_addingContact)
+            return;
+        _addingContact = true;
+        var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, ChatAuthorId));
+        if (e.IsCompletedSuccessfully)
+            _addedContact = true;
+        _addingContact = false;
+    }
+}

@@ -23,5 +23,6 @@ public class ChatClientModule : HostModule
         fusionClient.AddReplicaService<IChatUserSettings, IChatUserSettingsClientDef>();
         fusionClient.AddReplicaService<IUserAuthors, IUserAuthorsClientDef>();
         fusionClient.AddReplicaService<IInviteCodes, IInviteCodesClientDef>();
+        fusionClient.AddReplicaService<IUserContacts, IUserContactsClientDef>();
     }
 }

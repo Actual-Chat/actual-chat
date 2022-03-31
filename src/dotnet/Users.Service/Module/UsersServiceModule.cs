@@ -79,6 +79,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             dbContext.AddEntityResolver<string, DbUserState>();
             dbContext.AddEntityResolver<string, DbUserAuthor>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
+            dbContext.AddEntityResolver<string, DbUserContact>();
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
@@ -129,6 +130,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
         fusion.AddComputeService<IUserAvatars, UserAvatars>();
         fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();
+        fusion.AddComputeService<IUserContacts, UserContacts>();
+        fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();

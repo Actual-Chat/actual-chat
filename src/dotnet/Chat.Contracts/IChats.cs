@@ -6,6 +6,9 @@ public interface IChats
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
+    Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken);
+
+    [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]

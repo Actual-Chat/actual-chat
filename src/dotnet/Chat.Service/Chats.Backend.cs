@@ -237,6 +237,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invChat = context.Operation().Items.Get<Chat>()!;
+            _ = Get(invChat.Id, default);
             foreach(var userIdInv in invChat.OwnerIds)
                 _ = GetOwnedChatIds(userIdInv, default);
             return null!;
@@ -245,8 +246,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        Symbol chatId = !command.Chat.Id.IsEmpty
+            ? command.Chat.Id
+            : _chatIdGenerator.Next(); // TODO: add reprocessing in case uniqueness conflicts
         var chat = command.Chat with {
-            Id = _chatIdGenerator.Next(), // TODO: add reprocessing in case uniqueness conflicts
+            Id = chatId,
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
         };

@@ -9,5 +9,6 @@ public record Chat
     public string Title { get; init; } = "";
     public DateTime CreatedAt { get; init; }
     public bool IsPublic { get; init; }
+    public ChatType ChatType { get; init; } = ChatType.Group;
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
 }

@@ -1,5 +1,6 @@
 using System.Security;
 using ActualChat.Chat.Db;
+using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -14,6 +15,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly IChatsBackend _chatsBackend;
     private readonly IInviteCodesBackend _inviteCodesBackend;
+    private readonly IUserContactsBackend _userContactsBackend;
 
     public Chats(IServiceProvider services) : base(services)
     {
@@ -23,6 +25,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
         _chatsBackend = Services.GetRequiredService<IChatsBackend>();
         _inviteCodesBackend = Services.GetRequiredService<IInviteCodesBackend>();
+        _userContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
     }
 
     // [ComputeMethod]
@@ -32,6 +35,37 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!canRead)
             return null;
         return await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return null;
+
+        var userContact = await _userContactsBackend.Get(userContactId, cancellationToken).ConfigureAwait(false);
+        if (userContact == null || userContact.OwnerUserId != user.Id)
+            return null;
+
+        var firstUserId = user.Id;
+        var secondUserId = userContact.TargetUserId;
+        if (string.Compare(firstUserId, secondUserId, StringComparison.Ordinal) < 0) {
+            (firstUserId, secondUserId) = (secondUserId, firstUserId);
+        }
+        var directChatId = "direct:" + firstUserId + ":" + secondUserId;
+        var directChat = await _chatsBackend.Get(directChatId, cancellationToken).ConfigureAwait(false);
+        if (directChat == null) {
+            var pmChatInfo = new Chat {
+                Id = directChatId,
+                OwnerIds = ImmutableArray<Symbol>.Empty.Add(firstUserId).Add(secondUserId),
+                Title = "Direct chat",
+                ChatType = ChatType.Direct
+            };
+            var createChatCommand = new IChatsBackend.CreateChatCommand(pmChatInfo);
+            directChat = await _chatsBackend.CreateChat(createChatCommand, cancellationToken).ConfigureAwait(false);
+        }
+        directChat = directChat with { Title = userContact.Name };
+        return directChat;
     }
 
     // [ComputeMethod]
@@ -47,7 +81,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chatTasks = await Task
             .WhenAll(chatIds.Select(id => Get(session, id, cancellationToken)))
             .ConfigureAwait(false);
-        return chatTasks.Where(c => c != null).Select(c => c!).ToArray();
+        return chatTasks.Where(c => c != null && c.ChatType == ChatType.Group).Select(c => c!).ToArray();
     }
 
     // [ComputeMethod]
