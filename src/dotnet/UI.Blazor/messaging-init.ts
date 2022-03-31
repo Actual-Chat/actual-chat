@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, GetTokenOptions } from 'firebase/messaging';
 
-export async function initializeMessaging(): Promise<void> {
+export async function getDeviceToken(): Promise<string | null> {
     try {
         const response = await fetch('/dist/config/firebase.config.json');
         if (response.ok || response.status === 304) {
@@ -10,23 +10,27 @@ export async function initializeMessaging(): Promise<void> {
             const messaging = getMessaging(app);
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
             const swPath = new URL('/dist/messagingServiceWorker.js', origin).toString();
-            const swRegistration = await navigator.serviceWorker.register(swPath, {
-                scope: '/dist/firebase-cloud-messaging-push-scope'
-            });
+            let swRegistration = await navigator.serviceWorker.getRegistration(swPath);
+            if (!swRegistration) {
+                swRegistration = await navigator.serviceWorker.register(swPath, {
+                    scope: '/dist/firebase-cloud-messaging-push-scope'
+                });
+            }
             const tokenOptions: GetTokenOptions = {
                 vapidKey: publicKey,
                 serviceWorkerRegistration: swRegistration,
             };
             const token = await getToken(messaging, tokenOptions);
-            // TODO(AK): save token to the server
-            console.log(token);
 
             onMessage(messaging, (payload) => {
                 console.log('Message received. ', payload);
             });
+
+            return token;
         } else {
             console.warn(`Unable to initialize messaging subscription. Status: ${response.status}`)
         }
+        return null;
     }
     catch(e) {
         console.error(e);

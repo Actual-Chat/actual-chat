@@ -45,6 +45,8 @@
 }
 
 @code {
+    private static string? _deviceToken;
+
     public const string AutoJoinQueryParameter = "auto-join";
 
     private Model? _lastRenderedModel;
@@ -61,9 +63,29 @@
     [Parameter, SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
     public string? AutoJoin { get; set; }
 
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private ChatUI ChatUI { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private IJSRuntime Js { get; set; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
             || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        if (_deviceToken != null)
+            return;
+
+        _deviceToken = await Js.InvokeAsync<string?>($"{BlazorUICoreModule.ImportName}.getDeviceToken")
+            .ConfigureAwait(true);
+        if (_deviceToken != null)
+            _ = RegisterDevice();
+     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         Chat? chat = null;
@@ -94,6 +116,14 @@
             if (ChatPageState.ActiveChatId.Computed == _activeChatIdComputed)
                 ChatPageState.ActiveChatId.Value = Symbol.Empty;
         });
+    }
+
+    private async Task RegisterDevice() {
+        if (_deviceToken == null)
+            return;
+
+        var command = new INotifications.RegisterDeviceCommand(Session, _deviceToken, DeviceType.WebBrowser);
+        await Cmd.Run(command);
     }
 
     public record Model {
