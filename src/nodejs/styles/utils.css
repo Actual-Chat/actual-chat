@@ -13,12 +13,10 @@
     opacity: 100%;
 }
 
-.blazored-modal-p0 {
-    display: flex;
-    z-index: 103;
-    flex-direction: column;
-    background-color: #fff;
-    border: 1px solid #fff;
-    box-shadow: 0 2px 2px rgba(0,0,0,.25);
-    @apply rounded-lg;
+.modal {
+    z-index: 1000;
+    max-width: 96%;
+    @apply flex-col;
+    @apply bg-secondary;
+    @apply border-0 rounded-lg shadow-2xl;
 }

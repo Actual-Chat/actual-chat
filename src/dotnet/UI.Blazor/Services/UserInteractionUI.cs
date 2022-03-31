@@ -36,7 +36,7 @@ public class UserInteractionUI
             parameters,
             new ModalOptions {
                 HideHeader = true,
-                Class = "blazored-modal-p0 bg-secondary shadow-lg",
+                Class = "modal",
             }
         );
         await modal.Result.ConfigureAwait(false);

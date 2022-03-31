@@ -6,23 +6,22 @@
 @inject MomentClockSet _clocks
 @inject HostInfo _hostInfo
 
-
-<div class="relative">
+<div class="relative p-4">
     @{
         var featureTitle = FeatureTitle.IsNullOrEmpty() ? "This" : FeatureTitle;
     }
     <div class="flex flex-row mb-8">
         <h1 class="font-bold text-center flex-1 left-0">Sorry, this feature is not implemented yet</h1>
-        <CloseButton Click="OnCancel" Class="w-6 h-6"/>
+        <CloseButton Click="OnCancel" Class="w-6 h-6 ml-3"/>
     </div>
 
-    <div class="text-sm md:text-md">
+    <div class="text-sm md:text-md my-4">
         <p>Help us to prioritize features.</p>
         <p>Please vote how <span class="p-0.5 bg-secondary rounded-sm font-mono text-inline-code border">@featureTitle</span> feature is important for you.</p>
         <p>1 = not important, 5 = very important!</p>
     </div>
 
-    <div @ref="_feedbackRef" class="py-4 flex justify-center">
+    <div @ref="_feedbackRef" class="flex justify-center my-4">
         @for (var i = 1; i <= 5; i++) {
             var cls = _rating >= i ? "fa-star" : "fa-star-o";
             var rating = i;
@@ -30,17 +29,13 @@
             <button class="rating-button px-1 md:px-2" role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls fa-2x rating-icon" aria-hidden="true" id="@id"></i></button>
         }
     </div>
-    <div class="">
+    <div class="my-4">
         <label>Comment:</label>
         <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
     </div>
     <div class="mt-4">
-        <button type="button" @onclick="OnSubmit"
-                class="bg-button-success group rounded-md border border-success
-                           hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
-                           inline-flex px-3 py-1 text-sm font-medium leading-5
-                           transition duration-150 ease-in-out">
-            <span class="fill-current text-accent-muted group-hover:text-primary">Send feedback</span>
+        <button type="button" @onclick="OnSubmit" class="signin-button">
+            <span>Send feedback</span>
         </button>
     </div>
 </div>
