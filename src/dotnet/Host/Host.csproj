@@ -34,6 +34,8 @@
     <ProjectReference Include="..\Feedback.Service.Migration\Feedback.Service.Migration.csproj" />
     <ProjectReference Include="..\Feedback.Service\Feedback.Service.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
+    <ProjectReference Include="..\Notification.Service.Migration\Notification.Service.Migration.csproj" />
+    <ProjectReference Include="..\Notification.Service\Notification.Service.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
