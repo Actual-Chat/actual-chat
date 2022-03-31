@@ -36,9 +36,7 @@
         <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
     </div>
     <div class="mt-4">
-        <button type="button" @onclick="OnSubmit" class="signin-button">
-            <span>Send feedback</span>
-        </button>
+        <Button Class="btn btn-success" OnClick="OnSubmit" Title="Send feedback" ></Button>
     </div>
 </div>
 

@@ -4,13 +4,13 @@
 @{
     var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var buttonClass = "signin-button " + ButtonClass;
+    var buttonClass = "btn btn-success " + ButtonClass;
 }
 
 <Dropdown ContentPositionCss="@ContentPositionClass" ButtonClass="@buttonClass" Class="relative">
     <ButtonTemplate>
-        <span class="signin-text">Sign in</span>
-        <svg class="signin-text ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 48 48">
+        <span>Sign in</span>
+        <svg class="ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 48 48">
             <path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/>
         </svg>
     </ButtonTemplate>

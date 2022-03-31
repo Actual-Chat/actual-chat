@@ -7,21 +7,9 @@
 /* SignIn */
 
 .signin-button {
-    @apply bg-button-success border border-success rounded-md outline-none;
-    @apply hover:bg-button-success-hover hover:border-success-muted;
-    @apply active:bg-button-success-hover;
-    @apply inline-flex justify-center align-middle;
-    @apply px-4 py-2;
-    @apply text-sm font-medium leading-5;
-    @apply transition duration-150 ease-in-out;
-}
-
-.signin-text {
-    @apply fill-current text-accent-muted;
-}
-
-.signin-button:hover .signin-text {
-    @apply fill-current text-primary;
+    @apply bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted;
+    @apply active:bg-button-success-hover inline-flex justify-center w-full max-w-xs text-sm font-medium;
+    @apply leading-5 transition duration-150 ease-in-out rounded-md outline-none;
 }
 
 /* Webkit */

@@ -1,0 +1,12 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<button type="button" @onclick="OnClick"
+        class="@Class">
+    <span>@Title</span>
+</button>
+
+@code {
+    [Parameter] public string Class { get; set; } = "btn btn-success";
+    [Parameter] public string Title { get; set; } = "Button";
+    [Parameter] public EventCallback OnClick { get; set; }
+}
