@@ -1,27 +1,9 @@
 @using Stl.Extensibility
-@implements IMarkupPartView
+@inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(LinkPart), typeof(IMarkupPartView))]
-
 @{
     var part = (LinkPart) Part;
-    var cls = _class ??= this.DefaultClass();
 }
-<a class="cursor-pointer no-underline hover:underline text-cyan-600 @cls"
+
+<a class="link-part-view cursor-pointer no-underline hover:underline text-cyan-600"
    href="@part.Url" target="_blank">@part.Text</a>
-
-@code {
-    private static string? _class;
-    private ILogger? _log;
-
-    // Just one dependency: it should render as quickly as possible
-    [Inject] private IServiceProvider Services { get; set; } = null!;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public ChatEntry Entry { get; set; } = null!;
-    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public MarkupPart Part { get; set; } = null!;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
-}

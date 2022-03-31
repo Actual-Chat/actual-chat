@@ -1,0 +1,12 @@
+@inherits ComputedStateComponent<Moment>
+
+@DateTime.Now.ToString("F")
+
+@code {
+    [Inject] private IFusionTime FusionTime { get; init; } = null!;
+
+    [Parameter] public double UpdatePeriod { get; set; } = 1;
+
+    protected override async Task<Moment> ComputeState(CancellationToken cancellationToken)
+        => await FusionTime.GetUtcNow(TimeSpan.FromSeconds(UpdatePeriod)).ConfigureAwait(false);
+}

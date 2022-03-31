@@ -1,0 +1,18 @@
+<div class="max-w-sm">
+    <div class="p-4">
+        <p>Starting @Operation.</p>
+    </div>
+    <div class="p-4 pt-1 flex justify-center">
+        <button type="button" class="signin-button inline-flex" @onclick="OnContinue">
+            Continue
+        </button>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public string Operation { get; set; } = "audio playback or capture";
+
+    private void OnContinue()
+        => ModalInstance.CloseAsync();
+}

@@ -1,32 +1,24 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<string>
-@inject ILiveTime _liveTime
-
 @{
     var timestamp = State.LatestNonErrorValue;
 }
 
-<span class="@(_class ??= this.DefaultClass()) text-secondary text-xs" title="@tooltip">@timestamp</span>
+<span class="chat-message-timestamp text-secondary text-xs" title="@_tooltip">@timestamp</span>
 
 @code {
-    private static string? _class;
-    private string tooltip = "";
-    private DateTime localTime;
+    private string _tooltip = "";
+    private DateTime _localTime;
 
-    [Parameter]
-    public DateTime Value { get; set; }
+    [Inject] private ILiveTime LiveTime { get; init; } = null!;
 
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
+    [Parameter] public DateTime Value { get; set; }
 
-        localTime = Value.DefaultKind(DateTimeKind.Utc).ToLocalTime();
-
-        tooltip = localTime.ToLongDateString() + ", " + localTime.ToShortTimeString();
+    protected override void OnParametersSet() {
+        _localTime = Value.DefaultKind(DateTimeKind.Utc).ToLocalTime();
+        _tooltip = _localTime.ToLongDateString() + ", " + _localTime.ToShortTimeString();
     }
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)
-    {
-        return _liveTime.GetMomentsAgo(localTime);
-    }
+        => LiveTime.GetMomentsAgo(_localTime);
 }

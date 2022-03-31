@@ -4,16 +4,16 @@ namespace ActualChat.Audio.UnitTests;
 
 public class ActualOpusStreamAdapterTests
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _log;
 
-    public ActualOpusStreamAdapterTests(ILogger logger)
-        => _logger = logger;
+    public ActualOpusStreamAdapterTests(ILogger log)
+        => _log = log;
 
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()
     {
-        var webMStreamAdapter = new WebMStreamAdapter(_logger);
-        var streamAdapter = new ActualOpusStreamAdapter(_logger);
+        var webMStreamAdapter = new WebMStreamAdapter(_log);
+        var streamAdapter = new ActualOpusStreamAdapter(_log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1024);
         var audio = await webMStreamAdapter.Read(byteStream, default);
@@ -33,8 +33,8 @@ public class ActualOpusStreamAdapterTests
     [Fact]
     public async Task OneByteSequenceCanBeRead()
     {
-        var webMStreamAdapter = new WebMStreamAdapter(_logger);
-        var streamAdapter = new ActualOpusStreamAdapter(_logger);
+        var webMStreamAdapter = new WebMStreamAdapter(_log);
+        var streamAdapter = new ActualOpusStreamAdapter(_log);
         var byteStream = GetAudioFilePath((FilePath)"0000-LONG.webm")
             .ReadByteStream(1);
         var audio = await webMStreamAdapter.Read(byteStream, default);
@@ -54,7 +54,7 @@ public class ActualOpusStreamAdapterTests
     [Fact]
     public async Task SuccessfulReadFromFile()
     {
-        var streamAdapter = new ActualOpusStreamAdapter(_logger);
+        var streamAdapter = new ActualOpusStreamAdapter(_log);
         var byteStream = GetAudioFilePath((FilePath)"0000.opuss")
             .ReadByteStream( 1024);
         var audio = await streamAdapter.Read(byteStream, default);

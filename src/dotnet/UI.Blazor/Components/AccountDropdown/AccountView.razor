@@ -23,13 +23,7 @@
 @code {
     private IAccountInfoProvider? _accountInfoProvider;
 
-    public class Model
-    {
-        public string Picture { get; set; } = "";
-        public string Name { get; set; } = "";
-    }
-
-    [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
+    [Inject] private IServiceProvider ServiceProvider { get; init; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public User User { get; set; } = null!;
@@ -55,5 +49,11 @@
         model.Name = accountInfo?.Name ?? User.Name;
         model.Picture = accountInfo?.Picture ?? "";
         return model;
+    }
+
+    public class Model
+    {
+        public string Picture { get; set; } = "";
+        public string Name { get; set; } = "";
     }
 }

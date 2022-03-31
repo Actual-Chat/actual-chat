@@ -6,6 +6,7 @@ public interface ILiveTime
     Task<string> GetMomentsAgo(DateTime time);
 }
 
+// ReSharper disable once ClassNeverInstantiated.Global
 internal class LiveTime : ILiveTime
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);

@@ -13,9 +13,9 @@
     <MySqlVersion>2.1.8</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <RedisVersion>2.5.57</RedisVersion>
+    <RedisVersion>2.5.60</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>2.3.54</StlFusionVersion>
+    <StlFusionVersion>2.4.6</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.2.0-rc2</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
@@ -25,9 +25,10 @@
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
     <PackageReference Update="Blazor.ContextMenu" Version="1.13.0" />
     <PackageReference Update="Blazored.Modal" Version="6.0.1" />
+    <PackageReference Update="Blazored.SessionStorage" Version="2.2.0" />
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
     <!-- We use Grpc.Core from otlp exporter -->
-    <PackageReference Update="Grpc.Core" Version="2.44.0" />
+    <PackageReference Update="Grpc.Core" Version="2.45.0" />
     <!-- Google.Cloud.Speech.V1 doesn't support WEBM_OPUS -->
     <PackageReference Update="Google.Cloud.Speech.V1P1Beta1" Version="2.0.0-beta07"/>
     <PackageReference Update="Google.Cloud.AspNetCore.DataProtection.Storage" Version="1.0.0-alpha03" />
@@ -130,8 +131,8 @@
     <PackageReference Update="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit" Version="2.4.1"/>
-    <PackageReference Update="Xunit.DependencyInjection" Version="8.4.0"/>
-    <PackageReference Update="Xunit.DependencyInjection.Logging" Version="8.0.0"/>
+    <PackageReference Update="Xunit.DependencyInjection" Version="8.4.1"/>
+    <PackageReference Update="Xunit.DependencyInjection.Logging" Version="8.0.1"/>
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Analyzers -->

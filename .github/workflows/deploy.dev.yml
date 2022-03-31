@@ -44,8 +44,10 @@ jobs:
           registry: us-central1-docker.pkg.dev
           username: _json_key
           password: ${{ secrets.DEV_GAR_JSON_KEY }}
+      - name: Replace npm creds
+        run: sed -i -E 's/(_authToken=)(.*)$/\1${{ secrets.NPM_READ_TOKEN }}/g' src/nodejs/.npmrc
       - name: Build docker image
-        run: docker build . -t actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} -t us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} --compress
+        run: docker build . -t actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} -t us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }} --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} --compress
       - name: Publish docker image
         run: docker push us-central1-docker.pkg.dev/actual-chat-dev-330512/dev/actualchat-app:${{ steps.nbgv.outputs.SemVer2 }}
       # - name: Create changelog text

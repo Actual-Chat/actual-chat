@@ -2,7 +2,7 @@ import { FeederAudioWorkletNode, PlaybackState } from './worklets/feeder-audio-w
 import { CreateDecoderMessage, DataDecoderMessage, DecoderWorkerMessage, EndDecoderMessage, InitDecoderMessage, OperationCompletedDecoderWorkerMessage, StopDecoderMessage } from './workers/opus-decoder-worker-message';
 import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
-import { isAecWorkaroundNeeded, enableChromiumAec } from './chromiumEchoCancellation';
+import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 
 const LogScope: string = 'AudioPlayerController'
 
@@ -14,11 +14,11 @@ worker.onmessage = (ev: MessageEvent<DecoderWorkerMessage>) => {
     const msg = ev.data;
     try {
         switch (msg.type) {
-            case 'operationCompleted':
-                onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
-                break;
-            default:
-                throw new Error(`Unsupported message type: ${msg.type}`);
+        case 'operationCompleted':
+            onOperationCompleted(msg as OperationCompletedDecoderWorkerMessage);
+            break;
+        default:
+            throw new Error(`Unsupported message type: ${msg.type}`);
         }
     }
     catch (error) {
@@ -47,7 +47,7 @@ export class AudioPlayerController implements Resettable {
     private feederNode?: FeederAudioWorkletNode = null;
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private cleanup?: () => void = null;
-    private isResetted = false;
+    private isReset = false;
 
     private constructor() {
         this.id = lastControllerId++;
@@ -88,7 +88,7 @@ export class AudioPlayerController implements Resettable {
         /** Called at the end of the queue, even if the playing wasn't started */
         onEnded?: () => void,
     }): Promise<void> {
-        this.isResetted = false;
+        this.isReset = false;
         /** The second phase of initialization, after a user gesture we can create an audio context and worklet objects */
         this.audioContext = await AudioContextPool.get('main') as AudioContext;
         if (this.feederNode === null) {
@@ -177,7 +177,7 @@ export class AudioPlayerController implements Resettable {
     }
 
     public reset(): void | PromiseLike<void> {
-        this.isResetted = true;
+        this.isReset = true;
         if (this.feederNode != null) {
             this.feederNode.disconnect();
             this.feederNode.onBufferLow = null;

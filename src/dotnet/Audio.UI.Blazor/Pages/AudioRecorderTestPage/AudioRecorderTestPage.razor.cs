@@ -8,19 +8,19 @@ namespace ActualChat.Audio.UI.Blazor.Pages;
 
 public partial class AudioRecorderTestPage : ComponentBase, IDisposable
 {
-    [Inject] private ILogger<AudioRecorderTestPage> Log { get; set; } = null!;
-    [Inject] private IJSRuntime JS { get; set; } = null!;
-    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private ILogger<AudioRecorderTestPage> Log { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
 
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
     private IJSObjectReference? _jsRef = null;
     private ElementReference _recordsRef;
     private int _recordNumber = 0;
-    protected bool DebugMode { get; set; } = true;
-    protected bool IsRecording { get; set; }
-    private string ChatId => "the-actual-one";
 
+    private string ChatId => "the-actual-one";
+    private bool DebugMode { get; set; } = true;
+    private bool IsRecording { get; set; }
 
     public async Task ToggleRecording()
     {

@@ -4,7 +4,8 @@
     var items = State.LatestNonErrorValue.Items;
     var title = new MarkupString(Title);
 }
-<h3 class="ml-4 mt-4 mb-6">@title</h3>
+
+<PageHeader Title="Avatars"/>
 @if (items.Length == 0) {
     <div class="absolute top-0 left-0 h-full w-full grid justify-items-center items-center">
         <span>Create your first Avatar</span>
@@ -51,33 +52,20 @@
     </span>
 </button>
 
-<div class="absolute top-0 right-0 mr-4 mt-4 ">
+<div class="absolute top-0 right-0 mr-4 mt-14">
     <CloseButton Click="OnCancel" />
 </div>
 
 @code {
-    public class Model {
-        public Item[] Items { get; set; } = Array.Empty<Item>();
-    }
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
-    public class Item {
-        public bool IsUserDefault { get; set; }
-        public bool IsSelected { get; set; }
-        public string AvatarId { get; set; } = "";
-    }
-
-    [Inject] IUserAvatars UserAvatars { get; set; } = null!;
-    [Inject] IChatUserSettings ChatUserSettings { get; set; } = null!;
-    [Inject] NavigationManager Nav { get; set; } = default!;
-    [Inject] Session Session { get; set; } = null!;
-    [Inject] UICommandRunner Cmd { get; set; } = null!;
-
-    [Parameter]
-    public string Title { get; set; } = "";
-    [Parameter]
-    public string ChatId { get; set; } = "";
-    [Parameter]
-    public Action? CancelRequested { get; set; } = default!;
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public Action? CancelRequested { get; set; } = default!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new () { InitialValue = new ()};
@@ -127,5 +115,15 @@
 
     private void OnCancel() {
         CancelRequested?.Invoke();
+    }
+
+    public class Model {
+        public Item[] Items { get; set; } = Array.Empty<Item>();
+    }
+
+    public class Item {
+        public bool IsUserDefault { get; set; }
+        public bool IsSelected { get; set; }
+        public string AvatarId { get; set; } = "";
     }
 }

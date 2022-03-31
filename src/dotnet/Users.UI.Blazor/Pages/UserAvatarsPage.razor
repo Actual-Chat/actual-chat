@@ -3,7 +3,7 @@
 <UserAvatarsEditor Title="User avatars" CancelRequested="NavigateHome" />
 
 @code {
-    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private void NavigateHome() {
         Nav.NavigateTo("/");

@@ -8,16 +8,15 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
-    [Inject] private Session Session { get; set; } = default!;
-    [Inject] private ChatController ChatController { get; set; } = null!;
-    [Inject] private IChats Chats { get; set; } = default!;
-    [Inject] private IChatAuthors ChatAuthors { get; set; } = default!;
-    [Inject] private IAuth Auth { get; set; } = default!;
-    [Inject] private NavigationManager Nav { get; set; } = default!;
-    [Inject] private ILogger<ChatView> Log { get; set; } = default!;
+    [Inject] private ILogger<ChatView> Log { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatController ChatController { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [CascadingParameter]
-    public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     public async ValueTask DisposeAsync()
     {

@@ -1,11 +1,6 @@
 @page "/test/auth"
 @using UAParser
 @inherits ComputedStateComponent<(User User, List<AuthenticationPage.SessionModel> Sessions)>
-@inject Session _session
-@inject IAuth _auth
-@inject ClientAuthHelper _clientAuthHelper
-@inject IFusionTime _fusionTime
-@inject NavigationManager _nav
 
 @{
     var state = State.LatestNonErrorValue;
@@ -24,7 +19,7 @@
         <div>Session properties:</div>
         <div>
             <ul>
-                <li><code>Session.Id</code>: <b><code>@_session.Id</code></b></li>
+                <li><code>Session.Id</code>: <b><code>@Session.Id</code></b></li>
             </ul>
         </div>
 
@@ -78,7 +73,7 @@
                                     <span>Current</span>
                                 } else {
                                     <button type="button" class="btn btn-sm btn-danger"
-                                            @onclick="_ => _clientAuthHelper.SignOut(session.Id)">Kick</button>
+                                            @onclick="_ => AuthHelper.SignOut(session.Id)">Kick</button>
                                 }
                             </td>
                         </tr>
@@ -91,12 +86,12 @@
     <div>
         <AuthorizeView>
             <Authorized>
-                    <button @onclick="_ => _clientAuthHelper.SignOut()">Sign out</button>
-                    <button @onclick="_ => _clientAuthHelper.SignOutEverywhere()">Sign out everywhere</button>
+                    <button @onclick="_ => AuthHelper.SignOut()">Sign out</button>
+                    <button @onclick="_ => AuthHelper.SignOutEverywhere()">Sign out everywhere</button>
                 @if (unusedAuthSchemas.Length != 0) {
                     <span> or add account: </span>
                     @foreach (var (name, displayName) in unusedAuthSchemas) {
-                        <button @onclick="_ => _clientAuthHelper.SignIn(name)">@displayName</button>
+                        <button @onclick="_ => AuthHelper.SignIn(name)">@displayName</button>
                     }
                 }
             </Authorized>
@@ -108,19 +103,13 @@
 </div>
 
 @code {
-    public class SessionModel
-    {
-        public string Id { get; set; } = "";
-        public string IPAddress { get; set; } = "";
-        public string UserAgent { get; set; } = "";
-        public string Created { get; set; } = "";
-        public string LastSeen { get; set; } = "";
-        public long Version { get; set; }
-        public bool IsCurrent { get; set; }
-    }
-
     private static readonly Parser Parser = Parser.GetDefault();
 
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
+    [Inject] private IFusionTime FusionTime { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
     private ConcurrentDictionary<string, UserAgent> UserAgentCache { get; } = new();
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
@@ -128,7 +117,7 @@
     {
         if (firstRender) {
             // GetSchemas requires JS interop, so it can be called only at this point
-            AuthSchemas = await _clientAuthHelper.GetSchemas();
+            AuthSchemas = await AuthHelper.GetSchemas();
             StateHasChanged();
         }
     }
@@ -138,23 +127,34 @@
 
     protected override async Task<(User, List<SessionModel>)> ComputeState(CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(_session, cancellationToken);
-        var sessions = await _auth.GetUserSessions(_session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(Session, cancellationToken);
+        var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
         var result = new List<SessionModel>();
 
         foreach (var session in sessions) {
             var userAgent = UserAgentCache.GetOrAdd(session.UserAgent, ua => Parser.ParseUserAgent(ua));
             var model = new SessionModel() {
                 Id = session.Id,
-                IsCurrent = _session.Id == session.Id,
+                IsCurrent = Session.Id == session.Id,
                 IPAddress = session.IPAddress,
                 UserAgent = $"{userAgent.Family} {userAgent.Major}.{userAgent.Minor}",
-                Created = await _fusionTime.GetMomentsAgo(session.CreatedAt),
-                LastSeen = await _fusionTime.GetMomentsAgo(session.LastSeenAt),
+                Created = await FusionTime.GetMomentsAgo(session.CreatedAt),
+                LastSeen = await FusionTime.GetMomentsAgo(session.LastSeenAt),
                 Version = session.Version,
             };
             result.Add(model);
         }
         return (user, result);
+    }
+
+    public class SessionModel
+    {
+        public string Id { get; set; } = "";
+        public string IPAddress { get; set; } = "";
+        public string UserAgent { get; set; } = "";
+        public string Created { get; set; } = "";
+        public string LastSeen { get; set; } = "";
+        public long Version { get; set; }
+        public bool IsCurrent { get; set; }
     }
 }

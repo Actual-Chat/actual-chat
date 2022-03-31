@@ -62,7 +62,10 @@ public class Startup
         var pluginServices = new ServiceCollection()
             .Add(services)
             .AddSingleton(Cfg)
-            .AddSingleton(Env);
+            .AddSingleton(Env)
+            .AddSingleton(new FileSystemPluginFinder.Options {
+                AssemblyNamePattern = "ActualChat.*.dll",
+            });
 
         // FileSystemPluginFinder cache fails on .NET 6 some times, so...
         /*

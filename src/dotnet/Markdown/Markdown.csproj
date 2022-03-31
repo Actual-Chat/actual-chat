@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>ActualChat.Markdown</RootNamespace>
+    <DefineConstants>NETCORE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

@@ -12,3 +12,11 @@
     position: static;
     opacity: 100%;
 }
+
+.modal {
+    z-index: 1000;
+    max-width: 96%;
+    @apply flex-col;
+    @apply bg-secondary;
+    @apply border-0 rounded-lg shadow-2xl;
+}

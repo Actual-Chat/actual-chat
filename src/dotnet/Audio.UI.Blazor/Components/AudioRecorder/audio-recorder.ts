@@ -55,7 +55,7 @@ export class AudioRecorder {
 
             const { blazorRef, sessionId } = this;
             await this.recorder.start(sessionId, chatId);
-            await blazorRef.invokeMethodAsync('OnStartRecording');
+            await blazorRef.invokeMethodAsync('OnRecordingStarted', chatId);
         }
         catch (e) {
             console.error(e);

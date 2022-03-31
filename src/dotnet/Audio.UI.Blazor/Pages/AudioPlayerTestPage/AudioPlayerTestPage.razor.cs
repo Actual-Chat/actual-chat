@@ -9,18 +9,6 @@ namespace ActualChat.Audio.UI.Blazor.Pages;
 
 public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, IDisposable
 {
-    [Inject]
-    private ILogger<AudioPlayerTestPage> _log { get; set; } = null!;
-    [Inject]
-    private IServiceProvider _services { get; set; } = null!;
-    [Inject]
-    private IJSRuntime _js { get; set; } = null!;
-    [Inject]
-    private ITrackPlayerFactory _trackPlayerFactory { get; set; } = null!;
-
-    protected long ObjectCreationDelay;
-    protected long StartPlayingDelay;
-    protected long InitializeDuration;
     private bool _isPlaying;
     private CancellationTokenSource? _cts;
     private CancellationTokenRegistration _registration;
@@ -29,16 +17,25 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private AudioSource? _audioSource;
     private string _audioBlobStreamUri = "";
 
+    [Inject] private ILogger<AudioPlayerTestPage> Log { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ITrackPlayerFactory TrackPlayerFactory { get; init; } = null!;
+
+    protected long ObjectCreationDelay;
+    protected long StartPlayingDelay;
+    protected long InitializeDuration;
+
     public Task OnBlockMainThread(int milliseconds)
     {
-        _ = _js.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.blockMainThread", milliseconds);
+        _ = JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.blockMainThread", milliseconds);
         return Task.CompletedTask;
     }
 
     [JSInvokable]
     public void OnStartPlaying(AudioPlayerTestPageStats statistics)
     {
-        _log.LogInformation("OnStartPlaying called");
+        Log.LogInformation("OnStartPlaying called");
         StartPlayingDelay = statistics.PlayingStartTime - statistics.ConstructorStartTime;
         ObjectCreationDelay = statistics.ConstructorEndTime - statistics.ConstructorStartTime;
         StateHasChanged();
@@ -47,14 +44,14 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public async Task OnToggleClick()
     {
         if (_isPlaying) {
-            _log.LogInformation("StopTask playing");
+            Log.LogInformation("StopTask playing");
             _cts?.CancelAndDisposeSilently();
             _cts = null;
             _isPlaying = false;
             StateHasChanged();
         }
         else {
-            _log.LogInformation("Start playing");
+            Log.LogInformation("Start playing");
             _isPlaying = true;
             _offset = 0d;
             StartPlayingDelay = 0;
@@ -63,7 +60,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             var audioSource = await CreateAudioSource(_uri, _cts.Token);
             var blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
             var stopWatch = Stopwatch.StartNew();
-            var jsRef = await _js.InvokeAsync<IJSObjectReference>(
+            var jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
                 _cts.Token,
                 blazorRef).ConfigureAwait(true);
@@ -71,7 +68,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 try {
-                    _log.LogInformation("Playing was cancelled");
+                    Log.LogInformation("Playing was cancelled");
                     await jsRef.InvokeVoidAsync("stop", CancellationToken.None).ConfigureAwait(true);
                     await jsRef.DisposeSilentlyAsync().ConfigureAwait(true);
                     if (_registration != default) {
@@ -79,7 +76,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                     }
                 }
                 catch (Exception ex) {
-                    _log.LogError(ex, "Dispose registration error");
+                    Log.LogError(ex, "Dispose registration error");
                 }
                 finally {
                     _isPlaying = false;
@@ -91,8 +88,8 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             InitializeDuration = stopWatch.ElapsedMilliseconds;
             foreach (var frame in frames) {
                 if (false) {
-                    _log.LogInformation(
-                        "Send the frame data to js side ({FrameLength} bytes, offset={FrameOffset}s, duration={FrameDuration}s)",
+                    Log.LogInformation(
+                        "Send the frame data to JS side ({FrameLength} bytes, offset={FrameOffset}s, duration={FrameDuration}s)",
                          frame.Data.Length,
                          frame.Offset.TotalSeconds,
                          frame.Duration.TotalSeconds);
@@ -108,7 +105,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private async Task<AudioSource> CreateAudioSource(string audioUri, CancellationToken cancellationToken)
     {
         if (_audioSource == null || !StringComparer.Ordinal.Equals(_audioBlobStreamUri, audioUri)) {
-            var audioDownloader = new AudioDownloader(_services);
+            var audioDownloader = new AudioDownloader(Services);
             _audioSource = await audioDownloader.Download(new Uri(audioUri), TimeSpan.Zero, cancellationToken);
             _audioBlobStreamUri = audioUri;
         }
@@ -120,9 +117,9 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public Task OnChangeReadiness(bool isBufferReady) => Task.CompletedTask;
 
     [JSInvokable]
-    public async Task OnPlaybackEnded(string? errorMessage)
+    public async Task OnPlayEnded(string? errorMessage)
     {
-        _log.LogInformation("OnPlaybackEnded(msg:{ErrorMessage})", errorMessage);
+        Log.LogInformation("OnPlayEnded(msg:{ErrorMessage})", errorMessage);
         // might run stop()  after end(), we shouldn't do this, fix it later
         _cts?.CancelAndDisposeSilently();
         if (_registration != default) {
@@ -131,10 +128,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     }
 
     [JSInvokable]
-    public Task OnPlaybackTimeChanged(double offset)
+    public Task OnPlayTimeChanged(double offset)
     {
         if (true) {
-            _log.LogInformation("OnPlaybackTimeChanged(offset={Offset}s)", offset);
+            Log.LogInformation("OnPlayTimeChanged(offset={Offset}s)", offset);
         }
         _offset = offset;
         StateHasChanged();

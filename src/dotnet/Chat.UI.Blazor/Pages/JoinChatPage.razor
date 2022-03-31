@@ -7,14 +7,12 @@
 @code {
     private InviteCodeUseResult? _useResult;
 
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private UICommandRunner Cmd { get; set; } = null!;
-    [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [Parameter]
-    public string InviteCode { get; set; } = "";
-    [Parameter]
-    [SupplyParameterFromQuery(Name = ChatPage.AutoJoinQueryParameter)]
+    [Parameter] public string InviteCode { get; set; } = "";
+    [Parameter, SupplyParameterFromQuery(Name = ChatPage.AutoJoinQueryParameter)]
     public string? AutoJoin { get; set; }
 
     protected override async Task OnParametersSetAsync() {

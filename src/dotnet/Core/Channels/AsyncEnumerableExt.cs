@@ -225,14 +225,13 @@ public static class AsyncEnumerableExt
                 }
             }
             if (errors != null)
-                switch (errors.Count)
-                {
-                    case 1:
-                        throw errors[0];
-                    case > 1 when errors.All(e => e is OperationCanceledException):
-                        throw errors[0];
-                    case > 1:
-                        throw new AggregateException(errors);
+                switch (errors.Count) {
+                case 1:
+                    throw errors[0];
+                case > 1 when errors.All(e => e is OperationCanceledException):
+                    throw errors[0];
+                case > 1:
+                    throw new AggregateException(errors);
                 }
         }
     }

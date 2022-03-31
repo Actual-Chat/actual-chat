@@ -1,12 +1,11 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Components
 @inject FeedbackUI _feedbackUI;
-
 @{
-    var menuCss = "message-menu h-8 absolute right-0 flex flex-row bg-message-hover shadow-lg rounded-md mr-6 -mt-7 " + Class;
+    var cls = $"{Class} message-menu h-8 absolute right-0 flex flex-row bg-message-hover shadow-lg rounded-md mr-6 -mt-7";
 }
 
-<Menu Class="@menuCss" ItemClass="p-1 text-left" Orientation="Orientation.Horizontal">
+<Menu Class="@cls" ItemClass="p-1 text-left" Orientation="Orientation.Horizontal">
     <MenuItem Title="Reaction" Name="wip" OnItemClick="@(() => _feedbackUI.AskFeatureRequestFeedback("message-menu/reaction", "Reactions"))">
         <Icon>
             <svg class="w-5 h-5 fill-current" xlmns="http://www.w3.org/2000/svg" viewBox="-2 -4 28 28">
@@ -39,6 +38,5 @@
 </Menu>
 
 @code {
-    [Parameter]
-    public string Class { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
 }

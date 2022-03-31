@@ -2,6 +2,6 @@ namespace ActualChat.Audio.UI.Blazor.Components;
 
 public interface IAudioRecorderBackend
 {
-    void OnStartRecording();
+    void OnRecordingStarted(string chatId);
     Task OnRecordingStopped();
 }

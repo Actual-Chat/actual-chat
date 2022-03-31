@@ -5,10 +5,9 @@
 @using ActualChat.Chat.UI.Blazor.Components.MarkupParts
 @using Stl.Extensibility
 @inherits ComputedStateComponent<ChatMessageMarkup.StateModel?>
-@inject IActivePlaybackInfo _activePlaybackInfo
 
 @if (Markup != null) {
-    <p class="@(_class ??= this.DefaultClass()) text-primary mx-1">
+    <p class="chat-message-markup text-primary mx-1">
         @foreach (var part in Markup.Parts) {
             @RenderPart(part)
         }
@@ -16,15 +15,9 @@
 }
 
 @code {
-    private static string? _class;
-
-    public record StateModel {
-        public TrackInfo? TrackInfo { get; init; }
-        public PlayerState? PlayerState { get; init; }
-    }
-
-    [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; set; } = null!;
-    [Inject] private MarkupParser MarkupParser { get; set; } = null!;
+    [Inject] private IMatchingTypeFinder MatchingTypeFinder { get; init; } = null!;
+    [Inject] private MarkupParser MarkupParser { get; init; } = null!;
+    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     private ChatEntry Entry => Model.Entry;
     private Markup? Markup { get; set; } = null!;
 
@@ -44,8 +37,8 @@
         if (audioEntryId == null)
             return null;
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
-        var trackInfo = await _activePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false);
-        var playbackState = await _activePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+        var trackInfo = await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false);
+        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
         return new StateModel { TrackInfo = trackInfo, PlayerState = playbackState };
     }
 
@@ -80,5 +73,10 @@
             builder.AddAttribute(i++, nameof(IMarkupPartView.Part), part);
             builder.CloseComponent();
         };
+    }
+
+    public record StateModel {
+        public TrackInfo? TrackInfo { get; init; }
+        public PlayerState? PlayerState { get; init; }
     }
 }

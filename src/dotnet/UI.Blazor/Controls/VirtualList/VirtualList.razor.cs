@@ -8,12 +8,10 @@ namespace ActualChat.UI.Blazor.Controls;
 public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
-    [Inject]
-    protected IJSRuntime JS { get; init; } = null!;
-    [Inject]
-    protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject]
-    protected internal ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+    [Inject] protected IJSRuntime JS { get; init; } = null!;
+    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] protected internal ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected internal bool DebugMode => Constants.DebugMode.VirtualList;
 

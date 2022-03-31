@@ -1,0 +1,20 @@
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
+
+@{
+    var state = Registry.GetState(Name);
+    var computed = state.Computed;
+    if (computed.ValueOrDefault == ChildContent)
+        computed.Invalidate(); // Re-render here must trigger the invalidation & update there
+    else
+        state.Value = ChildContent;
+}
+@code {
+    [Inject] private RenderSlotRegistry Registry { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+
+    public void Dispose()
+        => Registry[Name] = null;
+}

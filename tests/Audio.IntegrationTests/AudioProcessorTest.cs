@@ -10,10 +10,10 @@ namespace ActualChat.Audio.IntegrationTests;
 
 public class AudioProcessorTest : AppHostTestBase
 {
-    private readonly ILogger _logger;
+    private readonly ILogger _log;
 
-    public AudioProcessorTest(ITestOutputHelper @out, ILogger logger) : base(@out)
-        => _logger = logger;
+    public AudioProcessorTest(ITestOutputHelper @out, ILogger log) : base(@out)
+        => _log = log;
 
     [Fact]
     public async Task EmptyRecordingTest()
@@ -145,8 +145,8 @@ public class AudioProcessorTest : AppHostTestBase
         var fileSize = (int) filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
         var streamAdapter = webMStream
-            ? new WebMStreamAdapter(_logger)
-            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_logger);
+            ? new WebMStreamAdapter(_log)
+            : (IAudioStreamAdapter)new ActualOpusStreamAdapter(_log);
         var audio = await streamAdapter.Read(byteStream, CancellationToken.None);
         await audioProcessor.ProcessAudio(record, audio.GetFrames(CancellationToken.None), CancellationToken.None);
         return (record, fileSize);

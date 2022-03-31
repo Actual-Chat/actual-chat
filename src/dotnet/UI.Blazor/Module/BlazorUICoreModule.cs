@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Blazored.Modal;
+using Blazored.SessionStorage;
 using Microsoft.Extensions.Hosting;
 using Stl.OS;
 using Stl.Plugins;
@@ -28,15 +29,19 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
 
         // Other UI-related services
         services.AddScoped<DisposeMonitor>();
-        services.AddScoped<AppBlazorCircuitContext>();
+        services.AddScoped<StateRestore>();
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c =>
             new UpdateDelayer(c.UICommandTracker(), 0.2));
 
-        services.AddBlazorContextMenu();
+        services.AddBlazoredSessionStorage();
         services.AddBlazoredModal();
-        services.AddTransient<Clipboard>();
+        services.AddBlazorContextMenu();
+        services.AddScoped<RenderSlotRegistry>();
+        services.AddScoped<Clipboard>();
+        services.AddScoped<UserInteractionUI>();
         services.AddScoped<FeedbackUI>();
+        services.AddScoped<NavbarUI>();
 
         if (OSInfo.IsWebAssembly)
             services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();

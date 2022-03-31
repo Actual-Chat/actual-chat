@@ -2,19 +2,17 @@ using System.Reflection;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
-using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
+public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
-    private static bool _debugMode => Constants.DebugMode.AudioPlayback;
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     private readonly string _id;
     private readonly BlazorCircuitContext _circuitContext;
     private readonly IJSRuntime _js;
-    private readonly ILogger<AudioTrackPlayer> _log;
-    private readonly ILogger<AudioTrackPlayer>? _debugLog;
     private DotNetObjectReference<IAudioPlayerBackend>? _blazorRef;
     private IJSObjectReference? _jsRef;
     private Task<Unit> _whenBufferReady = TaskSource.New<Unit>(true).Task;
@@ -23,39 +21,36 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     public AudioTrackPlayer(
         string id,
         IMediaSource source,
-        IHostApplicationLifetime lifetime,
         BlazorCircuitContext circuitContext,
         IJSRuntime jsRuntime,
         ILogger<AudioTrackPlayer> log
-    ) : base(lifetime, source, log)
+    ) : base(source, log)
     {
         _id = id;
         _circuitContext = circuitContext;
         _js = jsRuntime;
-        _log = log;
-        _debugLog = _debugMode ? _log : null;
         UpdateBufferReadyState(true);
     }
 
     [JSInvokable]
-    public Task OnPlaybackEnded(string? errorMessage)
+    public Task OnPlayEnded(string? errorMessage)
     {
         Exception? error = null;
         if (errorMessage != null) {
             error = new TargetInvocationException(
-                $"[audioTrackPlayerId:{_id}] Playback stopped with an error, message = '{errorMessage}'.",
+                $"[AudioTrackPlayer #{_id}] Playback stopped with an error, message = '{errorMessage}'.",
                 null);
-            _log.LogError(error, "[audioTrackPlayerId:{AudioTrackPlayerId}] Playback stopped with an error", _id);
+            Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", _id);
         }
-        _debugLog?.LogDebug("[audioTrackPlayerId:{AudioTrackPlayerId}] OnPlaybackEnded: {Message}", _id, errorMessage);
+        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayEnded: {Message}", _id, errorMessage);
         OnStopped(error);
         return Task.CompletedTask;
     }
 
     [JSInvokable]
-    public Task OnPlaybackTimeChanged(double offset)
+    public Task OnPlayTimeChanged(double offset)
     {
-        _debugLog?.LogDebug("[audioTrackPlayerId:{AudioTrackPlayerId}] OnPlayedTo: {Offset}", _id, offset);
+        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayedTo: {Offset}", _id, offset);
         OnPlayedTo(TimeSpan.FromSeconds(offset));
         return Task.CompletedTask;
     }
@@ -71,36 +66,36 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 switch (command) {
-                    case PlayCommand:
-                        if (_jsRef != null)
-                            throw new LifetimeException($"[audioTrackPlayerId:{_id}] Double start playback command");
-                        _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
-                        _debugLog?.LogDebug("[audioTrackPlayerId:{AudioTrackPlayerId}] Create audio player in js", _id);
-                        _jsRef = await _js.InvokeAsync<IJSObjectReference>(
-                                    $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
-                                    CancellationToken.None,
-                                    _blazorRef,
-                                    _debugMode,
-                                    _id
-                                ).ConfigureAwait(true);
-                        break;
-                    case StopCommand:
-                        if (!_isStopSent) {
-                            if (_jsRef == null)
-                                throw new LifetimeException($"[audioTrackPlayerId:{_id}] {nameof(StopCommand)}: Start command should be called first.");
-                            _debugLog?.LogDebug("[audioTrackPlayerId:{AudioTrackPlayerId}] Send stop command to js", _id);
-                            _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
-                            _isStopSent = true;
-                        }
-                        break;
-                    case EndCommand:
+                case PlayCommand:
+                    if (_jsRef != null)
+                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] Repeated PlayCommand");
+                    _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
+                    _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+                                $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                                CancellationToken.None,
+                                _blazorRef,
+                                DebugLog != null,
+                                _id
+                            ).ConfigureAwait(true);
+                    break;
+                case StopCommand:
+                    if (!_isStopSent) {
                         if (_jsRef == null)
-                            throw new LifetimeException($"[audioTrackPlayerId:{_id}] {nameof(EndCommand)}: Start command should be called first.");
-                        _debugLog?.LogDebug("[audioTrackPlayerId:{AudioTrackPlayerId}] Send end command to js", _id);
-                        _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
-                        break;
-                    default:
-                        throw new NotSupportedException($"[audioTrackPlayerId:{_id}] Unsupported command type: '{command.GetType()}'.");
+                            throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(StopCommand)}: Start command should be called first.");
+                        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending Stop command to JS", _id);
+                        _ = _jsRef.InvokeVoidAsync("stop", CancellationToken.None);
+                        _isStopSent = true;
+                    }
+                    break;
+                case EndCommand:
+                    if (_jsRef == null)
+                        throw new LifetimeException($"[AudioTrackPlayer #{_id}] {nameof(EndCommand)}: Start command should be called first.");
+                    DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Sending End command to JS", _id);
+                    _ = _jsRef.InvokeVoidAsync("end", CancellationToken.None);
+                    break;
+                default:
+                    throw new NotSupportedException($"[AudioTrackPlayer #{_id}] Unsupported command type: '{command.GetType()}'.");
                 }
             }).ConfigureAwait(false);
 
@@ -108,7 +103,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
         => await CircuitInvoke(
             async () => {
                 if (_jsRef == null)
-                    throw new LifetimeException($"[audioTrackPlayerId:{_id}] Can't process media frame before initialization.");
+                    throw new LifetimeException($"[AudioTrackPlayer #{_id}] Can't process media frame before initialization.");
 
                 var chunk = frame.Data;
                 _ = _jsRef.InvokeVoidAsync("data", cancellationToken, chunk);
@@ -116,34 +111,37 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     await _whenBufferReady.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
                 }
                 catch (TimeoutException) {
-                    _log.LogError(
-                        "[audioTrackPlayerId:{AudioTrackPlayerId}] ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
+                    Log.LogError(
+                        "[AudioTrackPlayer #{AudioTrackPlayerId}] ProcessMediaFrame: ready-to-buffer wait timed out, offset={FrameOffset}",
                         _id,
                         frame.Offset);
                 }
             }).ConfigureAwait(false);
 
     protected override Task PlayInternal(CancellationToken cancellationToken)
-        => base.PlayInternal(cancellationToken).ContinueWith(async _ => await CircuitInvoke(async () => {
-            var (jsRef, blazorRef) = (_jsRef, _blazorRef);
-            (_jsRef, _blazorRef) = (null, null);
-            try {
-                try {
-                    if (jsRef != null)
-                        await jsRef.DisposeAsync().ConfigureAwait(true);
+        => base.PlayInternal(cancellationToken)
+            .ContinueWith(async _ => await CircuitInvoke(
+                async () => {
+                    var (jsRef, blazorRef) = (_jsRef, _blazorRef);
+                    (_jsRef, _blazorRef) = (null, null);
+                    try {
+                        try {
+                            if (jsRef != null)
+                                await jsRef.DisposeAsync().ConfigureAwait(true);
+                        }
+                        finally {
+                            blazorRef?.Dispose();
+                        }
+                    }
+                    catch (Exception ex) {
+                        Log.LogError(ex, "[AudioTrackPlayer #{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
+                    }
                 }
-                finally {
-                    blazorRef?.Dispose();
-                }
-            }
-            catch (Exception ex) {
-                _log.LogError(ex, "[audioTrackPlayerId:{AudioTrackPlayerId}] OnStopped failed while disposing the references", _id);
-            }
-        }).ConfigureAwait(false),
-        CancellationToken.None,
-        TaskContinuationOptions.RunContinuationsAsynchronously,
-        TaskScheduler.Default
-    );
+            ).ConfigureAwait(false),
+            CancellationToken.None,
+            TaskContinuationOptions.RunContinuationsAsynchronously,
+            TaskScheduler.Default
+        );
 
     private Task CircuitInvoke(Func<Task> workItem)
         => CircuitInvoke(async () => { await workItem().ConfigureAwait(false); return true; });
@@ -157,7 +155,7 @@ public class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 : _circuitContext.RootComponent.GetDispatcher().InvokeAsync(workItem);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            _log.LogError(e, $"[audioTrackPlayerId:{{AudioTrackPlayerId}}] {nameof(CircuitInvoke)} failed", _id);
+            Log.LogError(e, $"[AudioTrackPlayer #{{AudioTrackPlayerId}}] {nameof(CircuitInvoke)} failed", _id);
             throw;
         }
     }

@@ -16,26 +16,23 @@
 </div>
 
 @code {
-    public class Model {
-        public string Name { get; set; } = "";
-        public string Picture { get; set; } = "";
-        public string Bio { get; set; } = "";
-    }
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
 
-    [Inject] IUserAvatars UserAvatars { get; set; } = null!;
-    [Inject] Session Session { get; set; } = null!;
-
-    [Parameter]
-    public string Class { get; set; } = "";
-    [Parameter]
-    public string AvatarId { get; set; } = "";
-    [Parameter]
-    public RenderFragment ActionsTemplate { get; set; } = default!;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string AvatarId { get; set; } = "";
+    [Parameter] public RenderFragment ActionsTemplate { get; set; } = default!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userAvatar = await UserAvatars.Get(Session, AvatarId, cancellationToken).ConfigureAwait(false);
         if (userAvatar == null)
             return new Model();
         return new Model {Name = userAvatar.Name, Picture = userAvatar.Picture, Bio = userAvatar.Bio};
+    }
+
+    public class Model {
+        public string Name { get; set; } = "";
+        public string Picture { get; set; } = "";
+        public string Bio { get; set; } = "";
     }
 }

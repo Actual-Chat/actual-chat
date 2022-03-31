@@ -1,22 +1,22 @@
 @using ActualChat.Hosting
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inject HostInfo _hostInfo
 
 @{
-    var showHeader = Model.IsBlockStart;
-    var showPicture = showHeader;
-    var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var entry = Model.Entry;
     var attachments = Model.Attachments;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
+
+    var showHeader = Model.IsBlockStart;
+    var showPicture = showHeader;
+    var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="@(_class ??= this.DefaultClass()) px-3 antialiased sm:subpixel-antialiased md:antialiased flex items-start text-sm text-current break-words group @marginClass">
+<div class="chat-message group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-            <div class="author-avatar w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")">
+            <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")">
                 <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
         </ChatAuthor>
@@ -104,8 +104,6 @@
 </div>
 
 @code {
-    private static string? _class;
-
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
 
