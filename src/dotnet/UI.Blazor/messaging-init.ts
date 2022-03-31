@@ -73,3 +73,30 @@ function checkNotificationPromise(): boolean {
 
     return true;
 }
+
+// ask for notification permissions on any user interaction
+// TODO(AK): move to more natural place, like joining a chat, etc.
+// It should be done at JS\TS
+function init() {
+    self.addEventListener('touchstart', initEventListener);
+    self.addEventListener('onkeydown', initEventListener);
+    self.addEventListener('mousedown', initEventListener);
+    self.addEventListener('pointerdown', initEventListener);
+    self.addEventListener('pointerup', initEventListener);
+}
+
+function removeInitListeners() {
+    self.removeEventListener('touchstart', initEventListener);
+    self.removeEventListener('onkeydown', initEventListener);
+    self.removeEventListener('mousedown', initEventListener);
+    self.removeEventListener('pointerdown', initEventListener);
+    self.removeEventListener('pointerup', initEventListener);
+}
+
+const initEventListener = () => {
+    if (!askNotificationPermission()) {
+        console.log('Notifications are disabled.');
+    }
+};
+
+init();
