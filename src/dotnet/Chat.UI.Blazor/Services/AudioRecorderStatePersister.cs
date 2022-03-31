@@ -38,7 +38,7 @@ public class AudioRecorderStatePersister : StatePersister<string>
         if (!permissions.HasFlag(ChatPermissions.Write))
             return;
 
-        await _userInteractionUI.RequestInteraction().ConfigureAwait(false);
+        await _userInteractionUI.RequestInteraction("audio recording").ConfigureAwait(false);
         var startRecordingProcess = _audioRecorder.StartRecording(recordingChatId);
         await startRecordingProcess.WhenStarted.ConfigureAwait(false);
     }

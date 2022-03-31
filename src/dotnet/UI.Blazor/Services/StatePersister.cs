@@ -40,11 +40,12 @@ public abstract class StatePersisterBase<TState> : IStateRestoreHandler, IDispos
         if (Computed != null)
             return; // Already restored
         try {
-            var state = await Load(cancellationToken).ConfigureAwait(false);
-            await Restore(state, cancellationToken).ConfigureAwait(false);
+            var stateOpt = await Load(cancellationToken).ConfigureAwait(false);
+            if (stateOpt.IsSome(out var state))
+                await Restore(state, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            Log.LogError("State restore failed, Key = {Key}", Key);
+            Log.LogError(ex, "State restore failed, Key = {Key}", Key);
         }
 
         Computed = StateFactory.NewComputed(GetStateOptions(), Compute);
@@ -66,10 +67,10 @@ public abstract class StatePersisterBase<TState> : IStateRestoreHandler, IDispos
         LastSavedText = text;
     }
 
-    protected virtual async Task<TState> Load(CancellationToken cancellationToken)
+    protected virtual async Task<Option<TState>> Load(CancellationToken cancellationToken)
     {
         var text = LastSavedText ??= await LoadText(cancellationToken).ConfigureAwait(false);
-        return Serializer.Read(text);
+        return text.IsNullOrEmpty() ? Option<TState>.None : Serializer.Read(text);
     }
 
     protected virtual ComputedState<TState>.Options GetStateOptions()
@@ -94,9 +95,17 @@ public abstract class StatePersister<TState> : StatePersisterBase<TState>
     protected StatePersister(IServiceProvider services) : base(services)
         => Storage = services.GetRequiredService<ISessionStorageService>();
 
-    protected override ValueTask<string> LoadText(CancellationToken cancellationToken)
-        => Storage.GetItemAsStringAsync(StorageKey, cancellationToken);
+    protected override async ValueTask<string> LoadText(CancellationToken cancellationToken)
+    {
+        var text = await Storage.GetItemAsStringAsync(StorageKey, cancellationToken).ConfigureAwait(false);
+        return text ?? "";
+    }
 
-    protected override ValueTask SaveText(string text, CancellationToken cancellationToken)
-        => Storage.SetItemAsStringAsync(StorageKey, text, cancellationToken);
+    protected override async ValueTask SaveText(string text, CancellationToken cancellationToken)
+    {
+        if (text.IsNullOrEmpty())
+            await Storage.RemoveItemAsync(StorageKey, cancellationToken).ConfigureAwait(false);
+        else
+            await Storage.SetItemAsStringAsync(StorageKey, text, cancellationToken).ConfigureAwait(false);
+    }
 }

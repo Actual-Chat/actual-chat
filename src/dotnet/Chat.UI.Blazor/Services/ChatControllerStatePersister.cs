@@ -36,7 +36,7 @@ public class ChatControllerStatePersister : StatePersister<ChatListeningInfo[]>
         if (listeningChats.Length == 0)
             return;
         if (listeningChats.Any(c => c.Mode == ChatListeningMode.Active))
-            await _userInteractionUI.RequestInteraction().ConfigureAwait(false);
+            await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
         var tasks = new List<Task>();
         foreach (var chatInfo in listeningChats) {
             var task = _chatController.StartRealtimeListening(chatInfo.ChatId, chatInfo.Mode);

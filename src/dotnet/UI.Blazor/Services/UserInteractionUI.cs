@@ -21,17 +21,23 @@ public class UserInteractionUI
     public void MarkInteractionHappened()
         => _whenInteractionHappenedSource.TrySetResult(default);
 
-    public async Task RequestInteraction()
+    public async Task RequestInteraction(string operation = "")
     {
         if (WhenInteractionHappened.IsCompleted)
             return;
         using var _ = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
         if (WhenInteractionHappened.IsCompleted)
             return;
+        var parameters = new ModalParameters();
+        if (!operation.IsNullOrEmpty())
+            parameters.Add("Operation", operation);
         var modal = _modalService.Show<UserInteractionRequestModal>(
             null,
-            new ModalOptions { HideHeader = true, Class = "blazored-modal-p0 bg-secondary shadow-lg"}
-            //z-102 bg-white flex flex-column border rounded
+            parameters,
+            new ModalOptions {
+                HideHeader = true,
+                Class = "blazored-modal-p0 bg-secondary shadow-lg",
+            }
         );
         await modal.Result.ConfigureAwait(false);
         MarkInteractionHappened();
