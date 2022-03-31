@@ -2,13 +2,11 @@
 
 ![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/unit-tests.yml/badge.svg)
 
+## Discord
 
-
+- If you're a part of the official team, please contact @alexyakunin to get access.
 
 ## Prerequisites
-
-
-
 
 Install:
 - [Git](https://git-scm.com/downloads)
@@ -77,7 +75,8 @@ We use:
     - Place `{` on the same line for `if`, `for`, and
       any other code inside method body
     - If you have to wrap a method body expression,
-      wrap it before `=>` rather than after 
+      wrap it before `=>` rather than after
+    - A bunch of other things, see `#coding-style` Discord channel
 
 ## Release branches
 
