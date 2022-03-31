@@ -37,24 +37,15 @@
 }
 
 @code {
-    public class Model
-    {
-        [Required]
-        public string Title { get; set; } = "";
-
-        public bool IsPublic { get; set; }
-    }
-
     private Chat? _chat;
     private readonly Model _model = new();
 
-    [Inject] private Session Session { get; set; } = default!;
-    [Inject] private IChats Chats { get; set; } = default!;
-    [Inject] private UICommandRunner Cmd { get; set; } = default!;
-    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [Parameter]
-    public string ChatId { get; set; } = "";
+    [Parameter] public string ChatId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
         _chat = await Chats.Get(Session, ChatId, default);
@@ -81,4 +72,11 @@
 
     private void NavigateToChat()
         => Nav.NavigateTo($"/chat/{ChatId}");
+
+    public class Model
+    {
+        [Required]
+        public string Title { get; set; } = "";
+        public bool IsPublic { get; set; }
+    }
 }

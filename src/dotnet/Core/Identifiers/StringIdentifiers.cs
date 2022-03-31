@@ -33,7 +33,7 @@ namespace ActualChat
         public static implicit operator string(TestStringId id) => id.Value;
 
         // Equality
-        public bool Equals(TestStringId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
+        public bool Equals(TestStringId other) => StringComparer.Ordinal.Equals(Value, other.Value);
         public override bool Equals(object? obj) => obj is TestStringId other && Equals(other);
         public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(TestStringId left, TestStringId right) => left.Equals(right);
@@ -116,7 +116,7 @@ namespace ActualChat
         public static implicit operator string(LanguageId id) => id.Value;
 
         // Equality
-        public bool Equals(LanguageId other) => string.Equals(Value, other.Value, StringComparison.Ordinal);
+        public bool Equals(LanguageId other) => StringComparer.Ordinal.Equals(Value, other.Value);
         public override bool Equals(object? obj) => obj is LanguageId other && Equals(other);
         public override int GetHashCode() => Value.GetHashCode(StringComparison.Ordinal);
         public static bool operator ==(LanguageId left, LanguageId right) => left.Equals(right);

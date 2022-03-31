@@ -1,18 +1,14 @@
 @inherits ComputedStateComponent<string>
-@inject IFusionTime _fusionTime
 
-<span class="@Class @(_typeClass ??= CssClasses.Default[GetType()])">@(State.Value ?? "")</span>
+<span class="@Class moments-ago-badge">@(State.Value ?? "")</span>
 
 @code {
-    private static string? _typeClass;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public string None { get; set; } = "n/a";
 
-    [Parameter]
-    public string Class { get; set; } = "";
-    [Parameter]
-    public DateTime? Value { get; set; }
-    [Parameter]
-    public string None { get; set; } = "n/a";
+    [Inject] private IFusionTime FusionTime { get; init; } = null!;
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)
-        => Value.HasValue ? _fusionTime.GetMomentsAgo(Value.Value) : Task.FromResult(None);
+        => Value.HasValue ? FusionTime.GetMomentsAgo(Value.Value) : Task.FromResult(None);
 }

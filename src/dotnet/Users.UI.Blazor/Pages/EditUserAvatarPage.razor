@@ -5,14 +5,11 @@
 </div>
 
 @code {
-    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [Parameter]
-    public string AvatarId { get; set; } = "";
-    [Parameter]
-    [SupplyParameterFromQuery(Name = "returnUrl")]
+    [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
+    [Parameter, SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
-
 
     private void NavigateBack() {
         var urlBack = ReturnUrl.NullIfWhiteSpace() ?? "/user/avatars";

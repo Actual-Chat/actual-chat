@@ -1,13 +1,13 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@inject NavbarService _navbarService
+@inject NavbarUI _navbarUI
 
 @{
-    var isVisible = _navbarService.ActiveGroupId == Id;
+    var isVisible = _navbarUI.ActiveGroupId == Id;
     var cls = isVisible ? "flex" : "hidden";
 }
 
-<div class="@(Class ?? (_class ??= this.DefaultClass())) navbar-menu-group flex-col space-y-2 @cls">
+<div class="@Class navbar-menu-group flex-col space-y-2 @cls">
     <div class="flex justify-between items-center hidden md:flex pt-4">
         <div class="text-secondary-muted text-sm uppercase font-medium">@Title</div>
         @Icons
@@ -15,10 +15,7 @@
     @ChildContent
 </div>
 
-
 @code{
-    private static string? _class;
-
     [Parameter] public string? Class { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Icons { get; set; }
@@ -26,7 +23,6 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     protected override void OnInitialized() {
-        _navbarService.ActiveGroupChanged += (s, e) => StateHasChanged();
+        _navbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
     }
-
 }

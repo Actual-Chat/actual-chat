@@ -6,15 +6,8 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 @implements IAsyncDisposable
-@inject IChats _chatService
-@inject Session _session
-@inject UICommandRunner _cmd
-@inject IUICommandTracker _cmdTracker
-@inject IJSRuntime _js
-@inject MomentClockSet _clocks
-@inject HostInfo _hostInfo
 
-<div @ref="EditorRef" class="@(_class ??= this.DefaultClass()) chat-message-editor sticky bottom-0 self-end bg-secondary w-full px-2">
+<div @ref="EditorRef" class="chat-message-editor sticky bottom-0 self-end bg-secondary w-full px-2">
     <div class="flex flex-row justify-between px-1">
         <div class="flex flex-col outline-none bg-accent rounded-md w-full mr-3">
             <input class="files-picker" type="file" hidden multiple/>
@@ -96,18 +89,14 @@
 </div>
 
 @code {
-    private class Attachment {
-        public string Url { get; set; } = "";
-        public string FileName { get; set; } = "";
-        public string FileType { get; set; } = "";
-        public int Length { get; set; }
-        public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
-        public int Id { get; set; }
-    }
+    [Inject] private ChatController ChatController { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    private static string? _class;
-
-    [Inject] private ChatController ChatController { get; set; } = null!;
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
@@ -115,8 +104,7 @@
     private string Text { get; set; } = "";
     private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
 
-    [CascadingParameter]
-    public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     public async ValueTask DisposeAsync()
     {
@@ -129,7 +117,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
-            JSRef = await _js.InvokeAsync<IJSObjectReference>(
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
                 EditorRef, BlazorRef
                 ).ConfigureAwait(true);
@@ -208,6 +196,15 @@
         var result = Result.Error<string>(e);
         var command = new PostChatMessageSurrogateCommand();
         var completedEvent = new UICommandEvent(command, result);
-        _ = _cmdTracker.ProcessEvent(completedEvent);
+        _ = Cmd.UICommandTracker.ProcessEvent(completedEvent);
+    }
+
+    private class Attachment {
+        public string Url { get; set; } = "";
+        public string FileName { get; set; } = "";
+        public string FileType { get; set; } = "";
+        public int Length { get; set; }
+        public bool IsImage => FileType?.StartsWith("image", StringComparison.OrdinalIgnoreCase) ?? false;
+        public int Id { get; set; }
     }
 }

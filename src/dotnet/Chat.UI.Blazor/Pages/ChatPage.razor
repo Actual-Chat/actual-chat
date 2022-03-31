@@ -8,8 +8,8 @@
 @inject ChatController _controller
 
 @{
-    _renderedModel = State.LatestNonErrorValue ?? new();
-    var model = _renderedModel;
+    _lastRenderedModel = State.LatestNonErrorValue ?? new();
+    var model = _lastRenderedModel;
     var error = State.Error;
     if (model.IsUnavailable)
         _nav.Unavailable("chat");
@@ -22,18 +22,16 @@
     <WhenError Error="error"/>
 } else if (chat != null) {
     @* @key=... ensures child components are recreated on navigation to another chat *@
-    <PageWithHeaderAndFooter @key="chat.Id" Class="@this.DefaultClass()">
+    <PageWithHeaderAndFooter @key="chat.Id" Class="chat-page">
         <Header>
             <CascadingValue Value="chat">
-                <div class="flex flex-col">
-                    <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
-                        <NavbarIcon/>
-                        <ChatHeader/>
-                        <ChatActivityPanel/>
-                    </div>
-                    <div class="w-full flex justify-center px-2">
-                        <ChatHeaderPanel/>
-                    </div>
+                <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
+                    <NavbarIcon/>
+                    <ChatHeader/>
+                    <ChatActivityPanel/>
+                </div>
+                <div class="w-full flex justify-center px-2">
+                    <ChatHeaderPanel/>
                 </div>
             </CascadingValue>
         </Header>
@@ -54,25 +52,17 @@
 }
 
 @code {
-    private Model? _renderedModel;
-
     public const string AutoJoinQueryParameter = "auto-join";
 
-    public record Model {
-        public bool IsUnavailable { get; init; }
-        public bool MustLogin { get; init; }
-        public Chat? Chat { get; init; }
-    }
+    private Model? _lastRenderedModel;
 
-    [Parameter]
-    public string ChatId { get; set; } = "";
-    [Parameter]
-    [SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
+    [Parameter] public string ChatId { get; set; } = "";
+    [Parameter, SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
     public string? AutoJoin { get; set; }
 
     protected override bool ShouldRender()
-        => ReferenceEquals(_renderedModel, null)
-            || !ReferenceEquals(_renderedModel, State.LatestNonErrorValue);
+        => ReferenceEquals(_lastRenderedModel, null)
+            || !ReferenceEquals(_lastRenderedModel, State.LatestNonErrorValue);
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
@@ -81,9 +71,9 @@
             return new () { IsUnavailable = true };
 
         // We want to return the same Chat instance while it stays unchanged
-        var renderedChat = _renderedModel?.Chat;
+        var renderedChat = _lastRenderedModel?.Chat;
         if (renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version)
-            return _renderedModel!;
+            return _lastRenderedModel!;
         return new () { Chat = chat };
     }
 
@@ -97,5 +87,11 @@
             _controller.SetActiveChatId("");
         }
         await base.DisposeAsync();
+    }
+
+    public record Model {
+        public bool IsUnavailable { get; init; }
+        public bool MustLogin { get; init; }
+        public Chat? Chat { get; init; }
     }
 }

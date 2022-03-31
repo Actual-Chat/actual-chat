@@ -10,9 +10,10 @@
         state.Value = ChildContent;
 }
 @code {
+    [Inject] private RenderSlotRegistry Registry { get; init; } = null!;
+
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
-    [Inject] private RenderSlotRegistry Registry { get; set; } = null!;
 
     public void Dispose()
         => Registry[Name] = null;

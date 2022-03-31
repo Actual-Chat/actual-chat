@@ -42,25 +42,15 @@
 </div>
 
 @code {
-    public class Model
-    {
-        public string Name { get; set; } = "";
-        public string Picture { get; set; } = "";
-        public string Bio { get; set; } = "";
-    }
-
-    [Inject] private Session Session { get; set; } = default!;
-    [Inject] private IUserAvatars UserAvatars { get; set; } = default!;
-    [Inject] private UICommandRunner Cmd { get; set; } = default!;
-
     private readonly Model _model = new();
 
-    [Parameter]
-    public string AvatarId { get; set; } = "";
-    [Parameter]
-    public Action? OnUpdated { get; set; } = default!;
-    [Parameter]
-    public Action? CancelRequested { get; set; } = default!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
+    [Parameter] public Action? OnUpdated { get; set; } = default!;
+    [Parameter] public Action? CancelRequested { get; set; } = default!;
 
     protected override async Task OnParametersSetAsync() {
         var userAvatar = await UserAvatars.Get(Session, AvatarId, default);
@@ -78,5 +68,12 @@
 
     private void OnCancel() {
         CancelRequested?.Invoke();
+    }
+
+    public class Model
+    {
+        public string Name { get; set; } = "";
+        public string Picture { get; set; } = "";
+        public string Bio { get; set; } = "";
     }
 }

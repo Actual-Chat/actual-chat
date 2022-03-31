@@ -28,17 +28,11 @@
 </AuthorizeView>
 
 @code {
-    public class Model
-    {
-        [Required]
-        public string Title { get; set; } = "";
-    }
-
-    [Inject] private Session Session { get; set; } = default!;
-    [Inject] private UICommandRunner Cmd { get; set; } = default!;
-    [Inject] private NavigationManager Nav { get; set; } = default!;
-
     private readonly Model _model = new();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private async Task OnCreate()
     {
@@ -48,5 +42,11 @@
             return;
         var chatId = result.Result.Id;
         Nav.NavigateTo($"/chat/{chatId}");
+    }
+
+    public class Model
+    {
+        [Required]
+        public string Title { get; set; } = "";
     }
 }

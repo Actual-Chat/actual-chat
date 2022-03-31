@@ -6,14 +6,12 @@
 @{
     var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
-<button class="@(_class ??= this.DefaultClass()) chat-language-toggle relative h-8 w-8 p-1 rounded-full text-md font-semibold text-secondary hover:text-toggle-on"
+<button class="chat-language-toggle relative h-8 w-8 p-1 rounded-full text-md font-semibold text-secondary hover:text-toggle-on"
         @onclick="Toggle">
         @language.Shortcut
 </button>
 
 @code {
-    private static string? _class;
-
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
 

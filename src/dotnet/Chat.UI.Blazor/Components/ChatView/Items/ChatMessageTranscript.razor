@@ -2,21 +2,19 @@
 @using ActualChat.Transcription
 @implements IAsyncDisposable
 
-<p class="@(_class ??= this.DefaultClass()) text-primary mx-1">
+<p class="chat-message-transcript text-primary mx-1">
     <span>@Transcript.Text</span>
 </p>
 
 @code {
-    private static string? _class;
-
-    [Inject] private ILogger<ChatMessageTranscript> Log { get; set; } = null!;
-    [Inject] private ITranscriptStreamer TranscriptStreamer { get; set; } = null!;
-    [Inject] private BlazorCircuitContext CircuitContext { get; set; } = null!;
-    private CancellationTokenSource? RestartCts { get; set; }
-    private Transcript Transcript { get; set; } = new();
-
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
+
+    [Inject] private ILogger<ChatMessageTranscript> Log { get; init; } = null!;
+    [Inject] private ITranscriptStreamer TranscriptStreamer { get; init; } = null!;
+    [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
+    private CancellationTokenSource? RestartCts { get; set; }
+    private Transcript Transcript { get; set; } = new();
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;

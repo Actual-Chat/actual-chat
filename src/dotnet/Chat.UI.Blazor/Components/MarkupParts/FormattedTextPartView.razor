@@ -1,39 +1,20 @@
 @using Stl.Extensibility
-@implements IMarkupPartView
+@inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(FormattedTextPart), typeof(IMarkupPartView))]
-
 @{
     var part = (FormattedTextPart)Part;
-    var cls = _class ??= this.DefaultClass();
 }
 
-<span class="@cls whitespace-break-spaces">
-@if (part.Emphasis.HasFlag(Emphasis.Strong) && part.Emphasis.HasFlag(Emphasis.Em)) {
-    <strong><em>@part.Text</em></strong>
-}
-else if (part.Emphasis.HasFlag(Emphasis.Strong)) {
-    <strong>@part.Text</strong>
-}
-else if (part.Emphasis.HasFlag(Emphasis.Em)) {
-    <em>@part.Text</em>
-} else {
-    @part.Text
-}
+<span class="formatted-text-part-view whitespace-break-spaces">
+    @if (part.Emphasis.HasFlag(Emphasis.Strong) && part.Emphasis.HasFlag(Emphasis.Em)) {
+        <strong><em>@part.Text</em></strong>
+    }
+    else if (part.Emphasis.HasFlag(Emphasis.Strong)) {
+        <strong>@part.Text</strong>
+    }
+    else if (part.Emphasis.HasFlag(Emphasis.Em)) {
+        <em>@part.Text</em>
+    } else {
+        @part.Text
+    }
 </span>
-
-@code {
-    private static string? _class;
-    private ILogger? _log;
-
-    // Just one dependency: it should render as quickly as possible
-    [Inject] private IServiceProvider Services { get; set; } = null!;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public ChatEntry Entry { get; set; } = null!;
-    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public MarkupPart Part { get; set; } = null!;
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
-}

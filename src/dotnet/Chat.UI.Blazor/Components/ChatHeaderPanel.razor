@@ -38,21 +38,10 @@
 </div>
 
 @code {
-    public class ChatModel {
-        public Chat Chat { get; init; } = null!;
-        public bool ActiveListening { get; init; }
-        public Func<Task> ToggleMute { get; init; } = null!;
-        public Func<Task> Focus { get; init; } = null!;
-    }
-
-    public class Model {
-        public ChatModel[] Chats { get; set; } = new ChatModel[0];
-    }
-
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChats Chats { get; set; } = null!;
-    [Inject] private ListeningChats ListeningChats { get; set; } = null!;
-    [Inject] private ChatController ChatController { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ListeningChats ListeningChats { get; init; } = null!;
+    [Inject] private ChatController ChatController { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
@@ -93,5 +82,16 @@
             }
         }
         return chats;
+    }
+
+    public class ChatModel {
+        public Chat Chat { get; init; } = null!;
+        public bool ActiveListening { get; init; }
+        public Func<Task> ToggleMute { get; init; } = null!;
+        public Func<Task> Focus { get; init; } = null!;
+    }
+
+    public class Model {
+        public ChatModel[] Chats { get; set; } = new ChatModel[0];
     }
 }

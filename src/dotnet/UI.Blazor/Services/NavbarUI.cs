@@ -1,18 +1,11 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class NavbarService
+public class NavbarUI
 {
     public string ActiveGroupId { get; private set; } = "chats";
     public string ActiveGroupTitle { get; private set; } = "Chats";
-    public bool NavbarChecked { get; set; }
+    public bool IsVisible { get; set; }
     public event EventHandler? ActiveGroupChanged;
-
-    public void CheckNavbar(bool navbarChecked)
-    {
-        if (navbarChecked == NavbarChecked)
-            return;
-        NavbarChecked = navbarChecked;
-    }
 
     public void ActivateGroup(string id, string title)
     {

@@ -2,10 +2,10 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @inject HostInfo _hostInfo
-@inject NavbarService _navbarService
+@inject NavbarUI _navbarUI
 
 @{
-    var isActive = _navbarService.ActiveGroupId == Id;
+    var isActive = _navbarUI.ActiveGroupId == Id;
     var cls = isActive ? "text-primary bg-primary" : "text-secondary bg-accent";
 }
 
@@ -25,11 +25,11 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     private void OnClicked() {
-        _navbarService.ActivateGroup(Id, Title);
+        _navbarUI.ActivateGroup(Id, Title);
     }
 
     protected override void OnInitialized() {
-        _navbarService.ActiveGroupChanged += (s, e) => StateHasChanged();
+        _navbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
     }
 
 }

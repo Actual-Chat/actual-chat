@@ -1,7 +1,4 @@
 ﻿@using BlazorContextMenu
-@inject NavigationManager _nav
-@inject Session _session
-@inject IChats _chats
 
 <Dropdown ContentPositionCss="right-3 md:right-auto md:left-3 top-8" Class="static">
     <ButtonTemplate>
@@ -26,22 +23,25 @@
     private bool _canEdit;
     private bool _canInvite;
 
-    [CascadingParameter]
-    public Chat Chat { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
-        var permissions = await _chats.GetPermissions(_session, Chat.Id, default);
+        var permissions = await Chats.GetPermissions(Session, Chat.Id, default);
         _canEdit = permissions.HasFlag(ChatPermissions.Admin);
         _canInvite = permissions.HasFlag(ChatPermissions.Invite);
     }
 
     private void OnEditChatAuthorAvatar()
-        => _nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
+        => Nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
 
     private void OnEditChat()
-        => _nav.NavigateTo($"/chat/{Chat.Id}/edit");
+        => Nav.NavigateTo($"/chat/{Chat.Id}/edit");
 
     private void OnInvite()
-        => _nav.NavigateTo($"/chat/{Chat.Id}/invite");
+        => Nav.NavigateTo($"/chat/{Chat.Id}/invite");
 }

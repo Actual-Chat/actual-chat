@@ -4,8 +4,9 @@
 @State.ValueOrDefault
 
 @code {
+    [Inject] private RenderSlotRegistry Registry { get; init; } = null!;
+
     [Parameter, EditorRequired] public string Name { get; set; } = "";
-    [Inject] private RenderSlotRegistry Registry { get; set; } = null!;
 
     protected override ComputedState<RenderFragment?>.Options GetStateOptions()
         => new () { UpdateDelayer = UpdateDelayer.ZeroDelay };

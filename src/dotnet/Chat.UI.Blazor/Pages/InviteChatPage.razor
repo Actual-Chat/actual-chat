@@ -78,22 +78,14 @@
 }
 
 @code {
-    public record Model {
-        public bool IsUnavailable { get; init; }
-        public Chat? Chat { get; init; }
-        public string? PermanentLink { get; set; }
-        public ImmutableArray<InviteCode> InviteCodes { get; set; } = ImmutableArray.Create<InviteCode>();
-    }
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IInviteCodes InviteCodes { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private Clipboard Clipboard { get; init; } = null!;
 
-    [Inject] private Session Session { get; set; } = default!;
-    [Inject] private IChats Chats { get; set; } = default!;
-    [Inject] private IInviteCodes InviteCodes { get; set; } = default!;
-    [Inject] private UICommandRunner Cmd { get; set; } = default!;
-    [Inject] private NavigationManager Nav { get; set; } = default!;
-    [Inject] private Clipboard Clipboard { get; set; } = default!;
-
-    [Parameter]
-    public string ChatId { get; set; } = "";
+    [Parameter] public string ChatId { get; set; } = "";
 
     private string GenerateLink(InviteCode inviteCode)
         => Nav.BaseUri + "join/" + inviteCode.Value;
@@ -138,4 +130,11 @@
 
     private async Task Copy(string link)
         => await Clipboard.WriteText(link);
+
+    public record Model {
+        public bool IsUnavailable { get; init; }
+        public Chat? Chat { get; init; }
+        public string? PermanentLink { get; set; }
+        public ImmutableArray<InviteCode> InviteCodes { get; set; } = ImmutableArray.Create<InviteCode>();
+    }
 }

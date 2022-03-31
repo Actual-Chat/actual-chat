@@ -3,13 +3,12 @@
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 @using Microsoft.Extensions.DependencyInjection
-@implements IMarkupPartView
+@inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(PlainTextPart), typeof(IMarkupPartView))]
-
 @{
     var textToTimeMap = Part.Markup.TextToTimeMap;
     var isPlayable = Entry.AudioEntryId.HasValue && !textToTimeMap.IsEmpty;
-    var cls = _class ??= this.DefaultClass();
+    var cls = "plain-text-part-view";
     if (isPlayable) {
         cls += " playable";
         if (PlayingAt != null) {
@@ -26,22 +25,8 @@
 }
 
 @code {
-    private static string? _class;
-    private ILogger? _log;
-
-    // Just one dependency: it should render as quickly as possible
-    [Inject] private IServiceProvider Services { get; set; } = null!;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public ChatEntry Entry { get; set; } = null!;
-    [Parameter, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public MarkupPart Part { get; set; } = null!;
     [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
     public double? PlayingAt { get; set; }
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private async Task Play() {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"

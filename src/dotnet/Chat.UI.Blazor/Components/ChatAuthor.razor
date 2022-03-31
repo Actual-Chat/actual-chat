@@ -1,7 +1,6 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Services
-@inherits ComputedStateComponent<ChatAuthor.ChatAuthorState>
-
+@inherits ComputedStateComponent<ChatAuthor.Model>
 @{
     var model = State.LatestNonErrorValue;
 }
@@ -10,19 +9,13 @@
 @code {
     public static readonly Author NullAuthor = new();
 
-    [Parameter, EditorRequired]
-    public string AuthorId { get; set; } = "";
-    [Parameter]
-    public string ChatId { get; set; } = "";
-    [Parameter, EditorRequired]
-    public RenderFragment<ChatAuthorState> ChildContent { get; set; } = default!;
-
-    [Inject]
-    public IChatAuthors ChatAuthors { get; set; } = null!;
-    [Inject]
-    public ChatActivities ChatActivities { get; set; } = null!;
-
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private ChatActivities ChatActivities { get; init; } = null!;
     private AuthorChatActivityState? AuthorChatActivityState { get; set; }
+
+    [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+    [Parameter, EditorRequired] public RenderFragment<Model> ChildContent { get; set; } = default!;
 
     public override async Task SetParametersAsync(ParameterView parameters) {
         if (!this.HasChangedParameters(parameters))
@@ -32,10 +25,10 @@
         AuthorChatActivityState = await ChatActivities.GetAuthorRecordingActivity(ChatId, AuthorId);
     }
 
-    protected override ComputedState<ChatAuthorState>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new(NullAuthor, false) };
 
-    protected override async Task<ChatAuthorState> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         if (chatId.IsNullOrEmpty()) {
             // ChatId parameter is optional. If it's not specified, try to extract chatId from AuthorId.
@@ -68,11 +61,11 @@
         GC.SuppressFinalize(this);
     }
 
-    public class ChatAuthorState {
+    public class Model {
         public Author Author { get; }
         public bool IsRecording { get; }
 
-        public ChatAuthorState(Author author, bool isRecording) {
+        public Model(Author author, bool isRecording) {
             Author = author;
             IsRecording = isRecording;
         }
