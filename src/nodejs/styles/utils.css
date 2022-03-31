@@ -88,3 +88,23 @@ button.off {
     @apply hover:bg-accent hover:border-accent;
     @apply active:bg-accent;
 }
+
+/* Webkit */
+
+.custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-secondary rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-accent rounded-full border-2 border-secondary;
+}
+
+/* Mozilla */
+
+.custom-scrollbar {
+    scrollbar-width: 2px;
+    scrollbar-color: #e2e7ec #F9FAFB;
+}

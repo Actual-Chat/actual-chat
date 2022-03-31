@@ -4,34 +4,6 @@
     @apply translate-x-0;
 }
 
-/* SignIn */
-
-.signin-button {
-    @apply bg-button-success border border-success hover:bg-button-success-hover hover:border-success-muted;
-    @apply active:bg-button-success-hover inline-flex justify-center w-full max-w-xs text-sm font-medium;
-    @apply leading-5 transition duration-150 ease-in-out rounded-md outline-none;
-}
-
-/* Webkit */
-
-.custom-scrollbar::-webkit-scrollbar {
-    @apply w-2;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-secondary rounded-full;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-accent rounded-full border-2 border-secondary;
-}
-
-/* Mozilla */
-
-.custom-scrollbar {
-    scrollbar-width: 2px;
-    scrollbar-color: #e2e7ec #F9FAFB;
-}
-
 .navbar-menu-button:hover .navbar-menu-icon {
     @apply scale-105 ease-in-out duration-150;
 }
