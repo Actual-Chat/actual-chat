@@ -24,7 +24,6 @@
     private bool _canAddContact;
     private bool _addedContact;
     private bool _addingContact;
-    //private Author? _author;
 
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
@@ -41,7 +40,7 @@
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
 
-        ModalInstance.Title = "User Info";
+        ModalInstance.SetTitle("User Info");
 
         if (!string.IsNullOrEmpty(ChatId))
             _chatId = ChatId;

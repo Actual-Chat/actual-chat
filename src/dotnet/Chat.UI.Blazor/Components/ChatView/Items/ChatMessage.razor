@@ -105,8 +105,8 @@
 </div>
 
 @code {
-    [Inject] private IChats Chats { get; set; }
-    [Inject] private Session Session { get; set; }
+    [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
     [Inject] private IModalService ModalService { get; set; } = null!;
 

@@ -58,12 +58,8 @@
     private Model? _lastRenderedModel;
 
     [Parameter] public string ChatId { get; set; } = "";
+    [Parameter] public string ContactId { get; set; } = "";
     [Parameter, SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
-    [Parameter] public string ChatId { get; set; } = "";
-    [Parameter]
-    public string ContactId { get; set; } = "";
-    [Parameter]
-    [SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
     public string? AutoJoin { get; set; }
 
     protected override bool ShouldRender()
