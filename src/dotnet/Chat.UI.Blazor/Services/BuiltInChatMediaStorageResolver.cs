@@ -10,12 +10,11 @@ public class BuiltInChatMediaResolver : IChatMediaResolver
     public Uri GetAudioBlobUri(ChatEntry audioEntry)
     {
         if (audioEntry.Type != ChatEntryType.Audio)
-            throw new InvalidOperationException(Invariant(
-                $"Only Audio chat entries supported, but {nameof(audioEntry)} has Id: {audioEntry.Id}, Type: {audioEntry.Type}."));
-
+            throw new ArgumentOutOfRangeException(nameof(audioEntry), Invariant(
+                $"Only Audio entries are supported, but an entry of {audioEntry.Type} type was provides."));
         if (audioEntry.Content.IsNullOrEmpty())
-            throw new InvalidOperationException(Invariant(
-                $"{nameof(audioEntry)} doesn't have BlobId at {nameof(audioEntry.Content)}"));
+            throw new ArgumentOutOfRangeException(nameof(audioEntry), Invariant(
+                $"{nameof(audioEntry)} doesn't have Content."));
 
         return _uriMapper.ToAbsolute("/api/audio/download/" + audioEntry.Content);
     }
