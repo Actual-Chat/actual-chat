@@ -58,7 +58,7 @@
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatIds = await ListeningChats.GetChatIds().ConfigureAwait(true);
+        var chatIds = await ListeningChats.GetChatIds(cancellationToken).ConfigureAwait(true);
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         var chatModels = new List<ChatModel>();
         foreach (var chat in chats.OrderBy(c => c.Title)) {

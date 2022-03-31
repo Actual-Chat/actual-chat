@@ -28,7 +28,7 @@ public class AudioRecorderStatePersister : StatePersister<string>
         _userInteractionUI = userInteractionUI;
     }
 
-    protected override async Task Restore(string? state)
+    protected override async Task Restore(string? state, CancellationToken cancellationToken)
     {
         var recordingChatId = state;
         if (string.IsNullOrEmpty(recordingChatId))

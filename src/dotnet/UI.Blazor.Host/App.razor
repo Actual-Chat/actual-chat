@@ -1,16 +1,13 @@
 @using Stl.Plugins
 @using Blazored.Modal
+@using ActualChat.UI.Blazor.Services
 @implements IDisposable
-@inject IPluginHost _plugins
-@inject BlazorCircuitContext _circuitContext
-
 @{
-    var moduleAssemblies = _plugins.GetPlugins<IBlazorUIModule>()
+    var moduleAssemblies = Plugins.GetPlugins<IBlazorUIModule>()
         .Select(p => p.GetType().Assembly)
         .ToArray();
 }
 
-<StateRestoreActivator/>
 <CascadingAuthState SessionId="@SessionId">
     <CascadingBlazoredModal>
         <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
@@ -29,15 +26,32 @@
 </CascadingAuthState>
 
 @code {
-    [Parameter]
-    public string SessionId { get; set; } = Symbol.Empty;
+    [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+
+    [Inject] private IPluginHost Plugins { get; init; } = null!;
+    [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private ISessionProvider SessionProvider { get; init; } = null!;
+    [Inject] private StateRestore StateRestore { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override void OnInitialized()
     {
-        if (!_circuitContext.IsPrerendering)
-            _circuitContext.RootComponent = this;
+        if (!SessionId.IsNullOrEmpty()) {
+            var session = new Session(SessionId);
+            if (SessionProvider.HasSession) {
+                if (SessionProvider.Session != session)
+                    // No way to change Session other than page reload
+                    Nav.NavigateTo(Nav.Uri, true);
+            }
+            else
+                SessionProvider.Session = session;
+        }
+        if (!CircuitContext.IsPrerendering) {
+            CircuitContext.RootComponent = this;
+            StateRestore.Restore(CancellationToken.None);
+        }
     }
 
     public void Dispose()
-        => _circuitContext.Dispose();
+        => CircuitContext.Dispose();
 }

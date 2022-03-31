@@ -3,15 +3,16 @@ namespace ActualChat;
 public class DisposeMonitor : IDisposable
 {
     private readonly object _lock = new();
-    private readonly CancellationTokenSource _disposedCts = new();
+    private readonly CancellationTokenSource _disposeTokenSource = new();
+    private readonly TaskSource<Unit> _whenDisposedSource = TaskSource.New<Unit>(true);
 
     public bool IsDisposed { get; set; }
-    public Task<Unit> WhenDisposed { get; } = TaskSource.New<Unit>(true).Task;
+    public Task WhenDisposed => _whenDisposedSource.Task;
     public CancellationToken DisposeToken { get; }
     public event Action? Disposed;
 
     public DisposeMonitor()
-        => DisposeToken = _disposedCts.Token;
+        => DisposeToken = _disposeTokenSource.Token;
 
     public void Dispose()
     {
@@ -19,8 +20,8 @@ public class DisposeMonitor : IDisposable
         lock (_lock) {
             if (IsDisposed) return;
             IsDisposed = true;
-            TaskSource.For(WhenDisposed).TrySetResult(default);
-            _disposedCts.CancelAndDisposeSilently();
+            _whenDisposedSource.TrySetResult(default);
+            _disposeTokenSource.CancelAndDisposeSilently();
             Disposed?.Invoke();
         }
     }

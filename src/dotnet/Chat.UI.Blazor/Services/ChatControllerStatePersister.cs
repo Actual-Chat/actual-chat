@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassNeverInstantiated.Global
-public class ChatControllerStatePersister : StatePersister<ListenChatInfo[]>
+public class ChatControllerStatePersister : StatePersister<ChatListeningInfo[]>
 {
     private readonly ListeningChats _listeningChats;
     private readonly ChatController _chatController;
@@ -27,7 +27,7 @@ public class ChatControllerStatePersister : StatePersister<ListenChatInfo[]>
         _session = session;
     }
 
-    protected override async Task Restore(ListenChatInfo[]? state)
+    protected override async Task Restore(ChatListeningInfo[]? state, CancellationToken cancellationToken)
     {
         var listeningChats = state;
         if (listeningChats == null || listeningChats.Length == 0)
@@ -35,7 +35,7 @@ public class ChatControllerStatePersister : StatePersister<ListenChatInfo[]>
         listeningChats = await FilterCanRead(listeningChats).ConfigureAwait(false);
         if (listeningChats.Length == 0)
             return;
-        if (listeningChats.Any(c => c.Mode == ListenChatMode.Active))
+        if (listeningChats.Any(c => c.Mode == ChatListeningMode.Active))
             await _userInteractionUI.RequestInteraction().ConfigureAwait(false);
         var tasks = new List<Task>();
         foreach (var chatInfo in listeningChats) {
@@ -45,15 +45,15 @@ public class ChatControllerStatePersister : StatePersister<ListenChatInfo[]>
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    protected override async Task<ListenChatInfo[]> Compute(CancellationToken cancellationToken)
+    protected override async Task<ChatListeningInfo[]> Compute(CancellationToken cancellationToken)
     {
-        var chatInfos = await _listeningChats.GetListenChatInfos().ConfigureAwait(false);
+        var chatInfos = await _listeningChats.GetChats(cancellationToken).ConfigureAwait(false);
         return chatInfos.ToArray();
     }
 
-    private async Task<ListenChatInfo[]> FilterCanRead(ListenChatInfo[] listeningChats)
+    private async Task<ChatListeningInfo[]> FilterCanRead(ChatListeningInfo[] listeningChats)
     {
-        var result = new List<ListenChatInfo>();
+        var result = new List<ChatListeningInfo>();
         foreach (var chatInfo in listeningChats) {
             var permissions = await _chats.GetPermissions(_session, chatInfo.ChatId, default).ConfigureAwait(false);
             if (!permissions.HasFlag(ChatPermissions.Read))

@@ -41,7 +41,7 @@ public class ChatController
     [ComputeMethod]
     public virtual async Task<RealtimeListeningMode> GetRealtimeListeningMode(Symbol chatId, CancellationToken cancellationToken)
     {
-        var chatIds = await _listeningChats.GetChatIds().ConfigureAwait(false);
+        var chatIds = await _listeningChats.GetChatIds(cancellationToken).ConfigureAwait(false);
         if (!chatIds.Contains(chatId))
             return RealtimeListeningMode.None;
         var playbackKind = await GetChatPlaybackKind(chatId, cancellationToken).ConfigureAwait(false);
@@ -69,12 +69,12 @@ public class ChatController
     }
 
     public virtual Task StartRealtimeListening(Symbol chatId)
-        => StartRealtimeListening(chatId, ListenChatMode.Active);
+        => StartRealtimeListening(chatId, ChatListeningMode.Active);
 
-    public virtual async Task StartRealtimeListening(Symbol chatId, ListenChatMode mode)
+    public virtual async Task StartRealtimeListening(Symbol chatId, ChatListeningMode mode)
     {
         _listeningChats.Set(chatId, mode);
-        if (mode == ListenChatMode.Active)
+        if (mode == ChatListeningMode.Active)
             await InnerStartRealtimeListening(chatId).ConfigureAwait(false);
     }
 
@@ -88,7 +88,7 @@ public class ChatController
     {
         if (!await IsListeningToChat(chatId).ConfigureAwait(false))
             return;
-        _listeningChats.Set(chatId, ListenChatMode.Muted);
+        _listeningChats.Set(chatId, ChatListeningMode.Muted);
         await InnerMuteRealtimeListening(chatId).ConfigureAwait(false);
     }
 
@@ -96,13 +96,13 @@ public class ChatController
     {
         if (!await IsListeningToChat(chatId).ConfigureAwait(false))
             return;
-        _listeningChats.Set(chatId, ListenChatMode.Active);
+        _listeningChats.Set(chatId, ChatListeningMode.Active);
         await InnerUnmuteRealtimeListening(chatId).ConfigureAwait(false);
     }
 
     public async Task FocusRealtimeListening(Symbol focusChatId)
     {
-        var chatIds = await _listeningChats.GetChatIds().ConfigureAwait(false);
+        var chatIds = await _listeningChats.GetChatIds(default).ConfigureAwait(false);
         if (!chatIds.Contains(focusChatId))
             return;
 
@@ -214,7 +214,7 @@ public class ChatController
 
     private async Task<bool> IsListeningToChat(Symbol chatId)
     {
-        var chatIds = await _listeningChats.GetChatIds().ConfigureAwait(false);
+        var chatIds = await _listeningChats.GetChatIds(default).ConfigureAwait(false);
         return chatIds.Contains(chatId);
     }
 }
