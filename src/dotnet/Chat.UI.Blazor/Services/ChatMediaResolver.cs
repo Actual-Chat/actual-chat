@@ -1,10 +1,16 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class BuiltInChatMediaResolver : IChatMediaResolver
+public interface IChatMediaResolver
+{
+    public Uri GetAudioBlobUri(ChatEntry audioEntry);
+    public Uri GetVideoBlobUri(ChatEntry videoEntry);
+}
+
+public class ChatMediaResolver : IChatMediaResolver
 {
     private readonly UriMapper _uriMapper;
 
-    public BuiltInChatMediaResolver(UriMapper uriMapper)
+    public ChatMediaResolver(UriMapper uriMapper)
         => _uriMapper = uriMapper;
 
     public Uri GetAudioBlobUri(ChatEntry audioEntry)
@@ -20,7 +26,5 @@ public class BuiltInChatMediaResolver : IChatMediaResolver
     }
 
     public Uri GetVideoBlobUri(ChatEntry videoEntry)
-#pragma warning disable MA0025
-        => throw new NotImplementedException();
-#pragma warning restore MA0025
+        => throw new NotSupportedException("Video isn't supported yet.");
 }
