@@ -48,6 +48,7 @@
         }
         if (!CircuitContext.IsPrerendering) {
             CircuitContext.RootComponent = this;
+            // This method should be called only when ISessionResolver.Session is set!
             StateRestore.Restore(CancellationToken.None);
         }
     }
