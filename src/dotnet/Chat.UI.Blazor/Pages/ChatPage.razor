@@ -2,21 +2,15 @@
 @page "/chat/{ChatId}"
 @page "/direct/{ContactId}"
 @inherits ComputedStateComponent<ChatPage.Model>
-@inject Session _session
-@inject IAuth _auth
-@inject IChats _chats
-@inject ChatUI _chatUI
-@inject ChatPlayers _chatPlayers
-@inject NavigationManager _nav
 
 @{
     _lastRenderedModel = State.LatestNonErrorValue ?? new();
     var model = _lastRenderedModel;
     var error = State.Error;
     if (model.IsUnavailable)
-        _nav.Unavailable("chat");
+        Nav.Unavailable("chat");
     if (model.MustLogin)
-        _nav.Login("to view this chat");
+        Nav.Login("to view this chat");
     var chat = model.Chat;
 }
 
@@ -57,6 +51,12 @@
     public const string AutoJoinQueryParameter = "auto-join";
 
     private Model? _lastRenderedModel;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public string ContactId { get; set; } = "";
@@ -70,9 +70,9 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         Chat? chat = null;
         if (!string.IsNullOrEmpty(ChatId))
-            chat = await _chats.Get(_session, ChatId, cancellationToken).ConfigureAwait(true);
+            chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         else if (!string.IsNullOrEmpty(ContactId))
-            chat = await _chats.GetDirectChat(_session, ContactId, cancellationToken).ConfigureAwait(true);
+            chat = await Chats.GetDirectChat(Session, ContactId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
 
@@ -85,12 +85,12 @@
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
-        _chatUI.SetActiveChatId(ChatId);
+        ChatUI.SetActiveChatId(ChatId);
     }
 
     public override async ValueTask DisposeAsync() {
-        if (ChatId == await _chatUI.GetActiveChatId())
-            _chatUI.SetActiveChatId(Symbol.Empty);
+        if (ChatId == await ChatUI.GetActiveChatId())
+            ChatUI.SetActiveChatId(Symbol.Empty);
         await base.DisposeAsync();
     }
 

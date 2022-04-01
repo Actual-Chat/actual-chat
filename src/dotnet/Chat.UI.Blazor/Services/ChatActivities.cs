@@ -2,11 +2,7 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public enum ChatActivityKind
-{
-    Recording = 0,
-    Typing,
-}
+public enum ChatActivityKind { None = 0, Recording, Typing }
 
 public record ChatActivityEntry(Symbol AuthorId, ChatActivityKind Kind, Moment StartedAt);
 
