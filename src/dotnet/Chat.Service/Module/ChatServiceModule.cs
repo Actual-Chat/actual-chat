@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -80,5 +81,9 @@ public class ChatServiceModule : HostModule<ChatSettings>
         // ContentSaver
         services.AddResponseCaching();
         services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+
+        // ChatEventStreamer<T>
+        services.AddSingleton<IChatEventStreamer<NewChatEntryEvent>, ChatEventStreamer<NewChatEntryEvent>>();
+        services.AddSingleton<IChatEventStreamer<InviteToChatEvent>, ChatEventStreamer<InviteToChatEvent>>();
     }
 }
