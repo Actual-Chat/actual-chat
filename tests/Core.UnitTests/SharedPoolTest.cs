@@ -1,4 +1,4 @@
-using ActualChat.Pool;
+using ActualChat.Pooling;
 using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
@@ -8,79 +8,96 @@ public class SharedPoolTest
     [Fact]
     public async Task BasicTest()
     {
+        var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
-        var cts = new CancellationTokenSource();
-        var pool = new SharedPool<int, Val>(Factory, 0);
-        using (_ = await pool.Lease(10)) {
-            using var __ = await pool.Lease(10);
-        }
-        cts.IsCancellationRequested.Should().Be(true);
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory, TimeSpan.Zero);
 
-        async Task<Val> Factory(int _)
-        {
-            await testClock.Delay(100);
-            return new Val(cts);
+        var l = await pool.Rent(10, cancellationToken);
+        using (var l1 = l) {
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
+
+            using var l2 = await pool.Rent(10, cancellationToken);
+            l2.Should().BeSameAs(l);
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
+        l.IsRented.Should().BeFalse();
+
+        await testClock.Delay(100, cancellationToken);
+        l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
     }
 
     [Fact]
     public async Task DisposeDelayTest()
     {
+        var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
-        var cts = new CancellationTokenSource();
-        var pool = new SharedPool<int, Val>(Factory, 0.5);
-        using (_ = await pool.Lease(10)) {
-            using var __ = await pool.Lease(10);
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory, TimeSpan.FromSeconds(0.5));
+
+        var l = await pool.Rent(10, cancellationToken);
+        using (var l1 = l) {
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
+
+            using var l2 = await pool.Rent(10, cancellationToken);
+            l.Should().BeSameAs(l);
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
-        cts.IsCancellationRequested.Should().Be(false);
+        l.IsRented.Should().BeFalse();
+        l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
-        await testClock.Delay(1000).ConfigureAwait(false);
-
-        cts.IsCancellationRequested.Should().Be(true);
-
-        async Task<Val> Factory(int _)
-        {
-            await testClock.Delay(100);
-            return new Val(cts);
-        }
+        await testClock.Delay(1000, cancellationToken);
+        l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
     }
 
     [Fact]
-    public async Task LeaseBeforeDisposeDelayTest()
+    public async Task DisposeDelayCancellationTest()
     {
+        var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
-        var cts = new CancellationTokenSource();
-        var pool = new SharedPool<int, Val>(Factory, 0.5);
-        using (_ = await pool.Lease(10)) {
-            using var __ = await pool.Lease(10);
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory, TimeSpan.FromSeconds(0.5));
+
+        var l = await pool.Rent(10, cancellationToken);
+        using (var l1 = l) {
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
+
+            using var l2 = await pool.Rent(10, cancellationToken);
+            l.Should().BeSameAs(l);
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
-        cts.IsCancellationRequested.Should().Be(false);
+        l.IsRented.Should().BeFalse();
+        l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
-        using (_ = await pool.Lease(10)) {
-            await testClock.Delay(1000).ConfigureAwait(false);
+        using (var l3 = await pool.Rent(10, cancellationToken)) {
+            l3.Should().BeSameAs(l);
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
 
-            cts.IsCancellationRequested.Should().Be(false);
+            await testClock.Delay(1000, cancellationToken);
+            l.IsRented.Should().BeTrue();
+            l.Resource.WhenDisposed.IsCompleted.Should().BeFalse();
         }
+        l.IsRented.Should().BeFalse();
 
-        await testClock.Delay(1000).ConfigureAwait(false);
+        await testClock.Delay(1000, cancellationToken);
+        l.Resource.WhenDisposed.IsCompleted.Should().BeTrue();
 
-        cts.IsCancellationRequested.Should().Be(true);
-
-        async Task<Val> Factory(int _)
-        {
-            await testClock.Delay(100);
-            return new Val(cts);
-        }
     }
 
-    public class Val : IDisposable
-    {
-        private readonly CancellationTokenSource _cts;
+    private Task<Resource> ResourceFactory(int _)
+        => Task.FromResult(new Resource());
 
-        public Val(CancellationTokenSource cts)
-            => _cts = cts;
+    private sealed class Resource : IDisposable
+    {
+        private readonly TaskSource<Unit> _whenDisposed = TaskSource.New<Unit>(false);
+
+        public Task WhenDisposed => _whenDisposed.Task;
 
         public void Dispose()
-            => _cts.Cancel();
+            => _whenDisposed.TrySetResult(default);
     }
 }

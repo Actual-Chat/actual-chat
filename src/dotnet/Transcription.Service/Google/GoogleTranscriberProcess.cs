@@ -81,7 +81,7 @@ public class GoogleTranscriberProcess : WorkerBase
                         SingleUtterance = false,
                     },
                 }).ConfigureAwait(false);
-            var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>) recognizeRequests.GetResponseStream();
+            var recognizeResponses = (IAsyncEnumerable<StreamingRecognizeResponse>)recognizeRequests.GetResponseStream();
 
             _ = BackgroundTask.Run(() => PushAudio(byteStream, recognizeRequests),
                 Log,
@@ -136,7 +136,7 @@ public class GoogleTranscriberProcess : WorkerBase
                 // i.e. they go concatenated with the stable (final) part.
                 text = ZString.Concat(" ", text);
             }
-            var endTime = (float) results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
+            var endTime = (float)results.First().ResultEndTime.ToTimeSpan().TotalSeconds;
             transcript = State.AppendAlternative(text, endTime);
         }
         DebugLog?.LogDebug("Transcript={Transcript}", transcript);
@@ -151,7 +151,7 @@ public class GoogleTranscriberProcess : WorkerBase
         var lastStableDuration = lastStable.TextToTimeMap.YRange.End;
 
         var alternative = result.Alternatives.Single();
-        var endTime = (float) result.ResultEndTime.ToTimeSpan().TotalSeconds;
+        var endTime = (float)result.ResultEndTime.ToTimeSpan().TotalSeconds;
         text = alternative.Transcript;
         if (lastStableTextLength > 0 && text.Length > 0 && !char.IsWhiteSpace(text[0]))
             text = " " + text;
@@ -160,14 +160,14 @@ public class GoogleTranscriberProcess : WorkerBase
         var parsedOffset = 0;
         var parsedDuration = lastStableDuration;
         foreach (var word in alternative.Words) {
-            var wordStartTime = (float) word.StartTime.ToTimeSpan().TotalSeconds;
+            var wordStartTime = (float)word.StartTime.ToTimeSpan().TotalSeconds;
             if (wordStartTime < parsedDuration)
                 continue;
             var wordStart = text.IndexOf(word.Word, parsedOffset, StringComparison.InvariantCultureIgnoreCase);
             if (wordStart < 0)
                 continue;
 
-            var wordEndTime = (float) word.EndTime.ToTimeSpan().TotalSeconds;
+            var wordEndTime = (float)word.EndTime.ToTimeSpan().TotalSeconds;
             var wordEnd = wordStart + word.Word.Length;
 
             mapPoints.Add(new Vector2(lastStableTextLength + wordStart, wordStartTime));

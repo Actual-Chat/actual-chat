@@ -33,12 +33,12 @@ public class VirtualListTestService
 
         var start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
-            start -= (int) query.ExpandStartBy;
+            start -= (int)query.ExpandStartBy;
         start = Math.Max(range.Start, start);
 
         var end = int.Parse(queryRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
-            end += (int) query.ExpandEndBy;
+            end += (int)query.ExpandEndBy;
         end = Math.Min(range.End, end);
 
         var result = VirtualListData.New(

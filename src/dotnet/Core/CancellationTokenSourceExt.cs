@@ -16,15 +16,15 @@ public static class CancellationTokenSourceExt
         IsDisposedGetter = fIsDisposed!.GetGetter<CancellationTokenSource, bool>();
     }
 
-    public static CancellationToken GetTokenOrDefault(this CancellationTokenSource cancellationTokenSource)
+    public static CancellationToken GetTokenOrCancelled(this CancellationTokenSource cancellationTokenSource)
     {
         try {
             if (cancellationTokenSource.IsCancellationRequested || IsDisposedGetter(cancellationTokenSource))
-                return default;
+                return CancellationTokenExt.Cancelled;
             return cancellationTokenSource.Token;
         }
         catch (ObjectDisposedException) {
-            return default;
+            return CancellationTokenExt.Cancelled;
         }
     }
 }

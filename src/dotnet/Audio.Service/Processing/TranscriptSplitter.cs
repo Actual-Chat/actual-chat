@@ -34,7 +34,7 @@ public class TranscriptSplitter : TranscriptionProcessorBase
         var segmentTextId = 0L;
         TranscriptSegment? segment = null;
         try {
-            var lastSentTranscript = (Transcript?) null;
+            var lastSentTranscript = (Transcript?)null;
             await foreach (var transcript in transcripts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 if (lastSentTranscript == null) {
                     var (initialPrefix, initialSuffix) = transcript.Split(0);

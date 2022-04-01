@@ -29,7 +29,7 @@ public static class ComputeServiceExt
                     pObj
                     ).Compile();
                 return proxy1 => {
-                    var interceptors = (IEnumerable<InterceptorBase>) interceptorsGetter.Invoke(proxy1);
+                    var interceptors = (IEnumerable<InterceptorBase>)interceptorsGetter.Invoke(proxy1);
                     return interceptors.First().Services;
                 };
             }).Invoke(proxy);

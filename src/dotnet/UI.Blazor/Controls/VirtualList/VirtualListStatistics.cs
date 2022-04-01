@@ -78,7 +78,7 @@ public class VirtualListStatistics : IVirtualListStatistics
         if (_itemCount < ItemCountResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight
-        _itemSizeSum *= (double) ItemCountResetValue / _itemCount;
+        _itemSizeSum *= (double)ItemCountResetValue / _itemCount;
         _itemCount = ItemCountResetValue;
     }
 
@@ -89,7 +89,7 @@ public class VirtualListStatistics : IVirtualListStatistics
         if (_responseExpectedCountSum < ResponseExpectedCountSumResetThreshold) return;
 
         // We change the item count too, so remaining items will have increased weight
-        _responseActualCountSum *= (double) ResponseExpectedCountSumResetValue / _responseExpectedCountSum;
+        _responseActualCountSum *= (double)ResponseExpectedCountSumResetValue / _responseExpectedCountSum;
         _responseExpectedCountSum = ResponseExpectedCountSumResetValue;
     }
 }

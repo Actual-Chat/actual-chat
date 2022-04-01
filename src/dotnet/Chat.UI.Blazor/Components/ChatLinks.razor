@@ -30,7 +30,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await Chats.GetChats(Session, cancellationToken);
-        var chatInfos = chats.OrderBy(c => c.Title).Select(c => (Title:c.Title, Id:(string) c.Id)).ToList();
+        var chatInfos = chats.OrderBy(c => c.Title).Select(c => (Title:c.Title, Id:(string)c.Id)).ToList();
         var addDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId);
         if (addDefault)
             chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));

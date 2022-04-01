@@ -58,8 +58,8 @@
                             var height = attachment.Height;
                             if (width > 400 || height > 300) {
                                 var ratio = Math.Min(400d / width, 300d / height);
-                                width = (int) Math.Round(ratio * width);
-                                height = (int) Math.Round(ratio * height);
+                                width = (int)Math.Round(ratio * width);
+                                height = (int)Math.Round(ratio * height);
                             }
                             imgStyle = $"width: {width}px; height: {height}px";
                             // TODO(DF): setup correct preview url to image proxy endpoint

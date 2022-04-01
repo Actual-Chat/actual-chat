@@ -86,7 +86,7 @@ public class VirtualListRenderPlan<TItem>
     public virtual VirtualListRenderPlan<TItem> Next()
     {
         try {
-            var plan = (VirtualListRenderPlan<TItem>) MemberwiseClone();
+            var plan = (VirtualListRenderPlan<TItem>)MemberwiseClone();
             plan.RenderIndex++;
             plan.Data = VirtualList.Data;
             plan.ClientSideState = VirtualList.ClientSideState;

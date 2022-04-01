@@ -12,11 +12,11 @@ public abstract class MarkupPart
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public Range<double> TimeRange {
         get {
-            if (_cachedTimeRange != null) return (Range<double>) _cachedTimeRange;
+            if (_cachedTimeRange != null) return (Range<double>)_cachedTimeRange;
 #pragma warning disable RCS1059, MA0064
             lock (this) { // Double-check locking
 #pragma warning restore RCS1059, MA0064
-                if (_cachedTimeRange != null) return (Range<double>) _cachedTimeRange;
+                if (_cachedTimeRange != null) return (Range<double>)_cachedTimeRange;
                 var ttm = Markup.TextToTimeMap;
                 if (ttm.IsEmpty)
                     return default;

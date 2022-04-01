@@ -56,7 +56,7 @@ public sealed class Transcript
         Text = text;
         TextToTimeMap = textToTimeMap;
         var textRange = TextToTimeMap.XRange;
-        TextRange = ((int) textRange.Start, (int) textRange.End);
+        TextRange = ((int)textRange.Start, (int)textRange.End);
         if (TextRange.Size() != Text.Length)
             throw new ArgumentOutOfRangeException(nameof(textToTimeMap), "TextToTimeMap.Size() != Text.Length");
         TimeRange = TextToTimeMap.YRange;
@@ -150,7 +150,7 @@ public sealed class Transcript
         var commonMapPrefixLength = baseMap.Points.CommonPrefixLength(map.Points);
         if (commonMapPrefixLength == 0)
             return this;
-        var commonTextPrefixLengthBasedOnMap = (int) baseMap.Points[commonMapPrefixLength - 1].X - textRangeStart;
+        var commonTextPrefixLengthBasedOnMap = (int)baseMap.Points[commonMapPrefixLength - 1].X - textRangeStart;
         var commonTextPrefixLength = baseText.AsSpan(0, commonTextPrefixLengthBasedOnMap)
             .CommonPrefixLength(text.AsSpan(0, commonTextPrefixLengthBasedOnMap));
         commonMapPrefixLength = baseMap.Points.IndexOfLowerOrEqualX(commonTextPrefixLength + textRangeStart);

@@ -60,7 +60,7 @@ namespace ActualChat.Internal
         public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
         {
             if (destinationType == typeof(string))
-                return ((IIdentifier<string>) value!).Value;
+                return ((IIdentifier<string>)value!).Value;
             return base.ConvertTo(context, culture, value, destinationType)!;
         }
 
@@ -87,7 +87,7 @@ namespace ActualChat.Internal
             JsonReader reader, Type objectType,
             TestStringId existingValue, bool hasExistingValue,
             JsonSerializer serializer)
-            => new((string?) reader.Value!);
+            => new((string?)reader.Value!);
     }
 }
 
@@ -143,7 +143,7 @@ namespace ActualChat.Internal
         public override object ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
         {
             if (destinationType == typeof(string))
-                return ((IIdentifier<string>) value!).Value;
+                return ((IIdentifier<string>)value!).Value;
             return base.ConvertTo(context, culture, value, destinationType)!;
         }
 
@@ -170,6 +170,6 @@ namespace ActualChat.Internal
             JsonReader reader, Type objectType,
             LanguageId existingValue, bool hasExistingValue,
             JsonSerializer serializer)
-            => new((string?) reader.Value!);
+            => new((string?)reader.Value!);
     }
 }

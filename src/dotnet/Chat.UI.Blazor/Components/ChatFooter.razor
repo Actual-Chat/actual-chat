@@ -11,7 +11,7 @@
         } else if (model.AutoJoin) {
             if (_autoJoinTask == null) {
                 _autoJoinTask = OnJoin();
-                Nav.NavigateTo(Nav.GetUriWithQueryParameter(ChatPage.AutoJoinQueryParameter, (string?) null));
+                Nav.NavigateTo(Nav.GetUriWithQueryParameter(ChatPage.AutoJoinQueryParameter, (string?)null));
             }
         } else if (model.CanJoin) {
             <div class="bg-accent rounded-md mx-3 py-1.5 px-2 flex justify-center">

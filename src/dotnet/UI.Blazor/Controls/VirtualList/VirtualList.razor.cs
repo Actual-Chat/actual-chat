@@ -197,8 +197,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var endGap = Math.Max(0, loadZone.End - lastItem.Range.End);
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": startGap={StartGap}, endGap={EndGap}", startGap, endGap);
 
-        var pixelExpandStartBy = Math.Clamp((long) Math.Ceiling(startGap / itemSize), 0, MaxPixelExpandBy);
-        var pixelExpandEndBy = Math.Clamp((long) Math.Ceiling(endGap / itemSize), 0, MaxPixelExpandBy);
+        var pixelExpandStartBy = Math.Clamp((long)Math.Ceiling(startGap / itemSize), 0, MaxPixelExpandBy);
+        var pixelExpandEndBy = Math.Clamp((long)Math.Ceiling(endGap / itemSize), 0, MaxPixelExpandBy);
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var query = new VirtualListDataQuery(keyRange) {
             IsExpansionQuery = true,

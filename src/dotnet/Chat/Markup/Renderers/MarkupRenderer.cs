@@ -69,7 +69,7 @@ internal class MarkupRenderer : RendererBase
     public MarkupRenderer WriteLeafInline(LeafBlock leafBlock)
     {
         if (leafBlock is null) throw new ArgumentNullException(nameof(leafBlock));
-        var inline = (Inline) leafBlock.Inline!;
+        var inline = (Inline)leafBlock.Inline!;
 
         while (inline != null)
         {

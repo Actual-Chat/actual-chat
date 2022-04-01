@@ -166,7 +166,8 @@ public ref struct SpanReader
             return null;
 
         long result = _span[Position];
-        for (var i = 1; i < size; i++) result = (result << 8) | (uint)(_span[Position + i] & 0xFF);
+        for (var i = 1; i < size; i++)
+            result = (result << 8) | (uint)(_span[Position + i] & 0xFF);
 
         Position += size;
 
@@ -179,7 +180,8 @@ public ref struct SpanReader
             return null;
 
         ulong result = 0;
-        for (var i = 0; i < size; i++) result = (result << 8) | _span[Position + i];
+        for (var i = 0; i < size; i++)
+            result = (result << 8) | _span[Position + i];
 
         Position += size;
 
@@ -295,7 +297,8 @@ public ref struct SpanReader
 
             result |= (byteReadJustNow.Value & 0x7Fu) << shift;
 
-            if (byteReadJustNow <= 0x7Fu) return (int)result; // early exit
+            if (byteReadJustNow <= 0x7Fu)
+                return (int)result; // early exit
         }
 
         // Read the 5th byte. Since we already read 28 bits,
@@ -335,7 +338,8 @@ public ref struct SpanReader
 
             result |= (byteReadJustNow.Value & 0x7Ful) << shift;
 
-            if (byteReadJustNow <= 0x7Fu) return (long)result; // early exit
+            if (byteReadJustNow <= 0x7Fu)
+                return (long)result; // early exit
         }
 
         // Read the 10th byte. Since we already read 63 bits,

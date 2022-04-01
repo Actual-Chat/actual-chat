@@ -65,7 +65,7 @@ public class MessageProcess<TMessage> : MessageProcess, IMessageProcess<TMessage
         Task<Unit>? whenStarted = null,
         Task<object?>? whenCompleted = null)
     {
-        Message = (TMessage) message;
+        Message = (TMessage)message;
         CancellationToken = cancellationToken;
         WhenStarted = whenStarted ?? TaskSource.New<Unit>(true).Task;
         WhenCompleted = whenCompleted ?? TaskSource.New<object?>(true).Task;

@@ -2,7 +2,7 @@
 @inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(CodePart), typeof(IMarkupPartView))]
 @{
-    var part = (CodePart) Part;
+    var part = (CodePart)Part;
     var cls = "code-part-view";
     var codeContent = part.Code.NullIfWhiteSpace() ?? part.Text;
     if (!part.Language.IsNullOrEmpty())

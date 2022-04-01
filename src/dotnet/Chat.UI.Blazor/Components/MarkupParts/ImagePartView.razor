@@ -2,7 +2,7 @@
 @inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(ImagePart), typeof(IMarkupPartView))]
 @{
-    var part = (ImagePart) Part;
+    var part = (ImagePart)Part;
 }
 
 <a class="image-part-view cursor-pointer" href="@part.Url" target="_blank">

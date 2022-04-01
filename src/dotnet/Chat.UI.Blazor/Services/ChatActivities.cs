@@ -1,4 +1,4 @@
-using ActualChat.Pool;
+using ActualChat.Pooling;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -44,7 +44,7 @@ public class ChatActivities
 {
     private static readonly HashSet<Symbol> _emptyHashSet = new ();
     private readonly IStateFactory _stateFactory;
-    private readonly SharedPool<Symbol, ChatActivityStateWorker> _activeStatePool;
+    private readonly SharedResourcePool<Symbol, ChatActivityStateWorker> _activeStatePool;
     private Session Session { get; }
     public IChats Chats { get; }
     public MomentClockSet Clocks { get; }
@@ -55,14 +55,14 @@ public class ChatActivities
         Chats = chats;
         Clocks = clocks;
         _stateFactory = stateFactory;
-        _activeStatePool = new SharedPool<Symbol, ChatActivityStateWorker>(CreateStateWorker, 2 * 60);
+        _activeStatePool = new SharedResourcePool<Symbol, ChatActivityStateWorker>(CreateStateWorker, 2 * 60);
     }
 
     public async Task<ChatActivityState> GetRecordingActivity(Symbol chatId)
     {
         using var _ = ExecutionContextExt.SuppressFlow();
 
-        var lease = await _activeStatePool.Lease(chatId).ConfigureAwait(false);
+        var lease = await _activeStatePool.Rent(chatId).ConfigureAwait(false);
         var state = lease.Value.State;
         return new ChatActivityState(lease, state);
     }
@@ -71,7 +71,7 @@ public class ChatActivities
     {
         using var _ = ExecutionContextExt.SuppressFlow();
 
-        var lease = await _activeStatePool.Lease(chatId).ConfigureAwait(false);
+        var lease = await _activeStatePool.Rent(chatId).ConfigureAwait(false);
         var authorRecordingState = lease.Value.GetAuthorRecordingState(authorId);
         return new AuthorChatActivityState(lease, authorRecordingState);
     }

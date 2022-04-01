@@ -8,7 +8,7 @@ public interface IMessageProcessor<TMessage> : IAsyncDisposable
 
     public IMessageProcess<TSpecific> Enqueue<TSpecific>(TSpecific message, CancellationToken cancellationToken = default)
         where TSpecific : TMessage
-        => (IMessageProcess<TSpecific>) Enqueue((TMessage) message, cancellationToken);
+        => (IMessageProcess<TSpecific>)Enqueue((TMessage)message, cancellationToken);
 }
 
 public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProcessor<TMessage>
@@ -31,14 +31,14 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     public IMessageProcess<TSpecific> Enqueue<TSpecific>(TSpecific message, CancellationToken cancellationToken = default)
         where TSpecific : TMessage
-        => (IMessageProcess<TSpecific>) Enqueue((TMessage) message, cancellationToken);
+        => (IMessageProcess<TSpecific>)Enqueue((TMessage)message, cancellationToken);
 
     public IMessageProcess<TMessage> Enqueue(TMessage message, CancellationToken cancellationToken = default)
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));
         Start();
-        var process = (IMessageProcess<TMessage>) MessageProcess.New(message, cancellationToken);
+        var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
         _ = Task.Run(async () => {
             try {
                 await Queue.Writer.WriteAsync(process, cancellationToken).ConfigureAwait(false);

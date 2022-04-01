@@ -123,7 +123,8 @@ public readonly struct VInt : IEquatable<VInt>
             throw new ArgumentException("Zero is not a correct value", nameof(encodedValue));
 
         var mostSignificantOctetIndex = 7;
-        while (encodedValue >> (mostSignificantOctetIndex * 8) == 0x0) mostSignificantOctetIndex--;
+        while (encodedValue >> (mostSignificantOctetIndex * 8) == 0x0)
+            mostSignificantOctetIndex--;
 
         var marker = (byte)((encodedValue >> (mostSignificantOctetIndex * 8)) & 0xff);
         var extraBytes = marker >> 4 > 0 ? ExtraBytesSize[marker >> 4] : 4 + ExtraBytesSize[marker];

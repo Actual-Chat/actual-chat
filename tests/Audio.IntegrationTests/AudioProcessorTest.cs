@@ -142,7 +142,7 @@ public class AudioProcessorTest : AppHostTestBase
             CpuClock.Now.EpochOffset.TotalSeconds);
 
         var filePath = GetAudioFilePath(fileName);
-        var fileSize = (int) filePath.GetFileInfo().Length;
+        var fileSize = (int)filePath.GetFileInfo().Length;
         var byteStream = filePath.ReadByteStream();
         var streamAdapter = webMStream
             ? new WebMStreamAdapter(_log)
