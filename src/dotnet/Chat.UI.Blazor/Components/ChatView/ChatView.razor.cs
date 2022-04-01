@@ -10,7 +10,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
@@ -21,7 +21,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         GC.SuppressFinalize(this);
-        await ChatPlayers.Stop(Chat.Id, CancellationToken.None);
+        await ChatPlayback.Stop(Chat.Id, CancellationToken.None);
     }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(

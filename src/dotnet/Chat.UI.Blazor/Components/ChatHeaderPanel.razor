@@ -40,29 +40,29 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatPlaybackInfos ChatPlaybackInfos { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
+    [Inject] private ChatPlaybackState ChatPlaybackState { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatIds = await ChatPlaybackInfos.GetChatIds(cancellationToken).ConfigureAwait(true);
+        var chatIds = await ChatPlaybackState.GetChatIds(cancellationToken).ConfigureAwait(true);
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         var chatModels = new List<ChatModel>();
         foreach (var chat in chats.OrderBy(c => c.Title)) {
-            var mode = await ChatPlaybackInfos.GetMode(chat.Id, cancellationToken);
+            var mode = await ChatPlaybackState.GetMode(chat.Id, cancellationToken);
             var chatModel = new ChatModel {
                 Chat = chat,
                 IsRealtimePlaybackOn = mode == ChatPlaybackMode.Realtime,
                 ToggleMute = async () => {
                     if (mode == ChatPlaybackMode.Realtime)
-                        await ChatPlayers.MuteRealtime(chat.Id, CancellationToken.None);
+                        await ChatPlayback.MuteRealtime(chat.Id, CancellationToken.None);
                     else if (mode == ChatPlaybackMode.RealtimeMuted)
-                        await ChatPlayers.UnmuteRealtime(chat.Id, CancellationToken.None);
+                        await ChatPlayback.UnmuteRealtime(chat.Id, CancellationToken.None);
                 },
                 Focus = async () => {
-                    await ChatPlayers.StartRealtimeAndMuteOther(chat.Id, CancellationToken.None);
+                    await ChatPlayback.StartRealtimeAndMuteOther(chat.Id, CancellationToken.None);
                 },
             };
             chatModels.Add(chatModel);

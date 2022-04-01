@@ -2,52 +2,65 @@
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-/// <summary> Must be scoped service. </summary>
-public class ChatPlayers : SafeAsyncDisposableBase
+// ReSharper disable once ClassNeverInstantiated.Global
+public class ChatPlayback : SafeAsyncDisposableBase
 {
     private readonly ConcurrentDictionary<Symbol, ChatPlayer> _players = new();
     private readonly IServiceProvider _services;
-    private readonly ChatPlaybackInfos _chatPlaybackInfos;
+    private readonly ChatPlaybackState _state;
     private readonly MomentClockSet _clocks;
     private readonly ILogger _log;
 
     public ChatPlayer? this[Symbol chatId] // Won't create dependency
         => _players.GetValueOrDefault(chatId);
 
-    public ChatPlayers(IServiceProvider services)
+    public ChatPlayback(IServiceProvider services)
     {
         _services = services;
         _log = services.LogFor(GetType());
         _clocks = services.Clocks();
-        _chatPlaybackInfos = services.GetRequiredService<ChatPlaybackInfos>();
+        _state = services.GetRequiredService<ChatPlaybackState>();
     }
 
     protected override async Task DisposeAsync(bool disposing)
     {
         while (_players.Count != 0) {
             var playerIds = _players.Keys.ToArray();
-            await Task.WhenAll(playerIds.Select(Close)).ConfigureAwait(false);
+            await Task.WhenAll(playerIds.Select(ClosePlayer)).ConfigureAwait(false);
         }
     }
 
     [ComputeMethod]
-    public virtual Task<ChatPlayer?> Get(Symbol chatId, CancellationToken cancellationToken)
+    public virtual Task<ChatPlayer?> GetPlayer(Symbol chatId, CancellationToken cancellationToken)
         => Task.FromResult(_players.GetValueOrDefault(chatId));
 
-    public ChatPlayer Activate(Symbol chatId)
+    public ChatPlayer ActivatePlayer(Symbol chatId)
     {
         this.ThrowIfDisposedOrDisposing();
         var player = _players.GetOrAdd(chatId,
             static (key, self) => self._services.Activate<ChatPlayer>(key),
             this);
         using (Computed.Invalidate())
-            _ = Get(chatId, default);
+            _ = GetPlayer(chatId, default);
         return player;
     }
 
+
+    public async Task ClosePlayer(Symbol chatId)
+    {
+        if (!_players.TryRemove(chatId, out var player))
+            return;
+
+        await player.DisposeAsync().ConfigureAwait(true);
+        using (Computed.Invalidate())
+            _ = GetPlayer(chatId, default);
+    }
+
+    // Playback control
+
     public async Task Stop(Symbol chatId, CancellationToken cancellationToken)
     {
-        var computed = await Computed.Capture(ct => _chatPlaybackInfos.GetMode(chatId, ct), cancellationToken)
+        var computed = await Computed.Capture(ct => _state.GetMode(chatId, ct), cancellationToken)
             .ConfigureAwait(false);
         _ = this[chatId]?.Stop();
         await computed.When(m => m is ChatPlaybackMode.None or ChatPlaybackMode.RealtimeMuted, cancellationToken)
@@ -64,22 +77,22 @@ public class ChatPlayers : SafeAsyncDisposableBase
 
     public async Task StartRealtime(Symbol chatId, CancellationToken cancellationToken)
     {
-        var computed = await Computed.Capture(ct => _chatPlaybackInfos.GetMode(chatId, ct), cancellationToken)
+        var computed = await Computed.Capture(ct => _state.GetMode(chatId, ct), cancellationToken)
             .ConfigureAwait(false);
         if (computed.ValueOrDefault is ChatPlaybackMode.Realtime)
             return;
 
-        var player = Activate(chatId);
+        var player = ActivatePlayer(chatId);
         _ = BackgroundTask.Run(async () => {
             await player.Stop().ConfigureAwait(false);
             try {
                 var playTask = player.Play(_clocks.SystemClock.Now, isRealtime: true, CancellationToken.None);
-                _chatPlaybackInfos.SetMode(chatId, ChatPlaybackMode.Realtime);
+                _state.SetMode(chatId, ChatPlaybackMode.Realtime);
                 await playTask.ConfigureAwait(false);
             }
             finally {
-                if (_chatPlaybackInfos[chatId] == ChatPlaybackMode.Realtime)
-                    _chatPlaybackInfos.SetMode(chatId, ChatPlaybackMode.None);
+                if (_state[chatId] == ChatPlaybackMode.Realtime)
+                    _state.SetMode(chatId, ChatPlaybackMode.None);
             }
         }, _log, $"Realtime playback failed for chat #{chatId}", CancellationToken.None);
         await computed.When(m => m is ChatPlaybackMode.Realtime, cancellationToken).ConfigureAwait(false);
@@ -87,19 +100,19 @@ public class ChatPlayers : SafeAsyncDisposableBase
 
     public async Task StartHistorical(Symbol chatId, Moment startAt, CancellationToken cancellationToken)
     {
-        var computed = await Computed.Capture(ct => _chatPlaybackInfos.GetMode(chatId, ct), cancellationToken)
+        var computed = await Computed.Capture(ct => _state.GetMode(chatId, ct), cancellationToken)
             .ConfigureAwait(false);
-        var player = Activate(chatId);
+        var player = ActivatePlayer(chatId);
         _ = BackgroundTask.Run(async () => {
             await player.Stop().ConfigureAwait(false);
             try {
                 var playTask = player.Play(startAt, isRealtime: false, CancellationToken.None);
-                _chatPlaybackInfos.SetMode(chatId, ChatPlaybackMode.Historical);
+                _state.SetMode(chatId, ChatPlaybackMode.Historical);
                 await playTask.ConfigureAwait(false);
             }
             finally {
-                if (_chatPlaybackInfos[chatId] == ChatPlaybackMode.Historical)
-                    _chatPlaybackInfos.SetMode(chatId, ChatPlaybackMode.None);
+                if (_state[chatId] == ChatPlaybackMode.Historical)
+                    _state.SetMode(chatId, ChatPlaybackMode.None);
             }
         }, _log, $"Realtime playback failed for chat #{chatId}", CancellationToken.None);
         await computed.When(m => m is ChatPlaybackMode.Historical, cancellationToken).ConfigureAwait(false);
@@ -108,12 +121,12 @@ public class ChatPlayers : SafeAsyncDisposableBase
     public async Task MuteRealtime(Symbol chatId, CancellationToken cancellationToken)
     {
         await Stop(chatId, cancellationToken).ConfigureAwait(false);
-        _chatPlaybackInfos.SetMode(chatId, ChatPlaybackMode.RealtimeMuted);
+        _state.SetMode(chatId, ChatPlaybackMode.RealtimeMuted);
     }
 
     public async Task<bool> UnmuteRealtime(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (_chatPlaybackInfos[chatId] != ChatPlaybackMode.RealtimeMuted)
+        if (_state[chatId] != ChatPlaybackMode.RealtimeMuted)
             return false;
         await StartRealtime(chatId, cancellationToken).ConfigureAwait(false);
         return true;
@@ -121,7 +134,7 @@ public class ChatPlayers : SafeAsyncDisposableBase
 
     public async Task StartRealtimeAndMuteOther(Symbol chatId, CancellationToken cancellationToken)
     {
-        var infos = _chatPlaybackInfos.List;
+        var infos = _state.List;
         var tasks = new List<Task>();
         foreach (var info in infos) {
             var task = info.ChatId == chatId
@@ -131,15 +144,5 @@ public class ChatPlayers : SafeAsyncDisposableBase
                 tasks.Add(task);
         }
         await Task.WhenAll(tasks).ConfigureAwait(false);
-    }
-
-    public async Task Close(Symbol chatId)
-    {
-        if (!_players.TryRemove(chatId, out var player))
-            return;
-
-        await player.DisposeAsync().ConfigureAwait(true);
-        using (Computed.Invalidate())
-            _ = Get(chatId, default);
     }
 }

@@ -7,23 +7,23 @@ public class ChatPlaybackStatePersister : StatePersister<ChatPlaybackInfo[]>
 {
     private readonly Session _session;
     private readonly IChats _chats;
-    private readonly ChatPlayers _chatPlayers;
-    private readonly ChatPlaybackInfos _chatPlaybackInfos;
+    private readonly ChatPlayback _chatPlayback;
+    private readonly ChatPlaybackState _chatPlaybackState;
     private readonly UserInteractionUI _userInteractionUI;
 
     public ChatPlaybackStatePersister(
         Session session,
         IChats chats,
-        ChatPlayers chatPlayers,
-        ChatPlaybackInfos chatPlaybackInfos,
+        ChatPlayback chatPlayback,
+        ChatPlaybackState chatPlaybackState,
         UserInteractionUI userInteractionUI,
         IServiceProvider services)
         : base(services)
     {
         _session = session;
         _chats = chats;
-        _chatPlayers = chatPlayers;
-        _chatPlaybackInfos = chatPlaybackInfos;
+        _chatPlayback = chatPlayback;
+        _chatPlaybackState = chatPlaybackState;
         _userInteractionUI = userInteractionUI;
     }
 
@@ -38,13 +38,13 @@ public class ChatPlaybackStatePersister : StatePersister<ChatPlaybackInfo[]>
             return;
 
         await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
-        var tasks = playbackInfos.Select(x => _chatPlayers.StartRealtime(x.ChatId, default));
+        var tasks = playbackInfos.Select(x => _chatPlayback.StartRealtime(x.ChatId, default));
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     protected override async Task<ChatPlaybackInfo[]> Compute(CancellationToken cancellationToken)
     {
-        var playbackInfos = await _chatPlaybackInfos.GetList(cancellationToken).ConfigureAwait(false);
+        var playbackInfos = await _chatPlaybackState.GetList(cancellationToken).ConfigureAwait(false);
         return playbackInfos.ToArray();
     }
 

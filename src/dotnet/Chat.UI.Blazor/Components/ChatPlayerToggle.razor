@@ -26,8 +26,8 @@
 </button>
 
 @code {
-    [Inject] private ChatPlaybackInfos ChatPlaybackInfos { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
+    [Inject] private ChatPlaybackState ChatPlaybackState { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
@@ -37,13 +37,13 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override Task<ChatPlaybackMode> ComputeState(CancellationToken cancellationToken)
-        => ChatPlaybackInfos.GetMode(ChatId, cancellationToken);
+        => ChatPlaybackState.GetMode(ChatId, cancellationToken);
 
     private async Task Toggle() {
-        var mode = ChatPlaybackInfos[ChatId];
+        var mode = ChatPlaybackState[ChatId];
         if (mode is ChatPlaybackMode.Realtime or ChatPlaybackMode.RealtimeMuted)
-            await ChatPlayers.Stop(ChatId, CancellationToken.None);
+            await ChatPlayback.Stop(ChatId, CancellationToken.None);
         else
-            await ChatPlayers.StartRealtime(ChatId, CancellationToken.None);
+            await ChatPlayback.StartRealtime(ChatId, CancellationToken.None);
     }
 }

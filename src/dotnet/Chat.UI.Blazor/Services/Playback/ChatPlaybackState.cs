@@ -6,7 +6,7 @@ public enum ChatPlaybackMode { None = 0, Realtime, RealtimeMuted, Historical }
 public record struct ChatPlaybackInfo(Symbol ChatId, ChatPlaybackMode Mode);
 
 // ReSharper disable once ClassNeverInstantiated.Global
-public class ChatPlaybackInfos
+public class ChatPlaybackState
 {
     private volatile ImmutableList<ChatPlaybackInfo> _list = ImmutableList<ChatPlaybackInfo>.Empty;
     private readonly object _lock = new();

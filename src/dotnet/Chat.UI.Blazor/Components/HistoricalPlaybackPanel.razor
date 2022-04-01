@@ -40,7 +40,7 @@
         public DateTime? PlayingAt { get; init; }
     }
 
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
     [CascadingParameter]
@@ -50,7 +50,7 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var player = await ChatPlayers.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
+        var player = await ChatPlayback.GetPlayer(Chat.Id, cancellationToken).ConfigureAwait(false);
         if (player == null)
             return Model.NotPlaying;
         var playbackKind = await player.PlaybackKindState.Use(cancellationToken).ConfigureAwait(false);
@@ -75,6 +75,6 @@
     }
 
     private Task OnStop(MouseEventArgs _) {
-        return ChatPlayers.Stop(Chat.Id, PlaybackKind.Historical, CancellationToken.None);
+        return ChatPlayback.Stop(Chat.Id, PlaybackKind.Historical, CancellationToken.None);
     }
 }
