@@ -1,8 +1,8 @@
 namespace ActualChat.Pooling;
 
 public partial class SharedResourcePool<TKey, TResource>
-    where TResource : class
     where TKey : notnull
+    where TResource : class
 {
     // ReSharper disable once StaticMemberInGenericType
     protected static TimeSpan DefaultResourceDisposeDelay { get; } = TimeSpan.FromSeconds(10);
