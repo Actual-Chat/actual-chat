@@ -55,7 +55,7 @@ public class ChatActivities
         Chats = chats;
         Clocks = clocks;
         _stateFactory = stateFactory;
-        _activeStatePool = new SharedResourcePool<Symbol, ChatActivityStateWorker>(CreateStateWorker, 2 * 60);
+        _activeStatePool = new SharedResourcePool<Symbol, ChatActivityStateWorker>(CreateStateWorker, TimeSpan.FromMinutes(2));
     }
 
     public async Task<ChatActivityState> GetRecordingActivity(Symbol chatId)
