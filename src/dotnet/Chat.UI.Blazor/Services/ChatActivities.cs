@@ -63,7 +63,7 @@ public class ChatActivities
         using var _ = ExecutionContextExt.SuppressFlow();
 
         var lease = await _activeStatePool.Rent(chatId).ConfigureAwait(false);
-        var state = lease.Value.State;
+        var state = lease.Resource.State;
         return new ChatActivityState(lease, state);
     }
 
@@ -72,7 +72,7 @@ public class ChatActivities
         using var _ = ExecutionContextExt.SuppressFlow();
 
         var lease = await _activeStatePool.Rent(chatId).ConfigureAwait(false);
-        var authorRecordingState = lease.Value.GetAuthorRecordingState(authorId);
+        var authorRecordingState = lease.Resource.GetAuthorRecordingState(authorId);
         return new AuthorChatActivityState(lease, authorRecordingState);
     }
 
