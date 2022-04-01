@@ -77,8 +77,9 @@
                         new EventCallback<bool>(null, ...) prevents StateHasChanged call
                         and thus re-rendering of a parent (this) component.
                     *@
-                    <AudioRecorderToggle ChatId="@Chat.Id"
-                                   RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
+                    <AudioRecorderToggle
+                        ChatId="@Chat.Id"
+                        RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
                 </div>
                 <div class="chat-control-button player-button w-1/2 flex">
                     <ChatPlayerToggle ChatId="@Chat.Id"/>
@@ -89,13 +90,13 @@
 </div>
 
 @code {
-    [Inject] private ChatController ChatController { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -183,8 +184,7 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        // We don't need to await for this here
-        _ = ChatController.StartRealtimeListening(Chat.Id);
+        _ = ChatPlayers.StartRealtime(Chat.Id, CancellationToken.None);
         return Task.CompletedTask;
     }
 

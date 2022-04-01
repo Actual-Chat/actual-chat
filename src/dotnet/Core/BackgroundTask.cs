@@ -6,6 +6,7 @@ public static class BackgroundTask
         Func<Task> taskFactory,
         CancellationToken cancellationToken = default)
     {
+        using var _ = ExecutionContextExt.SuppressFlow();
         try {
             return Task.Run(taskFactory, cancellationToken);
         }
@@ -21,6 +22,7 @@ public static class BackgroundTask
         Func<Task<T>> taskFactory,
         CancellationToken cancellationToken = default)
     {
+        using var _ = ExecutionContextExt.SuppressFlow();
         try {
             return Task.Run(taskFactory, cancellationToken);
         }
@@ -37,6 +39,7 @@ public static class BackgroundTask
         Action<Exception> errorHandler,
         CancellationToken cancellationToken = default)
     {
+        using var _ = ExecutionContextExt.SuppressFlow();
         try {
             return Task.Run(taskFactory, cancellationToken)
                 .WithErrorHandler(errorHandler);
@@ -55,6 +58,7 @@ public static class BackgroundTask
         Action<Exception> errorHandler,
         CancellationToken cancellationToken = default)
     {
+        using var _ = ExecutionContextExt.SuppressFlow();
         try {
             return Task.Run(taskFactory, cancellationToken)
                 .WithErrorHandler(errorHandler);

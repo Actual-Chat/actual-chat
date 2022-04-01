@@ -11,8 +11,8 @@
 <div class="w-full mx-1 justify-center z-20 bg-primary rounded-b-md border-accent md:bg-secondary shadow-md text-left">
     @foreach (var chatModel in chatModels) {
         var chat = chatModel.Chat;
-        var muteCls = "text-toggle-on" + (chatModel.ActiveListening ? "" : " opacity-50");
-        var muteTitle = chatModel.ActiveListening ? "Mute This" : "Unmute This";
+        var muteCls = "text-toggle-on" + (chatModel.IsRealtimePlaybackOn ? "" : " opacity-50");
+        var muteTitle = chatModel.IsRealtimePlaybackOn ? "Mute This" : "Unmute This";
         <div class="p-1 px-4 text-sm hover:bg-accent flex flex-row">
             <div class="flex-1">
                 <a href="/chat/@chat.Id">@chat.Title</a>
@@ -40,30 +40,30 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ListeningChats ListeningChats { get; init; } = null!;
-    [Inject] private ChatController ChatController { get; init; } = null!;
+    [Inject] private ChatPlaybackInfos ChatPlaybackInfos { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatIds = await ListeningChats.GetChatIds(cancellationToken).ConfigureAwait(true);
+        var chatIds = await ChatPlaybackInfos.GetChatIds(cancellationToken).ConfigureAwait(true);
         var chats = await GetListeningChatsByIds(chatIds, cancellationToken).ConfigureAwait(true);
         var chatModels = new List<ChatModel>();
         foreach (var chat in chats.OrderBy(c => c.Title)) {
-            var mode = await ChatController.GetRealtimeListeningMode(chat.Id, cancellationToken);
+            var mode = await ChatPlaybackInfos.GetMode(chat.Id, cancellationToken);
             var chatModel = new ChatModel {
                 Chat = chat,
-                ActiveListening = mode == RealtimeListeningMode.Active,
+                IsRealtimePlaybackOn = mode == ChatPlaybackMode.Realtime,
                 ToggleMute = async () => {
-                    if (mode == RealtimeListeningMode.Active)
-                        await ChatController.MuteRealtimeListening(chat.Id);
-                    else if (mode == RealtimeListeningMode.Muted)
-                        await ChatController.UnmuteRealtimeListening(chat.Id);
+                    if (mode == ChatPlaybackMode.Realtime)
+                        await ChatPlayers.MuteRealtime(chat.Id, CancellationToken.None);
+                    else if (mode == ChatPlaybackMode.RealtimeMuted)
+                        await ChatPlayers.UnmuteRealtime(chat.Id, CancellationToken.None);
                 },
                 Focus = async () => {
-                    await ChatController.FocusRealtimeListening(chat.Id);
-                }
+                    await ChatPlayers.StartRealtimeAndMuteOther(chat.Id, CancellationToken.None);
+                },
             };
             chatModels.Add(chatModel);
         }
@@ -86,12 +86,12 @@
 
     public class ChatModel {
         public Chat Chat { get; init; } = null!;
-        public bool ActiveListening { get; init; }
+        public bool IsRealtimePlaybackOn { get; init; }
         public Func<Task> ToggleMute { get; init; } = null!;
         public Func<Task> Focus { get; init; } = null!;
     }
 
     public class Model {
-        public ChatModel[] Chats { get; set; } = new ChatModel[0];
+        public ChatModel[] Chats { get; set; } = Array.Empty<ChatModel>();
     }
 }

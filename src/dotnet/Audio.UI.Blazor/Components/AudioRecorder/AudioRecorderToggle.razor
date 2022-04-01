@@ -12,8 +12,8 @@
 </button>
 
 @code {
-    private LanguageId _latestLanguageId = LanguageId.Default;
-    private bool _latestLanguageIdResolved;
+    private bool? _lastIsRecording;
+    private LanguageId? _lastLanguageId;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public EventCallback<bool> RecordingStateChanged { get; set; }
@@ -26,17 +26,19 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var toggleChatId = await AudioRecorderState.GetRecordingToggleChatId(cancellationToken).ConfigureAwait(true);
         var isRecording = toggleChatId == ChatId;
+        if (_lastIsRecording.HasValue && _lastIsRecording != isRecording)
+            _ = RecordingStateChanged.InvokeAsync(isRecording);
+        _lastIsRecording = isRecording;
         if (!isRecording)
             return false;
 
         var settings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         var languageId = settings.LanguageOrDefault();
-        if (_latestLanguageIdResolved && languageId != _latestLanguageId) {
+        if (_lastLanguageId.HasValue && languageId != _lastLanguageId) {
             await ToggleRecording(cancellationToken).ConfigureAwait(true);
             await ToggleRecording(cancellationToken).ConfigureAwait(true);
         }
-        _latestLanguageId = languageId;
-        _latestLanguageIdResolved = true;
+        _lastLanguageId = languageId;
         return true;
     }
 

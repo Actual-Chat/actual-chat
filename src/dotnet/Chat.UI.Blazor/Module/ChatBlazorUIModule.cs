@@ -29,15 +29,15 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        fusion.AddComputeService<ChatController>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatPlaybackInfos>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
 
         services.RegisterNavItems<ChatLinks>();
         services.RegisterNavItems<ContactLinks>();
-        fusion.AddComputeService<ListeningChats>(ServiceLifetime.Scoped);
 
-        services.AddStateRestoreHandler<ChatControllerStatePersister>();
+        services.AddStateRestoreHandler<ChatPlaybackStatePersister>();
         services.AddStateRestoreHandler<AudioRecorderStatePersister>();
     }
 }

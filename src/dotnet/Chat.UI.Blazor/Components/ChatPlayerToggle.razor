@@ -1,13 +1,15 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<RealtimeListeningMode>
+@inherits ComputedStateComponent<ChatPlaybackMode>
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 
 @{
     var mode = State.ValueOrDefault;
-    var modeClass = mode == RealtimeListeningMode.Active
-        ? "on"
-        : mode == RealtimeListeningMode.Muted ? "on opacity-50" : "";
+    var modeClass = mode switch {
+        ChatPlaybackMode.Realtime => "on",
+        ChatPlaybackMode.RealtimeMuted => "on opacity-50",
+        _ => "",
+    };
     var paddingClass = "p-1";
     var svgSizeClass = "w-8 w-8";
     if (Size == ChatPlayerToggleSize.Small) {
@@ -24,23 +26,24 @@
 </button>
 
 @code {
+    [Inject] private ChatPlaybackInfos ChatPlaybackInfos { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private ChatController ChatController { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public ChatPlayerToggleSize Size { get; set; } = ChatPlayerToggleSize.Normal;
 
-    protected override ComputedState<RealtimeListeningMode>.Options GetStateOptions()
+    protected override ComputedState<ChatPlaybackMode>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override Task<RealtimeListeningMode> ComputeState(CancellationToken cancellationToken)
-        => ChatController.GetRealtimeListeningMode(ChatId, cancellationToken);
+    protected override Task<ChatPlaybackMode> ComputeState(CancellationToken cancellationToken)
+        => ChatPlaybackInfos.GetMode(ChatId, cancellationToken);
 
     private async Task Toggle() {
-        var realtimeMode = await ChatController.GetRealtimeListeningMode(ChatId, default);
-        if (realtimeMode == RealtimeListeningMode.Active || realtimeMode == RealtimeListeningMode.Muted)
-            await ChatController.StopRealtimeListening(ChatId);
+        var mode = ChatPlaybackInfos[ChatId];
+        if (mode is ChatPlaybackMode.Realtime or ChatPlaybackMode.RealtimeMuted)
+            await ChatPlayers.Stop(ChatId, CancellationToken.None);
         else
-            await ChatController.StartRealtimeListening(ChatId);
+            await ChatPlayers.StartRealtime(ChatId, CancellationToken.None);
     }
 }

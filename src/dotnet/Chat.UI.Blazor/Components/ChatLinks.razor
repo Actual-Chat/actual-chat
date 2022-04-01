@@ -23,7 +23,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatController ChatController { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = new () };
@@ -36,7 +36,7 @@
             chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));
         return new () {
             Chats = chatInfos.ToArray(),
-            ActiveChatId = await ChatController.GetActiveChatId(),
+            ActiveChatId = await ChatUI.GetActiveChatId(),
         };
     }
 

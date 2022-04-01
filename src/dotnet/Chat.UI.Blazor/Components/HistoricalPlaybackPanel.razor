@@ -22,7 +22,7 @@
             </div>
             @* Stop button *@
             <div class="c-stop flex flex-row items-center">
-                <button @onclick="_ => ChatController.StopHistoricalPlayer(Chat.Id)" class="text-secondary transition duration-300 ease-in-out hover:scale-110">
+                <button @onclick="OnStop" class="text-secondary transition duration-300 ease-in-out hover:scale-110">
                     <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0 0h24v24h-24z"/>
                     </svg>
@@ -40,7 +40,7 @@
         public DateTime? PlayingAt { get; init; }
     }
 
-    [Inject] private ChatController ChatController { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
     [CascadingParameter]
@@ -50,12 +50,14 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var player = await ChatController.GetHistoricalChatPlayer(Chat.Id, cancellationToken);
+        var player = await ChatPlayers.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
         if (player == null)
+            return Model.NotPlaying;
+        var playbackKind = await player.PlaybackKindState.Use(cancellationToken).ConfigureAwait(false);
+        if (playbackKind is not PlaybackKind.Historical)
             return Model.NotPlaying;
 
         var playback = player.Playback;
-
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
@@ -70,5 +72,9 @@
         return new () {
             PlayingAt = playingAt,
         };
+    }
+
+    private Task OnStop(MouseEventArgs _) {
+        return ChatPlayers.Stop(Chat.Id, PlaybackKind.Historical, CancellationToken.None);
     }
 }
