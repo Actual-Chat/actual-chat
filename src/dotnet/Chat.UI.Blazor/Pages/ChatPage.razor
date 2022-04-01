@@ -54,7 +54,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatPageState ChatPageState { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
@@ -85,12 +85,11 @@
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
-        ChatUI.SetActiveChatId(ChatId);
+        ChatPageState.SetActiveChatId(ChatId);
     }
 
     public override async ValueTask DisposeAsync() {
-        if (ChatId == await ChatUI.GetActiveChatId())
-            ChatUI.SetActiveChatId(Symbol.Empty);
+        ChatPageState.ResetActiveChatId(ChatId);
         await base.DisposeAsync();
     }
 

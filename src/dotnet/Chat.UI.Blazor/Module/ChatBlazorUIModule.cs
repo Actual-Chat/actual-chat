@@ -29,7 +29,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
-        fusion.AddComputeService<ChatUI>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatPageState>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlaybackInfos>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);

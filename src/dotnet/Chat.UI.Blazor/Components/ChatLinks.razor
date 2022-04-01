@@ -23,10 +23,13 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ChatPageState ChatPageState { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new () };
+        => new() {
+            InitialValue = new (),
+            UpdateDelayer = UpdateDelayer.MinDelay, // GetActiveChatId() change should be instantly visible
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await Chats.GetChats(Session, cancellationToken);
@@ -36,7 +39,7 @@
             chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));
         return new () {
             Chats = chatInfos.ToArray(),
-            ActiveChatId = await ChatUI.GetActiveChatId(),
+            ActiveChatId = await ChatPageState.GetActiveChatId(),
         };
     }
 
