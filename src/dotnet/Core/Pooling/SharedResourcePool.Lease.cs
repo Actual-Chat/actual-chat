@@ -34,7 +34,8 @@ public partial class SharedResourcePool<TKey, TResource>
             lock (Lock) {
                 switch (--_renterCount) {
                     case > 0: return;
-                    case < 0: throw new ObjectDisposedException("One of the leases seems to be disposed more than once.");
+                    case < 0: throw new InvalidOperationException(
+                        "Each lease returned by Rent should be disposed just once.");
                 }
 
                 var endRentDelayTokenSource = new CancellationTokenSource();
