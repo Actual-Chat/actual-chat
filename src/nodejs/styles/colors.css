@@ -15,6 +15,7 @@
     --text-color-secondary-muted: #5a7188;
     --text-color-accent: #2b3641;
     --text-color-accent-muted: #e1e6eb;
+    --text-color-white: #ffffff;
     --text-color-placeholder: #788ea5;
     --text-color-toggle-off: #d87330;
     --text-color-toggle-on: #08a7ed;
@@ -25,6 +26,8 @@
     --button-color-success-hover: #0899d9;
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
+    --button-color-cancel: #5b7289;
+    --button-color-cancel-hover: #4b5e71;
     --error-toast-header: #feb7b7;
     --error-toast-body: #fecaca;
 

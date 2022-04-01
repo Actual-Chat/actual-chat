@@ -36,19 +36,15 @@
     }
 </ul>
 
-<button type="button" title="Create new Avatar"
-        @onclick="OnAddNewAvatar"
-        class="w-10 h-10 text-accent bg-button-success rounded-full group
-               hover:scale-110 ease-in-out duration-150
-               hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
-               absolute bottom-0 right-0 mr-4 mb-4">
-    <span class="fill-current text-accent-muted group-hover:text-primary ease-in-out duration-150">
+<Button Class="btn btn-success hover:scale-110 ease-in-out duration-150 !rounded-full !min-w-0 !w-10 absolute bottom-0 right-0 !m-0 !mr-4 !mb-4 !p-0"
+        Title="Create new Avatar">
+    <ChildContent>
         <svg class="w-6 h-6 mx-auto" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M0 0h24v24H0z" fill="none"></path>
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
         </svg>
-    </span>
-</button>
+    </ChildContent>
+</Button>
 
 <div class="absolute top-0 right-0 mr-4 mt-14">
     <CloseButton Click="OnCancel" />

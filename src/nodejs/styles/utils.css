@@ -73,21 +73,31 @@ button.off {
 
 
 .btn {
-    @apply leading-5 transition duration-150 ease-in-out outline-none;
+    @apply leading-5 transition duration-150 ease-in-out outline-none mx-2 place-content-center items-center;
     @apply inline-flex py-2 px-3 text-sm font-medium fill-current rounded-md border;
+    @apply h-10 min-w-20;
 }
 
 .btn.btn-success {
-    @apply bg-button-success border-success text-accent-muted;
+    @apply bg-button-success border-success text-white;
     @apply hover:bg-button-success-hover hover:border-success-muted;
     @apply active:bg-button-success-hover;
 }
 
 .btn.btn-cancel {
-    @apply bg-primary border-primary text-primary;
-    @apply hover:bg-accent hover:border-accent;
-    @apply active:bg-accent;
+    @apply bg-button-cancel border-button-cancel text-white;
+    @apply hover:bg-button-cancel-hover hover:border-button-cancel-hover;
+    @apply active:bg-button-cancel-hover;
 }
+
+.btn.btn-sm {
+    @apply h-8 min-w-12 text-xs;
+}
+
+.btn.btn-lg {
+    @apply h-12 min-w-24 text-base;
+}
+
 
 /* Webkit */
 
