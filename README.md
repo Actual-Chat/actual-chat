@@ -2,13 +2,11 @@
 
 ![unit tests](https://github.com/Actual-Chat/actual-chat/actions/workflows/unit-tests.yml/badge.svg)
 
+## Discord
 
-
+- If you're a part of the official team, please contact @alexyakunin to get access.
 
 ## Prerequisites
-
-
-
 
 Install:
 - [Git](https://git-scm.com/downloads)
@@ -21,6 +19,8 @@ Install:
 - [Edge](https://www.microsoft.com/en-us/edge#platform)
   or [Chrome](https://chromeenterprise.google/browser/download/)
 - [Playwright](https://playwright.dev/docs/intro/#installation)
+- [Configure GCP service key](https://www.notion.so/actual-chat/GCP-service-keys-d4cbb93a014644fba636e35aad45f94d)
+  ensure time and timezone are configured correctly on a machine
 
 Recommended IDEs:
 - [Rider](https://www.jetbrains.com/rider/)
@@ -75,7 +75,8 @@ We use:
     - Place `{` on the same line for `if`, `for`, and
       any other code inside method body
     - If you have to wrap a method body expression,
-      wrap it before `=>` rather than after 
+      wrap it before `=>` rather than after
+    - A bunch of other things, see `#coding-style` Discord channel
 
 ## Release branches
 
