@@ -9,10 +9,10 @@ public interface INotificationsClientDef
     Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken);
 
     [Post(nameof(RegisterDevice))]
-    Task RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
+    Task<bool> RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
 
     [Post(nameof(SubscribeToChat))]
-    Task SubscribeToChat([Body] INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken);
+    Task<bool> SubscribeToChat([Body] INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken);
 
     [Post(nameof(UnsubscribeToChat))]
     Task UnsubscribeToChat([Body] INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken);

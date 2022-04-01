@@ -21,14 +21,14 @@ public class NotificationsController : ControllerBase, INotifications
         => _service.IsSubscribedToChat(session, chatId, cancellationToken);
 
     [HttpPost]
-    public Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
+    public Task<bool> RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _service.RegisterDevice(command, cancellationToken);
     }
 
     [HttpPost]
-    public Task SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
+    public Task<bool> SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
     {
         command.UseDefaultSession(_sessionResolver);
         return _service.SubscribeToChat(command, cancellationToken);
