@@ -18,9 +18,7 @@ public partial class SharedResourcePool<TKey, TResource>
         public TResource Resource => _resourceTask.Result;
         public bool IsRented {
             get {
-                lock (Lock) {
-                    return _renterCount > 0;
-                }
+                lock (Lock) return _renterCount > 0;
             }
         }
 
@@ -47,9 +45,8 @@ public partial class SharedResourcePool<TKey, TResource>
                 _ = Task.Run(async () => {
                     try {
                         await Task.Delay(Pool.ResourceDisposeDelay, endRentDelayToken);
-                        lock (Lock) {
+                        lock (Lock)
                             _endRentTask = EndRent();
-                        }
                     }
                     finally {
                         endRentDelayTokenSource.CancelAndDisposeSilently();
