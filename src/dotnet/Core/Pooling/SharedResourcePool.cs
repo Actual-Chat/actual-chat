@@ -1,28 +1,29 @@
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace ActualChat.Pooling;
 
 public partial class SharedResourcePool<TKey, TResource>
     where TKey : notnull
     where TResource : class
 {
-    // ReSharper disable once StaticMemberInGenericType
-    protected static TimeSpan DefaultResourceDisposeDelay { get; } = TimeSpan.FromSeconds(10);
-
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
-    private Func<TKey, Task<TResource>> ResourceFactory { get; }
-    private TimeSpan ResourceDisposeDelay { get; }
+    private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; }
 
-    public SharedResourcePool(Func<TKey, Task<TResource>> resourceFactory, TimeSpan? resourceDisposeDelay = null)
-    {
-        ResourceFactory = resourceFactory;
-        ResourceDisposeDelay = resourceDisposeDelay ?? DefaultResourceDisposeDelay;
-    }
+    public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
+    public ILogger Log { get; init; } = NullLogger.Instance;
+
+    public SharedResourcePool(Func<TKey, CancellationToken, Task<TResource>> resourceFactory)
+        => ResourceFactory = resourceFactory;
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
         var spinWait = new SpinWait();
         while (true) {
-            var lease = _leases.GetOrAdd(key, static (key1, self) => new Lease(self, key1), this);
-            if (await lease.BeginRent(cancellationToken).ConfigureAwait(false))
+            var lease = _leases.GetOrAdd(key, static (key1, state) => {
+                var (self, cancellationToken1) = state;
+                return new Lease(self, key1, cancellationToken1);
+            }, (this, cancellationToken));
+            if (await lease.BeginRent().ConfigureAwait(false))
                 return lease;
             spinWait.SpinOnce();
         }

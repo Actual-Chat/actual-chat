@@ -2,7 +2,7 @@ namespace ActualChat;
 
 public static class ComputedExt
 {
-    public static async Task When<T>(this IComputed<T> computed,
+    public static async Task<IComputed<T>> When<T>(this IComputed<T> computed,
         Func<T, bool> predicate,
         CancellationToken cancellationToken = default)
     {
@@ -10,7 +10,7 @@ public static class ComputedExt
             if (!computed.IsConsistent())
                 computed = await computed.Update(cancellationToken).ConfigureAwait(false);
             if (predicate(computed.Value))
-                return;
+                return computed;
             await computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         }
     }

@@ -126,7 +126,7 @@ public sealed class ChatPlayer : ProcessorBase
     private async Task PlayRealtime(Moment startAt, CancellationToken cancellationToken)
     {
         var cpuClock = _clocks.CpuClock;
-        var audioEntryReader = _chats.CreateEntryReader(_session, _chatId, ChatEntryType.Audio);
+        var audioEntryReader = _chats.NewEntryReader(_session, _chatId, ChatEntryType.Audio);
         var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
@@ -136,7 +136,7 @@ public sealed class ChatPlayer : ProcessorBase
 
         var entries = audioEntryReader.ReadAllWaitingForNew(startId, cancellationToken);
         var playProcesses = new ConcurrentDictionary<IMessageProcess<PlayTrackCommand>, Unit>();
-        await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+        await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.EndsAt < startAt)
                 // We're starting @ (startAt - ChatConstants.MaxEntryDuration),
                 // so we need to skip a few entries.
@@ -170,7 +170,7 @@ public sealed class ChatPlayer : ProcessorBase
     private async Task PlayHistorical(Moment startAt, CancellationToken cancellationToken)
     {
         var cpuClock = _clocks.CpuClock;
-        var audioEntryReader = _chats.CreateEntryReader(_session, _chatId, ChatEntryType.Audio);
+        var audioEntryReader = _chats.NewEntryReader(_session, _chatId, ChatEntryType.Audio);
         var idRange = await _chats.GetIdRange(_session, _chatId, ChatEntryType.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader

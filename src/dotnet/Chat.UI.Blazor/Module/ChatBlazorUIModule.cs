@@ -31,7 +31,9 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddComputeService<ChatPageState>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlayback>(ServiceLifetime.Scoped);
         fusion.AddComputeService<ChatPlaybackState>(ServiceLifetime.Scoped);
-        fusion.AddComputeService<ChatActivities>(ServiceLifetime.Scoped);
+        fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
+
+        services.AddScoped<ChatActivity>();
 
         services.RegisterNavItems<ChatLinks>();
         services.RegisterNavItems<ContactLinks>();

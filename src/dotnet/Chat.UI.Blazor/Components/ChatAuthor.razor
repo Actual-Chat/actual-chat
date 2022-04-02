@@ -7,26 +7,29 @@
 @ChildContent(model)
 
 @code {
-    public static readonly Author NullAuthor = new();
-
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
-    [Inject] private ChatActivities ChatActivities { get; init; } = null!;
-    private AuthorChatActivityState? AuthorChatActivityState { get; set; }
+    [Inject] private ChatActivity ChatActivity { get; init; } = null!;
+    private IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
     [Parameter, EditorRequired] public string ChatId { get; set; } = "";
     [Parameter, EditorRequired] public RenderFragment<Model> ChildContent { get; set; } = default!;
 
-    public override async Task SetParametersAsync(ParameterView parameters) {
-        if (!this.HasChangedParameters(parameters))
-            return;
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
 
-        await base.SetParametersAsync(parameters);
-        AuthorChatActivityState = await ChatActivities.GetAuthorRecordingActivity(ChatId, AuthorId);
+        ChatRecordingActivity?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
+        await base.OnParametersSetAsync();
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new(NullAuthor, false) };
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
@@ -40,7 +43,7 @@
 
         var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken);
         if (author == null)
-            return new(NullAuthor, false);
+            return Model.None;
 
         if (string.IsNullOrWhiteSpace(author.Picture)) {
             // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
@@ -48,20 +51,16 @@
             author = author with { Picture = picture };
         }
 
-        AuthorChatActivityState ??= await ChatActivities.GetAuthorRecordingActivity(ChatId, AuthorId);
-        var isRecording = await AuthorChatActivityState.Recording.Use(cancellationToken);
+        if (ChatRecordingActivity == null)
+            return new(author, false);
 
+        var isRecording = await ChatRecordingActivity.IsAuthorActive(author.Id, cancellationToken);
         return new(author,isRecording);
     }
 
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
+    public sealed class Model {
+        public static Model None { get; } = new(new Author(), false);
 
-        AuthorChatActivityState?.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    public class Model {
         public Author Author { get; }
         public bool IsRecording { get; }
 

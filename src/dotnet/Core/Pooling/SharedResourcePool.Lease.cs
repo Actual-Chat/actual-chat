@@ -15,18 +15,20 @@ public partial class SharedResourcePool<TKey, TResource>
 
         public SharedResourcePool<TKey, TResource> Pool { get; }
         public TKey Key { get; }
+#pragma warning disable VSTHRD002
         public TResource Resource => _resourceTask.Result;
+#pragma warning restore VSTHRD002
         public bool IsRented {
             get {
                 lock (Lock) return _renterCount > 0;
             }
         }
 
-        internal Lease(SharedResourcePool<TKey, TResource> pool, TKey key)
+        internal Lease(SharedResourcePool<TKey, TResource> pool, TKey key, CancellationToken cancellationToken)
         {
             Pool = pool;
             Key = key;
-            _resourceTask = pool.ResourceFactory.Invoke(key);
+            _resourceTask = pool.ResourceFactory.Invoke(key, cancellationToken);
         }
 
         public void Dispose()
@@ -42,12 +44,11 @@ public partial class SharedResourcePool<TKey, TResource>
                 var endRentDelayToken = endRentDelayTokenSource.Token;
                 _endRentDelayTokenSource = endRentDelayTokenSource;
 
-                using var _1 = ExecutionContextExt.SuppressFlow();
-                _ = Task.Run(async () => {
+                BackgroundTask.Run(async () => {
                     try {
-                        await Task.Delay(Pool.ResourceDisposeDelay, endRentDelayToken);
+                        await Task.Delay(Pool.ResourceDisposeDelay, endRentDelayToken).ConfigureAwait(false);
                         lock (Lock)
-                            _endRentTask = EndRent();
+                            _endRentTask ??= EndRent();
                     }
                     finally {
                         endRentDelayTokenSource.CancelAndDisposeSilently();
@@ -56,7 +57,7 @@ public partial class SharedResourcePool<TKey, TResource>
             }
         }
 
-        internal async ValueTask<bool> BeginRent(CancellationToken cancellationToken)
+        internal async ValueTask<bool> BeginRent()
         {
             Task? endRentTask;
             lock (Lock) {
@@ -71,8 +72,18 @@ public partial class SharedResourcePool<TKey, TResource>
                 await endRentTask.ConfigureAwait(false);
                 return false;
             }
-            await _resourceTask.ConfigureAwait(false);
-            return true;
+            try {
+                await _resourceTask.ConfigureAwait(false);
+                return true;
+            }
+            catch (Exception e) {
+                Pool.Log.LogError(e, nameof(Pool.ResourceFactory) + " failed");
+                Task endRenTask;
+                lock (Lock)
+                    endRenTask = _endRentTask ??= EndRent();
+                await endRenTask.ConfigureAwait(false);
+                return false;
+            }
         }
 
         private async Task EndRent()

@@ -10,7 +10,9 @@ public class SharedResourcePoolTest
     {
         var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
-        var pool = new SharedResourcePool<int, Resource>(ResourceFactory, TimeSpan.Zero);
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
+            ResourceDisposeDelay = TimeSpan.Zero,
+        };
 
         var l = await pool.Rent(10, cancellationToken);
         using (var l1 = l) {
@@ -33,7 +35,9 @@ public class SharedResourcePoolTest
     {
         var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
-        var pool = new SharedResourcePool<int, Resource>(ResourceFactory, TimeSpan.FromSeconds(0.5));
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
+            ResourceDisposeDelay = TimeSpan.FromSeconds(0.5),
+        };
 
         var l = await pool.Rent(10, cancellationToken);
         using (var l1 = l) {
@@ -57,7 +61,9 @@ public class SharedResourcePoolTest
     {
         var cancellationToken = CancellationToken.None;
         var testClock = new TestClock();
-        var pool = new SharedResourcePool<int, Resource>(ResourceFactory, TimeSpan.FromSeconds(0.5));
+        var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
+            ResourceDisposeDelay = TimeSpan.FromSeconds(0.5),
+        };
 
         var l = await pool.Rent(10, cancellationToken);
         using (var l1 = l) {
@@ -88,7 +94,7 @@ public class SharedResourcePoolTest
 
     }
 
-    private Task<Resource> ResourceFactory(int _)
+    private Task<Resource> ResourceFactory(int _, CancellationToken cancellationToken)
         => Task.FromResult(new Resource());
 
     private sealed class Resource : IDisposable

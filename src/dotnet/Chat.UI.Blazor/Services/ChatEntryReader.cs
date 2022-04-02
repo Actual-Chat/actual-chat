@@ -3,16 +3,20 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public sealed class ChatEntryReader
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-    private IChats Chats { get; }
 
+    public IChats Chats { get; }
     public Session Session { get; init; } = Session.Null;
     public Symbol ChatId { get; init; }
     public ChatEntryType EntryType { get; init; }
     public TimeSpan MaxBeginsAtDisorder { get; init; } = TimeSpan.FromSeconds(15);
-    public TimeSpan ExtraChatTileInvalidationWaitTimeout { get; init; } = TimeSpan.FromMilliseconds(50);
 
-    public ChatEntryReader(IChats chats)
-        => Chats = chats;
+    public ChatEntryReader(IChats chats, Session session, Symbol chatId, ChatEntryType entryType)
+    {
+        Chats = chats;
+        Session = session;
+        ChatId = chatId;
+        EntryType = entryType;
+    }
 
     public async Task<ChatEntry?> Get(long id, CancellationToken cancellationToken)
     {
