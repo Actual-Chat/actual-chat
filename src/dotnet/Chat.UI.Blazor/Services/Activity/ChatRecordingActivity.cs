@@ -68,7 +68,8 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
                     using var maxDurationTokenSource = new CancellationTokenSource(Constants.Chat.MaxEntryDuration);
                     using var commonTokenSource = cancellationToken.LinkWith(maxDurationTokenSource.Token);
                     await EntryReader.GetWhen(
-                            entry.Id, e => e is not { IsStreaming: true },
+                            entry.Id,
+                            e => e is not { IsStreaming: true },
                             commonTokenSource.Token
                         ).ConfigureAwait(false);
                     await Owner.Clocks.CpuClock.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
