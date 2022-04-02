@@ -11,8 +11,7 @@ public class ChatPlayback : SafeAsyncDisposableBase
     private readonly MomentClockSet _clocks;
     private readonly ILogger _log;
 
-    public ChatPlayer? this[Symbol chatId] // Won't create dependency
-        => _players.GetValueOrDefault(chatId);
+    public IReadOnlyDictionary<Symbol, ChatPlayer> Players => _players;
 
     public ChatPlayback(IServiceProvider services)
     {
@@ -62,14 +61,14 @@ public class ChatPlayback : SafeAsyncDisposableBase
     {
         var computed = await Computed.Capture(ct => _state.GetMode(chatId, ct), cancellationToken)
             .ConfigureAwait(false);
-        _ = this[chatId]?.Stop();
+        _ = Players.GetValueOrDefault(chatId)?.Stop();
         await computed.When(m => m is ChatPlaybackMode.None or ChatPlaybackMode.RealtimeMuted, cancellationToken)
             .ConfigureAwait(false);
     }
 
     public Task Stop(Symbol chatId, PlaybackKind playbackKind, CancellationToken cancellationToken)
     {
-        var player = this[chatId];
+        var player = Players.GetValueOrDefault(chatId);
         return player == null || player.PlaybackKindState.ValueOrDefault != playbackKind
             ? Task.CompletedTask
             : Stop(chatId, cancellationToken);
