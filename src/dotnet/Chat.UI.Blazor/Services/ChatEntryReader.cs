@@ -61,6 +61,24 @@ public sealed class ChatEntryReader
         return null;
     }
 
+    public async Task<ChatEntry?> GetWhen(
+        long id,
+        Func<ChatEntry?, bool> predicate,
+        CancellationToken cancellationToken)
+    {
+        var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(id);
+        var cTile = await Computed.Capture(
+                ct => Chats.GetTile(Session, ChatId, EntryType, idTile.Range, ct),
+                cancellationToken
+            ).ConfigureAwait(false);
+
+        cTile = await cTile.When(
+                t => predicate(t.Entries.FirstOrDefault(e => e.Id == id)),
+                cancellationToken
+            ).ConfigureAwait(false);
+        return cTile.Value.Entries.FirstOrDefault(e => e.Id == id);
+    }
+
     public async IAsyncEnumerable<ChatEntry> ReadAll(
         Range<long> idRange,
         [EnumeratorCancellation] CancellationToken cancellationToken)

@@ -62,56 +62,55 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
         await foreach (var entry in entries.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsEmpty)
                 continue;
-            _ = Task.Run(() => ProcessEntry(entry, cancellationToken), cancellationToken);
+            AddActiveEntry(entry);
+            _ = BackgroundTask.Run(async () => {
+                try {
+                    using var maxDurationTokenSource = new CancellationTokenSource(Constants.Chat.MaxEntryDuration);
+                    using var commonTokenSource = cancellationToken.LinkWith(maxDurationTokenSource.Token);
+                    await EntryReader.GetWhen(
+                            entry.Id, e => e is not { IsStreaming: true },
+                            commonTokenSource.Token
+                        ).ConfigureAwait(false);
+                    await Owner.Clocks.CpuClock.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) {
+                    if (e is not OperationCanceledException)
+                        _log.LogError(e, "Error while waiting for entry streaming completion");
+                    // We should catch every exception here
+                }
+                RemoveActiveEntry(entry);
+            }, CancellationToken.None);
         }
     }
 
-    private async Task ProcessEntry(ChatEntry entry, CancellationToken cancellationToken)
+    private void AddActiveEntry(ChatEntry entry)
     {
-        var authorId = entry.AuthorId;
         bool isAuthorSetChanged;
         lock (Lock) {
-            isAuthorSetChanged = _activeEntries.All(e => e.AuthorId != authorId);
+            isAuthorSetChanged = _activeEntries.All(e => e.AuthorId != entry.AuthorId);
             _activeEntries = _activeEntries.Add(entry);
         }
         using (Computed.Invalidate()) {
             _ = GetActiveChatEntries(default);
             if (isAuthorSetChanged) {
                 _ = GetActiveAuthorIds(default);
-                _ = IsAuthorActive(authorId, default);
+                _ = IsAuthorActive(entry.AuthorId, default);
             }
         }
+    }
 
-        try {
-            var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entry.Id);
-            var cTile = await Computed.Capture(
-                ct => Owner.Chats.GetTile(Owner.Session, ChatId, EntryReader.EntryType, idTile.Range, ct),
-                cancellationToken
-                ).ConfigureAwait(false);
-
-            using var maxDurationTokenSource = new CancellationTokenSource(Constants.Chat.MaxEntryDuration);
-            using var commonTokenSource = cancellationToken.LinkWith(maxDurationTokenSource.Token);
-            await cTile.When(
-                tile => !(tile.Entries.FirstOrDefault(e => e.Id == entry.Id)?.IsStreaming ?? false),
-                commonTokenSource.Token
-                ).ConfigureAwait(false);
-            await Owner.Clocks.CpuClock.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            if (e is not OperationCanceledException)
-                _log.LogError(e, nameof(ProcessEntry) + " failed");
-            // We should catch every exception here
-        }
-
+    private void RemoveActiveEntry(ChatEntry entry)
+    {
+        bool isAuthorSetChanged;
         lock (Lock) {
             _activeEntries = _activeEntries.Remove(entry);
-            isAuthorSetChanged = _activeEntries.All(e => e.AuthorId != authorId);
+            isAuthorSetChanged = _activeEntries.All(e => e.AuthorId != entry.AuthorId);
         }
         using (Computed.Invalidate()) {
             _ = GetActiveChatEntries(default);
             if (isAuthorSetChanged) {
                 _ = GetActiveAuthorIds(default);
-                _ = IsAuthorActive(authorId, default);
+                _ = IsAuthorActive(entry.AuthorId, default);
             }
         }
     }
