@@ -22,6 +22,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
     private readonly IUserInfos _userInfos;
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
+    private readonly ICommander _commander;
 
     public ChatsBackend(IServiceProvider services) : base(services)
     {
@@ -31,6 +32,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         _userInfos = Services.GetRequiredService<IUserInfos>();
         _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
+        _commander = Services.GetRequiredService<ICommander>();
     }
 
     // [ComputeMethod]
@@ -75,8 +77,11 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
+        if (chat == null) {
+            if (chatId.IsDirectAuthorChatId())
+                return ChatPermissions.Read | ChatPermissions.Write;
             return 0;
+        }
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
 
@@ -296,6 +301,60 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
         return default;
+    }
+
+    /// <summary> The filter which creates chat for direct conversation between chat authors</summary>
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    public virtual async Task OnUpsertEntry(
+        IChatsBackend.UpsertEntryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+
+        }
+        else {
+            var chatId = command.Entry.ChatId;
+            if (chatId.IsDirectAuthorChatId()) {
+                _ = await GetOrCreateRealChatId(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+        // if (Computed.IsInvalidating())
+        //     return;
+        //
+        // var model = context.Items.Get<ChatAuthor>()!;
+        // if (!model.UserId.IsEmpty)
+        //     return;
+        // await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
+        //     .ConfigureAwait(false);
+    }
+
+    private async Task<Symbol> GetOrCreateRealChatId(Symbol chatId, Symbol ownerAuthorId, CancellationToken cancellationToken)
+    {
+        // string GetRealChatId()
+        // {
+        //     var targetAuthorId = chatId.ExtractAuthorId();
+        //     var a = ownerAuthorId;
+        //     var b = targetAuthorId;
+        //     if (string.Compare(a.Value, b.Value, StringComparison.Ordinal) > 0)
+        //         (a, b) = (b, a);
+        //     return "direct:" + a + ":" + b;
+        // }
+        //
+        // var realChatId = GetRealChatId();
+        // var chat = await Get(realChatId, cancellationToken).ConfigureAwait(false);
+        // if (chat == null) {
+        //     var realChat = new Chat {
+        //         Id = realChatId,
+        //         ChatType = ChatType.Direct,
+        //         Title = "",
+        //     };
+        //     var createChatCommand = new IChatsBackend.CreateChatCommand(realChat);
+        //     chat = await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+        //     _chatAuthorsBackend.GetOrCreate()
+        // }
+        return Symbol.Empty;
     }
 
     // [CommandHandler]

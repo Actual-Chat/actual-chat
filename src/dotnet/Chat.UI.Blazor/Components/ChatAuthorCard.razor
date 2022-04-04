@@ -1,3 +1,4 @@
+@using System.Net
 <div class="w-[200px]">
     <div class="flex flex-row">
         <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
@@ -17,6 +18,9 @@
             <button type="button" class="text-toggle-on" disabled="@_addingContact" @onclick="AddContact">Add to Contacts</button>
         </div>
     }
+    <div class="mt-4 hover:bg-gray-200">
+        <button type="button" class="text-toggle-on" @onclick="SendMessage">Send Message</button>
+    </div>
 </div>
 
 @code {
@@ -26,8 +30,10 @@
     private bool _addingContact;
 
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
 
     [CascadingParameter]
     BlazoredModalInstance ModalInstance { get; set; } = null!;
@@ -57,5 +63,12 @@
         if (e.IsCompletedSuccessfully)
             _addedContact = true;
         _addingContact = false;
+    }
+
+    private async Task SendMessage() {
+        // TODO(DF): is it possible to create chat later on first message posting?
+        var directChat = await Chats.GetOrCreateAuthorsDirectChat(Session, ChatAuthorId, default);
+        var encodedUrl = WebUtility.UrlEncode(directChat.Id);
+        Nav.NavigateTo("/direct/" + encodedUrl);
     }
 }

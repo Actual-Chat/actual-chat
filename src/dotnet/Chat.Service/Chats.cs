@@ -37,35 +37,45 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken)
+    public virtual async Task<Chat> GetOrCreateAuthorsDirectChat(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
-            return null;
+        if (!ChatAuthor.TryParse(chatAuthorId, out var chatId, out var localId1))
+            throw new InvalidOperationException();
+        var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null)
+            throw new InvalidOperationException();
+        var chatAuthor2 = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!ChatAuthor.TryParse(chatAuthor2.Id, out _, out var localId2))
+            throw new InvalidOperationException();
+        if (localId1 > localId2)
+            (localId1, localId2) = (localId2, localId1);
+        var directChatId = chatId + ":" + localId1 + ":" + localId2;
+        var chat = await _chatsBackend.Get(directChatId, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return chat;
+        var owners = ImmutableArray<Symbol>.Empty;
+        if (!chatAuthor.UserId.IsEmpty)
+            owners = owners.Add(chatAuthor.UserId);
+        if (!chatAuthor2.UserId.IsEmpty)
+            owners = owners.Add(chatAuthor2.UserId);
+        chat = new Chat {
+            Id = directChatId,
+            ChatType = ChatType.Direct,
+            Title = "",
+            OwnerIds = owners
+        };
+        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
+        chat = await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+        // TODO(DF): to think how to add link to chat to contacts after first message is posted.
+        return chat;
+    }
 
-        var userContact = await _userContactsBackend.Get(userContactId, cancellationToken).ConfigureAwait(false);
-        if (userContact == null || userContact.OwnerUserId != user.Id)
-            return null;
-
-        var firstUserId = user.Id;
-        var secondUserId = userContact.TargetUserId;
-        if (string.Compare(firstUserId, secondUserId, StringComparison.Ordinal) < 0) {
-            (firstUserId, secondUserId) = (secondUserId, firstUserId);
-        }
-        var directChatId = "direct:" + firstUserId + ":" + secondUserId;
-        var directChat = await _chatsBackend.Get(directChatId, cancellationToken).ConfigureAwait(false);
-        if (directChat == null) {
-            var pmChatInfo = new Chat {
-                Id = directChatId,
-                OwnerIds = ImmutableArray<Symbol>.Empty.Add(firstUserId).Add(secondUserId),
-                Title = "Direct chat",
-                ChatType = ChatType.Direct
-            };
-            var createChatCommand = new IChatsBackend.CreateChatCommand(pmChatInfo);
-            directChat = await _chatsBackend.CreateChat(createChatCommand, cancellationToken).ConfigureAwait(false);
-        }
-        directChat = directChat with { Title = userContact.Name };
-        return directChat;
+    public virtual async Task<Chat?> GetDirectChat(Session session, string chatIdentifier, CancellationToken cancellationToken)
+    {
+        var isAuthorsChatIdentifier = chatIdentifier.IsAuthorsDirectChat();
+        if (isAuthorsChatIdentifier)
+            return await GetDirectAuthorsChatById(session, chatIdentifier, cancellationToken).ConfigureAwait(false);
+        return await GetDirectChatByContact(session, chatIdentifier, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -282,5 +292,75 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!enoughPermissions && requiredPermissions==ChatPermissions.Read)
             return await _inviteCodesBackend.CheckIfInviteCodeUsed(session, chatId, cancellationToken).ConfigureAwait(false);
         return enoughPermissions;
+    }
+
+
+    private async Task<Chat?> GetDirectChatByContact(Session session, string userContactId, CancellationToken cancellationToken)
+    {
+        var userContact = await _userContactsBackend.Get(userContactId, cancellationToken).ConfigureAwait(false);
+        if (userContact == null)
+            return null;
+        // if (userContact == null) {
+        //     if (ChatAuthor.TryGetChatId(userContactId, out var chatId)) {
+        //         var chatAuthor = await _chatAuthorsBackend.Get(chatId, userContactId, true, default)
+        //             .ConfigureAwait(false);
+        //         if (chatAuthor != null) {
+        //             var directChatId1 =  chatAuthor.Id.CreateDirectAuthorChatId();
+        //             return new Chat {
+        //                 Id = directChatId1,
+        //                 Title = chatAuthor.Name,
+        //             };
+        //         }
+        //     }
+        // }
+
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return null;
+        if (userContact.OwnerUserId != user.Id)
+            return null;
+
+        var firstUserId = user.Id;
+        var secondUserId = userContact.TargetUserId;
+        if (string.Compare(firstUserId, secondUserId, StringComparison.Ordinal) < 0)
+            (firstUserId, secondUserId) = (secondUserId, firstUserId);
+
+        var directChatId = "direct:" + firstUserId + ":" + secondUserId;
+        var directChat = await _chatsBackend.Get(directChatId, cancellationToken).ConfigureAwait(false);
+        if (directChat == null) {
+            var pmChatInfo = new Chat {
+                Id = directChatId,
+                OwnerIds = ImmutableArray<Symbol>.Empty.Add(firstUserId).Add(secondUserId),
+                Title = "Direct chat",
+                ChatType = ChatType.Direct
+            };
+            var createChatCommand = new IChatsBackend.CreateChatCommand(pmChatInfo);
+            directChat = await _chatsBackend.CreateChat(createChatCommand, cancellationToken).ConfigureAwait(false);
+        }
+
+        directChat = directChat with {Title = userContact.Name};
+        return directChat;
+    }
+
+    private async Task<Chat?> GetDirectAuthorsChatById(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+        var separatorIndex = chatId.IndexOf(":");
+        var originalChatId = chatId.Substring(0, separatorIndex);
+        var originalChat = await _chatsBackend.Get(originalChatId, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user2Id = chat.OwnerIds.FirstOrDefault(c => c != user.Id);
+        var newTitle = "unknown";
+        ChatAuthor? chatAuthor2 = null;
+        if (!user2Id.IsEmpty)
+            chatAuthor2 = await _chatAuthorsBackend.GetByUserId(originalChatId, user2Id, true, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor2 != null)
+            newTitle = chatAuthor2.Name;
+        if (originalChat != null)
+            newTitle += " (" + originalChat.Title + ")";
+        chat = chat with { Title = newTitle };
+        return chat;
     }
 }
