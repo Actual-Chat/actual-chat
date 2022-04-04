@@ -5,7 +5,7 @@ public record NotificationEntry(string Title, string Content, Moment Notificatio
 public record UserNotificationEntry(string UserId, string Title, string Content, Moment NotificationTime)
     : NotificationEntry(Title, Content, NotificationTime);
 
-public record ChatNotificationEntry(string ChatId, string Title, string Content, Moment NotificationTime)
+public record ChatNotificationEntry(string ChatId, string AuthorId, string Title, string Content, Moment NotificationTime)
     : NotificationEntry(Title, Content, NotificationTime);
 
 public record TopicNotificationEntry(string Topic, string Title, string Content, Moment NotificationTime)

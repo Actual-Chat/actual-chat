@@ -2,6 +2,7 @@
 using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
+using ActualChat.Notification.Backend;
 using ActualChat.Notification.BackgroundProcesses;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
@@ -53,18 +54,17 @@ public class NotificationModule : HostModule<NotificationSettings>
             return false;
         });
 
-        fusion.AddComputeService<INotifications, Notifications>();
+        fusion.AddComputeService<Notifications>();
+        services.AddSingleton<INotifications>(c => c.GetRequiredService<Notifications>());
+        services.AddSingleton<INotificationsBackend>(c => c.GetRequiredService<Notifications>());
 
         services.AddSingleton<INotificationPublisher, NotificationPublisher>();
         services.AddSingleton<IChatEventHandler<NewChatEntryEvent>, ChatEventHandler<NewChatEntryEvent>>();
-        // services.AddSingleton<IChatEventHandler<InviteToChatEvent>, ChatEventHandler<InviteToChatEvent>>();
         services.AddSingleton<IChatEventNotificationGenerator<NewChatEntryEvent>, NewChatEntryNotificationGenerator>();
 
         services.AddHostedService<ChatEventNotificationProcess<NewChatEntryEvent>>();
 
-        var firebaseApp = FirebaseApp.Create(new AppOptions {
-            Credential = GoogleCredential.GetApplicationDefault(),
-        });
+        var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
         var firebaseMessaging = FirebaseMessaging.GetMessaging(firebaseApp);
         services.AddSingleton(firebaseMessaging);
     }

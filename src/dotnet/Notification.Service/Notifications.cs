@@ -47,11 +47,23 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
 
         var dbDevices = await dbContext.Devices
             .Where(d => d.UserId == userId)
-            .OrderBy(e => e.CreatedAt)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var entries = dbDevices.Select(d => d.ToModel()).ToArray();
         return entries;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<string[]> GetSubscribers(string chatId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        return await dbContext.ChatSubscriptions
+            .Where(cs => cs.ChatId == chatId)
+            .Select(cs => cs.UserId)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -106,8 +118,10 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         var (session, chatId) = command;
         if (Computed.IsInvalidating()) {
             var isNew = context.Operation().Items.GetOrDefault(false);
-            if (isNew)
+            if (isNew) {
                 _ = IsSubscribedToChat(session, chatId, default);
+                _ = GetSubscribers(chatId, default);
+            }
             return default;
         }
 
@@ -145,8 +159,10 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         var (session, chatId) = command;
         if (Computed.IsInvalidating()) {
             var isRemoved = context.Operation().Items.GetOrDefault(false);
-            if (isRemoved)
+            if (isRemoved) {
                 _ = IsSubscribedToChat(session, chatId, default);
+                _ = GetSubscribers(chatId, default);
+            }
             return;
         }
 

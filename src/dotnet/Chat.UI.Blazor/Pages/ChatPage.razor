@@ -1,5 +1,8 @@
 @page "/chat"
 @page "/chat/{ChatId}"
+@page "/direct/{ContactId}"
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.Notification
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
 
@@ -53,22 +56,16 @@
     private IComputed? _activeChatIdComputed;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IJSRuntime Js { get; set; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public string ContactId { get; set; } = "";
     [Parameter, SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
     public string? AutoJoin { get; set; }
-
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChats Chats { get; set; } = null!;
-    [Inject] private ChatUI ChatUI { get; set; } = null!;
-    [Inject] private NavigationManager Nav { get; set; } = null!;
-    [Inject] private IJSRuntime Js { get; set; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
