@@ -361,7 +361,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         context.Operation().Items.Set(entry);
         context.Operation().Items.Set(isNew);
 
-        var chatEvent = new NewChatEntryEvent(entry.ChatId, entry.Id, entry.Content);
+        var chatEvent = new NewChatEntryEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content);
         await _newChatEntryEventStreamer.Publish(chatEvent, cancellationToken).ConfigureAwait(false);
 
         return entry;
