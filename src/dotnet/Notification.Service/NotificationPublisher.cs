@@ -43,7 +43,7 @@ public class NotificationPublisher : INotificationPublisher
         var chatAuthor = await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
         var userId = chatAuthor?.UserId;
 
-        var topicMessage = new MulticastMessage {
+        var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
                 Title = title,
@@ -91,12 +91,12 @@ public class NotificationPublisher : INotificationPublisher
         var deviceIdGroups = userIds
             .Where(uid => !string.Equals(uid, userId, StringComparison.Ordinal))
             .ToAsyncEnumerable()
-            .SelectMany(userId => GetDevices(userId, cancellationToken))
-            .Buffer(500, cancellationToken);
+            .SelectMany(uid => GetDevices(uid, cancellationToken))
+            .Buffer(200, cancellationToken);
 
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
-            topicMessage.Tokens = deviceGroup;
-            await _firebaseMessaging.SendMulticastAsync(topicMessage, cancellationToken).ConfigureAwait(false);
+            multicastMessage.Tokens = deviceGroup;
+            await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken).ConfigureAwait(false);
         }
 
         async IAsyncEnumerable<string> GetDevices(string userId1, [EnumeratorCancellation] CancellationToken cancellationToken1)
