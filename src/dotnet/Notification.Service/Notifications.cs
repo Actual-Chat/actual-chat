@@ -129,11 +129,11 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
         if (!user.IsAuthenticated)
             return false;
 
-        var userId = user.Id;
+        var userId = (string)user.Id;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingSubscription = await dbContext.ChatSubscriptions
-            .FindAsync(new object?[] { userId, chatId }, cancellationToken)
+            .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
         var dbSubscription = existingSubscription;

@@ -1,0 +1,48 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification
+@inherits ComputedStateComponent<ChatNotificationToggle.Model>
+
+@{
+    var isSubscribed = State.Value.IsSubscribed;
+    var toggleClass = isSubscribed
+        ? "text-toggle-on"
+        : "text-secondary";
+}
+
+<div class="chat-control-button p-1">
+    @* onclick="@Toggle" *@
+    <button @onclick="_ => Toggle()" >
+        <i class="fa fa-bell fa-lg @toggleClass" aria-hidden="true"></i>
+    </button>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotifications Notifications { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+
+    [Parameter] public string ChatId { get; set; } = "";
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new () };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isSubscribed = await Notifications.IsSubscribedToChat(Session, ChatId, cancellationToken);
+        return new() {
+            IsSubscribed = isSubscribed,
+        };
+    }
+
+    private async Task Toggle() {
+        var isSubscribed = State.Value.IsSubscribed;
+        ICommand command = isSubscribed
+            ? new INotifications.UnsubscribeToChatCommand(Session, ChatId)
+            : new INotifications.SubscribeToChatCommand(Session, ChatId);
+        await Cmd.Run(command);
+    }
+
+    public class Model {
+        public bool IsSubscribed { get; set; }
+    }
+
+}
