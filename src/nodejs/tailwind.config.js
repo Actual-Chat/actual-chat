@@ -35,6 +35,7 @@ module.exports = {
         'success': 'var(--button-color-success)',
         'toggle-off': 'var(--text-color-toggle-off)',
         'toggle-on': 'var(--text-color-toggle-on)',
+        'toggle-hover': 'var(--text-color-toggle-hover)',
         'rating': 'var(--text-color-rating)',
         'inline-code': 'var(--text-inline-code)',
         'white': 'var(--text-color-white)',
@@ -52,6 +53,8 @@ module.exports = {
         'separate-line': 'var(--background-separate-line)',
         'button-cancel': 'var(--button-color-cancel)',
         'button-cancel-hover': 'var(--button-color-cancel-hover)',
+        'button-error': 'var(--button-color-error)',
+        'button-error-hover': 'var(--button-color-error-hover)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',

@@ -14,31 +14,19 @@
                 Nav.NavigateTo(Nav.GetUriWithQueryParameter(ChatPage.AutoJoinQueryParameter, (string?)null));
             }
         } else if (model.CanJoin) {
-            <div class="bg-accent rounded-md mx-3 py-1.5 px-2 flex justify-center">
+            <div class="bg-secondary rounded-md mx-3 py-1.5 px-2 flex justify-center">
                 <AuthorizeView>
                     <Authorized>
                         <div>
                             <span class="inline-flex">To post or talk,</span>
-                            <button type="button" @onclick="@OnJoin"
-                                    class="bg-button-success group rounded-md
-                                           hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
-                                           inline-flex px-3 py-1 text-sm font-medium leading-5
-                                           transition duration-150 ease-in-out">
-                                <span class="fill-current text-accent-muted group-hover:text-primary">Join this chat</span>
-                            </button>
+                            <Button Caption="Join this chat" OnClick="@OnJoin"></Button>
                         </div>
                     </Authorized>
                     <NotAuthorized>
                         <div>
                             <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1" ContentPositionClass="left-0 bottom-10"/></div>
                             <span class="inline-flex mx-1">or</span>
-                            <button type="button" @onclick="@OnJoin"
-                                    class="bg-button-success group rounded-md border border-success
-                                               hover:bg-button-success-hover hover:border-success-muted active:bg-button-success-hover
-                                               inline-flex px-3 py-1 text-sm font-medium leading-5
-                                               transition duration-150 ease-in-out">
-                                <span class="fill-current text-accent-muted group-hover:text-primary">Join this chat anonymously</span>
-                            </button>
+                            <Button Caption="Join this chat anonymously" OnClick="@OnJoin" Class="btn-cancel"></Button>
                         </div>
                     </NotAuthorized>
                 </AuthorizeView>

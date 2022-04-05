@@ -1,0 +1,12 @@
+@using System.Text
+@namespace ActualChat.UI.Blazor.Components
+@inherits Button
+
+@{
+    var cls = "btn-inline " + Class;
+}
+
+<Button @onclick="OnClick" class="@cls" title="@Title" disabled="@Disabled">
+    <span>@Caption</span>
+    @ChildContent
+</Button>

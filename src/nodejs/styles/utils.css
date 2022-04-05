@@ -74,7 +74,7 @@ button.off {
 
 .btn {
     @apply leading-5 transition duration-150 ease-in-out outline-none mx-2 place-content-center items-center;
-    @apply inline-flex py-2 px-3 text-sm font-medium fill-current rounded-md border;
+    @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
     @apply h-10 min-w-20;
 }
 
@@ -90,12 +90,23 @@ button.off {
     @apply active:bg-button-cancel-hover;
 }
 
+.btn.btn-error {
+    @apply bg-button-error border-button-error text-white;
+    @apply hover:bg-button-error-hover hover:border-button-error-hover;
+    @apply active:bg-button-error-hover;
+}
+
 .btn.btn-sm {
     @apply h-8 min-w-12 text-xs;
 }
 
 .btn.btn-lg {
     @apply h-12 min-w-24 text-base;
+}
+
+.btn.btn-inline {
+    @apply text-base font-semibold text-secondary bg-accent hover:bg-primary;
+    @apply p-1 mx-0 min-w-0 border-0;
 }
 
 

@@ -1,4 +1,34 @@
 
+.theme-dark {
+    --background-primary: #1a1f25;
+    --background-secondary: #222831;
+    --background-accent: #4b5666;
+    --background-online: #31d872;
+    --background-message-hover: #1f2937;
+
+    --text-color-primary: #f6f7f9;
+    --text-color-primary-muted: #d3d9e1;
+    --text-color-secondary: #bcc4d1;
+    --text-color-secondary-muted: #8e9cb1;
+    --text-color-accent: #d3d9e1;
+    --text-color-accent-muted: #e1e6eb;
+    --text-color-toggle-off: #d87330;
+    --text-color-toggle-on: #31d872;
+
+    --button-color-success: #27ce68;
+    --button-color-success-hover: #21ad58;
+    --button-color-accent: #ffffff;
+    --button-color-accent-hover: #FAFAFA;
+    --button-color-error: #95211E;
+    --button-color-error-hover: #D94440;
+
+    --glow-max: #fff;
+    --glow-mid: rgb(181, 240, 255);
+    --glow-min: rgb(0, 204, 255);
+    --playing-glow-max: rgb(181, 240, 255);
+    --playing-glow-mid: rgb(0, 204, 255);
+    --playing-glow-min: rgb(0, 139, 173);
+}
 :root, .theme-light {
     --background-primary: #edf0f3;
     --background-secondary: #F9FAFB;
@@ -18,16 +48,19 @@
     --text-color-white: #ffffff;
     --text-color-placeholder: #788ea5;
     --text-color-toggle-off: #d87330;
-    --text-color-toggle-on: #08a7ed;
+    --text-color-toggle-on: #09a7ec;
+    --text-color-toggle-hover: #0899d9;
     --text-color-rating: #fde047;
     --text-inline-code: #D83E52;
 
-    --button-color-success: #09a7ec;
-    --button-color-success-hover: #0899d9;
+    --button-color-success: #0ea5e9;
+    --button-color-success-hover: #0284c7;
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
-    --button-color-cancel: #5b7289;
-    --button-color-cancel-hover: #4b5e71;
+    --button-color-cancel: #64748b;
+    --button-color-cancel-hover: #475569;
+    --button-color-error: #ef4444;
+    --button-color-error-hover: #dc2626;
     --error-toast-header: #feb7b7;
     --error-toast-body: #fecaca;
 
