@@ -51,37 +51,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return peerChatId;
     }
 
-    public virtual async Task<Chat> GetOrCreateAuthorsDirectChat(Session session, string chatAuthorId, CancellationToken cancellationToken)
-    {
-        if (!ChatAuthor.TryParse(chatAuthorId, out var chatId, out var localId1))
-            throw new InvalidOperationException();
-        var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor == null)
-            throw new InvalidOperationException();
-        var chatAuthor2 = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (!ChatAuthor.TryParse(chatAuthor2.Id, out _, out var localId2))
-            throw new InvalidOperationException();
-        var peerChatId = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId1, localId2);
-        var chat = await _chatsBackend.Get(peerChatId, cancellationToken).ConfigureAwait(false);
-        if (chat != null)
-            return chat;
-        var owners = ImmutableArray<Symbol>.Empty;
-        if (!chatAuthor.UserId.IsEmpty)
-            owners = owners.Add(chatAuthor.UserId);
-        if (!chatAuthor2.UserId.IsEmpty)
-            owners = owners.Add(chatAuthor2.UserId);
-        chat = new Chat {
-            Id = peerChatId,
-            ChatType = ChatType.Direct,
-            Title = "",
-            OwnerIds = owners
-        };
-        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
-        chat = await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
-        // TODO(DF): to think how to add link to chat to contacts after first message is posted.
-        return chat;
-    }
-
     public virtual async Task<Chat?> GetDirectChat(Session session, string chatIdentifier, CancellationToken cancellationToken)
     {
         var isAuthorsChatIdentifier = PeerChatExt.IsAuthorsPeerChatId(chatIdentifier);

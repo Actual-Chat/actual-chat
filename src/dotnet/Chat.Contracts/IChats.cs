@@ -9,9 +9,6 @@ public interface IChats
     Task<Symbol> GetAuthorsPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Chat> GetOrCreateAuthorsDirectChat(Session session, string chatAuthorId, CancellationToken cancellationToken);
-
-    [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
