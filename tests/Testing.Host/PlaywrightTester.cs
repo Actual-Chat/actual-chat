@@ -12,10 +12,10 @@ public sealed class PlaywrightTester : WebClientTester
         : base(appHost, clientServices)
     { }
 
-    public override void Dispose()
+    public override async ValueTask DisposeAsync()
     {
         _playwright?.Dispose();
-        base.Dispose();
+        await base.DisposeAsync();
     }
 
     public async ValueTask<IPlaywright> GetPlaywright()

@@ -4,7 +4,6 @@ using ActualChat.Redis.Module;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Authentication.Commands;
@@ -23,6 +22,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
     public UsersServiceModule(IPluginInfoProvider.Query _) : base(_) { }
     [ServiceConstructor]
     public UsersServiceModule(IPluginHost plugins) : base(plugins) { }
+
+    public static HttpMessageHandler? GoogleBackchannelHttpHandler { get; set; }
 
     public override void InjectServices(IServiceCollection services)
     {
@@ -50,6 +51,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             options.ClientId = Settings.GoogleClientId;
             options.ClientSecret = Settings.GoogleClientSecret;
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            options.BackchannelHttpHandler = GoogleBackchannelHttpHandler;
         }).AddMicrosoftAccount(options => {
             options.ClientId = Settings.MicrosoftAccountClientId;
             options.ClientSecret = Settings.MicrosoftAccountClientSecret;
