@@ -1,23 +1,35 @@
 using ActualChat.Chat;
 using ActualChat.Notification.Backend;
+using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
+using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public class NotificationPublisher : INotificationPublisher
+public sealed class NotificationPublisher : INotificationPublisher
 {
     private readonly FirebaseMessaging _firebaseMessaging;
     private readonly INotificationsBackend _notificationsBackend;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
+    private readonly ILogger<NotificationPublisher> _log;
+    private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
+    private readonly MomentClockSet _clocks;
 
     public NotificationPublisher(
         FirebaseMessaging firebaseMessaging,
         INotificationsBackend notificationsBackend,
-        IChatAuthorsBackend chatAuthorsBackend)
+        IChatAuthorsBackend chatAuthorsBackend,
+        IDbContextFactory<NotificationDbContext> dbContextFactory,
+        MomentClockSet clocks,
+        ILogger<NotificationPublisher> log)
     {
         _firebaseMessaging = firebaseMessaging;
         _notificationsBackend = notificationsBackend;
         _chatAuthorsBackend = chatAuthorsBackend;
+        _dbContextFactory = dbContextFactory;
+        _clocks = clocks;
+        _log = log;
     }
 
     public Task Publish(NotificationEntry notification, CancellationToken cancellationToken)
@@ -38,7 +50,7 @@ public class NotificationPublisher : INotificationPublisher
         ChatNotificationEntry chatNotificationEntry,
         CancellationToken cancellationToken)
     {
-        var (chatId, authorId, title, content, _) = chatNotificationEntry;
+        var (chatId, entryId, authorId, title, content, _) = chatNotificationEntry;
         var userIds = await _notificationsBackend.GetSubscribers(chatId, cancellationToken).ConfigureAwait(false);
         var chatAuthor = await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
         var userId = chatAuthor?.UserId;
@@ -96,7 +108,16 @@ public class NotificationPublisher : INotificationPublisher
 
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
             multicastMessage.Tokens = deviceGroup;
-            await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken).ConfigureAwait(false);
+            var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken).ConfigureAwait(false);
+
+            if (batchResponse.FailureCount > 0)
+                _log.LogWarning("Notification messages were not sent. NotificationCount = {NotificationCount}",
+                    batchResponse.FailureCount);
+
+            if (batchResponse.SuccessCount > 0)
+                _ = Task.Run(
+                    () => PersistMessages(chatId, entryId, deviceGroup, batchResponse.Responses, cancellationToken),
+                    cancellationToken);
         }
 
         async IAsyncEnumerable<string> GetDevices(string userId1, [EnumeratorCancellation] CancellationToken cancellationToken1)
@@ -104,6 +125,31 @@ public class NotificationPublisher : INotificationPublisher
             var devices = await _notificationsBackend.GetDevices(userId1, cancellationToken1).ConfigureAwait(false);
             foreach (var device in devices)
                 yield return device.DeviceId;
+        }
+
+        async Task PersistMessages(
+            string chatId1,
+            long entryId1,
+            IReadOnlyList<string> tokens,
+            IReadOnlyList<SendResponse> responses,
+            CancellationToken cancellationToken1)
+        {
+            var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            var dbMessages = responses
+                .Zip(tokens)
+                .Where(pair => pair.First.IsSuccess)
+                .Select(pair => new DbMessage {
+                    Id = pair.First.MessageId,
+                    DeviceId = pair.Second,
+                    ChatId = chatId1,
+                    ChatEntryId = entryId1,
+                    CreatedAt = _clocks.SystemClock.Now,
+                });
+
+            await dbContext.AddRangeAsync(dbMessages, cancellationToken1).ConfigureAwait(false);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
