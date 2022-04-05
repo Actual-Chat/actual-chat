@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;
 
-public interface IWebTester : IDisposable
+public interface IWebTester : IDisposable, IAsyncDisposable
 {
     public AppHost AppHost { get; }
     public IServiceProvider AppServices { get; }
@@ -44,12 +44,15 @@ public class WebClientTester : IWebClientTester
     }
 
     public virtual void Dispose()
+        => DisposeAsync().AsTask().Wait();
+
+    public virtual async ValueTask DisposeAsync()
     {
         if (!_mustDisposeClientServices || !_clientServicesLazy.IsValueCreated)
             return;
 
         if (ClientServices is IAsyncDisposable ad)
-            ad.DisposeAsync().AsTask().Wait();
+            await ad.DisposeAsync();
         else if (ClientServices is IDisposable d)
             d.Dispose();
     }

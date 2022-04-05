@@ -35,4 +35,10 @@ public class BlazorTester : TestContext, IWebTester
             return;
         _serviceScope.Dispose();
     }
+
+    public ValueTask DisposeAsync()
+    {
+        Dispose(true);
+        return ValueTask.CompletedTask;
+    }
 }

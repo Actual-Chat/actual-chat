@@ -1,26 +1,13 @@
-using System.Text;
+using System.Net.Mail;
 using ActualChat.Users.Db;
+using Microsoft.AspNetCore.Authentication.Google;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
 public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
 {
-    private static readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) {
-        "alex.yakunin@actual.chat",
-        "alex.yakunin@gmail.com",
-        "alexey.kochetov@actual.chat",
-        "undead00@gmail.com",
-        "vladimir.chirikov@actual.chat",
-        "vovanchig@gmail.com",
-        "dmitry.filippov@actual.chat",
-        "crui3er@gmail.com",
-        "andrey.yakunin@actual.chat",
-        "iqmulator@gmail.com",
-        "alexis.kochetov@gmail.com",
-        "alexey.kochetov@actual.chat",
-        "vobewaf244@douwx.com", // Test account
-    };
+    private const string AdminEmailDomain = "actual.chat";
 
     private readonly IAuthBackend _authBackend;
     private readonly IDbEntityResolver<string, DbUser> _dbUserResolver;
@@ -57,11 +44,26 @@ public class UserInfos : DbServiceBase<UsersDbContext>, IUserInfos
         var user = await _authBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
         if (user == null || !user.IsAuthenticated)
             return false;
-        if (user.Identities.Any(i =>
-                StringComparer.Ordinal.Equals(i.Key.Schema, "internal")
-                || StringComparer.Ordinal.Equals(i.Key.Schema, "test")))
+
+        // TODO: looks odd when we hardcode some tests related auth providers in production code.
+        if (HasIdentity(user, "internal") || HasIdentity(user, "test"))
             return true;
-        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email) ?? "";
-        return AdminEmails.Contains(email);
+
+        return BelongsToActualChatDomain(user);
     }
+
+    private bool BelongsToActualChatDomain(User user)
+    {
+        if (!HasIdentity(user, GoogleDefaults.AuthenticationScheme))
+            return false;
+
+        var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email);
+        if (string.IsNullOrEmpty(email) || !MailAddress.TryCreate(email, out var mailAddress))
+            return false;
+
+        return mailAddress.Host.Equals(AdminEmailDomain, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool HasIdentity(User user, string provider)
+        => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.OrdinalIgnoreCase);
 }
