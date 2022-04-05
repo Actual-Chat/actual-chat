@@ -47,10 +47,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chatAuthor2 = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!ChatAuthor.TryParse(chatAuthor2.Id, out _, out var localId2))
             throw new InvalidOperationException();
-        if (localId1 > localId2)
-            (localId1, localId2) = (localId2, localId1);
-        var directChatId = chatId + ":" + localId1 + ":" + localId2;
-        var chat = await _chatsBackend.Get(directChatId, cancellationToken).ConfigureAwait(false);
+        var peerChatId = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId1, localId2);
+        var chat = await _chatsBackend.Get(peerChatId, cancellationToken).ConfigureAwait(false);
         if (chat != null)
             return chat;
         var owners = ImmutableArray<Symbol>.Empty;
@@ -59,7 +57,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!chatAuthor2.UserId.IsEmpty)
             owners = owners.Add(chatAuthor2.UserId);
         chat = new Chat {
-            Id = directChatId,
+            Id = peerChatId,
             ChatType = ChatType.Direct,
             Title = "",
             OwnerIds = owners
@@ -72,7 +70,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     public virtual async Task<Chat?> GetDirectChat(Session session, string chatIdentifier, CancellationToken cancellationToken)
     {
-        var isAuthorsChatIdentifier = chatIdentifier.IsAuthorsDirectChat();
+        var isAuthorsChatIdentifier = PeerChatExt.IsAuthorsPeerChatId(chatIdentifier);
         if (isAuthorsChatIdentifier)
             return await GetDirectAuthorsChatById(session, chatIdentifier, cancellationToken).ConfigureAwait(false);
         return await GetDirectChatByContact(session, chatIdentifier, cancellationToken).ConfigureAwait(false);
@@ -347,8 +345,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
             return null;
-        var separatorIndex = chatId.IndexOf(":");
-        var originalChatId = chatId.Substring(0, separatorIndex);
+        var originalChatId = PeerChatExt.GerOriginalChatId(chatId);
         var originalChat = await _chatsBackend.Get(originalChatId, cancellationToken).ConfigureAwait(false);
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         var user2Id = chat.OwnerIds.FirstOrDefault(c => c != user.Id);

@@ -19,6 +19,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
+    private readonly IUserContactsBackend _userContactsBackend;
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
     private readonly IUserInfos _userInfos;
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
@@ -29,6 +30,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _authBackend = Services.GetRequiredService<IAuthBackend>();
         _chatAuthors = Services.GetRequiredService<IChatAuthors>();
         _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
+        _userContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
         _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         _userInfos = Services.GetRequiredService<IUserInfos>();
         _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
@@ -78,7 +80,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null) {
-            if (chatId.IsDirectAuthorChatId())
+            if (PeerChatExt.IsPeerChatId(chatId))
                 return ChatPermissions.Read | ChatPermissions.Write;
             return 0;
         }
@@ -310,16 +312,21 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        if (Computed.IsInvalidating()) {
-
-        }
-        else {
+        if (!Computed.IsInvalidating()) {
             var chatId = command.Entry.ChatId;
-            if (chatId.IsDirectAuthorChatId()) {
+            if (PeerChatExt.IsPeerChatId(chatId)) {
                 _ = await GetOrCreateRealChatId(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
             }
         }
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+
+        if (!Computed.IsInvalidating()) {
+            var chatId = command.Entry.ChatId;
+            if (PeerChatExt.IsPeerChatId(chatId)) {
+                // no need to wait
+                _ = EnsureContactsCreated(chatId, cancellationToken).ConfigureAwait(false);
+            }
+        }
         // if (Computed.IsInvalidating())
         //     return;
         //
@@ -328,6 +335,61 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         //     return;
         // await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
         //     .ConfigureAwait(false);
+    }
+
+    private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
+    {
+        if (!PeerChatExt.IsAuthorsPeerChatId(chatId))
+            return;
+        if (!PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var id1, out var id2))
+            return;
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || chat.OwnerIds.Length != 2)
+            return;
+
+        var user1 = chat.OwnerIds[0];
+        var user2 = chat.OwnerIds[1];
+        var chatAuthor1 = await EnsureChatAuthorCreated(originalChatId, user1, cancellationToken).ConfigureAwait(false);
+        var chatAuthor2 = await EnsureChatAuthorCreated(originalChatId, user2, cancellationToken).ConfigureAwait(false);
+        await EnsureContactsCreated(chatId, user1, chatAuthor2, cancellationToken).ConfigureAwait(false);
+        await EnsureContactsCreated(chatId, user2, chatAuthor1, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ChatAuthor> EnsureChatAuthorCreated(Symbol chatId, Symbol userId, CancellationToken cancellationToken)
+    {
+        var chatAuthor = await _chatAuthorsBackend.GetByUserId(chatId, userId, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor != null)
+            return chatAuthor;
+        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
+        chatAuthor = await _commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
+        return chatAuthor;
+    }
+
+    private async Task EnsureContactsCreated(Symbol chatId, Symbol ownerUserId, ChatAuthor chatAuthor, CancellationToken cancellationToken)
+    {
+        var contactExists = await _userContactsBackend.IsInContactList(ownerUserId, chatAuthor.Id, cancellationToken).ConfigureAwait(false);
+        if (contactExists)
+            return;
+        var contactName = await GetContactName(chatId, chatAuthor.UserId, cancellationToken).ConfigureAwait(false);
+        var userContact = new UserContact {
+            OwnerUserId = ownerUserId,
+            Name = contactName,
+            TargetUserId = chatAuthor.Id
+        };
+        var command = new IUserContactsBackend.CreateContactCommand(userContact);
+        _ = await _commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string> GetContactName(Symbol chatId, Symbol userId, CancellationToken cancellationToken)
+    {
+        var originalChatId = PeerChatExt.GerOriginalChatId(chatId);
+        var chat = await Get(originalChatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await _chatAuthorsBackend.GetByUserId(originalChatId, userId, true, cancellationToken)
+            .ConfigureAwait(false);
+        var name = chatAuthor?.Name ?? "unknown";
+        if (chat != null)
+            name += " (" + chat.Title + ")";
+        return name;
     }
 
     private async Task<Symbol> GetOrCreateRealChatId(Symbol chatId, Symbol ownerAuthorId, CancellationToken cancellationToken)
