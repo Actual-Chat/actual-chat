@@ -9,15 +9,5 @@ fetch('/dist/config/firebase.config.json')
 
         onBackgroundMessage(messaging, payload => {
             console.log('[messaging-service-worker.ts] Received background message ', payload);
-            // // Customize notification here
-            // const notificationTitle = 'Background Message Title';
-            // const notificationOptions = {
-            //     body: 'Background Message body.',
-            //     icon: '/firebase-logo.png'
-            // };
-
-            // // @ts-expect-error
-            // self.registration.showNotification(notificationTitle,
-            //     notificationOptions);
         });
     });

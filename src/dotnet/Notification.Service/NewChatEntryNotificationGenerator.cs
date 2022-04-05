@@ -28,7 +28,7 @@ public class NewChatEntryNotificationGenerator: IChatEventNotificationGenerator<
         var clock = _clocks.CoarseSystemClock;
         var title = await GetTitle(chatEvent.ChatId, cancellationToken).ConfigureAwait(false);
         var content = GetContent(chatEvent.Content);
-            yield return new ChatNotificationEntry(chatEvent.ChatId, chatEvent.AuthorId, title, content, clock.Now);
+        yield return new ChatNotificationEntry(chatEvent.ChatId, chatEvent.AuthorId, title, content, clock.Now);
     }
 
     private async Task<string> GetTitle(string chatId, CancellationToken cancellationToken)

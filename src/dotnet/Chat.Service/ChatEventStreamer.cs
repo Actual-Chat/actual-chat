@@ -12,8 +12,8 @@ public sealed class ChatEventStreamer<T>: IChatEventStreamer<T> where T: IChatEv
             FullMode = BoundedChannelFullMode.DropOldest,
         });
 
-    public async Task Publish(T chatEvent, CancellationToken cancellationToken)
-        => await _eventChannel.Writer.WriteAsync(chatEvent, cancellationToken).ConfigureAwait(false);
+    public Task Publish(T chatEvent, CancellationToken cancellationToken)
+        => _eventChannel.Writer.WriteAsync(chatEvent, cancellationToken).AsTask();
 
     public IAsyncEnumerable<(T Event, string Position)> Read(string streamPosition, CancellationToken cancellationToken)
         => _eventChannel.Reader.ReadAllAsync(cancellationToken).Select(v => (v, "0-0"));
