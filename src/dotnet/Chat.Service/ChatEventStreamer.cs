@@ -9,7 +9,7 @@ public sealed class ChatEventStreamer<T>: IChatEventStreamer<T> where T: IChatEv
 
     public ChatEventStreamer()
         => _eventChannel = Channel.CreateBounded<T>(new BoundedChannelOptions(1000) {
-            FullMode = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.Wait,
         });
 
     public Task Publish(T chatEvent, CancellationToken cancellationToken)
