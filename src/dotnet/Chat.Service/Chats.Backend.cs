@@ -312,35 +312,26 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        if (!Computed.IsInvalidating()) {
-            var chatId = command.Entry.ChatId;
-            if (PeerChatExt.IsPeerChatId(chatId)) {
-                _ = await GetOrCreateRealChatId(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
-            }
+        if (Computed.IsInvalidating()) {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+            return;
         }
+
+        var chatId = command.Entry.ChatId;
+        if (PeerChatExt.IsAuthorsPeerChatId(chatId)) {
+            _ = await GetOrCreateRealChatId(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
+        }
+
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
-        if (!Computed.IsInvalidating()) {
-            var chatId = command.Entry.ChatId;
-            if (PeerChatExt.IsPeerChatId(chatId)) {
-                // no need to wait
-                _ = EnsureContactsCreated(chatId, cancellationToken).ConfigureAwait(false);
-            }
+        if (PeerChatExt.IsAuthorsPeerChatId(chatId)) {
+            // no need to wait
+            _ = EnsureContactsCreated(chatId, cancellationToken).ConfigureAwait(false);
         }
-        // if (Computed.IsInvalidating())
-        //     return;
-        //
-        // var model = context.Items.Get<ChatAuthor>()!;
-        // if (!model.UserId.IsEmpty)
-        //     return;
-        // await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
-        //     .ConfigureAwait(false);
     }
 
     private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (!PeerChatExt.IsAuthorsPeerChatId(chatId))
-            return;
         if (!PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var id1, out var id2))
             return;
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -392,31 +383,31 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return name;
     }
 
-    private async Task<Symbol> GetOrCreateRealChatId(Symbol chatId, Symbol ownerAuthorId, CancellationToken cancellationToken)
+    private async Task<Chat> GetOrCreateRealChatId(Symbol peerChatId, Symbol ownerAuthorId, CancellationToken cancellationToken)
     {
-        // string GetRealChatId()
-        // {
-        //     var targetAuthorId = chatId.ExtractAuthorId();
-        //     var a = ownerAuthorId;
-        //     var b = targetAuthorId;
-        //     if (string.Compare(a.Value, b.Value, StringComparison.Ordinal) > 0)
-        //         (a, b) = (b, a);
-        //     return "direct:" + a + ":" + b;
-        // }
-        //
-        // var realChatId = GetRealChatId();
-        // var chat = await Get(realChatId, cancellationToken).ConfigureAwait(false);
-        // if (chat == null) {
-        //     var realChat = new Chat {
-        //         Id = realChatId,
-        //         ChatType = ChatType.Direct,
-        //         Title = "",
-        //     };
-        //     var createChatCommand = new IChatsBackend.CreateChatCommand(realChat);
-        //     chat = await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
-        //     _chatAuthorsBackend.GetOrCreate()
-        // }
-        return Symbol.Empty;
+        var chat = await Get(peerChatId, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return chat;
+        PeerChatExt.TryParseAuthorsPeerChatId(peerChatId, out var originalChatId, out var localId1, out var localId2);
+        var chatAuthor1 = await _chatAuthorsBackend
+            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId1), false, cancellationToken)
+            .ConfigureAwait(false);
+        var chatAuthor2 = await _chatAuthorsBackend
+            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId2), false, cancellationToken)
+            .ConfigureAwait(false);
+        if (chatAuthor1 == null || chatAuthor2 == null)
+            throw new InvalidOperationException("Application invariant violated");
+        if (chatAuthor1.UserId.IsEmpty || chatAuthor2.UserId.IsEmpty)
+            throw new InvalidOperationException("Anonymous chat authors are not supported");
+        var owners = ImmutableArray<Symbol>.Empty
+            .Add(chatAuthor1.UserId).Add(chatAuthor2.UserId);
+        chat = new Chat {
+            Id = peerChatId,
+            ChatType = ChatType.Direct,
+            OwnerIds = owners
+        };
+        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
+        return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

@@ -37,6 +37,20 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task<Symbol> GetAuthorsPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken)
+    {
+        if (!ChatAuthor.TryParse(chatAuthorId, out var chatId, out var localId1))
+            return Symbol.Empty;
+        var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null)
+            return Symbol.Empty;
+        var chatAuthor2 = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (!ChatAuthor.TryParse(chatAuthor2.Id, out _, out var localId2))
+            return Symbol.Empty;
+        var peerChatId = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId1, localId2);
+        return peerChatId;
+    }
+
     public virtual async Task<Chat> GetOrCreateAuthorsDirectChat(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
         if (!ChatAuthor.TryParse(chatAuthorId, out var chatId, out var localId1))
@@ -342,22 +356,51 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     private async Task<Chat?> GetDirectAuthorsChatById(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
+        var canRead = await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        if (!canRead)
             return null;
-        var originalChatId = PeerChatExt.GerOriginalChatId(chatId);
-        var originalChat = await _chatsBackend.Get(originalChatId, cancellationToken).ConfigureAwait(false);
+        var chat = await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        chat ??= new Chat {
+            Id = chatId,
+            ChatType = ChatType.Direct
+        };
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        var user2Id = chat.OwnerIds.FirstOrDefault(c => c != user.Id);
-        var newTitle = "unknown";
-        ChatAuthor? chatAuthor2 = null;
-        if (!user2Id.IsEmpty)
-            chatAuthor2 = await _chatAuthorsBackend.GetByUserId(originalChatId, user2Id, true, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor2 != null)
-            newTitle = chatAuthor2.Name;
-        if (originalChat != null)
-            newTitle += " (" + originalChat.Title + ")";
+        var newTitle = await GetAuthorsPeerChatTitle(chatId, user, cancellationToken).ConfigureAwait(false);
         chat = chat with { Title = newTitle };
         return chat;
+    }
+
+    private async Task<string> GetAuthorsPeerChatTitle(Symbol chatId, User user, CancellationToken cancellationToken)
+    {
+        PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var localId1, out var localId2);
+        var chatAuthor1 = await _chatAuthorsBackend
+            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId1), false, cancellationToken)
+            .ConfigureAwait(false);
+        var chatAuthor2 = await _chatAuthorsBackend
+            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId2), false, cancellationToken)
+            .ConfigureAwait(false);
+        var targetUserId = Symbol.Empty;
+        if (chatAuthor1 != null && chatAuthor2 != null) {
+            if (chatAuthor1.UserId == user.Id)
+                targetUserId = chatAuthor2.UserId;
+            else if (chatAuthor2.UserId == user.Id)
+                targetUserId = chatAuthor1.UserId;
+        }
+        return await GetAuthorsPeerChatTitle(originalChatId, targetUserId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string> GetAuthorsPeerChatTitle(Symbol originalChatId, Symbol userId, CancellationToken cancellationToken)
+    {
+        var originalChat = await _chatsBackend.Get(originalChatId, cancellationToken).ConfigureAwait(false);
+        ChatAuthor? chatAuthor = null;
+        if (!userId.IsEmpty)
+            chatAuthor = await _chatAuthorsBackend.GetByUserId(originalChatId, userId, true, cancellationToken)
+                .ConfigureAwait(false);
+        var newTitle = "unknown";
+        if (chatAuthor != null)
+            newTitle = chatAuthor.Name;
+        if (originalChat != null)
+            newTitle += " (" + originalChat.Title + ")";
+        return newTitle;
     }
 }
