@@ -80,9 +80,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null) {
-            if (PeerChatExt.IsPeerChatId(chatId))
-                return ChatPermissions.Read | ChatPermissions.Write;
-            return 0;
+            return await GetNewPeerChatPermissions(chatId, chatPrincipalId, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
@@ -389,12 +388,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (chat != null)
             return chat;
         PeerChatExt.TryParseAuthorsPeerChatId(peerChatId, out var originalChatId, out var localId1, out var localId2);
-        var chatAuthor1 = await _chatAuthorsBackend
-            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId1), false, cancellationToken)
-            .ConfigureAwait(false);
-        var chatAuthor2 = await _chatAuthorsBackend
-            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId2), false, cancellationToken)
-            .ConfigureAwait(false);
+        var chatAuthor1 = await _chatAuthorsBackend.Get(originalChatId, localId1, false, cancellationToken).ConfigureAwait(false);
+        var chatAuthor2 = await _chatAuthorsBackend.Get(originalChatId, localId2, false, cancellationToken).ConfigureAwait(false);
         if (chatAuthor1 == null || chatAuthor2 == null)
             throw new InvalidOperationException("Application invariant violated");
         if (chatAuthor1.UserId.IsEmpty || chatAuthor2.UserId.IsEmpty)
@@ -567,5 +562,25 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             authorId = null;
             userId = chatPrincipalId;
         }
+    }
+
+    private async Task<ChatPermissions> GetNewPeerChatPermissions(string chatId, string chatPrincipalId, CancellationToken cancellationToken)
+    {
+        if (!PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var localId1, out var localId2))
+            return ChatPermissions.None;
+        ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
+        if (string.IsNullOrEmpty(userId))
+            return ChatPermissions.None;
+        var originalChatPermissions = await GetPermissions(originalChatId, userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!originalChatPermissions.HasFlag(ChatPermissions.Read))
+            return ChatPermissions.None;
+        var chatAuthor1 = await _chatAuthorsBackend.Get(originalChatId, localId1, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor1 != null && chatAuthor1.UserId == userId)
+            return ChatPermissions.Read | ChatPermissions.Write;
+        var chatAuthor2 = await _chatAuthorsBackend.Get(originalChatId, localId2, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor2 != null && chatAuthor2.UserId == userId)
+            return ChatPermissions.Read | ChatPermissions.Write;
+        return ChatPermissions.None;
     }
 }

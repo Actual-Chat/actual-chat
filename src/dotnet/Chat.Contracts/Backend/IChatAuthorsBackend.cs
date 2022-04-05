@@ -5,6 +5,8 @@ public interface IChatAuthorsBackend
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatAuthor?> Get(string chatId, string authorId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
+    Task<ChatAuthor?> Get(string chatId, long localAuthorId, bool inherit, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
     Task<ChatAuthor?> GetByUserId(string chatId, string userId, bool inherit, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
     Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken);

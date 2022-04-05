@@ -30,20 +30,20 @@ public static class PeerChatExt
     }
 
     public static bool TryParseAuthorsPeerChatId(string chatId, out string originalChatId,
-        out long chatAuthorId1, out long chatAuthorId2)
+        out long chatAuthorLocalId1, out long chatAuthorLocalId2)
     {
         originalChatId = "";
-        chatAuthorId1 = 0;
-        chatAuthorId2 = 0;
+        chatAuthorLocalId1 = 0;
+        chatAuthorLocalId2 = 0;
         if (!IsPeerChatId(chatId))
             return false;
         var parts = chatId.Split(":");
         if (parts.Length != 4)
             return false;
         originalChatId = parts[1];
-        if (!long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out chatAuthorId1))
+        if (!long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out chatAuthorLocalId1))
             return false;
-        if (!long.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out chatAuthorId2))
+        if (!long.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out chatAuthorLocalId2))
             return false;
         return true;
     }

@@ -342,12 +342,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private async Task<string> GetAuthorsPeerChatTitle(Symbol chatId, User user, CancellationToken cancellationToken)
     {
         PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var localId1, out var localId2);
-        var chatAuthor1 = await _chatAuthorsBackend
-            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId1), false, cancellationToken)
-            .ConfigureAwait(false);
-        var chatAuthor2 = await _chatAuthorsBackend
-            .Get(originalChatId, DbChatAuthor.ComposeId(originalChatId, localId2), false, cancellationToken)
-            .ConfigureAwait(false);
+        var chatAuthor1 = await _chatAuthorsBackend.Get(originalChatId, localId1, false, cancellationToken).ConfigureAwait(false);
+        var chatAuthor2 = await _chatAuthorsBackend.Get(originalChatId, localId2, false, cancellationToken).ConfigureAwait(false);
         var targetUserId = Symbol.Empty;
         if (chatAuthor1 != null && chatAuthor2 != null) {
             if (chatAuthor1.UserId == user.Id)

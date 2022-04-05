@@ -22,6 +22,12 @@ public partial class ChatAuthors
     }
 
     // [ComputeMethod]
+    public virtual Task<ChatAuthor?> Get(
+        string chatId, long localAuthorId, bool inherit,
+        CancellationToken cancellationToken)
+        => Get(chatId, DbChatAuthor.ComposeId(chatId, localAuthorId), inherit, cancellationToken);
+
+    // [ComputeMethod]
     public virtual async Task<ChatAuthor?> GetByUserId(
         string chatId, string userId, bool inherit,
         CancellationToken cancellationToken)
