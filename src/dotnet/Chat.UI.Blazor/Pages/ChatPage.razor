@@ -2,6 +2,7 @@
 @page "/chat/{ChatId}"
 @page "/direct/{ContactId}"
 @inherits ComputedStateComponent<ChatPage.Model>
+@layout ChatPageLayout
 
 @{
     _lastRenderedModel = State.LatestNonErrorValue ?? new();
@@ -18,31 +19,31 @@
     <WhenError Error="error"/>
 } else if (chat != null) {
     @* @key=... ensures child components are recreated on navigation to another chat *@
-    <PageWithHeaderAndFooter @key="chat.Id" Class="chat-page">
-        <Header>
-            <CascadingValue Value="chat">
-                <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
-                    <NavbarIcon/>
-                    <ChatHeader/>
-                    <ChatActivityPanel/>
-                </div>
-                <div class="w-full flex justify-center px-2">
-                    <ChatHeaderPanel/>
-                </div>
-            </CascadingValue>
-        </Header>
-        <Body>
-            <CascadingValue Value="chat">
-                <ChatView/>
-                <HistoricalPlaybackPanel/>
-            </CascadingValue>
-        </Body>
-        <Footer>
-            <CascadingValue Value="chat">
-                <ChatFooter AutoJoin="@AutoJoin"/>
-            </CascadingValue>
-        </Footer>
-    </PageWithHeaderAndFooter>
+    <RenderIntoSlot Name="MainHeader" @key="@(chat.Id + "-header")">
+        <CascadingValue Value="chat">
+            <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
+                <NavbarIcon/>
+                <ChatHeader/>
+                <ChatActivityPanel/>
+            </div>
+            <div class="w-full flex justify-center px-2">
+                <ChatHeaderPanel/>
+            </div>
+        </CascadingValue>
+    </RenderIntoSlot>
+
+    <RenderIntoSlot Name="MainFooter" @key="@(chat.Id + "-footer")">
+        <CascadingValue Value="chat">
+            <ChatFooter AutoJoin="@AutoJoin"/>
+        </CascadingValue>
+    </RenderIntoSlot>
+
+    <NoComponent @key="chat.Id">
+        <CascadingValue Value="chat">
+            <ChatView/>
+            <HistoricalPlaybackPanel/>
+        </CascadingValue>
+    </NoComponent>
 } else {
     <div>Loading...</div>
 }

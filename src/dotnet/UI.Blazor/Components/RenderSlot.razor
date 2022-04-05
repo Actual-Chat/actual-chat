@@ -4,7 +4,7 @@
 @State.ValueOrDefault
 
 @code {
-    [Inject] private RenderSlotRegistry Registry { get; init; } = null!;
+    [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
 
@@ -12,5 +12,5 @@
         => new () { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<RenderFragment?> ComputeState(CancellationToken cancellationToken)
-        => await Registry.GetState(Name).Use(cancellationToken);
+        => await RenderVars.RenderSlot(Name).Use(cancellationToken);
 }

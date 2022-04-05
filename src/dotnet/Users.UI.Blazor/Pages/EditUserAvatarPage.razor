@@ -1,8 +1,8 @@
 @page "/user/avatar/{AvatarId}"
 
-<div class="px-2 py-2">
-    <UserAvatarEditor AvatarId="@AvatarId" CancelRequested="NavigateBack" OnUpdated="NavigateBack" />
-</div>
+<MainHeader>Your avatar</MainHeader>
+
+<UserAvatarEditor AvatarId="@AvatarId" CancelRequested="NavigateBack" OnUpdated="NavigateBack" />
 
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;

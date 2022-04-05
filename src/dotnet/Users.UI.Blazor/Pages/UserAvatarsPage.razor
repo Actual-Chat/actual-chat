@@ -1,6 +1,8 @@
 ﻿@page "/user/avatars"
 
-<UserAvatarsEditor Title="User avatars" CancelRequested="NavigateHome" />
+<MainHeader>User avatars</MainHeader>
+
+<UserAvatarsEditor CancelRequested="NavigateHome" />
 
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;

@@ -1,16 +1,17 @@
 @page "/chat/{ChatId}/edit/avatar"
 
-@if (_pickUserAvatar) {
-    var title = $"Pick user avatar in \"<b>{_chatName}</b>\" chat:";
-    <UserAvatarsEditor Title="@title" ChatId="@ChatId" CancelRequested="NavigateToChat" />
+@if (_isUserAuthenticated) {
+    <MainHeader>Your user avatar in "<b>@_chatName</b>" chat</MainHeader>
+    <UserAvatarsEditor ChatId="@ChatId" CancelRequested="NavigateToChat" />
 }
 else if (!_avatarId.IsNullOrEmpty()) {
+    <MainHeader>Your avatar</MainHeader>
     <UserAvatarEditor AvatarId="@_avatarId" CancelRequested="NavigateToChat" OnUpdated="NavigateToChat" />
 }
 
 @code {
+    private bool _isUserAuthenticated;
     private string? _avatarId = "";
-    private bool _pickUserAvatar;
     private string? _chatName;
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
@@ -23,9 +24,9 @@ else if (!_avatarId.IsNullOrEmpty()) {
 
     protected override async Task OnParametersSetAsync() {
         var user = await Auth.GetUser(Session);
-        _pickUserAvatar = user.IsAuthenticated;
+        _isUserAuthenticated = user.IsAuthenticated;
         if (user.IsAuthenticated) {
-            // pick one avatar from user's list
+            // Pick an avatar from user's list of avatars
             var chat = await Chats.Get(Session, ChatId, default);
             _chatName = chat?.Title ?? "";
         } else {

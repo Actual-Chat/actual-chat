@@ -2,10 +2,8 @@
 @inherits ComputedStateComponent<UserAvatarsEditor.Model>
 @{
     var items = State.LatestNonErrorValue.Items;
-    var title = new MarkupString(Title);
 }
 
-<PageHeader Title="Avatars"/>
 @if (items.Length == 0) {
     <div class="absolute top-0 left-0 h-full w-full grid justify-items-center items-center">
         <span>Create your first Avatar</span>
@@ -63,7 +61,6 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public Action? CancelRequested { get; set; } = default!;
 

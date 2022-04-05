@@ -1,11 +1,16 @@
 ﻿@page "/join/{InviteCode}"
 
-@if (_useResult != null && !_useResult.IsValid) {
-    <h3>Invite code is invalid or expired.</h3>
+<MainHeader>Joining via invite code</MainHeader>
+
+@if (_inviteCodeUseResult is { IsValid: false }) {
+    @* NOTE(AY): We should use error style here! *@
+    <p>Invite code is invalid or expired!</p>
+} else {
+    <p>Processing invite code, please wait...</p>
 }
 
 @code {
-    private InviteCodeUseResult? _useResult;
+    private InviteCodeUseResult? _inviteCodeUseResult;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
@@ -18,11 +23,11 @@
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
         var cmd = new IInviteCodes.UseInviteCodeCommand(Session, InviteCode);
-        var runResult = await Cmd.Run(cmd);
-        _useResult = runResult.Result;
-        if (!_useResult.IsValid)
+        var cmdResult = await Cmd.Run(cmd);
+        _inviteCodeUseResult = cmdResult.Result;
+        if (!_inviteCodeUseResult.IsValid)
             return;
-        var uri = $"/chat/{_useResult.ChatId}";
+        var uri = $"/chat/{_inviteCodeUseResult.ChatId}";
         if (AutoJoin != null)
             uri = uri + "?" + ChatPage.AutoJoinQueryParameter + "=" + AutoJoin;
         Nav.NavigateTo(uri);
