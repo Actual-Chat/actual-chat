@@ -18,7 +18,7 @@
             <button type="button" class="text-toggle-on" disabled="@_addingContact" @onclick="AddContact">Add to Contacts</button>
         </div>
     }
-    @if (!_peerChatId.IsEmpty) {
+    @if (_canSendMessage) {
         <div class="mt-4 hover:bg-gray-200">
             <button type="button" class="text-toggle-on" @onclick="SendMessage">Send Message</button>
         </div>
@@ -30,7 +30,7 @@
     private bool _canAddContact;
     private bool _addedContact;
     private bool _addingContact;
-    private Symbol _peerChatId;
+    private bool _canSendMessage;
 
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
@@ -57,7 +57,7 @@
             throw new InvalidOperationException("Invalid chat author id given");
         _canAddContact = await ChatAuthors.CanAddToContacts(Session, ChatAuthorId, default);
 
-        _peerChatId = await Chats.GetAuthorsPeerChatId(Session, ChatAuthorId, default);
+        _canSendMessage = await Chats.CanSendPeerChatMessage(Session, ChatAuthorId, default);
     }
 
     private async Task AddContact() {
@@ -71,7 +71,8 @@
     }
 
     private async Task SendMessage() {
-        var encodedUrl = WebUtility.UrlEncode(_peerChatId);
+        var peerChatId = await Chats.GetAuthorsPeerChatId(Session, ChatAuthorId, default);
+        var encodedUrl = WebUtility.UrlEncode(peerChatId);
         Nav.NavigateTo("/direct/" + encodedUrl);
     }
 }

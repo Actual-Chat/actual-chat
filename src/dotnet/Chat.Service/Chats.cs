@@ -39,16 +39,30 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
     public virtual async Task<Symbol> GetAuthorsPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
-        if (!ChatAuthor.TryParse(chatAuthorId, out var chatId, out var localId1))
+        if (! await CanSendPeerChatMessage(session, chatAuthorId, cancellationToken).ConfigureAwait(false))
             return Symbol.Empty;
-        var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
-        if (chatAuthor == null)
+        if (!ChatAuthor.TryParse(chatAuthorId, out var chatId, out var localId1))
             return Symbol.Empty;
         var chatAuthor2 = await _chatAuthorsBackend.GetOrCreate(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!ChatAuthor.TryParse(chatAuthor2.Id, out _, out var localId2))
             return Symbol.Empty;
         var peerChatId = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId1, localId2);
         return peerChatId;
+    }
+
+    public virtual async Task<bool> CanSendPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken)
+    {
+        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
+            return false;
+        if (!await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false))
+            return false;
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return false;
+        var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor == null || chatAuthor.UserId.IsEmpty || chatAuthor.UserId == user.Id)
+            return false;
+        return true;
     }
 
     public virtual async Task<Chat?> GetDirectChat(Session session, string chatIdentifier, CancellationToken cancellationToken)
