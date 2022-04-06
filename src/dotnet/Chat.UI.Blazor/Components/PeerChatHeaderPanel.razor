@@ -1,0 +1,60 @@
+@inherits ComputedStateComponent<PeerChatHeaderPanel.Model>
+
+@{
+    var model = State.LatestNonErrorValue;
+}
+
+@if (model.ShowAddContact) {
+    var disabled = !model.CanAddContact || _addingContact;
+    <button type="button" class="text-toggle-on" disabled="@disabled" @onclick="@(() => AddContact(model.ChatAuthorId))">
+        Add User Contact
+    </button>
+}
+
+@code {
+    private bool _addingContact;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject] private UICommandRunner Cmd { get; set; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        EnableStateHasChangedCallAfterEvent = true;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new () };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (PeerChatExt.IsAuthorsPeerChatId(Chat.Id)) {
+            var chatAuthorId = await Chats.GetPeerChatTargetId(Session, Chat.Id, cancellationToken);
+            if (chatAuthorId != null) {
+                var canAddContact = await ChatAuthors.CanAddToContacts(Session, chatAuthorId, default);
+                return new Model {
+                    ChatAuthorId = chatAuthorId,
+                    ShowAddContact = canAddContact,
+                    CanAddContact = true
+                };
+            }
+        }
+        return new Model();
+    }
+
+    private async Task AddContact(string chatAuthorId) {
+        if (_addingContact)
+            return;
+        _addingContact = true;
+        _ = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, chatAuthorId));
+        _addingContact = false;
+    }
+
+    public class Model {
+        public string ChatAuthorId { get; init; } = "";
+        public bool ShowAddContact { get; init; }
+        public bool CanAddContact { get; init; }
+    }
+}

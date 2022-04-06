@@ -68,6 +68,23 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return true;
     }
 
+    public virtual async Task<string?> GetPeerChatTargetId(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return null;
+        PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var localId1, out var localId2);
+        var chatAuthor1 = await _chatAuthorsBackend.Get(originalChatId, localId1, false, cancellationToken).ConfigureAwait(false);
+        var chatAuthor2 = await _chatAuthorsBackend.Get(originalChatId, localId2, false, cancellationToken).ConfigureAwait(false);
+        if (chatAuthor1 != null && chatAuthor2 != null) {
+            if (chatAuthor1.UserId == user.Id)
+                return chatAuthor2.Id;
+            if (chatAuthor2.UserId == user.Id)
+                return chatAuthor1.Id;
+        }
+        return null;
+    }
+
     // [ComputeMethod]
     public virtual async Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
     {

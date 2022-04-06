@@ -29,6 +29,10 @@ public class ChatsController : ControllerBase, IChats
         => _chats.CanSendPeerChatMessage(session, chatAuthorId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<string?> GetPeerChatTargetId(Session session, string chatId, CancellationToken cancellationToken)
+        => _chats.GetPeerChatTargetId(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
         => _chats.GetChats(session, cancellationToken);
 

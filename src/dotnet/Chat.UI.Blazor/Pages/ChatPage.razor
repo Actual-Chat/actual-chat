@@ -25,6 +25,11 @@
                     <ChatHeader/>
                     <ChatActivityPanel/>
                 </div>
+                @if (PeerChatExt.IsPeerChatId(chat.Id)) {
+                    <div class="w-full flex justify-center px-2">
+                        <PeerChatHeaderPanel/>
+                    </div>
+                }
                 <div class="w-full flex justify-center px-2">
                     <ChatHeaderPanel/>
                 </div>
