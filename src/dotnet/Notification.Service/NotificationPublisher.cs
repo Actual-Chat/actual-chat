@@ -107,7 +107,7 @@ public sealed class NotificationPublisher : INotificationPublisher
             .Chunk(200, cancellationToken);
 
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
-            multicastMessage.Tokens = deviceGroup;
+            multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
             var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken).ConfigureAwait(false);
 
             if (batchResponse.FailureCount > 0)
@@ -120,29 +120,30 @@ public sealed class NotificationPublisher : INotificationPublisher
                     cancellationToken);
         }
 
-        async IAsyncEnumerable<string> GetDevices(string userId1, [EnumeratorCancellation] CancellationToken cancellationToken1)
+        async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevices(string userId1, [EnumeratorCancellation] CancellationToken cancellationToken1)
         {
             var devices = await _notificationsBackend.GetDevices(userId1, cancellationToken1).ConfigureAwait(false);
             foreach (var device in devices)
-                yield return device.DeviceId;
+                yield return (device.DeviceId, userId1);
         }
 
         async Task PersistMessages(
             string chatId1,
             long entryId1,
-            IReadOnlyList<string> tokens,
+            IReadOnlyList<(string DeviceId, string UserId)> devices,
             IReadOnlyList<SendResponse> responses,
             CancellationToken cancellationToken1)
         {
+            // TODO(AK): sharding by userId
             var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
             await using var __ = dbContext.ConfigureAwait(false);
 
             var dbMessages = responses
-                .Zip(tokens)
+                .Zip(devices)
                 .Where(pair => pair.First.IsSuccess)
                 .Select(pair => new DbMessage {
                     Id = pair.First.MessageId,
-                    DeviceId = pair.Second,
+                    DeviceId = pair.Second.DeviceId,
                     ChatId = chatId1,
                     ChatEntryId = entryId1,
                     CreatedAt = _clocks.SystemClock.Now,
