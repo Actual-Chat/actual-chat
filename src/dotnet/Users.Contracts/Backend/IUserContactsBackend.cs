@@ -6,6 +6,9 @@ public interface IUserContactsBackend
     public Task<UserContact?> Get(string contactId, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    public Task<UserContact?> GetByTargetId(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     public Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken);
 
     [ComputeMethod]

@@ -8,7 +8,8 @@
 
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
     <ChildContent>
-    @foreach(var (contact, url) in contacts) {
+    @foreach(var contact in contacts) {
+        var url = PeerChatExt.CreatePeerChatLink(contact.TargetPrincipalId);
         var encodedUrl = WebUtility.UrlEncode(url);
         <NavbarLink Title="@contact.Name" Url="@($"/direct/{encodedUrl}")" IsOnline="true" />
     }
@@ -18,7 +19,7 @@
 @code {
     public class Model
     {
-        public (UserContact, string)[] Contacts { get; set; } = new (UserContact, string)[0];
+        public UserContact[] Contacts { get; init; } = new UserContact[0];
     }
 
     [Inject] private Session Session { get; set; } = null!;
@@ -30,20 +31,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var contacts = await Contacts.GetContacts(Session, cancellationToken).ConfigureAwait(false);
-        var list = new List<(UserContact, string)>();
-        foreach (var contact in contacts.OrderBy(c => c.Name)) {
-            string url = contact.Id;
-            var isAuthorsPeerChat = contact.TargetPrincipalId.Value.Contains(":");
-            if (isAuthorsPeerChat) {
-                ActualChat.Chat.ChatAuthor.Parse(contact.TargetPrincipalId.Value, out var chatId, out var localId);
-                var chatAuthor = await ChatAuthors.GetChatAuthor(Session, chatId, default);
-                ActualChat.Chat.ChatAuthor.Parse(chatAuthor!.Id, out _, out var localId2);
-                url = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId, localId2);
-            }
-            list.Add((contact, url));
-        }
         return new () {
-            Contacts = list.ToArray(),
+            Contacts = contacts.OrderBy(c => c.Name).ToArray(),
         };
     }
 }

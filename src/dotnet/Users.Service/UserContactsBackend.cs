@@ -19,6 +19,19 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return dbContact?.ToModel();
     }
 
+    public virtual async Task<UserContact?> GetByTargetId(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
+    {
+        if (ownerUserId.IsNullOrEmpty() || targetPrincipalId.IsNullOrEmpty())
+            return null;
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbContact = await dbContext.UserContacts
+            .Where(a => a.OwnerUserId == ownerUserId && a.TargetPrincipalId == targetPrincipalId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbContact?.ToModel();
+    }
+
     public virtual async Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken)
     {
         if (userId.IsNullOrEmpty())
@@ -35,28 +48,16 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
     }
 
     public virtual async Task<bool> IsInContactList(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
-    {
-        if (ownerUserId.IsNullOrEmpty() || targetPrincipalId.IsNullOrEmpty())
-            return false;
-
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbUserContact = await dbContext.UserContacts
-            .Where(a => a.OwnerUserId == ownerUserId && a.TargetPrincipalId == targetPrincipalId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbUserContact != null;
-    }
+        => await GetByTargetId(ownerUserId, targetPrincipalId, cancellationToken).ConfigureAwait(false) != null;
 
     public virtual async Task<UserContact> CreateContact(IUserContactsBackend.CreateContactCommand command, CancellationToken cancellationToken)
     {
         var contact = command.Contact;
         var ownerUserId = contact.OwnerUserId;
         if (Computed.IsInvalidating()) {
-            _ = Get(ownerUserId, default);
             _ = GetContactIds(ownerUserId, default);
             var invUserContact = CommandContext.GetCurrent().Operation().Items.Get<UserContact>()!;
-            _ = IsInContactList(invUserContact.OwnerUserId, invUserContact.TargetPrincipalId, default);
+            _ = GetByTargetId(invUserContact.OwnerUserId, invUserContact.TargetPrincipalId, default);
             _ = Get(invUserContact.Id, default);
             return default!;
         }

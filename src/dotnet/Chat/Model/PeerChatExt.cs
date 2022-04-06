@@ -1,5 +1,7 @@
 namespace ActualChat.Chat;
 
+public enum PeerChatIdKind { None, AuthorId, AuthorsPeerChatId, UserId, UsersPeerChatId }
+
 public static class PeerChatExt
 {
     private const string PeerChatIdPrefix = "p:";
@@ -16,7 +18,17 @@ public static class PeerChatExt
     {
         if (chatAuthorLocalId1 > chatAuthorLocalId2)
             (chatAuthorLocalId1, chatAuthorLocalId2) = (chatAuthorLocalId2, chatAuthorLocalId1);
-        return PeerChatIdPrefix + originalChatId + ":" + chatAuthorLocalId1 + ":" + chatAuthorLocalId2;
+        return Invariant($"{PeerChatIdPrefix}{originalChatId}:{chatAuthorLocalId1}:{chatAuthorLocalId2}");
+    }
+
+    public static string CreatePeerChatLink(string targetPrincipalId)
+        => Invariant($"{PeerChatIdPrefix}{targetPrincipalId}");
+
+    public static string CreateUsersPeerChatId(string userId1, string userId2)
+    {
+        if (string.Compare(userId1, userId2, StringComparison.Ordinal) > 0)
+            (userId1, userId2) = (userId2, userId1);
+        return Invariant($"{PeerChatIdPrefix}{userId1}:{userId2}");
     }
 
     public static string GerOriginalChatId(string chatId)
@@ -47,4 +59,29 @@ public static class PeerChatExt
             return false;
         return true;
     }
+
+    public static PeerChatIdKind GetChatIdKind(string chatIdentifier)
+    {
+        if (!IsPeerChatId(chatIdentifier))
+            return PeerChatIdKind.None;
+        if (IsAuthorsPeerChatId(chatIdentifier))
+            return PeerChatIdKind.AuthorsPeerChatId;
+        if (IsAuthorId(chatIdentifier))
+            return PeerChatIdKind.AuthorId;
+        if (IsUserId(chatIdentifier))
+            return PeerChatIdKind.UserId;
+        return PeerChatIdKind.None;
+    }
+
+    private static bool IsAuthorId(string chatId)
+        => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 2;
+
+    private static bool IsUserId(string chatId)
+        => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 1;
+
+    public static string GetChatAuthorId(string chatIdentifier)
+        => chatIdentifier.Substring(PeerChatIdPrefix.Length);
+
+    public static string GetUserId(string chatIdentifier)
+        => chatIdentifier.Substring(PeerChatIdPrefix.Length);
 }

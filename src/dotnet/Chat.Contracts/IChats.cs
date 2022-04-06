@@ -6,7 +6,7 @@ public interface IChats
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Symbol> GetAuthorsPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    Task<Symbol> GetAuthorPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<bool> CanSendPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken);

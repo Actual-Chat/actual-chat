@@ -71,7 +71,7 @@
     }
 
     private async Task SendMessage() {
-        var peerChatId = await Chats.GetAuthorsPeerChatId(Session, ChatAuthorId, default);
+        var peerChatId = await Chats.GetAuthorPeerChatId(Session, ChatAuthorId, default);
         var encodedUrl = WebUtility.UrlEncode(peerChatId);
         Nav.NavigateTo("/direct/" + encodedUrl);
     }
