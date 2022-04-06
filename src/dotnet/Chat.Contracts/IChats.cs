@@ -12,9 +12,6 @@ public interface IChats
     Task<bool> CanSendPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken);
-
-    [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]

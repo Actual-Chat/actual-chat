@@ -31,10 +31,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var canRead = await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
-        if (!canRead)
-            return null;
-        return await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var peerChatLinkKind = PeerChatExt.GetChatLinkKind(chatId);
+        switch (peerChatLinkKind) {
+            case PeerChatLinkKind.AuthorId:
+                return await GetAuthorPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
+            case PeerChatLinkKind.UserId:
+                return await GetUserPeerChat(session, chatId, cancellationToken).ConfigureAwait(false);
+            default:
+                return await GetGroupChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public virtual async Task<Symbol> GetAuthorPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken)
@@ -61,19 +66,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (chatAuthor == null || chatAuthor.UserId.IsEmpty || chatAuthor.UserId == user.Id)
             return false;
         return true;
-    }
-
-    public virtual async Task<Chat?> GetDirectChat(Session session, string chatIdentifier, CancellationToken cancellationToken)
-    {
-        var peerChatLinkKind = PeerChatExt.GetChatLinkKind(chatIdentifier);
-        switch (peerChatLinkKind) {
-            case PeerChatLinkKind.AuthorId:
-                return await GetAuthorPeerChat(session, chatIdentifier, cancellationToken).ConfigureAwait(false);
-            case PeerChatLinkKind.UserId:
-                return await GetUserPeerChat(session, chatIdentifier, cancellationToken).ConfigureAwait(false);
-            default:
-                return null;
-        }
     }
 
     // [ComputeMethod]
@@ -311,6 +303,15 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         if (!enoughPermissions && requiredPermissions==ChatPermissions.Read)
             return await _inviteCodesBackend.CheckIfInviteCodeUsed(session, chatId, cancellationToken).ConfigureAwait(false);
         return enoughPermissions;
+    }
+
+    private async Task<Chat?> GetGroupChat(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var canRead = await CheckHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken)
+            .ConfigureAwait(false);
+        if (!canRead)
+            return null;
+        return await _chatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<Chat?> GetUserPeerChat(Session session, string chatIdentifier, CancellationToken cancellationToken)
