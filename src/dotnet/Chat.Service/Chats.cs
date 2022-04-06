@@ -303,7 +303,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return null;
 
         var firstUserId = user.Id;
-        var secondUserId = userContact.TargetUserId;
+        var secondUserId = userContact.TargetPrincipalId;
         if (string.Compare(firstUserId, secondUserId, StringComparison.Ordinal) < 0)
             (firstUserId, secondUserId) = (secondUserId, firstUserId);
 

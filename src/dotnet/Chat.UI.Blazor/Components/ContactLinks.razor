@@ -33,9 +33,9 @@
         var list = new List<(UserContact, string)>();
         foreach (var contact in contacts.OrderBy(c => c.Name)) {
             string url = contact.Id;
-            var isAuthorsPeerChat = contact.TargetUserId.Value.Contains(":");
+            var isAuthorsPeerChat = contact.TargetPrincipalId.Value.Contains(":");
             if (isAuthorsPeerChat) {
-                ActualChat.Chat.ChatAuthor.Parse(contact.TargetUserId.Value, out var chatId, out var localId);
+                ActualChat.Chat.ChatAuthor.Parse(contact.TargetPrincipalId.Value, out var chatId, out var localId);
                 var chatAuthor = await ChatAuthors.GetChatAuthor(Session, chatId, default);
                 ActualChat.Chat.ChatAuthor.Parse(chatAuthor!.Id, out _, out var localId2);
                 url = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId, localId2);

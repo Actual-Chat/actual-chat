@@ -34,15 +34,15 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return chatIds;
     }
 
-    public virtual async Task<bool> IsInContactList(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsInContactList(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
     {
-        if (ownerUserId.IsNullOrEmpty() || targetUserId.IsNullOrEmpty())
+        if (ownerUserId.IsNullOrEmpty() || targetPrincipalId.IsNullOrEmpty())
             return false;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbUserContact = await dbContext.UserContacts
-            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetUserId)
+            .Where(a => a.OwnerUserId == ownerUserId && a.TargetPrincipalId == targetPrincipalId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbUserContact != null;
@@ -56,7 +56,7 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
             _ = Get(ownerUserId, default);
             _ = GetContactIds(ownerUserId, default);
             var invUserContact = CommandContext.GetCurrent().Operation().Items.Get<UserContact>()!;
-            _ = IsInContactList(invUserContact.OwnerUserId, invUserContact.TargetUserId, default);
+            _ = IsInContactList(invUserContact.OwnerUserId, invUserContact.TargetPrincipalId, default);
             _ = Get(invUserContact.Id, default);
             return default!;
         }
@@ -65,10 +65,10 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbUserContact = new DbUserContact() {
-            Id = DbUserContact.GetCompositeId(ownerUserId, contact.TargetUserId),
+            Id = DbUserContact.GetCompositeId(ownerUserId, contact.TargetPrincipalId),
             Version = VersionGenerator.NextVersion(),
             OwnerUserId = ownerUserId,
-            TargetUserId = contact.TargetUserId,
+            TargetPrincipalId = contact.TargetPrincipalId,
             Name = contact.Name,
         };
         dbContext.UserContacts.Add(dbUserContact);

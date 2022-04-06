@@ -153,7 +153,7 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         var createCommand = new IUserContactsBackend.CreateContactCommand(
             new UserContact {
                 OwnerUserId = user.Id,
-                TargetUserId = companion.Id,
+                TargetPrincipalId = companion.Id,
                 Name = companionName
             });
         return await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);

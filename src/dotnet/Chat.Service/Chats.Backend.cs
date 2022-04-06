@@ -364,7 +364,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var userContact = new UserContact {
             OwnerUserId = ownerUserId,
             Name = contactName,
-            TargetUserId = chatAuthor.Id
+            TargetPrincipalId = chatAuthor.Id
         };
         var command = new IUserContactsBackend.CreateContactCommand(userContact);
         _ = await _commander.Call(command, true, cancellationToken).ConfigureAwait(false);

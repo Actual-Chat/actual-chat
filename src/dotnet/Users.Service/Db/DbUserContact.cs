@@ -12,7 +12,7 @@ public class DbUserContact : IHasId<string>
     [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
     public string OwnerUserId { get; set; } = null!;
-    public string TargetUserId { get; set; } = null!;
+    public string TargetPrincipalId { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = null!;
 
@@ -24,7 +24,7 @@ public class DbUserContact : IHasId<string>
             Id = Id,
             Name = Name,
             OwnerUserId = OwnerUserId,
-            TargetUserId = TargetUserId,
+            TargetPrincipalId = TargetPrincipalId,
             Version = Version
         };
 
@@ -34,7 +34,7 @@ public class DbUserContact : IHasId<string>
         {
             builder.Property(a => a.Id).IsRequired();
             builder.Property(a => a.OwnerUserId).IsRequired();
-            builder.Property(a => a.TargetUserId).IsRequired();
+            builder.Property(a => a.TargetPrincipalId).IsRequired();
         }
     }
 }
