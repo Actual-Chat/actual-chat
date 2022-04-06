@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
+    <ProjectReference Include="..\Notification.Contracts\Notification.Contracts.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 

@@ -82,33 +82,35 @@ public partial class ChatAuthors
     }
 
     // [ComputeMethod]
-    public virtual async Task<string[]> GetAuthorIds(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<string>> GetAuthorIds(string chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNullOrEmpty())
-            return Array.Empty<string>();
+            return ImmutableArray<string>.Empty;
 
         var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false))
-            return await dbContext.ChatAuthors
-                .Where(a => a.ChatId == chatId)
-                .Select(a => a.Id)
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var authorIds = await dbContext.ChatAuthors
+            .Where(a => a.ChatId == chatId)
+            .Select(a => a.Id)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return ImmutableArray.Create(authorIds);
     }
 
     // [ComputeMethod]
-    public virtual async Task<string[]> GetUserIds(string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ImmutableArray<string>> GetUserIds(string chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNullOrEmpty())
-            return Array.Empty<string>();
+            return ImmutableArray<string>.Empty;
 
         var dbContext = CreateDbContext();
-        await using (var _ = dbContext.ConfigureAwait(false))
-            return await dbContext.ChatAuthors
-                .Where(a => a.ChatId == chatId && a.UserId != null)
-                .Select(a => a.UserId!)
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var userIds = await dbContext.ChatAuthors
+            .Where(a => a.ChatId == chatId && a.UserId != null)
+            .Select(a => a.UserId!)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return ImmutableArray.Create(userIds);
     }
 
     // [CommandHandler]
