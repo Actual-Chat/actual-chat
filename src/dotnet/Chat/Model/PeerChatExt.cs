@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public enum PeerChatIdKind { None, AuthorId, AuthorsPeerChatId, UserId, UsersPeerChatId }
+public enum PeerChatLinkKind { None, AuthorId, UserId }
 
 public static class PeerChatExt
 {
@@ -60,23 +60,21 @@ public static class PeerChatExt
         return true;
     }
 
-    public static PeerChatIdKind GetChatIdKind(string chatIdentifier)
+    public static PeerChatLinkKind GetChatLinkKind(string chatIdentifier)
     {
         if (!IsPeerChatId(chatIdentifier))
-            return PeerChatIdKind.None;
-        if (IsAuthorsPeerChatId(chatIdentifier))
-            return PeerChatIdKind.AuthorsPeerChatId;
-        if (IsAuthorId(chatIdentifier))
-            return PeerChatIdKind.AuthorId;
-        if (IsUserId(chatIdentifier))
-            return PeerChatIdKind.UserId;
-        return PeerChatIdKind.None;
+            return PeerChatLinkKind.None;
+        if (IsAuthorLink(chatIdentifier))
+            return PeerChatLinkKind.AuthorId;
+        if (IsUserLink(chatIdentifier))
+            return PeerChatLinkKind.UserId;
+        return PeerChatLinkKind.None;
     }
 
-    private static bool IsAuthorId(string chatId)
+    private static bool IsAuthorLink(string chatId)
         => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 2;
 
-    private static bool IsUserId(string chatId)
+    private static bool IsUserLink(string chatId)
         => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 1;
 
     public static string GetChatAuthorId(string chatIdentifier)
