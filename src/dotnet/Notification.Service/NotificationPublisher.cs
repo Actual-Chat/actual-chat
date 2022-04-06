@@ -104,7 +104,7 @@ public sealed class NotificationPublisher : INotificationPublisher
             .Where(uid => !string.Equals(uid, userId, StringComparison.Ordinal))
             .ToAsyncEnumerable()
             .SelectMany(uid => GetDevices(uid, cancellationToken))
-            .Buffer(200, cancellationToken);
+            .Chunk(200, cancellationToken);
 
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
             multicastMessage.Tokens = deviceGroup;

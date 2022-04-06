@@ -13,5 +13,10 @@ public class NotificationBlazorUIModule: HostModule, IBlazorUIModule
     {
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
+
+        var fusion = services.AddFusion();
+
+        // Scoped / Blazor Circuit services
+        fusion.AddComputeService<DeviceInfo>(ServiceLifetime.Scoped);
     }
 }

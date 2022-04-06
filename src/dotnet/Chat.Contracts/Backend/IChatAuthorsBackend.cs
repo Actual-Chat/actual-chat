@@ -10,9 +10,9 @@ public interface IChatAuthorsBackend
     Task<string[]> GetChatIdsByUserId(string userId, CancellationToken cancellationToken);
     Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string[]> GetAuthorIds(string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<string>> GetAuthorIds(string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
-    Task<string[]> GetUserIds(string chatId, CancellationToken cancellationToken);
+    Task<ImmutableArray<string>> GetUserIds(string chatId, CancellationToken cancellationToken);
 
     // Commands
 

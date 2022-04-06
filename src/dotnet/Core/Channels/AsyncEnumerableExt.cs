@@ -138,7 +138,7 @@ public static class AsyncEnumerableExt
         }
     }
 
-    public static async IAsyncEnumerable<List<TSource>> Buffer<TSource>(
+    public static async IAsyncEnumerable<List<TSource>> Chunk<TSource>(
         this IAsyncEnumerable<TSource> source,
         int count,
         [EnumeratorCancellation] CancellationToken cancellationToken)
