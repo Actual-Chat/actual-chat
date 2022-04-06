@@ -32,4 +32,10 @@ public sealed record ChatAuthor : Author
         var localIdStr = chatAuthorId.Substring(chatIdLength + 1);
         return long.TryParse(localIdStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out localId);
     }
+
+    public static void Parse(string chatAuthorId, out string chatId, out long localId)
+    {
+        if (!TryParse(chatAuthorId, out chatId, out localId))
+            throw new FormatException();
+    }
 }

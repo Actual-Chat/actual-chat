@@ -331,7 +331,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
     {
-        if (!PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out var id1, out var id2))
+        if (!PeerChatExt.TryParseAuthorsPeerChatId(chatId, out var originalChatId, out _, out _))
             return;
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null || chat.OwnerIds.Length != 2)

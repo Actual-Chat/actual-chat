@@ -35,9 +35,9 @@
             string url = contact.Id;
             var isAuthorsPeerChat = contact.TargetUserId.Value.Contains(":");
             if (isAuthorsPeerChat) {
-                ActualChat.Chat.ChatAuthor.TryParse(contact.TargetUserId.Value, out var chatId, out var localId);
+                ActualChat.Chat.ChatAuthor.Parse(contact.TargetUserId.Value, out var chatId, out var localId);
                 var chatAuthor = await ChatAuthors.GetChatAuthor(Session, chatId, default);
-                ActualChat.Chat.ChatAuthor.TryParse(chatAuthor!.Id, out _, out var localId2);
+                ActualChat.Chat.ChatAuthor.Parse(chatAuthor!.Id, out _, out var localId2);
                 url = PeerChatExt.CreateAuthorsPeerChatId(chatId, localId, localId2);
             }
             list.Add((contact, url));
