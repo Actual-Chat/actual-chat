@@ -39,7 +39,7 @@
             chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));
         return new () {
             Chats = chatInfos.ToArray(),
-            ActiveChatId = await ChatPageState.GetActiveChatId(),
+            ActiveChatId = await ChatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
         };
     }
 

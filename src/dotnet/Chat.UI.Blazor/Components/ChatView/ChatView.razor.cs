@@ -4,25 +4,19 @@ using Stl.Fusion.Blazor;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatView : ComponentBase, IAsyncDisposable
+public partial class ChatView : ComponentBase
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    public async ValueTask DisposeAsync()
-    {
-        GC.SuppressFinalize(this);
-        await ChatPlayback.Stop(Chat.Id, CancellationToken.None);
-    }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,

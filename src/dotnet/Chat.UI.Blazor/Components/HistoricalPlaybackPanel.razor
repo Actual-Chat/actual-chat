@@ -40,7 +40,7 @@
         public DateTime? PlayingAt { get; init; }
     }
 
-    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
     [CascadingParameter]
@@ -50,14 +50,15 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var player = await ChatPlayback.GetPlayer(Chat.Id, cancellationToken).ConfigureAwait(false);
-        if (player == null)
-            return Model.NotPlaying;
-        var playbackKind = await player.PlaybackKindState.Use(cancellationToken).ConfigureAwait(false);
-        if (playbackKind is not PlaybackKind.Historical)
+        var player = await ChatPlayers.Get(Chat.Id, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
+        if (player is not HistoricalChatPlayer)
             return Model.NotPlaying;
 
         var playback = player.Playback;
+        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
+        if (!isPlaying)
+            return Model.NotPlaying;
+
         var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
@@ -75,6 +76,7 @@
     }
 
     private Task OnStop(MouseEventArgs _) {
-        return ChatPlayback.Stop(Chat.Id, PlaybackKind.Historical, CancellationToken.None);
+        ChatPlayers.StopPlayback();
+        return Task.CompletedTask;
     }
 }

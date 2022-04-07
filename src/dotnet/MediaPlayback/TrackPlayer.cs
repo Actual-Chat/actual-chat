@@ -107,7 +107,7 @@ public abstract class TrackPlayer : ProcessorBase
             // this prevents sending (end + stop) commands simultaneously, don't change this.
             // change to get (end + stop) exists for example with a thread abort exception,
             // but it's a pretty rare situation
-            await ProcessCommand(EndCommand.Instance, default).ConfigureAwait(false);
+            await ProcessCommand(EndCommand.Instance, CancellationToken.None).ConfigureAwait(false);
 
             // Now we're waiting for a report when the client side has actually played all frames or Cancel()
             await WhenCompleted.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -122,12 +122,14 @@ public abstract class TrackPlayer : ProcessorBase
             if (exception != null && !WhenCompleted.IsCompleted) {
                 try {
                     if (!isPlayCommandProcessed)
-                        await playTask.ConfigureAwait(false);
-                    await ProcessCommand(StopCommand.Instance, default).AsTask()
-                        .WaitAsync(StopTimeout, default)
+                        await playTask.AsTask()
+                            .WithTimeout(StopTimeout, CancellationToken.None)
+                            .ConfigureAwait(false);
+                    var isStopCompleted = await ProcessCommand(StopCommand.Instance, CancellationToken.None).AsTask()
+                        .WithTimeout(StopTimeout, CancellationToken.None)
                         .ConfigureAwait(false);
-
-                    // Try to wait for processing the stop command
+                    if (!isStopCompleted)
+                        OnStopped(exception);
                     await WhenCompleted.WaitAsync(StopTimeout, default).ConfigureAwait(false);
                 }
                 catch (Exception ex) {

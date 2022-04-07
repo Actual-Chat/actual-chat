@@ -8,12 +8,18 @@ public partial class SharedResourcePool<TKey, TResource>
 {
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
     private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; }
+    private Func<TKey, TResource, ValueTask> ResourceDisposer { get; }
 
     public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
     public ILogger Log { get; init; } = NullLogger.Instance;
 
-    public SharedResourcePool(Func<TKey, CancellationToken, Task<TResource>> resourceFactory)
-        => ResourceFactory = resourceFactory;
+    public SharedResourcePool(
+        Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
+        Func<TKey, TResource, ValueTask>? resourceDisposer = null)
+    {
+        ResourceFactory = resourceFactory;
+        ResourceDisposer = resourceDisposer ?? DefaultResourceDisposer;
+    }
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {
@@ -27,5 +33,13 @@ public partial class SharedResourcePool<TKey, TResource>
                 return lease;
             spinWait.SpinOnce();
         }
+    }
+
+    private static async ValueTask DefaultResourceDisposer(TKey key, TResource resource)
+    {
+        if (resource is IAsyncDisposable ad)
+            await ad.DisposeAsync().ConfigureAwait(false);
+        else if (resource is IDisposable d)
+            d.Dispose();
     }
 }

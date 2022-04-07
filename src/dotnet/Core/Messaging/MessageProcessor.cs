@@ -14,7 +14,7 @@ public interface IMessageProcessor<TMessage> : IAsyncDisposable
 public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProcessor<TMessage>
     where TMessage : class
 {
-    protected Channel<IMessageProcess<TMessage>> Queue { get; set; } = null!;
+    protected Channel<IMessageProcess<TMessage>>? Queue { get; set; }
 
     public int QueueSize { get; init; } = 128;
     public BoundedChannelFullMode QueueFullMode { get; init; } = BoundedChannelFullMode.Wait;
@@ -25,7 +25,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     protected override Task DisposeAsyncCore()
     {
-        Queue.Writer.TryComplete();
+        Queue?.Writer.TryComplete();
         return WhenRunning ?? Task.CompletedTask;
     }
 
@@ -41,7 +41,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
         var process = (IMessageProcess<TMessage>)MessageProcess.New(message, cancellationToken);
         _ = Task.Run(async () => {
             try {
-                await Queue.Writer.WriteAsync(process, cancellationToken).ConfigureAwait(false);
+                await Queue!.Writer.WriteAsync(process, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) {
                 process.MarkFailed(e);
@@ -52,7 +52,8 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     public Task Complete(CancellationToken cancellationToken = default)
     {
-        Queue.Writer.TryComplete();
+        Start();
+        Queue!.Writer.TryComplete();
         return WhenRunning == null ? Task.CompletedTask : WhenRunning.WithFakeCancellation(cancellationToken);
     }
 
@@ -74,7 +75,7 @@ public abstract class MessageProcessorBase<TMessage> : WorkerBase, IMessageProce
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var queuedProcesses = Queue.Reader.ReadAllAsync(cancellationToken);
+        var queuedProcesses = Queue!.Reader.ReadAllAsync(cancellationToken);
         await foreach (var process in queuedProcesses.ConfigureAwait(false)) {
             var message = process.Message;
             process.MarkStarted();

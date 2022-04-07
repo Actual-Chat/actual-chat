@@ -1,15 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatPlaybackMode>
+@inherits ComputedStateComponent<(ChatPlaybackMode? PlaybackMode, bool IsFocusModeOn)>
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
 
 @{
-    var mode = State.ValueOrDefault;
-    var modeClass = mode switch {
-        ChatPlaybackMode.Realtime => "on",
-        ChatPlaybackMode.RealtimeMuted => "on opacity-50",
-        _ => "",
-    };
+    var (mode, isFocusModeOn) = State.ValueOrDefault;
+    var modeClass = "";
+    if (mode is RealtimeChatPlaybackMode)
+        modeClass = "on";
     var paddingClass = "p-1";
     var svgSizeClass = "w-8 w-8";
     if (Size == ChatPlayerToggleSize.Small) {
@@ -26,24 +24,27 @@
 </button>
 
 @code {
-    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
-    [Inject] private ChatPlaybackState ChatPlaybackState { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatPageState ChatPageState { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public ChatPlayerToggleSize Size { get; set; } = ChatPlayerToggleSize.Normal;
 
-    protected override ComputedState<ChatPlaybackMode>.Options GetStateOptions()
+    protected override ComputedState<(ChatPlaybackMode?, bool)>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override Task<ChatPlaybackMode> ComputeState(CancellationToken cancellationToken)
-        => ChatPlaybackState.GetMode(ChatId, cancellationToken);
+    protected override async Task<(ChatPlaybackMode?, bool)> ComputeState(CancellationToken cancellationToken) {
+        var mode = await ChatPlayers.PlaybackMode.Use(cancellationToken).ConfigureAwait(false);
+        var isFocusModeOn = await ChatPageState.IsFocusModeOn.Use(cancellationToken).ConfigureAwait(false);
+        return (mode, isFocusModeOn);
+    }
 
-    private async Task Toggle() {
-        var mode = ChatPlaybackState[ChatId];
-        if (mode is ChatPlaybackMode.Realtime or ChatPlaybackMode.RealtimeMuted)
-            await ChatPlayback.Stop(ChatId, CancellationToken.None);
+    private Task Toggle() {
+        if (ChatPlayers.PlaybackMode.Value is RealtimeChatPlaybackMode)
+            ChatPlayers.StopPlayback();
         else
-            await ChatPlayback.StartRealtime(ChatId, CancellationToken.None);
+            ChatPlayers.StartRealtimePlayback();
+        return Task.CompletedTask;
     }
 }

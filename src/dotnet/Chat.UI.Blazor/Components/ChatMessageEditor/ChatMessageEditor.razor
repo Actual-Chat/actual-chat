@@ -91,7 +91,7 @@
 
 @code {
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatPlayback ChatPlayback { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -184,7 +184,7 @@
     private Task RecordingStateChanged(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        _ = ChatPlayback.StartRealtime(Chat.Id, CancellationToken.None);
+        ChatPlayers.StartRealtimePlayback();
         return Task.CompletedTask;
     }
 

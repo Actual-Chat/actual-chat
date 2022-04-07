@@ -1,5 +1,6 @@
 using Stl.Concurrency;
 using Stl.Pooling;
+using Stl.Reflection;
 
 namespace ActualChat.Pooling;
 
@@ -88,12 +89,16 @@ public partial class SharedResourcePool<TKey, TResource>
 
         private async Task EndRent()
         {
-            var resource = Resource;
-            if (resource is IAsyncDisposable ad)
-                await ad.DisposeAsync().ConfigureAwait(false);
-            else if (resource is IDisposable d)
-                d.Dispose();
-            Pool._leases.TryRemove(Key, this);
+            try {
+                await Pool.ResourceDisposer.Invoke(Key, Resource).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Pool.Log.LogError(e,
+                    "Failed to dispose pooled resource of type {ResourceType}", typeof(TResource).FullName);
+            }
+            finally {
+                Pool._leases.TryRemove(Key, this);
+            }
         }
     }
 }

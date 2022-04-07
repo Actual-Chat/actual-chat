@@ -100,7 +100,8 @@ public sealed class Playback : ProcessorBase
 
         async Task<object?> OnStopCommand()
         {
-            await Task.WhenAll(_trackPlayers.Values.Select(x => x.Player.Stop())).ConfigureAwait(false);
+            var stopTasks = _trackPlayers.Values.Select(x => x.Player.Stop());
+            await Task.WhenAll(stopTasks).ConfigureAwait(false);
             return null;
         }
     }
