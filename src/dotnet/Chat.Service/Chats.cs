@@ -12,7 +12,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private readonly ICommander _commander;
     private readonly IAuth _auth;
     private readonly IChatAuthors _chatAuthors;
-    private readonly IUserAuthorsBackend _userAuthorsBackend;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
     private readonly IChatsBackend _chatsBackend;
     private readonly IInviteCodesBackend _inviteCodesBackend;
@@ -27,7 +26,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         _chatsBackend = Services.GetRequiredService<IChatsBackend>();
         _inviteCodesBackend = Services.GetRequiredService<IInviteCodesBackend>();
         _userContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
-        _userAuthorsBackend = Services.GetRequiredService<IUserAuthorsBackend>();
     }
 
     // [ComputeMethod]

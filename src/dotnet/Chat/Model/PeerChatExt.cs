@@ -11,21 +11,6 @@ public static class PeerChatExt
     public static bool IsPeerChatId(string chatId)
         => chatId.StartsWith(PeerChatIdPrefix, StringComparison.Ordinal);
 
-    public static bool IsAuthorsPeerChatId(string chatId)
-        => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 3;
-
-    public static bool IsUsersPeerChatId(string chatId)
-        => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 2;
-
-    public static string CreateAuthorsPeerChatId(
-        string originalChatId,
-        long chatAuthorLocalId1, long chatAuthorLocalId2)
-    {
-        if (chatAuthorLocalId1 > chatAuthorLocalId2)
-            (chatAuthorLocalId1, chatAuthorLocalId2) = (chatAuthorLocalId2, chatAuthorLocalId1);
-        return Invariant($"{PeerChatIdPrefix}{originalChatId}:{chatAuthorLocalId1}:{chatAuthorLocalId2}");
-    }
-
     public static string CreatePeerChatLink(string targetPrincipalId)
         => Invariant($"{PeerChatIdPrefix}{targetPrincipalId}");
 
@@ -34,35 +19,6 @@ public static class PeerChatExt
         if (string.Compare(userId1, userId2, StringComparison.Ordinal) > 0)
             (userId1, userId2) = (userId2, userId1);
         return Invariant($"{PeerChatIdPrefix}{userId1}:{userId2}");
-    }
-
-    public static string GerOriginalChatId(string chatId)
-    {
-        if (!IsAuthorsPeerChatId(chatId))
-            throw new InvalidOperationException();
-        var startIndex = PeerChatIdPrefix.Length;
-        var index = chatId.IndexOf(":", startIndex, StringComparison.Ordinal);
-        var originalChatId = chatId.Substring(startIndex, index - startIndex);
-        return originalChatId;
-    }
-
-    public static bool TryParseAuthorsPeerChatId(string chatId, out string originalChatId,
-        out long chatAuthorLocalId1, out long chatAuthorLocalId2)
-    {
-        originalChatId = "";
-        chatAuthorLocalId1 = 0;
-        chatAuthorLocalId2 = 0;
-        if (!IsPeerChatId(chatId))
-            return false;
-        var parts = chatId.Split(":");
-        if (parts.Length != 4)
-            return false;
-        originalChatId = parts[1];
-        if (!long.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out chatAuthorLocalId1))
-            return false;
-        if (!long.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out chatAuthorLocalId2))
-            return false;
-        return true;
     }
 
     public static bool TryParseUsersPeerChatId(string chatId, out string userId1, out string userId2)
@@ -75,14 +31,15 @@ public static class PeerChatExt
             return false;
         userId1 = parts[1];
         userId2 = parts[2];
-        return !string.IsNullOrEmpty(userId1) && !string.IsNullOrEmpty(userId2) && userId1 != userId2;
+        return !string.IsNullOrEmpty(userId1) && !string.IsNullOrEmpty(userId2)
+            && !string.Equals(userId1, userId2, StringComparison.Ordinal);
     }
 
-    public static PeerChatShortIdKind GetChatShortIdKind(string chatIdentifier)
+    public static PeerChatShortIdKind GetChatShortIdKind(string chatShortId)
     {
-        if (!IsPeerChatId(chatIdentifier))
+        if (!IsPeerChatId(chatShortId))
             return PeerChatShortIdKind.None;
-        if (IsUserLink(chatIdentifier))
+        if (IsUserLink(chatShortId))
             return PeerChatShortIdKind.UserId;
         return PeerChatShortIdKind.None;
     }
@@ -96,15 +53,12 @@ public static class PeerChatExt
         return PeerChatIdKind.None;
     }
 
-    private static bool IsAuthorLink(string chatId)
-        => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 2;
+    public static string GetUserId(string chatShortId)
+        => chatShortId.Substring(PeerChatIdPrefix.Length);
 
     private static bool IsUserLink(string chatId)
-        => IsPeerChatId(chatId) && chatId.Count(c => c == ':') == 1;
+        => chatId.Count(c => c == ':') == 1;
 
-    public static string GetChatAuthorId(string chatIdentifier)
-        => chatIdentifier.Substring(PeerChatIdPrefix.Length);
-
-    public static string GetUserId(string chatIdentifier)
-        => chatIdentifier.Substring(PeerChatIdPrefix.Length);
+    private static bool IsUsersPeerChatId(string chatId)
+        => chatId.Count(c => c == ':') == 2;
 }
