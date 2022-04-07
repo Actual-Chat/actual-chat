@@ -1,6 +1,5 @@
 @page "/chat"
 @page "/chat/{ChatId}"
-@page "/direct/{ContactId}"
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
 
@@ -68,8 +67,6 @@
         Chat? chat = null;
         if (!string.IsNullOrEmpty(ChatId))
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
-        else if (!string.IsNullOrEmpty(ContactId))
-            chat = await Chats.GetDirectChat(Session, ContactId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
 

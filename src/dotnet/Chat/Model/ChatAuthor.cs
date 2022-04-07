@@ -18,4 +18,24 @@ public sealed record ChatAuthor : Author
         chatId = chatAuthorId.Substring(0, chatIdLength);
         return true;
     }
+
+    public static bool TryParse(string chatAuthorId, out string chatId, out long localId)
+    {
+        chatId = "";
+        localId = 0;
+        if (string.IsNullOrEmpty(chatAuthorId))
+            return false;
+        var chatIdLength = chatAuthorId.IndexOf(":", StringComparison.Ordinal);
+        if (chatIdLength == -1)
+            return false;
+        chatId = chatAuthorId.Substring(0, chatIdLength);
+        var localIdStr = chatAuthorId.Substring(chatIdLength + 1);
+        return long.TryParse(localIdStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out localId);
+    }
+
+    public static void Parse(string chatAuthorId, out string chatId, out long localId)
+    {
+        if (!TryParse(chatAuthorId, out chatId, out localId))
+            throw new FormatException();
+    }
 }

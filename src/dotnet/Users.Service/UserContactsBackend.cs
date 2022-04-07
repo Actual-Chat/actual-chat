@@ -19,6 +19,19 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return dbContact?.ToModel();
     }
 
+    public virtual async Task<UserContact?> GetByTargetId(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
+    {
+        if (ownerUserId.IsNullOrEmpty() || targetPrincipalId.IsNullOrEmpty())
+            return null;
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dbContact = await dbContext.UserContacts
+            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetPrincipalId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbContact?.ToModel();
+    }
+
     public virtual async Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken)
     {
         if (userId.IsNullOrEmpty())
@@ -34,19 +47,8 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return chatIds;
     }
 
-    public virtual async Task<bool> IsInContactList(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
-    {
-        if (ownerUserId.IsNullOrEmpty() || targetUserId.IsNullOrEmpty())
-            return false;
-
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-        var dbUserContact = await dbContext.UserContacts
-            .Where(a => a.OwnerUserId == ownerUserId && a.TargetUserId == targetUserId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbUserContact != null;
-    }
+    public virtual async Task<bool> IsInContactList(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
+        => await GetByTargetId(ownerUserId, targetPrincipalId, cancellationToken).ConfigureAwait(false) != null;
 
     public virtual async Task<UserContact> CreateContact(IUserContactsBackend.CreateContactCommand command, CancellationToken cancellationToken)
     {

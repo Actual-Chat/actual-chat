@@ -20,9 +20,9 @@ public class ChatsController : ControllerBase, IChats
     public Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
         => _chats.Get(session, chatId, cancellationToken);
 
-    [HttpGet, Publish]
-    public Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken)
-        => _chats.GetDirectChat(session, userContactId, cancellationToken);
+    // [HttpGet, Publish]
+    // public Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken)
+    //     => _chats.GetDirectChat(session, userContactId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
@@ -70,6 +70,14 @@ public class ChatsController : ControllerBase, IChats
         Session session, string chatId, long entryId,
         CancellationToken cancellationToken)
         => _chats.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<bool> CanSendUserPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken)
+        => _chats.CanSendUserPeerChatMessage(session, chatAuthorId, cancellationToken);
+
+    [HttpGet, Publish]
+    public Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken)
+        => _chats.GetUserPeerChatId(session, chatAuthorId, cancellationToken);
 
     // Commands
 

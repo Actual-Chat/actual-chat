@@ -75,8 +75,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         CancellationToken cancellationToken)
     {
         var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return 0;
+        if (chat == null) {
+            return await GetNewPeerChatPermissions(chatId, chatPrincipalId, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         ParseChatPrincipalId(chatPrincipalId, out var authorId, out var userId);
 
@@ -455,5 +457,41 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             authorId = null;
             userId = chatPrincipalId;
         }
+    }
+
+    private async Task<ChatPermissions> GetNewPeerChatPermissions(string chatId, string chatPrincipalId, CancellationToken cancellationToken)
+    {
+        var chatIdKind = PeerChatExt.GetChatIdKind(chatId);
+        switch (chatIdKind) {
+            case PeerChatIdKind.UserIds:
+                return await GetNewUsersPeerChatPermissions(chatId, chatPrincipalId, cancellationToken).ConfigureAwait(false);
+        }
+        return ChatPermissions.None;
+    }
+
+    private async Task<ChatPermissions> GetNewUsersPeerChatPermissions(string chatId, string chatPrincipalId,
+        CancellationToken cancellationToken)
+    {
+        ParseChatPrincipalId(chatPrincipalId, out var chatAuthorId, out var userId);
+        if (!chatAuthorId.IsNullOrEmpty()) {
+            var chatAuthor = await _chatAuthorsBackend.Get(chatId, chatAuthorId, false, cancellationToken).ConfigureAwait(false);
+            if (chatAuthor != null)
+                userId = chatAuthor.UserId;
+        }
+        if (string.IsNullOrEmpty(userId))
+            return ChatPermissions.None;
+        if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
+            return ChatPermissions.None;
+        string? targetUserId = null;
+        if (string.Equals(userId1, userId, StringComparison.Ordinal))
+            targetUserId = userId2;
+        else if (string.Equals(userId2, userId, StringComparison.Ordinal))
+            targetUserId = userId1;
+        if (string.IsNullOrEmpty(targetUserId))
+            return ChatPermissions.None;
+        var targetUser = await _authBackend.GetUser(targetUserId, cancellationToken).ConfigureAwait(false);
+        if (targetUser != null)
+            return ChatPermissions.Read | ChatPermissions.Write;
+        return ChatPermissions.None;
     }
 }
