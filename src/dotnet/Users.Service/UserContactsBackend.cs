@@ -66,9 +66,6 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return chatIds;
     }
 
-    public virtual async Task<bool> IsInContactList(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
-        => await GetByTargetId(ownerUserId, targetPrincipalId, cancellationToken).ConfigureAwait(false) != null;
-
     public virtual async Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken)
     {
         var userAuthor = await _userAuthorsBackend.Get(targetUserId, true, cancellationToken).ConfigureAwait(false);

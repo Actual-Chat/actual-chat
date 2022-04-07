@@ -59,6 +59,6 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     // Commands
 
     [HttpPost]
-    public Task<UserContact> AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+    public Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
         => _service.AddToContacts(command, cancellationToken);
 }

@@ -14,9 +14,6 @@ public interface IUserContactsBackend
     public Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<bool> IsInContactList(string ownerUserId, string targetUserId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
     public Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken);
 
     [CommandHandler]
