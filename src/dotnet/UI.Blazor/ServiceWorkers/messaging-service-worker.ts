@@ -1,13 +1,13 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
-fetch('/dist/config/firebase.config.json')
-    .then((response) => response.json())
-    .then((firebaseConfig) => {
-        const app = initializeApp(firebaseConfig.config);
-        const messaging = getMessaging(app);
+const configBase64 = new URL(location.href).searchParams.get('config');
+const configString = atob(configBase64);
+const config = JSON.parse(configString);
 
-        onBackgroundMessage(messaging, payload => {
-            console.log('[messaging-service-worker.ts] Received background message ', payload);
-        });
-    });
+const app = initializeApp(config);
+const messaging = getMessaging(app);
+onBackgroundMessage(messaging, payload => {
+    console.log('[messaging-service-worker.ts] Received background message ', payload);
+});
+

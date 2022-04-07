@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage, GetTokenOptions } from 'firebase/messaging';
+import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 
 export async function getDeviceToken(): Promise<string | null> {
     try {
@@ -8,11 +8,17 @@ export async function getDeviceToken(): Promise<string | null> {
             const { config, publicKey } = await response.json();
             const app = initializeApp(config);
             const messaging = getMessaging(app);
+            onMessage(messaging, (payload) => {
+                console.log('Message received. ', payload);
+            });
+
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
             const swPath = new URL('/dist/messagingServiceWorker.js', origin).toString();
-            let swRegistration = await navigator.serviceWorker.getRegistration(swPath);
+            const configBase64 = btoa(JSON.stringify(config));
+            const swUrl = `${swPath}?config=${configBase64}`;
+            let swRegistration = await navigator.serviceWorker.getRegistration(swUrl);
             if (!swRegistration) {
-                swRegistration = await navigator.serviceWorker.register(swPath, {
+                swRegistration = await navigator.serviceWorker.register(swUrl, {
                     scope: '/dist/firebase-cloud-messaging-push-scope'
                 });
             }
@@ -20,13 +26,7 @@ export async function getDeviceToken(): Promise<string | null> {
                 vapidKey: publicKey,
                 serviceWorkerRegistration: swRegistration,
             };
-            const token = await getToken(messaging, tokenOptions);
-
-            onMessage(messaging, (payload) => {
-                console.log('Message received. ', payload);
-            });
-
-            return token;
+            return await getToken(messaging, tokenOptions);
         } else {
             console.warn(`Unable to initialize messaging subscription. Status: ${response.status}`)
         }
