@@ -1,17 +1,22 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button type="button" @onclick="OnClick" class="btn @Class" title="@Title" disabled="@Disabled">
-    <span>@Caption</span>
-    @ChildContent
+<button @onclick="OnClick" class="btn @Class" title="@Title" disabled="@Disabled" name="@Name" type="@GetButtonType">
+    <div class="flex place-self-center">
+        @ChildContent
+    </div>
 </button>
 
 @code {
     [Parameter] public string Class { get; set; } = "btn-success";
-    [Parameter] public string Caption { get; set; } = "";
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public string? Title { get; set; } = "";
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
+
+    private string GetButtonType()
+        => Type.ToString().ToLower();
 
 }

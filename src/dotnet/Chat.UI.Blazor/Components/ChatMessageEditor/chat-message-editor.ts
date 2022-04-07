@@ -24,7 +24,7 @@ export class ChatMessageEditor {
         this.editorDiv = editorDiv;
         this.input = this.editorDiv.querySelector('div.message-input');
         this.filesPicker = this.editorDiv.querySelector('input.files-picker');
-        this.postButton = this.editorDiv.querySelector('button.post-message');
+        this.postButton = this.editorDiv.querySelector('.post-message button');
         this.blazorRef = blazorRef;
         this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
         this.recordButton = this.recorderButtonDiv.querySelector('button');

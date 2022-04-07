@@ -63,7 +63,7 @@
               style="height: @(Plan.EndSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
-                    <div @key="@i" class="skeleton">
+                    <div @key="@i" class="skeleton px-4">
                         @Skeleton(i)
                     </div>
                 }

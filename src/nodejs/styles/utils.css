@@ -73,15 +73,21 @@ button.off {
 
 
 .btn {
-    @apply leading-5 transition duration-150 ease-in-out outline-none mx-2 place-content-center items-center;
+    @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
     @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
-    @apply h-10 min-w-20;
+    @apply h-8 min-w-16;
 }
 
 .btn.btn-success {
     @apply bg-button-success border-success text-white;
     @apply hover:bg-button-success-hover hover:border-success-muted;
     @apply active:bg-button-success-hover;
+}
+
+.btn.btn-success-outline {
+    @apply bg-button-success-outline border-success border-2 text-success;
+    @apply hover:bg-button-success-outline-hover;
+    @apply active:bg-button-success-outline-hover active:border-button-success-outline-hover;
 }
 
 .btn.btn-cancel {
@@ -97,18 +103,21 @@ button.off {
 }
 
 .btn.btn-sm {
-    @apply h-8 min-w-12 text-xs;
+    @apply h-6 min-w-12 text-xs;
 }
 
 .btn.btn-lg {
-    @apply h-12 min-w-24 text-base;
+    @apply h-10 min-w-20 text-base;
 }
 
 .btn.btn-inline {
-    @apply text-base font-semibold text-secondary bg-accent hover:bg-primary;
+    @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
     @apply p-1 mx-0 min-w-0 border-0;
 }
 
+.btn.menu-item-btn {
+    @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
+}
 
 /* Webkit */
 
@@ -129,3 +138,18 @@ button.off {
     scrollbar-width: 2px;
     scrollbar-color: #e2e7ec #F9FAFB;
 }
+
+/* Custom Input */
+
+.custom-input {
+    @apply border-0 bg-accent;
+}
+
+.valid.modified:is(.custom-input) {
+    outline: none;
+}
+
+.invalid {
+    outline: none;
+}
+

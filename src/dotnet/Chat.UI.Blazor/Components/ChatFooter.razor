@@ -19,14 +19,14 @@
                     <Authorized>
                         <div>
                             <span class="inline-flex">To post or talk,</span>
-                            <Button Caption="Join this chat" OnClick="@OnJoin"></Button>
+                            <Button OnClick="@OnJoin">Join this chat</Button>
                         </div>
                     </Authorized>
                     <NotAuthorized>
                         <div>
                             <div class="inline-flex"><SignInMenu ButtonClass="px-3 py-1" ContentPositionClass="left-0 bottom-10"/></div>
                             <span class="inline-flex mx-1">or</span>
-                            <Button Caption="Join this chat anonymously" OnClick="@OnJoin" Class="btn-cancel"></Button>
+                            <Button OnClick="@OnJoin" Class="btn-cancel">Join this chat anonymously</Button>
                         </div>
                     </NotAuthorized>
                 </AuthorizeView>

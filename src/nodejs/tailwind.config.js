@@ -55,6 +55,8 @@ module.exports = {
         'button-cancel-hover': 'var(--button-color-cancel-hover)',
         'button-error': 'var(--button-color-error)',
         'button-error-hover': 'var(--button-color-error-hover)',
+        'button-success-outline': 'var(--button-color-success-outline)',
+        'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -63,6 +65,8 @@ module.exports = {
         'online': 'var(--background-online)',
         'button-success': 'var(--button-color-success)',
         'button-success-hover': 'var(--button-color-success-hover)',
+        'button-success-outline': 'var(--button-color-success-outline)',
+        'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
         'button-accent': 'var(--button-color-accent)',
         'button-accent-hover': 'var(--button-color-accent-hover)',
         'button-cancel': 'var(--button-color-cancel)',

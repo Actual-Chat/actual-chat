@@ -55,6 +55,8 @@
 
     --button-color-success: #0ea5e9;
     --button-color-success-hover: #0284c7;
+    --button-color-success-outline: #F9FAFB;
+    --button-color-success-outline-hover: #e0f2fe;
     --button-color-accent: #ffffff;
     --button-color-accent-hover: #FAFAFA;
     --button-color-cancel: #64748b;
