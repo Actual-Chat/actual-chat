@@ -42,6 +42,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<UserInteractionUI>();
         services.AddScoped<FeedbackUI>();
         services.AddScoped<NavbarUI>();
+        services.AddScoped<ImagePreviewUI>();
 
         if (OSInfo.IsWebAssembly)
             services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();

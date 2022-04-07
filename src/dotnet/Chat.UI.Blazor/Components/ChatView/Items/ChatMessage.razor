@@ -66,8 +66,9 @@
                             previewUrl += $"?width={width}&height={height}";
                         }
                         <div class="message-attachment-image mt-1">
-                            <a class="cursor-pointer" href="@url" target="_blank" role="button">
-                                <img class="inline" style="@imgStyle"  src="@previewUrl" alt="image" />
+                            <a class="cursor-pointer" href="@url"
+                               role="button" @onclick="@(() => ShowImagePreview(url))" @onclick:preventDefault="true">
+                                <img class="inline" style="@imgStyle" src="@previewUrl" alt="image" />
                             </a>
                         </div>
                     } else {
@@ -105,10 +106,8 @@
 </div>
 
 @code {
-    [Inject] private IChats Chats { get; set; } = null!;
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private UICommandRunner Cmd { get; set; } = null!;
     [Inject] private IModalService ModalService { get; set; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
@@ -121,5 +120,9 @@
         modalParameters.Add(nameof(ChatAuthorCard.ChatId), (string)Model.Entry.ChatId);
         modalParameters.Add(nameof(ChatAuthorCard.ChatAuthorId), (string)Model.Entry.AuthorId);
         ModalService.Show<ChatAuthorCard>(null, modalParameters);
+    }
+
+    private Task ShowImagePreview(string url) {
+        return ImagePreviewUI.Show(url);
     }
 }

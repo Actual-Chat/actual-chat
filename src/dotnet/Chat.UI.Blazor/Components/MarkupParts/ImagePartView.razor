@@ -5,6 +5,15 @@
     var part = (ImagePart)Part;
 }
 
-<a class="image-part-view cursor-pointer" href="@part.Url" target="_blank">
+<a class="image-part-view cursor-pointer" href="@part.Url" role="button" @onclick="ShowPreview" @onclick:preventDefault="true">
     <img style="max-width: 400px; max-height: 300px" src="@part.Url" alt="@(part.Text.NullIfEmpty() ?? "image")" />
 </a>
+
+@code {
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
+
+    private Task ShowPreview() {
+        var part = (ImagePart)Part;
+        return ImagePreviewUI.Show(part.Url, part.Text);
+    }
+}
