@@ -7,10 +7,14 @@ namespace ActualChat.Users;
 public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsBackend
 {
     private readonly IDbEntityResolver<string,DbUserContact> _dbUserContactResolver;
+    private readonly IUserAuthorsBackend _userAuthorsBackend;
+    private readonly ICommander _commander;
 
     public UserContactsBackend(IServiceProvider services) : base(services)
     {
         _dbUserContactResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserContact>>();
+        _userAuthorsBackend = Services.GetRequiredService<IUserAuthorsBackend>();
+        _commander = Services.GetRequiredService<ICommander>();
     }
 
     public virtual async Task<UserContact?> Get(string contactId, CancellationToken cancellationToken)
@@ -32,6 +36,21 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
         return dbContact?.ToModel();
     }
 
+    public virtual async Task<UserContact> GetOrCreate(string ownerUserId, string targetUserId, CancellationToken cancellationToken)
+    {
+        var contact = await GetByTargetId(ownerUserId, targetUserId, cancellationToken).ConfigureAwait(false);
+        if (contact != null)
+            return contact;
+        var contactName = await SuggestContactName(targetUserId, cancellationToken).ConfigureAwait(false);
+        var userContact = new UserContact {
+            OwnerUserId = ownerUserId,
+            Name = contactName,
+            TargetUserId = targetUserId
+        };
+        var command = new IUserContactsBackend.CreateContactCommand(userContact);
+        return await _commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
     public virtual async Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken)
     {
         if (userId.IsNullOrEmpty())
@@ -50,15 +69,22 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
     public virtual async Task<bool> IsInContactList(string ownerUserId, string targetPrincipalId, CancellationToken cancellationToken)
         => await GetByTargetId(ownerUserId, targetPrincipalId, cancellationToken).ConfigureAwait(false) != null;
 
+    public virtual async Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken)
+    {
+        var userAuthor = await _userAuthorsBackend.Get(targetUserId, true, cancellationToken).ConfigureAwait(false);
+        if (userAuthor != null)
+            return userAuthor.Name;
+        return "user:" + targetUserId;
+    }
+
     public virtual async Task<UserContact> CreateContact(IUserContactsBackend.CreateContactCommand command, CancellationToken cancellationToken)
     {
         var contact = command.Contact;
         var ownerUserId = contact.OwnerUserId;
         if (Computed.IsInvalidating()) {
-            _ = Get(ownerUserId, default);
             _ = GetContactIds(ownerUserId, default);
             var invUserContact = CommandContext.GetCurrent().Operation().Items.Get<UserContact>()!;
-            _ = IsInContactList(invUserContact.OwnerUserId, invUserContact.TargetUserId, default);
+            _ = GetByTargetId(invUserContact.OwnerUserId, invUserContact.TargetUserId, default);
             _ = Get(invUserContact.Id, default);
             return default!;
         }

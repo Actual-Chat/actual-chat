@@ -8,11 +8,16 @@ public interface IUserContactsBackend
     [ComputeMethod]
     public Task<UserContact?> GetByTargetId(string ownerUserId, string targetUserId, CancellationToken cancellationToken);
 
+    public Task<UserContact> GetOrCreate(string ownerUserId, string targetUserId, CancellationToken cancellationToken);
+
     [ComputeMethod]
     public Task<string[]> GetContactIds(string userId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<bool> IsInContactList(string ownerUserId, string targetUserId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    public Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task<UserContact> CreateContact(CreateContactCommand command, CancellationToken cancellationToken);

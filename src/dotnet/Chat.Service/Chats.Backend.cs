@@ -1,4 +1,3 @@
-using System.Security;
 using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +21,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
     private readonly IUserInfos _userInfos;
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
+    private readonly IUserContactsBackend _userContactsBackend;
+    private readonly ICommander _commander;
 
     public ChatsBackend(IServiceProvider services) : base(services)
     {
@@ -31,6 +32,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
         _userInfos = Services.GetRequiredService<IUserInfos>();
         _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
+        _userContactsBackend = services.GetRequiredService<IUserContactsBackend>();
+        _commander = services.GetRequiredService<ICommander>();
     }
 
     // [ComputeMethod]
@@ -300,6 +303,29 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return default;
     }
 
+    /// <summary> The filter which creates chat for direct conversation between chat authors</summary>
+    [CommandHandler(IsFilter = true, Priority = 1)]
+    protected virtual async Task OnUpsertEntry(
+        IChatsBackend.UpsertEntryCommand command,
+        CancellationToken cancellationToken)
+    {
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var chatId = command.Entry.ChatId;
+        var isPeerChatId = PeerChatExt.IsPeerChatId(chatId);
+        if (isPeerChatId)
+            _ = await GetOrCreatePeerChat(chatId, command.Entry.AuthorId, cancellationToken).ConfigureAwait(false);
+
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+
+        if (isPeerChatId)
+            _ = EnsureContactsCreated(chatId, cancellationToken).ConfigureAwait(false); // no need to wait
+    }
+
     // [CommandHandler]
     public virtual async Task<ChatEntry> UpsertEntry(
         IChatsBackend.UpsertEntryCommand command,
@@ -493,5 +519,50 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (targetUser != null)
             return ChatPermissions.Read | ChatPermissions.Write;
         return ChatPermissions.None;
+    }
+
+    private async Task EnsureContactsCreated(Symbol chatId, CancellationToken cancellationToken)
+    {
+        switch (PeerChatExt.GetChatIdKind(chatId)) {
+            case PeerChatIdKind.UserIds:
+                await EnsureUsersPeerChatContactsCreated(chatId, cancellationToken).ConfigureAwait(false);
+                break;
+            default:
+                throw new NotSupportedException();
+        }
+    }
+
+    private async Task EnsureUsersPeerChatContactsCreated(Symbol chatId, CancellationToken cancellationToken)
+    {
+        if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
+            return;
+        await _userContactsBackend.GetOrCreate(userId1, userId2, cancellationToken).ConfigureAwait(false);
+        await _userContactsBackend.GetOrCreate(userId2, userId1, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Chat> GetOrCreatePeerChat(Symbol chatId, Symbol authorId, CancellationToken cancellationToken)
+    {
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat != null)
+            return chat;
+        switch (PeerChatExt.GetChatIdKind(chatId)) {
+            case PeerChatIdKind.UserIds:
+                return await CreateUsersPeerChat(chatId, cancellationToken).ConfigureAwait(false);
+            default:
+                throw new NotSupportedException();
+        }
+    }
+
+    private async Task<Chat> CreateUsersPeerChat(Symbol chatId, CancellationToken cancellationToken)
+    {
+        if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
+            throw new InvalidOperationException("Application invariant violated");
+        var chat = new Chat {
+            Id = chatId,
+            OwnerIds = ImmutableArray<Symbol>.Empty.Add(userId1).Add(userId2),
+            ChatType = ChatType.Direct
+        };
+        var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
+        return await CreateChat(createChatCommand, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public enum PeerChatLinkKind { None, AuthorId, UserId }
+public enum PeerChatShortIdKind { None, UserId }
 
 public enum PeerChatIdKind { None, UserIds }
 
@@ -78,15 +78,13 @@ public static class PeerChatExt
         return !string.IsNullOrEmpty(userId1) && !string.IsNullOrEmpty(userId2) && userId1 != userId2;
     }
 
-    public static PeerChatLinkKind GetChatLinkKind(string chatIdentifier)
+    public static PeerChatShortIdKind GetChatShortIdKind(string chatIdentifier)
     {
         if (!IsPeerChatId(chatIdentifier))
-            return PeerChatLinkKind.None;
-        if (IsAuthorLink(chatIdentifier))
-            return PeerChatLinkKind.AuthorId;
+            return PeerChatShortIdKind.None;
         if (IsUserLink(chatIdentifier))
-            return PeerChatLinkKind.UserId;
-        return PeerChatLinkKind.None;
+            return PeerChatShortIdKind.UserId;
+        return PeerChatShortIdKind.None;
     }
 
     public static PeerChatIdKind GetChatIdKind(string chatId)
