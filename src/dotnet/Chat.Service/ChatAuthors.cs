@@ -103,59 +103,41 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
 
     public virtual async Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
+        var (userId1, user2Id) = await GetPeerChatUserIds(session, chatAuthorId, cancellationToken).ConfigureAwait(false);
+        if (user2Id.IsNullOrEmpty())
             return false;
-        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
-            throw new InvalidOperationException("Invalid chatAuthorId");
-
-        var companion = await Get(chatId, chatAuthorId, false, cancellationToken)
-            .ConfigureAwait(false);
-        if (companion == null || companion.UserId.IsEmpty)
-            return false;
-        if (user.Id == companion.UserId)
-            return false;
-        return !await _userContactsBackend.IsInContactList(user.Id, companion.UserId, cancellationToken).ConfigureAwait(false);
+        var contact = await _userContactsBackend.GetByTargetId(userId1, user2Id, cancellationToken).ConfigureAwait(false);
+        return contact == null;
     }
 
-    public virtual async Task<UserContact> AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
+    public virtual async Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
-            return default!; // It just spawns other commands, so nothing to do here
-
+            return; // It just spawns other commands, so nothing to do here
         var (session, chatAuthorId) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
-            throw new InvalidOperationException("No contact list. User is not authenticated.");
-
-        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
-            throw new InvalidOperationException("Invalid chatAuthorId");
-        var companion = await Get(chatId, chatAuthorId, true, cancellationToken)
-            .ConfigureAwait(false);
-        if (companion == null || companion.UserId.IsEmpty)
-            throw new InvalidOperationException("Given chat author is not associated with a user.");
-        var companionUser = await _authBackend.GetUser(companion.UserId, cancellationToken).ConfigureAwait(false);
-        if (companionUser == null)
-            throw new InvalidOperationException("Chat author is missing");
-
-        var result = await AddToContacts(user, companionUser, cancellationToken).ConfigureAwait(false);
-        if (!await _userContactsBackend.IsInContactList(companion.UserId, user.Id, cancellationToken)
-                .ConfigureAwait(false)) {
-            _ = await AddToContacts(companionUser, user, cancellationToken).ConfigureAwait(false);
-        }
-        return result;
+        var (userId1, user2Id) = await GetPeerChatUserIds(session, chatAuthorId, cancellationToken).ConfigureAwait(false);
+        if (user2Id.IsNullOrEmpty())
+            return;
+        _ = await _userContactsBackend.GetOrCreate(userId1, user2Id, cancellationToken).ConfigureAwait(false);
+        _ = await _userContactsBackend.GetOrCreate(user2Id, userId1, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<UserContact> AddToContacts(User user, User companion, CancellationToken cancellationToken)
+    private async Task<(string, string)> GetPeerChatUserIds(Session session, string chatAuthorId, CancellationToken cancellationToken)
     {
-        var companionAuthor = await _userAuthorsBackend.Get(companion.Id, true, cancellationToken).ConfigureAwait(false);
-        var companionName = companionAuthor?.Name ?? companion.Name;
-        var createCommand = new IUserContactsBackend.CreateContactCommand(
-            new UserContact {
-                OwnerUserId = user.Id,
-                TargetUserId = companion.Id,
-                Name = companionName
-            });
-        return await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return ("","");
+        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
+            return ("","");
+        var chatAuthor = await Get(chatId, chatAuthorId, false, cancellationToken)
+            .ConfigureAwait(false);
+        if (chatAuthor == null || chatAuthor.UserId.IsEmpty)
+            return ("","");
+        if (user.Id == chatAuthor.UserId)
+            return ("","");
+        var user2 = await _authBackend.GetUser(chatAuthor.UserId, cancellationToken).ConfigureAwait(false);
+        if (user2 == null)
+            return ("","");
+        return (user.Id, user2.Id);
     }
 }

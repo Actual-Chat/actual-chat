@@ -6,9 +6,6 @@ public interface IChats
     Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
-    Task<Chat?> GetDirectChat(Session session, string userContactId, CancellationToken cancellationToken);
-
-    [ComputeMethod(KeepAliveTime = 1)]
     Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken);
 
     [ComputeMethod(KeepAliveTime = 1)]
@@ -51,6 +48,12 @@ public interface IChats
     Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,
         CancellationToken cancellationToken);
+
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<bool> CanSendUserPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken);
+
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
 
     // Commands
 

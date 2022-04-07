@@ -20,7 +20,7 @@ public interface IChatAuthors
     // Commands
 
     [CommandHandler]
-    Task<UserContact> AddToContacts(AddToContactsCommand command, CancellationToken cancellationToken);
+    Task AddToContacts(AddToContactsCommand command, CancellationToken cancellationToken);
 
-    public record AddToContactsCommand(Session Session, string ChatAuthorId) : ISessionCommand<UserContact>;
+    public record AddToContactsCommand(Session Session, string ChatAuthorId) : ISessionCommand<Unit>;
 }
