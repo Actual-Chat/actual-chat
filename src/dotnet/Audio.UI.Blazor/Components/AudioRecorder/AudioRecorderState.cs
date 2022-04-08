@@ -1,6 +1,5 @@
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-// ReSharper disable once ClassNeverInstantiated.Global
 public class AudioRecorderState
 {
     private readonly object _lock = new();

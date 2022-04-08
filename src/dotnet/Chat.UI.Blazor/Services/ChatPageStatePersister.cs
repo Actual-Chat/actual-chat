@@ -2,7 +2,6 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-// ReSharper disable once ClassNeverInstantiated.Global
 public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Model>
 {
     private readonly Session _session;

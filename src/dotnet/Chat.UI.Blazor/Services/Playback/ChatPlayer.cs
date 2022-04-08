@@ -6,7 +6,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public enum ChatPlayerKind { Realtime, Historical }
 
-// ReSharper disable once ClassNeverInstantiated.Global
 public abstract class ChatPlayer : ProcessorBase
 {
     /// <summary>

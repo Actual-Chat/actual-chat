@@ -6,7 +6,6 @@ public interface ILiveTime
     Task<string> GetMomentsAgo(DateTime time);
 }
 
-// ReSharper disable once ClassNeverInstantiated.Global
 internal class LiveTime : ILiveTime
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
@@ -24,48 +23,44 @@ internal class LiveTime : ILiveTime
 
     private (string moment, TimeSpan delay) GetText(DateTime time)
     {
+        string result;
+        TimeSpan delay;
+
         var delta = DateTime.UtcNow - time.ToUniversalTime();
         if (delta < TimeSpan.Zero)
             delta = TimeSpan.Zero;
 
-        if (delta.TotalSeconds <= 5) {
+        if (delta.TotalSeconds <= 5)
             return ("just now", TimeSpan.FromSeconds(5) - delta);
-        }
-        else if (delta.TotalMinutes < 1) {
+        if (delta.TotalMinutes < 1)
             return ("few seconds ago", TimeSpan.FromMinutes(1) - delta);
-        }
-        else if (delta.TotalMinutes < 2) {
+        if (delta.TotalMinutes < 2)
             return ("a minute ago", TimeSpan.FromMinutes(2) - delta);
-        }
-        else if (delta.TotalMinutes < 5) {
+        if (delta.TotalMinutes < 5)
             return ("few minutes ago", TimeSpan.FromMinutes(5) - delta);
-        }
-        else if (delta < TimeSpan.FromMinutes(11)) {
+        if (delta < TimeSpan.FromMinutes(11)) {
             var minutes = (int)delta.TotalMinutes;
-            var result = $"{minutes} minutes ago";
-            var delay = TimeSpan.FromMinutes(1).Multiply(minutes + 1) - delta;
+            result = $"{minutes} minutes ago";
+            delay = TimeSpan.FromMinutes(1).Multiply(minutes + 1) - delta;
             return (result, delay);
+        }
+
+        var now = DateTime.Now;
+        var today = now.Date;
+        var yesterday = today.AddDays(-1);
+        if (time.Date == today) {
+            result = $"today, {time.ToShortTimeString()}";
+            delay = TimeSpan.FromDays(1) - now.TimeOfDay;
+        }
+        else if (time.Date == yesterday) {
+            result = $"yesterday, {time.ToShortTimeString()}";
+            delay = TimeSpan.FromDays(1) - now.TimeOfDay;
         }
         else {
-            var now = DateTime.Now;
-            var today = now.Date;
-            var yesterday = today.AddDays(-1);
-            string result;
-            TimeSpan delay;
-            if (time.Date == today) {
-                result = $"today, {time.ToShortTimeString()}";
-                delay = TimeSpan.FromDays(1) - now.TimeOfDay;
-            }
-            else if (time.Date == yesterday) {
-                result = $"yesterday, {time.ToShortTimeString()}";
-                delay = TimeSpan.FromDays(1) - now.TimeOfDay;
-            }
-            else {
-                result = $"{time.ToShortDateString()}, {time.ToShortTimeString()}";
-                delay = TimeSpan.MaxValue;
-            }
-            return (result, delay);
+            result = $"{time.ToShortDateString()}, {time.ToShortTimeString()}";
+            delay = TimeSpan.MaxValue;
         }
+        return (result, delay);
     }
 
     private TimeSpan TrimInvalidationDelay(TimeSpan delay)

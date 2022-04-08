@@ -1,6 +1,5 @@
 ﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
-// ReSharper disable once ClassNeverInstantiated.Global
 public class ChatPageState : WorkerBase
 {
     private ChatPlayers? _chatPlayers;

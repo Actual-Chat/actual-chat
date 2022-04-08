@@ -3,7 +3,6 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-// ReSharper disable once ClassNeverInstantiated.Global
 public class AudioRecorderStatePersister : StatePersister<string>
 {
     private readonly AudioRecorder _audioRecorder;
