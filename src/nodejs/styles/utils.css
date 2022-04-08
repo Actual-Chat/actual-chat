@@ -115,6 +115,10 @@ button.off {
     @apply p-1 mx-0 min-w-0 border-0;
 }
 
+.btn.btn-inline.on {
+    @apply text-toggle-on;
+}
+
 .btn.menu-item-btn {
     @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
 }
