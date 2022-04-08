@@ -43,10 +43,12 @@
 
 /* Suffixes */
 
-button.on {
+button.on,
+.btn.btn-inline.on {
     @apply text-toggle-on;
 }
-button.off {
+button.off,
+.btn.btn-inline.off {
     @apply text-secondary;
 }
 
@@ -113,10 +115,6 @@ button.off {
 .btn.btn-inline {
     @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
     @apply p-1 mx-0 min-w-0 border-0;
-}
-
-.btn.btn-inline.on {
-    @apply text-toggle-on;
 }
 
 .btn.menu-item-btn {

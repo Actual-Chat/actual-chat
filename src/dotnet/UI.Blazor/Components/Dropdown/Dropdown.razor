@@ -5,7 +5,7 @@
 @implements IDropdownBackend
 @implements IAsyncDisposable
 
-<div class="dropdown @Class" @ref="DropdownRef">
+<div class="dropdown z-30 @Class" @ref="DropdownRef">
     <CascadingValue Value="@this" IsFixed="true">
         <button @onclick="@(_ => _isOpened = !_isOpened)" class="dropdown-button relative flex outline-none hover:cursor-pointer @ButtonClass">
             @ButtonTemplate

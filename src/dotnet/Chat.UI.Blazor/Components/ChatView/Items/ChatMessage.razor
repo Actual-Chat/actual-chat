@@ -28,7 +28,7 @@
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
         </div>
     }
-    <div class="flex-1 overflow-hidden mb-1 mt-1 z-10">
+    <div class="flex-1 overflow-hidden mb-1 mt-1">
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
                 <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
@@ -60,7 +60,7 @@
         }
     </div>
 
-    <MessageMenu Class="invisible group-hover:visible absolute z-20" />
+    <MessageMenu Class="invisible group-hover:visible absolute z-10" />
 </div>
 
 @code {
