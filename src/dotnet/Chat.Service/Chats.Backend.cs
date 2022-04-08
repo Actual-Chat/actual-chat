@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
+using ActualChat.Events;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -24,7 +25,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
     private readonly IUserContactsBackend _userContactsBackend;
     private readonly ICommander _commander;
-    private readonly IChatEventStreamer<NewChatEntryEvent> _newChatEntryEventStreamer;
+    private readonly IEventPublisher _eventPublisher;
 
     public ChatsBackend(IServiceProvider services) : base(services)
     {
@@ -36,7 +37,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
         _userContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         _commander = services.GetRequiredService<ICommander>();
-        _newChatEntryEventStreamer = Services.GetRequiredService<IChatEventStreamer<NewChatEntryEvent>>();
+        _eventPublisher = Services.GetRequiredService<IEventPublisher>();
     }
 
     // [ComputeMethod]
@@ -363,7 +364,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         if (!entry.Content.IsNullOrEmpty() && !entry.IsStreaming && entry.Type == ChatEntryType.Text) {
             var chatEvent = new NewChatEntryEvent(entry.ChatId, entry.Id, entry.AuthorId, entry.Content);
-            await _newChatEntryEventStreamer.Publish(chatEvent, cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.Publish(chatEvent, cancellationToken).ConfigureAwait(false);
         }
 
         return entry;

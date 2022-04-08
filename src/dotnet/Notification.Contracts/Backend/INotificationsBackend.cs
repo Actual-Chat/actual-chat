@@ -8,8 +8,13 @@ public interface INotificationsBackend
     [ComputeMethod]
     Task<string[]> GetSubscribers(string chatId, CancellationToken cancellationToken);
 
-//     [CommandHandler]
-//     Task Create(CreateCommand command, CancellationToken cancellationToken);
-//
-//     public record CreateCommand(string AuthorId) : ICommand<Unit>, IBackendCommand;
+     [CommandHandler]
+     Task NotifySubscribers(NotifySubscribersCommand subscribersCommand, CancellationToken cancellationToken);
+
+     public record NotifySubscribersCommand(
+         string ChatId,
+         long EntryId,
+         string AuthorUserId,
+         string Title,
+         string Content) : ICommand<Unit>, IBackendCommand;
 }

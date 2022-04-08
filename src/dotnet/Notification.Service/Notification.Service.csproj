@@ -19,4 +19,8 @@
     <PackageReference Include="Google.Api.Gax.Grpc.GrpcCore" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="BackgroundProcesses" />
+  </ItemGroup>
+
 </Project>

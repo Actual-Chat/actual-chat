@@ -1,13 +1,10 @@
-﻿using ActualChat.Chat.Events;
-using ActualChat.Db.Module;
+﻿using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
 using ActualChat.Notification.Backend;
-using ActualChat.Notification.BackgroundProcesses;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
-using Google.Apis.Auth.OAuth2;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Plugins;
 
@@ -57,12 +54,6 @@ public class NotificationModule : HostModule<NotificationSettings>
         fusion.AddComputeService<Notifications>();
         services.AddSingleton<INotifications>(c => c.GetRequiredService<Notifications>());
         services.AddSingleton<INotificationsBackend>(c => c.GetRequiredService<Notifications>());
-
-        services.AddSingleton<INotificationPublisher, NotificationPublisher>();
-        services.AddSingleton<IChatEventHandler<NewChatEntryEvent>, ChatEventHandler<NewChatEntryEvent>>();
-        services.AddSingleton<IChatEventNotificationGenerator<NewChatEntryEvent>, NewChatEntryNotificationGenerator>();
-
-        services.AddHostedService<ChatEventNotificationProcess<NewChatEntryEvent>>();
 
         var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
         var firebaseMessaging = FirebaseMessaging.GetMessaging(firebaseApp);
