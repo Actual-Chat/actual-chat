@@ -48,6 +48,8 @@
     public const string AutoJoinQueryParameter = "auto-join";
 
     private Model? _lastRenderedModel;
+    private IComputed? _activeChatIdComputed;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -80,11 +82,18 @@
     protected override void OnParametersSet() {
         base.OnParametersSet();
         ChatPageState.ActiveChatId.Value = ChatId;
+        _activeChatIdComputed = ChatPageState.ActiveChatId.Computed;
     }
 
     public override async ValueTask DisposeAsync() {
-        ChatPageState.ActiveChatId.Value = Symbol.Empty;
         await base.DisposeAsync();
+        _ = BackgroundTask.Run(async () => {
+            await Task.Delay(TimeSpan.FromMilliseconds(50)).ConfigureAwait(false);
+            // We want to avoid unnecessarily frequent ActiveChatId changes
+            // (to Symbol.Empty on disposal & back on the next render)
+            if (ChatPageState.ActiveChatId.Computed == _activeChatIdComputed)
+                ChatPageState.ActiveChatId.Value = Symbol.Empty;
+        });
     }
 
     public record Model {
