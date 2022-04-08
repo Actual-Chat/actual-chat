@@ -14,7 +14,7 @@
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="chat-message @unreadClass group px-3 @marginClass">
+<div class="chat-message relative @unreadClass group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
             <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")"
@@ -28,7 +28,7 @@
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
         </div>
     }
-    <div class="flex-1 overflow-hidden mb-1 mt-1">
+    <div class="flex-1 overflow-hidden mb-1 mt-1 z-10">
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
                 <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
@@ -60,7 +60,7 @@
         }
     </div>
 
-    <MessageMenu Class="invisible group-hover:visible" />
+    <MessageMenu Class="invisible group-hover:visible absolute z-20" />
 </div>
 
 @code {
