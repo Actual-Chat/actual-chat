@@ -12,6 +12,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     private readonly MomentClockSet _clocks;
     private readonly FirebaseMessaging _firebaseMessaging;
     private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
+    private readonly UriMapper _uriMapper;
     private readonly ILogger<Notifications> _log;
 
     public Notifications(
@@ -20,12 +21,14 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         MomentClockSet clocks,
         FirebaseMessaging firebaseMessaging,
         IDbContextFactory<NotificationDbContext> dbContextFactory,
+        UriMapper uriMapper,
         ILogger<Notifications> log) : base(services)
     {
         _auth = auth;
         _clocks = clocks;
         _firebaseMessaging = firebaseMessaging;
         _dbContextFactory = dbContextFactory;
+        _uriMapper = uriMapper;
         _log = log;
     }
 

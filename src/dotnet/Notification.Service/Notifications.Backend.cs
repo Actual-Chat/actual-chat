@@ -82,7 +82,10 @@ public partial class Notifications
                     // Icon = ??? TODO(AK): Set icon
                 },
                 FcmOptions = new WebpushFcmOptions {
-                    // Link = ??? TODO(AK): Set topic Url to be opened with notification click
+                    // Link = ??? TODO(AK): Set anchor to open particular entry
+                    Link = _uriMapper.BaseUri.Host == "localhost"
+                        ? null
+                        : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString(),
                 }
             },
         };
