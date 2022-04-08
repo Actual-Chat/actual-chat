@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassNeverInstantiated.Global
-public class ChatPageStatePersister : StatePersister<Symbol[]>
+public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Model>
 {
     private readonly Session _session;
     private readonly IChats _chats;
@@ -27,28 +27,34 @@ public class ChatPageStatePersister : StatePersister<Symbol[]>
         _userInteractionUI = userInteractionUI;
     }
 
-    protected override async Task Restore(Symbol[]? state, CancellationToken cancellationToken)
+    protected override async Task Restore(Model? state, CancellationToken cancellationToken)
     {
-        var pinnedChatIds = state;
-        if (pinnedChatIds == null)
+        if (state == null)
             return;
 
-        pinnedChatIds = await GetPlayableOnly(pinnedChatIds).ConfigureAwait(false);
-        if (pinnedChatIds.Length == 0)
-            return;
-
-        await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
+        var pinnedChatIds = await Normalize(state.PinnedChatIds).ConfigureAwait(false);
         _chatPageState.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
-        _chatPlayers.StartRealtimePlayback();
+        _chatPageState.IsFocusModeOn.Value = state.IsFocusModeOn;
+
+        if (state.IsRealtimePlaybackOn) {
+            await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
+            _chatPlayers.StartRealtimePlayback();
+        }
     }
 
-    protected override async Task<Symbol[]> Compute(CancellationToken cancellationToken)
+    protected override async Task<Model> Compute(CancellationToken cancellationToken)
     {
         var pinnedChatIds = await _chatPageState.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        return pinnedChatIds.ToArray();
+        var isFocusModeOn = await _chatPageState.IsFocusModeOn.Use(cancellationToken).ConfigureAwait(false);
+        var chatPlayback = await _chatPlayers.PlaybackMode.Use(cancellationToken).ConfigureAwait(false);
+        return new Model() {
+            PinnedChatIds = pinnedChatIds.ToArray(),
+            IsFocusModeOn = isFocusModeOn,
+            IsRealtimePlaybackOn = chatPlayback is RealtimeChatPlaybackMode,
+        };
     }
 
-    private async Task<Symbol[]> GetPlayableOnly(Symbol[] chatIds)
+    private async Task<Symbol[]> Normalize(Symbol[] chatIds)
     {
         var permissionTasks = chatIds.Select(async chatId => {
             var permissions = await _chats.GetPermissions(_session, chatId, default).ConfigureAwait(false);
@@ -63,5 +69,12 @@ public class ChatPageStatePersister : StatePersister<Symbol[]>
             result.Add(chatId);
         }
         return result.ToArray();
+    }
+
+    public sealed record Model
+    {
+        public Symbol[] PinnedChatIds { get; init; } = Array.Empty<Symbol>();
+        public bool IsRealtimePlaybackOn { get; init; }
+        public bool IsFocusModeOn { get; init; }
     }
 }
