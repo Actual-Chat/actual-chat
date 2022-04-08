@@ -26,6 +26,7 @@ export class VirtualList {
     private readonly _renderEndObserver: MutationObserver;
     private _listResizeEventCount = 0;
     private _isRendering = false;
+    private _isDisposed = false;
     private _renderStartScrollTop = 0;
     private _renderEndScrollTop = 0;
     private _scrollTopPivotRef?: HTMLElement;
@@ -64,6 +65,7 @@ export class VirtualList {
         this._isEndAligned = isEndAligned;
         this._ref = ref;
         this._blazorRef = backendRef;
+        this._isDisposed = false;
         this._abortController = new AbortController();
         this._spacerRef = this._ref.querySelector(':scope > .spacer-start');
         this._endSpacerRef = this._ref.querySelector(':scope > .spacer-end');
@@ -105,6 +107,7 @@ export class VirtualList {
     };
 
     public dispose() {
+        this._isDisposed = true;
         this._abortController.abort();
         this._resizeObserver.disconnect();
         this._renderEndObserver.disconnect();
@@ -295,6 +298,8 @@ export class VirtualList {
     protected async updateClientSideStateImpl(): Promise<void> {
         while (this._isRendering)
             await nextTickAsync();
+        if (this._isDisposed)
+            return;
 
         const rs = this._renderState;
         if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
@@ -399,7 +404,7 @@ export class VirtualList {
     // Event handlers
 
     private onScroll = (): void => {
-        if (this._isRendering)
+        if (this._isRendering || this._isDisposed)
             return;
         this._isSafeToScroll = false;
         if (this._onScrollStoppedTimeout != null)
@@ -415,7 +420,7 @@ export class VirtualList {
     };
 
     private onResize(entries: ResizeObserverEntry[]) {
-        if (this._isRendering)
+        if (this._isRendering || this._isDisposed)
             return;
         for (const entry of entries) {
             if (entry.target == this._ref)
@@ -557,6 +562,8 @@ export class VirtualList {
         if (this._debugMode)
             console.info(`${LogScope}.renewStickyEdge`);
         for (const stickyEdge of this.getStickyEdgeCandidates()) {
+            if (stickyEdge.itemKey == null)
+                return;
             const itemRef = this.getItemRef(stickyEdge.itemKey);
             if (isPartiallyVisible(itemRef.getBoundingClientRect(), viewRect))
                 return this.setStickyEdge(stickyEdge);

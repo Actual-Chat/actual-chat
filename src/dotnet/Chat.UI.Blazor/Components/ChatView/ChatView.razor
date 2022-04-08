@@ -4,7 +4,7 @@
 <VirtualList
     Class="chat-view"
     AlignmentEdge="VirtualListEdge.End"
-    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="2000" SkeletonCount="30"
+    LoadZoneSize="2000" BufferZoneSize="4000" SpacerSize="2000" SkeletonCount="40"
     DataSource="GetMessages"
     KeyComparer="LongAsStringKeyComparer.Default">
     <Item>
@@ -14,7 +14,7 @@
         @{
             var rnd = new Random(Random.Shared.Next());
         }
-        <div class="flex items-start mb-4 text-sm opacity-75 hover:opacity-100 animate-pulse">
+        <div class="mx-4 my-2 flex items-start text-sm opacity-75 hover:opacity-100 animate-pulse">
             <div class="block bg-gray-200 w-10 h-10 rounded-full mr-3"></div>
             <div class="flex-1 overflow-hidden">
                 <div class="flex flex-row">
