@@ -16,14 +16,6 @@
     content:attr(data-text)
 }
 
-.chat-player-toggle {
-    @apply text-secondary;
-}
-
-.chat-player-toggle.on {
-    @apply text-toggle-on;
-}
-
 .chat-control-button {
     @apply outline-none justify-center bg-accent rounded-md;
 }

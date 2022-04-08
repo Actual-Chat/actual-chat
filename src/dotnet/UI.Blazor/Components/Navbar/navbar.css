@@ -48,6 +48,12 @@
     @apply scale-105 ease-in-out duration-150;
 }
 
-.navbar-link:hover .menu-chat-player-toggle {
+.navbar-link .menu-chat-pin-toggle button {
+    @apply invisible;
+}
+.navbar-link:hover .menu-chat-pin-toggle button {
+    @apply visible;
+}
+.navbar-link .menu-chat-pin-toggle button.on {
     @apply visible;
 }

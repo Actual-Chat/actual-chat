@@ -121,6 +121,19 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Client", "src\dotn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Service.Migration", "src\dotnet\Feedback.Service.Migration\Feedback.Service.Migration.csproj", "{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47B5-30E6-4B2A-A8DB-1B1FD644948F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C53-98F6-45B2-8717-15B35A59AFDC}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\styles\blazor.css = src\nodejs\styles\blazor.css
+		src\nodejs\styles\colors.css = src\nodejs\styles\colors.css
+		src\nodejs\styles\main.css = src\nodejs\styles\main.css
+		src\nodejs\styles\scrollbars.css = src\nodejs\styles\scrollbars.css
+		src\nodejs\styles\spinkit.css = src\nodejs\styles\spinkit.css
+		src\nodejs\styles\tailwind.css = src\nodejs\styles\tailwind.css
+		src\nodejs\styles\utils.css = src\nodejs\styles\utils.css
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -368,6 +381,8 @@ Global
 		{F7AD92BE-C91F-4877-81E5-CC225CFA445E} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{4BA1F384-E989-4738-B5E4-7430D712D710} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
+		{609C47B5-30E6-4B2A-A8DB-1B1FD644948F} = {BEC9AC19-13D3-4573-85CF-DCF5BA27377C}
+		{747A6C53-98F6-45B2-8717-15B35A59AFDC} = {609C47B5-30E6-4B2A-A8DB-1B1FD644948F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

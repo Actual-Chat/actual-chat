@@ -11,8 +11,8 @@
             var isActive = model.ActiveChatId == chat.Id;
             <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
                 <PostFragment>
-                    <div class="menu-chat-player-toggle justify-self-end flex-1 flex justify-end invisible">
-                        <ChatPlayerToggle ChatId="@chat.Id" Size="ChatPlayerToggleSize.Small" />
+                    <div class="menu-chat-pin-toggle justify-self-end flex-1 flex justify-end">
+                        <ChatPinToggle ChatId="@chat.Id" />
                     </div>
                 </PostFragment>
             </NavbarLink>

@@ -13,6 +13,18 @@
     opacity: 100%;
 }
 
+/* Suffixes */
+
+button.on {
+    @apply text-toggle-on;
+}
+
+button.off {
+    @apply text-secondary;
+}
+
+/* Modal */
+
 .modal {
     z-index: 1000;
     max-width: 96%;
