@@ -17,7 +17,7 @@ public class ImagePreviewUI
         modalParameters.Add(nameof(ImagePreview.AltText), altText);
 
         var modalOptions = new ModalOptions {
-            Animation = ModalAnimation.FadeInOut(0.2),
+            Animation = ModalAnimation.FadeIn(0.2),
             HideHeader = true,
             Class = "blazored-modal-base"
         };
