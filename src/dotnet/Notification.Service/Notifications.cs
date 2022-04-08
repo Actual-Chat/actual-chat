@@ -6,21 +6,27 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public class Notifications : DbServiceBase<NotificationDbContext>, INotifications, INotificationsBackend
+public partial class Notifications : DbServiceBase<NotificationDbContext>, INotifications, INotificationsBackend
 {
     private readonly IAuth _auth;
     private readonly MomentClockSet _clocks;
     private readonly FirebaseMessaging _firebaseMessaging;
+    private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
+    private readonly ILogger<Notifications> _log;
 
     public Notifications(
         IServiceProvider services,
         IAuth auth,
         MomentClockSet clocks,
-        FirebaseMessaging firebaseMessaging) : base(services)
+        FirebaseMessaging firebaseMessaging,
+        IDbContextFactory<NotificationDbContext> dbContextFactory,
+        ILogger<Notifications> log) : base(services)
     {
         _auth = auth;
         _clocks = clocks;
         _firebaseMessaging = firebaseMessaging;
+        _dbContextFactory = dbContextFactory;
+        _log = log;
     }
 
     // [ComputeMethod]
@@ -40,31 +46,8 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
     }
 
     // [ComputeMethod]
-    public virtual async Task<Device[]> GetDevices(string userId, CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbDevices = await dbContext.Devices
-            .Where(d => d.UserId == userId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var entries = dbDevices.Select(d => d.ToModel()).ToArray();
-        return entries;
-    }
 
     // [ComputeMethod]
-    public virtual async Task<string[]> GetSubscribers(string chatId, CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        return await dbContext.ChatSubscriptions
-            .Where(cs => cs.ChatId == chatId)
-            .Select(cs => cs.UserId)
-            .ToArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
 
     // [CommandHandler]
     public virtual async Task<bool> RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
@@ -184,4 +167,6 @@ public class Notifications : DbServiceBase<NotificationDbContext>, INotification
 
         context.Operation().Items.Set(existingSubscription != null);
     }
+
+    // [CommandHandler]
 }

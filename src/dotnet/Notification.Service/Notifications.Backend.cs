@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
@@ -7,54 +6,42 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public sealed class NotificationPublisher : INotificationPublisher
+public partial class Notifications
 {
-    private readonly FirebaseMessaging _firebaseMessaging;
-    private readonly INotificationsBackend _notificationsBackend;
-    private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly ILogger<NotificationPublisher> _log;
-    private readonly IDbContextFactory<NotificationDbContext> _dbContextFactory;
-    private readonly MomentClockSet _clocks;
-
-    public NotificationPublisher(
-        FirebaseMessaging firebaseMessaging,
-        INotificationsBackend notificationsBackend,
-        IChatAuthorsBackend chatAuthorsBackend,
-        IDbContextFactory<NotificationDbContext> dbContextFactory,
-        MomentClockSet clocks,
-        ILogger<NotificationPublisher> log)
+    public virtual async Task<Device[]> GetDevices(string userId, CancellationToken cancellationToken)
     {
-        _firebaseMessaging = firebaseMessaging;
-        _notificationsBackend = notificationsBackend;
-        _chatAuthorsBackend = chatAuthorsBackend;
-        _dbContextFactory = dbContextFactory;
-        _clocks = clocks;
-        _log = log;
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbDevices = await dbContext.Devices
+            .Where(d => d.UserId == userId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var entries = dbDevices.Select(d => d.ToModel()).ToArray();
+        return entries;
     }
 
-    public Task Publish(NotificationEntry notification, CancellationToken cancellationToken)
+    public virtual async Task<string[]> GetSubscribers(string chatId, CancellationToken cancellationToken)
     {
-        switch (notification) {
-            case UserNotificationEntry userEntry:
-                return PublishUserNotification(userEntry, cancellationToken);
-            case ChatNotificationEntry topicEntry:
-                return PublishChatNotification(topicEntry, cancellationToken);
-            case null:
-                throw new ArgumentException("notification should not be null.", nameof(notification));
-            default:
-                throw new NotSupportedException(notification.GetType().Name + " is not supported.");
-        }
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        return await dbContext.ChatSubscriptions
+            .Where(cs => cs.ChatId == chatId)
+            .Select(cs => cs.UserId)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    private async Task PublishChatNotification(
-        ChatNotificationEntry chatNotificationEntry,
+    public virtual async Task NotifySubscribers(
+        INotificationsBackend.NotifySubscribersCommand notifyCommand,
         CancellationToken cancellationToken)
     {
-        var (chatId, entryId, authorId, title, content, _) = chatNotificationEntry;
-        var userIds = await _notificationsBackend.GetSubscribers(chatId, cancellationToken).ConfigureAwait(false);
-        var chatAuthor = await _chatAuthorsBackend.Get(chatId, authorId, false, cancellationToken).ConfigureAwait(false);
-        var userId = chatAuthor?.UserId;
+        if (Computed.IsInvalidating())
+            return;
 
+        var (chatId, entryId, userId, title, content) = notifyCommand;
+        var userIds = await GetSubscribers(chatId, cancellationToken).ConfigureAwait(false);
         var multicastMessage = new MulticastMessage {
             Tokens = null,
             Notification = new FirebaseAdmin.Messaging.Notification {
@@ -99,16 +86,16 @@ public sealed class NotificationPublisher : INotificationPublisher
                 }
             },
         };
-
         var deviceIdGroups = userIds
             .Where(uid => !string.Equals(uid, userId, StringComparison.Ordinal))
             .ToAsyncEnumerable()
-            .SelectMany(uid => GetDevices(uid, cancellationToken))
+            .SelectMany(uid => GetDevicesInternal(uid, cancellationToken))
             .Chunk(200, cancellationToken);
 
         await foreach (var deviceGroup in deviceIdGroups.ConfigureAwait(false)) {
             multicastMessage.Tokens = deviceGroup.Select(p => p.DeviceId).ToList();
-            var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken).ConfigureAwait(false);
+            var batchResponse = await _firebaseMessaging.SendMulticastAsync(multicastMessage, cancellationToken)
+                .ConfigureAwait(false);
 
             if (batchResponse.FailureCount > 0)
                 _log.LogWarning("Notification messages were not sent. NotificationCount = {NotificationCount}",
@@ -116,13 +103,19 @@ public sealed class NotificationPublisher : INotificationPublisher
 
             if (batchResponse.SuccessCount > 0)
                 _ = Task.Run(
-                    () => PersistMessages(chatId, entryId, deviceGroup, batchResponse.Responses, cancellationToken),
+                    () => PersistMessages(chatId,
+                        entryId,
+                        deviceGroup,
+                        batchResponse.Responses,
+                        cancellationToken),
                     cancellationToken);
         }
 
-        async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevices(string userId1, [EnumeratorCancellation] CancellationToken cancellationToken1)
+        async IAsyncEnumerable<(string DeviceId, string UserId)> GetDevicesInternal(
+            string userId1,
+            [EnumeratorCancellation] CancellationToken cancellationToken1)
         {
-            var devices = await _notificationsBackend.GetDevices(userId1, cancellationToken1).ConfigureAwait(false);
+            var devices = await GetDevices(userId1, cancellationToken1).ConfigureAwait(false);
             foreach (var device in devices)
                 yield return (device.DeviceId, userId1);
         }
@@ -134,7 +127,7 @@ public sealed class NotificationPublisher : INotificationPublisher
             IReadOnlyList<SendResponse> responses,
             CancellationToken cancellationToken1)
         {
-            // TODO(AK): sharding by userId
+            // TODO(AK): sharding by userId - code is running at a sharded service already
             var dbContext = _dbContextFactory.CreateDbContext().ReadWrite();
             await using var __ = dbContext.ConfigureAwait(false);
 
@@ -152,14 +145,5 @@ public sealed class NotificationPublisher : INotificationPublisher
             await dbContext.AddRangeAsync(dbMessages, cancellationToken1).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    private Task PublishUserNotification(
-        UserNotificationEntry userNotificationEntry,
-        CancellationToken cancellationToken)
-    {
-        var userId = userNotificationEntry.UserId;
-
-        throw new NotImplementedException();
     }
 }

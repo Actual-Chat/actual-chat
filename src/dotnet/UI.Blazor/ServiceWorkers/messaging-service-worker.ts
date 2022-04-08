@@ -9,5 +9,6 @@ const app = initializeApp(config);
 const messaging = getMessaging(app);
 onBackgroundMessage(messaging, payload => {
     console.log('[messaging-service-worker.ts] Received background message ', payload);
+    // payload.
 });
 

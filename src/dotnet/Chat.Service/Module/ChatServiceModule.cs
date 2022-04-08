@@ -1,6 +1,8 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.EventHandlers;
 using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
+using ActualChat.Events;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
@@ -82,8 +84,11 @@ public class ChatServiceModule : HostModule<ChatSettings>
         services.AddResponseCaching();
         services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();
 
-        // ChatEventStreamer<T>
-        services.AddSingleton<IChatEventStreamer<NewChatEntryEvent>, ChatEventStreamer<NewChatEntryEvent>>();
-        services.AddSingleton<IChatEventStreamer<InviteToChatEvent>, ChatEventStreamer<InviteToChatEvent>>();
+        // Events
+        services.AddSingleton<IEventPublisher, LocalEventPublisher>();
+        services.AddSingleton<LocalEventHub<NewChatEntryEvent>>();
+        services.AddSingleton(c => c.GetRequiredService<LocalEventHub<NewChatEntryEvent>>().Reader);
+        services.AddSingleton<IEventHandler<NewChatEntryEvent>, NewChatEntryEventHandler>();
+        services.AddHostedService<EventListener<NewChatEntryEvent>>();
     }
 }
