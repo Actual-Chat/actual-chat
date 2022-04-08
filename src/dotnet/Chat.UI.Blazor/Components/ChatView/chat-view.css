@@ -20,6 +20,26 @@
     @apply bg-message-hover;
 }
 
+.author-image {
+    @apply rounded-lg border-2 inline-block;
+}
+
+.author-recording {
+    @apply border-success;
+}
+
+.author-not-recording {
+    @apply border-secondary;
+}
+
+.chat-message:hover .author-recording {
+    @apply border-success;
+}
+
+.chat-message:hover .author-not-recording {
+    @apply border-message-hover;
+}
+
 .chat-message:hover .chat-message-timestamp-secondary {
     @apply visible;
 }

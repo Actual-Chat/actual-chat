@@ -52,6 +52,7 @@ module.exports = {
         'success-muted': 'var(--button-color-success-hover)',
         'separate-line': 'var(--background-separate-line)',
         'button-cancel': 'var(--button-color-cancel)',
+        'message-hover': 'var(--background-message-hover)',
         'button-cancel-hover': 'var(--button-color-cancel-hover)',
         'button-error': 'var(--button-color-error)',
         'button-error-hover': 'var(--button-color-error-hover)',
