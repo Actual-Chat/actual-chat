@@ -4,7 +4,7 @@ import { Resettable } from 'object-pool';
 import { AudioContextPool } from 'audio-context-pool';
 import { isAecWorkaroundNeeded, enableChromiumAec } from './chromium-echo-cancellation';
 
-const LogScope: string = 'AudioPlayerController'
+const LogScope: string = 'AudioPlayerController';
 
 const worker = new Worker('/dist/opusDecoderWorker.js');
 const workerCallbacks = new Map<number, () => void>();

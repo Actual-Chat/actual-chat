@@ -1,47 +1,17 @@
-﻿@using BlazorContextMenu
-
-<Dropdown ContentPositionCss="right-3 md:right-auto md:left-3 top-8" Class="static">
-    <ButtonTemplate>
-        <div class="px-2 inline-flex">
-            <span class="float-left text-secondary font-semibold chat-header-title">@Chat.Title</span>
-        </div>
-    </ButtonTemplate>
-    <ContentTemplate>
-        <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
-            <MenuItem Title="Edit your name, image and bio in this chat" OnItemClick="OnEditChatAuthorAvatar"></MenuItem>
-            @if (_canEdit) {
-                <MenuItem Title="Edit chat" OnItemClick="OnEditChat"></MenuItem>
-            }
-            @if (_canInvite) {
-                <MenuItem Title="Invite people" OnItemClick="OnInvite"></MenuItem>
-            }
-        </Menu>
-    </ContentTemplate>
-</Dropdown>
+<div class="flex flex-row justify-items-stretch items-start bg-primary md:bg-secondary text-primary font-medium">
+    <div class="flex-none">
+        <NavbarToggle/>
+    </div>
+    <div class="flex-auto flex flex-row items-center p-3.5 pt-2.5">
+        <ChatTitle/>
+    </div>
+    <div class="flex-none flex flex-row items-center p-1 pb-2 space-x-1">
+        <ChatActivities/>
+        <ChatNotificationToggle ChatId="@Chat.Id"/>
+        <ChatPlaybackToggles/>
+    </div>
+</div>
 
 @code {
-    private bool _canEdit;
-    private bool _canInvite;
-
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
-    protected override async Task OnParametersSetAsync() {
-        await base.OnParametersSetAsync();
-        var permissions = await Chats.GetPermissions(Session, Chat.Id, default);
-        _canEdit = permissions.HasFlag(ChatPermissions.Admin);
-        _canInvite = permissions.HasFlag(ChatPermissions.Invite);
-    }
-
-    private void OnEditChatAuthorAvatar()
-        => Nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
-
-    private void OnEditChat()
-        => Nav.NavigateTo($"/chat/{Chat.Id}/edit");
-
-    private void OnInvite()
-        => Nav.NavigateTo($"/chat/{Chat.Id}/invite");
 }

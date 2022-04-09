@@ -7,7 +7,7 @@ import SoxrWasm from 'wasm-audio-resampler/app/soxr_wasm.wasm';
 import SoxrModule from 'wasm-audio-resampler/src/soxr_wasm';
 import { BufferVadWorkletMessage } from '../worklets/audio-vad-worklet-message';
 
-const LogScope: string = 'AudioVadWorker'
+const LogScope: string = 'AudioVadWorker';
 
 const CHANNELS = 1;
 const IN_RATE = 48000;

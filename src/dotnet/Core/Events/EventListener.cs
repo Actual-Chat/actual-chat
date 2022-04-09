@@ -38,7 +38,8 @@ public class EventListener<T>: WorkerBase where T: IEvent
                             _ => _eventReader.Ack(id, cancellationToken),
                             TaskScheduler.Default);
                 }
-                await Task.WhenAll(ackTasks).ConfigureAwait(false);
+                if (ackTasks.Any())
+                    await Task.WhenAll(ackTasks).ConfigureAwait(false);
             }
             catch (Exception e) {
                 _log.LogWarning(e, "Error processing event");

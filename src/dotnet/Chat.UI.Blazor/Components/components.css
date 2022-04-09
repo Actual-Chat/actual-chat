@@ -1,0 +1,10 @@
+.chat-header-button button {
+    @apply rounded-md bg-accent outline-none;
+    @apply flex-1 flex flex-row justify-center;
+}
+.chat-header-button:hover {
+    @apply z-10;
+}
+.chat-header-button:hover button {
+    @apply bg-primary z-10;
+}

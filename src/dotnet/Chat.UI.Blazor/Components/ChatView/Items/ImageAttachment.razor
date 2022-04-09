@@ -20,7 +20,7 @@
 }
 <div class="message-attachment-image mt-1">
     <a class="cursor-pointer" href="@url"
-       role="button" @onclick="@(() => ShowImagePreview(url))" @onclick:preventDefault="true">
+       role="button" @onclick="_ => ImagePreviewUI.Show(url)" @onclick:preventDefault="true">
         <img class="inline" style="@imgStyle" src="@previewUrl" alt="image" />
     </a>
 </div>
@@ -30,8 +30,4 @@
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
-
-    private Task ShowImagePreview(string url) {
-        return ImagePreviewUI.Show(url);
-    }
 }

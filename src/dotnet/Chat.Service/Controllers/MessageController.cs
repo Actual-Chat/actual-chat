@@ -219,7 +219,9 @@ public class MessageController : ControllerBase
         var payloadJson = await section.ReadAsStringAsync();
         try {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+#pragma warning disable IL2026
             var payload = JsonSerializer.Deserialize<MessagePayload>(payloadJson, options);
+#pragma warning restore IL2026
             messagePost.Payload = payload;
             return true;
         }

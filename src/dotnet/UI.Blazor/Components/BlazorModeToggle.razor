@@ -4,7 +4,7 @@
 @inject BlazorCircuitContext _circuitContext
 
 <span class="blazor-mode-toggle select-none cursor-pointer transition duration-500 ease-in-out group"
-     @onclick="@(() => _blazorModeHelper.ChangeMode(!IsServerSideBlazor))">
+     @onclick="_ => _blazorModeHelper.ChangeMode(!IsServerSideBlazor)">
     @if (_circuitContext.IsPrerendering) {
         <span>"Loading..."</span>
     } else {

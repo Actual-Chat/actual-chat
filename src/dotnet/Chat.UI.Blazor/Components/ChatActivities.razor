@@ -1,34 +1,32 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Chat.UI.Blazor.Services
-@inherits ComputedStateComponent<ChatActivityPanel.Model>
+@inherits ComputedStateComponent<ChatActivities.Model>
 
-<div class="chat-activity-panel inline-flex mr-2">
+<div class="chat-activity-panel flex flex-row pr-3">
 @{
     var model = State.LatestNonErrorValue;
     var recording = model.Recording;
     var zIndex = 1;
     var range = MaxIconCount > recording.Length ? recording.Length : MaxIconCount;
+    var cls = "author-badge w-6 h-6 -mr-2 rounded-full bg-secondary border border-primary text-center text-accent-muted select-none";
     for (var i = 0; i < range; i++) {
         var author = recording[i];
         var picture = author.Picture;
         if (string.IsNullOrWhiteSpace(picture))
             // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
             picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
-        <div class="author-badge w-6 h-6 -mr-2 select-none bg-secondary rounded-full border border-primary" style="z-index: @zIndex;">
+        <div class="@cls" style="z-index: @zIndex;">
             <img src="@picture" alt="@author.Name" title="@author.Name" class="rounded-full"/>
         </div>
         zIndex++;
     }
     if (recording.Length > MaxIconCount) {
-        if (recording.Length < 11) {
-            <div class="author-badge w-6 h-6 -mr-1.5 select-none bg-avatar rounded-full text-center text-accent-muted" style="z-index: @(range + 1);">
+        <div class="@cls bg-avatar" style="z-index: @(range + 1);">
+            @if (recording.Length < 11) {
                 <div class="text-sm">+@(recording.Length - MaxIconCount)</div>
-            </div>
-        } else {
-            <div class="author-badge w-6 h-6 -mr-2 select-none bg-avatar rounded-full border border-primary text-center text-accent-muted" style="z-index: @(range + 1);">
+            } else {
                 <div class="text-sm">...</div>
-            </div>
-        }
+            }
+        </div>
     }
 }
 </div>

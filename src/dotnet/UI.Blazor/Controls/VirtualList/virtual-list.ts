@@ -2,7 +2,7 @@ import './virtual-list.css';
 import { delayAsync } from 'delay';
 import { nextTickAsync } from 'next-tick';
 
-const LogScope: string = 'VirtualList'
+const LogScope: string = 'VirtualList';
 const ScrollStoppedTimeout: number = 2000;
 const UpdateClientSideStateTimeout: number = 10;
 const RenderToUpdateClientSideStateDelay: number = 20;
@@ -57,7 +57,7 @@ export class VirtualList {
         isEndAligned: boolean,
         debugMode: boolean) {
         if (debugMode) {
-            console.log(`${LogScope}.ctor`);
+            console.log(`${LogScope}: .ctor`);
             window['virtualList'] = this;
         }
 

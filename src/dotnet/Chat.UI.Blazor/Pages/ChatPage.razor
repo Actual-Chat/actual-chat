@@ -4,7 +4,6 @@
 @using ActualChat.Notification.UI.Blazor
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
-
 @{
     _lastRenderedModel = State.LatestNonErrorValue ?? new();
     var model = _lastRenderedModel;
@@ -22,12 +21,7 @@
     @* @key=... ensures child components are recreated on navigation to another chat *@
     <RenderIntoSlot Name="MainHeader" @key="@(chat.Id + "-header")">
         <CascadingValue Value="chat">
-            <div class="flex flex-row justify-end md:justify-between mt-0 font-medium bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
-                <NavbarIcon/>
-                <ChatHeader/>
-                <ChatActivityPanel/>
-                <ChatNotificationToggle ChatId="@chat.Id"/>
-            </div>
+            <ChatHeader/>
         </CascadingValue>
     </RenderIntoSlot>
 

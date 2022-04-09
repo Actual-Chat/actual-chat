@@ -16,7 +16,7 @@ import { EndMessage, EncoderMessage, InitEncoderMessage, CreateEncoderMessage } 
 import { BufferEncoderWorkletMessage } from '../worklets/opus-encoder-worklet-message';
 import { VoiceActivityChanged } from './audio-vad';
 
-const LogScope: string = 'OpusEncoderWorker'
+const LogScope: string = 'OpusEncoderWorker';
 
 /// #if MEM_LEAK_DETECTION
 console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);

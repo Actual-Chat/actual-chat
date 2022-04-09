@@ -1,14 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <RenderIntoSlot Name="MainHeader">
-    <div class="flex flex-col">
-        <div class="flex h-11 justify-end md:justify-between mt-0 font-semibold bg-primary md:bg-secondary text-primary py-2 px-3 select-none border-b border-accent z-10">
-            <NavbarIcon/>
-            <div class="px-2 inline-flex">
-                <span class="float-left text-secondary font-semibold chat-header-title">
-                    @ChildContent
-                </span>
-            </div>
+    <div class="flex flex-row justify-items-stretch items-start bg-primary md:bg-secondary text-primary font-medium">
+        <div class="flex-none">
+            <NavbarToggle/>
+        </div>
+        <div class="flex-auto flex flex-row p-3.5 pt-2.5">
+            @ChildContent
         </div>
     </div>
 </RenderIntoSlot>

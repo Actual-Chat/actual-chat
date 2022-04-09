@@ -9,7 +9,7 @@ import {
 } from './feeder-audio-worklet-message';
 import { DecoderWorkerMessage, EndDecoderWorkerMessage, SamplesDecoderWorkerMessage } from '../workers/opus-decoder-worker-message';
 
-const LogScope: string = 'FeederProcessor'
+const LogScope: string = 'FeederProcessor';
 const SAMPLE_RATE = 48000;
 
 /** Part of the feeder that lives in [AudioWorkletGlobalScope]{@link https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope} */

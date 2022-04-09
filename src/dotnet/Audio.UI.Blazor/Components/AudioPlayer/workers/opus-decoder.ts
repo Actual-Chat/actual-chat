@@ -9,7 +9,7 @@ import codecWasmMap from '@actual-chat/codec/codec.debug.wasm.map';
 /// #code import codecWasm from '@actual-chat/codec/codec.wasm';
 /// #endif
 
-const LogScope: string = 'OpusDecoder'
+const LogScope: string = 'OpusDecoder';
 /// #if MEM_LEAK_DETECTION
 console.info(`${LogScope}: MEM_LEAK_DETECTION == true`);
 /// #endif

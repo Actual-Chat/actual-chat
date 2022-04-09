@@ -9,7 +9,7 @@
     var cls = isActive ? "text-primary bg-primary" : "text-secondary bg-accent";
 }
 
-<button onclick="@OnClicked" title="@Title" class="navbar-menu-button @cls h-10 w-10 flex justify-center grid content-center cursor-pointer @Class">
+<button onclick="@OnClicked" title="@Title" class="navbar-menu-button @cls p-2.5 py-2 flex justify-center grid content-center cursor-pointer @Class">
     <svg xmlns="http://www.w3.org/2000/svg" class="navbar-menu-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
         <path d="@IconPath"></path>
     </svg>
@@ -18,8 +18,8 @@
 @code {
     [Parameter] public string? Class { get; set; } = "";
     [Parameter] public string? IconPath { get; set; }
-    [Parameter] public int IconHeight { get; set; } = 6;
-    [Parameter] public int IconWidth { get; set; } = 6;
+    [Parameter] public int IconHeight { get; set; } = 8;
+    [Parameter] public int IconWidth { get; set; } = 8;
     [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";

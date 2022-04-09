@@ -4,15 +4,10 @@
 
 @{
     var isSubscribed = State.Value.IsSubscribed;
-    var toggleClass = isSubscribed
-        ? "text-toggle-on"
-        : "text-secondary";
 }
-
-<div class="chat-control-button p-1">
-    @* onclick="@Toggle" *@
-    <button @onclick="_ => Toggle()" >
-        <i class="fa fa-bell fa-lg @toggleClass" aria-hidden="true"></i>
+<div class="chat-header-button">
+    <button @onclick="OnClick" class="@(isSubscribed ? "on" : "off") p-1">
+        <i class="fa fa-bell fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
     </button>
 </div>
 
@@ -33,7 +28,7 @@
         };
     }
 
-    private async Task Toggle() {
+    private async Task OnClick() {
         var isSubscribed = State.Value.IsSubscribed;
         ICommand command = isSubscribed
             ? new INotifications.UnsubscribeToChatCommand(Session, ChatId)
@@ -44,5 +39,4 @@
     public class Model {
         public bool IsSubscribed { get; set; }
     }
-
 }

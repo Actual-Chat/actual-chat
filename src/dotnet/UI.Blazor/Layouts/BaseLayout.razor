@@ -7,37 +7,37 @@
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');
 }
 
-<NavbarIcon />
-<div class="flex-1 flex flex-row justify-items-stretch h-full max-h-full overflow-y-hidden relative bg-primary">
+<div class="absolute">
+    <NavbarToggle/>
+</div>
+<div class="bg-primary flex-1 flex flex-row justify-items-stretch h-full max-h-full relative">
     <input id="navbar-toggle" class="hidden" type="checkbox" @bind="@NavbarUI.IsVisible"/>
-    <nav id="navbar-links" class="bg-primary text-primary z-50 absolute top-0 left-0 h-full md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition-all duration-200 ease-in-out">
+    <nav id="navbar-links" class="text-primary bg-primary h-full z-50 absolute top-0 left-0 md:static flex flex-col justify-between transform -translate-x-full md:translate-x-0 w-full md:w-64 lg:w-80 transition-all duration-200 ease-in-out">
         <div class="flex-1 flex flex-col overflow-y-auto">
+            <div class="absolute">
+                <NavbarToggle/>
+            </div>
             <div class="md:hidden flex flex-row h-11 py-2 bg-accent">
-                <NavbarIcon/>
                 <NavbarHeaderTitle/>
             </div>
-            <div class="flex flex-row h-full overflow-y-hidden">
+            <div class="flex flex-row h-full">
                 <div class="flex flex-1 flex-col text-secondary bg-accent">
                     <NavbarShortcuts/>
                 </div>
-                <div class="flex flex-col w-full h-full overflow-y-auto custom-scrollbar">
-                    <div class="hidden md:flex flex-row flex-nowrap justify-center">
+                <div class="flex flex-col w-full h-full">
+                    <div class="flex flex-row justify-center mt-2">
                         <NavbarLogo />
                     </div>
-                    <div class="h-9/10 overflow-y-auto custom-scrollbar my-1 pl-4 pr-2 mr-2">
+                    <div class="flex-auto flex flex-col overflow-y-auto custom-scrollbar my-2 mx-4">
                         <NavbarLinks/>
                     </div>
                     @* Bottom sticky panel *@
-                    <div class="flex flex-1 bottom-2 flex-col items-stretch">
-                        <div class="text-xxs text-primary-muted w-auto h-auto block py-1 border-t-2 border-accent">
-                            <span><b class="text-primary font-medium px-4">@version</b></span>
+                    <div class="flex-none flex flex-col">
+                        <div class="flex-none p-3 flex flex-col border-t-2 border-accent text-xxs">
+                            <div class="mb-1"><b class="text-primary font-medium">@version</b></div>
+                            <div><BlazorModeToggle/></div>
                         </div>
-                        <div class="flex-col text-xxs text-primary-muted w-auto h-auto block mb-2 py-1 border-b-2 border-accent">
-                            <div class="px-4">
-                                <BlazorModeToggle/>
-                            </div>
-                        </div>
-                        <div class="bg-primary flex flex-row justify-between items-center w-full px-4 h-12">
+                        <div class="flex-none w-full p-3 border-t-2 border-accent">
                             <AccountDropdown/>
                         </div>
                     </div>

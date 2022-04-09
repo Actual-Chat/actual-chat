@@ -9,7 +9,7 @@ import {
     StopNodeMessage
 } from './feeder-audio-worklet-message';
 
-const LogScope: string = 'FeederNode'
+const LogScope: string = 'FeederNode';
 
 /** Part of the feeder that lives in main global scope. It's the counterpart of FeederAudioWorkletProcessor */
 export class FeederAudioWorkletNode extends AudioWorkletNode {

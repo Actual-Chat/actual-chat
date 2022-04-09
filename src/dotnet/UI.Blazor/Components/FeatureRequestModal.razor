@@ -26,7 +26,9 @@
             var cls = _rating >= i ? "fa-star" : "fa-star-o";
             var rating = i;
             var id = "rating-button-" + (rating - 1);
-            <button class="rating-button px-1 md:px-2" role="button" @onclick="@(() => SetRating(rating))"><i class="fa @cls fa-2x rating-icon" aria-hidden="true" id="@id"></i></button>
+            <button class="rating-button px-1 md:px-2" role="button" @onclick="_ => SetRating(rating)">
+                <i class="fa @cls fa-2x rating-icon" aria-hidden="true" id="@id"></i>
+            </button>
         }
     </div>
     <div class="my-4">

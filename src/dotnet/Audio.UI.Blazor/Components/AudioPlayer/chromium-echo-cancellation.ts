@@ -1,6 +1,6 @@
 import { isAudioContext } from 'audio-context-pool';
 
-const LogScope: string = 'ChromiumEchoCancellation'
+const LogScope: string = 'ChromiumEchoCancellation';
 
 /**
  * @file Chromium doesn't apply echoCancellation to web audio pipeline.

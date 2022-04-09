@@ -122,6 +122,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Service.Migration", "src\dotnet\Feedback.Service.Migration\Feedback.Service.Migration.csproj", "{D129D6D8-A0B9-4D2D-A9A5-0D5D4828C06B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47B5-30E6-4B2A-A8DB-1B1FD644948F}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C53-98F6-45B2-8717-15B35A59AFDC}"
 	ProjectSection(SolutionItems) = preProject

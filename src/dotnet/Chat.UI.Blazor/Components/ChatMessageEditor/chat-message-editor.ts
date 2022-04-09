@@ -1,5 +1,7 @@
 import './chat-message-editor.css';
 
+const LogScope: string = 'MessageEditor';
+
 export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
     private editorDiv: HTMLDivElement;
@@ -8,8 +10,7 @@ export class ChatMessageEditor {
     private postButton: HTMLButtonElement;
     private recorderButtonDiv: HTMLDivElement;
     private recordButton: HTMLButtonElement;
-    private recordIcon: SVGSVGElement;
-    private recordIconObserver : MutationObserver;
+    private recordButtonObserver : MutationObserver;
     private isTextMode: boolean = false;
     private isRecording: boolean = false;
     private attachmentsIdSeed: number = 0;
@@ -27,7 +28,6 @@ export class ChatMessageEditor {
         this.blazorRef = blazorRef;
         this.recorderButtonDiv = this.editorDiv.querySelector('div.recorder-button');
         this.recordButton = this.recorderButtonDiv.querySelector('button');
-        this.recordIcon = this.recordButton.querySelector('svg');
 
         // Wiring up event listeners
         this.input.addEventListener('input', this.inputInputListener);
@@ -36,13 +36,13 @@ export class ChatMessageEditor {
         this.input.addEventListener('paste', this.inputPasteListener);
         this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
-        this.recordIconObserver = new MutationObserver(this.syncLanguageButtonVisibility);
-        const recordIconObserverConfig = {
+        this.recordButtonObserver = new MutationObserver(this.syncLanguageButtonVisibility);
+        const recordButtonObserverConfig = {
             attributes: true,
             childList: false,
             subtree: false
         };
-        this.recordIconObserver.observe(this.recordIcon, recordIconObserverConfig);
+        this.recordButtonObserver.observe(this.recordButton, recordButtonObserverConfig);
         this.changeMode();
     }
 
@@ -92,7 +92,7 @@ export class ChatMessageEditor {
     })
 
     private syncLanguageButtonVisibility = () => {
-        const isRecording = this.recordIcon.classList.contains('recording');
+        const isRecording = this.recordButton.classList.contains('on');
         if (this.isRecording === isRecording)
             return;
         this.isRecording = isRecording;
@@ -126,7 +126,7 @@ export class ChatMessageEditor {
     }
 
     private updateClientSideState(): Promise<void> {
-        //console.log("message editor: UpdateClientSideState")
+        console.log(`${LogScope}: UpdateClientSideState`);
         return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
     }
 
@@ -235,7 +235,7 @@ export class ChatMessageEditor {
         const payloadJson = JSON.stringify(payload);
         formData.append("payload_json", payloadJson);
 
-        console.log('about to send post message request with ' + attachmentsList.length  + ' attachments');
+        console.log(`${LogScope}: Sending post message request with ${attachmentsList.length} attachment(s)`);
         const url = "api/chats/" + chatId + "/message";
         const response = await fetch(url, { method: 'POST', body: formData });
 
@@ -270,7 +270,7 @@ export class ChatMessageEditor {
         this.input.removeEventListener('paste', this.inputPasteListener);
         this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);
-        this.recordIconObserver.disconnect();
+        this.recordButtonObserver.disconnect();
     }
 }
 

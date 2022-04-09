@@ -19,7 +19,7 @@
     }
 }
 @if (isPlayable) {
-    <span class="@cls whitespace-break-spaces" @onclick="Play">@Part.Text</span>
+    <span class="@cls whitespace-break-spaces" @onclick="OnClick">@Part.Text</span>
 } else {
     <span class="@cls whitespace-break-spaces">@Part.Text</span>
 }
@@ -28,7 +28,7 @@
     [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
     public double? PlayingAt { get; set; }
 
-    private async Task Play() {
+    private async Task OnClick() {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var part = Part;
         var entry = Entry;

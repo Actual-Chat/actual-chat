@@ -6,7 +6,9 @@
     var title = _navbarUI.ActiveGroupTitle.ToUpper();
 }
 
-<div class="mobile-menu-header-title absolute flex flex-1 right-6">@title</div>
+<div class="mobile-menu-header-title flex flex-1 w-full justify-end">
+    <div class="mx-4 font-semibold">@title</div>
+</div>
 
 @code {
     protected override void OnInitialized() {

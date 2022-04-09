@@ -13,14 +13,14 @@
             </ChatAuthor>
         </div>
     </div>
-    @if (_canAddContact && !_addedContact) {
+    @if (_canAddContact && !_isAlreadyAdded) {
         <div class="mt-4 hover:bg-gray-200">
-            <button type="button" class="text-toggle-on" disabled="@_addingContact" @onclick="AddContact">Add to Contacts</button>
+            <button type="button" class="on" disabled="@_isAddingContact" @onclick="OnAddContactClick">Add to Contacts</button>
         </div>
     }
     @if (_canSendMessage) {
         <div class="mt-4 hover:bg-gray-200">
-            <button type="button" class="text-toggle-on" @onclick="SendMessage">Send Message</button>
+            <button type="button" class="on" @onclick="OnSendMessageClick">Send Message</button>
         </div>
     }
 </div>
@@ -28,8 +28,8 @@
 @code {
     private string? _chatId;
     private bool _canAddContact;
-    private bool _addedContact;
-    private bool _addingContact;
+    private bool _isAddingContact;
+    private bool _isAlreadyAdded;
     private bool _canSendMessage;
 
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
@@ -59,17 +59,17 @@
         _canSendMessage = await Chats.CanSendUserPeerChatMessage(Session, ChatAuthorId, default);
     }
 
-    private async Task AddContact() {
-        if (_addingContact)
+    private async Task OnAddContactClick() {
+        if (_isAddingContact)
             return;
-        _addingContact = true;
+        _isAddingContact = true;
         var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, ChatAuthorId));
         if (e.IsCompletedSuccessfully)
-            _addedContact = true;
-        _addingContact = false;
+            _isAlreadyAdded = true;
+        _isAddingContact = false;
     }
 
-    private async Task SendMessage() {
+    private async Task OnSendMessageClick() {
         var peerChatId = await Chats.GetUserPeerChatId(Session, ChatAuthorId, default);
         var encodedUrl = WebUtility.UrlEncode(peerChatId);
         Nav.NavigateTo("/chat/" + encodedUrl);

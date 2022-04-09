@@ -1,13 +1,11 @@
 .group:hover .hover-item {
     position: absolute;
-    opacity: 0%;
+    opacity: 0;
 }
-
 .group .hover-item.alt {
     position: absolute;
-    opacity: 0%;
+    opacity: 0;
 }
-
 .group:hover .hover-item.alt {
     position: static;
     opacity: 100%;
@@ -18,7 +16,6 @@
 button.on {
     @apply text-toggle-on;
 }
-
 button.off {
     @apply text-secondary;
 }
@@ -38,7 +35,6 @@ button.off {
     z-index: 103;
     flex-direction: column;
 }
-
 .blazored-modal-border {
     border-radius: 4px;
     border: 1px solid #fff;
