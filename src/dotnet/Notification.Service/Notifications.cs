@@ -160,7 +160,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingSubscription = await dbContext.ChatSubscriptions
-            .FindAsync(new object?[] { userId, chatId }, cancellationToken)
+            .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
         if (existingSubscription != null) {
