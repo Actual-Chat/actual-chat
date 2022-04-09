@@ -50,23 +50,24 @@
             </ul>
             <div class="divider h-0 border-t border-primary"></div>
         }
-        <div class="flex-1 flex flex-row justify-items-stretch items-stretch">
+        <label for="message-input" class="flex-1 flex flex-row justify-items-stretch items-center">
             <div class="flex-none self-center m-3 mr-0">
                 <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
             </div>
-            <div class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 m-3 break-words outline-none hover:cursor-text text-primary block"
+            <div id="message-input"
+                 class="message-input flex-1 overflow-y-auto max-h-36 md:max-h-72 m-3 break-words outline-none hover:cursor-text text-primary block"
                  autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
                  aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
             </div>
-            <button class="post-message sticky self-end outline-none text-secondary p-2 mt-3 mb-1 hidden"
+            <button class="post-message sticky self-end outline-none text-secondary p-2 mt-2.5 mb-1.5 hidden"
                     @onclick="_ => Post()">
                 <svg class="w-8 h-8 text-secondary fill-current" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
                     <path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.458 7.227-7.215-1.754 24-12zm-15 16.668v7.332l3.258-4.431-3.258-2.901z"/>
                 </svg>
             </button>
-        </div>
+        </label>
     </div>
-    <div class="recorder-buttons flex-none self-end flex flex-row justify-end items-stretch rounded-xl bg-accent ml-2">
+    <div class="recorder-buttons flex-none self-end flex flex-row justify-end items-stretch rounded-xl bg-accent ml-3">
         <div class="language-button flex hidden">
             <ChatLanguageToggle/>
         </div>

@@ -5,7 +5,7 @@
 }
 
 @if (model.HasFooter) {
-    <div class="flex flex-col w-full p-2">
+    <div class="flex flex-col w-full p-3">
         @if (model.CanPost) {
             <ChatMessageEditor/>
         } else if (model.AutoJoin) {
