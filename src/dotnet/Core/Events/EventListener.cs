@@ -22,24 +22,23 @@ public class EventListener<T>: WorkerBase where T: IEvent
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         const int batchSize = 10;
-        var ackTasks = new Task[batchSize];
+        var ackTasks = new List<Task>(batchSize);
         while (!cancellationToken.IsCancellationRequested)
             try {
-                Array.Clear(ackTasks);
+                ackTasks.Clear();
                 var batch = await _eventReader.Read(batchSize, cancellationToken).ConfigureAwait(false);
                 if (batch.Length == 0)
                     continue;
 
-                for (var index = 0; index < batch.Length; index++) {
-                    var (@event, id) = batch[index];
-                    ackTasks[index] = _eventHandler
+                foreach (var (@event, id) in batch) {
+                    var task = _eventHandler
                         .Handle(@event, _commander, cancellationToken)
                         .ContinueWith(
                             _ => _eventReader.Ack(id, cancellationToken),
                             TaskScheduler.Default);
+                    ackTasks.Add(task);
                 }
-                if (ackTasks.Any())
-                    await Task.WhenAll(ackTasks).ConfigureAwait(false);
+                await Task.WhenAll(ackTasks).ConfigureAwait(false);
             }
             catch (Exception e) {
                 _log.LogWarning(e, "Error processing event");
