@@ -3,7 +3,7 @@ import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/mes
 
 export async function getDeviceToken(): Promise<string | null> {
     try {
-        const response = await fetch('/dist/config/firebase.config.json');
+        const response = await fetch('/dist/config/firebase.config.js');
         if (response.ok || response.status === 304) {
             const { config, publicKey } = await response.json();
             const app = initializeApp(config);

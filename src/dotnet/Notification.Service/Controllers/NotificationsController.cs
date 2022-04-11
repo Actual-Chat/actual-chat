@@ -17,6 +17,7 @@ public class NotificationsController : ControllerBase, INotifications
     }
 
     [HttpGet]
+    [Publish]
     public Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken)
         => _service.IsSubscribedToChat(session, chatId, cancellationToken);
 

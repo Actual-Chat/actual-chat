@@ -111,7 +111,7 @@ module.exports = (env, args) => {
     plugins: [
       new CopyPlugin({
         patterns: [
-          { from: _('../../firebase.config.json'), to: 'config/', noErrorOnMissing: true },
+          { from: _('../../firebase.config.json'), to: 'config/firebase.config.js', noErrorOnMissing: true },
         ],
       }),
       // @ts-ignore
