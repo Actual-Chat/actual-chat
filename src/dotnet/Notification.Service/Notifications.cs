@@ -115,7 +115,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         if (!user.IsAuthenticated)
             return false;
 
-        var userId = (string)user.Id;
+        string userId = user.Id;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingSubscription = await dbContext.ChatSubscriptions
@@ -156,7 +156,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         if (!user.IsAuthenticated)
             return;
 
-        var userId = user.Id;
+        string userId = user.Id;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingSubscription = await dbContext.ChatSubscriptions
