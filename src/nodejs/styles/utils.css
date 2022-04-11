@@ -1,3 +1,33 @@
+/* Flex shortcuts */
+.flex-x {
+    @apply flex flex-row;
+}
+.-flex-x {
+    @apply flex flex-row-reverse;
+}
+.flex-y {
+    @apply flex flex-col;
+}
+.-flex-y {
+    @apply flex flex-col-reverse;
+}
+
+/* Inline-flex shortcuts */
+.inline-flex-x {
+    @apply inline-flex flex-row;
+}
+.-inline-flex-x {
+    @apply inline-flex flex-row-reverse;
+}
+.inline-flex-y {
+    @apply inline-flex flex-col;
+}
+.-inline-flex-y {
+    @apply inline-flex flex-col-reverse;
+}
+
+/* Groups */
+
 .group:hover .hover-item {
     position: absolute;
     opacity: 0;
