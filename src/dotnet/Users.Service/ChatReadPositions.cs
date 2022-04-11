@@ -50,17 +50,19 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
             .FindAsync(new object?[] { userId, chatId }, cancellationToken)
             .ConfigureAwait(false);
 
-        var dbDevice = existingPosition;
-        if (dbDevice == null) {
-            dbDevice = new DbChatReadPosition {
+        var dbPosition = existingPosition;
+        if (dbPosition == null) {
+            dbPosition = new DbChatReadPosition {
                 UserId = userId,
                 ChatId = chatId,
                 EntryId = entryId,
             };
-            dbContext.Add(dbDevice);
+            dbContext.Add(dbPosition);
         }
-        else
-            dbDevice.EntryId = entryId;
+        else {
+            if (entryId > dbPosition.EntryId)
+                dbPosition.EntryId = entryId;
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
