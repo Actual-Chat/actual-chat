@@ -47,3 +47,15 @@ public interface IUserAvatarsClientDef
     [Post(nameof(SetDefault))]
     Task SetDefault([Body] IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken);
 }
+
+[BasePath("chatReadPositions")]
+public interface IChatReadPositionsClientDef
+{
+    [Get(nameof(GetReadPosition))]
+    public Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken);
+
+    [Post(nameof(UpdateReadPosition))]
+    public Task UpdateReadPosition(
+        [Body] IChatReadPositions.UpdateReadPositionCommand command,
+        CancellationToken cancellationToken);
+}

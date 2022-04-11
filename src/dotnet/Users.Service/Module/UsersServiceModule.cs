@@ -135,6 +135,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserContacts, UserContacts>();
         fusion.AddComputeService<IUserContactsBackend, UserContactsBackend>();
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
+        fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();
         services.AddSingleton<ClaimMapper>();

@@ -17,6 +17,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbChatUserSettings> ChatUserSettings { get; protected set; } = null!;
+    public DbSet<DbChatReadPosition> ChatReadPositions { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public UsersDbContext(DbContextOptions options) : base(options) { }
@@ -25,5 +26,7 @@ public class UsersDbContext : DbContextBase
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<DbChatReadPosition>()
+            .HasKey(nameof(DbChatReadPosition.UserId), nameof(DbChatReadPosition.ChatId));
     }
 }
