@@ -1,11 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IChatMessageEditorBackend
+@implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Audio.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
-@implements IAsyncDisposable
 
 <div @ref="EditorRef" class="chat-message-editor flex-none flex flex-row justify-items-stretch items-stretch w-full bg-secondary">
     <div class="flex flex-col justify-between outline-none bg-accent rounded-xl w-full">
@@ -72,8 +72,7 @@
             <ChatLanguageToggle/>
         </div>
         <div class="recorder-button flex">
-            <AudioRecorderToggle ChatId="@Chat.Id"
-                RecordingStateChanged="@(new EventCallback<bool>(null, RecordingStateChanged))"/>
+            <AudioRecorderToggle ChatId="@Chat.Id" Toggled="@(new EventCallback<bool>(null, OnRecorderButtonToggled))"/>
         </div>
     </div>
 </div>
@@ -170,10 +169,10 @@
         await JSRef.InvokeVoidAsync("showFilesPicker").ConfigureAwait(true);
     }
 
-    private Task RecordingStateChanged(bool isRecording) {
+    private Task OnRecorderButtonToggled(bool isRecording) {
         if (isRecording == false)
             return Task.CompletedTask;
-        ChatPlayers.StartRealtimePlayback();
+        ChatPlayers.StartRealtimePlayback(false);
         return Task.CompletedTask;
     }
 

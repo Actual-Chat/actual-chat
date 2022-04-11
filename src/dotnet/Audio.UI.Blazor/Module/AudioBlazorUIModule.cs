@@ -22,6 +22,5 @@ public class AudioBlazorUIModule: HostModule, IBlazorUIModule
 
         services.AddScoped<ITrackPlayerFactory, AudioTrackPlayerFactory>();
         services.AddScoped<AudioRecorder>();
-        fusion.AddComputeService<AudioRecorderState>(ServiceLifetime.Scoped);
     }
 }

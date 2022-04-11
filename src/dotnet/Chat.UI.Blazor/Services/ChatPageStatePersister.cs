@@ -1,12 +1,16 @@
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Model>
 {
+    private static TimeSpan ChatActivationTimeout { get; } = TimeSpan.FromSeconds(1);
+
     private readonly Session _session;
     private readonly IChats _chats;
     private readonly ChatPlayers _chatPlayers;
+    private readonly AudioRecorder _audioRecorder;
     private readonly ChatPageState _chatPageState;
     private readonly UserInteractionUI _userInteractionUI;
 
@@ -14,6 +18,7 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
         Session session,
         IChats chats,
         ChatPlayers chatPlayers,
+        AudioRecorder audioRecorder,
         ChatPageState chatPageState,
         UserInteractionUI userInteractionUI,
         IServiceProvider services)
@@ -22,34 +27,69 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
         _session = session;
         _chats = chats;
         _chatPlayers = chatPlayers;
+        _audioRecorder = audioRecorder;
         _chatPageState = chatPageState;
         _userInteractionUI = userInteractionUI;
     }
 
-    protected override async Task Restore(Model? state, CancellationToken cancellationToken)
+    protected override Task Restore(Model? state, CancellationToken cancellationToken)
     {
         if (state == null)
-            return;
+            return Task.CompletedTask;
 
-        var pinnedChatIds = await Normalize(state.PinnedChatIds).ConfigureAwait(false);
-        _chatPageState.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
-        _chatPageState.IsFocusModeOn.Value = state.IsFocusModeOn;
+        // We'll be waiting for chat activation, so let's do the rest as background task
+        _ = BackgroundTask.Run(async () => {
+            var pinnedChatIds = await Normalize(state.PinnedChatIds).ConfigureAwait(false);
+            _chatPageState.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
 
-        if (state.IsRealtimePlaybackOn) {
-            await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
-            _chatPlayers.StartRealtimePlayback();
-        }
+            // Let's wait for activation of the last active chat before any further actions
+            using var timoutCts = new CancellationTokenSource(ChatActivationTimeout);
+            try {
+                await _chatPageState.ActiveChatId
+                    .When(chatId => chatId == state.ActiveChatId, timoutCts.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                // Intended
+            }
+
+            var activeChatId = _chatPageState.ActiveChatId.Value;
+            if (activeChatId.IsEmpty || activeChatId != state.ActiveChatId)
+                return;
+
+            // Let's try to activate recording first
+            if (state.IsRecordingOn) {
+                var permissions = await _chats.GetPermissions(_session, activeChatId, cancellationToken).ConfigureAwait(false);
+                if (permissions.HasFlag(ChatPermissions.Write)) {
+                    await _userInteractionUI.RequestInteraction("audio recording").ConfigureAwait(false);
+                    var startRecordingProcess = _audioRecorder.StartRecording(activeChatId);
+                    await startRecordingProcess.WhenStarted.ConfigureAwait(false);
+                }
+            }
+            if (state.IsRealtimePlaybackOn) {
+                var permissions = await _chats.GetPermissions(_session, activeChatId, cancellationToken).ConfigureAwait(false);
+                if (permissions.HasFlag(ChatPermissions.Read)) {
+                    await _userInteractionUI.RequestInteraction("audio playback").ConfigureAwait(false);
+                    _chatPlayers.StartRealtimePlayback(state.MustPlayPinned);
+                }
+            }
+        }, Log, "Error while restoring ChatPageState");
+        return Task.CompletedTask;
     }
 
     protected override async Task<Model> Compute(CancellationToken cancellationToken)
     {
+        var activeChatId = await _chatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChatIds = await _chatPageState.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
-        var isFocusModeOn = await _chatPageState.IsFocusModeOn.Use(cancellationToken).ConfigureAwait(false);
         var chatPlayback = await _chatPlayers.PlaybackMode.Use(cancellationToken).ConfigureAwait(false);
+        var audioRecorderState = await _audioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        var realtimeChatPlaybackMode = chatPlayback as RealtimeChatPlaybackMode;
         return new Model() {
+            ActiveChatId = activeChatId,
             PinnedChatIds = pinnedChatIds.ToArray(),
-            IsFocusModeOn = isFocusModeOn,
-            IsRealtimePlaybackOn = chatPlayback is RealtimeChatPlaybackMode,
+            IsRealtimePlaybackOn = realtimeChatPlaybackMode != null,
+            MustPlayPinned = realtimeChatPlaybackMode?.IsPlayingPinned == true,
+            IsRecordingOn = audioRecorderState?.ChatId == activeChatId,
         };
     }
 
@@ -72,8 +112,10 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
 
     public sealed record Model
     {
+        public Symbol ActiveChatId { get; init; }
         public Symbol[] PinnedChatIds { get; init; } = Array.Empty<Symbol>();
         public bool IsRealtimePlaybackOn { get; init; }
-        public bool IsFocusModeOn { get; init; }
+        public bool MustPlayPinned { get; init; }
+        public bool IsRecordingOn { get; init; }
     }
 }

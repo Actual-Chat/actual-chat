@@ -35,14 +35,21 @@ public class ChatPlayers : WorkerBase
         lock (Lock) return Task.FromResult(_players.GetValueOrDefault((chatId, playerKind)));
     }
 
-    public void StartRealtimePlayback()
+    public void StartRealtimePlayback(bool mustPlayPinned)
         => BackgroundTask.Run(async () => {
-            var playbackMode = await ChatPageState.GetRealtimeChatPlaybackMode(default).ConfigureAwait(false);
+            var playbackMode = await ChatPageState.GetRealtimeChatPlaybackMode(mustPlayPinned, default).ConfigureAwait(false);
             PlaybackMode.Value = playbackMode;
         }, CancellationToken.None);
 
-    public void StartHistoricalPlayback(Symbol chatId, Moment startAt)
-        => PlaybackMode.Value = new HistoricalChatPlaybackMode(chatId, startAt);
+    public void StartHistoricalPlayback(Symbol chatId, Moment startAt, RealtimeChatPlaybackMode? previousMode = null)
+    {
+        previousMode ??= PlaybackMode.Value switch {
+            RealtimeChatPlaybackMode rpm => rpm,
+            HistoricalChatPlaybackMode hpm => hpm.PreviousMode,
+            _ => null,
+        };
+        PlaybackMode.Value = new HistoricalChatPlaybackMode(chatId, startAt, previousMode);
+    }
 
     public void StopPlayback()
         => PlaybackMode.Value = null;

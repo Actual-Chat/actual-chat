@@ -9,7 +9,6 @@ public class ChatPageState : WorkerBase
 
     public IMutableState<Symbol> ActiveChatId { get; }
     public IMutableState<ImmutableHashSet<Symbol>> PinnedChatIds { get; }
-    public IMutableState<bool> IsFocusModeOn { get; }
 
     public ChatPageState(IServiceProvider services)
     {
@@ -17,36 +16,51 @@ public class ChatPageState : WorkerBase
         var stateFactory = services.StateFactory();
         ActiveChatId = stateFactory.NewMutable<Symbol>();
         PinnedChatIds = stateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
-        IsFocusModeOn = stateFactory.NewMutable<bool>();
         Start();
     }
 
     [ComputeMethod]
-    public virtual async Task<RealtimeChatPlaybackMode> GetRealtimeChatPlaybackMode(CancellationToken cancellationToken)
+    public virtual async Task<RealtimeChatPlaybackMode> GetRealtimeChatPlaybackMode(
+        bool mustPlayPinned, CancellationToken cancellationToken)
     {
         var activeChatId = await ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var chatIds = ImmutableHashSet<Symbol>.Empty;
         chatIds = activeChatId.IsEmpty ? chatIds : chatIds.Add(activeChatId);
-        var isFocusModeOn = await IsFocusModeOn.Use(cancellationToken).ConfigureAwait(false);
-        if (!isFocusModeOn) {
+        if (mustPlayPinned) {
             var pinnedChatIds = await PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(pinnedChatIds);
         }
-        return new RealtimeChatPlaybackMode(chatIds);
+        return new RealtimeChatPlaybackMode(chatIds, mustPlayPinned);
     }
 
     // Protected methods
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var cRealtimePlaybackMode = await Computed.Capture(GetRealtimeChatPlaybackMode, cancellationToken)
+        var playbackMode = ChatPlayers.PlaybackMode;
+        var cRealtimePlaybackMode = await Computed
+            .Capture(ct => GetRealtimeChatPlaybackMode(true, ct), cancellationToken)
             .ConfigureAwait(false);
-        while (!cancellationToken.IsCancellationRequested) {
-            if (!cRealtimePlaybackMode.IsConsistent())
-                cRealtimePlaybackMode = await cRealtimePlaybackMode.Update(cancellationToken).ConfigureAwait(false);
-            if (ChatPlayers.PlaybackMode.Value is RealtimeChatPlaybackMode rpm)
-                ChatPlayers.PlaybackMode.Value = cRealtimePlaybackMode.ValueOrDefault ?? rpm;
-            await cRealtimePlaybackMode.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+
+        while (true) {
+            await playbackMode
+                .When(p => p is RealtimeChatPlaybackMode { IsPlayingPinned: true }, cancellationToken)
+                .ConfigureAwait(false);
+
+            var doneTask = playbackMode
+                .When(p => p is not RealtimeChatPlaybackMode { IsPlayingPinned: true }, cancellationToken);
+            while (true) {
+                if (!cRealtimePlaybackMode.IsConsistent())
+                    cRealtimePlaybackMode = await cRealtimePlaybackMode.Update(cancellationToken).ConfigureAwait(false);
+                if (playbackMode.Value is not RealtimeChatPlaybackMode { IsPlayingPinned: true } rpm)
+                    break;
+                playbackMode.Value = cRealtimePlaybackMode.Value ?? rpm;
+                var invalidatedTask = cRealtimePlaybackMode.WhenInvalidated(cancellationToken);
+                var completedTask = await Task.WhenAny(invalidatedTask, doneTask).ConfigureAwait(false);
+                if (completedTask == doneTask)
+                    break;
+            }
         }
+        // ReSharper disable once FunctionNeverReturns
     }
 }

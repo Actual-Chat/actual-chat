@@ -1,23 +1,23 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<(ChatPlaybackMode? PlaybackMode, bool IsFocusModeOn)>
+@inherits ComputedStateComponent<(ChatPlaybackMode? PlaybackMode, bool MustPlayPinned)>
 
 @{
-    var (mode, isFocusModeOn) = State.ValueOrDefault;
-    var normalPlaybackCls = mode is RealtimeChatPlaybackMode & !isFocusModeOn ? "on" : "off";
-    var focusModePlaybackCls = mode is RealtimeChatPlaybackMode & isFocusModeOn ? "on" : "off";
+    var (mode, mustPlayPinned) = State.ValueOrDefault;
+    var normalPlaybackCls = mode is RealtimeChatPlaybackMode & !mustPlayPinned ? "on" : "off";
+    var pinnedPlaybackCls = mode is RealtimeChatPlaybackMode & mustPlayPinned ? "on" : "off";
 }
 <div class="chat-playback-toggles flex flex-row rounded-md bg-accent">
     <div class="chat-header-button -mr-1">
-        <button onclick="@ToggleNormalPlayback"
-                class="playback-normal @normalPlaybackCls p-1 transition-all duration-150">
+        <button @onclick="@(_ => SwitchPlayback(true, true))"
+                class="playback-pinned @pinnedPlaybackCls p-1 transition-all duration-150">
             <svg class="fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
                 <path d="M17.997 18h-11.995l-.002-.623c0-1.259.1-1.986 1.588-2.33 1.684-.389 3.344-.736 2.545-2.209-2.366-4.363-.674-6.838 1.866-6.838 2.491 0 4.226 2.383 1.866 6.839-.775 1.464.826 1.812 2.545 2.209 1.49.344 1.589 1.072 1.589 2.333l-.002.619zm4.811-2.214c-1.29-.298-2.49-.559-1.909-1.657 1.769-3.342.469-5.129-1.4-5.129-1.265 0-2.248.817-2.248 2.324 0 3.903 2.268 1.77 2.246 6.676h4.501l.002-.463c0-.946-.074-1.493-1.192-1.751zm-22.806 2.214h4.501c-.021-4.906 2.246-2.772 2.246-6.676 0-1.507-.983-2.324-2.248-2.324-1.869 0-3.169 1.787-1.399 5.129.581 1.099-.619 1.359-1.909 1.657-1.119.258-1.193.805-1.193 1.751l.002.463z"/>
             </svg>
         </button>
     </div>
     <div class="chat-header-button">
-        <button onclick="@ToggleFocusModePlayback"
-                class="playback-focused @focusModePlaybackCls p-1 transition-all duration-150">
+        <button @onclick="@(_ => SwitchPlayback(true, false))"
+                class="playback-normal @normalPlaybackCls p-1 transition-all duration-150">
             <svg class="fill-current w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
                 <path d="M22 22.966v1.034h-20v-1.034c0-2.1.166-3.312 2.648-3.886 2.804-.647 5.572-1.227 4.241-3.682-3.943-7.274-1.124-11.398 3.111-11.398 4.152 0 7.043 3.972 3.11 11.398-1.292 2.44 1.375 3.02 4.241 3.682 2.483.573 2.649 1.786 2.649 3.886zm-10-21.229c2.228-.004 3.948 1.329 4.492 3.513h1.212c-.528-2.963-2.624-5.25-5.704-5.25s-5.176 2.287-5.704 5.25h1.212c.544-2.184 2.264-3.518 4.492-3.513zm5.542 10.263c1.608 0 2.458-1.507 2.458-3.01 0-1.497-.842-2.99-2.755-2.99.832 1.603.925 3.656.297 6zm-11.112 0c-.632-2.331-.534-4.384.313-6-1.913 0-2.743 1.489-2.743 2.984 0 1.505.843 3.016 2.43 3.016z"/>
             </svg>
@@ -33,34 +33,19 @@
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<(ChatPlaybackMode?, bool)> ComputeState(CancellationToken cancellationToken) {
-        var mode = await ChatPlayers.PlaybackMode.Use(cancellationToken).ConfigureAwait(false);
-        var isFocusModeOn = await ChatPageState.IsFocusModeOn.Use(cancellationToken).ConfigureAwait(false);
-        return (mode, isFocusModeOn);
+        var playbackMode = await ChatPlayers.PlaybackMode.Use(cancellationToken).ConfigureAwait(false);
+        var mustPlayPinned = playbackMode is RealtimeChatPlaybackMode { IsPlayingPinned: true };
+        return (playbackMode, mustPlayPinned);
     }
 
-    private Task ToggleNormalPlayback() {
-        var isFocusModeOn = ChatPageState.IsFocusModeOn.Value;
-        var isOn = ChatPlayers.PlaybackMode.Value is RealtimeChatPlaybackMode && !isFocusModeOn;
-        if (!isOn) {
-            ChatPageState.IsFocusModeOn.Value = false;
-            ChatPlayers.StartRealtimePlayback();
-        }
-        else {
+    private Task SwitchPlayback(bool mustPlay, bool mustPlayPinned) {
+        var isOn =
+            ChatPlayers.PlaybackMode.Value is RealtimeChatPlaybackMode rpm
+            && rpm.IsPlayingPinned == mustPlayPinned;
+        if (mustPlay && !isOn)
+            ChatPlayers.StartRealtimePlayback(mustPlayPinned);
+        else
             ChatPlayers.StopPlayback();
-        }
-        return Task.CompletedTask;
-    }
-
-    private Task ToggleFocusModePlayback() {
-        var isFocusModeOn = ChatPageState.IsFocusModeOn.Value;
-        var isOn = ChatPlayers.PlaybackMode.Value is RealtimeChatPlaybackMode && isFocusModeOn;
-        if (!isOn) {
-            ChatPageState.IsFocusModeOn.Value = true;
-            ChatPlayers.StartRealtimePlayback();
-        }
-        else {
-            ChatPlayers.StopPlayback();
-        }
         return Task.CompletedTask;
     }
 }
