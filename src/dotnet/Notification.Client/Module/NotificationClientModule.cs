@@ -1,4 +1,5 @@
 ﻿using ActualChat.Hosting;
+using ActualChat.Notification.Backend;
 using Stl.Fusion.Client;
 using Stl.Plugins;
 
@@ -17,5 +18,6 @@ public class NotificationClientModule : HostModule
 
         var fusionClient = services.AddFusion().AddRestEaseClient();
         fusionClient.AddReplicaService<INotifications, INotificationsClientDef>();
+        fusionClient.AddReplicaService<INotificationsBackend, INotificationsBackendClientDef>();
     }
 }
