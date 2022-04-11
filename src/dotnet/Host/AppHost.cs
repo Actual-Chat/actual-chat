@@ -106,6 +106,8 @@ public class AppHost : IDisposable
             appBuilder.AddJsonFile(item.Path, item.Optional, reloadOnChange: false);
         }
         appBuilder.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
+        appBuilder.AddEnvironmentVariables();
+
         AppConfigurationBuilder?.Invoke(appBuilder);
     }
 
