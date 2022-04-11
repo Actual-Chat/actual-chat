@@ -1,10 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<(ChatPlaybackMode? PlaybackMode, bool MustPlayPinned)>
+@inherits ComputedStateComponent<(ChatPlaybackState? PlaybackState, bool MustPlayPinned)>
 
 @{
     var (mode, mustPlayPinned) = State.ValueOrDefault;
-    var normalPlaybackCls = mode is RealtimeChatPlaybackMode & !mustPlayPinned ? "on" : "off";
-    var pinnedPlaybackCls = mode is RealtimeChatPlaybackMode & mustPlayPinned ? "on" : "off";
+    var normalPlaybackCls = mode is RealtimeChatPlaybackState & !mustPlayPinned ? "on" : "off";
+    var pinnedPlaybackCls = mode is RealtimeChatPlaybackState & mustPlayPinned ? "on" : "off";
 }
 <div class="chat-playback-toggles flex flex-row rounded-md bg-accent">
     <div class="chat-header-button -mr-1">
@@ -29,23 +29,23 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
 
-    protected override ComputedState<(ChatPlaybackMode?, bool)>.Options GetStateOptions()
+    protected override ComputedState<(ChatPlaybackState?, bool)>.Options GetStateOptions()
         => new() { UpdateDelayer = UpdateDelayer.MinDelay };
 
-    protected override async Task<(ChatPlaybackMode?, bool)> ComputeState(CancellationToken cancellationToken) {
-        var playbackMode = await ChatPlayers.PlaybackMode.Use(cancellationToken).ConfigureAwait(false);
-        var mustPlayPinned = playbackMode is RealtimeChatPlaybackMode { IsPlayingPinned: true };
-        return (playbackMode, mustPlayPinned);
+    protected override async Task<(ChatPlaybackState?, bool)> ComputeState(CancellationToken cancellationToken) {
+        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var mustPlayPinned = playbackState is RealtimeChatPlaybackState { IsPlayingPinned: true };
+        return (playbackState, mustPlayPinned);
     }
 
     private Task SwitchPlayback(bool mustPlay, bool mustPlayPinned) {
         var isOn =
-            ChatPlayers.PlaybackMode.Value is RealtimeChatPlaybackMode rpm
-            && rpm.IsPlayingPinned == mustPlayPinned;
+            ChatPlayers.PlaybackState.Value is RealtimeChatPlaybackState realtime
+            && realtime.IsPlayingPinned == mustPlayPinned;
         if (mustPlay && !isOn)
             ChatPlayers.StartRealtimePlayback(mustPlayPinned);
         else
-            ChatPlayers.StopPlayback();
+            ChatPlayers.StopPlayback(false);
         return Task.CompletedTask;
     }
 }

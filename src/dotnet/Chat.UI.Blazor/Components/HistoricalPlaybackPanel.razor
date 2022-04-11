@@ -33,13 +33,6 @@
 }
 
 @code {
-    public class Model
-    {
-        public static readonly Model NotPlaying = new();
-
-        public DateTime? PlayingAt { get; init; }
-    }
-
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
@@ -76,7 +69,14 @@
     }
 
     private Task OnStop(MouseEventArgs _) {
-        ChatPlayers.StopPlayback();
+        ChatPlayers.StopPlayback(true);
         return Task.CompletedTask;
+    }
+
+    public sealed class Model
+    {
+        public static readonly Model NotPlaying = new();
+
+        public DateTime? PlayingAt { get; init; }
     }
 }

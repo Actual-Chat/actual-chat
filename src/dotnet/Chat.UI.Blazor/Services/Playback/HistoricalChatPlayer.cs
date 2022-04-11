@@ -9,7 +9,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
         : base(session, chatId, services)
         => PlayerKind = ChatPlayerKind.Historical;
 
-    protected override async Task PlayInternal(Moment startAt, CancellationToken cancellationToken)
+    protected override async Task Play(Moment startAt, CancellationToken cancellationToken)
     {
         var cpuClock = Clocks.CpuClock;
         var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryType.Audio);

@@ -28,8 +28,6 @@ public record AudioRecord(
         : this(NewId(), sessionId, chatId,  clientStartOffset) { }
 
     // This record relies on referential equality
-    public virtual bool Equals(AudioRecord? other)
-        => ReferenceEquals(this, other);
-    public override int GetHashCode()
-        => RuntimeHelpers.GetHashCode(this);
+    public virtual bool Equals(AudioRecord? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

@@ -2,6 +2,8 @@
 
 public class ChatPlayers : WorkerBase
 {
+    private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
+
     private readonly ILogger _log;
     private readonly IServiceProvider _services;
     private readonly MomentClockSet _clocks;
@@ -11,14 +13,14 @@ public class ChatPlayers : WorkerBase
         ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private ChatPageState ChatPageState => _chatPageState ??= _services.GetRequiredService<ChatPageState>();
-    public IMutableState<ChatPlaybackMode?> PlaybackMode { get; }
+    public IMutableState<ChatPlaybackState?> PlaybackState { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
         _services = services;
         _log = services.LogFor(GetType());
         _clocks = services.Clocks();
-        PlaybackMode = services.StateFactory().NewMutable<ChatPlaybackMode?>();
+        PlaybackState = services.StateFactory().NewMutable<ChatPlaybackState?>();
         Start();
     }
 
@@ -37,99 +39,113 @@ public class ChatPlayers : WorkerBase
 
     public void StartRealtimePlayback(bool mustPlayPinned)
         => BackgroundTask.Run(async () => {
-            var playbackMode = await ChatPageState.GetRealtimeChatPlaybackMode(mustPlayPinned, default).ConfigureAwait(false);
-            PlaybackMode.Value = playbackMode;
+            var playbackState = await ChatPageState.GetRealtimeChatPlaybackState(mustPlayPinned, default).ConfigureAwait(false);
+            PlaybackState.Value = playbackState;
         }, CancellationToken.None);
 
-    public void StartHistoricalPlayback(Symbol chatId, Moment startAt, RealtimeChatPlaybackMode? previousMode = null)
+    public void StartHistoricalPlayback(Symbol chatId, Moment startAt, RealtimeChatPlaybackState? previousState = null)
     {
-        previousMode ??= PlaybackMode.Value switch {
-            RealtimeChatPlaybackMode rpm => rpm,
-            HistoricalChatPlaybackMode hpm => hpm.PreviousMode,
+        previousState ??= PlaybackState.Value switch {
+            RealtimeChatPlaybackState realtime => realtime,
+            HistoricalChatPlaybackState historical => historical.PreviousState,
             _ => null,
         };
-        PlaybackMode.Value = new HistoricalChatPlaybackMode(chatId, startAt, previousMode);
+        PlaybackState.Value = new HistoricalChatPlaybackState(chatId, startAt, previousState);
     }
 
-    public void StopPlayback()
-        => PlaybackMode.Value = null;
+    public void StopPlayback(bool restorePreviousState)
+        => PlaybackState.Value =
+            restorePreviousState
+                ? PlaybackState.Value is HistoricalChatPlaybackState historical ? historical.PreviousState : null
+                : null;
 
     // Protected methods
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
         // TODO(AY): Implement _players cleanup here
-        var lastPlaybackMode = (ChatPlaybackMode?) null;
-        var cPlaybackMode = PlaybackMode.Computed;
+        var lastPlaybackState = (ChatPlaybackState?) null;
+        var cPlaybackState = PlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
-            if (!cPlaybackMode.IsConsistent())
-                cPlaybackMode = await cPlaybackMode.Update(cancellationToken).ConfigureAwait(false);
-            var newPlaybackMode = cPlaybackMode.ValueOrDefault;
-            if (newPlaybackMode != lastPlaybackMode) {
+            if (!cPlaybackState.IsConsistent())
+                cPlaybackState = await cPlaybackState.Update(cancellationToken).ConfigureAwait(false);
+            var newPlaybackState = cPlaybackState.Value;
+            if (newPlaybackState != lastPlaybackState) {
                 try {
-                    await ProcessPlaybackModeChange(lastPlaybackMode, newPlaybackMode, cancellationToken)
+                    await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     // Let's stop everything in this case
                     await Stop(cancellationToken).SuppressExceptions().ConfigureAwait(false);
-                    newPlaybackMode = null;
-                    PlaybackMode.Value = null;
+                    newPlaybackState = null;
+                    PlaybackState.Value = null;
                 }
             }
-            lastPlaybackMode = newPlaybackMode;
-            await cPlaybackMode.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            lastPlaybackState = newPlaybackState;
+            await cPlaybackState.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         }
     }
 
     // Private methods
 
-    private async Task ProcessPlaybackModeChange(
-        ChatPlaybackMode? lastPlaybackMode,
-        ChatPlaybackMode? playbackMode,
+    private async Task ProcessPlaybackStateChange(
+        ChatPlaybackState? lastPlaybackState,
+        ChatPlaybackState? playbackState,
         CancellationToken cancellationToken)
     {
-        if (lastPlaybackMode?.GetType() != playbackMode?.GetType()) {
+        if (lastPlaybackState?.GetType() != playbackState?.GetType()) {
             // Mode type change
-            await StopMode(lastPlaybackMode, cancellationToken).ConfigureAwait(false);
-            await StartMode(playbackMode, cancellationToken).ConfigureAwait(false);
+            await ExitState(lastPlaybackState, cancellationToken).ConfigureAwait(false);
+            await EnterState(playbackState, cancellationToken).ConfigureAwait(false);
             return;
         }
 
         // Same mode, but new settings
-        switch (playbackMode) {
-        case HistoricalChatPlaybackMode hm:
-            await StopMode(lastPlaybackMode, cancellationToken).ConfigureAwait(false);
-            await StartMode(hm, cancellationToken).ConfigureAwait(false);
+        switch (playbackState) {
+        case HistoricalChatPlaybackState historical:
+            await ExitState(lastPlaybackState, cancellationToken).ConfigureAwait(false);
+            await EnterState(historical, cancellationToken).ConfigureAwait(false);
             break;
-        case RealtimeChatPlaybackMode rm:
-            var lrm = (RealtimeChatPlaybackMode) lastPlaybackMode!;
-            var removedChatIds = lrm.ChatIds.Except(rm.ChatIds);
-            var addedChatIds = rm.ChatIds.Except(lrm.ChatIds);
+        case RealtimeChatPlaybackState realtime:
+            var lastRealtime = (RealtimeChatPlaybackState) lastPlaybackState!;
+            var removedChatIds = lastRealtime.ChatIds.Except(realtime.ChatIds);
+            var addedChatIds = realtime.ChatIds.Except(lastRealtime.ChatIds);
             await Stop(removedChatIds, ChatPlayerKind.Realtime, cancellationToken).ConfigureAwait(false);
-            await PlayRealtime(addedChatIds, cancellationToken).ConfigureAwait(false);
+            await StartRealtimePlayback(addedChatIds, cancellationToken).ConfigureAwait(false);
             break;
         case null:
             break;
         default:
-            throw new ArgumentOutOfRangeException(nameof(playbackMode));
+            throw new ArgumentOutOfRangeException(nameof(playbackState));
         }
 
-        Task StartMode(ChatPlaybackMode? mode, CancellationToken ct)
+        Task EnterState(ChatPlaybackState? state, CancellationToken ct)
         {
-            if (mode is HistoricalChatPlaybackMode hm)
-                return PlayHistorical(hm.ChatId, hm.StartAt, ct);
-            if (mode is RealtimeChatPlaybackMode rm)
-                return PlayRealtime(rm.ChatIds, ct);
+            if (state is HistoricalChatPlaybackState historical) {
+                var result = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
+                _ = BackgroundTask.Run(async () => {
+                    var endPlaybackTask = await result.ConfigureAwait(false);
+                    await endPlaybackTask.ConfigureAwait(false);
+                    await _clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, ct).ConfigureAwait(false);
+                    if (PlaybackState.Value == historical) {
+                        // TODO(AY): We should beep if we restore non-null state, I guess...
+                        PlaybackState.Value = historical.PreviousState;
+                    }
+                }, ct);
+                return result;
+            }
+            if (state is RealtimeChatPlaybackState realtime)
+                return StartRealtimePlayback(realtime.ChatIds, ct);
             return Task.CompletedTask;
         }
 
-        Task StopMode(ChatPlaybackMode? mode, CancellationToken ct)
+        Task ExitState(ChatPlaybackState? state, CancellationToken ct)
         {
-            if (mode is HistoricalChatPlaybackMode hm)
-                return Stop(hm.ChatId, ChatPlayerKind.Historical, ct);
-            if (mode is RealtimeChatPlaybackMode rm)
-                return Stop(rm.ChatIds, ChatPlayerKind.Realtime, ct);
+            if (state is HistoricalChatPlaybackState historical)
+                return Stop(historical.ChatId, ChatPlayerKind.Historical, ct);
+            if (state is RealtimeChatPlaybackState realtime)
+                return Stop(realtime.ChatIds, ChatPlayerKind.Realtime, ct);
             return Task.CompletedTask;
         }
     }
@@ -172,7 +188,7 @@ public class ChatPlayers : WorkerBase
             _ = Get(chatId, playerKind, default);
     }
 
-    private Task<Task> PlayRealtime(Symbol chatId, CancellationToken cancellationToken)
+    private Task<Task> StartRealtimePlayback(Symbol chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsEmpty)
             return Task.FromResult(Task.CompletedTask);
@@ -180,22 +196,22 @@ public class ChatPlayers : WorkerBase
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
             ? Task.FromResult(whenPlaying)
-            : player.Play(_clocks.SystemClock.Now, cancellationToken);
+            : player.Start(_clocks.SystemClock.Now, cancellationToken);
     }
 
-    private async Task<Task> PlayRealtime(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
+    private async Task<Task> StartRealtimePlayback(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)
     {
-        var tasks = chatIds.Select(chatId => PlayRealtime(chatId, cancellationToken));
+        var tasks = chatIds.Select(chatId => StartRealtimePlayback(chatId, cancellationToken));
         var playTasks = await Task.WhenAll(tasks).ConfigureAwait(false);
         return Task.WhenAll(playTasks);
     }
 
-    private Task<Task> PlayHistorical(Symbol chatId, Moment startAt, CancellationToken cancellationToken)
+    private Task<Task> StartHistoricalPlayback(Symbol chatId, Moment startAt, CancellationToken cancellationToken)
     {
         if (chatId.IsEmpty)
             return Task.FromResult(Task.CompletedTask);
         var player = GetOrCreate(chatId, ChatPlayerKind.Historical);
-        return player.Play(startAt, cancellationToken);
+        return player.Start(startAt, cancellationToken);
     }
 
     private Task Stop(Symbol chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)

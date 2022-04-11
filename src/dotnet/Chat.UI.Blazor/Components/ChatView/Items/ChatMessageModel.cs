@@ -41,7 +41,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && Attachments.SequenceEqual(other.Attachments);
     }
     public override bool Equals(object? obj)
-        => ReferenceEquals(this, obj) || obj is ChatMessageModel other && Equals(other);
+        => ReferenceEquals(this, obj) || (obj is ChatMessageModel other && Equals(other));
     public override int GetHashCode()
         => HashCode.Combine(Entry, DateLine, IsBlockStart, IsBlockEnd);
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);

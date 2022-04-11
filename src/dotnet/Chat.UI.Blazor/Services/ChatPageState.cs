@@ -20,7 +20,7 @@ public class ChatPageState : WorkerBase
     }
 
     [ComputeMethod]
-    public virtual async Task<RealtimeChatPlaybackMode> GetRealtimeChatPlaybackMode(
+    public virtual async Task<RealtimeChatPlaybackState> GetRealtimeChatPlaybackState(
         bool mustPlayPinned, CancellationToken cancellationToken)
     {
         var activeChatId = await ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
@@ -30,32 +30,32 @@ public class ChatPageState : WorkerBase
             var pinnedChatIds = await PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
             chatIds = chatIds.Union(pinnedChatIds);
         }
-        return new RealtimeChatPlaybackMode(chatIds, mustPlayPinned);
+        return new RealtimeChatPlaybackState(chatIds, mustPlayPinned);
     }
 
     // Protected methods
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var playbackMode = ChatPlayers.PlaybackMode;
-        var cRealtimePlaybackMode = await Computed
-            .Capture(ct => GetRealtimeChatPlaybackMode(true, ct), cancellationToken)
+        var playbackState = ChatPlayers.PlaybackState;
+        var cRealtimePlaybackState = await Computed
+            .Capture(ct => GetRealtimeChatPlaybackState(true, ct), cancellationToken)
             .ConfigureAwait(false);
 
         while (true) {
-            await playbackMode
-                .When(p => p is RealtimeChatPlaybackMode { IsPlayingPinned: true }, cancellationToken)
+            await playbackState
+                .When(p => p is RealtimeChatPlaybackState { IsPlayingPinned: true }, cancellationToken)
                 .ConfigureAwait(false);
 
-            var doneTask = playbackMode
-                .When(p => p is not RealtimeChatPlaybackMode { IsPlayingPinned: true }, cancellationToken);
+            var doneTask = playbackState
+                .When(p => p is not RealtimeChatPlaybackState { IsPlayingPinned: true }, cancellationToken);
             while (true) {
-                if (!cRealtimePlaybackMode.IsConsistent())
-                    cRealtimePlaybackMode = await cRealtimePlaybackMode.Update(cancellationToken).ConfigureAwait(false);
-                if (playbackMode.Value is not RealtimeChatPlaybackMode { IsPlayingPinned: true } rpm)
+                if (!cRealtimePlaybackState.IsConsistent())
+                    cRealtimePlaybackState = await cRealtimePlaybackState.Update(cancellationToken).ConfigureAwait(false);
+                if (playbackState.Value is not RealtimeChatPlaybackState { IsPlayingPinned: true } rpm)
                     break;
-                playbackMode.Value = cRealtimePlaybackMode.Value ?? rpm;
-                var invalidatedTask = cRealtimePlaybackMode.WhenInvalidated(cancellationToken);
+                playbackState.Value = cRealtimePlaybackState.Value ?? rpm;
+                var invalidatedTask = cRealtimePlaybackState.WhenInvalidated(cancellationToken);
                 var completedTask = await Task.WhenAny(invalidatedTask, doneTask).ConfigureAwait(false);
                 if (completedTask == doneTask)
                     break;

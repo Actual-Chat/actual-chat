@@ -62,7 +62,7 @@ public abstract class ChatPlayer : ProcessorBase
         await Playback.DisposeAsync().ConfigureAwait(false);
     }
 
-    public async Task<Task> Play(Moment startAt, CancellationToken cancellationToken)
+    public async Task<Task> Start(Moment startAt, CancellationToken cancellationToken)
     {
         this.ThrowIfDisposedOrDisposing();
         CancellationTokenSource playTokenSource;
@@ -83,7 +83,7 @@ public abstract class ChatPlayer : ProcessorBase
 
         var whenPlaying = BackgroundTask.Run(async () => {
             try {
-                await PlayInternal(startAt, playToken).ConfigureAwait(false);
+                await Play(startAt, playToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Play failed for chat #{ChatId}", ChatId);
@@ -100,9 +100,6 @@ public abstract class ChatPlayer : ProcessorBase
         lock (Lock)
             _whenPlaying = whenPlaying;
 
-        // We want to return from this method only when IsPlayingState.Value becomes true
-        var isPlayingTask = Playback.IsPlayingState.When(x => x, playToken);
-        await Task.WhenAny(isPlayingTask, whenPlaying).ConfigureAwait(false);
         return whenPlaying;
     }
 
@@ -122,7 +119,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     // Protected methods
 
-    protected abstract Task PlayInternal(Moment startAt, CancellationToken cancellationToken);
+    protected abstract Task Play(Moment startAt, CancellationToken cancellationToken);
 
     protected async Task<IMessageProcess<PlayTrackCommand>> EnqueueEntry(
             Moment playAt,

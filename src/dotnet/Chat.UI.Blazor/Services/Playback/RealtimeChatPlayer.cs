@@ -13,7 +13,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         => PlayerKind = ChatPlayerKind.Realtime;
 
     // ReSharper disable once RedundantAssignment
-    protected override async Task PlayInternal(Moment startAt, CancellationToken cancellationToken)
+    protected override async Task Play(Moment startAt, CancellationToken cancellationToken)
     {
         startAt = Clocks.SystemClock.Now; // We always override startAt here
         var cpuClock = Clocks.CpuClock;
