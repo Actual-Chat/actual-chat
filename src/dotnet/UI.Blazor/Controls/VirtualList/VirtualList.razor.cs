@@ -39,6 +39,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxPixelExpandBy { get; set; } = 1_000_000;
     [Parameter] public IMutableState<ImmutableList<string>>? VisibleKeysState { get; set; }
+    [Parameter] public string? ScrollToKey { get; set; }
 
     [Parameter, EditorRequired]
     public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =

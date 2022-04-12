@@ -6,17 +6,6 @@ namespace ActualChat.UI.Blazor.Controls.Internal;
 public class VirtualListRenderPlan<TItem>
     where TItem : IVirtualListItem
 {
-    public sealed class ItemRenderPlan
-    {
-        public TItem Item { get; }
-        public Symbol Key => Item.Key;
-        public Range<double> Range { get; set; } = new(-1, -2);
-        public double Size => Range.Size();
-        public bool IsMeasured => Size >= 0;
-
-        public ItemRenderPlan(TItem item) => Item = item;
-    }
-
     // JsonIgnores are here solely to make JsonFormatter.Format work
     [JsonIgnore]
     public VirtualList<TItem> VirtualList { get; set; }
@@ -138,6 +127,8 @@ public class VirtualListRenderPlan<TItem>
                 hasUnmeasuredItems = true;
         }
         ItemRange = hasUnmeasuredItems ? null : new Range<double>(0, itemRange.End);
+        if (VirtualList.ScrollToKey != null)
+            ScrollToKey = VirtualList.ScrollToKey;
 
         UpdateViewport(lastPlan);
         UpdateClientSideState();
@@ -170,7 +161,7 @@ public class VirtualListRenderPlan<TItem>
         }
     }
 
-    public void UpdateClientSideState()
+    private void UpdateClientSideState()
     {
         if (ClientSideState == null)
             return;
@@ -199,5 +190,16 @@ public class VirtualListRenderPlan<TItem>
             return false;
         viewport = (scrollTop, scrollTop + viewportHeight);
         return true;
+    }
+
+    public sealed class ItemRenderPlan
+    {
+        public TItem Item { get; }
+        public Symbol Key => Item.Key;
+        public Range<double> Range { get; set; } = new(-1, -2);
+        public double Size => Range.Size();
+        public bool IsMeasured => Size >= 0;
+
+        public ItemRenderPlan(TItem item) => Item = item;
     }
 }

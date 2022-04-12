@@ -40,4 +40,9 @@ public static partial class RangeExt
         }
         return range;
     }
+
+    public static Range<string> AsStringRange(this Range<long> range)
+        => new (
+            range.Start.ToString(CultureInfo.InvariantCulture),
+            range.End.ToString(CultureInfo.InvariantCulture));
 }

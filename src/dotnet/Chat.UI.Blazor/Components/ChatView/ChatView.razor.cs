@@ -23,6 +23,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
+    public string? ScrollToKey { get; private set; }
     public long LastReadEntryId { get; private set; }
     private IMutableState<ImmutableList<string>> VisibleKeysState { get; set; } = null!;
 
@@ -35,8 +36,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
             var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
                 .ConfigureAwait(true);
-            if (readPosition.HasValue && LastReadEntryId == 0)
+            if (readPosition.HasValue && LastReadEntryId == 0) {
                 LastReadEntryId = readPosition.Value;
+                ScrollToKey = LastReadEntryId.ToString(CultureInfo.InvariantCulture);
+            }
         }
     }
 
@@ -72,11 +75,13 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
-        var queryRange = query.IsExpansionQuery
-            ? query.InclusiveRange
-            : new(
-                (chatIdRange.End - IdTileStack.Layers[1].TileSize).ToString(CultureInfo.InvariantCulture),
-                (chatIdRange.End - 1).ToString(CultureInfo.InvariantCulture));
+        var queryRange = query.InclusiveRange.IsEmpty && LastReadEntryId != 0
+            ? IdTileStack.Layers[0].GetTile(LastReadEntryId).Range.AsStringRange()
+            : query.IsExpansionQuery
+                ? query.InclusiveRange
+                : new Range<long>(
+                    chatIdRange.End - IdTileStack.Layers[1].TileSize,
+                    chatIdRange.End - 1).AsStringRange();
 
         var startId = long.Parse(ExtractRealId(queryRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
