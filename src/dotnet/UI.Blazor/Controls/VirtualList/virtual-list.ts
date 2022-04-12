@@ -333,6 +333,7 @@ export class VirtualList {
             stickyEdge: this._stickyEdge,
 
             itemSizes: {}, // Will be updated further
+            visibleKeys: [],
 
             isListResized: this._listResizeEventCount > 1, // First one is always the initial measurement event
             isViewportChanged: false, // Will be updated further
