@@ -6,7 +6,7 @@
     var normalPlaybackCls = mode is RealtimeChatPlaybackState & !mustPlayPinned ? "on" : "off";
     var pinnedPlaybackCls = mode is RealtimeChatPlaybackState & mustPlayPinned ? "on" : "off";
 }
-<div class="chat-playback-toggles flex flex-row rounded-md bg-accent">
+<div class="chat-playback-toggles flex-x rounded-md bg-accent">
     <div class="chat-header-button -mr-1">
         <button @onclick="@(_ => SwitchPlayback(true, true))"
                 class="playback-pinned @pinnedPlaybackCls p-1 transition-all duration-150">

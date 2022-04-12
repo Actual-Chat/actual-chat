@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatActivities.Model>
 
-<div class="chat-activity-panel flex flex-row pr-3">
+<div class="chat-activity-panel flex-x pr-3">
 @{
     var model = State.LatestNonErrorValue;
     var recording = model.Recording;

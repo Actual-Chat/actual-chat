@@ -7,14 +7,14 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 
-<div @ref="EditorRef" class="chat-message-editor flex-none flex flex-row justify-items-stretch items-stretch w-full bg-secondary">
-    <div class="flex flex-col justify-between outline-none bg-accent rounded-xl w-full">
+<div @ref="EditorRef" class="chat-message-editor flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary">
+    <div class="flex-y justify-between outline-none bg-accent rounded-xl w-full">
         <input class="files-picker" type="file" hidden multiple/>
         @if (_attachments.Length > 0) {
             <ul class="message-attachments flex ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto">
                 @foreach (var attachment in _attachments) {
-                    <li class="attachment-item p-1.5 bg-zinc-100 rounded-md inline-flex flex-col box-content">
-                        <div class="h-full flex flex-col relative">
+                    <li class="attachment-item p-1.5 bg-zinc-100 rounded-md inline-flex-y box-content">
+                        <div class="h-full flex-y relative">
                             <div class="mt-auto h-full flex justify-center relative min-h-0">
                                 @if (attachment.IsImage) {
                                     <img class="object-contain rounded-md max-w-full" src="@attachment.Url" alt="image"/>
@@ -50,7 +50,7 @@
             </ul>
             <div class="divider h-0 border-t border-primary"></div>
         }
-        <label for="message-input" class="flex-1 flex flex-row justify-items-stretch items-center">
+        <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
             <div class="flex-none self-center m-3 mr-0">
                 <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
             </div>
@@ -67,7 +67,7 @@
             </button>
         </label>
     </div>
-    <div class="recorder-buttons flex-none self-end flex flex-row justify-end items-stretch rounded-xl bg-accent ml-3">
+    <div class="recorder-buttons flex-none self-end flex-x justify-end items-stretch rounded-xl bg-accent ml-3">
         <div class="language-button flex hidden">
             <ChatLanguageToggle/>
         </div>

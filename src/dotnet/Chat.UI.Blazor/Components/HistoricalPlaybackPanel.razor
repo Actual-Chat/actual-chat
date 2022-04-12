@@ -7,10 +7,10 @@
     var model = State.ValueOrDefault ?? Model.NotPlaying;
 }
 @if (model != Model.NotPlaying) {
-    <div class="historical-playback-panel flex flex-row mx-3 lg:mb-14 items-center justify-center sm:animate-display-from-bottom-faster lg:animate-display-from-bottom inset-x-0 lg:inset-x-1/3 relative lg:absolute bottom-0 bg-accent rounded-md shadow-lg">
-        <div class="flex flex-row rounded-md px-4 py-2 outline-none bg-accent items-center justify-center">
+    <div class="historical-playback-panel flex-x mx-3 lg:mb-14 items-center justify-center sm:animate-display-from-bottom-faster lg:animate-display-from-bottom inset-x-0 lg:inset-x-1/3 relative lg:absolute bottom-0 bg-accent rounded-md shadow-lg">
+        <div class="flex-x rounded-md px-4 py-2 outline-none bg-accent items-center justify-center">
             @* Icons *@
-            <div class="c-icons flex flex-row">
+            <div class="c-icons flex-x">
                 <svg class="h-5" viewBox="0 0 68 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M 24.123 11.997 C 24.123 18.624 18.75 23.997 12.123 23.997 C 5.496 23.997 0.123 18.624 0.123 11.997 L 2.123 11.997 C 2.123 17.511 6.609 21.997 12.123 21.997 C 17.637 21.997 22.123 17.511 22.123 11.997 C 22.123 6.483 17.637 1.997 12.123 1.997 C 9.346 1.997 6.836 3.138 5.024 4.974 L 7.085 7.035 L 0.123 8.389 L 1.428 1.376 L 3.607 3.556 C 5.779 1.36 8.789 -0.003 12.123 -0.003 C 18.75 -0.003 24.123 5.37 24.123 11.997 Z M 11.123 5.997 L 11.123 13.997 L 18.123 13.997 L 18.123 11.997 L 13.123 11.997 L 13.123 5.997 L 11.123 5.997 Z"></path>
                     <path d="M 30.265 13.716 L 28.556 13.716 L 28.556 12.007 L 30.265 12.007 L 30.265 13.716 Z M 67.861 12.007 L 66.152 12.007 L 66.152 13.716 L 67.861 13.716 L 67.861 12.007 Z M 33.683 10.298 L 31.974 10.298 L 31.974 15.425 L 33.683 15.425 L 33.683 10.298 Z M 64.443 10.298 L 62.734 10.298 L 62.734 15.425 L 64.443 15.425 L 64.443 10.298 Z M 40.518 10.298 L 38.809 10.298 L 38.809 15.425 L 40.518 15.425 L 40.518 10.298 Z M 57.607 8.589 L 55.898 8.589 L 55.898 17.133 L 57.607 17.133 L 57.607 8.589 Z M 37.1 8.589 L 35.392 8.589 L 35.392 17.133 L 37.1 17.133 L 37.1 8.589 Z M 61.025 6.88 L 59.316 6.88 L 59.316 18.842 L 61.025 18.842 L 61.025 6.88 Z M 43.936 6.88 L 42.227 6.88 L 42.227 18.842 L 43.936 18.842 L 43.936 6.88 Z M 47.354 3.462 L 45.645 3.462 L 45.645 20.551 L 47.354 20.551 L 47.354 3.462 Z M 54.189 3.462 L 52.481 3.462 L 52.481 20.551 L 54.189 20.551 L 54.189 3.462 Z M 50.772 0.045 L 49.063 0.045 L 49.063 23.969 L 50.772 23.969 L 50.772 0.045 Z" style=""></path>
@@ -21,7 +21,7 @@
                 <span class="ml-1">@(model.PlayingAt is {} playingAt ? playingAt.ToLocalTime().ToString("F") : "")</span>
             </div>
             @* Stop button *@
-            <div class="c-stop flex flex-row items-center">
+            <div class="c-stop flex-x items-center">
                 <button @onclick="OnStop" class="text-secondary transition duration-300 ease-in-out hover:scale-110">
                     <svg class="h-5 fill-current p-0.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0 0h24v24h-24z"/>
