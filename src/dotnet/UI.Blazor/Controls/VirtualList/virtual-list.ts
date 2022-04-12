@@ -341,10 +341,15 @@ export class VirtualList {
         };
 
         let gotResizedItems = false;
+        const visibleItemKeys = [];
         for (const itemRef of this.getItemRefs()) {
             const key = getItemKey(itemRef);
             const knownSize = rs.itemSizes[key];
             const size = itemRef.getBoundingClientRect().height;
+            const isVisible = this.isItemVisible(itemRef);
+            if (isVisible) {
+                visibleItemKeys.push(key);
+            }
             if (knownSize < 0) {
                 state.itemSizes[key] = size;
             }
@@ -353,6 +358,7 @@ export class VirtualList {
                 gotResizedItems = true;
             }
         }
+        state.visibleKeys = visibleItemKeys;
 
         const isFirstRender = rs.renderIndex <= 2;
         const dScrollTop = this._renderEndScrollTop - this._renderStartScrollTop;
@@ -499,9 +505,8 @@ export class VirtualList {
         const viewRect = this._ref.getBoundingClientRect();
         if (itemRect.bottom <= viewRect.top)
             return false;
-        if (itemRect.top >= viewRect.bottom)
-            return false;
-        return true;
+        return itemRect.top < viewRect.bottom;
+
     }
 
     private getScrollTop() : number {
@@ -619,6 +624,7 @@ interface IClientSideState {
     stickyEdge?: Required<IStickyEdgeState>;
 
     itemSizes: Record<string, number>;
+    visibleKeys: string[];
 
     isListResized: boolean;
     isViewportChanged: boolean;

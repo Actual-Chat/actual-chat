@@ -1,22 +1,69 @@
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Users;
 using Microsoft.AspNetCore.Components;
 using Stl.Fusion.Blazor;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatView : ComponentBase
+public partial class ChatView : ComponentBase, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+    private readonly CancellationTokenSource _disposeToken = new ();
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IStateFactory StateFactory { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IChatReadPositions ChatReadPositions { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
+
+    public long LastReadEntryId { get; private set; }
+    private IMutableState<ImmutableList<string>> VisibleKeysState { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (VisibleKeysState == null) {
+            VisibleKeysState = StateFactory.NewMutable(ImmutableList<string>.Empty);
+            _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token));
+
+            var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
+                .ConfigureAwait(true);
+            if (readPosition.HasValue && LastReadEntryId == 0)
+                LastReadEntryId = readPosition.Value;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+        => _disposeToken.Cancel();
+
+    private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            await VisibleKeysState.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
+            var visibleKeys = await VisibleKeysState.Use(cancellationToken).ConfigureAwait(true);
+            if (visibleKeys.Count == 0)
+                continue;
+
+            var lastVisibleEntryId =  visibleKeys
+                .Select(key => long.TryParse(key, out var entryId) ? (long?)entryId : null)
+                .Where(entryId => entryId.HasValue)
+                .Select(entryId => entryId!.Value)
+                .Max();
+            if (LastReadEntryId >= lastVisibleEntryId)
+                continue;
+
+            LastReadEntryId = lastVisibleEntryId;
+            var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, LastReadEntryId);
+            await Cmd.Run(command, cancellationToken);
+        }
+    }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,

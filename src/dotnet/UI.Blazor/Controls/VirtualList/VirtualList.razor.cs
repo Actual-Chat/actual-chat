@@ -38,6 +38,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double LoadZoneSize { get; set; } = 2160;
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxPixelExpandBy { get; set; } = 1_000_000;
+    [Parameter] public IMutableState<ImmutableList<string>>? VisibleKeysState { get; set; }
 
     [Parameter, EditorRequired]
     public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =
@@ -88,6 +89,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
                 $"{BlazorUICoreModule.ImportName}.VirtualList.create",
                 Ref, BlazorRef, plan!.AlignmentEdge.IsEnd(), DebugMode
                 ).ConfigureAwait(true);
+            VisibleKeysState ??= StateFactory.NewMutable(ImmutableList<string>.Empty);
         }
     }
 
@@ -105,6 +107,25 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
         DebugLog?.LogDebug("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
         ClientSideState = clientSideState;
+        var newVisibleKeys = clientSideState.VisibleKeys;
+        if (newVisibleKeys is { Count: > 0 } && VisibleKeysState != null) {
+            var oldVisibleKeys = VisibleKeysState.Value;
+            if (oldVisibleKeys.IsEmpty)
+                VisibleKeysState.Value = VisibleKeysState.Value.AddRange(newVisibleKeys);
+            else {
+                var oldSet = oldVisibleKeys.ToHashSet();
+                var newSet = newVisibleKeys.ToHashSet();
+                var toRemove = oldSet.Except(newSet).ToList();
+                var toAdd = newSet.Except(oldSet).ToList();
+                var updatedVisibleKeys = oldVisibleKeys;
+                if (toRemove.Count > 0)
+                    updatedVisibleKeys = updatedVisibleKeys.RemoveRange(toRemove);
+                if (toAdd.Count > 0)
+                    updatedVisibleKeys = updatedVisibleKeys.AddRange(toAdd);
+                if (!ReferenceEquals(updatedVisibleKeys, oldVisibleKeys))
+                    VisibleKeysState.Value = updatedVisibleKeys;
+            }
+        }
         _ = this.StateHasChangedAsync();
         return Task.FromResult(expectedRenderIndex);
     }

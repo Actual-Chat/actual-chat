@@ -13,6 +13,7 @@ public class VirtualListClientSideState
     public VirtualListStickyEdgeState? StickyEdge { get; set; }
 
     public Dictionary<string, double> ItemSizes { get; set; } = new(StringComparer.Ordinal);
+    public List<string>? VisibleKeys { get; set; }
 
     public bool IsListResized { get; set; }
     public bool IsViewportChanged { get; set; }
