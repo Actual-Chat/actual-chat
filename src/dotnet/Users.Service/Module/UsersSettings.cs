@@ -11,4 +11,6 @@ public class UsersSettings
     public string GoogleClientSecret { get; set; } = "";
     public string MicrosoftAccountClientId { get; set; } = "";
     public string MicrosoftAccountClientSecret { get; set; } = "";
+
+    public UserStatus NewUserStatus { get; set; } = UserStatus.Inactive;
 }

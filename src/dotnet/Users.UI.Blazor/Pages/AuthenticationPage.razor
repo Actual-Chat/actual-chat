@@ -1,11 +1,12 @@
 @page "/test/auth"
 @using UAParser
-@inherits ComputedStateComponent<(User User, List<AuthenticationPage.SessionModel> Sessions)>
+@inherits ComputedStateComponent<(UserProfile UserProfile, List<SessionModel> Sessions)>
 
 @{
     var state = State.LatestNonErrorValue;
     var error = State.Error;
-    var user = state.User;
+    var userProfile = state.UserProfile;
+    var user = userProfile.User;
     var usedAuthSchemas = user.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
 }
@@ -28,7 +29,27 @@
         <li><code>User.Id</code>: <b><code>@user.Id</code></b></li>
         <li><code>User.Name</code>: <b><code>@user.Name</code></b></li>
         <li><code>User.Version</code>: <b><code>@user.Version</code></b></li>
+        <li><code>IsAdmin</code>: <b><code>@state.UserProfile.IsAdmin</code></b></li>
     </ul>
+    @if (state.UserProfile.IsAdmin) {
+        <div class="flex flex-row">
+        <span>Status:</span>
+        <Dropdown>
+            <ButtonTemplate>
+                <div class="px-2 inline-flex">
+                    <span class="float-left text-secondary font-semibold chat-header-title">@userProfile.Status)</span>
+                </div>
+            </ButtonTemplate>
+            <ContentTemplate>
+                <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
+                    @foreach (var value in Enum.GetValues<UserStatus>()) {
+                        <MenuItem Title="@value.ToString()" OnItemClick="_ => OnStatusSelected(value)"></MenuItem>
+                    }
+                </Menu>
+            </ContentTemplate>
+        </Dropdown>
+    </div>
+    }
     @if (user.IsAuthenticated) {
         <div class="card-subtitle">Claims:</div>
         <ul>
@@ -104,6 +125,7 @@
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
     [Inject] private IFusionTime FusionTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     private ConcurrentDictionary<string, UserAgent> UserAgentCache { get; } = new();
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
@@ -116,12 +138,12 @@
         }
     }
 
-    protected override ComputedState<(User User, List<SessionModel> Sessions)>.Options GetStateOptions()
-        => new() { InitialOutput = (new(""), new List<SessionModel>()) };
+    protected override ComputedState<(UserProfile UserProfile, List<SessionModel> Sessions)>.Options GetStateOptions()
+        => new() { InitialOutput = (UserProfile.Guest, new List<SessionModel>()) };
 
-    protected override async Task<(User, List<SessionModel>)> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<(UserProfile UserProfile, List<SessionModel> Sessions)> ComputeState(CancellationToken cancellationToken)
     {
-        var user = await Auth.GetUser(Session, cancellationToken);
+        var userProfile = await UserProfiles.Get(Session, cancellationToken) ?? throw new Exception("User profile is not available");
         var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
         var result = new List<SessionModel>();
 
@@ -138,7 +160,16 @@
             };
             result.Add(model);
         }
-        return (user, result);
+        return (userProfile, result);
+    }
+
+    private async Task OnStatusSelected(UserStatus newStatus) {
+        var userProfile = await UserProfiles.Get(Session, default) ?? throw new Exception("User profile is not available");
+        if (newStatus == userProfile.Status) {
+            return;
+        }
+
+        await UserProfiles.UpdateStatus(new IUserProfiles.UpdateStatusCommand(userProfile.Id, newStatus, Session), default);
     }
 
     public class SessionModel

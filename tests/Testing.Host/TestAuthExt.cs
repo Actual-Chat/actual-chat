@@ -5,14 +5,16 @@ namespace ActualChat.Testing.Host;
 
 public static class TestAuthExt
 {
-    public static Task<User> SignIn(this IWebTester tester,
+    public static Task<User> SignIn(
+        this IWebTester tester,
         User user,
         CancellationToken cancellationToken = default)
         => tester.AppHost.SignIn(tester.Session, user, cancellationToken);
 
     public static async Task<User> SignIn(
         this AppHost appHost,
-        Session session, User user,
+        Session session,
+        User user,
         CancellationToken cancellationToken = default)
     {
         if (!user.Identities.Any())
@@ -34,5 +36,27 @@ public static class TestAuthExt
         await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
         return user;
     }
-}
 
+    public static Task SignOut(
+        this IWebTester tester,
+        bool force = false,
+        CancellationToken cancellationToken = default)
+        => tester.AppHost.SignOut(tester.Session, force, cancellationToken);
+
+    public static async Task SignOut(
+        this AppHost appHost,
+        Session session,
+        bool force = false,
+        CancellationToken cancellationToken = default)
+    {
+        var services = appHost.Services;
+        var commander = services.Commander();
+
+        var command = new SignOutCommand(session, force);
+        await commander.Call(command, cancellationToken).ConfigureAwait(false);
+
+        // Let's wait a bit to ensure all invalidations go through
+        // TODO: REALLY???
+        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+    }
+}

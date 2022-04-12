@@ -10,4 +10,9 @@ public static class UserConstants
 #pragma warning disable CA2211
         public static Session Session = null!;
     }
+
+    public static class Claims
+    {
+        public static string Status => "urn:actual.chat:status";
+    }
 }
