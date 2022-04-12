@@ -7,12 +7,12 @@ namespace ActualChat.Users.Controllers;
 [ApiController, JsonifyErrors]
 public class UserContactsController : ControllerBase, IUserContacts
 {
-    private readonly IUserContacts _userContacts;
+    private readonly IUserContacts _service;
 
-    public UserContactsController(IUserContacts userContacts)
-        => _userContacts = userContacts;
+    public UserContactsController(IUserContacts service)
+        => _service = service;
 
     [HttpGet, Publish]
     public Task<ImmutableArray<UserContact>> GetContacts(Session session, CancellationToken cancellationToken)
-        => _userContacts.GetContacts(session, cancellationToken);
+        => _service.GetContacts(session, cancellationToken);
 }

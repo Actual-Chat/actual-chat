@@ -12,7 +12,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
 {
     protected IAuth Auth { get; }
     protected IAuthBackend AuthBackend { get; }
-    protected IUserInfos UserInfos { get; }
+    protected IUserProfilesBackend UserProfilesBackend { get; }
     protected UserNamer UserNamer { get; }
     protected IUserStates UserStates { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
@@ -22,7 +22,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     {
         Auth = services.GetRequiredService<IAuth>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
-        UserInfos = services.GetRequiredService<IUserInfos>();
+        UserProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
         UserNamer = services.GetRequiredService<UserNamer>();
         UserStates = services.GetRequiredService<IUserStates>();
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
@@ -60,9 +60,9 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
-            var invUserInfo = context.Operation().Items.Get<UserInfo>();
-            if (invUserInfo != null)
-                _ = UserStates.IsOnline(invUserInfo.Id, default);
+            var invUserId = context.Operation().Items.Get<string>();
+            if (!invUserId.IsNullOrEmpty())
+                _ = UserStates.IsOnline(invUserId, default);
             return;
         }
 
@@ -85,8 +85,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
             dbUser.Name = newName;
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-        var userInfo = new UserInfo(dbUser.Id, dbUser.Name);
-        context.Operation().Items.Set(userInfo);
+        context.Operation().Items.Set(dbUser.Id);
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
 
         async Task ResetSessionOptions()
@@ -101,15 +100,18 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         }
     }
 
-    /// <summary> Validates user name on edit </summary>
+    /// <summary> Validates user name on edit + makes sure user edits invalidate UserProfiles </summary>
     [CommandHandler(IsFilter = true, Priority = 1)]
     protected virtual async Task OnEditUser(EditUserCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+            var invUser = context.Operation().Items.Get<User>();
+            if (invUser?.Name != null)
+                _ = UserProfilesBackend.GetByName(invUser.Name, default); // Invalidating old user name
             if (command.Name != null)
-                _ = UserInfos.GetByName(command.Name, default);
+                _ = UserProfilesBackend.GetByName(command.Name, default); // Invalidating new user name
             return;
         }
         if (command.Name != null) {
@@ -129,6 +131,8 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
                 .ConfigureAwait(false);
             if (isNameUsed)
                 throw new InvalidOperationException("This name is already used by someone else.");
+
+            context.Operation().Items.Set(user); // Let's store old user to invalidate its name
         }
 
         // Invoke command handler(s) with lower priority

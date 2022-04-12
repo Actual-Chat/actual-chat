@@ -5,17 +5,21 @@ public class UserAvatars : IUserAvatars
     private readonly IAuth _auth;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
     private readonly IUserAuthorsBackend _userAuthorsBackend;
-    private readonly IUserInfos _userInfos;
+    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly ICommander _commander;
 
-    public UserAvatars(IAuth auth, IUserAvatarsBackend userAvatarsBackend, IUserAuthorsBackend userAuthorsBackend,
-        IUserInfos userInfos, ICommander commander)
+    public UserAvatars(
+        IAuth auth,
+        IUserAvatarsBackend userAvatarsBackend,
+        IUserAuthorsBackend userAuthorsBackend,
+        IUserProfilesBackend userProfilesBackend,
+        ICommander commander)
     {
         _auth = auth;
         _userAvatarsBackend = userAvatarsBackend;
-        _commander = commander;
         _userAuthorsBackend = userAuthorsBackend;
-        _userInfos = userInfos;
+        _userProfilesBackend = userProfilesBackend;
+        _commander = commander;
     }
 
     // [ComputeMethod]
@@ -81,7 +85,7 @@ public class UserAvatars : IUserAvatars
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         user.MustBeAuthenticated();
 
-        var userInfo = await _userInfos.Get(user.Id, cancellationToken).ConfigureAwait(false);
+        var userInfo = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
         var userName = userInfo?.Name ?? user.Name;
 
         var createCommand = new IUserAvatarsBackend.CreateCommand( user.Id, userName);

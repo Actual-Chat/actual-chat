@@ -7,16 +7,12 @@ namespace ActualChat.Users.Controllers;
 [ApiController, JsonifyErrors]
 public class UserStatesController : ControllerBase, IUserStates
 {
-    private readonly IUserStates _userStates;
-    private readonly ISessionResolver _sessionResolver;
+    private readonly IUserStates _service;
 
-    public UserStatesController(IUserStates userStates, ISessionResolver sessionResolver)
-    {
-        _userStates = userStates;
-        _sessionResolver = sessionResolver;
-    }
+    public UserStatesController(IUserStates service)
+        => _service = service;
 
     [HttpGet, Publish]
     public Task<bool> IsOnline(string userId, CancellationToken cancellationToken)
-        => _userStates.IsOnline(userId, cancellationToken);
+        => _service.IsOnline(userId, cancellationToken);
 }

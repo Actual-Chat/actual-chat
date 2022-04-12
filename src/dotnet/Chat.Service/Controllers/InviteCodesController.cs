@@ -7,36 +7,26 @@ namespace ActualChat.Chat.Controllers;
 [ApiController, JsonifyErrors]
 public class InviteCodesController : ControllerBase, IInviteCodes
 {
-    private readonly IInviteCodes _inviteCodes;
-    private readonly ISessionResolver _sessionResolver;
+    private readonly IInviteCodes _service;
 
-    public InviteCodesController(IInviteCodes inviteCodes, ISessionResolver sessionResolver)
-    {
-        _inviteCodes = inviteCodes;
-        _sessionResolver = sessionResolver;
-    }
+    public InviteCodesController(IInviteCodes service)
+        => _service = service;
 
     // Commands
 
     [HttpGet, Publish]
     public Task<ImmutableArray<InviteCode>> Get(Session session, string chatId, CancellationToken cancellationToken)
-        => _inviteCodes.Get(session, chatId, cancellationToken);
+        => _service.Get(session, chatId, cancellationToken);
 
     [HttpPost]
     public Task<InviteCode> Generate(
         [FromBody] IInviteCodes.GenerateCommand command,
         CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _inviteCodes.Generate(command, cancellationToken);
-    }
+        => _service.Generate(command, cancellationToken);
 
     [HttpPost]
     public Task<InviteCodeUseResult> UseInviteCode(
         [FromBody] IInviteCodes.UseInviteCodeCommand command,
         CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _inviteCodes.UseInviteCode(command, cancellationToken);
-    }
+        => _service.UseInviteCode(command, cancellationToken);
 }

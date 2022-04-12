@@ -1,4 +1,3 @@
-using System.Text;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -7,15 +6,15 @@ namespace ActualChat.Users;
 
 public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBackend
 {
-    private readonly IUserInfos _userInfos;
-    private readonly IDbEntityResolver<string, DbUserAuthor> _dbUserAuthorResolver;
+    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
+    private readonly IDbEntityResolver<string, DbUserAuthor> _dbUserAuthorResolver;
 
     public UserAuthorsBackend(IServiceProvider services) : base(services)
     {
-        _userInfos = Services.GetRequiredService<IUserInfos>();
-        _dbUserAuthorResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserAuthor>>();
+        _userProfilesBackend = Services.GetRequiredService<IUserProfilesBackend>();
         _userAvatarsBackend = Services.GetRequiredService<IUserAvatarsBackend>();
+        _dbUserAuthorResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserAuthor>>();
     }
 
     // [ComputeMethod]
@@ -29,6 +28,7 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
         if (!inherit || userAuthor == null)
             return userAuthor;
 
+        // Note that inherit == true here
         if (!userAuthor.AvatarId.IsEmpty) {
             var avatar = await _userAvatarsBackend.Get(userAuthor.AvatarId, cancellationToken).ConfigureAwait(false);
             var result = userAuthor;
@@ -38,15 +38,8 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
             return result;
         }
         else {
-            var userInfo = await _userInfos.Get(userId, cancellationToken).ConfigureAwait(false);
-            var result = userAuthor.InheritFrom(userInfo);
-            if (result.Picture.IsNullOrEmpty()) {
-                var gravatarHash = await _userInfos.GetGravatarHash(userId, cancellationToken).ConfigureAwait(false);
-                if (!gravatarHash.IsNullOrEmpty()) {
-                    var gravatarUrl = $"https://www.gravatar.com/avatar/{gravatarHash}?d=identicon";
-                    result = result with { Picture = gravatarUrl };
-                }
-            }
+            var userProfile = await _userProfilesBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            var result = userAuthor.InheritFrom(userProfile);
             return result;
         }
     }

@@ -20,10 +20,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
-    private readonly IUserInfos _userInfos;
-    private readonly RedisSequenceSet<ChatEntry> _idSequences;
+    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly IUserContactsBackend _userContactsBackend;
+    private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
+    private readonly RedisSequenceSet<ChatEntry> _idSequences;
     private readonly ICommander _commander;
     private readonly IEventPublisher _eventPublisher;
 
@@ -32,10 +32,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _authBackend = Services.GetRequiredService<IAuthBackend>();
         _chatAuthors = Services.GetRequiredService<IChatAuthors>();
         _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
-        _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-        _userInfos = Services.GetRequiredService<IUserInfos>();
-        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
+        _userProfilesBackend = Services.GetRequiredService<IUserProfilesBackend>();
         _userContactsBackend = services.GetRequiredService<IUserContactsBackend>();
+        _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
         _commander = services.GetRequiredService<ICommander>();
         _eventPublisher = Services.GetRequiredService<IEventPublisher>();
     }
@@ -102,9 +102,10 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (user != null && chat.OwnerIds.Contains(user.Id))
             return ChatPermissions.All;
         if (Constants.Chat.DefaultChatId == chatId) {
-            if (user != null && await _userInfos.IsAdmin(user.Id, cancellationToken).ConfigureAwait(false))
-                return ChatPermissions.All;
-            return ChatPermissions.None;
+            if (user == null)
+                return ChatPermissions.None;
+            var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
+            return userProfile?.IsAdmin == true ? ChatPermissions.All : ChatPermissions.None;
         }
         if (author != null)
             return ChatPermissions.Read | ChatPermissions.Write;

@@ -18,8 +18,7 @@
         <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             @foreach (var (name, displayName) in unusedAuthSchemas) {
                 MenuItemTitle = "Sign in with " + displayName;
-                <MenuItem Title="@MenuItemTitle" OnItemClick="(() => SignIn(name))">
-                </MenuItem>
+                <MenuItem Title="@MenuItemTitle" OnItemClick="(() => SignIn(name))"/>
             }
         </Menu>
     </ContentTemplate>

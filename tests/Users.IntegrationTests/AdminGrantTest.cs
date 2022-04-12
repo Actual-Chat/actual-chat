@@ -9,20 +9,17 @@ namespace ActualChat.Users.IntegrationTests;
 public class AdminGrantTest : AppHostTestBase
 {
     private WebClientTester _tester = null!;
-
-    private IUserInfos _userInfos = null!;
-
+    private IUserProfilesBackend _userProfiles = null!;
     private AppHost _appHost = null!;
 
     public AdminGrantTest(ITestOutputHelper @out) : base(@out)
-    {
-    }
+    { }
 
     public override async Task InitializeAsync()
     {
         _appHost = await TestHostFactory.NewAppHost();
         _tester = _appHost.NewWebClientTester();
-        _userInfos = _appHost.Services.GetRequiredService<IUserInfos>();
+        _userProfiles = _appHost.Services.GetRequiredService<IUserProfilesBackend>();
     }
 
     public override async Task DisposeAsync()
@@ -40,11 +37,11 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var isAdmin = await _userInfos.IsAdmin(user.Id, CancellationToken.None);
+        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
 
         // assert
         user.IsAuthenticated.Should().BeTrue();
-        isAdmin.Should().BeTrue();
+        userProfile!.IsAdmin.Should().BeTrue();
     }
 
     [Fact]
@@ -56,11 +53,11 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var isAdmin = await _userInfos.IsAdmin(user.Id, CancellationToken.None);
+        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
 
         // assert
         user.IsAuthenticated.Should().BeTrue();
-        isAdmin.Should().BeFalse();
+        userProfile!.IsAdmin.Should().BeFalse();
     }
 
     [Fact]
@@ -71,10 +68,10 @@ public class AdminGrantTest : AppHostTestBase
 
         // act
         user = await _tester.SignIn(user);
-        var isAdmin = await _userInfos.IsAdmin(user.Id, CancellationToken.None);
+        var userProfile = await _userProfiles.Get(user.Id, CancellationToken.None);
 
         // assert
         user.IsAuthenticated.Should().BeTrue();
-        isAdmin.Should().BeFalse();
+        userProfile!.IsAdmin.Should().BeFalse();
     }
 }

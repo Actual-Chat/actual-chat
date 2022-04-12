@@ -102,7 +102,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             if (commandAssembly == typeof(EditUserCommand).Assembly
                 && string.Equals(commandType.Namespace, typeof(EditUserCommand).Namespace, StringComparison.Ordinal))
                 return true;
-            if (commandAssembly == typeof(UserInfo).Assembly)
+            if (commandAssembly == typeof(UserProfile).Assembly)
                 return true;
             return false;
         });
@@ -126,7 +126,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IUserInfos, UserInfos>();
+        fusion.AddComputeService<IUserProfiles, UserProfiles>();
+        fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
         fusion.AddComputeService<IUserStates, UserStates>();
         fusion.AddComputeService<IUserAuthors, UserAuthors>();
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
@@ -139,7 +140,8 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddCommander()
             .AddCommandService<AuthServiceCommandFilters>();
         services.AddSingleton<ClaimMapper>();
-        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepository>());
+        services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
+        services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
 
         // ChatUserSettings
         services.AddSingleton(c => {

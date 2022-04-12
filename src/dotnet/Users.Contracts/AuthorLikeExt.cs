@@ -19,7 +19,7 @@ public static class AuthorLikeExt
     }
 
     [return: NotNullIfNotNull("source")]
-    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, UserInfo? @base)
+    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, IAuthorLike? @base)
         where TAuthor : Author
     {
         if (source == null)
@@ -28,28 +28,23 @@ public static class AuthorLikeExt
             return source;
         if (source.Name.IsNullOrEmpty() && !@base.Name.IsNullOrEmpty())
             source = source with { Name = @base.Name };
+        if (source.Picture.IsNullOrEmpty() && !@base.Picture.IsNullOrEmpty())
+            source = source with { Picture = @base.Picture };
         return source;
     }
 
     [return: NotNullIfNotNull("source")]
-    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, IAuthorLike? @base)
+    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, UserAvatar? @base)
         where TAuthor : Author
     {
         if (source == null)
             return null;
-        if (source.IsAnonymous || @base == null)
+        if (@base == null)
             return source;
-        return source with { Name = @base.Name, Picture = @base.Picture };
-    }
-
-    [return: NotNullIfNotNull("source")]
-    public static TAuthor? InheritFrom<TAuthor>(this TAuthor? source, UserAvatar? avatar)
-        where TAuthor : Author
-    {
-        if (source == null)
-            return null;
-        if (avatar == null)
-            return source;
-        return source with { Name = avatar.Name, Picture = avatar.Picture };
+        if (source.Name.IsNullOrEmpty() && !@base.Name.IsNullOrEmpty())
+            source = source with { Name = @base.Name };
+        if (source.Picture.IsNullOrEmpty() && !@base.Picture.IsNullOrEmpty())
+            source = source with { Picture = @base.Picture };
+        return source;
     }
 }

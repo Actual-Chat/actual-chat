@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Primitives;
 
 namespace ActualChat.Chat.Controllers;
@@ -10,31 +9,6 @@ namespace ActualChat.Chat.Controllers;
 [ApiController]
 public class MessageController : ControllerBase
 {
-    private record FileInfo(int Id, byte[] Content)
-    {
-        public string FileName { get; init; } = "";
-        public string ContentType { get; init; } = "";
-    }
-
-    private class FileAttributes
-    {
-        public int Id { get; set; }
-        public string FileName { get; set; } = "";
-        public string Description { get; set; } = "";
-    }
-
-    private class MessagePayload
-    {
-        public string Text { get; set; } = "";
-        public IList<FileAttributes> Attachments { get; set; } = new List<FileAttributes>();
-    }
-
-    private class MessagePost
-    {
-        public MessagePayload? Payload { get; set; }
-        public List<FileInfo> Files { get; } = new ();
-    }
-
     private readonly ISessionResolver _sessionResolver;
     private readonly ICommander _commander;
 
@@ -228,5 +202,32 @@ public class MessageController : ControllerBase
         catch {
             return false;
         }
+    }
+
+    // Nested types
+
+    private sealed record FileInfo(int Id, byte[] Content)
+    {
+        public string FileName { get; init; } = "";
+        public string ContentType { get; init; } = "";
+    }
+
+    private sealed class FileAttributes
+    {
+        public int Id { get; init; }
+        public string FileName { get; init; } = "";
+        public string Description { get; init; } = "";
+    }
+
+    private sealed class MessagePayload
+    {
+        public string Text { get; init; } = "";
+        public IList<FileAttributes> Attachments { get; init; } = new List<FileAttributes>();
+    }
+
+    private sealed class MessagePost
+    {
+        public MessagePayload? Payload { get; set; }
+        public List<FileInfo> Files { get; set; } = new();
     }
 }

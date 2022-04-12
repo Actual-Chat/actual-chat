@@ -9,48 +9,29 @@ namespace ActualChat.Chat.Controllers;
 public class ChatAuthorsController : ControllerBase, IChatAuthors
 {
     private readonly IChatAuthors _service;
-    private readonly ISessionResolver _sessionResolver;
 
-    public ChatAuthorsController(IChatAuthors service, ISessionResolver sessionResolver)
-    {
-        _service = service;
-        _sessionResolver = sessionResolver;
-    }
+    public ChatAuthorsController(IChatAuthors service)
+        => _service = service;
 
     [HttpGet, Publish]
-    public Task<ChatAuthor?> GetChatAuthor(Session? session, string chatId, CancellationToken cancellationToken)
-    {
-        session ??= _sessionResolver.Session;
-        return _service.GetChatAuthor(session, chatId, cancellationToken);
-    }
+    public Task<ChatAuthor?> GetChatAuthor(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetChatAuthor(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<string> GetChatPrincipalId(Session? session, string chatId, CancellationToken cancellationToken)
-    {
-        session ??= _sessionResolver.Session;
-        return _service.GetChatPrincipalId(session, chatId, cancellationToken);
-    }
+    public Task<string> GetChatPrincipalId(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetChatPrincipalId(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<string[]> GetChatIds(Session session, CancellationToken cancellationToken)
-    {
-        session ??= _sessionResolver.Session;
-        return _service.GetChatIds(session, cancellationToken);
-    }
+        => _service.GetChatIds(session, cancellationToken);
 
     [HttpGet, Publish]
     public Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken)
-    {
-        session ??= _sessionResolver.Session;
-        return _service.GetChatAuthorAvatarId(session, chatId, cancellationToken);
-    }
+        => _service.GetChatAuthorAvatarId(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken)
-    {
-        session ??= _sessionResolver.Session;
-        return _service.CanAddToContacts(session, chatAuthorId, cancellationToken);
-    }
+        => _service.CanAddToContacts(session, chatAuthorId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)

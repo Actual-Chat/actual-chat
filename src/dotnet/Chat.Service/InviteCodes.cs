@@ -1,5 +1,4 @@
 ﻿using ActualChat.Chat.Db;
-using ActualChat.Users;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
@@ -76,7 +75,7 @@ public partial class InviteCodes : DbServiceBase<ChatDbContext>, IInviteCodes, I
         return new InviteCodeUseResult {IsValid = true, ChatId = chat.Id };
     }
 
-    // Protected methods
+    // Private methods
 
     private async Task AssertCanInvite(Session session, string chatId, CancellationToken cancellationToken)
     {

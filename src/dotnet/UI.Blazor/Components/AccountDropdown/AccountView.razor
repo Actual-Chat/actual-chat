@@ -1,18 +1,16 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
 @inherits ComputedStateComponent<AccountView.Model>
 
 @{
-    var model = @State.LatestNonErrorValue;
-    var name = model.Name;
-    var picture = model.Picture;
-    if (picture.IsNullOrEmpty())
-        picture = $"https://avatars.dicebear.com/api/avataaars/{name}.svg";
+    var model = State.ValueOrDefault ?? Model.Guest;
+    var profile = model.Profile;
 }
 
-<img class="inline-block h-8 w-8 rounded-full" src="@picture" alt="avatar">
+<img class="inline-block h-8 w-8 rounded-full" src="@profile.Picture" alt="avatar">
 <div class="ml-3">
     <p class="text-sm leading-5 font-medium text-primary-muted hover:text-primary">
-        @name
+        @profile.Name
     </p>
     <div class="flex-x items-center px-1">
         <span class="rounded-full block w-2 h-2 mr-2 bg-online"></span>
@@ -21,39 +19,24 @@
 </div>
 
 @code {
-    private IAccountInfoProvider? _accountInfoProvider;
-
-    [Inject] private IServiceProvider ServiceProvider { get; init; } = null!;
-
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
-    public User User { get; set; } = null!;
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        _accountInfoProvider = ServiceProvider.GetService<IAccountInfoProvider>();
-    }
-
-    public override Task SetParametersAsync(ParameterView parameters)
-        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-    => new () { InitialValue = new() { Name = User.Name } };
+        => new () { InitialValue = Model.Guest };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
-        var model = new Model();
-        if (!User.IsAuthenticated || _accountInfoProvider == null)
-            return new Model { Name = User.Name };
-        var accountInfo = await _accountInfoProvider.GetAccountInfo(User, cancellationToken);
-        model.Name = accountInfo?.Name ?? User.Name;
-        model.Picture = accountInfo?.Picture ?? "";
-        return model;
+        var profile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(true);
+        if (profile == null) return Model.Guest;
+
+        return new Model() { Profile = profile };
     }
 
     public class Model
     {
-        public string Picture { get; set; } = "";
-        public string Name { get; set; } = "";
+        public static Model Guest => new () { Profile = UserProfile.Guest };
+
+        public UserProfile Profile { get; init; } = null!;
     }
 }

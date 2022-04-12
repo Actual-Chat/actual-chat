@@ -17,12 +17,5 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
         services.AddSingleton(_ => new PresenceService.Options() {
             UpdatePeriod = TimeSpan.FromSeconds(50),
         });
-
-        services.AddScoped<IAccountInfoProvider, AccountInfoProvider>();
-        services.AddSingleton<IAuthorizationHandler, IsAdminAuthorizationPolicyHandler>();
-
-        services.AddAuthorizationCore(options =>
-            options.AddPolicy("IsAdmin",
-                policy => policy.AddRequirements(new IsAdminAuthorizationPolicyRequirement())));
     }
 }

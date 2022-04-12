@@ -7,22 +7,18 @@ namespace ActualChat.Chat.Controllers;
 [ApiController, JsonifyErrors]
 public class ChatsController : ControllerBase, IChats
 {
-    private readonly IChats _chats;
-    private readonly ISessionResolver _sessionResolver;
+    private readonly IChats _service;
 
-    public ChatsController(IChats chats, ISessionResolver sessionResolver)
-    {
-        _chats = chats;
-        _sessionResolver = sessionResolver;
-    }
+    public ChatsController(IChats service)
+        => _service = service;
 
     [HttpGet, Publish]
     public Task<Chat?> Get(Session session, string chatId, CancellationToken cancellationToken)
-        => _chats.Get(session, chatId, cancellationToken);
+        => _service.Get(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Chat[]> GetChats(Session session, CancellationToken cancellationToken)
-        => _chats.GetChats(session, cancellationToken);
+        => _service.GetChats(session, cancellationToken);
 
     [HttpGet, Publish]
     public Task<long> GetEntryCount(
@@ -31,7 +27,7 @@ public class ChatsController : ControllerBase, IChats
         ChatEntryType entryType,
         Range<long>? idTileRange,
         CancellationToken cancellationToken)
-        => _chats.GetEntryCount(session, chatId, entryType, idTileRange, cancellationToken);
+        => _service.GetEntryCount(session, chatId, entryType, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatTile> GetTile(
@@ -40,7 +36,7 @@ public class ChatsController : ControllerBase, IChats
         ChatEntryType entryType,
         Range<long> idTileRange,
         CancellationToken cancellationToken)
-        => _chats.GetTile(session, chatId, entryType, idTileRange, cancellationToken);
+        => _service.GetTile(session, chatId, entryType, idTileRange, cancellationToken);
 
     [HttpGet, Publish]
     public Task<Range<long>> GetIdRange(
@@ -48,67 +44,52 @@ public class ChatsController : ControllerBase, IChats
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken)
-        => _chats.GetIdRange(session, chatId, entryType, cancellationToken);
+        => _service.GetIdRange(session, chatId, entryType, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ChatPermissions> GetPermissions(
         Session session,
         string chatId,
         CancellationToken cancellationToken)
-        => _chats.GetPermissions(session, chatId, cancellationToken);
+        => _service.GetPermissions(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CheckCanJoin(Session session, string chatId, CancellationToken cancellationToken)
-        => _chats.CheckCanJoin(session, chatId, cancellationToken);
+        => _service.CheckCanJoin(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<ImmutableArray<TextEntryAttachment>> GetTextEntryAttachments(
         Session session, string chatId, long entryId,
         CancellationToken cancellationToken)
-        => _chats.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
+        => _service.GetTextEntryAttachments(session, chatId, entryId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<bool> CanSendUserPeerChatMessage(Session session, string chatAuthorId, CancellationToken cancellationToken)
-        => _chats.CanSendUserPeerChatMessage(session, chatAuthorId, cancellationToken);
+        => _service.CanSendUserPeerChatMessage(session, chatAuthorId, cancellationToken);
 
     [HttpGet, Publish]
     public Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken)
-        => _chats.GetUserPeerChatId(session, chatAuthorId, cancellationToken);
+        => _service.GetUserPeerChatId(session, chatAuthorId, cancellationToken);
 
     // Commands
 
     [HttpPost]
     public Task<Chat> CreateChat([FromBody] IChats.CreateChatCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.CreateChat(command, cancellationToken);
-    }
+        => _service.CreateChat(command, cancellationToken);
 
     [HttpPost]
     public Task<Unit> UpdateChat(IChats.UpdateChatCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.UpdateChat(command, cancellationToken);
-    }
+        => _service.UpdateChat(command, cancellationToken);
 
     [HttpPost]
     public Task<Unit> JoinChat([FromBody] IChats.JoinChatCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.JoinChat(command, cancellationToken);
-    }
+        => _service.JoinChat(command, cancellationToken);
 
     [HttpPost]
     public Task<ChatEntry> CreateTextEntry([FromBody] IChats.CreateTextEntryCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.CreateTextEntry(command, cancellationToken);
-    }
+        => _service.CreateTextEntry(command, cancellationToken);
 
     [HttpPost]
     public Task RemoveTextEntry(IChats.RemoveTextEntryCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _chats.RemoveTextEntry(command, cancellationToken);
-    }
+        => _service.RemoveTextEntry(command, cancellationToken);
 }

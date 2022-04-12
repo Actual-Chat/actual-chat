@@ -1,11 +1,15 @@
+using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users.Db;
 
-public class DbUserRepository : DbUserRepo<UsersDbContext, DbUser, string>
+public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
 {
-    public DbUserRepository(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
-        : base(options, services) { }
+    public new IDbEntityConverter<DbUser, User> UserConverter { get; }
+
+    public DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
+        : base(options, services)
+        => UserConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
 
     public override async Task<DbUser> Create(UsersDbContext dbContext, User user, CancellationToken cancellationToken = default)
     {

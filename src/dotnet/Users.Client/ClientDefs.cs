@@ -2,17 +2,11 @@ using RestEase;
 
 namespace ActualChat.Users.Client;
 
-[BasePath("userInfos")]
-public interface IUserInfosClientDef
+[BasePath("userProfiles")]
+public interface IUserProfilesClientDef
 {
     [Get(nameof(Get))]
-    Task<UserInfo?> Get(string userId, bool inherit, CancellationToken cancellationToken);
-    [Get(nameof(GetByName))]
-    Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
-    [Get(nameof(GetGravatarHash))]
-    Task<string> GetGravatarHash(string userId, CancellationToken cancellationToken);
-    [Get(nameof(IsAdmin))]
-    Task<bool> IsAdmin(string userId, CancellationToken cancellationToken);
+    Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
 }
 
 [BasePath("userStates")]
@@ -27,8 +21,6 @@ public interface IUserAuthorsClientDef
 {
     [Get(nameof(Get))]
     Task<UserAuthor?> Get(string userId, CancellationToken cancellationToken);
-    [Get(nameof(GetByName))]
-    Task<UserInfo?> GetByName(string name, CancellationToken cancellationToken);
 }
 
 [BasePath("userAvatars")]

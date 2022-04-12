@@ -83,7 +83,7 @@ public partial class Notifications
                 },
                 FcmOptions = new WebpushFcmOptions {
                     // Link = ??? TODO(AK): Set anchor to open particular entry
-                    Link = _uriMapper.BaseUri.Host == "localhost"
+                    Link = StringComparer.Ordinal.Equals(_uriMapper.BaseUri.Host, "localhost")
                         ? null
                         : _uriMapper.ToAbsolute($"/chat/{chatId}").ToString(),
                 }

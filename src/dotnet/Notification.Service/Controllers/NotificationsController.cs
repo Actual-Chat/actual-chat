@@ -8,13 +8,9 @@ namespace ActualChat.Notification.Controllers;
 public class NotificationsController : ControllerBase, INotifications
 {
     private readonly INotifications _service;
-    private readonly ISessionResolver _sessionResolver;
 
-    public NotificationsController(INotifications service, ISessionResolver sessionResolver)
-    {
-        _service = service;
-        _sessionResolver = sessionResolver;
-    }
+    public NotificationsController(INotifications service)
+        => _service = service;
 
     [HttpGet]
     [Publish]
@@ -23,22 +19,13 @@ public class NotificationsController : ControllerBase, INotifications
 
     [HttpPost]
     public Task<bool> RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _service.RegisterDevice(command, cancellationToken);
-    }
+        => _service.RegisterDevice(command, cancellationToken);
 
     [HttpPost]
     public Task<bool> SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _service.SubscribeToChat(command, cancellationToken);
-    }
+        => _service.SubscribeToChat(command, cancellationToken);
 
     [HttpPost]
     public Task UnsubscribeToChat(INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken)
-    {
-        command.UseDefaultSession(_sessionResolver);
-        return _service.UnsubscribeToChat(command, cancellationToken);
-    }
+        => _service.UnsubscribeToChat(command, cancellationToken);
 }

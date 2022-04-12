@@ -7,8 +7,8 @@ public interface IAuthorLike : IHasId<Symbol>, IHasVersion<long>
 {
     /// <summary>Is used as @{Name}, e.g. @ivan </summary>
     string Name { get; }
-    /// <summary> The url of the author avatar. </summary>
+    /// <summary>The url of the author's photo.</summary>
     string Picture { get; }
-    /// <summary> Is user want to use anonymous author </summary>
+    /// <summary>Indicates whether the author is anonymous.</summary>
     bool IsAnonymous { get; }
 }
