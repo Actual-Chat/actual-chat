@@ -6,6 +6,7 @@ public sealed record UserProfile : Author
 
     public User User { get; init; }
     public bool IsAdmin { get; init; }
+    public UserStatus Status { get; set; }
 
     public UserProfile(Symbol id, string name, User user)
     {

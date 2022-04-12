@@ -1,13 +1,14 @@
 using System.Security.Claims;
+using Stl.Fusion.Server.Authentication;
 using Stl.Fusion.Server.Internal;
 
 namespace ActualChat.Users;
 
-public class ServerAuthHelper : Stl.Fusion.Server.Authentication.ServerAuthHelper
+public class AppServerAuthHelper : ServerAuthHelper
 {
     private ClaimMapper ClaimMapper { get; }
 
-    public ServerAuthHelper(
+    public AppServerAuthHelper(
         Options? settings,
         IAuth auth,
         IAuthBackend authBackend,
