@@ -85,8 +85,8 @@ public class UserAvatars : IUserAvatars
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         user.MustBeAuthenticated();
 
-        var userInfo = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
-        var userName = userInfo?.Name ?? user.Name;
+        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
+        var userName = userProfile?.Name ?? user.Name;
 
         var createCommand = new IUserAvatarsBackend.CreateCommand( user.Id, userName);
         var userAvatar = await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
