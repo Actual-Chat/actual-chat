@@ -34,10 +34,6 @@
     ClientSideState = plan.ClientSideState ?? ClientSideState;
     if (Plan.IsFullyLoaded() == false)
         UpdateData();
-
-    // reset ScrollToKey after sending the value to the browser
-    plan.ScrollToKey = Symbol.Empty;
-    ScrollToKey = null;
 }
 
 <div @ref="Ref"

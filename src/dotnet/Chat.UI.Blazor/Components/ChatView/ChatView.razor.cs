@@ -23,7 +23,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    public string? ScrollToKey { get; private set; }
     public long LastReadEntryId { get; private set; }
     private IMutableState<ImmutableList<string>> VisibleKeysState { get; set; } = null!;
 
@@ -36,10 +35,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
             var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
                 .ConfigureAwait(true);
-            if (readPosition.HasValue && LastReadEntryId == 0) {
+            if (readPosition.HasValue && LastReadEntryId == 0)
                 LastReadEntryId = readPosition.Value;
-                ScrollToKey = LastReadEntryId.ToString(CultureInfo.InvariantCulture);
-            }
         }
     }
 
@@ -64,7 +61,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
             LastReadEntryId = lastVisibleEntryId;
             var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, LastReadEntryId);
-            await Cmd.Run(command, cancellationToken);
+            await Cmd.Run(command, cancellationToken).ConfigureAwait(true);
         }
     }
 
@@ -75,7 +72,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
-        var queryRange = query.InclusiveRange.IsEmpty && LastReadEntryId != 0
+        var loadLastReadPosition = query.InclusiveRange.IsEmpty && LastReadEntryId != 0;
+        var queryRange = loadLastReadPosition
             ? IdTileStack.Layers[0].GetTile(LastReadEntryId).Range.AsStringRange()
             : query.IsExpansionQuery
                 ? query.InclusiveRange
@@ -135,11 +133,16 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .ToDictionary(c => c[0].EntryId, c => c);
 
         var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments);
+        var scrollToKey = loadLastReadPosition
+            ? (Symbol)LastReadEntryId.ToString(CultureInfo.InvariantCulture)
+            : Symbol.Empty;
         var result = VirtualListData.New(
             query,
             chatMessages,
             startId <= chatIdRange.Start,
-            endId + 1 >= chatIdRange.End);
+            endId + 1 >= chatIdRange.End,
+            scrollToKey);
+
         return result;
     }
 

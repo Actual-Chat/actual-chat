@@ -127,9 +127,6 @@ public class VirtualListRenderPlan<TItem>
                 hasUnmeasuredItems = true;
         }
         ItemRange = hasUnmeasuredItems ? null : new Range<double>(0, itemRange.End);
-        if (VirtualList.ScrollToKey != null)
-            ScrollToKey = VirtualList.ScrollToKey;
-
         UpdateViewport(lastPlan);
         UpdateClientSideState();
     }
