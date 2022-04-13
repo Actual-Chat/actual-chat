@@ -54,19 +54,17 @@ export class AudioContextPool {
      * after user interaction.
      */
     public static addInitEventListeners() {
-        self.addEventListener('touchstart', AudioContextPool._initEventListener);
+        self.addEventListener('click', AudioContextPool._initEventListener);
+        self.addEventListener('doubleclick', AudioContextPool._initEventListener);
         self.addEventListener('onkeydown', AudioContextPool._initEventListener);
-        self.addEventListener('mousedown', AudioContextPool._initEventListener);
-        self.addEventListener('pointerdown', AudioContextPool._initEventListener);
-        self.addEventListener('pointerup', AudioContextPool._initEventListener);
+        self.addEventListener('touchend', AudioContextPool._initEventListener);
     }
 
     private static removeInitEventListeners() {
-        self.removeEventListener('touchstart', AudioContextPool._initEventListener);
+        self.removeEventListener('click', AudioContextPool._initEventListener);
+        self.removeEventListener('doubleclick', AudioContextPool._initEventListener);
         self.removeEventListener('onkeydown', AudioContextPool._initEventListener);
-        self.removeEventListener('mousedown', AudioContextPool._initEventListener);
-        self.removeEventListener('pointerdown', AudioContextPool._initEventListener);
-        self.removeEventListener('pointerup', AudioContextPool._initEventListener);
+        self.removeEventListener('touchend', AudioContextPool._initEventListener);
     }
 
     private static _initEventListener = (): void => {

@@ -84,19 +84,17 @@ function hasPromiseBasedNotificationApi(): boolean {
 
 // TODO(AK): Move to more natural place, like joining a chat, etc.
 function addInitEventListeners() : void {
-    self.addEventListener('touchstart', onInitEvent);
+    self.addEventListener('click', onInitEvent);
+    self.addEventListener('doubleclick', onInitEvent);
     self.addEventListener('onkeydown', onInitEvent);
-    self.addEventListener('mousedown', onInitEvent);
-    self.addEventListener('pointerdown', onInitEvent);
-    self.addEventListener('pointerup', onInitEvent);
+    self.addEventListener('touchend', onInitEvent);
 }
 
 function removeInitEventListeners() : void {
-    self.removeEventListener('touchstart', onInitEvent);
+    self.removeEventListener('click', onInitEvent);
+    self.removeEventListener('doubleclick', onInitEvent);
     self.removeEventListener('onkeydown', onInitEvent);
-    self.removeEventListener('mousedown', onInitEvent);
-    self.removeEventListener('pointerdown', onInitEvent);
-    self.removeEventListener('pointerup', onInitEvent);
+    self.removeEventListener('touchend', onInitEvent);
 }
 
 const onInitEvent = async () => {
