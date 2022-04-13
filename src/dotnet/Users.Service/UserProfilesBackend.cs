@@ -8,6 +8,7 @@ namespace ActualChat.Users;
 public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesBackend
 {
     private const string AdminEmailDomain = "actual.chat";
+    private readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
     private IUserAuthorsBackend? _userAuthorsBackend; // Dep. cycle elimination
 
@@ -77,20 +78,19 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (HasIdentity(user, "internal") || HasIdentity(user, "test"))
             return true;
 
-        return IsActualChatDomainUser(user);
-    }
-
-    private bool IsActualChatDomainUser(User user)
-    {
-        if (!HasIdentity(user, GoogleDefaults.AuthenticationScheme))
-            return false;
-
         var email = user.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Email);
-        if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var mailAddress))
+        if (email.IsNullOrEmpty() || !MailAddress.TryCreate(email, out var emailAddress))
             return false;
 
-        return StringComparer.Ordinal.Equals(mailAddress.Host, AdminEmailDomain);
+        if (AdminEmails.Contains(email))
+            return true; // Predefined admin email
+        if (HasGoogleIdentity(user) && StringComparer.Ordinal.Equals(emailAddress.Host, AdminEmailDomain))
+            return true; // actual.chat email
+        return false;
     }
+
+    private bool HasGoogleIdentity(User user)
+        => HasIdentity(user, GoogleDefaults.AuthenticationScheme);
 
     private bool HasIdentity(User user, string provider)
         => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
