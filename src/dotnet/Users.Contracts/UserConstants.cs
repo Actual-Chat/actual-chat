@@ -4,10 +4,9 @@ public static class UserConstants
 {
     public static class Admin
     {
-        public static readonly string UserId = "admin";
-        public static readonly string Name = "Admin";
-        public static readonly string Picture = "https://avatars.dicebear.com/api/avataaars/12333323132.svg";
-#pragma warning disable CA2211
-        public static Session Session = null!;
+        public static string UserId { get; } = "admin";
+        public static string Name { get; } =  "Admin";
+        public static string Picture { get; } = "https://avatars.dicebear.com/api/avataaars/12333323132.svg";
+        public static Session Session { get; set; } = Session.Null;
     }
 }
