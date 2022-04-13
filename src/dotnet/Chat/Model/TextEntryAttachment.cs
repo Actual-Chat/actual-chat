@@ -12,8 +12,8 @@ public record TextEntryAttachment
     public int Index { get; init; }
     public long Version { get; init; }
     public string ContentId { get; init; } = "";
-    public string Url => "/api/content/" + ContentId;
-    public string ProxyUrl => Url;
+    //public string Url => "/api/content/" + ContentId;
+    //public string ProxyUrl => Url;
 
     public string MetadataJson {
         get => _metadata.Data;

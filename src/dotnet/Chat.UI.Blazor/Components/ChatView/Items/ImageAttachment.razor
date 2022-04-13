@@ -2,8 +2,13 @@
 
 @{
     var attachment = Attachment;
-    var url = Attachment.Url;
-    var previewUrl = attachment.ProxyUrl;
+    var url = UrlMapper.ContentUrl(Attachment.ContentId);
+    //var previewUrl = attachment.ProxyUrl;
+    // var absUrl = Nav.ToAbsoluteUri(url);
+    // var correctedUrl = absUrl.ToString().Replace("localhost", "192.168.1.3", StringComparison.OrdinalIgnoreCase);
+    //var previewUrl = "http://localhost:8080/400,fit/" + correctedUrl;
+    //var previewUrl = "https://media.local.actual.chat/400,fit/" + correctedUrl;
+    var previewUrl = UrlMapper.ResizedImageUrl(url);
     var imgStyle = "max-width: 400px; max-height: 300px";
     if (attachment.Height > 0 && attachment.Width > 0) {
         var width = attachment.Width;
@@ -15,7 +20,7 @@
         }
         imgStyle = $"width: {width}px; height: {height}px";
         // TODO(DF): setup correct preview url to image proxy endpoint
-        previewUrl += $"?width={width}&height={height}";
+        //previewUrl += $"?width={width}&height={height}";
     }
 }
 <div class="message-attachment-image mt-1">
@@ -27,6 +32,8 @@
 
 @code {
     [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; set; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
