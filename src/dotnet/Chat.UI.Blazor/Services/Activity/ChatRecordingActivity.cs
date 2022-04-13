@@ -14,7 +14,7 @@ public interface IChatRecordingActivity : IDisposable
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity
 {
-    public static readonly TimeSpan ExtraActivityDuration = TimeSpan.FromMilliseconds(250);
+    public static TimeSpan ExtraActivityDuration { get; } = TimeSpan.FromMilliseconds(250);
 
     private readonly ILogger _log;
     private ChatEntryReader? _entryReader;

@@ -4,18 +4,18 @@ public interface IPlayerCommand { }
 
 public sealed class PlayCommand : IPlayerCommand
 {
-    public static readonly PlayCommand Instance = new();
+    public static PlayCommand Instance { get; } = new();
     private PlayCommand() { }
 }
 
 public sealed class StopCommand : IPlayerCommand, IPlaybackCommand
 {
-    public static readonly StopCommand Instance = new();
+    public static StopCommand Instance { get; } = new();
     private StopCommand() { }
 }
 
 public sealed class EndCommand : IPlayerCommand
 {
-    public static readonly EndCommand Instance = new();
+    public static EndCommand Instance { get; } = new();
     private EndCommand() { }
 }

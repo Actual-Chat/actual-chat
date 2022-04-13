@@ -2,7 +2,7 @@ namespace ActualChat.Hosting;
 
 public static class ServiceScope
 {
-    public static readonly Symbol Server = nameof(Server);
-    public static readonly Symbol Client = nameof(Client);
-    public static readonly Symbol BlazorUI = nameof(BlazorUI);
+    public static Symbol Server { get; } = nameof(Server);
+    public static Symbol Client { get; } = nameof(Client);
+    public static Symbol BlazorUI { get; } = nameof(BlazorUI);
 }

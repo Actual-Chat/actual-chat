@@ -48,7 +48,7 @@ public abstract class HubClientBase
                     options.Transports = HttpTransportType.WebSockets;
                 })
                 .WithAutomaticReconnect(ReconnectDelays);
-            if (!Debugging.SignalR.DisableMessagePackProtocol)
+            if (!Constants.DebugMode.SignalR)
                 builder = builder.AddMessagePackProtocol();
             return builder.Build();
         }

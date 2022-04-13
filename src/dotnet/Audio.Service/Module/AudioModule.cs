@@ -39,7 +39,7 @@ public class AudioModule : HostModule<AudioSettings>, IWebModule
             options.StreamBufferCapacity = 20;
             options.EnableDetailedErrors = true;
         });
-        if (!Debugging.SignalR.DisableMessagePackProtocol)
+        if (!Constants.DebugMode.SignalR)
             signalR.AddMessagePackProtocol();
 
         // Module's own services

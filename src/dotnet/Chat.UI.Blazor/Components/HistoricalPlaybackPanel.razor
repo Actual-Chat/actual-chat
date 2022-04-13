@@ -75,7 +75,7 @@
 
     public sealed class Model
     {
-        public static readonly Model NotPlaying = new();
+        public static Model NotPlaying { get; } = new();
 
         public DateTime? PlayingAt { get; init; }
     }

@@ -9,9 +9,9 @@ public record HostInfo
     private bool? _isStagingInstance;
     private bool? _isDevelopmentInstance;
 
-    public static readonly Symbol ProductionEnvironment = Environments.Production;
-    public static readonly Symbol StagingEnvironment = Environments.Staging;
-    public static readonly Symbol DevelopmentEnvironment = Environments.Development;
+    public static Symbol ProductionEnvironment { get; } = Environments.Production;
+    public static Symbol StagingEnvironment { get; } = Environments.Staging;
+    public static Symbol DevelopmentEnvironment { get; } = Environments.Development;
 
     public Symbol HostKind { get; init; } = Symbol.Empty;
     public Symbol Environment { get; init; } = Environments.Development;

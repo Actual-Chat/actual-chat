@@ -2,7 +2,7 @@
 
 public abstract class BaseModel
 {
-    public static readonly BaseModel Empty = new EmptyModel();
+    public static BaseModel Empty { get; } = new EmptyModel();
     public abstract EbmlElementDescriptor Descriptor { get; }
 
     [MatroskaElementDescriptor(MatroskaSpecification.CRC32)]

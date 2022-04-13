@@ -8,16 +8,16 @@ namespace ActualChat.Users;
 public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBackend
 {
     private readonly IDbEntityResolver<string,DbUserAvatar> _dbUserAvatarResolver;
-    private readonly LocalIdGenerator<UsersDbContext,DbUserAvatar> _localIdGenerator;
+    private readonly DbLocalIdGenerator<UsersDbContext,DbUserAvatar> _dbLocalIdGenerator;
     private readonly ICommander _commander;
 
     public UserAvatarsBackend(IServiceProvider services) : base(services)
     {
         _dbUserAvatarResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserAvatar>>();
         _commander = Services.GetRequiredService<ICommander>();
-        _localIdGenerator = Services.LocalIdGeneratorFactory()
-            .ForContext<UsersDbContext>()
-            .Create(db => db.UserAvatars, a => a.UserId, a => a.LocalId);
+        _dbLocalIdGenerator = Services.LocalIdGeneratorFactory()
+            .For<UsersDbContext>()
+            .New(db => db.UserAvatars, a => a.UserId, a => a.LocalId);
     }
 
     // [ComputeMethod]
@@ -85,7 +85,7 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         string id;
         long nextLocalId;
         if (!userId.IsNullOrEmpty()) {
-            nextLocalId = await _localIdGenerator.DbNextLocalId(dbContext, userId, cancellationToken).ConfigureAwait(false);
+            nextLocalId = await _dbLocalIdGenerator.Next(dbContext, userId, cancellationToken).ConfigureAwait(false);
             id = DbUserAvatar.GetCompositeId(userId, UserAvatarType.User, nextLocalId);
         }
         else {
