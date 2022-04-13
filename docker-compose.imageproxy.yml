@@ -2,11 +2,14 @@ version: '3.8'
 services:
   imageproxy:
     image: willnorris/imageproxy:latest
-    ports:
-      - 8080:8080
+# uncomment for debugging
+#    ports:
+#      - 8080:8080
+    expose:
+      - 8080
     environment:
       - IMAGEPROXY_CACHE=memory:100:24h
-      - IMAGEPROXY_SCALEUP=true
+      # - IMAGEPROXY_SCALEUP=true
       # - SSL_CERT_FILE=/usr/local/share/ca-certificates/local.actual.chat.crt
       - SSL_CERT_DIR=/usr/local/share/ca-certificates/
     volumes:
