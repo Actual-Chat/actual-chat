@@ -14,6 +14,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
+    public bool IsUnread { get; init; }
     public int CountAs { get; init; } = 1;
 
     public ChatMessageModel(ChatEntry entry, ImmutableArray<TextEntryAttachment> attachments)
@@ -51,7 +52,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
-        IDictionary<long, ImmutableArray<TextEntryAttachment>> attachmentsLookup)
+        IDictionary<long, ImmutableArray<TextEntryAttachment>> attachmentsLookup,
+        long? lastReadEntryId)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
@@ -78,6 +80,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
+                IsUnread = entry.Id > (lastReadEntryId ?? 0),
             };
             result.Add(model);
 

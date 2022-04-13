@@ -148,7 +148,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .Where(c => c.Length > 0)
             .ToDictionary(c => c[0].EntryId, c => c);
 
-        var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments);
+        var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments, LastReadEntryId);
         var scrollToKey = loadLastReadPosition
             ? (Symbol)LastReadEntryId.ToString(CultureInfo.InvariantCulture)
             : Symbol.Empty;

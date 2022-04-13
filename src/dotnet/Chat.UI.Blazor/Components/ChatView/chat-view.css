@@ -8,6 +8,10 @@
     @apply text-sm text-current break-words;
 }
 
+.chat-message .unread {
+    @apply bg-message-hover;
+}
+
 .chat-message:hover {
     @apply bg-message-hover;
 }

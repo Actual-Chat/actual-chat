@@ -49,7 +49,7 @@ public class VirtualListStatistics : IVirtualListStatistics
             _itemCount == 0 ? DefaultItemSize : _itemSizeSum / _itemCount,
             MinItemSize, MaxItemSize);
 
-    public double DefaultResponseFulfillmentRatio { get; init; } = 1;
+    public double DefaultResponseFulfillmentRatio { get; init; } = 16;
     public double MinResponseFulfillmentRatio { get; init; } = 0.25;
     public double MaxResponseFulfillmentRatio { get; init; } = 1;
     /// <summary>
