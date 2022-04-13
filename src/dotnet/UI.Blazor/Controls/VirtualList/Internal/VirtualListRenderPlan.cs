@@ -46,7 +46,6 @@ public class VirtualListRenderPlan<TItem>
     [JsonIgnore]
     public double EndSpacerSize => Data.HasVeryLastItem ? 0 : VirtualList.SpacerSize;
 
-    public Symbol ScrollToKey { get; set; }
     public bool UseSmoothScroll { get; set; }
 
     [JsonIgnore]
@@ -170,14 +169,6 @@ public class VirtualListRenderPlan<TItem>
         newClientSideState.ScrollTop = Viewport?.Start;
         newClientSideState.ViewportHeight = Viewport?.Size();
         ClientSideState = newClientSideState;
-    }
-
-    private void ScrollTo(ItemRenderPlan item, bool useSoftScroll, string why)
-    {
-        DebugLog?.LogDebug("ScrollTo: {ScrollToKey} ({ScrollKind}), {Why}",
-            item.Key, useSoftScroll ? "soft" : "instant", why);
-        ScrollToKey = item.Key;
-        UseSmoothScroll = useSoftScroll;
     }
 
     private bool TryGetClientSideViewport(VirtualListClientSideState? clientSideState, out Range<double> viewport)

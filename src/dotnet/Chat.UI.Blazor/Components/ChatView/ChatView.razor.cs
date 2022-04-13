@@ -9,6 +9,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
+    private readonly TaskSource<Unit> _initializeTaskSource = TaskSource.New<Unit>(false);
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -20,32 +21,40 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
-    public long LastReadEntryId { get; private set; }
-    private IMutableState<ImmutableList<string>> VisibleKeysState { get; set; } = null!;
+    private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
+    private long LastReadEntryId { get; set; }
+    private IMutableState<List<string>> VisibleKeysState { get; set; } = null!;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (VisibleKeysState == null) {
-            VisibleKeysState = StateFactory.NewMutable(ImmutableList<string>.Empty);
+            VisibleKeysState = StateFactory.NewMutable(new List<string>());
             _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token));
 
             var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
                 .ConfigureAwait(true);
             if (readPosition.HasValue && LastReadEntryId == 0)
                 LastReadEntryId = readPosition.Value;
+            _initializeTaskSource.SetResult(Unit.Default);
         }
     }
+
+    protected override bool ShouldRender()
+        => InitCompleted;
 
     public async ValueTask DisposeAsync()
         => _disposeToken.Cancel();
 
     private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
     {
+        var clock = Clocks.CoarseCpuClock;
         while (!cancellationToken.IsCancellationRequested) {
+            await clock.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(true);
             await VisibleKeysState.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
             var visibleKeys = await VisibleKeysState.Use(cancellationToken).ConfigureAwait(true);
             if (visibleKeys.Count == 0)
@@ -69,6 +78,13 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
+        if (!_initializeTaskSource.Task.IsCompleted) {
+            await _initializeTaskSource.Task.ConfigureAwait(true);
+            // first compute state is useless it will be called again after completion
+            // of parent (this) initialization
+            return VirtualListData<ChatMessageModel>.None;
+        }
+
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);

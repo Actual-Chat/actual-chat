@@ -24,7 +24,7 @@
         HasVeryFirstItem = plan.Data.HasVeryFirstItem,
         HasVeryLastItem = plan.Data.HasVeryLastItem,
 
-        ScrollToKey = plan.ScrollToKey.Value.NullIfEmpty(),
+        ScrollToKey = plan.Data.ScrollToKey.Value.NullIfEmpty(),
         UseSmoothScroll = plan.UseSmoothScroll,
 
         ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
