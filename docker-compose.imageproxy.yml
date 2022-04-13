@@ -10,7 +10,7 @@ services:
       # - SSL_CERT_FILE=/usr/local/share/ca-certificates/local.actual.chat.crt
       - SSL_CERT_DIR=/usr/local/share/ca-certificates/
     volumes:
-      - ./local.actual.chat.crt:/usr/local/share/ca-certificates/local.actual.chat.crt
+      - ./data/ssl/local.actual.chat.crt:/usr/local/share/ca-certificates/local.actual.chat.crt
     extra_hosts:
       - "cdn.local.actual.chat:host-gateway" #host and ip
       - "local.actual.chat:host-gateway" #host and ip
@@ -21,10 +21,17 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./access.log:/var/log/nginx/access.log
-#      - ./data/certbot/conf:/etc/letsencrypt
-#      - ./data/certbot/www:/var/www/certbot
+#      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+#      - ./access.log:/var/log/nginx/access.log
+#      - ./local.actual.chat.crt:/etc/ssl/local.actual.chat.crt
+#      - ./local.actual.chat.key:/etc/ssl/local.actual.chat.key
+#      - ./dhparam.pem:/etc/nginx/dhparam.pem
+
+      - ./data/ssl:/etc/ssl
+      - ./data/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./data/nginx/snippets:/etc/nginx/snippets
+      - ./data/nginx/dhparam.pem:/etc/nginx/dhparam.pem
+      - ./data/log/nginx/access.log:/var/log/nginx/access.log
     extra_hosts:
       - "cdn.local.actual.chat:host-gateway" #host and ip
       - "local.actual.chat:host-gateway" #host and ip
