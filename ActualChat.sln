@@ -161,6 +161,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UI", "UI", "{8F17CFD4-76C1-
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Users", "Users", "{9EF8D096-E543-418C-A491-331E60F146FA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E726-4D5A-90A1-BDD668CFD906}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\src\audio-context-pool.ts = src\nodejs\src\audio-context-pool.ts
+		src\nodejs\src\delay.ts = src\nodejs\src\delay.ts
+		src\nodejs\src\is-promise.ts = src\nodejs\src\is-promise.ts
+		src\nodejs\src\next-tick.ts = src\nodejs\src\next-tick.ts
+		src\nodejs\src\object-pool.ts = src\nodejs\src\object-pool.ts
+		src\nodejs\src\resolve-callback-message.ts = src\nodejs\src\resolve-callback-message.ts
+		src\nodejs\src\to-hex-string.ts = src\nodejs\src\to-hex-string.ts
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
+	ProjectSection(SolutionItems) = preProject
+		src\nodejs\src\worklets\warm-up-worklet-processor.ts = src\nodejs\src\worklets\warm-up-worklet-processor.ts
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -442,6 +458,8 @@ Global
 		{AA165163-F9A3-4910-9DD3-59543948BCA0} = {9EF8D096-E543-418C-A491-331E60F146FA}
 		{2FB7A0E5-F50D-4891-96EF-A5EA1A6DFA80} = {9EF8D096-E543-418C-A491-331E60F146FA}
 		{1409E3BF-67D7-46A5-866C-A9F25DA925ED} = {9EF8D096-E543-418C-A491-331E60F146FA}
+		{6F6D1942-E726-4D5A-90A1-BDD668CFD906} = {609C47B5-30E6-4B2A-A8DB-1B1FD644948F}
+		{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78} = {6F6D1942-E726-4D5A-90A1-BDD668CFD906}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
