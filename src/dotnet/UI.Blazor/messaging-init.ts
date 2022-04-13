@@ -1,11 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, GetTokenOptions, onMessage } from 'firebase/messaging';
 
+const LogScope = 'MessagingInit';
+
 export async function getDeviceToken(): Promise<string | null> {
     try {
         const response = await fetch('/dist/config/firebase.config.js');
         if (response.ok || response.status === 304) {
             const { config, publicKey } = await response.json();
+            const configBase64 = btoa(JSON.stringify(config));
             const app = initializeApp(config);
             const messaging = getMessaging(app);
             onMessage(messaging, (payload) => {
@@ -13,18 +16,17 @@ export async function getDeviceToken(): Promise<string | null> {
             });
 
             const origin = new URL('messaging-init.ts', import.meta.url).origin;
-            const swPath = new URL('/dist/messagingServiceWorker.js', origin).toString();
-            const configBase64 = btoa(JSON.stringify(config));
-            const swUrl = `${swPath}?config=${configBase64}`;
-            let swRegistration = await navigator.serviceWorker.getRegistration(swUrl);
-            if (!swRegistration) {
-                swRegistration = await navigator.serviceWorker.register(swUrl, {
+            const workerPath = new URL('/dist/messagingServiceWorker.js', origin).toString();
+            const workerUrl = `${workerPath}?config=${configBase64}`;
+            let workerRegistration = await navigator.serviceWorker.getRegistration(workerUrl);
+            if (!workerRegistration) {
+                workerRegistration = await navigator.serviceWorker.register(workerUrl, {
                     scope: '/dist/firebase-cloud-messaging-push-scope'
                 });
             }
             const tokenOptions: GetTokenOptions = {
                 vapidKey: publicKey,
-                serviceWorkerRegistration: swRegistration,
+                serviceWorkerRegistration: workerRegistration,
             };
             return await getToken(messaging, tokenOptions);
         } else {
@@ -37,28 +39,33 @@ export async function getDeviceToken(): Promise<string | null> {
     }
 }
 
-export function askNotificationPermission(): boolean {
+export async function requestNotificationPermission(): Promise<boolean> {
     // Let's check if the browser supports notifications
     if (!('Notification' in window)) {
         console.log('This browser does not support notifications.');
     } else {
-        if (checkNotificationPromise()) {
-            Notification.requestPermission()
-                .then((permission) => {
-                    handlePermission(permission);
-                });
+        if (hasPromiseBasedNotificationApi()) {
+            const permission = await Notification.requestPermission();
+            storeNotificationPermission(permission);
         } else {
             // Legacy browsers / safari
-            Notification.requestPermission(function(permission) {
-                handlePermission(permission);
+            await new Promise<boolean>((resolve, reject) => {
+                try {
+                    Notification.requestPermission(function(permission) {
+                        storeNotificationPermission(permission);
+                        resolve(true);
+                    });
+                }
+                catch (e) {
+                    reject(e);
+                }
             });
         }
-
         return Notification.permission === 'granted';
     }
 }
 
-function handlePermission(permission) {
+function storeNotificationPermission(permission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
         // @ts-ignore readonly property
@@ -66,41 +73,37 @@ function handlePermission(permission) {
     }
 }
 
-// Function to check whether browser supports the promise version of requestPermission()
-// Safari only supports the old callback-based version
-function checkNotificationPromise(): boolean {
+function hasPromiseBasedNotificationApi(): boolean {
     try {
         Notification.requestPermission().then();
+        return true;
     } catch(e) {
         return false;
     }
-
-    return true;
 }
 
-// ask for notification permissions on any user interaction
-// TODO(AK): move to more natural place, like joining a chat, etc.
-// It should be done at JS\TS
-function init() {
-    self.addEventListener('touchstart', initEventListener);
-    self.addEventListener('onkeydown', initEventListener);
-    self.addEventListener('mousedown', initEventListener);
-    self.addEventListener('pointerdown', initEventListener);
-    self.addEventListener('pointerup', initEventListener);
+// TODO(AK): Move to more natural place, like joining a chat, etc.
+function addInitEventListeners() : void {
+    self.addEventListener('touchstart', onInitEvent);
+    self.addEventListener('onkeydown', onInitEvent);
+    self.addEventListener('mousedown', onInitEvent);
+    self.addEventListener('pointerdown', onInitEvent);
+    self.addEventListener('pointerup', onInitEvent);
 }
 
-function removeInitListeners() {
-    self.removeEventListener('touchstart', initEventListener);
-    self.removeEventListener('onkeydown', initEventListener);
-    self.removeEventListener('mousedown', initEventListener);
-    self.removeEventListener('pointerdown', initEventListener);
-    self.removeEventListener('pointerup', initEventListener);
+function removeInitEventListeners() : void {
+    self.removeEventListener('touchstart', onInitEvent);
+    self.removeEventListener('onkeydown', onInitEvent);
+    self.removeEventListener('mousedown', onInitEvent);
+    self.removeEventListener('pointerdown', onInitEvent);
+    self.removeEventListener('pointerup', onInitEvent);
 }
 
-const initEventListener = () => {
-    if (!askNotificationPermission()) {
-        console.log('Notifications are disabled.');
-    }
-};
+const onInitEvent = async () => {
+    removeInitEventListeners();
+    const isGranted = await requestNotificationPermission();
+    if (!isGranted)
+        console.log(`${LogScope}: Notifications are disabled.`);
+}
 
-init();
+addInitEventListeners();

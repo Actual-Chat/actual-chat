@@ -4,7 +4,8 @@ import { OpusMediaRecorder } from './opus-media-recorder';
 const LogScope = 'AudioRecorder';
 
 export class AudioRecorder {
-    private static recorderPool = new ObjectPool<OpusMediaRecorder>(() => new OpusMediaRecorder());
+    private static recorderPool =
+        new ObjectPool<OpusMediaRecorder>(() => new OpusMediaRecorder());
     private readonly debug = false;
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly isMicrophoneAvailable: boolean;

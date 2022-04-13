@@ -1,10 +1,13 @@
 import { AudioRecorder } from '../../dotnet/Audio.UI.Blazor/Components/AudioRecorder/audio-recorder';
 
+const LogScope = 'AudioContextPool';
+
 /**
  * We're only allowed to have 4-6 audio contexts on many browsers
  * and there's no way to discard them before GC, so we should reuse audio contexts.
  */
 export class AudioContextPool {
+    private static whenInitialized?: Promise<void> = null;
 
     private static audioContexts = new Map<string, {
         audioContext: BaseAudioContext | null,
@@ -17,28 +20,25 @@ export class AudioContextPool {
         AudioContextPool.audioContexts.set(key, { audioContext: null, factory: factory });
     }
 
-    private static initPromise?: Promise<void> = null;
-
     /**
      * Use the function as close as possibly to the start of work,
      * not in constructor, because for creation of an audio context we should got an user gesture action.
      * Don't close the context, because it's shared across the app.
      */
     public static async get(key: string): Promise<BaseAudioContext> {
-        if (this.initPromise !== null) {
-            await this.initPromise;
-            this.initPromise = null;
-        }
+        if (this.whenInitialized !== null)
+            await this.whenInitialized;
+
         const obj = AudioContextPool.audioContexts.get(key);
         if (obj === undefined)
             throw new Error(`AudioContext factory with key "${key}" isn't registered.`);
 
         if (obj.audioContext === null) {
-            console.warn(`AudioContextPool get(): audioContext '${key}' wasn't initialized`);
+            console.warn(`${LogScope}: get(): audioContext '${key}' wasn't initialized`);
             obj.audioContext = await obj.factory();
         }
         if (!isAudioContext(obj.audioContext)) {
-            console.error(`AudioContextPool: not an AudioContext:`, obj.audioContext);
+            console.error(`${LogScope}: not an AudioContext:`, obj.audioContext);
             return obj.audioContext;
         }
         if (obj.audioContext.state === 'suspended') {
@@ -53,7 +53,7 @@ export class AudioContextPool {
      * Helps to decrease initialization latency by creation the audio contexts as soon as we could
      * after user interaction.
      */
-    public static init() {
+    public static addInitEventListeners() {
         self.addEventListener('touchstart', AudioContextPool._initEventListener);
         self.addEventListener('onkeydown', AudioContextPool._initEventListener);
         self.addEventListener('mousedown', AudioContextPool._initEventListener);
@@ -61,7 +61,7 @@ export class AudioContextPool {
         self.addEventListener('pointerup', AudioContextPool._initEventListener);
     }
 
-    private static removeInitListeners() {
+    private static removeInitEventListeners() {
         self.removeEventListener('touchstart', AudioContextPool._initEventListener);
         self.removeEventListener('onkeydown', AudioContextPool._initEventListener);
         self.removeEventListener('mousedown', AudioContextPool._initEventListener);
@@ -78,11 +78,11 @@ export class AudioContextPool {
             if (obj.audioContext != null)
                 return;
             obj.audioContext = await obj.factory();
-            console.debug(`AudioContextPool: AudioContext "${key}" is created.`);
+            console.debug(`${LogScope}: AudioContext "${key}" is created.`);
 
             // Try to warm-up context
             if (isAudioContext(obj.audioContext) && obj.audioContext.state === 'running') {
-                console.debug(`AudioContextPool: Start warming up AudioContext "${key}"`);
+                console.debug(`${LogScope}: Start warming up AudioContext "${key}"`);
                 await obj.audioContext.audioWorklet.addModule('/dist/warmUpWorklet.js');
                 const nodeOptions: AudioWorkletNodeOptions = {
                     channelCount: 1,
@@ -103,39 +103,37 @@ export class AudioContextPool {
                 node.disconnect();
                 node.port.onmessage = null;
                 node.port.close();
-                console.debug(`AudioContextPool: End of warming up AudioContext "${key}"`);
+                console.debug(`${LogScope}: End of warming up AudioContext "${key}"`);
             } else {
-                console.debug(`AudioContextPool: Can't warm up AudioContext: ${JSON.stringify(obj.audioContext)}`);
+                console.debug(`${LogScope}: Can't warm up AudioContext: ${JSON.stringify(obj.audioContext)}`);
             }
-            console.debug(`AudioContextPool: AudioContext "${key}" is initialized.`);
+            console.debug(`${LogScope}: AudioContext "${key}" is initialized.`);
         };
 
         const initialize = async (): Promise<void> => {
             try {
-                // init first recorder
-                // TODO: create an application initializer and do not mix up listening and recording like this
-                void AudioRecorder.initRecorderPool();
-                AudioContextPool.removeInitListeners();
                 const promises: Promise<void>[] = [];
-
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                AudioContextPool.audioContexts.forEach((obj, key) => promises.push(initializeMapItem(obj, key)));
+                AudioContextPool.audioContexts.forEach(
+                    (obj, key) => promises.push(initializeMapItem(obj, key)));
                 await Promise.all(promises);
+
+                // TODO: create an application initializer and do not mix up
+                //       listening and recording like this
+                await AudioRecorder.initRecorderPool();
             }
             catch (error) {
                 console.error(`Can't initialize audio contexts: ${JSON.stringify(error)}`);
             }
-            finally{
-                this.initPromise = null;
+            finally {
+                this.whenInitialized = null;
             }
         };
-        this.initPromise = initialize();
+
+        this.whenInitialized = initialize();
+        AudioContextPool.removeInitEventListeners();
     };
 }
-
-
-
-
 
 export function isAudioContext(obj: BaseAudioContext | AudioContext): obj is AudioContext {
     return !!obj && typeof obj === 'object' && typeof obj['resume'] === 'function';
@@ -156,7 +154,7 @@ AudioContextPool.register('main', async () => {
     return audioContext;
 });
 
-AudioContextPool.init();
+AudioContextPool.addInitEventListeners();
 
 /// #if DEBUG
 self['AudioContextPool'] = AudioContextPool;

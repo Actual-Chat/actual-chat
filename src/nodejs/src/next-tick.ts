@@ -4,9 +4,9 @@
  * setTimeout which will be throttled in background tabs.
  */
 const channel = new MessageChannel();
-const callbacks = [];
+const callbacks : Array<() => void> = [];
 
-channel.port1.onmessage = (_event) => {
+channel.port1.onmessage = _ => {
     const callback = callbacks.shift();
     callback();
 };
