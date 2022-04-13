@@ -114,11 +114,15 @@ button.off,
 
 .btn.btn-square {
     @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
-    @apply p-1 mx-0 min-w-0 border-0;
+    @apply p-1 mx-0 min-w-0 border-0 rounded-xl;
 }
 
 .btn.menu-item-btn {
     @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
+}
+
+.btn.btn-transparent {
+    @apply relative flex hover:cursor-pointer border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
 }
 
 /* Webkit */

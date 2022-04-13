@@ -2,14 +2,14 @@
 @using ActualChat.UI.Blazor.Components
 @using ActualChat.Hosting
 
-<Dropdown ContentPositionCss="left-3 bottom-11">
+<Dropdown ContentPositionCss="" ButtonClass="btn-transparent">
     <ButtonTemplate>
         <svg class="fill-current h-6 w-6 text-secondary hover:text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
             <path d="M11 9h4v2h-4v4H9v-4H5V9h4V5h2v4zm-1 11a10 10 0 1 1 0-20 10 10 0 0 1 0 20zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/>
         </svg>
     </ButtonTemplate>
     <ContentTemplate>
-        <Menu Class="rounded-md border border-accent p-1" ItemClass="p-1 text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right" TooltipPosition="TooltipPosition.Top">
+        <Menu Class="rounded-md border border-accent p-1 absolute bottom-8" ItemClass="p-1 text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right" TooltipPosition="TooltipPosition.Top">
             <MenuItem Title="Upload File" Name="uploadFile" OnItemClick="@UploadFilesRequested">
                 <Icon>
                     <svg class="fill-current h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
