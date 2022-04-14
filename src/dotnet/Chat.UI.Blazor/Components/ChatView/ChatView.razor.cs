@@ -101,14 +101,14 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var startId = long.Parse(ExtractRealId(queryRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             startId -= (long)query.ExpandStartBy;
-        else if (loadLastReadPosition)
+        else if (isFirstLoad)
             startId -= IdTileStack.Layers[1].TileSize;
         startId = Math.Clamp(startId, chatIdRange.Start, chatIdRange.End);
 
         var endId = long.Parse(ExtractRealId(queryRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandEndBy > 0)
             endId += (long)query.ExpandEndBy;
-        else if (loadLastReadPosition)
+        else if (isFirstLoad)
             endId += IdTileStack.Layers[1].TileSize;
         endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
 
