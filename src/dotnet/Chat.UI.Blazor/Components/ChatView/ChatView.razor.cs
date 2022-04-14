@@ -88,8 +88,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
-        var loadLastReadPosition = query.InclusiveRange.IsEmpty && LastReadEntryId != 0;
-        var queryRange = loadLastReadPosition
+        var isFirstLoad = query.InclusiveRange.Start.IsNullOrEmpty();
+        var mustScrollToLastReadPosition = isFirstLoad && LastReadEntryId != 0;
+        var queryRange = mustScrollToLastReadPosition
             ? IdTileStack.Layers[0].GetTile(LastReadEntryId).Range.AsStringRange()
             : query.IsExpansionQuery
                 ? query.InclusiveRange
@@ -153,7 +154,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .ToDictionary(c => c[0].EntryId, c => c);
 
         var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments, LastReadEntryId);
-        var scrollToKey = loadLastReadPosition
+        var scrollToKey = mustScrollToLastReadPosition
             ? (Symbol)LastReadEntryId.ToString(CultureInfo.InvariantCulture)
             : Symbol.Empty;
         var result = VirtualListData.New(
