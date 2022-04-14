@@ -196,6 +196,7 @@ module.exports = {
       'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
+      'scale-icon': 'scale-icon 150ms ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -709,6 +710,14 @@ module.exports = {
         to: {
           opacity: 1,
           transform: 'translateY(0rem)',
+        },
+      },
+      'scale-icon': {
+        from: {
+          transform: 'scale(1)',
+        },
+        to: {
+          transform: 'scale(1.1)',
         },
       },
       'tooltip-vertical': {

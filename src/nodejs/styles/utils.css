@@ -117,6 +117,10 @@ button.off,
     @apply p-1 mx-0 min-w-0 border-0 rounded-xl;
 }
 
+.btn.btn-square:hover .button-square-child {
+    @apply animate-scale-icon;
+}
+
 .btn.menu-item-btn {
     @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
 }

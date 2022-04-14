@@ -3,7 +3,9 @@
 
 <button @onclick="OnClick" class="btn btn-square @Class" title="@Title" disabled="@Disabled"
         name="@Name" type="@GetButtonType">
+    <div class="button-square-child">
         @ChildContent
+    </div>
 </button>
 
 @code {
