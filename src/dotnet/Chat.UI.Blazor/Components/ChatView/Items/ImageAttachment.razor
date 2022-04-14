@@ -2,8 +2,8 @@
 
 @{
     var attachment = Attachment;
-    var url = Attachment.Url;
-    var previewUrl = attachment.ProxyUrl;
+    var url = ContentUrlMapper.ContentUrl(Attachment.ContentId);
+    var previewUrl = ContentUrlMapper.ImagePreviewUrl(url);
     var imgStyle = "max-width: 400px; max-height: 300px";
     if (attachment.Height > 0 && attachment.Width > 0) {
         var width = attachment.Width;
@@ -14,8 +14,6 @@
             height = (int)Math.Round(ratio * height);
         }
         imgStyle = $"width: {width}px; height: {height}px";
-        // TODO(DF): setup correct preview url to image proxy endpoint
-        previewUrl += $"?width={width}&height={height}";
     }
 }
 <div class="message-attachment-image mt-1">
@@ -27,6 +25,8 @@
 
 @code {
     [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; set; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;
