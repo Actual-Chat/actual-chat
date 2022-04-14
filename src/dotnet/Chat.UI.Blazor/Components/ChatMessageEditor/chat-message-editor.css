@@ -24,14 +24,14 @@
     @apply flex md:hidden animate-display-from-left md:animate-none;
 }
 .text-mode .recorder-buttons {
-    @apply hidden md:flex animate-display-from-right md:animate-none;
+    @apply hidden md:flex;
 }
 
 .record-mode .post-message {
     @apply hidden;
 }
 .record-mode .recorder-buttons {
-    @apply flex animate-display-from-right md:animate-none;
+    @apply flex;
 }
 .record-mode .language-button {
     @apply flex animate-display-from-right;

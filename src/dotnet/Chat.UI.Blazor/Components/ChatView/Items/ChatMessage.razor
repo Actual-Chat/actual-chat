@@ -14,7 +14,7 @@
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="chat-message @unreadClass group px-3 @marginClass">
+<div class="chat-message relative @unreadClass group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
             <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")"
@@ -60,7 +60,7 @@
         }
     </div>
 
-    <MessageMenu Class="invisible group-hover:visible" />
+    <MessageMenu Class="invisible group-hover:visible absolute z-10" />
 </div>
 
 @code {

@@ -43,10 +43,12 @@
 
 /* Suffixes */
 
-button.on {
+button.on,
+.btn.btn-square.on {
     @apply text-toggle-on;
 }
-button.off {
+button.off,
+.btn.btn-square.off {
     @apply text-secondary;
 }
 
@@ -69,5 +71,95 @@ button.off {
     border-radius: 4px;
     border: 1px solid #fff;
     box-shadow: 0 2px 2px rgba(0,0,0,.25);
+}
+
+
+.btn {
+    @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
+    @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
+    @apply h-8 min-w-16;
+}
+
+.btn.btn-success {
+    @apply bg-button-success border-success text-white;
+    @apply hover:bg-button-success-hover hover:border-success-muted;
+    @apply active:bg-button-success-hover;
+}
+
+.btn.btn-success-outline {
+    @apply bg-button-success-outline border-success border-2 text-success;
+    @apply hover:bg-button-success-outline-hover;
+    @apply active:bg-button-success-outline-hover active:border-button-success-outline-hover;
+}
+
+.btn.btn-cancel {
+    @apply bg-button-cancel border-button-cancel text-white;
+    @apply hover:bg-button-cancel-hover hover:border-button-cancel-hover;
+    @apply active:bg-button-cancel-hover;
+}
+
+.btn.btn-error {
+    @apply bg-button-error border-button-error text-white;
+    @apply hover:bg-button-error-hover hover:border-button-error-hover;
+    @apply active:bg-button-error-hover;
+}
+
+.btn.btn-sm {
+    @apply h-6 min-w-12 text-xs;
+}
+
+.btn.btn-lg {
+    @apply h-10 min-w-20 text-base;
+}
+
+.btn.btn-square {
+    @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
+    @apply p-1 mx-0 min-w-0 border-0 rounded-xl;
+}
+
+.btn.btn-square:hover .button-square-child {
+    @apply animate-scale-icon;
+}
+
+.btn.menu-item-btn {
+    @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
+}
+
+.btn.btn-transparent {
+    @apply relative flex hover:cursor-pointer border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+}
+
+/* Webkit */
+
+.custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-secondary rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-accent rounded-full border-2 border-secondary;
+}
+
+/* Mozilla */
+
+.custom-scrollbar {
+    scrollbar-width: 2px;
+    scrollbar-color: #e2e7ec #F9FAFB;
+}
+
+/* Custom Input */
+
+.custom-input {
+    @apply border-0 bg-accent;
+}
+
+.valid.modified:is(.custom-input) {
+    outline: none;
+}
+
+.invalid {
+    outline: none;
 }
 

@@ -35,8 +35,10 @@ module.exports = {
         'success': 'var(--button-color-success)',
         'toggle-off': 'var(--text-color-toggle-off)',
         'toggle-on': 'var(--text-color-toggle-on)',
+        'toggle-hover': 'var(--text-color-toggle-hover)',
         'rating': 'var(--text-color-rating)',
         'inline-code': 'var(--text-inline-code)',
+        'white': 'var(--text-color-white)',
 
       },
       borderColor: {
@@ -49,6 +51,13 @@ module.exports = {
         'success': 'var(--button-color-success)',
         'success-muted': 'var(--button-color-success-hover)',
         'separate-line': 'var(--background-separate-line)',
+        'button-cancel': 'var(--button-color-cancel)',
+        'message-hover': 'var(--background-message-hover)',
+        'button-cancel-hover': 'var(--button-color-cancel-hover)',
+        'button-error': 'var(--button-color-error)',
+        'button-error-hover': 'var(--button-color-error-hover)',
+        'button-success-outline': 'var(--button-color-success-outline)',
+        'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -57,8 +66,12 @@ module.exports = {
         'online': 'var(--background-online)',
         'button-success': 'var(--button-color-success)',
         'button-success-hover': 'var(--button-color-success-hover)',
+        'button-success-outline': 'var(--button-color-success-outline)',
+        'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
         'button-accent': 'var(--button-color-accent)',
         'button-accent-hover': 'var(--button-color-accent-hover)',
+        'button-cancel': 'var(--button-color-cancel)',
+        'button-cancel-hover': 'var(--button-color-cancel-hover)',
         'button-error': 'var(--button-color-error)',
         'button-error-hover': 'var(--button-color-error-hover)',
         'message-hover': 'var(--background-message-hover)',
@@ -183,6 +196,7 @@ module.exports = {
       'display-from-bottom-faster': 'display-element-from-bottom 200ms ease-in-out',
       'tooltip-vertical': 'tooltip-vertical 300ms ease-in-out forwards',
       'tooltip-horizontal': 'tooltip-horizontal 300ms ease-in-out forwards',
+      'scale-icon': 'scale-icon 150ms ease-in-out forwards',
     },
     aspectRatio: {
       auto: 'auto',
@@ -698,6 +712,14 @@ module.exports = {
           transform: 'translateY(0rem)',
         },
       },
+      'scale-icon': {
+        from: {
+          transform: 'scale(1)',
+        },
+        to: {
+          transform: 'scale(1.1)',
+        },
+      },
       'tooltip-vertical': {
         to: {
           transform: 'translate(-50%, 0)',
@@ -776,6 +798,13 @@ module.exports = {
     }),
     minHeight: {
       0: '0px',
+      6: '1.5rem',
+      7: '1.75rem',
+      8: '2rem',
+      9: '2.25rem',
+      10: '2.5rem',
+      11: '2.75rem',
+      12: '3rem',
       full: '100%',
       screen: '100vh',
       min: 'min-content',
@@ -785,6 +814,15 @@ module.exports = {
     minWidth: {
       0: '0px',
       12: '3rem',
+      16: '4rem',
+      17: '4.25rem',
+      18: '4.5rem',
+      19: '4.75rem',
+      20: '5rem',
+      21: '5.25rem',
+      22: '5.5rem',
+      23: '5.75rem',
+      24: '6rem',
       full: '100%',
       min: 'min-content',
       max: 'max-content',

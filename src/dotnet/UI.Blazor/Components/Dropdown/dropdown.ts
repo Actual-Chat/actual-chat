@@ -13,7 +13,7 @@
         this.blazorRef = blazorRef;
         this.dropdown = dropdown;
         this.contentDiv = this.dropdown.querySelector('.dropdown-content');
-        this.controlBtn = this.dropdown.querySelector('.dropdown-button');
+        this.controlBtn = this.dropdown.querySelector('.control-button');
 
         window.addEventListener('mouseup', this.mouseListener);
         document.addEventListener('keydown', this.escapeListener);
