@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data/ssl/local.actual.chat.crt:/usr/local/share/ca-certificates/local.actual.chat.crt
     extra_hosts:
-      - "cdn.local.actual.chat:host-gateway" #host and ip
+      - "cdn.local.actual.chat:host-gateway"
   nginx:
     image: nginx
     ports:
@@ -22,3 +22,5 @@ services:
       - ./data/nginx/snippets:/etc/nginx/snippets
       - ./data/nginx/dhparam.pem:/etc/nginx/dhparam.pem
       - ./data/log/nginx/access.log:/var/log/nginx/access.log
+    extra_hosts:
+      - "local.actual.chat:host-gateway"
