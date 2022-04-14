@@ -72,10 +72,10 @@ There are some shortcuts in `*.cmd` files, you can use them too.
  ```
  127.0.0.1  local.actual.chat media.local.actual.chat cdn.local.actual.chat
  ```
- - Import certificate [.\data\ssl\local.actual.chat.crt](./data/ssl/local.actual.chat.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
- - Run reverse proxy and image proxy with command.
- ```powershell
- docker-compose -f docker-compose.proxy.yml up -d
+ - Import certificate [local.actual.chat.crt](./.config/local.actual.chat/ssl/local.actual.chat.crt) to "Trusted Root Certification Authorities". You can do it with [Microsoft Management Console](https://www.thesslstore.com/knowledgebase/ssl-install/how-to-import-intermediate-root-certificates-using-mmc/#import-root-certificate-using-mmc12/) or [Chrome](https://www.pico.net/kb/how-do-you-get-chrome-to-accept-a-self-signed-certificate/).
+ - Start Docker containers for reverse proxy and image proxy.
+```
+docker-compose up -d
  ```
  - Run Actual-chat app.
  - Navigate with browser to https://local.actual.chat/
