@@ -38,6 +38,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.RegisterNavItems<ContactLinks>();
 
         services.AddStateRestoreHandler<ChatPageStatePersister>();
-        services.AddScoped<UrlMapper>();
+        services.AddScoped<ContentUrlMapper>();
     }
 }
