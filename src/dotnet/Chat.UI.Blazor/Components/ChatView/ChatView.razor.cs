@@ -9,7 +9,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeToken = new ();
-    private readonly TaskSource<Unit> _initializeTaskSource = TaskSource.New<Unit>(false);
+    private readonly TaskSource<Unit> _initializeTaskSource = TaskSource.New<Unit>(true);
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -78,12 +78,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
     {
-        if (!_initializeTaskSource.Task.IsCompleted) {
+        if (!_initializeTaskSource.Task.IsCompleted)
             await _initializeTaskSource.Task.ConfigureAwait(true);
-            // first compute state is useless it will be called again after completion
-            // of parent (this) initialization
-            return VirtualListData<ChatMessageModel>.None;
-        }
 
         var chat = Chat;
         var chatId = chat.Id;
