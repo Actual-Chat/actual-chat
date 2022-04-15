@@ -1,4 +1,5 @@
 using Markdig;
+using Markdig.Extensions.Mentions;
 
 namespace ActualChat.Chat;
 
@@ -6,6 +7,7 @@ public sealed class MarkupParser
 {
     private static readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()
         .UseAutoLinks()
+        .UseMentions(new MentionOptions { ValidateMentionId = ValidateMentionId } )
         .UsePreciseSourceLocation()
         .DisableHeadings()
         .Build();
@@ -33,5 +35,12 @@ public sealed class MarkupParser
 
         markup.Parts = parts.ToImmutableArray();
         return ValueTask.FromResult(markup);
+    }
+
+    private static bool ValidateMentionId(string mentionId)
+    {
+        if (ChatAuthor.IsValidId(mentionId))
+            return true;
+        return false;
     }
 }

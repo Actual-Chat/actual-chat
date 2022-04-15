@@ -136,4 +136,52 @@ var y = x + 1;");
         var linkPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
         linkPart.Text.Should().Be("test");
     }
+
+    [Fact]
+    public async Task MentionAloneTest()
+    {
+        var text = "<@the-actual-one:1>";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(1);
+        var mentionPart = result.Parts[0].Should().BeOfType<MentionPart>().Subject;
+        mentionPart.MentionId.Should().Be("the-actual-one:1");
+    }
+
+    [Fact]
+    public async Task MentionAtTheStartTest()
+    {
+        var text = "<@the-actual-one:1> hello";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(2);
+        var mentionPart = result.Parts[0].Should().BeOfType<MentionPart>().Subject;
+        mentionPart.MentionId.Should().Be("the-actual-one:1");
+        var plainTextPart = result.Parts[1].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart.Text.Should().Be(" hello");
+    }
+
+    [Fact]
+    public async Task MentionAtTheEndTest()
+    {
+        var text = "Hello, <@the-actual-one:1>";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(2);
+        var plainTextPart = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart.Text.Should().Be("Hello, ");
+        var mentionPart = result.Parts[1].Should().BeOfType<MentionPart>().Subject;
+        mentionPart.MentionId.Should().Be("the-actual-one:1");
+    }
+
+    [Fact]
+    public async Task MentionInTheMiddleTest()
+    {
+        var text = "Hello, <@the-actual-one:1>. How do you do?";
+        var result = await new MarkupParser().Parse(text);
+        result.Parts.Length.Should().Be(3);
+        var plainTextPart1 = result.Parts[0].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart1.Text.Should().Be("Hello, ");
+        var mentionPart = result.Parts[1].Should().BeOfType<MentionPart>().Subject;
+        mentionPart.MentionId.Should().Be("the-actual-one:1");
+        var plainTextPart2 = result.Parts[2].Should().BeOfType<PlainTextPart>().Subject;
+        plainTextPart2.Text.Should().Be(". How do you do?");
+    }
 }

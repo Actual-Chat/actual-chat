@@ -41,6 +41,7 @@ internal class MarkupRenderer : RendererBase
         // ObjectRenderers.Add(new HtmlEntityInlineRenderer());
         ObjectRenderers.Add(new LinkInlineRenderer());
         ObjectRenderers.Add(new LiteralInlineRenderer());
+        ObjectRenderers.Add(new MentionRenderer());
     }
 
     public List<MarkupPart> Parts

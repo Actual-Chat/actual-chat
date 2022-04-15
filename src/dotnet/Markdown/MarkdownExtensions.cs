@@ -4,6 +4,7 @@
 
 using System;
 using Markdig.Extensions.AutoLinks;
+using Markdig.Extensions.Mentions;
 using Markdig.Parsers;
 using Markdig.Parsers.Inlines;
 using Markdig.Helpers;
@@ -48,6 +49,15 @@ namespace Markdig
         public static MarkdownPipelineBuilder UseAutoLinks(this MarkdownPipelineBuilder pipeline, AutoLinkOptions? options = null)
         {
             pipeline.Extensions.ReplaceOrAdd<AutoLinkExtension>(new AutoLinkExtension(options));
+            return pipeline;
+        }
+
+        /// <summary>
+        /// Uses this extension to enable mentions from text '&lt;@mention-id&gt;'
+        /// </summary>
+        public static MarkdownPipelineBuilder UseMentions(this MarkdownPipelineBuilder pipeline, MentionOptions? options = null)
+        {
+            pipeline.Extensions.ReplaceOrAdd<MentionExtension>(new MentionExtension(options));
             return pipeline;
         }
 

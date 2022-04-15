@@ -1,0 +1,8 @@
+@using Stl.Extensibility
+@inherits MarkupPartViewBase
+@attribute [MatchFor(typeof(MentionPart), typeof(IMarkupPartView))]
+@{
+    var part = (MentionPart)Part;
+}
+
+<span class="px-2 bg-button-success text-white rounded-md hover:underline cursor-pointer">@part.MentionId</span>
