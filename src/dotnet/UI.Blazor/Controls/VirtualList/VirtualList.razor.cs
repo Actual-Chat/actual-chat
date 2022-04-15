@@ -133,7 +133,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             return;
 
         Query = GetDataQuery(Plan);
-        if (LastQuery == Query)
+        if (LastQuery == Query && Data.ScrollToKey.IsEmpty)
             return;
 
         if (LastQuery != VirtualListDataQuery.None)
