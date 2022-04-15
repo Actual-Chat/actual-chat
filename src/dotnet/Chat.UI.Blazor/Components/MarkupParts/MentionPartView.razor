@@ -11,16 +11,12 @@
                 @@@context.Author.Name
             </div>
         } else {
-            <div class="inline-block pb-1 bg-button-error text-white">
-                Unknown author (@MentionId)
-            </div>
+            <div class="inline-block pb-1 bg-button-success text-white">@@@MentionId</div>
         }
     </ChatAuthor>
 }
 else {
-    <div class="inline-block pb-1 bg-button-error text-white">
-        Unknown mention (@MentionId)
-    </div>
+    <div class="inline-block pb-1 bg-button-success text-white">@@@MentionId</div>
 }
 
 @code {
