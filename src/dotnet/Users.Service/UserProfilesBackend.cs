@@ -29,14 +29,14 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserProfile?> Get(string userProfileOrUserId, CancellationToken cancellationToken)
+    public virtual async Task<UserProfile?> Get(string id, CancellationToken cancellationToken)
     {
-        var user = await AuthBackend.GetUser(userProfileOrUserId, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(id, cancellationToken).ConfigureAwait(false);
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbUserProfile = await GetDbUserProfile(dbContext, userProfileOrUserId, cancellationToken).ConfigureAwait(false);
+        var dbUserProfile = await GetDbUserProfile(dbContext, id, cancellationToken).ConfigureAwait(false);
         return await ToUserProfile(dbUserProfile, user, cancellationToken).ConfigureAwait(false);
     }
 
