@@ -2,7 +2,7 @@ namespace ActualChat.Chat.UI.Blazor.Testing;
 
 public class VirtualListTestService
 {
-    private static readonly string[] Words = {"best", "virtual", "scroll", "ever", "100%", "absolutely"};
+    private static readonly string[] Words = { "best", "virtual", "scroll", "ever", "100%", "absolutely" };
 
     private Moment Start { get; }
     private IMomentClock Clock { get; }
@@ -24,13 +24,6 @@ public class VirtualListTestService
         var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
         var range = GetKeyRange(rangeSeedValue);
         var queryRange = query.InclusiveRange;
-        if (!query.IsExpansionQuery) {
-            var key = range.End / 2;
-            queryRange = new Range<string>(
-                key.ToString(CultureInfo.InvariantCulture),
-                (key + 20).ToString(CultureInfo.InvariantCulture));
-        }
-
         var start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
         if (query.ExpandStartBy > 0)
             start -= (int)query.ExpandStartBy;
@@ -73,18 +66,18 @@ public class VirtualListTestService
         return new TestListItem(key, $"#{key}", description, fontSize);
     }
 
+    [ComputeMethod]
+    public virtual Task<int> GetSeed(int offset, double changePeriod, CancellationToken cancellationToken)
+    {
+        Computed.GetCurrent()!.Invalidate(TimeSpan.FromSeconds(changePeriod + 0.01));
+        return Task.FromResult((int)((offset + (Clock.Now - Start).TotalSeconds) / changePeriod));
+    }
+
     // Protected methods
 
     protected Range<int> GetKeyRange(int seed)
     {
         seed = Math.Abs(seed);
         return new Range<int>(-seed / 2, 50 + seed);
-    }
-
-    [ComputeMethod]
-    public virtual Task<int> GetSeed(int offset, double changePeriod, CancellationToken cancellationToken)
-    {
-        Computed.GetCurrent()!.Invalidate(TimeSpan.FromSeconds(changePeriod + 0.01));
-        return Task.FromResult((int)((offset + (Clock.Now - Start).TotalSeconds) / changePeriod));
     }
 }

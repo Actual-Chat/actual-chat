@@ -1,9 +1,11 @@
 using ActualChat.UI.Blazor.Controls.Internal;
 using ActualChat.UI.Blazor.Module;
-using Microsoft.AspNetCore.Components;
-using Stl.Fusion.Blazor;
 
 namespace ActualChat.UI.Blazor.Controls;
+
+public delegate Task<VirtualListData<TItem>> VirtualListDataSource<TItem>(
+    VirtualListDataQuery query,
+    CancellationToken cancellationToken) where TItem : IVirtualListItem;
 
 public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
@@ -31,7 +33,16 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Style { get; set; } = "";
     [Parameter] public VirtualListEdge AlignmentEdge { get; set; } = VirtualListEdge.Start;
-    [Parameter, EditorRequired] public RenderFragment<TItem> Item { get; set; } = null!;
+
+    [Parameter]
+    [EditorRequired]
+    public VirtualListDataSource<TItem> DataSource { get; set; } =
+        (_, _) => Task.FromResult(VirtualListData<TItem>.None);
+
+    [Parameter]
+    [EditorRequired]
+    public RenderFragment<TItem> Item { get; set; } = null!;
+
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 32;
     [Parameter] public double SpacerSize { get; set; } = 10000;
@@ -39,17 +50,29 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
     [Parameter] public long MaxPixelExpandBy { get; set; } = 1_000_000;
     [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
+    [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
 
-    [Parameter, EditorRequired]
-    public Func<VirtualListDataQuery, CancellationToken, Task<VirtualListData<TItem>>> DataSource { get; set; } =
-        (_, _) => Task.FromResult(VirtualListData<TItem>.None);
-    [Parameter]
-    public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
-
-    protected override void OnInitialized()
+    [JSInvokable]
+    public Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
     {
-        base.OnInitialized();
-        Plan = new(this);
+        var plan = LastPlan;
+        var expectedRenderIndex = plan?.RenderIndex ?? 0;
+        if (clientSideState.RenderIndex != expectedRenderIndex) {
+            DebugLog?.LogDebug(
+                "UpdateClientSideState: outdated RenderIndex = {RenderIndex} != {ExpectedRenderIndex}",
+                clientSideState.RenderIndex,
+                expectedRenderIndex);
+            return Task.FromResult(expectedRenderIndex);
+        }
+
+        DebugLog?.LogDebug("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
+        ClientSideState = clientSideState;
+        var newVisibleKeys = clientSideState.VisibleKeys;
+        if (newVisibleKeys is { Count: > 0 } && VisibleKeysState != null)
+            VisibleKeysState.Value = newVisibleKeys;
+
+        _ = this.StateHasChangedAsync();
+        return Task.FromResult(expectedRenderIndex);
     }
 
     public override async ValueTask DisposeAsync()
@@ -61,13 +84,20 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         GC.SuppressFinalize(this);
     }
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Plan = new VirtualListRenderPlan<TItem>(this);
+    }
+
     protected override bool ShouldRender()
     {
         if (LastPlan == null) {
             DebugLog?.LogDebug(nameof(ShouldRender) + ": true (no LastPlan)");
             return true;
         }
-        var isSameState = ReferenceEquals(LastPlan.Data, Data) && ReferenceEquals(LastPlan.ClientSideState, ClientSideState);
+        var isSameState = ReferenceEquals(LastPlan.Data, Data)
+            && ReferenceEquals(LastPlan.ClientSideState, ClientSideState);
         if (isSameState) {
             DebugLog?.LogDebug(nameof(ShouldRender) + ": false (same state)");
             return false;
@@ -86,46 +116,33 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                Ref, BlazorRef, plan!.AlignmentEdge.IsEnd(), DebugMode
-                ).ConfigureAwait(true);
+                    $"{BlazorUICoreModule.ImportName}.VirtualList.create",
+                    Ref,
+                    BlazorRef,
+                    plan!.AlignmentEdge.IsEnd(),
+                    DebugMode
+                )
+                .ConfigureAwait(true);
             VisibleKeysState ??= StateFactory.NewMutable(new List<string>());
         }
-    }
-
-    [JSInvokable]
-    public Task<long> UpdateClientSideState(VirtualListClientSideState clientSideState)
-    {
-        var plan = LastPlan;
-        var expectedRenderIndex = plan?.RenderIndex ?? 0;
-        if (clientSideState.RenderIndex != expectedRenderIndex) {
-            DebugLog?.LogDebug(
-                "UpdateClientSideState: outdated RenderIndex = {RenderIndex} != {ExpectedRenderIndex}",
-                clientSideState.RenderIndex, expectedRenderIndex);
-            return Task.FromResult(expectedRenderIndex);
-        }
-
-        DebugLog?.LogDebug("UpdateClientSideState: RenderIndex = {RenderIndex}", clientSideState.RenderIndex);
-        ClientSideState = clientSideState;
-        var newVisibleKeys = clientSideState.VisibleKeys;
-        if (newVisibleKeys is { Count: > 0 } && VisibleKeysState != null)
-            VisibleKeysState.Value = newVisibleKeys;
-
-        _ = this.StateHasChangedAsync();
-        return Task.FromResult(expectedRenderIndex);
     }
 
     protected void UpdateData()
     {
         if (!State.Computed.IsConsistent()) // Already recomputing
             return;
+
         Query = GetDataQuery(Plan);
-        if (LastQuery != Query)
+        if (LastQuery == Query)
+            return;
+
+        if (LastQuery != VirtualListDataQuery.None)
             _ = State.Recompute();
+        LastQuery = Query;
     }
 
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new () { UpdateDelayer = UpdateDelayer.MinDelay };
 
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
@@ -135,12 +152,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
             DebugLog?.LogDebug(
-                nameof(ComputeState) + ": query={Query} -> keys [{Key0}...{KeyE}], has {First} {Last}",
+                nameof(ComputeState)
+                + ": query={Query} -> keys [{Key0}...{KeyE}], has {First} {Last}, scroll to {ScrollTo}",
                 query,
                 response.Items.FirstOrDefault()?.Key,
                 response.Items.LastOrDefault()?.Key,
                 response.HasVeryFirstItem ? "first " : "",
-                response.HasVeryLastItem ? "last" : "");
+                response.HasVeryLastItem ? "last" : "",
+                response.ScrollToKey);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
@@ -154,10 +173,13 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var endExpansion = response.Items
             .SkipWhile(i => KeyComparer.Compare(i.Key, query.InclusiveRange.End) <= 0)
             .Sum(i => i.CountAs);
-        if (query.PixelExpandStartBy > 0 && !response.HasVeryFirstItem)
-            Statistics.AddResponse(startExpansion, query.PixelExpandStartBy);
-        if (query.PixelExpandEndBy > 0 && !response.HasVeryLastItem)
-            Statistics.AddResponse(endExpansion, query.PixelExpandEndBy);
+
+        // we can use value for statistics as it hasn't been recomputed yet since the query creation
+        var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
+        if (query.ExpandStartBy > 0 && !response.HasVeryFirstItem)
+            Statistics.AddResponse(startExpansion, (long)(query.ExpandStartBy * responseFulfillmentRatio));
+        if (query.ExpandEndBy > 0 && !response.HasVeryLastItem)
+            Statistics.AddResponse(endExpansion, (long)(query.ExpandEndBy * responseFulfillmentRatio));
         return response;
     }
 
@@ -182,9 +204,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
                 if (startIndex < 0)
                     startIndex = i;
             }
-            else if (startIndex >= 0) {
+            else if (startIndex >= 0)
                 break;
-            }
         }
         if (startIndex < 0) {
             DebugLog?.LogWarning(nameof(GetDataQuery) + ": reset (no items inside the buffer zone)");
@@ -198,7 +219,8 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var firstItem = items[startIndex];
         var lastItem = items[endIndex];
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": bufferZone fits {FirstItemId} ... {LastItemId} keys",
-            firstItem.Key, lastItem.Key);
+            firstItem.Key,
+            lastItem.Key);
         var startGap = Math.Max(0, firstItem.Range.Start - loadZone.Start);
         var endGap = Math.Max(0, loadZone.End - lastItem.Range.End);
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": startGap={StartGap}, endGap={EndGap}", startGap, endGap);
@@ -207,16 +229,16 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var pixelExpandEndBy = Math.Clamp((long)Math.Ceiling(endGap / itemSize), 0, MaxPixelExpandBy);
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var query = new VirtualListDataQuery(keyRange) {
-            IsExpansionQuery = true,
-            PixelExpandStartBy = pixelExpandStartBy,
-            PixelExpandEndBy = pixelExpandEndBy,
             ExpandStartBy = pixelExpandStartBy / responseFulfillmentRatio,
             ExpandEndBy = pixelExpandEndBy / responseFulfillmentRatio,
         };
 
         DebugLog?.LogDebug(
-            nameof(GetDataQuery) + ": itemSize={ItemSize}, responseFulfillmentRatio={ResponseFulfillmentRatio}, query={Query}",
-            itemSize, responseFulfillmentRatio, query);
+            nameof(GetDataQuery)
+            + ": itemSize={ItemSize}, responseFulfillmentRatio={ResponseFulfillmentRatio}, query={Query}",
+            itemSize,
+            responseFulfillmentRatio,
+            query);
         return query;
     }
 }

@@ -4,7 +4,7 @@ namespace ActualChat;
 
 public static partial class Constants
 {
-    public static HostInfo HostInfo { get; set; } = new();
+    public static HostInfo HostInfo { get; set; } = new ();
 
     public static class DebugMode
     {

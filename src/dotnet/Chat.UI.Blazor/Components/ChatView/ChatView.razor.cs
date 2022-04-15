@@ -1,7 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Users;
-using Microsoft.AspNetCore.Components;
-using Stl.Fusion.Blazor;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
@@ -23,11 +21,15 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [CascadingParameter]
+    public Chat Chat { get; set; } = null!;
 
     private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
     private long LastReadEntryId { get; set; }
     private IMutableState<List<string>> VisibleKeysState { get; set; } = null!;
+
+    public async ValueTask DisposeAsync()
+        => _disposeToken.Cancel();
 
     protected override async Task OnInitializedAsync()
     {
@@ -47,9 +49,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     protected override bool ShouldRender()
         => InitCompleted;
 
-    public async ValueTask DisposeAsync()
-        => _disposeToken.Cancel();
-
     private async Task MonitorVisibleKeyChanges(CancellationToken cancellationToken)
     {
         var clock = Clocks.CoarseCpuClock;
@@ -60,7 +59,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             if (visibleKeys.Count == 0)
                 continue;
 
-            var lastVisibleEntryId =  visibleKeys
+            var lastVisibleEntryId = visibleKeys
                 .Select(key => long.TryParse(key, out var entryId) ? (long?)entryId : null)
                 .Where(entryId => entryId.HasValue)
                 .Select(entryId => entryId!.Value)
@@ -84,34 +83,27 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chat = Chat;
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken);
-        var isFirstLoad = query.InclusiveRange.Start.IsNullOrEmpty();
-        var mustScrollToLastReadPosition = isFirstLoad && LastReadEntryId != 0;
+        var mustScrollToLastReadPosition = query.IsNone && LastReadEntryId != 0;
         var queryRange = mustScrollToLastReadPosition
-            ? IdTileStack.Layers[0].GetTile(LastReadEntryId).Range.AsStringRange()
-            : query.IsExpansionQuery
-                ? query.InclusiveRange
-                : new Range<long>(
-                    chatIdRange.End - IdTileStack.Layers[1].TileSize,
-                    chatIdRange.End - 1).AsStringRange();
+            ? IdTileStack.Layers[0].GetTile(LastReadEntryId).Range.Expand(IdTileStack.Layers[1].TileSize)
+            : query.IsNone
+                ? new Range<long>(
+                    chatIdRange.End - (2 * IdTileStack.Layers[1].TileSize),
+                    chatIdRange.End - 1)
+                : query.InclusiveRange.AsLongRange()
+                    .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
 
-        var startId = long.Parse(ExtractRealId(queryRange.Start), NumberStyles.Integer, CultureInfo.InvariantCulture);
-        if (query.ExpandStartBy > 0)
-            startId -= (long)query.ExpandStartBy;
-        else if (isFirstLoad)
-            startId -= IdTileStack.Layers[1].TileSize;
-        startId = Math.Clamp(startId, chatIdRange.Start, chatIdRange.End);
-
-        var endId = long.Parse(ExtractRealId(queryRange.End), NumberStyles.Integer, CultureInfo.InvariantCulture);
-        if (query.ExpandEndBy > 0)
-            endId += (long)query.ExpandEndBy;
-        else if (isFirstLoad)
-            endId += IdTileStack.Layers[1].TileSize;
-        endId = Math.Clamp(endId, chatIdRange.Start, chatIdRange.End);
+        var startId = Math.Clamp(queryRange.Start, chatIdRange.Start, chatIdRange.End);
+        var endId = Math.Clamp(queryRange.End, chatIdRange.Start, chatIdRange.End);
 
         var idTiles = IdTileStack.GetOptimalCoveringTiles((startId, endId + 1));
         var chatTiles = await Task
             .WhenAll(idTiles.Select(
-                idTile => Chats.GetTile(Session, chatId.Value, ChatEntryType.Text, idTile.Range, cancellationToken)))
+                idTile => Chats.GetTile(Session,
+                    chatId.Value,
+                    ChatEntryType.Text,
+                    idTile.Range,
+                    cancellationToken)))
             .ConfigureAwait(false);
 
         var chatEntries = chatTiles
@@ -143,7 +135,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .ToList();
 
         var attachmentTasks = await Task
-            .WhenAll(attachmentEntryIds.Select(id => Chats.GetTextEntryAttachments(Session, chatId, id, cancellationToken)))
+            .WhenAll(attachmentEntryIds.Select(id
+                => Chats.GetTextEntryAttachments(Session, chatId, id, cancellationToken)))
             .ConfigureAwait(false);
         var attachments = attachmentTasks
             .Where(c => c.Length > 0)
@@ -161,13 +154,5 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             scrollToKey);
 
         return result;
-    }
-
-    private string ExtractRealId(string id)
-    {
-        var separatorIndex = id.IndexOf(';');
-        if (separatorIndex >= 0)
-            id = id.Substring(0, separatorIndex);
-        return id;
     }
 }
