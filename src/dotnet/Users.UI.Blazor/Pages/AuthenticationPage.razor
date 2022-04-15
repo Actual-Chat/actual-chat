@@ -1,6 +1,6 @@
 @page "/test/auth"
 @using UAParser
-@inherits ComputedStateComponent<(UserProfile UserProfile, List<SessionModel> Sessions)>
+@inherits ComputedStateComponent<(UserProfile UserProfile, List<AuthenticationPage.SessionModel> Sessions)>
 
 @{
     var state = State.LatestNonErrorValue;
@@ -37,7 +37,7 @@
         <Dropdown>
             <ButtonTemplate>
                 <div class="px-2 inline-flex">
-                    <span class="float-left text-secondary font-semibold chat-header-title">@userProfile.Status)</span>
+                    <span class="float-left text-secondary font-semibold chat-header-title">@userProfile.Status</span>
                 </div>
             </ButtonTemplate>
             <ContentTemplate>
