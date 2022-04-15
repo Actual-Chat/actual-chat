@@ -127,9 +127,12 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         }
     }
 
-    protected void UpdateData()
+    protected void RequestDataUpdate()
     {
         if (!State.Computed.IsConsistent()) // Already recomputing
+            return;
+
+        if (Plan.IsFullyLoaded() == true && Data.ScrollToKey.IsEmpty)
             return;
 
         Query = GetDataQuery(Plan);
@@ -137,6 +140,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             return;
 
         if (LastQuery != VirtualListDataQuery.None)
+            // Data update
             _ = State.Recompute();
         LastQuery = Query;
     }

@@ -32,8 +32,7 @@
         StickyEdge = plan.StickyEdge,
     };
     ClientSideState = plan.ClientSideState ?? ClientSideState;
-    if (Plan.IsFullyLoaded() == false)
-        UpdateData();
+    RequestDataUpdate();
 }
 
 <div @ref="Ref"
