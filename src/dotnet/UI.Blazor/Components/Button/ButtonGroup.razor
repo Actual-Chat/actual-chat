@@ -1,0 +1,35 @@
+@using System.Text
+@namespace ActualChat.UI.Blazor.Components
+
+@{
+    var isVertical = IsVertical ? "flex-y" : "flex-x";
+}
+
+<div class="my-4 flex @GetPosition()">
+    <div class="btn-group @isVertical @Class">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVertical { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public ButtonGroupPosition ButtonsPosition { get; set; } = ButtonGroupPosition.Left;
+
+    private string GetPosition() {
+        return ButtonsPosition switch
+        {
+            ButtonGroupPosition.Center => "justify-center",
+            ButtonGroupPosition.Right => "justify-end",
+            _ => "justify-start",
+            };
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+            GetPosition();
+    }
+
+}

@@ -16,16 +16,14 @@
     <div class="flex-x mt-1">
         ID: @ChatAuthorId
     </div>
-    @if (_canAddContact && !_isAlreadyAdded) {
-        <div class="mt-4 hover:bg-gray-200">
-            <button type="button" class="on" disabled="@_isAddingContact" @onclick="OnAddContactClick">Add to Contacts</button>
-        </div>
-    }
-    @if (_canSendMessage) {
-        <div class="mt-4 hover:bg-gray-200">
-            <button type="button" class="on" @onclick="OnSendMessageClick">Send Message</button>
-        </div>
-    }
+    <ButtonGroup IsVertical="true" ButtonsPosition="ButtonGroupPosition.Center">
+        @if (_canAddContact && !_isAlreadyAdded) {
+            <Button OnClick="OnAddContactClick" Disabled="@_isAddingContact">Add to Contacts</Button>
+        }
+        @if (_canSendMessage) {
+            <Button Class="btn-cancel" OnClick="OnSendMessageClick">Send Message</Button>
+        }
+    </ButtonGroup>
 </div>
 
 @code {
