@@ -24,6 +24,7 @@ export class VirtualList {
     private readonly _abortController: AbortController;
     private readonly _resizeObserver: ResizeObserver;
     private readonly _renderEndObserver: MutationObserver;
+    private readonly _renderStartObserver: MutationObserver;
     private _listResizeEventCount = 0;
     private _isRendering = false;
     private _isDisposed = false;
@@ -41,15 +42,6 @@ export class VirtualList {
     private _updateClientSideStateTimeout: number = null;
     private _updateClientSideStateTasks: Promise<void>[] = [];
     private _updateClientSideStateRenderIndex = -1;
-
-    public static create(
-        ref: HTMLElement,
-        backendRef: DotNet.DotNetObject,
-        isEndAligned: boolean,
-        debugMode: boolean)
-    {
-        return new VirtualList(ref, backendRef, isEndAligned, debugMode);
-    }
 
     public constructor(
         ref: HTMLElement,
@@ -71,16 +63,18 @@ export class VirtualList {
         this._endSpacerRef = this._ref.querySelector(':scope > .spacer-end');
         this._renderStateRef = this._ref.querySelector(':scope > .data.render-state');
         this._renderIndexRef = this._ref.querySelector(':scope > .data.render-index');
-        // this._renderStateRef = this._ref.previousElementSibling as HTMLElement;
-        // this._renderIndexRef = this._ref.nextElementSibling as HTMLElement;
 
         // Events & observers
         this._resizeObserver = new ResizeObserver(entries => this.onResize(entries));
         const listenerOptions = { signal: this._abortController.signal };
         this._ref.addEventListener('scroll', this.onScroll, listenerOptions);
-        this._renderStateRef.addEventListener('DOMNodeRemoved', this.maybeOnRenderStart);
+        this._renderEndObserver = new MutationObserver(this.maybeOnRenderStart);
+        this._renderEndObserver.observe(
+            this._renderStateRef,
+            { childList: true });
         this._renderEndObserver = new MutationObserver(this.maybeOnRenderEnd);
-        this._renderEndObserver.observe(this._renderIndexRef,
+        this._renderEndObserver.observe(
+            this._renderIndexRef,
             { attributes: true, attributeFilter: ['data-render-index'] });
 
         this._renderState = {
@@ -102,165 +96,28 @@ export class VirtualList {
             stickyEdge: null,
         };
 
-        this.maybeOnRenderStart(null);
+        this.maybeOnRenderStart([], this._renderStartObserver);
         void this.onRenderEnd();
     };
+
+    public static create(
+        ref: HTMLElement,
+        backendRef: DotNet.DotNetObject,
+        isEndAligned: boolean,
+        debugMode: boolean) {
+        return new VirtualList(ref, backendRef, isEndAligned, debugMode);
+    }
 
     public dispose() {
         this._isDisposed = true;
         this._abortController.abort();
         this._resizeObserver.disconnect();
+        this._renderStartObserver.disconnect();
         this._renderEndObserver.disconnect();
         this._ref.removeEventListener('scroll', this.onScroll);
-        this._renderStateRef.removeEventListener('DOMNodeRemoved', this.maybeOnRenderStart);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private maybeOnRenderStart = (e: Event) : void => {
-        // if (this._debugMode)
-        //     console.log(`${LogScope}.maybeOnRenderStart:`, event);
-        const rsDataRef = this.getRenderStateDataRef();
-        if (rsDataRef == null)
-            return;
-        const rsJson = rsDataRef.textContent;
-        if (rsJson == null || rsJson === '')
-            return;
-        const rs = JSON.parse(rsJson) as Required<IRenderState>;
-
-        if (rs.renderIndex <= this._renderState.renderIndex)
-            return;
-        if (this._nextRenderState != null && rs.renderIndex <= this._nextRenderState.renderIndex)
-            return;
-        this.onRenderStart(rs);
-    }
-
-    private onRenderStart(rs: Required<IRenderState>) {
-        this._isRendering = true;
-        this._nextRenderState = rs;
-        if (this._debugMode)
-            console.log(`${LogScope}.onRenderStart, renderIndex #${rs.renderIndex}, renderState:`, rs);
-
-        this.stopResizeTracking();
-        this._scrollTopPivotRef = null;
-        this._scrollTopPivotOffset = null;
-        this._renderStartScrollTop = this.getScrollTop();
-        if (!rs.hasUnmeasuredItems)
-            return;
-
-        const itemY0 = this.getItemY0();
-        const scrollHeight = this._ref.scrollHeight - this._spacerRef.clientHeight - this._endSpacerRef.clientHeight;
-        const viewportHeight = this._ref.clientHeight;
-        const scrollTop = this._renderStartScrollTop;
-        const scrollBottom = scrollTop + viewportHeight;
-
-        if (scrollTop < EdgeEpsilon) {
-            // Spacer overlaps with the top of the viewport
-            const itemRefs = this.getOrderedItemRefs();
-            for (const itemRef of itemRefs) {
-                const key = getItemKey(itemRef);
-                const knownSize = rs.itemSizes[key];
-                if (!(knownSize > 0))
-                    continue; // Item won't exist once rendering completes
-                const y = itemRef.getBoundingClientRect().y - itemY0;
-                if (y >= scrollTop) {
-                    this._scrollTopPivotRef = itemRef;
-                    this._scrollTopPivotOffset = y - scrollTop;
-                    break;
-                }
-            }
-        }
-        else if (scrollHeight < scrollBottom + EdgeEpsilon) {
-            // End spacer overlaps with the bottom of the viewport
-            const itemRefs = this.getOrderedItemRefs(true);
-            for (const itemRef of itemRefs) {
-                const key = getItemKey(itemRef);
-                const knownSize = rs.itemSizes[key];
-                if (!(knownSize > 0))
-                    continue; // Item won't exist once rendering completes
-                const y = itemRef.getBoundingClientRect().y - itemY0;
-                if (y <= scrollBottom) {
-                    this._scrollTopPivotRef = itemRef;
-                    this._scrollTopPivotOffset = y - scrollTop;
-                    break;
-                }
-            }
-        }
-        if (this._debugMode && this._scrollTopPivotRef != null) {
-            const scrollTopPivotKey = getItemKey(this._scrollTopPivotRef);
-            console.warn(`${LogScope}.onRenderStart: scrollTopPivot key = '${scrollTopPivotKey}', offset = ${this._scrollTopPivotOffset}`);
-        }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private maybeOnRenderEnd = (mutations: MutationRecord[], observer: MutationObserver): void => {
-        // if (this._debugMode)
-        //     console.log(`${LogScope}.maybeOnRenderEnd:`, mutations);
-        const riText = this._renderIndexRef.dataset['renderIndex'];
-        if (riText == null || riText == '')
-            return;
-        const ri = Number.parseInt(riText);
-        if (ri != this._nextRenderState.renderIndex)
-            return;
-        void this.onRenderEnd();
-    };
-
-    private async onRenderEnd(): Promise<void> {
-        const rs = this._renderState = this._nextRenderState;
-        if (this._debugMode)
-            console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}`);
-
-        const itemY0 = this.getItemY0();
-        if (rs.scrollToKey != null) {
-            // Server-side scroll request
-            const itemRef = this.getItemRef(rs.scrollToKey);
-            this.scrollTo(itemRef, rs.useSmoothScroll);
-        }
-        else if (this._isSafeToScroll && this._stickyEdge != null) {
-            // Sticky edge scroll
-            const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start
-                ? this.getFirstItemKey()
-                : this.getLastItemKey();
-            if (itemKey == null) {
-                this.setStickyEdge(null);
-            }
-            else if (itemKey !== this._stickyEdge.itemKey) {
-                this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
-                this.scrollTo(this.getItemRef(itemKey), true);
-            }
-        }
-        else if (this._scrollTopPivotRef != null) {
-            // _scrollTopPivot handling
-            const scrollTop = this.getScrollTop();
-            const newScrollTopPivotOffset = this._scrollTopPivotRef.getBoundingClientRect().y - itemY0 - scrollTop;
-            const dScrollTop = newScrollTopPivotOffset - this._scrollTopPivotOffset;
-            const newScrollTop = scrollTop + dScrollTop;
-            if (this._debugMode)
-                console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-            if (Math.abs(dScrollTop) > SizeEpsilon)
-                this.setScrollTop(newScrollTop);
-        }
-
-        this._renderEndScrollTop = this.getScrollTop();
-        this._isRendering = false;
-        this.beginResizeTracking();
-
-        if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
-            // This is an outdated update already
-            if (this._debugMode)
-                console.log(`${LogScope}.onRenderEnd skips updateClientSideStateDebounced:` +
-                    ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
-            return; // such an update will be ignored anyway
-        }
-
-        if (rs.scrollTop != null)
-            await delayAsync(RenderToUpdateClientSideStateDelay);
-        this.updateClientSideStateDebounced(true);
-    }
-
-    protected updateClientSideStateDebounced(immediately: boolean = false)
-    {
-        // if (this._debugMode)
-        //     console.log(`${LogScope}.updateClientSideStateDebounced: immediately = ${immediately}`);
+    protected updateClientSideStateDebounced(immediately: boolean = false) {
         if (immediately) {
             if (this._updateClientSideStateTimeout != null) {
                 clearTimeout(this._updateClientSideStateTimeout);
@@ -287,8 +144,7 @@ export class VirtualList {
                 if (lastTask != null)
                     await lastTask.then(v => v, _ => null);
                 await this.updateClientSideStateImpl();
-            }
-            finally {
+            } finally {
                 void queue.shift();
             }
         })();
@@ -306,7 +162,7 @@ export class VirtualList {
             // This update will be dropped by server
             if (this._debugMode)
                 console.log(`${LogScope}.updateClientSideStateImpl: skipped for` +
-                    ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
+                                ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
             return; // This update was already pushed
         }
 
@@ -353,8 +209,7 @@ export class VirtualList {
             }
             if (knownSize < 0) {
                 state.itemSizes[key] = size;
-            }
-            else if (Math.abs(size - knownSize) > ItemSizeEpsilon) {
+            } else if (Math.abs(size - knownSize) > ItemSizeEpsilon) {
                 state.itemSizes[key] = size;
                 gotResizedItems = true;
             }
@@ -379,16 +234,20 @@ export class VirtualList {
 
         if (this._debugMode) {
             console.log(`${LogScope}.updateClientSideStateImpl: changes:` +
-                (Object.keys(state.itemSizes).length > 0 ? " [items sizes]" : "") +
-                (state.isUserScrollDetected ? " [user scroll]" : "") +
-                (state.isViewportChanged ? " [viewport]" : "") +
-                (state.isListResized ? " [resized]" : "") +
-                (state.isStickyEdgeChanged ? " [sticky edge]" : ""));
+                            (Object.keys(state.itemSizes).length > 0 ? ' [items sizes]' : '') +
+                            (state.isUserScrollDetected ? ' [user scroll]' : '') +
+                            (state.isViewportChanged ? ' [viewport]' : '') +
+                            (state.isListResized ? ' [resized]' : '') +
+                            (state.isStickyEdgeChanged ? ' [sticky edge]' : ''));
             if (state.isViewportChanged)
                 console.log(`${LogScope}.updateClientSideStateImpl: viewport change:` +
-                    (isScrollTopChanged ? ` [scrollTop: ${rs.scrollTop} -> ${state.scrollTop}]` : "") +
-                    (isScrollHeightChanged ? ` [scrollHeight: ${rs.scrollHeight} -> ${state.scrollHeight}]` : "") +
-                    (isViewportHeightChanged ? ` [viewportHeight: ${rs.viewportHeight} -> ${state.viewportHeight}]` : ""));
+                                (isScrollTopChanged ? ` [scrollTop: ${rs.scrollTop} -> ${state.scrollTop}]` : '') +
+                                (isScrollHeightChanged
+                                 ? ` [scrollHeight: ${rs.scrollHeight} -> ${state.scrollHeight}]`
+                                 : '') +
+                                (isViewportHeightChanged
+                                 ? ` [viewportHeight: ${rs.viewportHeight} -> ${state.viewportHeight}]`
+                                 : ''));
         }
 
         const mustUpdateClientSideState =
@@ -406,6 +265,144 @@ export class VirtualList {
         const result: number = await this._blazorRef.invokeMethodAsync('UpdateClientSideState', state);
         if (result > this._updateClientSideStateRenderIndex)
             this._updateClientSideStateRenderIndex = result;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private maybeOnRenderStart = (mutations: MutationRecord[], observer: MutationObserver): void => {
+        // if (this._debugMode)
+        //     console.log(`${LogScope}.maybeOnRenderStart:`, event);
+        const rsDataRef = this.getRenderStateDataRef();
+        if (rsDataRef == null)
+            return;
+        const rsJson = rsDataRef.textContent;
+        if (rsJson == null || rsJson === '')
+            return;
+        const rs = JSON.parse(rsJson) as Required<IRenderState>;
+
+        if (rs.renderIndex <= this._renderState.renderIndex)
+            return;
+        if (this._nextRenderState != null && rs.renderIndex <= this._nextRenderState.renderIndex)
+            return;
+        this.onRenderStart(rs);
+    };
+
+    private onRenderStart(rs: Required<IRenderState>) {
+        this._isRendering = true;
+        this._nextRenderState = rs;
+        if (this._debugMode)
+            console.log(`${LogScope}.onRenderStart, renderIndex #${rs.renderIndex}, renderState:`, rs);
+
+        this.stopResizeTracking();
+        this._scrollTopPivotRef = null;
+        this._scrollTopPivotOffset = null;
+        this._renderStartScrollTop = this.getScrollTop();
+        if (!rs.hasUnmeasuredItems)
+            return;
+
+        const itemY0 = this.getItemY0();
+        const scrollHeight = this._ref.scrollHeight - this._spacerRef.clientHeight - this._endSpacerRef.clientHeight;
+        const viewportHeight = this._ref.clientHeight;
+        const scrollTop = this._renderStartScrollTop;
+        const scrollBottom = scrollTop + viewportHeight;
+
+        if (scrollTop < EdgeEpsilon) {
+            // Spacer overlaps with the top of the viewport
+            const itemRefs = this.getOrderedItemRefs();
+            for (const itemRef of itemRefs) {
+                const key = getItemKey(itemRef);
+                const knownSize = rs.itemSizes[key];
+                if (!(knownSize > 0))
+                    continue; // Item won't exist once rendering completes
+                const y = itemRef.getBoundingClientRect().y - itemY0;
+                if (y >= scrollTop) {
+                    this._scrollTopPivotRef = itemRef;
+                    this._scrollTopPivotOffset = y - scrollTop;
+                    break;
+                }
+            }
+        } else if (scrollHeight < scrollBottom + EdgeEpsilon) {
+            // End spacer overlaps with the bottom of the viewport
+            const itemRefs = this.getOrderedItemRefs(true);
+            for (const itemRef of itemRefs) {
+                const key = getItemKey(itemRef);
+                const knownSize = rs.itemSizes[key];
+                if (!(knownSize > 0))
+                    continue; // Item won't exist once rendering completes
+                const y = itemRef.getBoundingClientRect().y - itemY0;
+                if (y <= scrollBottom) {
+                    this._scrollTopPivotRef = itemRef;
+                    this._scrollTopPivotOffset = y - scrollTop;
+                    break;
+                }
+            }
+        }
+        if (this._debugMode && this._scrollTopPivotRef != null) {
+            const scrollTopPivotKey = getItemKey(this._scrollTopPivotRef);
+            console.warn(`${LogScope}.onRenderStart: scrollTopPivot key = '${scrollTopPivotKey}', offset = ${this._scrollTopPivotOffset}`);
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private maybeOnRenderEnd = (mutations: MutationRecord[], observer: MutationObserver): void => {
+        // if (this._debugMode)
+        //     console.log(`${LogScope}.maybeOnRenderEnd:`, mutations);
+        const riText = this._renderIndexRef.dataset['renderIndex'];
+        if (riText == null || riText == '')
+            return;
+        const ri = Number.parseInt(riText);
+        if (ri != this._nextRenderState.renderIndex)
+            return;
+        void this.onRenderEnd();
+    };
+
+    private async onRenderEnd(): Promise<void> {
+        const rs = this._renderState = this._nextRenderState;
+        if (this._debugMode)
+            console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}`);
+
+        const itemY0 = this.getItemY0();
+        if (rs.scrollToKey != null) {
+            // Server-side scroll request
+            const itemRef = this.getItemRef(rs.scrollToKey);
+            this.scrollTo(itemRef, rs.useSmoothScroll);
+        } else if (this._isSafeToScroll && this._stickyEdge != null) {
+            // Sticky edge scroll
+            const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start
+                            ? this.getFirstItemKey()
+                            : this.getLastItemKey();
+            if (itemKey == null) {
+                this.setStickyEdge(null);
+            } else if (itemKey !== this._stickyEdge.itemKey) {
+                this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
+                this.scrollTo(this.getItemRef(itemKey), true);
+            }
+        } else if (this._scrollTopPivotRef != null) {
+            // _scrollTopPivot handling
+            const scrollTop = this.getScrollTop();
+            const newScrollTopPivotOffset = this._scrollTopPivotRef.getBoundingClientRect().y - itemY0 - scrollTop;
+            const dScrollTop = newScrollTopPivotOffset - this._scrollTopPivotOffset;
+            const newScrollTop = scrollTop + dScrollTop;
+            if (this._debugMode)
+                console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
+            if (Math.abs(dScrollTop) > SizeEpsilon)
+                this.setScrollTop(newScrollTop);
+        }
+
+        this._renderEndScrollTop = this.getScrollTop();
+        this._isRendering = false;
+        this.beginResizeTracking();
+
+        if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
+            // This is an outdated update already
+            if (this._debugMode)
+                console.log(`${LogScope}.onRenderEnd skips updateClientSideStateDebounced:` +
+                                ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
+            return; // such an update will be ignored anyway
+        }
+
+        if (rs.scrollTop != null)
+            await delayAsync(RenderToUpdateClientSideStateDelay);
+        this.updateClientSideStateDebounced(true);
     }
 
     // Event handlers
@@ -450,15 +447,15 @@ export class VirtualList {
             this._resizeObserver.observe(item);
     }
 
-    private getRenderStateDataRef() : HTMLElement {
-        return this._renderStateRef.querySelector(":scope > .data.render-state-data");
+    private getRenderStateDataRef(): HTMLElement {
+        return this._renderStateRef.querySelector(':scope > .data.render-state-data');
     }
 
-    private getItemRefs() : IterableIterator<HTMLElement> {
-        return this._ref.querySelectorAll(":scope > .item").values() as IterableIterator<HTMLElement>;
+    private getItemRefs(): IterableIterator<HTMLElement> {
+        return this._ref.querySelectorAll(':scope > .item').values() as IterableIterator<HTMLElement>;
     }
 
-    private getOrderedItemRefs(bottomToTop: boolean = false) : IterableIterator<HTMLElement> {
+    private getOrderedItemRefs(bottomToTop: boolean = false): IterableIterator<HTMLElement> {
         const itemRefs = this.getItemRefs();
         if (this._isEndAligned == bottomToTop)
             return itemRefs; // No need to reorder
@@ -467,41 +464,41 @@ export class VirtualList {
         return result.values();
     }
 
-    private getItemRef(key: string) : HTMLElement | null {
+    private getItemRef(key: string): HTMLElement | null {
         return this._ref.querySelector(`:scope > .item[data-key="${key}"]`);
     }
 
-    private getFirstItemRef() : HTMLElement | null {
+    private getFirstItemRef(): HTMLElement | null {
         const itemRef = this._isEndAligned
-            ? this._spacerRef.previousElementSibling
-            : this._spacerRef.nextElementSibling;
-        if (itemRef == null || !itemRef.classList.contains("item"))
+                        ? this._spacerRef.previousElementSibling
+                        : this._spacerRef.nextElementSibling;
+        if (itemRef == null || !itemRef.classList.contains('item'))
             return null;
         return itemRef as HTMLElement;
     }
 
-    private getFirstItemKey() : string | null {
+    private getFirstItemKey(): string | null {
         return getItemKey(this.getFirstItemRef());
     }
 
-    private getLastItemRef() : HTMLElement | null {
+    private getLastItemRef(): HTMLElement | null {
         const itemRef = this._isEndAligned
-            ? this._endSpacerRef.nextElementSibling
-            : this._endSpacerRef.previousElementSibling;
-        if (itemRef == null || !itemRef.classList.contains("item"))
+                        ? this._endSpacerRef.nextElementSibling
+                        : this._endSpacerRef.previousElementSibling;
+        if (itemRef == null || !itemRef.classList.contains('item'))
             return null;
         return itemRef as HTMLElement;
     }
 
-    private getLastItemKey() : string | null {
+    private getLastItemKey(): string | null {
         return getItemKey(this.getLastItemRef());
     }
 
-    private getItemY0() : number {
+    private getItemY0(): number {
         return this._spacerRef.getBoundingClientRect().bottom;
     }
 
-    private isItemVisible(itemRef: HTMLElement) : boolean {
+    private isItemVisible(itemRef: HTMLElement): boolean {
         const itemRect = itemRef.getBoundingClientRect();
         const viewRect = this._ref.getBoundingClientRect();
         if (itemRect.bottom <= viewRect.top)
@@ -510,7 +507,7 @@ export class VirtualList {
 
     }
 
-    private getScrollTop() : number {
+    private getScrollTop(): number {
         const scrollHeight = this._ref.scrollHeight;
         const spacerHeight = this._spacerRef.clientHeight;
         let scrollTop = this._ref.scrollTop;
@@ -522,7 +519,7 @@ export class VirtualList {
         return scrollTop;
     }
 
-    private setScrollTop(scrollTop: number) : number {
+    private setScrollTop(scrollTop: number): number {
         const requestedScrollTop = scrollTop;
         const spacerHeight = this._spacerRef.clientHeight;
         scrollTop += spacerHeight;
@@ -534,25 +531,26 @@ export class VirtualList {
         }
         let actualScrollTop = this.getScrollTop();
         if (this._debugMode)
-            console.warn(`${LogScope}.setScrollTop: ${actualScrollTop} -> ${requestedScrollTop}`)
+            console.warn(`${LogScope}.setScrollTop: ${actualScrollTop} -> ${requestedScrollTop}`);
         this._ref.scrollTop = scrollTop;
         actualScrollTop = this.getScrollTop();
         if (this._debugMode && Math.abs(requestedScrollTop - actualScrollTop) > 0.5)
-            console.warn(`${LogScope}.setScrollTop: post-set ${actualScrollTop} != ${requestedScrollTop}`)
+            console.warn(`${LogScope}.setScrollTop: post-set ${actualScrollTop} != ${requestedScrollTop}`);
         return actualScrollTop;
     }
 
     private scrollTo(itemRef?: HTMLElement, useSmoothScroll: boolean = false) {
         if (this._debugMode)
             console.warn(`${LogScope}.scrollTo, item key =`, getItemKey(itemRef));
-        itemRef?.scrollIntoView({
-            behavior: useSmoothScroll ? 'smooth' : 'auto',
-            block: 'nearest',
-            inline: 'nearest',
-        });
+        itemRef?.scrollIntoView(
+            {
+                behavior: useSmoothScroll ? 'smooth' : 'auto',
+                block: 'nearest',
+                inline: 'nearest',
+            });
     }
 
-    private setStickyEdge(stickyEdge: IStickyEdgeState) : boolean {
+    private setStickyEdge(stickyEdge: IStickyEdgeState): boolean {
         const old = this._stickyEdge;
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
             if (this._debugMode)
@@ -563,7 +561,7 @@ export class VirtualList {
         return false;
     }
 
-    private renewStickyEdge() : boolean {
+    private renewStickyEdge(): boolean {
         const viewRect = this._ref.getBoundingClientRect();
         if (this._debugMode)
             console.info(`${LogScope}.renewStickyEdge`);
@@ -577,7 +575,7 @@ export class VirtualList {
         return this.setStickyEdge(null);
     }
 
-    private* getStickyEdgeCandidates() : IterableIterator<IStickyEdgeState> {
+    private* getStickyEdgeCandidates(): IterableIterator<IStickyEdgeState> {
         const rs = this._renderState;
         if (!this._isEndAligned) {
             if (rs.hasVeryFirstItem)
@@ -645,16 +643,16 @@ enum VirtualListEdge {
 
 // Helper functions
 
-function getItemKey(itemRef?: HTMLElement) : string | null {
+function getItemKey(itemRef?: HTMLElement): string | null {
     return itemRef?.dataset['key'];
 }
 
-function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect) : boolean {
+function isPartiallyVisible(rect: DOMRect, viewRect: DOMRect): boolean {
     return rect.bottom > viewRect.top && rect.top < viewRect.bottom;
 }
 
-function isFullyVisible(rect: DOMRect, viewRect: DOMRect) : boolean {
+function isFullyVisible(rect: DOMRect, viewRect: DOMRect): boolean {
     return rect.top >= viewRect.top && rect.top <= viewRect.bottom
-        && rect.bottom >= viewRect.top && rect.bottom <= viewRect.bottom
+        && rect.bottom >= viewRect.top && rect.bottom <= viewRect.bottom;
 }
 
