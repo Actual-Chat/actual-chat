@@ -1,8 +1,26 @@
 @using Stl.Extensibility
+@using ChatAuthor = ActualChat.Chat.ChatAuthor
 @inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(MentionPart), typeof(IMarkupPartView))]
 @{
     var part = (MentionPart)Part;
 }
 
-<span class="px-2 bg-button-success text-white rounded-md hover:underline cursor-pointer">@part.MentionId</span>
+@if (ChatAuthor.IsValidId(part.MentionId)) {
+    <ChatAuthor AuthorId="@part.MentionId">
+        @if (!context.Author.Id.IsEmpty) {
+            <div class="inline-block pb-1 bg-button-success text-white hover:underline cursor-pointer">
+                @@@context.Author.Name
+            </div>
+        } else {
+            <div class="inline-block pb-1 bg-button-error text-white">
+                Unknown author (@part.MentionId)
+            </div>
+        }
+    </ChatAuthor>
+}
+else {
+    <div class="inline-block pb-1 bg-button-error text-white">
+        Unknown mention (@part.MentionId)
+    </div>
+}
