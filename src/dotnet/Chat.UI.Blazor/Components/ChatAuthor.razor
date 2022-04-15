@@ -35,10 +35,8 @@
         var chatId = ChatId;
         if (chatId.IsNullOrEmpty()) {
             // ChatId parameter is optional. If it's not specified, try to extract chatId from AuthorId.
-            var i = AuthorId.IndexOf(":", StringComparison.Ordinal);
-            if (i == -1)
+            if (!ActualChat.Chat.ChatAuthor.TryGetChatId(AuthorId, out chatId))
                 throw new InvalidOperationException("Invalid AuthorId");
-            chatId = AuthorId.Substring(0, i);
         }
 
         var author = await ChatAuthors.GetAuthor(chatId, AuthorId, true, cancellationToken);

@@ -2,25 +2,31 @@
 @using ChatAuthor = ActualChat.Chat.ChatAuthor
 @inherits MarkupPartViewBase
 @attribute [MatchFor(typeof(MentionPart), typeof(IMarkupPartView))]
-@{
-    var part = (MentionPart)Part;
-}
 
-@if (ChatAuthor.IsValidId(part.MentionId)) {
-    <ChatAuthor AuthorId="@part.MentionId">
+@if (ChatAuthor.IsValidId(MentionId)) {
+    <ChatAuthor AuthorId="@MentionId">
         @if (!context.Author.Id.IsEmpty) {
-            <div class="inline-block pb-1 bg-button-success text-white hover:underline cursor-pointer">
+            <div class="inline-block pb-1 bg-button-success text-white hover:underline cursor-pointer"
+                 @onclick="OnChatAuthorClick">
                 @@@context.Author.Name
             </div>
         } else {
             <div class="inline-block pb-1 bg-button-error text-white">
-                Unknown author (@part.MentionId)
+                Unknown author (@MentionId)
             </div>
         }
     </ChatAuthor>
 }
 else {
     <div class="inline-block pb-1 bg-button-error text-white">
-        Unknown mention (@part.MentionId)
+        Unknown mention (@MentionId)
     </div>
+}
+
+@code {
+    [Inject] private ChatUI ChatUI { get; set; } = null!;
+    private string MentionId => ((MentionPart) Part).MentionId;
+
+    private void OnChatAuthorClick()
+        => ChatUI.ShowChatAuthorCard(MentionId);
 }

@@ -64,7 +64,7 @@
 </div>
 
 @code {
-    [Inject] private IModalService ModalService { get; set; } = null!;
+    [Inject] private ChatUI ChatUI { get; set; } = null!;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
@@ -72,10 +72,6 @@
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
-    private void OnChatAuthorClick() {
-        var modalParameters = new ModalParameters();
-        modalParameters.Add(nameof(ChatAuthorCard.ChatId), (string)Model.Entry.ChatId);
-        modalParameters.Add(nameof(ChatAuthorCard.ChatAuthorId), (string)Model.Entry.AuthorId);
-        ModalService.Show<ChatAuthorCard>(null, modalParameters);
-    }
+    private void OnChatAuthorClick()
+        => ChatUI.ShowChatAuthorCard(Model.Entry.ChatId, Model.Entry.AuthorId);
 }
