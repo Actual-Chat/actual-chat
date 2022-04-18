@@ -23,15 +23,19 @@ public class VirtualListTestService
     {
         var rangeSeedValue = rangeSeed ?? await GetSeed(0, 3, cancellationToken).ConfigureAwait(false);
         var range = GetKeyRange(rangeSeedValue);
-        var queryRange = query.InclusiveRange;
-        var start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
-        if (query.ExpandStartBy > 0)
-            start -= (int)query.ExpandStartBy;
-        start = Math.Max(range.Start, start);
+        var start = range.Start;
+        var end = range.End;
+        if (!query.IsNone) {
+            var queryRange = query.InclusiveRange;
+            start = int.Parse(queryRange.Start, NumberStyles.Integer, CultureInfo.InvariantCulture);
+            if (query.ExpandStartBy > 0)
+                start -= (int)query.ExpandStartBy;
+            end = int.Parse(queryRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
+            if (query.ExpandEndBy > 0)
+                end += (int)query.ExpandEndBy;
+        }
 
-        var end = int.Parse(queryRange.End, NumberStyles.Integer, CultureInfo.InvariantCulture);
-        if (query.ExpandEndBy > 0)
-            end += (int)query.ExpandEndBy;
+        start = Math.Max(range.Start, start);
         end = Math.Min(range.End, end);
 
         var result = VirtualListData.New(
