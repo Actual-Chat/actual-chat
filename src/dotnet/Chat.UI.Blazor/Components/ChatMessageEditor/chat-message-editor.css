@@ -23,8 +23,9 @@
 .text-mode .post-message {
     @apply flex md:hidden animate-display-from-left md:animate-none;
 }
+
 .text-mode .recorder-buttons {
-    @apply hidden md:flex;
+    @apply hidden;
 }
 
 .record-mode .post-message {
@@ -42,4 +43,8 @@
     max-width: 200px;
     min-height: 200px;
     max-height: 200px;
+}
+
+.recorder-buttons {
+    @apply flex-none self-end justify-end items-stretch rounded-xl bg-accent ml-3;
 }
