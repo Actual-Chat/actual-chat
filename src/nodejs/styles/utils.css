@@ -138,7 +138,7 @@ button.off,
 }
 
 .btn-group {
-    @apply overflow-hidden rounded-md justify-items-stretch;
+    @apply overflow-hidden rounded-md justify-items-stretch gap-px;
 }
 
 .btn-group .btn {
@@ -147,6 +147,19 @@ button.off,
 
 .btn-group.flex-y .btn {
     @apply fill-available;
+}
+
+.btn-group.btn-font-normal .btn {
+    @apply font-normal;
+}
+.btn-group.btn-font-light .btn {
+    @apply font-light;
+}
+.btn-group.btn-font-medium .btn {
+    @apply font-medium;
+}
+.btn-group.btn-font-semibold .btn {
+    @apply font-semibold;
 }
 
 .fill-available {
@@ -186,5 +199,9 @@ button.off,
 
 .invalid {
     outline: none;
+}
+
+.author-card-modal .btn-group-parent {
+    @apply mt-2 mb-0;
 }
 

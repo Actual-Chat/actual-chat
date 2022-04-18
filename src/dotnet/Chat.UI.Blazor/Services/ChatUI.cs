@@ -13,9 +13,14 @@ public class ChatUI
     public void ShowChatAuthorCard(string chatId, string chatAuthorId)
     {
         var modalParameters = new ModalParameters();
+        var options = new ModalOptions() {
+            HideCloseButton = true,
+            HideHeader = true,
+            Animation = ModalAnimation.FadeIn(0.3),
+        };
         modalParameters.Add(nameof(ChatAuthorCard.ChatId), chatId);
         modalParameters.Add(nameof(ChatAuthorCard.ChatAuthorId), chatAuthorId);
-        _modalService.Show<ChatAuthorCard>(null, modalParameters);
+        _modalService.Show<ChatAuthorCard>(null, modalParameters, options);
     }
 
     public void ShowChatAuthorCard(string chatAuthorId)
