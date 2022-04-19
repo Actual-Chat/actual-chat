@@ -8,16 +8,35 @@
     @apply text-sm text-current break-words;
 }
 
+.chat-message-mention {
+    @apply flex items-start;
+    @apply antialiased sm:subpixel-antialiased md:antialiased;
+    @apply text-sm text-current break-words;
+    @apply border-l-2 border-mention-hover bg-mention-message -ml-1;
+}
+
 .chat-message .unread {
     @apply bg-message-hover;
+}
+
+.chat-message-mention .unread {
+    @apply bg-mention-message;
 }
 
 .chat-message:hover {
     @apply bg-message-hover;
 }
 
+.chat-message-mention:hover {
+    @apply bg-mention-message
+}
+
 .chat-message:hover .author-badge {
     @apply bg-message-hover;
+}
+
+.chat-message-mention:hover .author-badge {
+    @apply bg-mention-message;
 }
 
 .author-image {

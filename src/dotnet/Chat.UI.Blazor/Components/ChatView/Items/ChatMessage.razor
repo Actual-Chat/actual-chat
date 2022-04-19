@@ -10,11 +10,12 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var unreadClass = Model.IsUnread ? "unread" : "";
+    var messageCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "chat-message-mention" : "chat-message";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="chat-message relative @unreadClass group px-3 @marginClass">
+<div class="@messageCss relative @unreadClass group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
             <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")"
@@ -65,13 +66,22 @@
 
 @code {
     [Inject] private ChatUI ChatUI { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private IChatAuthors ChatAuthor { get; set; } = null!;
+    private string ReaderId { get; set; } = "";
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => await GetReaderId();
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private void OnChatAuthorClick()
         => ChatUI.ShowChatAuthorCard(Model.Entry.ChatId, Model.Entry.AuthorId);
+
+    private async Task GetReaderId()
+        => ReaderId = await ChatAuthor.GetChatPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
 }

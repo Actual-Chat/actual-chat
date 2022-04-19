@@ -58,6 +58,7 @@ module.exports = {
         'button-error-hover': 'var(--button-color-error-hover)',
         'button-success-outline': 'var(--button-color-success-outline)',
         'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
+        'mention-hover': 'var(--background-mention-hover)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -77,6 +78,9 @@ module.exports = {
         'message-hover': 'var(--background-message-hover)',
         'separate-line': 'var(--background-separate-line)',
         'avatar': 'var(--background-avatar)',
+        'mention': 'var(--background-mention)',
+        'mention-hover': 'var(--background-mention-hover)',
+        'mention-message': 'var(--background-mention-message)',
       },
     },
     screens: {
