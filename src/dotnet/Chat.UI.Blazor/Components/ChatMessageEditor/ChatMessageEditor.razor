@@ -8,7 +8,7 @@
 @using ActualChat.MediaPlayback
 
 <div @ref="EditorRef" class="chat-message-editor flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary px-1.5 pb-1.5">
-    <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border">
+    <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border-secondary">
         <input class="files-picker" type="file" hidden multiple/>
         @if (_attachments.Length > 0) {
             <ul class="message-attachments flex ml-1 mb-1 pt-4 pb-2 px-2 gap-5 overflow-x-auto">

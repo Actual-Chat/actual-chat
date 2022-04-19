@@ -71,11 +71,22 @@
     }
 
     @foreach (var item in isEndAligned ? plan.ReversedItems : plan.Items) {
-        <div @key="item.Key"
-             class="item flex-none"
-             data-key="@item.Key">
-            @Item(item.Item)
-        </div>
+        if (item != plan.Items[^1]) {
+            <div @key="item.Key"
+                 class="item flex-none"
+                 data-key="@item.Key">
+                @Item(item.Item)
+            </div>
+        } else {
+            <div class="px-2 mt-1">
+                <div class="last-message h-1 -mb-1"></div>
+            </div>
+            <div @key="item.Key"
+                 class="item flex-none pb-1"
+                 data-key="@item.Key">
+                @Item(item.Item)
+            </div>
+        }
     }
 
     @if (isEndAligned) {

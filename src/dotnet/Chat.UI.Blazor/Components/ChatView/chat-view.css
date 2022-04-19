@@ -12,7 +12,7 @@
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-sm text-current break-words;
-    @apply border-l-2 border-mention-hover bg-mention-message -ml-1;
+    @apply border-l-2 border-mention-hover bg-mention-message;
 }
 
 .chat-message .unread {
@@ -61,6 +61,14 @@
 
 .chat-message:hover .chat-message-timestamp-secondary {
     @apply visible;
+}
+
+.chat-message-mention:hover .chat-message-timestamp-secondary {
+    @apply visible;
+}
+
+.chat-message-mention .chat-message-markup {
+    @apply ml-0;
 }
 
 .chat-message:hover .message-menu {
