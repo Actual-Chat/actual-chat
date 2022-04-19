@@ -6,18 +6,28 @@ namespace ActualChat.UI.Blazor.Controls.Internal;
 public class VirtualListRenderPlan<TItem>
     where TItem : IVirtualListItem
 {
-    // JsonIgnores are here solely to make JsonFormatter.Format work
-    [JsonIgnore]
-    public VirtualList<TItem> VirtualList { get; set; }
     public long RenderIndex { get; set; }
-    [JsonIgnore]
-    public VirtualListClientSideState? ClientSideState { get; set; }
-    [JsonIgnore]
-    public VirtualListData<TItem> Data { get; set; }
-    [JsonIgnore]
-    public Dictionary<Symbol, ItemRenderPlan> ItemByKey { get; set; }= null!;
-    [JsonIgnore]
-    public List<ItemRenderPlan> Items { get; set; } = null!;
+
+    /// <summary> Relative to the top item's top! </summary>
+    public Range<double>? Viewport { get; set; }
+
+    public Range<double>? ItemRange { get; set; }
+    public Range<double>? FullRange => ItemRange is { } r ? (-SpacerSize, r.End + EndSpacerSize) : null;
+    public Range<double>? TrimmedLoadZoneRange => Viewport is { } v ? GetTrimmedLoadZoneRange(v) : null;
+    public bool HasUnmeasuredItems => !ItemRange.HasValue;
+    public bool UseSmoothScroll { get; set; }
+
+    // JsonIgnores are here solely to make JsonFormatter.Format work
+    [JsonIgnore] public VirtualList<TItem> VirtualList { get; set; }
+
+    [JsonIgnore] public VirtualListClientSideState? ClientSideState { get; set; }
+
+    [JsonIgnore] public VirtualListData<TItem> Data { get; set; }
+
+    [JsonIgnore] public Dictionary<Symbol, ItemRenderPlan> ItemByKey { get; set; } = null!;
+
+    [JsonIgnore] public List<ItemRenderPlan> Items { get; set; } = null!;
+
     [JsonIgnore]
     public IEnumerable<ItemRenderPlan> ReversedItems {
         get {
@@ -25,31 +35,22 @@ public class VirtualListRenderPlan<TItem>
                 yield return Items[i];
         }
     }
-    [JsonIgnore]
-    public ItemRenderPlan? FirstItem => Items.Count > 0 ? Items[0] : null;
-    [JsonIgnore]
-    public ItemRenderPlan? LastItem => Items.Count > 0 ? Items[^1] : null;
-    [JsonIgnore]
-    public bool IsDataChanged { get; set; }
 
-    /// <summary> Relative to the top item's top! </summary>
-    public Range<double>? Viewport { get; set; }
-    public Range<double>? ItemRange { get; set; }
-    public Range<double>? FullRange => ItemRange is { } r ? (-SpacerSize, r.End + EndSpacerSize) : null;
-    public Range<double>? TrimmedLoadZoneRange => Viewport is { } v ? GetTrimmedLoadZoneRange(v) : null;
-    public bool HasUnmeasuredItems => !ItemRange.HasValue;
+    [JsonIgnore] public ItemRenderPlan? FirstItem => Items.Count > 0 ? Items[0] : null;
 
-    [JsonIgnore]
-    public VirtualListEdge AlignmentEdge => VirtualList.AlignmentEdge;
-    [JsonIgnore]
-    public double SpacerSize => Data.HasVeryFirstItem ? 0 : VirtualList.SpacerSize;
-    [JsonIgnore]
-    public double EndSpacerSize => Data.HasVeryLastItem ? 0 : VirtualList.SpacerSize;
+    [JsonIgnore] public ItemRenderPlan? LastItem => Items.Count > 0 ? Items[^1] : null;
 
-    public bool UseSmoothScroll { get; set; }
+    [JsonIgnore] public bool IsDataChanged { get; set; }
 
-    [JsonIgnore]
-    public VirtualListStickyEdgeState? StickyEdge => ClientSideState?.StickyEdge;
+
+    [JsonIgnore] public VirtualListEdge AlignmentEdge => VirtualList.AlignmentEdge;
+
+    [JsonIgnore] public double SpacerSize => Data.HasVeryFirstItem ? 0 : VirtualList.SpacerSize;
+
+    [JsonIgnore] public double EndSpacerSize => Data.HasVeryLastItem ? 0 : VirtualList.SpacerSize;
+
+
+    [JsonIgnore] public VirtualListStickyEdgeState? StickyEdge => ClientSideState?.StickyEdge;
 
     protected IVirtualListStatistics Statistics => VirtualList.Statistics;
     protected ILogger Log => VirtualList.Log;
@@ -65,16 +66,11 @@ public class VirtualListRenderPlan<TItem>
         Update(null);
     }
 
-    // Misc. helpers
-    public Range<double> GetTrimmedLoadZoneRange(Range<double> viewport)
-        => new(
-            viewport.Start - (Data.HasVeryFirstItem ? 0 : VirtualList.LoadZoneSize),
-            viewport.End + (Data.HasVeryLastItem ? 0 : VirtualList.LoadZoneSize));
-
     public virtual VirtualListRenderPlan<TItem> Next()
     {
         try {
             var plan = (VirtualListRenderPlan<TItem>)MemberwiseClone();
+
             plan.RenderIndex++;
             plan.Data = VirtualList.Data;
             plan.ClientSideState = VirtualList.ClientSideState;
@@ -87,10 +83,17 @@ public class VirtualListRenderPlan<TItem>
         }
     }
 
+    // Misc. helpers
+    public Range<double> GetTrimmedLoadZoneRange(Range<double> viewport)
+        => new (
+            viewport.Start - (Data.HasVeryFirstItem ? 0 : VirtualList.LoadZoneSize),
+            viewport.End + (Data.HasVeryLastItem ? 0 : VirtualList.LoadZoneSize));
+
     public bool? IsFullyLoaded()
     {
         if (ItemRange is not { } itemRange || TrimmedLoadZoneRange is not { } loadZoneRange)
             return null;
+
         return Data.HasAllItems || itemRange.Contains(loadZoneRange);
     }
 
@@ -119,7 +122,7 @@ public class VirtualListRenderPlan<TItem>
             Items.Add(newItem);
             ItemByKey.Add(item.Key, newItem);
             if (newItem.IsMeasured) {
-                itemRange = new(itemRange.End, itemRange.End + newItem.Size);
+                itemRange = new Range<double>(itemRange.End, itemRange.End + newItem.Size);
                 newItem.Range = itemRange;
             }
             else
@@ -176,6 +179,7 @@ public class VirtualListRenderPlan<TItem>
         viewport = default;
         if (clientSideState is not { ViewportHeight: { } viewportHeight, ScrollTop: { } scrollTop })
             return false;
+
         viewport = (scrollTop, scrollTop + viewportHeight);
         return true;
     }
@@ -184,7 +188,7 @@ public class VirtualListRenderPlan<TItem>
     {
         public TItem Item { get; }
         public Symbol Key => Item.Key;
-        public Range<double> Range { get; set; } = new(-1, -2);
+        public Range<double> Range { get; set; } = new (-1, -2);
         public double Size => Range.Size();
         public bool IsMeasured => Size >= 0;
 
