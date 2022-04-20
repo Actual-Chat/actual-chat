@@ -42,6 +42,7 @@
     /* Basic Options */
     "target": "es2017",
     "module": "es2020",
+    "jsx": "react",
     "lib": [
       "dom",
       "dom.iterable",

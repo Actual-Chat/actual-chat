@@ -95,7 +95,7 @@ module.exports = (env, args) => {
       followSymlinks: false,
     },
     resolve: {
-      extensions: ['.ts', '.js', '...'],
+      extensions: ['.ts', ".tsx", '.js', '...'],
       modules: [_('./node_modules'), _('./src/')],
       roots: [],
       fallback: {
@@ -124,7 +124,7 @@ module.exports = (env, args) => {
       new webpack.ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
       }),
-      // required to resolve where react import is production or development
+      // required to resolve whether react is imported for production or development. TODO: fix.
 	  new webpack.DefinePlugin({
 		  process: {env: {}}
 	  }),

@@ -1,5 +1,7 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
+import "./Square"
+import { Square } from './Square';
 
 export class SlateEditor {
     private blazorRef: DotNet.DotNetObject;
@@ -15,7 +17,7 @@ export class SlateEditor {
 
         const e = React.createElement;
         const root = ReactDOM.createRoot(editorDiv);
-        root.render(e(LikeButton));
+        root.render(e(Square, { value : "xXx" }, null));
     }
 
     private dispose() {
