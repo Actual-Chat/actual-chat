@@ -6,17 +6,17 @@
 @if (ChatAuthor.IsValidId(MentionId)) {
     <ChatAuthor AuthorId="@MentionId">
         @if (!context.Author.Id.IsEmpty) {
-            <div class="inline-block pb-1 bg-button-success text-white hover:underline cursor-pointer"
+            <div class="inline-block px-1 bg-mention hover:bg-mention-hover cursor-pointer rounded-md"
                  @onclick="OnChatAuthorClick">
                 @@@context.Author.Name
             </div>
         } else {
-            <div class="inline-block pb-1 bg-button-success text-white">@@@MentionId</div>
+            <div class="inline-block px-1 bg-mention hover:bg-mention-hover rounded-md">@@@MentionId</div>
         }
     </ChatAuthor>
 }
 else {
-    <div class="inline-block pb-1 bg-button-success text-white">@@@MentionId</div>
+    <div class="inline-block px-1 bg-mention hover:bg-mention-hover rounded-md">@@@MentionId</div>
 }
 
 @code {
