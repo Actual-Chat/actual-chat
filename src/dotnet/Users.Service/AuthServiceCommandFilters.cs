@@ -174,7 +174,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var userState = await dbContext.UserStates.FindAsync(ComposeKey(userId), cancellationToken).ConfigureAwait(false);
+        var userState = await dbContext.UserStates.FindAsync(DbKey.Compose(userId), cancellationToken).ConfigureAwait(false);
         if (userState == null) {
             userState = new DbUserState() { UserId = userId };
             dbContext.Add(userState);

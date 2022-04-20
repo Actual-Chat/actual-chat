@@ -1,5 +1,4 @@
 @page "/test/auth"
-@using UAParser
 @inherits ComputedStateComponent<(UserProfile UserProfile, List<AuthenticationPage.SessionModel> Sessions)>
 
 @{
@@ -118,15 +117,12 @@
 }
 
 @code {
-    private static readonly Parser Parser = Parser.GetDefault();
-
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
     [Inject] private IFusionTime FusionTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
-    private ConcurrentDictionary<string, UserAgent> UserAgentCache { get; } = new();
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -148,12 +144,11 @@
         var result = new List<SessionModel>();
 
         foreach (var session in sessions) {
-            var userAgent = UserAgentCache.GetOrAdd(session.UserAgent, ua => Parser.ParseUserAgent(ua));
             var model = new SessionModel() {
                 Id = session.Id,
                 IsCurrent = Session.Id == session.Id,
                 IPAddress = session.IPAddress,
-                UserAgent = $"{userAgent.Family} {userAgent.Major}.{userAgent.Minor}",
+                UserAgent = session.UserAgent,
                 Created = await FusionTime.GetMomentsAgo(session.CreatedAt),
                 LastSeen = await FusionTime.GetMomentsAgo(session.LastSeenAt),
                 Version = session.Version,

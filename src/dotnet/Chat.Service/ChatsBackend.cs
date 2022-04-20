@@ -443,7 +443,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else {
             var compositeId = DbChatEntry.GetCompositeId(entry.ChatId, entryType, entry.Id);
             dbEntry = await dbContext.ChatEntries
-                .FindAsync(ComposeKey(compositeId), cancellationToken)
+                .FindAsync(DbKey.Compose(compositeId), cancellationToken)
                 .ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             if (dbEntry.Version != entry.Version)

@@ -15,11 +15,10 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Stl.CommandR.Diagnostics;
+using Stl.Diagnostics;
 using Stl.Fusion.Blazor;
 using Stl.Fusion.Bridge;
 using Stl.Fusion.Client;
-using Stl.Fusion.Diagnostics;
 using Stl.Fusion.Server;
 using Stl.Plugins;
 
@@ -27,6 +26,9 @@ namespace ActualChat.Host.Module;
 
 public class AppHostModule : HostModule<HostSettings>, IWebModule
 {
+    public static string AppVersion { get; } =
+        typeof(AppHostModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
+
     public IWebHostEnvironment Env { get; } = null!;
     public IConfiguration Cfg { get; } = null!;
 
@@ -172,15 +174,15 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             var (host, port) = openTelemetryEndpoint.ParseHostPort(4317);
             var openTelemetryEndpointUri = new Uri(Invariant($"http://{host}:{port}"));
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
-            const string version = ThisAssembly.AssemblyInformationalVersion;
             services.AddOpenTelemetryMetrics(builder => builder
-                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 .AddAspNetCoreInstrumentation()
                 .AddMeter(AppMeter.Name)
-                .AddMeter(FusionDiagnostics.FusionMeter.Name)
-                .AddMeter(CommanderDiagnostics.CommanderMeter.Name)
+                .AddMeter(typeof(IComputed).GetMeter().Name) // Fusion meter
+                .AddMeter(typeof(ICommand).GetMeter().Name) // Commander meters
+                .AddMeter(MeterExt.Unknown.Name) // Unknown meter
                 .AddOtlpExporter(cfg => {
                     cfg.ExportProcessorType = ExportProcessorType.Batch;
                     cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions() {
@@ -190,20 +192,16 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
                         ScheduledDelayMilliseconds = 20_000,
                     };
                     cfg.Protocol = OtlpExportProtocol.Grpc;
-                    cfg.AggregationTemporality = AggregationTemporality.Cumulative;
-                    cfg.MetricReaderType = MetricReaderType.Periodic;
-                    cfg.PeriodicExportingMetricReaderOptions = new PeriodicExportingMetricReaderOptions() {
-                        ExportIntervalMilliseconds = 15_000,
-                    };
                     cfg.Endpoint = openTelemetryEndpointUri;
                 })
             );
             services.AddOpenTelemetryTracing(builder => builder
-                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", version))
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("App", "actualchat", AppVersion))
                 .SetErrorStatusOnException()
                 .AddSource(AppTrace.Name)
-                .AddSource(FusionDiagnostics.FusionTrace.Name)
-                .AddSource(CommanderDiagnostics.CommanderTrace.Name)
+                .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
+                .AddSource(typeof(ICommand).GetActivitySource().Name) // Commander trace
+                .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
                         "/favicon.ico",

@@ -5,8 +5,4 @@
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="UAParser" />
-  </ItemGroup>
-
 </Project>

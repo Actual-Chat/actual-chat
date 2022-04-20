@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
+using ActualChat.Host.Module;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
     /// Constructor accepting just an options, to simplify testing.
     /// </summary>
     /// <param name="options">The formatter options. Must not be null.</param>
-    internal GoogleCloudConsoleFormatter(JsonConsoleFormatterOptions options)
+    private GoogleCloudConsoleFormatter(JsonConsoleFormatterOptions options)
         : base(nameof(GoogleCloudConsoleFormatter))
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -50,7 +51,7 @@ public sealed class GoogleCloudConsoleFormatter : ConsoleFormatter, IDisposable
 
         writer.WriteStartObject();
         writer.WriteString("message", message);
-        writer.WriteString("version", ThisAssembly.AssemblyInformationalVersion);
+        writer.WriteString("version", AppHostModule.AppVersion);
         if (logEntry.Exception != null) {
             writer.WriteString("exception", logEntry.Exception.ToString());
         }
