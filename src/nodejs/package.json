@@ -44,6 +44,8 @@
     "firebase": "^9.6.8",
     "ogv": "^1.8.4",
     "onnxruntime-web": "^1.10.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "readable-stream": "^3.6.0",
     "wasm-audio-resampler": "^2.0.0"
   },

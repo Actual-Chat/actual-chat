@@ -50,7 +50,7 @@ const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
 
 module.exports = (env, args) => {
 
-  const isDevelopment = args.mode === 'development';
+  const isDevelopment = false;
 
   /** Use this options to control /// #ifdef preprocessor */
   const ifdef = {
@@ -124,6 +124,10 @@ module.exports = (env, args) => {
       new webpack.ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
       }),
+      // required to resolve where react import is production or development
+	  new webpack.DefinePlugin({
+		  process: {env: {}}
+	  }),
     ],
     module: {
       // all files with a '.ts' or '.tsx' extension will be handled by 'ts-loader'

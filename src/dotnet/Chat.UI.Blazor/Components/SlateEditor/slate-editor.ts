@@ -1,3 +1,6 @@
+import React from "react"
+import ReactDOM from "react-dom/client"
+
 export class SlateEditor {
     private blazorRef: DotNet.DotNetObject;
     private editorDiv: HTMLDivElement;
