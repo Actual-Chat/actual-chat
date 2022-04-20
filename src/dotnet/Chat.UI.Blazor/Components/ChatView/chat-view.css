@@ -8,10 +8,7 @@
     @apply text-sm text-current break-words;
 }
 
-.chat-message-mention {
-    @apply flex items-start;
-    @apply antialiased sm:subpixel-antialiased md:antialiased;
-    @apply text-sm text-current break-words;
+.chat-message.mention {
     @apply border-l-2 border-mention-hover bg-mention-message;
 }
 
@@ -19,7 +16,7 @@
     @apply bg-message-hover;
 }
 
-.chat-message-mention .unread {
+.chat-message.mention .unread {
     @apply bg-mention-message;
 }
 
@@ -27,7 +24,7 @@
     @apply bg-message-hover;
 }
 
-.chat-message-mention:hover {
+.chat-message.mention:hover {
     @apply bg-mention-message
 }
 
@@ -35,7 +32,7 @@
     @apply bg-message-hover;
 }
 
-.chat-message-mention:hover .author-badge {
+.chat-message.mention:hover .author-badge {
     @apply bg-mention-message;
 }
 
@@ -63,11 +60,11 @@
     @apply visible;
 }
 
-.chat-message-mention:hover .chat-message-timestamp-secondary {
+.chat-message.mention:hover .chat-message-timestamp-secondary {
     @apply visible;
 }
 
-.chat-message-mention .chat-message-markup {
+.chat-message.mention .chat-message-markup {
     @apply ml-0;
 }
 

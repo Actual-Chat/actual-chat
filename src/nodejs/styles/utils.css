@@ -204,8 +204,3 @@ button.off,
 .author-card-modal .btn-group-parent {
     @apply mt-2 mb-0;
 }
-
-.last-message {
-    box-shadow: 0px -4px 4px -1px #cad3dc;
-    @apply rounded-xl;
-}

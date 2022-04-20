@@ -10,12 +10,12 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var unreadClass = Model.IsUnread ? "unread" : "";
-    var messageCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "chat-message-mention" : "chat-message";
+    var mentionCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="@messageCss relative @unreadClass group px-3 @marginClass">
+<div class="chat-message @mentionCss relative @unreadClass group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
             <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")"
