@@ -1,7 +1,6 @@
 @namespace ActualChat.UI.Blazor.Controls
 @typeparam TItem
 @using ActualChat.UI.Blazor.Controls.Internal
-@using Microsoft.AspNetCore.Components.Rendering
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
     var plan = LastPlan = Plan;
@@ -13,9 +12,8 @@
     var scrollContainerFlexClass = $"{flexBase} {flexDir}";
     var flexClass = $"{flexBase} flex-col";
     var invFlexClass = $"{flexBase} flex-col-reverse";
-    var renderState = new VirtualListRenderState() {
+    var renderState = new VirtualListRenderState {
         RenderIndex = plan.RenderIndex,
-
         SpacerSize = plan.SpacerSize,
         EndSpacerSize = plan.EndSpacerSize,
         ScrollHeight = plan.FullRange?.Size(),
@@ -23,10 +21,10 @@
         ViewportHeight = plan.Viewport?.Size(),
         HasVeryFirstItem = plan.Data.HasVeryFirstItem,
         HasVeryLastItem = plan.Data.HasVeryLastItem,
-
-        ScrollToKey = plan.Data.ScrollToKey.Value.NullIfEmpty(),
+        ScrollToKey = plan.ClientSideState?.IsUserScrollDetected ?? false
+            ? null
+            : plan.Data.ScrollToKey.Value.NullIfEmpty(),
         UseSmoothScroll = plan.UseSmoothScroll,
-
         ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
         HasUnmeasuredItems = plan.HasUnmeasuredItems,
         StickyEdge = plan.StickyEdge,
@@ -40,14 +38,15 @@
      style="@Style">
     <div class="data render-state hidden @flexClass flex-none">
         <div @key="@("<RenderState>:" + renderState.RenderIndex)"
-             class="data render-state-data">@SystemJsonSerializer.Default.Write(renderState)
+             class="data render-state-data">
+            @SystemJsonSerializer.Default.Write(renderState)
         </div>
     </div>
 
     @if (!isEndAligned) {
         <div @key="@("<Spacer>")"
-              class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
-              style="height: @(Plan.SpacerSize)px">
+             class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
+             style="height: @(Plan.SpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = -SkeletonCount; i < 0; i++) {
                     <div @key="@i" class="skeleton">
@@ -55,11 +54,11 @@
                     </div>
                 }
             </SkeletonContainer>
-        </div>;
+        </div>
     } else {
         <div @key="@("<EndSpacer>")"
-              class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
-              style="height: @(Plan.EndSpacerSize)px">
+             class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
+             style="height: @(Plan.EndSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     <div @key="@i" class="skeleton">
@@ -67,7 +66,7 @@
                     </div>
                 }
             </SkeletonContainer>
-        </div>;
+        </div>
     }
 
     @foreach (var item in isEndAligned ? plan.ReversedItems : plan.Items) {
@@ -80,8 +79,8 @@
 
     @if (isEndAligned) {
         <div @key="@("<Spacer>")"
-              class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
-              style="height: @(Plan.SpacerSize)px">
+             class="spacer spacer-start overflow-y-hidden @invFlexClass flex-none"
+             style="height: @(Plan.SpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = -SkeletonCount; i < 0; i++) {
                     <div @key="@i" class="skeleton">
@@ -89,11 +88,11 @@
                     </div>
                 }
             </SkeletonContainer>
-        </div>;
+        </div>
     } else {
         <div @key="@("<EndSpacer>")"
-              class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
-              style="height: @(Plan.EndSpacerSize)px">
+             class="spacer spacer-end overflow-y-hidden @flexClass flex-none"
+             style="height: @(Plan.EndSpacerSize)px">
             <SkeletonContainer Class="@flexClass">
                 @for (var i = 0; i < SkeletonCount; ++i) {
                     <div @key="@i" class="skeleton">
@@ -101,7 +100,7 @@
                     </div>
                 }
             </SkeletonContainer>
-        </div>;
+        </div>
     }
 
     <div @key="@("<RenderIndex>")"

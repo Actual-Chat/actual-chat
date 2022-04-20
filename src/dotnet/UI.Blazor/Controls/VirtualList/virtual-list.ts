@@ -175,8 +175,6 @@ export class VirtualList {
                         const scrollHeight = this._ref.scrollHeight;
                         const viewportHeight = this._ref.clientHeight;
                         const scrollTop = this.getScrollTop();
-                        this._scrollTopPivotRef = null;
-                        this._scrollTopPivotOffset = null;
 
                         if (rs.hasUnmeasuredItems) {
                             const itemY0 = this.getItemY0();
@@ -225,6 +223,7 @@ export class VirtualList {
                             scrollTop: scrollTop,
                             viewportHeight: viewportHeight,
                             stickyEdge: this._stickyEdge,
+                            scrollAnchorKey: this._scrollTopPivotRef ? getItemKey(this._scrollTopPivotRef) : null,
 
                             itemSizes: {}, // Will be updated further
                             visibleKeys: [],
@@ -361,7 +360,8 @@ export class VirtualList {
                     this.setStickyEdge(null);
                 } else if (itemKey !== this._stickyEdge.itemKey) {
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
-                    this.scrollTo(this.getItemRef(itemKey), true);
+                    let itemRef = this.getItemRef(itemKey);
+                    this.scrollTo(itemRef, true);
                 }
             } else if (this._scrollTopPivotRef != null) {
                 // _scrollTopPivot handling
@@ -374,6 +374,8 @@ export class VirtualList {
                     console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
                 if (Math.abs(dScrollTop) > SizeEpsilon)
                     this.setScrollTop(newScrollTop);
+                this._scrollTopPivotRef = null;
+                this._scrollTopPivotOffset = null;
             }
 
             if (this._debugMode)
@@ -485,8 +487,7 @@ export class VirtualList {
         return scrollTop;
     }
 
-    private setScrollTop(scrollTop: number): number {
-        const requestedScrollTop = scrollTop;
+    private setScrollTop(scrollTop: number): void {
         const spacerHeight = this._spacerRef.clientHeight;
         scrollTop += spacerHeight;
         if (this._isEndAligned) {
@@ -495,14 +496,7 @@ export class VirtualList {
             const scrollHeight = this._ref.scrollHeight;
             scrollTop = scrollBottom - scrollHeight;
         }
-        let actualScrollTop = this.getScrollTop();
-        if (this._debugMode)
-            console.warn(`${LogScope}.setScrollTop: ${actualScrollTop} -> ${requestedScrollTop}`);
         this._ref.scrollTop = scrollTop;
-        actualScrollTop = this.getScrollTop();
-        if (this._debugMode && Math.abs(requestedScrollTop - actualScrollTop) > 0.5)
-            console.warn(`${LogScope}.setScrollTop: post-set ${actualScrollTop} != ${requestedScrollTop}`);
-        return actualScrollTop;
     }
 
     private scrollTo(itemRef?: HTMLElement, useSmoothScroll: boolean = false) {
@@ -587,6 +581,7 @@ interface IClientSideState {
     scrollTop: number;
     viewportHeight: number;
     stickyEdge?: Required<IStickyEdgeState>;
+    scrollAnchorKey?: string,
 
     itemSizes: Record<string, number>;
     visibleKeys: string[];

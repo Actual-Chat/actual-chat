@@ -11,7 +11,7 @@ public class VirtualListClientSideState
     public double? ScrollTop { get; set; }
     public double? ViewportHeight { get; set; }
     public VirtualListStickyEdgeState? StickyEdge { get; set; }
-
+    public string? ScrollAnchorKey { get; set; }
     public Dictionary<string, double> ItemSizes { get; set; } = new (StringComparer.Ordinal);
     public List<string>? VisibleKeys { get; set; }
 

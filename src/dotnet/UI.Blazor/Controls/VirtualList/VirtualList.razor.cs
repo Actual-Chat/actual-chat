@@ -136,7 +136,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             return;
 
         Query = GetDataQuery(Plan);
-        if (LastQuery == Query && Data.ScrollToKey.IsEmpty)
+        if (Query.IsSimilarTo(LastQuery) && Data.ScrollToKey.IsEmpty)
             return;
 
         if (LastQuery != VirtualListDataQuery.None)
@@ -189,6 +189,26 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
 
     protected virtual VirtualListDataQuery GetDataQuery(VirtualListRenderPlan<TItem> plan)
     {
+        var itemSize = Statistics.ItemSize;
+        var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
+
+        if (plan.ClientSideState?.ScrollAnchorKey != null) {
+            // we should load data near the last available item on scroll into skeleton area
+            var key = plan.ClientSideState?.ScrollAnchorKey!;
+            var avgItemsPerLoadZone = LoadZoneSize / itemSize;
+            var anchorKeyRange = new Range<string>(key, key);
+            var anchorQuery = new VirtualListDataQuery(anchorKeyRange) {
+                ExpandStartBy = avgItemsPerLoadZone / responseFulfillmentRatio,
+                ExpandEndBy = avgItemsPerLoadZone / responseFulfillmentRatio,
+            };
+            DebugLog?.LogDebug(
+                nameof(GetDataQuery)
+                + ": itemSize={ItemSize}, responseFulfillmentRatio={ResponseFulfillmentRatio}, anchorQuery={Query}",
+                itemSize,
+                responseFulfillmentRatio,
+                anchorQuery);
+            return anchorQuery;
+        }
         if (plan.HasUnmeasuredItems) // Let's wait for measurement to complete first
             return LastQuery;
         if (plan.Items.Count == 0) // No entries -> nothing to "align" the query to
@@ -216,9 +236,6 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
             // No items inside the bufferZone, so we'll take the first or the last item
             startIndex = endIndex = items[0].Range.End < bufferZone.Start ? 0 : items.Count - 1;
         }
-
-        var itemSize = Statistics.ItemSize;
-        var responseFulfillmentRatio = Statistics.ResponseFulfillmentRatio;
 
         var firstItem = items[startIndex];
         var lastItem = items[endIndex];
