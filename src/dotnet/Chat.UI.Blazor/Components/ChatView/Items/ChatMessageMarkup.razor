@@ -33,22 +33,6 @@
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
 
-    void OnMouseOut() {
-        if (!IsMouseOver) {
-            return;
-        }
-        IsMouseOver = false;
-        StateHasChanged();
-    }
-
-    void OnMouseOver() {
-        if (IsMouseOver) {
-            return;
-        }
-        IsMouseOver = true;
-        StateHasChanged();
-    }
-
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
@@ -68,6 +52,22 @@
     }
 
     // Private methods
+
+    private void OnMouseOut() {
+        if (!IsMouseOver) {
+            return;
+        }
+        IsMouseOver = false;
+        StateHasChanged();
+    }
+
+    private void OnMouseOver() {
+        if (IsMouseOver) {
+            return;
+        }
+        IsMouseOver = true;
+        StateHasChanged();
+    }
 
     private RenderFragment RenderPart(MarkupPart part) {
         if (part is PlainTextPart) {
