@@ -89,6 +89,10 @@
     text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
 }
 
+.chat-message-markup > span {
+    white-space: break-spaces;
+}
+
 .chat-header-title:hover {
     @apply text-accent;
 }

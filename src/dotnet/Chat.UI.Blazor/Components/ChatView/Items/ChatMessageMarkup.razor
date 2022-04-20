@@ -7,9 +7,15 @@
 @inherits ComputedStateComponent<ChatMessageMarkup.StateModel?>
 
 @if (Markup != null) {
-    <p class="chat-message-markup text-primary mx-1">
-        @foreach (var part in Markup.Parts) {
-            @RenderPart(part)
+    <p class="chat-message-markup text-primary mx-1"
+       @onmouseover="_ => OnMouseOver()"
+       @onmouseout="_ => OnMouseOut()">
+        @if (ShowMarkupText) {
+            <span>@Markup.Text</span>
+        } else {
+            @foreach (var part in Markup.Parts) {
+                @RenderPart(part)
+            }
         }
     </p>
 }
@@ -20,9 +26,28 @@
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     private ChatEntry Entry => Model.Entry;
     private Markup? Markup { get; set; } = null!;
+    private bool HasTextOnly => Markup?.Parts.All(x => x is PlainTextPart) ?? false;
+    private bool IsMouseOver { get; set; }
+    private bool ShowMarkupText => HasTextOnly && !IsMouseOver;
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
+
+    void OnMouseOut() {
+        if (!IsMouseOver) {
+            return;
+        }
+        IsMouseOver = false;
+        StateHasChanged();
+    }
+
+    void OnMouseOver() {
+        if (IsMouseOver) {
+            return;
+        }
+        IsMouseOver = true;
+        StateHasChanged();
+    }
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
