@@ -8,9 +8,9 @@
     "lint": "eslint --ext .ts --config .eslintrc.yml ../"
   },
   "devDependencies": {
-    "@types/react" : "^18.0.5",
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
+    "@types/react": "^18.0.5",
     "@types/recordrtc": "^5.6.8",
     "@typescript-eslint/eslint-plugin": "^5.10.2",
     "@typescript-eslint/parser": "^5.10.2",
@@ -48,6 +48,8 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "readable-stream": "^3.6.0",
+    "slate": "^0.77.2",
+    "slate-react": "^0.77.2",
     "wasm-audio-resampler": "^2.0.0"
   },
   "prettier": {

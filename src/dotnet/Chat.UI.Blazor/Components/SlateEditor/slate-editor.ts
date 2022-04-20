@@ -1,7 +1,9 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import "./Square"
 import { Square } from './Square';
+import { LikeButton } from './like-button';
+import { SlateComponent } from './slate-component';
+import * as X from 'is-plain-object'
 
 export class SlateEditor {
     private blazorRef: DotNet.DotNetObject;
@@ -17,32 +19,12 @@ export class SlateEditor {
 
         const e = React.createElement;
         const root = ReactDOM.createRoot(editorDiv);
-        root.render(e(Square, { value : "xXx" }, null));
+        //root.render(e(Square, { value : "xXx" }, null));
+        root.render(e(SlateComponent));
     }
 
     private dispose() {
     }
 }
 
-const e = React.createElement;
-class LikeButton extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            liked: false
-        };
-    }
-    render() {
-        if (this.state.liked) {
-            return 'You liked this.';
-        }
-        return e(
-            'button', {
-                onClick: () => this.setState({
-                                                 liked: true
-                                             })
-            },
-            'Like'
-        );
-    }
-}
+
