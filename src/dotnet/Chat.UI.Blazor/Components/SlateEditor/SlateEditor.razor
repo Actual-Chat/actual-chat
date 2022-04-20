@@ -1,0 +1,35 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@implements ISlateEditorBackend
+@implements IAsyncDisposable
+@using ActualChat.Chat.UI.Blazor.Module
+
+<div class="slate-editor-root @Class"></div>
+
+@code {
+    private ElementReference EditorRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<ISlateEditorBackend> BlazorRef { get; set; } = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [Parameter]
+    public string Class { get; set; } = "";
+
+    public async ValueTask DisposeAsync()
+    {
+        if (JSRef != null!)
+            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        // ReSharper disable once ConstantConditionalAccessQualifier
+        BlazorRef?.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<ISlateEditorBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
+                EditorRef, BlazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+}
