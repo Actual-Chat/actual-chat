@@ -50,6 +50,7 @@
     "react-dom": "^18.0.0",
     "readable-stream": "^3.6.0",
     "slate": "^0.77.2",
+    "slate-history": "^0.66.0",
     "slate-react": "^0.77.2",
     "wasm-audio-resampler": "^2.0.0"
   },

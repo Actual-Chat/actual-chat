@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client"
 import { Square } from './Square';
 import { LikeButton } from './like-button';
 import { SlateComponent } from './slate-component';
-import * as X from 'is-plain-object'
+import { MentionExample } from './mentions';
 
 export class SlateEditor {
     private blazorRef: DotNet.DotNetObject;
@@ -20,7 +20,8 @@ export class SlateEditor {
         const e = React.createElement;
         const root = ReactDOM.createRoot(editorDiv);
         //root.render(e(Square, { value : "xXx" }, null));
-        root.render(e(SlateComponent));
+        //root.render(e(SlateComponent));
+        root.render(e(MentionExample));
     }
 
     private dispose() {
