@@ -9,7 +9,7 @@
 }
 
 .chat-message.mention {
-    @apply border-l-2 border-mention-hover bg-mention-message;
+    @apply border-x-2 border-x-mention-hover bg-mention-message border-y border-y-sky-100;
 }
 
 .chat-message .unread {
