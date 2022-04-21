@@ -1,5 +1,4 @@
 import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react'
-import ReactDOM from 'react-dom'
 import { Editor, Transforms, Range, createEditor, Descendant } from 'slate'
 import { withHistory } from 'slate-history'
 import {
@@ -11,24 +10,8 @@ import {
     useFocused,
 } from 'slate-react'
 
-export type CustomText = {
-    bold?: boolean
-    italic?: boolean
-    code?: boolean
-    text: string
-}
-
-type MentionElement = {
-    type: 'mention'
-    character: string
-    children: CustomText[]
-}
-
-export const Portal = ({ children }) => {
-    return typeof document === 'object'
-           ? ReactDOM.createPortal(children, document.body)
-           : null
-}
+import { Portal } from './components'
+import { MentionElement } from './custom-types'
 
 export const MentionExample = () => {
     const ref = useRef<HTMLDivElement | null>()
@@ -37,7 +20,7 @@ export const MentionExample = () => {
     const [search, setSearch] = useState('')
     const renderElement = useCallback(props => <Element {...props} />, [])
     const editor = useMemo(
-        () => withMentions(withReact(withHistory(createEditor()))),
+        () => withMentions(withReact(withHistory(createEditor() as ReactEditor))),
         []
     )
 
