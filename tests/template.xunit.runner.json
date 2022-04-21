@@ -3,10 +3,10 @@
   "appDomain": "denied",
   "diagnosticMessages": false,
   "longRunningTestSeconds": 30,
-  "maxParallelThreads": 32,
+  "maxParallelThreads": 1,
   "methodDisplay": "classAndMethod",
-  "parallelizeAssembly": true,
-  "parallelizeTestCollections": true,
+  "parallelizeAssembly": false,
+  "parallelizeTestCollections": false,
   "preEnumerateTheories": true,
   "shadowCopy": false
 }
