@@ -1,4 +1,3 @@
-@using ActualChat.Hosting
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @{
@@ -9,22 +8,23 @@
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
-    var unreadClass = Model.IsUnread ? "unread" : "";
     var mentionCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
 }
-<div class="chat-message @mentionCss relative @unreadClass group px-3 @marginClass">
+@if (Model.IsFirstUnread) {
+    <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
+}
+<div class="chat-message @mentionCss relative group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-            <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(@context.IsRecording ? "border-sky-500 border-2" : "")"
+            <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(context.IsRecording ? "border-sky-500 border-2" : "")"
                  @onclick="OnChatAuthorClick">
                 <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
         </ChatAuthor>
-    }
-    else {
+    } else {
         <div class="w-10 mr-2 mt-1">
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
         </div>
@@ -52,22 +52,23 @@
                 @foreach (var attachment in attachments) {
                     var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
                     @if (isImage) {
-                        <ImageAttachment Attachment="@attachment" />
+                        <ImageAttachment Attachment="@attachment"/>
                     } else {
-                        <FileAttachment Attachment="@attachment" />
+                        <FileAttachment Attachment="@attachment"/>
                     }
                 }
             </div>
         }
     </div>
 
-    <MessageMenu Class="invisible group-hover:visible absolute z-10" />
+    <MessageMenu Class="invisible group-hover:visible absolute z-10"/>
 </div>
 
 @code {
     [Inject] private ChatUI ChatUI { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; set; } = null!;
+
     private string ReaderId { get; set; } = "";
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]

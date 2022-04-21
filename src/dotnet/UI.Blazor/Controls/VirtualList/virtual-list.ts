@@ -145,7 +145,7 @@ export class VirtualList {
             if (rs.scrollToKey != null) {
                 // Server-side scroll request
                 const itemRef = this.getItemRef(rs.scrollToKey);
-                this.scrollTo(itemRef, rs.useSmoothScroll);
+                this.scrollTo(itemRef, rs.useSmoothScroll, 'center');
             } else if (this.isSafeToScroll && this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start

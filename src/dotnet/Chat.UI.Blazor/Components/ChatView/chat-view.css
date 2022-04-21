@@ -12,14 +12,6 @@
     @apply border-x-2 border-x-mention-hover bg-mention-message border-y border-y-sky-100;
 }
 
-.chat-message .unread {
-    @apply bg-message-hover;
-}
-
-.chat-message.mention .unread {
-    @apply bg-mention-message;
-}
-
 .chat-message:hover {
     @apply bg-message-hover;
 }
@@ -108,3 +100,12 @@
 .panel-menu-item:hover {
     @apply bg-transparent;
 }
+
+.new-separator {
+    @apply bg-accent;
+}
+
+.new-separator-title {
+    @apply bg-accent text-accent rounded-md;
+}
+
