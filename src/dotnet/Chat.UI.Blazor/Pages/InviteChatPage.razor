@@ -1,5 +1,6 @@
 @page "/chat/{ChatId}/invite"
 @inherits ComputedStateComponent<InviteChatPage.Model>
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 @{
     var model = State.LatestNonErrorValue ?? new();

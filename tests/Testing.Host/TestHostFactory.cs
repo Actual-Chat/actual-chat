@@ -1,6 +1,8 @@
+using ActualChat.Configuration;
 using ActualChat.Host;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -29,12 +31,12 @@ public static class TestHostFactory
 
     public static async Task<AppHost> NewAppHost(
         Action<AppHost>? configure = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        string? serverUrls = null)
     {
-        var port = WebTestExt.GetUnusedTcpPort();
         var manifestPath = GetManifestPath();
         var appHost = new AppHost {
-            ServerUrls = WebTestExt.GetLocalUri(port).ToString(),
+            ServerUrls = serverUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
             HostConfigurationBuilder = cfg => {
                 cfg.Sources.Insert(0,
                     new MemoryConfigurationSource {
@@ -44,11 +46,12 @@ public static class TestHostFactory
                         },
                     });
             },
-            AppServicesBuilder = (_, services) => {
+            AppServicesBuilder = (hb, services) => {
                 configureServices?.Invoke(services);
                 services.TryAddSingleton(new ServerAuthHelper.Options {
                     KeepSignedIn = true,
                 });
+                services.AddOptions<TestUsersOptions>(hb.Configuration, "Tests:Users");
             },
             AppConfigurationBuilder = GetTestAppSettings,
         };
@@ -62,8 +65,9 @@ public static class TestHostFactory
     private static void GetTestAppSettings(IConfigurationBuilder config)
     {
         var toDelete = config.Sources
-            .Where(s => s is JsonConfigurationSource source
+            .Where(s => (s is JsonConfigurationSource source
                 && source.Path.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
+                || s is EnvironmentVariablesConfigurationSource)
             .ToList();
         foreach (var source in toDelete)
             config.Sources.Remove(source);
@@ -78,6 +82,7 @@ public static class TestHostFactory
                 ReloadDelay = 100,
                 ReloadOnChange = false,
             });
+        config.AddEnvironmentVariables();
 
         static List<(string FileName, bool Optional)> GetTestSettingsFiles()
         {
@@ -85,10 +90,8 @@ public static class TestHostFactory
                 ("testsettings.json", Optional: false),
                 ("testsettings.local.json", Optional: true),
             };
-            if (bool.TryParse(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
-                    out var isRunningContainer)
-                && isRunningContainer)
-                result.Add(("testsettings.docker.json", Optional: true));
+            if (EnvExt.IsRunningInContainer())
+                result.Add(("testsettings.docker.json", Optional: false));
             return result;
         }
     }

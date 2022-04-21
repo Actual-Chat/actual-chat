@@ -317,7 +317,7 @@ internal static class Program
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments($"test " +
                 "--nologo " +
-                "--filter \"FullyQualifiedName~IntegrationTests\" " +
+                "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\" " +
                 "--no-restore " +
                 "--blame-hang " +
                 "--blame-hang-timeout 300s " +
@@ -406,7 +406,6 @@ internal static class Program
                         $"-p:Configuration={configuration}"
                     ).ToConsole(Green("dotnet restore: "))
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
-                ;
             }
             finally {
                 cts.Cancel();

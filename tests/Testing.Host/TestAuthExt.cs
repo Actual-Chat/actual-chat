@@ -1,4 +1,8 @@
 using ActualChat.Host;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Playwright;
 using Stl.Fusion.Authentication.Commands;
 
 namespace ActualChat.Testing.Host;
@@ -58,5 +62,58 @@ public static class TestAuthExt
         // Let's wait a bit to ensure all invalidations go through
         // TODO: REALLY???
         await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task ClientSignInWithGoogle(
+        this IPage page,
+        string user,
+        string password)
+        => await ClientSignInWith(GoogleDefaults.AuthenticationScheme, user, password, page);
+
+    private static async Task ClientSignInWith(string authScheme, string user, string password, IPage page)
+    {
+        await StartClientSignInWith(authScheme, page);
+
+        switch (authScheme) {
+            case GoogleDefaults.AuthenticationScheme:
+                await HandleGoogleSignInPopup(user, password, page);
+                break;
+            case MicrosoftAccountDefaults.AuthenticationScheme:
+                throw new NotImplementedException();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(authScheme));
+        }
+
+        await page.WaitForSelectorAsync("button :text(\"actualchat_testuser1\")");
+    }
+
+    private static async Task StartClientSignInWith(string scheme, IPage page)
+    {
+        var signInButton = await page.WaitForSelectorAsync("button :text(\"Sign in\")");
+        signInButton.Should().NotBeNull();
+        await signInButton!.ClickAsync();
+
+        var signInWithBtn = await page.WaitForSelectorAsync($"button :text(\"Sign in with {scheme}\")");
+        signInWithBtn.Should().NotBeNull();
+        await signInWithBtn!.ClickAsync();
+    }
+
+    private static async Task HandleGoogleSignInPopup(string user, string password, IPage page)
+    {
+        var googlePage = await page.Context.WaitForPageAsync(new BrowserContextWaitForPageOptions
+        {
+            Predicate = x => new Uri(x.Url).Host == "accounts.google.com"
+        });
+
+        var emailInput = await googlePage.WaitForSelectorAsync("input[type=email][name=identifier]");
+        emailInput.Should().NotBeNull();
+        await emailInput!.FillAsync(user);
+        await emailInput.PressAsync("Enter");
+
+
+        var passwordInput = await googlePage.WaitForSelectorAsync("input[type=password][name=password]");
+        passwordInput.Should().NotBeNull();
+        await passwordInput!.FillAsync(password);
+        await passwordInput.PressAsync("Enter");
     }
 }

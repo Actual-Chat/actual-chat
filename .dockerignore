@@ -38,5 +38,4 @@ deploy
 **/.gitignore
 **/*.log
 artifacts/**
-!artifacts/bin/**
 **/vsdbg/

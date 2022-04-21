@@ -34,7 +34,6 @@ internal static class AppPathResolver
     private static string SearchWebRootDirectory()
     {
         var probeDirectories = new List<string>(4) { AppDomain.CurrentDomain.BaseDirectory!, };
-        var curDir = Directory.GetCurrentDirectory();
         var developerMachineClientWebRootProbeDirectory = GetDeveloperMachineWebRootProbeDirectory("UI.Blazor.Host");
         if (!string.IsNullOrWhiteSpace(developerMachineClientWebRootProbeDirectory)) {
             probeDirectories.Add(developerMachineClientWebRootProbeDirectory);
@@ -46,6 +45,6 @@ internal static class AppPathResolver
                     ? Path.GetFullPath(Path.Combine(baseProbePath, "wwwroot"))
                     : null)
                 .FirstOrDefault(webRootPath => !string.IsNullOrEmpty(webRootPath))
-            ?? throw new DirectoryNotFoundException($"Can't found web root directory\n Searched dirs: \n{string.Join("\n", probeDirectories)}");
+            ?? throw new DirectoryNotFoundException($"Could not find web root directory\n Searched dirs: \n{string.Join("\n", probeDirectories)}");
     }
 }

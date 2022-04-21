@@ -1,10 +1,9 @@
 {
-  "RedisConfiguration": "localhost",
   "RedisSettings": {
-    "DefaultRedis": "localhost|test_{instance.}{context}"
+    "DefaultRedis": "redis|test_{instance.}{context}"
   },
   "DbSettings": {
-    "DefaultDb": "Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
+    "DefaultDb": "Server=postgres;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
     // "DefaultDb": "mysql:Server=localhost;Database=ac_test_{instance_}{context};Port=3306;User=root;Password=mariadb",
     // "DefaultDb": "memory:ac_test_{instance_}{context}",
     "OverrideDb": "",
@@ -22,10 +21,6 @@
   "UsersSettings": {
     "Db": "",
     "Redis": ""
-
-
-
-
   },
   "Logging": {
     "LogLevel": {

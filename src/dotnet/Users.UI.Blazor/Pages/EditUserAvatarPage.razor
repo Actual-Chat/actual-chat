@@ -1,4 +1,5 @@
 @page "/user/avatar/{AvatarId}"
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 <MainHeader>Your avatar</MainHeader>
 

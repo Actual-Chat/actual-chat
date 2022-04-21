@@ -1,12 +1,41 @@
 @using ActualChat.Hosting
+@using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
-@inject HostInfo _hostInfo
-@inject IEnumerable<NavBarItem> _navBarItems
+@inherits ComputedStateComponent<NavbarLinks.Model>
 
-@foreach (var barItem in _navBarItems.OrderBy(c => c.Order)) {
-    @barItem.Content
+@code {
+
+    [Inject]
+    private IAuthz Authorization { get; set; } = null!;
+
+    [Inject]
+    private Session Session { get; set; } = null!;
+
+    [Inject]
+    private HostInfo HostInfo { get; set; } = null!;
+
+    [Inject]
+    private IEnumerable<NavBarItem> NavBarItems { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() { InitialValue = new Model(false) };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isActive = await Authorization.IsActive(Session, cancellationToken);
+        return new Model(isActive);
+    }
+
+    public sealed record Model(bool IsActive);
 }
-@if (_hostInfo.IsDevelopmentInstance) {
+
+@if (State.LatestNonErrorValue.IsActive) {
+    @foreach (var barItem in NavBarItems.OrderBy(c => c.Order)) {
+        @barItem.Content
+    }
+}
+
+@if (HostInfo.IsDevelopmentInstance) {
     <NavbarGroup Title="Test pages" Class="navbar-pages" Id="testPages">
         <NavbarLink Title="Virtual List" Url="/test/virtual-list" />
         <NavbarLink Title="Audio Player" Url="/test/audio-player" />

@@ -1,5 +1,6 @@
 @page "/new/chat/"
 @using System.ComponentModel.DataAnnotations
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 <MainHeader>New chat</MainHeader>
 

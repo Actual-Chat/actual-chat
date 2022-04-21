@@ -4,6 +4,7 @@
 @using ActualChat.Notification.UI.Blazor
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     _lastRenderedModel = State.LatestNonErrorValue ?? new();
     var model = _lastRenderedModel;
