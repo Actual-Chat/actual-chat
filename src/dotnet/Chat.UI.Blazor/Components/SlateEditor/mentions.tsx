@@ -12,8 +12,10 @@ import {
 
 import { Portal } from './components'
 import { MentionElement } from './custom-types'
+import { SlateEditorHandle } from './slate-editor-handle';
+import { serialize } from './serializer';
 
-export const MentionExample = () => {
+export const MentionExample = (handle : SlateEditorHandle) => {
     const ref = useRef<HTMLDivElement | null>()
     const [target, setTarget] = useState<Range | undefined>()
     const [index, setIndex] = useState(0)
@@ -23,6 +25,8 @@ export const MentionExample = () => {
         () => withMentions(withReact(withHistory(createEditor() as ReactEditor))),
         []
     )
+
+    handle.getText = () => serialize(editor)
 
     const chars = CHARACTERS.filter(c =>
                                         c.toLowerCase().startsWith(search.toLowerCase())

@@ -32,4 +32,8 @@
                 ).ConfigureAwait(true);
         }
     }
+
+    public async Task<string> GetText()
+        => await JSRef.InvokeAsync<string>("getText");
+
 }

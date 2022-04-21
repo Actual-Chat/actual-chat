@@ -2,4 +2,21 @@
 
 <MainHeader>Slate Editor Test Page</MainHeader>
 
-<SlateEditor Class="bg-gray-200" />
+<SlateEditor @ref="_editor" Class="bg-gray-200 min-h-[50px]" />
+
+<div class="mt-2">
+    <Button OnClick="OnGetTextClicked">Get text</Button>
+</div>
+
+<div class="mt-2 bg-purple-200 min-h-[50px]">@_text</div>
+
+@code{
+    private SlateEditor? _editor;
+    private string _text = "";
+
+    private async Task OnGetTextClicked() {
+        if (_editor == null)
+            return;
+        _text = await _editor.GetText();
+    }
+}
