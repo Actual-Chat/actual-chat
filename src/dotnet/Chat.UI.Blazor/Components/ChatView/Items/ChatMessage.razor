@@ -1,4 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Hosting
+@using Microsoft.AspNetCore.Components.Rendering
 
 @{
     var entry = Model.Entry;
@@ -9,6 +11,7 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var mentionCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
+    var contextMenuId = "message-" + Model.Entry.Id;
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
@@ -62,6 +65,18 @@
     </div>
 
     <MessageMenu Class="invisible group-hover:visible absolute z-10"/>
+    <ContextMenu Id="@contextMenuId"
+                 BtnClass="hidden-btn h-6 min-w-12 right-4 -mt-3 bg-secondary rounded-r-md rounded-l-md border-r border-t border-b border-l border-accent"
+                 MenuClass="absolute z-10 right-14 -mt-3 bg-accent -mr-2 rounded-md">
+        <ButtonTemplate>
+            <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-4 2 30 30">
+                <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+            </svg>
+        </ButtonTemplate>
+        <ContentTemplate>
+            <MessageContextMenu/>
+        </ContentTemplate>
+    </ContextMenu>
 </div>
 
 @code {

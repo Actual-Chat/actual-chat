@@ -24,6 +24,10 @@
     @apply bg-message-hover;
 }
 
+.chat-message:hover .hidden-btn {
+    @apply visible;
+}
+
 .chat-message.mention:hover .author-badge {
     @apply bg-mention-message;
 }

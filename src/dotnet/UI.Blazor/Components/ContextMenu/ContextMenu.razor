@@ -1,0 +1,58 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IContextMenuBackend
+@using ActualChat.UI.Blazor.Module
+@implements IAsyncDisposable
+
+@{
+    var btnId = string.IsNullOrWhiteSpace(Id) ? "" : "context-button-" + Id;
+    var menuId = string.IsNullOrWhiteSpace(Id) ? "" : "context-menu-" + Id;
+    var btnCss = "context-button " + BtnClass;
+    var menuCss = "context-menu " + MenuClass;
+}
+
+<div @ref="MenuRef">
+    <ContextMenuButton Class="@btnCss" OnClick="OnClick" Id="@btnId">
+        @ButtonTemplate
+    </ContextMenuButton>
+    @if (_showContextMenu) {
+        <ContextMenuContent Id="@menuId" Class="@menuCss">
+            @ContentTemplate
+        </ContextMenuContent>
+    }
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public RenderFragment? ContentTemplate { get; set; }
+    [Parameter] public RenderFragment? ButtonTemplate { get; set; }
+    [Parameter] public string MenuClass { get; set; } = "";
+    [Parameter] public string BtnClass { get; set; } = "";
+    private bool _showContextMenu;
+
+    private ElementReference MenuRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<IContextMenuBackend> BlazorRef { get; set; } = null!;
+
+    private void OnClick() {
+        _showContextMenu = !_showContextMenu;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (JSRef != null!)
+            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        BlazorRef?.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IContextMenuBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.ContextMenu.create",
+                MenuRef, BlazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+}

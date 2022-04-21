@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.Components
+@inject IJSRuntime _js
+@implements IContextMenuBackend
+
+<div class="@Class" id="@Id">
+    <div class="select-none relative p-1 @MenuDirection()">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ItemClass { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public Orientation Orientation { get; set; } = Orientation.Vertical;
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Right;
+    [Parameter] public TooltipPosition TooltipPosition { get; set; } = TooltipPosition.Top;
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string MenuDirection()
+        => Orientation == Orientation.Vertical ? "flex-y" : "flex-x";
+}

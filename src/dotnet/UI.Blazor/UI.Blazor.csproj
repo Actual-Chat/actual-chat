@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <TypeScriptCompile Include="Components\ContextMenu\context-menu.ts" />
     <TypeScriptCompile Include="messaging-init.ts" />
   </ItemGroup>
   
