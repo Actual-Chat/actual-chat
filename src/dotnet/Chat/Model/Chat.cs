@@ -15,5 +15,5 @@ public record Chat
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
 
     public static bool IsValidId(string chatId)
-        => chatId.Length > 0 && chatId.All(c => c.IsAlphaNumeric() || c == ':' || c == '-');
+        => chatId.Length > 0 && chatId.All(c => c.IsAlphaNumeric() || c == '-');
 }

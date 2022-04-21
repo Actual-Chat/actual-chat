@@ -72,11 +72,11 @@ partial class InviteCodes
         await using var __ = dbContext.ConfigureAwait(false);
 
         var inviteCode = command.InviteCode with {
-            Id = Ulid.NewUlid().ToString(),
+            Id = Ulid.NewUlid().ToString().ToLowerInvariant(),
             Version = VersionGenerator.NextVersion(),
             CreatedAt = Clocks.SystemClock.Now,
             State = InviteCodeState.Active,
-            Value = _inviteCodeGenerator.Next() // TODO: add reprocessing in case uniqueness conflicts
+            Value = _inviteCodeGenerator.Next(), // TODO: add reprocessing in case uniqueness conflicts
         };
         var dbInviteCode = new DbInviteCode(inviteCode);
         dbContext.Add(dbInviteCode);

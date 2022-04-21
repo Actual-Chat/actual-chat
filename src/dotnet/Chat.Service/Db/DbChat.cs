@@ -51,13 +51,5 @@ public class DbChat : IHasId<string>, IHasVersion<long>
             UserId = x.Value,
         }).ToList();
     }
-
-    internal class EntityConfiguration : IEntityTypeConfiguration<DbChat>
-    {
-        public void Configure(EntityTypeBuilder<DbChat> builder)
-        {
-            builder.Property(a => a.Id).ValueGeneratedOnAdd().HasValueGenerator<UlidValueGenerator>();
-        }
-    }
 }
 
