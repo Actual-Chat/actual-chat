@@ -28,6 +28,24 @@ export const MentionExample = (handle : SlateEditorHandle) => {
 
     handle.getText = () => serialize(editor)
 
+    const resetEditor = () => {
+        console.log('reset editor started')
+
+        Transforms.delete(editor, {
+            at: {
+                anchor: Editor.start(editor, []),
+                focus: Editor.end(editor, []),
+            },
+        });
+
+        console.log('reset editor completed')
+    }
+
+    handle.clearText = () => {
+        console.log('clear text')
+        resetEditor()
+    }
+
     const chars = CHARACTERS.filter(c =>
                                         c.toLowerCase().startsWith(search.toLowerCase())
     ).slice(0, 10)
@@ -59,9 +77,24 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                         break
                 }
             }
+            else {
+                switch (event.key) {
+                    case 'Enter':
+                        if (!event.shiftKey) {
+                            event.preventDefault()
+                            handle.onPost(handle.getText())
+                        }
+                        break
+                }
+            }
         },
         [index, search, target]
     )
+
+    const onMagicButtonClick = () => {
+      console.log('magic button clicked')
+      resetEditor()
+    }
 
     useEffect(() => {
         if (target && chars.length > 0) {
@@ -76,7 +109,7 @@ export const MentionExample = (handle : SlateEditorHandle) => {
     return (
         <Slate
             editor={editor}
-            value={initialValue}
+            value={editorInitialValue}
             onChange={() => {
                 const { selection } = editor
 
@@ -103,6 +136,10 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                 setTarget(null)
             }}
         >
+            {/*Test button*/}
+            {/*<div>*/}
+            {/*    <button onClick={onMagicButtonClick} style={{background: "red"}}>Does Magic!</button>*/}
+            {/*</div>*/}
             <Editable
                 renderElement={renderElement}
                 onKeyDown={onKeyDown}
@@ -202,7 +239,12 @@ const Mention = ({ attributes, children, element }) => {
     )
 }
 
-const initialValue: Descendant[] = [
+const editorEmptyValue: Descendant[] = [{
+    type: 'paragraph',
+    children: [{ text: '' }],
+}]
+
+const editorInitialValue: Descendant[] = [
     {
         type: 'paragraph',
         children: [

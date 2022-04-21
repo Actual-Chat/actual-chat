@@ -1,5 +1,7 @@
 export class SlateEditorHandle {
-    public getText = () => {
-        return "not implemented"
-    }
+    public getText = () : string => ""
+
+    public clearText = () : void => {}
+
+    public onPost = (text : string) => {}
 }

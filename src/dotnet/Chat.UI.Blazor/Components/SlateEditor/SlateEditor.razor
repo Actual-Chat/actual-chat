@@ -14,6 +14,8 @@
 
     [Parameter]
     public string Class { get; set; } = "";
+    [Parameter]
+    public EventCallback<string> OnPost { get; set; }
 
     public async ValueTask DisposeAsync()
     {
@@ -36,4 +38,12 @@
     public async Task<string> GetText()
         => await JSRef.InvokeAsync<string>("getText");
 
+    [JSInvokable]
+    public async Task Post(string? text = null) {
+        await OnPost.InvokeAsync(text);
+        await Clear();
+    }
+
+    public async Task Clear()
+        => await JSRef.InvokeAsync<string>("clearText");
 }

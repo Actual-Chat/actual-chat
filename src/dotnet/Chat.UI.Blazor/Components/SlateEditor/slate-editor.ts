@@ -16,6 +16,7 @@ export class SlateEditor {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
         this.editorHandle = new SlateEditorHandle();
+        this.editorHandle.onPost = this.onPost;
 
         const slateEditor = () => MentionExample(this.editorHandle)
         const root = ReactDOM.createRoot(editorDiv);
@@ -24,6 +25,12 @@ export class SlateEditor {
 
     public getText = () =>
         this.editorHandle.getText();
+
+    private onPost = () =>
+        this.blazorRef.invokeMethodAsync("Post", this.getText());
+
+    public clearText = () =>
+        this.editorHandle.clearText();
 
     private dispose() {
     }
