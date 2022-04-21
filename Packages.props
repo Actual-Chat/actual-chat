@@ -80,6 +80,7 @@
     <PackageReference Update="Newtonsoft.Json" Version="13.0.*"/>
     <PackageReference Update="Pomelo.EntityFrameworkCore.MySql" Version="$(EntityFrameworkCoreMySqlVersion)"/>
     <PackageReference Update="RestEase" Version="1.5.*"/>
+    <PackageReference Update="Pidgin" Version="3.1.0"/>
     <PackageReference Update="Pipelines.Sockets.Unofficial" Version="2.2.2"/>
     <PackageReference Update="StackExchange.Redis" Version="$(RedisVersion)"/>
     <PackageReference Update="Stl" Version="$(StlFusionVersion)"/>
