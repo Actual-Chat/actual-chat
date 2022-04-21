@@ -1,8 +1,5 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import { Square } from './Square';
-import { LikeButton } from './like-button';
-import { SlateComponent } from './slate-component';
 import { MentionExample } from './mentions';
 import { SlateEditorHandle } from './slate-editor-handle';
 
@@ -20,13 +17,9 @@ export class SlateEditor {
         this.blazorRef = blazorRef;
         this.editorHandle = new SlateEditorHandle();
 
-        const e = React.createElement;
+        const slateEditor = () => MentionExample(this.editorHandle)
         const root = ReactDOM.createRoot(editorDiv);
-        //root.render(e(Square, { value : "xXx" }, null));
-        //root.render(e(SlateComponent));
-        const mentionExampleWrapped = () =>
-            MentionExample(this.editorHandle)
-        root.render(e(mentionExampleWrapped));
+        root.render(React.createElement(slateEditor));
     }
 
     public getText = () =>
