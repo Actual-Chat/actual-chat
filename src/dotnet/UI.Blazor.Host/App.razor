@@ -13,7 +13,7 @@
         <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
             <Found>
                 <CascadingValue Value="@context">
-                    <RouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
+                    <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
                 </CascadingValue>
             </Found>
             <NotFound>

@@ -1,6 +1,9 @@
 using System.Net;
 using System.Reflection;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Authorization;
+using ActualChat.Users.UI.Blazor;
+using ActualChat.Users.UI.Blazor.Authorization;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -47,7 +50,9 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
         // and since we don't copy it to local wwwroot,
         // we need to find Client's wwwroot in bin/(Debug/Release) folder
         // and set it as this server's content root.
-        Env.WebRootPath = AppPathResolver.GetWebRootPath();
+ #pragma warning disable IL2026
+        Env.WebRootPath =  Cfg.GetValue<string?>("Hosting:WebRootPath").NullIfEmpty() ?? AppPathResolver.GetWebRootPath();
+ #pragma warning restore IL2026
         Env.ContentRootPath = AppPathResolver.GetContentRootPath();
         Env.WebRootFileProvider = new PhysicalFileProvider(Env.WebRootPath);
         Env.ContentRootFileProvider = new PhysicalFileProvider(Env.ContentRootPath);
@@ -158,7 +163,9 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromSeconds(15);
             o.DetailedErrors = true;
         });
-        fusionAuth.AddBlazor(_ => { }); // Must follow services.AddServerSideBlazor()!
+        fusionAuth.AddBlazor(o => {
+            o.AddPolicy(KnownPolicies.IsUserActive, builder => builder.AddRequirements(new IsUserActiveRequirement()));
+        }); // Must follow services.AddServerSideBlazor()!
 
         // Swagger & debug tools
         services.AddSwaggerGen(c => {

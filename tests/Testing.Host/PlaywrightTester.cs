@@ -10,7 +10,7 @@ public sealed class PlaywrightTester : WebClientTester
 
     public PlaywrightTester(AppHost appHost, IServiceProvider? clientServices = null)
         : base(appHost, clientServices)
-    { }
+    {}
 
     public override async ValueTask DisposeAsync()
     {
@@ -52,11 +52,11 @@ public sealed class PlaywrightTester : WebClientTester
         return context;
     }
 
-    public async Task<IPage> NewPage(string relativeUri = "")
+    public async Task<(IPage page, IResponse? response)> NewPage(string relativeUri = "")
     {
         var context = await NewContext();
         var page = await context.NewPageAsync();
-        await page.GotoAsync(UriMapper.ToAbsolute(relativeUri).ToString());
-        return page;
+        var response = await page.GotoAsync(UriMapper.ToAbsolute(relativeUri).ToString());
+        return (page, response);
     }
 }

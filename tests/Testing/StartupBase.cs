@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Stl.IO;
@@ -16,9 +15,10 @@ public class StartupBase
             cfg.Sources.Clear();
             cfg.SetBasePath(dir);
             cfg.AddJsonFile("testsettings.json", false, false);
-            if (IsRunningInContainer())
+            if (EnvExt.IsRunningInContainer())
                 cfg.AddJsonFile("testsettings.docker.json", false, false);
             cfg.AddJsonFile("testsettings.local.json", true, false);
+            cfg.AddEnvironmentVariables();
         })
         .ConfigureLogging(log => log.SetMinimumLevel(LogLevel.Trace));
 
@@ -44,14 +44,11 @@ public class StartupBase
         if (string.IsNullOrEmpty(settings.TempDirectory))
             settings.TempDirectory = GetBaseDirectory() & "tmp";
 
-        settings.IsRunningInContainer = IsRunningInContainer();
+        settings.IsRunningInContainer = EnvExt.IsRunningInContainer();
     }
 
     private static FilePath GetBaseDirectory()
         => FilePath.New(typeof(StartupBase).Assembly.Location ?? Environment.CurrentDirectory).DirectoryPath;
-
-    protected virtual bool IsRunningInContainer() =>
-        Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != null;
 
     protected virtual void InitializeSettings(TestSettings settings) { }
 }

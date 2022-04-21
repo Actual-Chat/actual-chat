@@ -1,4 +1,5 @@
 ﻿@page "/join/{InviteCode}"
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 <MainHeader>Joining via invite code</MainHeader>
 

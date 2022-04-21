@@ -2,6 +2,13 @@ using RestEase;
 
 namespace ActualChat.Users.Client;
 
+[BasePath("authz")]
+public interface IAuthzClientDef
+{
+    [Get(nameof(IsActive))]
+    Task<UserProfile?> IsActive(Session session, CancellationToken cancellationToken);
+}
+
 [BasePath("userProfiles")]
 public interface IUserProfilesClientDef
 {

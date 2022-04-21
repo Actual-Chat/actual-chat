@@ -1,5 +1,4 @@
 {
-  "RedisConfiguration": "localhost",
   "RedisSettings": {
     "DefaultRedis": "localhost|test_{instance.}{context}"
   },

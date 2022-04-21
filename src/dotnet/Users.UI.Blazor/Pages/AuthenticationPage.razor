@@ -103,15 +103,16 @@
 }
 
 @if (user.IsAuthenticated) {
-    <button @onclick="_ => AuthHelper.SignOut()">Sign out</button>
-    <button @onclick="_ => AuthHelper.SignOutEverywhere()">Sign out everywhere</button>
-    @if (unusedAuthSchemas.Length != 0) {
-        <span> or add account: </span>
-        @foreach (var (name, displayName) in unusedAuthSchemas) {
-            <button @onclick="_ => AuthHelper.SignIn(name)">@displayName</button>
-        }
-    }
-
+    <div>
+        <button @onclick="_ => AuthHelper.SignOut()">Sign out</button>
+            <button @onclick="_ => AuthHelper.SignOutEverywhere()">Sign out everywhere</button>
+            @if (unusedAuthSchemas.Length != 0) {
+                <span> or add account: </span>
+                @foreach (var (name, displayName) in unusedAuthSchemas) {
+                    <button @onclick="_ => AuthHelper.SignIn(name)">@displayName</button>
+                }
+            }
+    </div>
 } else {
     <SignInDropdown/>
 }
@@ -137,9 +138,8 @@
     protected override ComputedState<(UserProfile UserProfile, List<SessionModel> Sessions)>.Options GetStateOptions()
         => new() { InitialOutput = (UserProfile.Guest, new List<SessionModel>()) };
 
-    protected override async Task<(UserProfile UserProfile, List<SessionModel> Sessions)> ComputeState(CancellationToken cancellationToken)
-    {
-        var userProfile = await UserProfiles.Get(Session, cancellationToken) ?? throw new Exception("User profile is not available");
+    protected override async Task<(UserProfile UserProfile, List<SessionModel> Sessions)> ComputeState(CancellationToken cancellationToken) {
+        var userProfile = await UserProfiles.Get(Session, cancellationToken) ?? UserProfile.Guest;
         var sessions = await Auth.GetUserSessions(Session, cancellationToken).ConfigureAwait(false);
         var result = new List<SessionModel>();
 

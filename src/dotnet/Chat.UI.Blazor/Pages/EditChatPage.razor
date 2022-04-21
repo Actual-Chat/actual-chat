@@ -1,5 +1,6 @@
 @page "/chat/{ChatId}/edit"
 @using System.ComponentModel.DataAnnotations
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 @if (_chat != null) {
     <MainHeader><b>"@(_chat.Title)"</b> chat properties</MainHeader>

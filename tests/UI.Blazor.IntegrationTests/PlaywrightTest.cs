@@ -23,7 +23,7 @@ public class PlaywrightTest : AppHostTestBase
         using var appHost = await TestHostFactory.NewAppHost().ConfigureAwait(false);
         using var tester = appHost.NewPlaywrightTester();
         var user = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
-        var page = await tester.NewPage("chat/the-actual-one").ConfigureAwait(false);
+        var (page, _) = await tester.NewPage("chat/the-actual-one").ConfigureAwait(false);
         await page.WaitForLoadStateAsync(LoadState.Load,
             new PageWaitForLoadStateOptions() { Timeout = timeout }).ConfigureAwait(false);
         // TODO: wait for server-side blazor loading, something like page.WaitForWebSocketAsync
@@ -76,7 +76,7 @@ public class PlaywrightTest : AppHostTestBase
         using var appHost = await TestHostFactory.NewAppHost();
         using var tester = appHost.NewPlaywrightTester();
         var user = await tester.SignIn(new User("", "ChatPageTester"));
-        var page = await tester.NewPage("chat/the-actual-one");
+        var (page, _) = await tester.NewPage("chat/the-actual-one");
         await Task.Delay(1000);
         user.Id.Value.Should().NotBeNullOrEmpty();
         user.Name.Should().Be("ChatPageTester");
