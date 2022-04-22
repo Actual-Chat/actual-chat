@@ -228,3 +228,11 @@ button.off,
 .menu-item.context-menu-item {
     @apply hover:bg-primary;
 }
+
+.btn.btn-square.audio-recorder-toggle {
+    @apply rounded-2xl;
+}
+
+.btn.btn-square.chat-language-toggle {
+    @apply rounded-2xl;
+}

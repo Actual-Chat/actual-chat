@@ -46,5 +46,5 @@
 }
 
 .recorder-buttons {
-    @apply flex-none self-end justify-end items-stretch rounded-xl bg-accent ml-3;
+    @apply flex-none self-end justify-end items-stretch rounded-2xl bg-accent ml-3;
 }
