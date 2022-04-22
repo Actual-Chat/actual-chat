@@ -10,7 +10,7 @@ public class DbUserProfileConverter : DbEntityConverter<UsersDbContext, DbUserPr
 
     public override DbUserProfile NewEntity() => new ();
 
-    public override UserProfile NewModel() => new ("", "", new User(""));
+    public override UserProfile NewModel() => new ("", new User(""));
 
     public override void UpdateEntity(UserProfile source, DbUserProfile target)
     {
