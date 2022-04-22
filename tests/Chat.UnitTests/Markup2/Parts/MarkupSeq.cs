@@ -5,6 +5,7 @@ namespace ActualChat.Chat.UnitTests.Markup2;
 
 public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
 {
+    public MarkupSeq(params Markup[] items) : this(ImmutableArray.Create(items)) { }
     public MarkupSeq() : this(ImmutableArray<Markup>.Empty) { }
 
     public override string ToPlainText()
