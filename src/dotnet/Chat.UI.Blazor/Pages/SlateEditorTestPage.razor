@@ -2,14 +2,19 @@
 
 <MainHeader>Slate Editor Test Page</MainHeader>
 
-<SlateEditor @ref="_editor" Class="bg-gray-200 min-h-[50px]"
-             OnPost="OnPost" />
+<PageWithHeaderAndFooter>
+    <Body>
+        <div class="mt-2">
+            <Button OnClick="OnGetTextClicked">Get text</Button>
+        </div>
 
-<div class="mt-2">
-    <Button OnClick="OnGetTextClicked">Get text</Button>
-</div>
-
-<div class="mt-2 bg-purple-200 min-h-[50px]">@_text</div>
+        <div class="mt-2 bg-purple-200 min-h-[50px]">@_text</div>
+    </Body>
+    <Footer>
+        <SlateEditor @ref="_editor" Class="bg-gray-200 min-h-[50px]"
+                     OnPost="OnPost" />
+    </Footer>
+</PageWithHeaderAndFooter>
 
 @code{
     private SlateEditor? _editor;
