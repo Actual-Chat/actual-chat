@@ -118,11 +118,9 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
 
         var userAuthor = await UserAuthorsBackend.Get(user.Id, false, cancellationToken).ConfigureAwait(false);
         var userProfile = _converter.ToModel(dbUserProfile) with {
-            Name = user.Name,
             User = user,
             Picture = userAuthor?.Picture.NullIfEmpty() ?? GetDefaultPicture(user),
             IsAdmin = IsAdmin(user),
-            IsAnonymous = false,
         };
         return userProfile;
     }
