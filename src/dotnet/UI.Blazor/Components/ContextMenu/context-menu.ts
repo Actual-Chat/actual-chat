@@ -6,7 +6,6 @@ export class ContextMenu {
     private btn: HTMLButtonElement;
     private topLimit: number = 70;
     private bottomLimit: number;
-    private menuHeight: number;
 
     public static create(mainDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ContextMenu {
         return new ContextMenu(mainDiv, blazorRef);
@@ -17,6 +16,9 @@ export class ContextMenu {
         this.mainDiv = mainDiv;
         this.btn = this.mainDiv.querySelector('.context-button');
 
+        window.addEventListener('mouseup', this.mouseListener);
+        document.addEventListener('keydown', this.escapeListener);
+
         let showObserver = new MutationObserver(mutations => {
             for(let mutation of mutations) {
                 for(let node of mutation.addedNodes) {
@@ -25,7 +27,7 @@ export class ContextMenu {
                         if (elem.classList.contains('context-menu')) {
                             this.menu = elem;
                             this.alignMenuVertically(this.menu);
-                            this.menuOpenedButtonStyle(true);
+                            this.menuOpenedStyle(true);
                         }
                     }
                 }
@@ -39,7 +41,7 @@ export class ContextMenu {
                         let elem = node as HTMLDivElement;
                         if (elem.classList.contains('context-menu')) {
                             this.menu = null;
-                            this.menuOpenedButtonStyle(false);
+                            this.menuOpenedStyle(false);
                         }
                     }
                 }
@@ -49,15 +51,24 @@ export class ContextMenu {
         hideObserver.observe(this.mainDiv, {childList: true, subtree: true});
     }
 
-    private menuOpenedButtonStyle(opened: boolean) {
+    private menuOpenedStyle(opened: boolean) {
         const btn = this.btn;
+        const menu = this.menu;
         if (opened) {
-            btn.classList.remove('rounded-l-md');
-            btn.classList.add('bg-accent');
+            const menuSize = menu.getBoundingClientRect();
+            const btnSize = btn.getBoundingClientRect();
+            const sameBottom = menuSize.bottom == btnSize.bottom;
+            const sameTop = menuSize.top == btnSize.top;
+            btn.classList.remove('rounded-l-lg');
+            btn.classList.remove('border-l');
+            if (sameTop)
+                menu.classList.remove('rounded-tr-md');
+            if (sameBottom)
+                menu.classList.remove('rounded-br-md');
         }
         else {
-            btn.classList.add('rounded-l-md');
-            btn.classList.remove('bg-accent');
+            btn.classList.add('rounded-l-lg');
+            btn.classList.add('border-l');
         }
     }
 
@@ -71,7 +82,31 @@ export class ContextMenu {
         }
     }
 
+    private mouseListener = ((event: MouseEvent & { target: Element; }) => {
+        const { menu, btn, mainDiv } = this;
+        if (btn.contains(event.target))
+            return;
+        if (!mainDiv.contains(event.target) && menu != null) {
+            void this.hideContent();
+        }
+    });
+
+    private escapeListener = ((event: KeyboardEvent & { target: Element; }) => {
+        if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
+            const content = this.menu;
+            if (content != null) {
+                void this.hideContent();
+            }
+        }
+    });
+
+    private async hideContent(): Promise<void> {
+        await this.blazorRef.invokeMethodAsync('HideContent');
+    }
+
     public dispose() {
+        window.removeEventListener('mouseup', this.mouseListener);
+        document.removeEventListener('keydown', this.escapeListener);
         this.blazorRef = null;
         this.menu = null;
         this.mainDiv = null;

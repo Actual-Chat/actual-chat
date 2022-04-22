@@ -218,7 +218,7 @@ button.off,
 }
 
 .context-button.hidden-btn {
-    @apply invisible z-10 absolute;
+    @apply invisible z-20 absolute;
 }
 
 .context-button:hover .context-button-child {
@@ -226,5 +226,5 @@ button.off,
 }
 
 .menu-item.context-menu-item {
-    @apply hover:bg-secondary;
+    @apply hover:bg-primary;
 }

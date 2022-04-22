@@ -32,8 +32,8 @@
     private bool _showContextMenu;
 
     private ElementReference MenuRef { get; set; }
-    private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<IContextMenuBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; } = null!;
+    private DotNetObjectReference<IContextMenuBackend>? BlazorRef { get; set; } = null!;
 
     private void OnClick() {
         _showContextMenu = !_showContextMenu;
@@ -41,9 +41,25 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (JSRef != null!)
-            await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
-        BlazorRef?.Dispose();
+        if (JSRef != null) {
+            try {
+                await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
+                await JSRef.DisposeAsync().ConfigureAwait(true);
+            }
+            catch (JSDisconnectedException) { }
+            JSRef = null;
+        }
+        if (BlazorRef != null) {
+            BlazorRef.Dispose();
+            BlazorRef = null;
+        }
+    }
+
+    [JSInvokable]
+    public Task HideContent() {
+        _showContextMenu = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
