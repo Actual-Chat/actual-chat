@@ -86,8 +86,8 @@ internal static class Program
 
         Target("watch", DependsOn("clean-dist"), async () => {
 
-            if (Environment.OSVersion.Platform != PlatformID.Win32NT) {
-                throw new WithoutStackException("Use dotnet watch + webpack watch without build system");
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + webpack watch without build system");
             }
 
             var npm = TryFindCommandPath("npm")
