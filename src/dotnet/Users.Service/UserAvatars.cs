@@ -96,12 +96,8 @@ public class UserAvatars : IUserAvatars
         if (Computed.IsInvalidating())
             return;
 
-        var session = command.Session;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        //user.MustBeAuthenticated();
-
         var avatarId = command.AvatarId;
-        var avatar = await Get(session, avatarId, cancellationToken).ConfigureAwait(false);
+        var avatar = await Get(command.Session, avatarId, cancellationToken).ConfigureAwait(false);
         if (avatar == null)
             throw new InvalidOperationException("Invalid avatar id");
 
