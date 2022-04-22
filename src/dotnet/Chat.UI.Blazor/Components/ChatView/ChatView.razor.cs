@@ -25,6 +25,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     public Chat Chat { get; set; } = null!;
 
     private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
+
+    private IMutableState<int> UnreadEntryCountState { get; set; } = null!;
     private IMutableState<long> LastReadEntryIdState { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeysState { get; set; } = null!;
 
@@ -36,14 +38,18 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (VisibleKeysState == null)
             try {
-                LastReadEntryIdState = StateFactory.NewMutable(0L);
+                UnreadEntryCountState = StateFactory.NewMutable(0);
                 VisibleKeysState = StateFactory.NewMutable(new List<string>());
                 _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
+                _ = BackgroundTask.Run(() => MonitorNewEntries(_disposeToken.Token), _disposeToken.Token);
 
                 var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
                     .ConfigureAwait(true);
-                if (readPosition.HasValue && LastReadEntryIdState.Value == 0)
-                    LastReadEntryIdState.Value = readPosition.Value;
+                LastReadEntryIdState = StateFactory.NewMutable(readPosition ?? 0L);
+                if (readPosition.HasValue) {
+                    var idRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token).ConfigureAwait(true);
+                    UnreadEntryCountState.Value = (int)(idRange.End - readPosition.Value);
+                }
             }
             finally {
                 _initializeTaskSource.SetResult(Unit.Default);
@@ -58,8 +64,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var clock = Clocks.CoarseCpuClock;
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await clock.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(true);
                 await VisibleKeysState.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
+                await clock.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(true);
                 var visibleKeys = await VisibleKeysState.Use(cancellationToken).ConfigureAwait(true);
                 if (visibleKeys.Count == 0)
                     continue;
@@ -83,6 +89,21 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             }
     }
 
+    private async Task MonitorNewEntries(CancellationToken cancellationToken)
+    {
+        var chatId = Chat.Id.Value;
+        var chatReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryType.Text);
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
+            .ConfigureAwait(true);
+        var newEntries = chatReader.ReadAllWaitingForNew(chatIdRange.End, cancellationToken);
+        var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
+        await foreach (var entry in newEntries.ConfigureAwait(true))
+            if (entry.AuthorId == currentAuthor?.Id)
+                LastReadEntryIdState.Value = entry.Id;
+            else
+                LastReadEntryIdState.Value++;
+    }
+
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
@@ -94,7 +115,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var chatId = chat.Id;
         var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(true);
-        var lastReadEntryId = await LastReadEntryIdState.Use(cancellationToken).ConfigureAwait(true);
+        // do not add as dependency
+        var lastReadEntryId = LastReadEntryIdState.Value;
         var mustScrollToLastReadPosition = query.IsNone && lastReadEntryId != 0;
         var queryRange = mustScrollToLastReadPosition
             ? IdTileStack.Layers[0].GetTile(lastReadEntryId).Range.Expand(IdTileStack.Layers[1].TileSize)

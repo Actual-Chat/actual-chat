@@ -7,7 +7,7 @@ const UpdateClientSideStateTimeout: number = 320;
 const RenderToUpdateClientSideStateDelay: number = 20;
 const SizeEpsilon: number = 1;
 const ItemSizeEpsilon: number = 1;
-const MoveSizeEpsilon: number = 1;
+const MoveSizeEpsilon: number = 28;
 const EdgeEpsilon: number = 4;
 
 
@@ -187,19 +187,20 @@ export class VirtualList {
             this._scrollTopPivotRef = null;
             this._scrollTopPivotOffset = null;
 
+            if (rs.scrollTop != null)
+                await delayAsync(RenderToUpdateClientSideStateDelay);
+        } finally {
+            this._isRendering = false;
             if (rs.renderIndex < this._updateClientSideStateRenderIndex) {
                 // This is an outdated update already
                 if (this._debugMode)
                     console.log(`${LogScope}.onRenderEnd skips updateClientSideStateDebounced:` +
                                     ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
-                return; // such an update will be ignored anyway
+                // such an update will be ignored anyway
             }
-
-            if (rs.scrollTop != null)
-                await delayAsync(RenderToUpdateClientSideStateDelay);
-            this.updateClientSideStateDebounced(true);
-        } finally {
-            this._isRendering = false;
+            else {
+                this.updateClientSideStateDebounced(true);
+            }
         }
     }
 
@@ -216,9 +217,9 @@ export class VirtualList {
         } else {
             if (this._updateClientSideStateTimeout != null)
                 return;
-            this._updateClientSideStateTimeout = self.setTimeout(() => {
+            this._updateClientSideStateTimeout = self.setTimeout(async () => {
                 this._updateClientSideStateTimeout = null;
-                void this.updateClientSideState();
+                await this.updateClientSideState();
             }, UpdateClientSideStateTimeout);
         }
     }
@@ -226,8 +227,10 @@ export class VirtualList {
     private async updateClientSideState(): Promise<void> {
         const queue = this._updateClientSideStateTasks;
         const lastTask = queue.length > 0 ? queue[queue.length - 1] : null;
-        if (queue.length >= 2)
-            return lastTask;
+        if (queue.length >= 2) {
+            await lastTask;
+            return;
+        }
         const newTask = (async () => {
             try {
                 if (lastTask != null)

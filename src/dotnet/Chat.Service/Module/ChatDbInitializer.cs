@@ -172,7 +172,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Content = content ?? GetRandomSentence(rnd, 30),
+                Content = $"{id} {content ?? GetRandomSentence(rnd, 30)}",
                 AuthorId = dbAuthor.Id,
             };
             dbContext.Add(textEntry);

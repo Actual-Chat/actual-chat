@@ -36,6 +36,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
+            && IsFirstUnread == other.IsFirstUnread
             && Attachments.SequenceEqual(other.Attachments);
     }
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
