@@ -1,4 +1,3 @@
-using ActualChat.Users.Module;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 
@@ -8,14 +7,9 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
 {
     public new IDbEntityConverter<DbUser, User> UserConverter { get; }
 
-    private readonly UsersSettings _usersOptions;
-
-    public DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services, UsersSettings usersOptions)
+    public DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
         : base(options, services)
-    {
-        _usersOptions = usersOptions;
-        UserConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
-    }
+        => UserConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
 
     public override async Task<DbUser> Create(
         UsersDbContext dbContext,
