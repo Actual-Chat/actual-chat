@@ -46,4 +46,23 @@
 
     public async Task Clear()
         => await JSRef.InvokeAsync<string>("clearText");
+
+    [JSInvokable]
+    public async Task MentionCmd(string? cmd = null) {
+        if (cmd.IsNullOrEmpty())
+            return;
+        switch (cmd) {
+            case "insert": {
+                await InsertMention(new Mention("xXx", "Vasya Pupkin"));
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    private async Task InsertMention(Mention mention)
+        => await JSRef.InvokeVoidAsync("insertMention", mention);
+
+    public record Mention(string Id, string Name);
 }

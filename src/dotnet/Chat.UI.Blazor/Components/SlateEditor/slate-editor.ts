@@ -17,6 +17,7 @@ export class SlateEditor {
         this.blazorRef = blazorRef;
         this.editorHandle = new SlateEditorHandle();
         this.editorHandle.onPost = this.onPost;
+        this.editorHandle.onMention = this.onMention;
 
         const slateEditor = () => MentionExample(this.editorHandle)
         const root = ReactDOM.createRoot(editorDiv);
@@ -31,6 +32,12 @@ export class SlateEditor {
 
     public clearText = () =>
         this.editorHandle.clearText();
+
+    private onMention = (cmd : string) : any =>
+        this.blazorRef.invokeMethodAsync("MentionCmd", cmd);
+
+    public insertMention = (mention : any) =>
+        this.editorHandle.insertMention(mention);
 
     private dispose() {
     }

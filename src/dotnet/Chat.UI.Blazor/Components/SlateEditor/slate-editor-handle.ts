@@ -4,4 +4,8 @@ export class SlateEditorHandle {
     public clearText = () : void => {}
 
     public onPost = (text : string) => {}
+
+    public onMention = (cmd : string) => {}
+
+    public insertMention = (mention : any) => {}
 }

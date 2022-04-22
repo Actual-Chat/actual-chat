@@ -46,6 +46,13 @@ export const MentionExample = (handle : SlateEditorHandle) => {
         resetEditor()
     }
 
+    handle.insertMention = (mention : any) => {
+        const { id, name } = mention;
+        Transforms.select(editor, target)
+        insertMention(editor, name)
+        setTarget(null)
+    }
+
     const chars = CHARACTERS.filter(c =>
                                         c.toLowerCase().startsWith(search.toLowerCase())
     ).slice(0, 10)
@@ -58,22 +65,33 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                         event.preventDefault()
                         const prevIndex = index >= chars.length - 1 ? 0 : index + 1
                         setIndex(prevIndex)
+                        handle.onMention("moveDown")
                         break
                     case 'ArrowUp':
                         event.preventDefault()
                         const nextIndex = index <= 0 ? chars.length - 1 : index - 1
                         setIndex(nextIndex)
+                        handle.onMention("moveUp")
                         break
                     case 'Tab':
                     case 'Enter':
                         event.preventDefault()
-                        Transforms.select(editor, target)
-                        insertMention(editor, chars[index])
-                        setTarget(null)
+                        debugger
+                        //Transforms.select(editor, target)
+                        handle.onMention("insert");
+                        // const mentionInfo = handle.onMention("get")
+                        // if (mentionInfo) {
+                        //     const { Id, Name } = mentionInfo;
+                        //     //insertMention(editor, chars[index])
+                        //     debugger
+                        //     insertMention(editor, Name)
+                        // }
+                        //setTarget(null)
                         break
                     case 'Escape':
                         event.preventDefault()
                         setTarget(null)
+                        handle.onMention("close")
                         break
                 }
             }
@@ -129,6 +147,7 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                         setTarget(beforeRange)
                         setSearch(beforeMatch[1])
                         setIndex(0)
+                        handle.onMention("list:" + beforeMatch[1])
                         return
                     }
                 }
