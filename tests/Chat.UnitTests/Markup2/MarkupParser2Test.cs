@@ -68,7 +68,7 @@ public class MarkupParser2Test : TestBase
     [Fact]
     public void MixedTest()
     {
-        var m = Parse<TextMarkupSeq>("***bi*** `a``b` *i* **b**", out _);
+        var m = Parse<MarkupSeq>("***bi*** `a``b` *i* **b** *", out _);
     }
 
     // Helpers
