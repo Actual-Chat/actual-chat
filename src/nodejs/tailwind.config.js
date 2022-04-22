@@ -190,6 +190,7 @@ module.exports = {
       spin: 'spin 1s linear infinite',
       ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       bounce: 'bounce 1s infinite',
       'instant-display': 'display-element-from-left 0s',
       'display-from-left': 'display-element-from-left 150ms ease-in-out',
@@ -659,6 +660,11 @@ module.exports = {
       pulse: {
         '50%': {
           opacity: '.5',
+        },
+      },
+      pulse: {
+        '50%': {
+          opacity: '.1',
         },
       },
       bounce: {
