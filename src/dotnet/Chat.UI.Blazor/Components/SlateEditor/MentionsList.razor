@@ -9,7 +9,7 @@
     var items = view.Items;
     var currentIndex = view.CurrentIndex;
     var i = 0;
-    <div class="p-1 border rounded-md overflow-hidden max-h-96 w-full">
+    <div class="p-1 border rounded-md overflow-y-auto max-h-96 w-full">
         @foreach (var item in items) {
             var iLocal = i;
             var isSelected = i++ == currentIndex;
