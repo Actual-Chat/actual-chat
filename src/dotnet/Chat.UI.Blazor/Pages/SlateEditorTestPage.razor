@@ -12,14 +12,14 @@
     </Body>
     <Footer>
         <div class="flex-y">
-            <div class="w-full">
-                <div class="bg-red-500 h-20 w-full">
-                    Mentions list should float above
+            <MentionsStateProvider>
+                <div class="w-full mb-1">
+                    <MentionsList/>
                 </div>
-            </div>
 
-            <SlateEditor @ref="_editor" Class="bg-gray-200 min-h-[50px]"
-                         OnPost="OnPost"/>
+                <SlateEditor @ref="_editor" Class="bg-gray-200 min-h-[50px]"
+                             OnPost="OnPost"/>
+            </MentionsStateProvider>
         </div>
     </Footer>
 </PageWithHeaderAndFooter>

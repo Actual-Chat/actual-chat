@@ -16,6 +16,15 @@
     public string Class { get; set; } = "";
     [Parameter]
     public EventCallback<string> OnPost { get; set; }
+    [CascadingParameter]
+    public MentionsState? MentionsState { get; set; }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        var state = MentionsState;
+        if (state != null)
+            state.InsertRequested += OnInsertRequested;
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -48,21 +57,40 @@
         => await JSRef.InvokeAsync<string>("clearText");
 
     [JSInvokable]
-    public async Task MentionCmd(string? cmd = null) {
-        if (cmd.IsNullOrEmpty())
-            return;
+    public Task MentionCommand(string cmd, string args) {
+        var state = MentionsState;
+        if (state == null)
+            return Task.CompletedTask;
         switch (cmd) {
             case "insert": {
-                await InsertMention(new Mention("xXx", "Vasya Pupkin"));
+                state.Insert();
                 break;
             }
-            default:
+            case "moveUp": {
+                state.MoveUp();
                 break;
+            }
+            case "moveDown": {
+                state.MoveDown();
+                break;
+            }
+            case "close": {
+                state.HideMentions();
+                break;
+            }
+            case "show": {
+                state.ShowMentions(args);
+                break;
+            }
         }
+        return Task.CompletedTask;
+    }
+
+    private void OnInsertRequested(Mention mention) {
+        MentionsState!.HideMentions();
+        _ = InsertMention(mention);
     }
 
     private async Task InsertMention(Mention mention)
         => await JSRef.InvokeVoidAsync("insertMention", mention);
-
-    public record Mention(string Id, string Name);
 }

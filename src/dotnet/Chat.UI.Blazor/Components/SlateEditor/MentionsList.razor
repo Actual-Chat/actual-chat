@@ -1,0 +1,49 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<MentionCollectionView?>
+
+@{
+    var view = State.ValueOrDefault;
+}
+
+@if (view != null && view.Items.Length > 0) {
+    var items = view.Items;
+    var currentIndex = view.CurrentIndex;
+    var i = 0;
+    <div class="p-1 border rounded-md overflow-hidden max-h-96 w-full">
+        @foreach (var item in items) {
+            var isSelected = i++ == currentIndex;
+            var cls = isSelected ? "bg-blue-200" : "";
+            <div class="@cls"
+                 @onmouseover="@(() => OnMouseOver(i))"
+                 @onclick="@(() => OnClick(item))">
+                @item.Name
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    public MentionsState MentionsState { get; set; } = null!;
+
+    protected override ComputedState<MentionCollectionView?>.Options GetStateOptions() {
+        return new ComputedState<MentionCollectionView?>.Options {
+            UpdateDelayer = UpdateDelayer.ZeroDelay
+        };
+    }
+
+    protected override async Task<MentionCollectionView?> ComputeState(CancellationToken cancellationToken) {
+        var view = await MentionsState.GetView();
+        if (view != null)
+            view.CurrentIndexChange += () => StateHasChanged();
+        return view;
+    }
+
+    private void OnMouseOver(int i) {
+        State.ValueOrDefault?.SetCurrentIndex(i);
+    }
+
+    private void OnClick(Mention mention) {
+        MentionsState.Insert(mention);
+    }
+}

@@ -1,0 +1,12 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<CascadingValue Value="@Value" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Inject]
+    private MentionsState Value { get; set; } = null!;
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = null!;
+}
