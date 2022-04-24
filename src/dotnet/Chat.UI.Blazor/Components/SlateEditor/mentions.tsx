@@ -111,11 +111,18 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                 const { selection } = editor
 
                 if (selection && Range.isCollapsed(selection)) {
+                    debugger
                     const [start] = Range.edges(selection)
                     const wordBefore = Editor.before(editor, start, { unit: 'word' })
-                    const before2 = wordBefore && Editor.before(editor, wordBefore, { distance: 2 })
-                    const before2Range = before2 && Editor.range(editor, before2, start)
-                    const beforeText = before2Range && Editor.string(editor, before2Range)
+                    const before1 = wordBefore && Editor.before(editor, wordBefore)
+                    const before1Range = before1
+                                         ? Editor.range(editor, before1, start)
+                                         : wordBefore && Editor.range(editor, wordBefore, start)
+                    const before2 = before1 && Editor.before(editor, before1)
+                    const beforeTextRange = before2
+                                            ? Editor.range(editor, before2, start)
+                                            :before1Range;
+                    const beforeText = beforeTextRange && Editor.string(editor, beforeTextRange)
                     const beforeMatch = beforeText && beforeText.match(/(^|\s)@(\w*)$/)
                     const after = Editor.after(editor, start)
                     const afterRange = Editor.range(editor, start, after)
@@ -123,8 +130,6 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                     const afterMatch = afterText.match(/^(\s|$)/)
 
                     if (beforeMatch && afterMatch) {
-                        const before1 = Editor.before(editor, wordBefore)
-                        const before1Range = Editor.range(editor, before1, start)
                         setSearch(beforeMatch[2])
                         setTarget(before1Range)
                         return
