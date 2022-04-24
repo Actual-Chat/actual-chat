@@ -2,7 +2,15 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 internal static class MentionData
 {
-    public static readonly string[] Candidates = new[] {
+    static MentionData()
+    {
+        var random = new Random();
+        Candidates = _names.Select(c => new Mention(c.Replace(' ', '-') + random.Next(1000), c)).ToArray();
+    }
+
+    public static Mention[] Candidates { get; }
+
+    private static readonly string[] _names = new[] {
         "Aayla Secura",
         "Adi Gallia",
         "Admiral Dodd Rancit",

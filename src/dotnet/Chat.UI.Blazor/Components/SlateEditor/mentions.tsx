@@ -11,7 +11,7 @@ import {
 } from 'slate-react'
 
 import { Portal } from './components'
-import { MentionElement } from './custom-types'
+import { CustomEditor, MentionElement } from './custom-types';
 import { SlateEditorHandle } from './slate-editor-handle';
 import { serialize } from './serializer';
 
@@ -45,9 +45,10 @@ export const MentionExample = (handle : SlateEditorHandle) => {
     }
 
     handle.insertMention = (mention : any) => {
+        debugger
         const { id, name } = mention;
         Transforms.select(editor, target)
-        insertMention(editor, name)
+        insertMention(editor, id, name)
         setTarget(null)
     }
 
@@ -160,10 +161,11 @@ const withMentions = editor => {
     return editor
 }
 
-const insertMention = (editor, character) => {
+const insertMention = (editor : CustomEditor, id : string, name : string) => {
     const mention: MentionElement = {
         type: 'mention',
-        character,
+        mentionId: id,
+        name: name,
         children: [{ text: '' }],
     }
     Transforms.insertNodes(editor, mention)
@@ -187,7 +189,7 @@ const Mention = ({ attributes, children, element }) => {
         <span
             {...attributes}
             contentEditable={false}
-            data-cy={`mention-${element.character.replace(' ', '-')}`}
+            data-cy={`mention-${element.mentionId}`}
             style={{
                 padding: '3px 3px 2px',
                 margin: '0 1px',
@@ -198,9 +200,8 @@ const Mention = ({ attributes, children, element }) => {
                 fontSize: '0.9em',
                 boxShadow: selected && focused ? '0 0 0 2px #B4D5FF' : 'none',
             }}
-        >
-      @{element.character}
-            {children}
+        >@{element.name}
+      {children}
     </span>
     )
 }
@@ -226,13 +227,15 @@ const editorInitialValue: Descendant[] = [
             { text: 'Try mentioning characters, like ' },
             {
                 type: 'mention',
-                character: 'R2-D2',
+                mentionId: 'R2-D2',
+                name: 'R2-D2',
                 children: [{ text: '' }],
             },
             { text: ' or ' },
             {
                 type: 'mention',
-                character: 'Mace Windu',
+                mentionId: 'Mace-Windu',
+                name: 'Mace Windu',
                 children: [{ text: '' }],
             },
             { text: '!' },

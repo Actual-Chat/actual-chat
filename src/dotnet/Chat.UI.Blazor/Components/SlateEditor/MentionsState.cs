@@ -56,6 +56,8 @@ public class MentionsState
 {
     private MentionCollectionView? _view;
 
+    public event Action<Mention> InsertRequested = _ => { };
+
     [ComputeMethod]
     public virtual Task<MentionCollectionView?> GetView()
         => Task.FromResult(_view);
@@ -65,19 +67,9 @@ public class MentionsState
         if (_view != null && StringComparer.Ordinal.Equals(_view.Search, search))
             return;
 
-        string[] items;
-        if (!search.IsNullOrEmpty()) {
-            var filter = search.ToLowerInvariant();
-            items = MentionData.Candidates
-                .Where(c => c.ToLowerInvariant().StartsWith(filter))
-                .Take(10)
-                .ToArray();
-        }
-        else {
-            items = MentionData.Candidates;
-        }
+        var mentions = GetMentions(search);
 
-        _view = new MentionCollectionView( search, items.Select(c => new Mention(c, c)).ToArray());
+        _view = new MentionCollectionView(search, mentions);
 
         using (Computed.Invalidate())
             _ = GetView();
@@ -110,7 +102,21 @@ public class MentionsState
     public void Insert(Mention mention)
         => InsertRequested.Invoke(mention);
 
-    public event Action<Mention> InsertRequested = _ => { };
+    private static Mention[] GetMentions(string search)
+    {
+        Mention[] mentions;
+        if (!search.IsNullOrEmpty()) {
+            var filter = search.ToLowerInvariant();
+            mentions = MentionData.Candidates
+                .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+        else {
+            mentions = MentionData.Candidates;
+        }
+
+        return mentions;
+    }
 }
 
 

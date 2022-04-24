@@ -12,8 +12,9 @@ import { HistoryEditor } from 'slate-history'
 
 export type MentionElement = {
     type: 'mention'
-    character: string
-    children: CustomText[]
+    mentionId: string
+    name: string
+    children: Text[]
 }
 
 export type ParagraphElement = {
