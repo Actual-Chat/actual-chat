@@ -11,7 +11,7 @@ import {
 } from 'slate-react'
 
 import { Portal } from './components'
-import { CustomEditor, MentionElement } from './custom-types';
+import { CustomEditor, CustomText, MentionElement } from './custom-types';
 import { SlateEditorHandle } from './slate-editor-handle';
 import { serialize } from './serializer';
 
@@ -173,7 +173,10 @@ const insertMention = (editor : CustomEditor, id : string, name : string) => {
         name: name,
         children: [{ text: '' }],
     }
-    Transforms.insertNodes(editor, mention)
+    const space : CustomText = {
+        text: ' '
+    }
+    Transforms.insertNodes(editor, [mention, space])
     Transforms.move(editor)
 }
 
