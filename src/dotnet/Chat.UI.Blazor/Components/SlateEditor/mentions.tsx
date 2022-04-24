@@ -15,7 +15,7 @@ import { CustomEditor, CustomText, MentionElement } from './custom-types';
 import { SlateEditorHandle } from './slate-editor-handle';
 import { serialize } from './serializer';
 
-export const MentionExample = (handle : SlateEditorHandle) => {
+export const MentionExample = (handle : SlateEditorHandle, debug : boolean = true) => {
     const [target, setTarget] = useState<Range | undefined>()
     const [search, setSearch] = useState('')
     const renderElement = useCallback(props => <Element {...props} />, [])
@@ -27,7 +27,7 @@ export const MentionExample = (handle : SlateEditorHandle) => {
     handle.getText = () => serialize(editor)
 
     const resetEditor = () => {
-        console.log('reset editor started')
+        if (debug) console.log('reset editor started')
 
         Transforms.delete(editor, {
             at: {
@@ -36,16 +36,16 @@ export const MentionExample = (handle : SlateEditorHandle) => {
             },
         });
 
-        console.log('reset editor completed')
+        if (debug) console.log('reset editor completed')
     }
 
     handle.clearText = () => {
-        console.log('clear text')
+        if (debug) console.log('clear text')
         resetEditor()
     }
 
     handle.insertMention = (mention : any) => {
-        debugger
+        if (debug) debugger
         const { id, name } = mention;
         Transforms.select(editor, target)
         insertMention(editor, id, name)
@@ -95,8 +95,10 @@ export const MentionExample = (handle : SlateEditorHandle) => {
     }
 
     useEffect(() => {
-        console.log("search: " + search)
-        console.log("target: " + target)
+        if (debug) {
+            console.log("search: " + search)
+            console.log("target: " + (target ? JSON.stringify(target) : 'null'))
+        }
         if (target)
             handle.getMention.show(search)
         else
@@ -111,27 +113,65 @@ export const MentionExample = (handle : SlateEditorHandle) => {
                 const { selection } = editor
 
                 if (selection && Range.isCollapsed(selection)) {
-                    debugger
                     const [start] = Range.edges(selection)
                     const wordBefore = Editor.before(editor, start, { unit: 'word' })
-                    const before1 = wordBefore && Editor.before(editor, wordBefore)
-                    const before1Range = before1
-                                         ? Editor.range(editor, before1, start)
-                                         : wordBefore && Editor.range(editor, wordBefore, start)
-                    const before2 = before1 && Editor.before(editor, before1)
-                    const beforeTextRange = before2
-                                            ? Editor.range(editor, before2, start)
-                                            :before1Range;
-                    const beforeText = beforeTextRange && Editor.string(editor, beforeTextRange)
-                    const beforeMatch = beforeText && beforeText.match(/(^|\s)@(\w*)$/)
+                    const wordBeforeRange = wordBefore && Editor.range(editor, wordBefore, start)
+                    const wordBeforeText = wordBeforeRange && Editor.string(editor, wordBeforeRange)
+                    if (debug) {
+                        if (wordBeforeText) {
+                            console.log("wordBeforeText: " + wordBeforeText)
+                        }
+                    }
+                    let searchCandidate = undefined
+                    let targetCandidate = undefined
+                    if (wordBeforeText && wordBeforeText.includes('@')) {
+                        //debugger
+                        if (wordBeforeText.length == 1) {
+                            searchCandidate = ''
+                            targetCandidate = wordBeforeRange
+                        }
+                        else {
+                            const before1 = wordBefore && Editor.before(editor, start)
+                            const before1Range = before1 && Editor.range(editor, before1, start)
+                            const before2 = before1 && Editor.before(editor, before1)
+                            const beforeTextRange = before2
+                                                    ? Editor.range(editor, before2, start)
+                                                    :before1Range;
+                            const beforeText = beforeTextRange && Editor.string(editor, beforeTextRange)
+                            const beforeMatch = beforeText && beforeText.match(/(^|\s)@$/)
+
+                            if (beforeMatch) {
+                                searchCandidate = ''
+                                targetCandidate = before1Range
+                            }
+                        }
+                    }
+                    else {
+                        const before1 = wordBefore && Editor.before(editor, wordBefore)
+                        const before1Range = before1
+                                             ? Editor.range(editor, before1, start)
+                                             : wordBefore && Editor.range(editor, wordBefore, start)
+                        const before2 = before1 && Editor.before(editor, before1)
+                        const beforeTextRange = before2
+                                                ? Editor.range(editor, before2, start)
+                                                :before1Range;
+                        const beforeText = beforeTextRange && Editor.string(editor, beforeTextRange)
+                        const beforeMatch = beforeText && beforeText.match(/(^|\s)@(\w*)$/)
+
+                        if (beforeMatch) {
+                            searchCandidate = beforeMatch[2]
+                            targetCandidate = before1Range
+                        }
+                    }
+
                     const after = Editor.after(editor, start)
                     const afterRange = Editor.range(editor, start, after)
                     const afterText = Editor.string(editor, afterRange)
                     const afterMatch = afterText.match(/^(\s|$)/)
 
-                    if (beforeMatch && afterMatch) {
-                        setSearch(beforeMatch[2])
-                        setTarget(before1Range)
+                    if (searchCandidate !== undefined && targetCandidate && afterMatch) {
+                        setSearch(searchCandidate)
+                        setTarget(targetCandidate)
                         return
                     }
                 }
@@ -167,6 +207,7 @@ const withMentions = editor => {
 }
 
 const insertMention = (editor : CustomEditor, id : string, name : string) => {
+    debugger
     const mention: MentionElement = {
         type: 'mention',
         mentionId: id,
