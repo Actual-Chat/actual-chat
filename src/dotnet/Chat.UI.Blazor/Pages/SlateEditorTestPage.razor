@@ -13,10 +13,7 @@
     <Footer>
         <div class="flex-y">
             <MentionsStateProvider>
-                <div class="w-full mb-1">
-                    <MentionsList/>
-                </div>
-
+                <MentionsList/>
                 <SlateEditor @ref="_editor" Id="message-input" Class="bg-gray-200 min-h-[50px]"
                              OnPost="OnPost"/>
             </MentionsStateProvider>
