@@ -1,0 +1,86 @@
+<div class="w-[440px] message-menu-modal">
+    <div class="flex-y h-full bg-primary p-3 -m-4">
+        <div class="flex-x mb-2">
+            <h1 class="font-bold text-lg text-left">Delete Message</h1>
+        </div>
+        @if (RequestAuthor.Id == Entry.AuthorId) {
+            <div class="flex-x text-sm mb-2">
+                Are you sure you want to delete this message?
+            </div>
+            <div class="w-full bg-secondary rounded-md shadow-md border border-primary pt-2 pb-3 mb-4">
+                <div class="chat-message relative group px-1">
+                    <ChatAuthor ChatId="@Entry.ChatId" AuthorId="@Entry.AuthorId">
+                        <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
+                            <img src="@context.Author.Picture" alt="@context.Author.Name" class="block"/>
+                        </div>
+                    </ChatAuthor>
+                    <div class="flex-1 overflow-hidden">
+                        <div class="header chat-message-header ml-1">
+                            <ChatAuthor ChatId="@Entry.ChatId" AuthorId="@Entry.AuthorId">
+                                <span class="font-bold text-secondary rounded">@context.Author.Name</span>
+                            </ChatAuthor>
+                            <ChatMessageTimestamp Value="Entry.BeginsAt"/>
+                        </div>
+                        <div class="content message-content rounded-sm ml-1">
+                            @Message
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-x my-2 grid gap-x-4">
+                <Button Class="btn-error">Delete</Button>
+                <Button Class="btn-cancel">Cancel</Button>
+            </div>
+        } else {
+            <div class="flex-x font-light text-sm mb-2">
+                You can't delete this message.
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    private ActualChat.Chat.ChatAuthor RequestAuthor { get; set; } = null!;
+    private Author MessageAuthor { get; set; } = null!;
+    private string Message { get; set; } = "";
+
+    [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
+    [Inject] private IChats Chats { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private UICommandRunner Cmd { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    [CascadingParameter]
+    BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    [Parameter]
+    public ChatEntry Entry { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        await base.OnInitializedAsync();
+        await InitRequestAuthorId();
+        MessageAuthor = await GetMessageAuthor();
+        InitMessage();
+    }
+
+    private async Task InitRequestAuthorId() {
+        var requestAuthor = await ChatAuthors.GetChatAuthor(Session, Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
+        RequestAuthor = requestAuthor ?? throw new InvalidOperationException("Invalid Request Author");
+    }
+
+    private async Task<Author> GetMessageAuthor() {
+        var messageAuthor = await ChatAuthors.GetAuthor(Entry.ChatId, Entry.AuthorId, true, CancellationToken.None).ConfigureAwait(true);
+        if (messageAuthor == null)
+            throw new InvalidOperationException("Invalid Message Author");
+        return MessageAuthor;
+    }
+
+    private void InitMessage() {
+        if (Entry.Content.Length < 50)
+            Message = Entry.Content;
+        else {
+            Message = (Entry.Content).Substring(0, 50) + "...";
+        }
+    }
+}

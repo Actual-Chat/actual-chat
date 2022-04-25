@@ -21,4 +21,16 @@ public class ChatUI
         modalParameters.Add(nameof(ChatAuthorCard.AuthorId), authorId);
         _modalService.Show<ChatAuthorCard>(null, modalParameters, options);
     }
+
+    public void ShowDeleteMessageRequest(ChatEntry entry)
+    {
+        var modalParameters = new ModalParameters();
+        var options = new ModalOptions() {
+            HideCloseButton = true,
+            HideHeader = true,
+            Animation = ModalAnimation.FadeIn(0.3),
+        };
+        modalParameters.Add(nameof(DeleteMessageModal.Entry), entry);
+        _modalService.Show<DeleteMessageModal>(null, modalParameters, options);
+    }
 }
