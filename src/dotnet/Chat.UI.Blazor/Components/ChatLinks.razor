@@ -33,19 +33,24 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chats = await Chats.GetChats(Session, cancellationToken);
-        var chatInfos = chats.OrderBy(c => c.Title).Select(c => (Title:c.Title, Id:(string)c.Id)).ToList();
+        var chatsToShow = chats.OrderBy(c => c.Title).ToList();
         var addDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId);
-        if (addDefault)
-            chatInfos.Add((Title:"The Actual One", Id:Constants.Chat.DefaultChatId));
+        if (addDefault) {
+            var defaultChat = await Chats.Get(Session, Constants.Chat.DefaultChatId, cancellationToken);
+            if (defaultChat != null) {
+                chatsToShow.Add(defaultChat);
+            }
+        }
+
         return new () {
-            Chats = chatInfos.ToArray(),
+            Chats = chatsToShow.ToArray(),
             ActiveChatId = await ChatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
         };
     }
 
     public class Model
     {
-        public (string Title, string Id)[] Chats { get; set; } = new (string Title, string Id)[0];
+        public Chat[] Chats { get; set; } = Array.Empty<Chat>();
         public Symbol ActiveChatId { get; set; } = Constants.Chat.DefaultChatId;
     }
 }
