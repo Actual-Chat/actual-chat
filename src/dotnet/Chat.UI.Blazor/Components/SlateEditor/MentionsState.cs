@@ -104,18 +104,17 @@ public class MentionsState
 
     private static Mention[] GetMentions(string search)
     {
-        Mention[] mentions;
+        IEnumerable<Mention> mentions;
         if (!search.IsNullOrEmpty()) {
             var filter = search.ToLowerInvariant();
             mentions = MentionData.Candidates
-                .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
+                .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase));
         }
         else {
             mentions = MentionData.Candidates;
         }
 
-        return mentions;
+        return mentions.Take(10).ToArray();
     }
 }
 
