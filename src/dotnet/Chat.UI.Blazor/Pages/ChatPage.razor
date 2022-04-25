@@ -29,7 +29,7 @@
 
     <RenderIntoSlot Name="MainFooter" @key="@(chat.Id + "-footer")">
         <CascadingValue Value="chat">
-            <ChatFooter AutoJoin="@AutoJoin"/>
+            <ChatFooter/>
         </CascadingValue>
     </RenderIntoSlot>
 
@@ -50,8 +50,6 @@
 }
 
 @code {
-    public const string AutoJoinQueryParameter = "auto-join";
-
     private Model? _lastRenderedModel;
     private IComputed? _activeChatIdComputed;
 
@@ -64,8 +62,6 @@
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public string ContactId { get; set; } = "";
-    [Parameter, SupplyParameterFromQuery(Name = AutoJoinQueryParameter)]
-    public string? AutoJoin { get; set; }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)

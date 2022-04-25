@@ -18,8 +18,6 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public string InviteCode { get; set; } = "";
-    [Parameter, SupplyParameterFromQuery(Name = ChatPage.AutoJoinQueryParameter)]
-    public string? AutoJoin { get; set; }
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
@@ -29,8 +27,6 @@
         if (!_inviteCodeUseResult.IsValid)
             return;
         var uri = $"/chat/{_inviteCodeUseResult.ChatId}";
-        if (AutoJoin != null)
-            uri = uri + "?" + ChatPage.AutoJoinQueryParameter + "=" + AutoJoin;
         Nav.NavigateTo(uri);
     }
 }
