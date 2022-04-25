@@ -10,9 +10,9 @@
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
-    var mentionCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
+    var mentionClass = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
     var contextMenuId = "message-" + Model.Entry.Id;
-    var ownMessage = ReaderId == Model.Entry.AuthorId ? "own-message" : "";
+    var ownMessageClass = ReaderId == Model.Entry.AuthorId ? "own-message" : "";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
@@ -20,7 +20,7 @@
 @if (Model.IsFirstUnread) {
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
-<div class="chat-message @ownMessage @mentionCss relative group px-3 @marginClass">
+<div class="chat-message @ownMessageClass @mentionClass relative group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
             <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md"
@@ -107,8 +107,4 @@
 
     private async Task InitReaderId()
         => ReaderId = await ChatAuthor.GetChatPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
-
-    // private bool IsAuthorReader() {
-    //     return Model.Entry.AuthorId == ReaderId;
-    // }
 }
