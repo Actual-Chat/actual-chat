@@ -35,6 +35,10 @@ export const MentionExample = (handle : SlateEditorHandle, debug : boolean = tru
                 focus: Editor.end(editor, []),
             },
         });
+        editor.history = {
+            undos: [],
+            redos: []
+        };
 
         if (debug) console.log('reset editor completed')
     }
