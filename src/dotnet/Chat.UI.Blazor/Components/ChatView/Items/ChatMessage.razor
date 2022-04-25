@@ -1,4 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Hosting
+@using Microsoft.AspNetCore.Components.Rendering
 
 @{
     var entry = Model.Entry;
@@ -9,6 +11,7 @@
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
     var mentionCss = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
+    var contextMenuId = "message-" + Model.Entry.Id;
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
@@ -19,9 +22,16 @@
 <div class="chat-message @mentionCss relative group px-3 @marginClass">
     @if (showPicture) {
         <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-            <div class="author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md @(context.IsRecording ? "border-sky-500 border-2" : "")"
+            <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md"
                  @onclick="OnChatAuthorClick">
-                <img src="@context.Author.Picture" alt="@context.Author.Name"/>
+                <img src="@context.Author.Picture" alt="@context.Author.Name" class="block"/>
+                <div class="absolute left-5 bottom-0 bg-secondary w-4 h-4 rounded-l-xl rounded-tr-xl @(context.IsRecording ? "" : "hidden")">
+                    <div class="text-inline-code animate-pulse">
+                        <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -4 32 32">
+                            <circle cx="8" cy="9" r="6"/>
+                        </svg>
+                    </div>
+                </div>
             </div>
         </ChatAuthor>
     } else {
@@ -61,7 +71,18 @@
         }
     </div>
 
-    <MessageMenu Class="invisible group-hover:visible absolute z-10"/>
+    <ContextMenu Id="@contextMenuId"
+                 BtnClass="hidden-btn h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
+                 MenuClass="absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
+        <ButtonTemplate>
+            <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+                <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+            </svg>
+        </ButtonTemplate>
+        <ContentTemplate>
+            <MessageContextMenu/>
+        </ContentTemplate>
+    </ContextMenu>
 </div>
 
 @code {

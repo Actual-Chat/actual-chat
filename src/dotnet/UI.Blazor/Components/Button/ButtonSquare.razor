@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button @onclick="OnClick" class="btn btn-square @Class" title="@Title" disabled="@Disabled"
-        name="@Name" type="@GetButtonType">
+        name="@Name" type="@GetButtonType" id="@Id">
     <div class="button-square-child">
         @ChildContent
     </div>
@@ -16,6 +16,7 @@
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
+    [Parameter] public string Id { get; set; } = "";
 
     private string GetButtonType()
         => Type.ToString().ToLower();
