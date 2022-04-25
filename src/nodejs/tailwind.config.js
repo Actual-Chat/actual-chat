@@ -64,6 +64,7 @@ module.exports = {
         'primary': 'var(--background-primary)',
         'secondary': 'var(--background-secondary)',
         'accent': 'var(--background-accent)',
+        'strong-accent': 'var(--background-strong-accent)',
         'online': 'var(--background-online)',
         'button-success': 'var(--button-color-success)',
         'button-success-hover': 'var(--button-color-success-hover)',
