@@ -13,7 +13,7 @@
 @code {
 
     [Inject]
-    private IAuthz Authorization { get; set; } = null!;
+    private IAuthz Authz { get; set; } = null!;
 
     [Inject]
     private Session Session { get; set; } = null!;
@@ -26,7 +26,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        return new Model(await Authorization.IsActive(Session, cancellationToken));
+        return new Model(await Authz.IsActive(Session, cancellationToken));
     }
 
     public sealed record Model(bool IsActive);

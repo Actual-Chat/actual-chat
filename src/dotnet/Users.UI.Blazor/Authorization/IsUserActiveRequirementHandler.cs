@@ -5,17 +5,17 @@ namespace ActualChat.Users.UI.Blazor.Authorization;
 public class IsUserActiveRequirementHandler : AuthorizationHandler<IsUserActiveRequirement>
 {
     private readonly Session _session;
-    private readonly IAuthz _authorization;
+    private readonly IAuthz _authz;
 
-    public IsUserActiveRequirementHandler(Session session, IAuthz authorization)
+    public IsUserActiveRequirementHandler(Session session, IAuthz authz)
     {
         _session = session;
-        _authorization = authorization;
+        _authz = authz;
     }
 
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, IsUserActiveRequirement requirement)
     {
-        if (await _authorization.IsActive(_session, default).ConfigureAwait(false))
+        if (await _authz.IsActive(_session, default).ConfigureAwait(false))
             context.Succeed(requirement);
         else
             context.Fail();
