@@ -52,9 +52,15 @@ public class MentionCollectionView
     }
 }
 
+public interface IMentionsRetriever
+{
+    Task<IEnumerable<Mention>> GetMentions(string search, int limit, CancellationToken cancellationToken);
+}
+
 public class MentionsState
 {
     private MentionCollectionView? _view;
+    private IMentionsRetriever? _mentionsRetriever;
 
     public event Action<Mention> InsertRequested = _ => { };
 
@@ -62,12 +68,15 @@ public class MentionsState
     public virtual Task<MentionCollectionView?> GetView()
         => Task.FromResult(_view);
 
-    public void ShowMentions(string search)
+    public void SetMentionsRetriever(IMentionsRetriever mentionsRetriever)
+        => _mentionsRetriever = mentionsRetriever;
+
+    public async Task ShowMentions(string search)
     {
         if (_view != null && StringComparer.Ordinal.Equals(_view.Search, search))
             return;
 
-        var mentions = GetMentions(search);
+        var mentions = await GetMentions(search, default).ConfigureAwait(false);
 
         _view = new MentionCollectionView(search, mentions);
 
@@ -102,19 +111,22 @@ public class MentionsState
     public void Insert(Mention mention)
         => InsertRequested.Invoke(mention);
 
-    private static Mention[] GetMentions(string search)
+    private async Task<Mention[]> GetMentions(string search, CancellationToken cancellationToken)
     {
-        IEnumerable<Mention> mentions;
-        if (!search.IsNullOrEmpty()) {
-            var filter = search.ToLowerInvariant();
-            mentions = MentionData.Candidates
-                .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase));
-        }
-        else {
-            mentions = MentionData.Candidates;
-        }
+        const int limit = 10;
+        var mentions = _mentionsRetriever != null
+            ? await _mentionsRetriever.GetMentions(search, limit, cancellationToken).ConfigureAwait(false)
+            : GetDemoMentions(search);
+        return mentions.Take(limit).ToArray();
+    }
 
-        return mentions.Take(10).ToArray();
+    private static IEnumerable<Mention> GetDemoMentions(string search)
+    {
+        if (search.IsNullOrEmpty())
+            return MentionData.Candidates;
+        var filter = search.ToLowerInvariant();
+        return MentionData.Candidates
+                .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase));
     }
 }
 

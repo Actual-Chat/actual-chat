@@ -1,0 +1,42 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@code {
+    [Inject] IChats Chats { get; set; } = null!;
+    [Inject] Session Session { get; set; } = null!;
+    [CascadingParameter]
+    public MentionsState MentionsState { get; set; } = null!;
+    [Parameter, EditorRequired]
+    public string ChatId { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+
+        if (MentionsState == null)
+            throw new InvalidOperationException("Component should be used inside MentionsStateProvider component");
+        if (ChatId.IsNullOrEmpty())
+            throw new InvalidOperationException("ChatId should be specified");
+        MentionsState.SetMentionsRetriever(new Retriever(Chats, Session, ChatId));
+    }
+
+    class Retriever : IMentionsRetriever {
+        private readonly IChats _chats;
+        private readonly Session _session;
+        private readonly string _chatId;
+
+        public Retriever(IChats chats, Session session, string chatId) {
+            _chats = chats;
+            _session = session;
+            _chatId = chatId;
+        }
+
+        public async Task<IEnumerable<Mention>> GetMentions(string search, int limit, CancellationToken cancellationToken) {
+            var authors = await _chats.GetChatAuthors(_session, _chatId, cancellationToken);
+            var candidates = authors
+                .Where(c => c.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.Name)
+                .Take(limit);
+            var mentions = candidates.Select(c => new Mention(c.Id, c.Name)).ToArray();
+            return mentions;
+        }
+    }
+}

@@ -1,3 +1,5 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public interface IChats
@@ -54,6 +56,9 @@ public interface IChats
 
     [ComputeMethod(KeepAliveTime = 1)]
     Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
+
+    [ComputeMethod(KeepAliveTime = 1)]
+    Task<Author[]> GetChatAuthors(Session session, string chatId, CancellationToken cancellationToken);
 
     // Commands
 

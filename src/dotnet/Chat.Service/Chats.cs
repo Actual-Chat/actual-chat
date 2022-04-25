@@ -174,6 +174,23 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return peerChatId;
     }
 
+    public virtual async Task<Author[]> GetChatAuthors(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        var chatAuthorIds = await _chatAuthorsBackend.GetAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+
+        var authorTasks = await Task
+            .WhenAll(chatAuthorIds.Select(id
+                => _chatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
+            .ConfigureAwait(false);
+        var authors = authorTasks
+            .Where(c => c != null)
+            .Select(c => c!)
+            .OrderBy(c => c.Name)
+            .ToArray();
+        return authors;
+    }
+
     // [CommandHandler]
     public virtual async Task<Chat> CreateChat(IChats.CreateChatCommand command, CancellationToken cancellationToken)
     {

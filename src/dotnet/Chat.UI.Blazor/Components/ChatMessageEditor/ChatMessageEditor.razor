@@ -13,7 +13,8 @@
 
 <div @ref="EditorRef" class="chat-message-editor px-1.5 pb-1.5 flex-y">
     <MentionsStateProvider>
-        <MentionsList />
+        <ChatMentionsRetriever ChatId="@Chat.Id" />
+        <MentionsList/>
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border-secondary">
                 <input class="files-picker" type="file" hidden multiple/>
