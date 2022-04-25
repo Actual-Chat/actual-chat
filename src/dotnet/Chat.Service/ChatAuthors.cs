@@ -110,6 +110,16 @@ public partial class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors, I
         return contact == null;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return ImmutableArray<string>.Empty;
+
+        return await GetAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public virtual async Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

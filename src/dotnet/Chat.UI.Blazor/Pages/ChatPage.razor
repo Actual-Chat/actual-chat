@@ -2,6 +2,7 @@
 @page "/chat/{ChatId}"
 @page "/direct/{ContactId}"
 @using ActualChat.Notification.UI.Blazor
+@using ActualChat.Users.UI.Blazor.Services
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
@@ -32,6 +33,12 @@
         </CascadingValue>
     </RenderIntoSlot>
 
+    if (State.Value.IsRightPanelDisplayed) {
+        <RenderIntoSlot Name="MainRightPanel" @key="@(chat.Id + "-right-panel")">
+            <ChatRightPanel ChatId="@chat.Id" />
+        </RenderIntoSlot>
+    }
+
     <NoComponent @key="chat.Id">
         <CascadingValue Value="chat">
             <ChatView/>
@@ -50,6 +57,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private UserSettings UserSettings { get; init; } = null!;
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
@@ -77,12 +85,15 @@
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
+        var isRightPanelDisplayed = await UserSettings.ShowRightPanelState.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
-        if (renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version)
-            return _lastRenderedModel!;
-        return new () { Chat = chat };
+        var isTheSameChat = renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version;
+        return new () {
+            Chat = isTheSameChat ? renderedChat : chat,
+            IsRightPanelDisplayed = isRightPanelDisplayed,
+        };
     }
 
     protected override void OnParametersSet() {
@@ -105,6 +116,7 @@
     public record Model {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
+        public bool IsRightPanelDisplayed { get; init; }
         public Chat? Chat { get; init; }
     }
 }

@@ -1,0 +1,35 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Notification
+@using ActualChat.Users.UI.Blazor.Services
+@inherits ComputedStateComponent<ChatSettingsToggle.Model>
+
+@{
+    var isRightPanelDisplayed = State.Value.IsRightPanelDisplayed;
+}
+<ButtonSquare OnClick="OnClick"
+              Class="@(isRightPanelDisplayed ? "on" : "off")"
+              Title="@(isRightPanelDisplayed ? "Hide settings" : "Show settings")">
+    <i class="fa fa-cogs fa-sidebar-flip fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
+</ButtonSquare>
+
+@code {
+    [Inject] private UserSettings UserSettings { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new () };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isRightPanelDisplayed = await UserSettings.ShowRightPanelState.Use(cancellationToken);
+        return new() {
+            IsRightPanelDisplayed = isRightPanelDisplayed,
+        };
+    }
+
+    private void OnClick() {
+        UserSettings.ShowRightPanelState.Value = !State.Value.IsRightPanelDisplayed;
+    }
+
+    public class Model {
+        public bool IsRightPanelDisplayed { get; init; }
+    }
+}
