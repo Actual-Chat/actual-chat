@@ -3,17 +3,19 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public partial class InviteCodes : DbServiceBase<ChatDbContext>, IInviteCodes, IInviteCodesBackend
+public class InviteCodes : DbServiceBase<ChatDbContext>, IInviteCodes
 {
     private readonly ICommander _commander;
     private readonly IAuth _auth;
+    private readonly IInviteCodesBackend _backend;
     private readonly IChatsBackend _chatsBackend;
 
-    public InviteCodes(IServiceProvider services) : base(services)
+    public InviteCodes(IServiceProvider services, ICommander commander, IAuth auth, IInviteCodesBackend backend, IChatsBackend chatsBackend) : base(services)
     {
-        _commander = Services.Commander();
-        _auth = Services.GetRequiredService<IAuth>();
-        _chatsBackend = Services.GetRequiredService<IChatsBackend>();
+        _commander = commander;
+        _auth = auth;
+        _backend = backend;
+        _chatsBackend = chatsBackend;
     }
 
     // [ComputeMethod]
@@ -27,7 +29,7 @@ public partial class InviteCodes : DbServiceBase<ChatDbContext>, IInviteCodes, I
 
         await AssertCanInvite(session, chatId, cancellationToken).ConfigureAwait(false);
 
-        return await Get(chatId, user.Id, cancellationToken).ConfigureAwait(false);
+        return await _backend.Get(chatId, user.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -87,7 +89,7 @@ public partial class InviteCodes : DbServiceBase<ChatDbContext>, IInviteCodes, I
     {
         if (string.IsNullOrEmpty(inviteCodeValue))
             throw new ArgumentException("Value cannot be null or empty.", nameof(inviteCodeValue));
-        return GetByValue(inviteCodeValue, cancellationToken);
+        return _backend.GetByValue(inviteCodeValue, cancellationToken);
     }
 
     private bool CheckIfValid(InviteCode? inviteCode)

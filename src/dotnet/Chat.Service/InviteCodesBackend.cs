@@ -1,14 +1,24 @@
 ﻿using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 using Stl.Generators;
 
 namespace ActualChat.Chat;
 
-partial class InviteCodes
+internal class InviteCodesBackend : DbServiceBase<ChatDbContext>, IInviteCodesBackend
 {
     private const string InviteCodeAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private readonly RandomStringGenerator _inviteCodeGenerator = new (10, InviteCodeAlphabet);
+
+    private readonly ICommander _commander;
+    private readonly IAuth _auth;
+
+    public InviteCodesBackend(IServiceProvider services, ICommander commander, IAuth auth) : base(services)
+    {
+        _commander = commander;
+        _auth = auth;
+    }
 
     public virtual async Task<InviteCode?> GetByValue(string inviteCode, CancellationToken cancellationToken)
     {
@@ -19,7 +29,7 @@ partial class InviteCodes
         var now = Clocks.SystemClock.UtcNow;
         await using var _ = dbContext.ConfigureAwait(false);
         var dbInviteCode = await dbContext.InviteCodes
-            .Where(c => c.State == InviteCodeState.Active && c.ExpiresOn>now)
+            .Where(c => c.State == InviteCodeState.Active && c.ExpiresOn > now)
             .Where(c => c.Value == inviteCode)
             .SingleOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -45,13 +55,17 @@ partial class InviteCodes
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> CheckIfInviteCodeUsed(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> CheckIfInviteCodeUsed(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
     {
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         if (!options.Items.TryGetValue("InviteCode::ChatId", out var inviteChatId))
             return false;
         if (!string.Equals(chatId, inviteChatId as string, StringComparison.Ordinal))
             return false;
+
         return true;
     }
 
@@ -88,7 +102,9 @@ partial class InviteCodes
     }
 
     // [CommandHandler]
-    public virtual async Task UseInviteCode(IInviteCodesBackend.UseInviteCodeCommand command, CancellationToken cancellationToken)
+    public virtual async Task UseInviteCode(
+        IInviteCodesBackend.UseInviteCodeCommand command,
+        CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
@@ -96,11 +112,11 @@ partial class InviteCodes
         var (session, inviteCode) = command;
         var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
             session,
-            new("InviteCode::Id", inviteCode.Id.Value));
+            new ("InviteCode::Id", inviteCode.Id.Value));
         await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
         var updateOptionCommand2 = new ISessionOptionsBackend.UpsertCommand(
             session,
-            new("InviteCode::ChatId", inviteCode.ChatId.Value));
+            new ("InviteCode::ChatId", inviteCode.ChatId.Value));
         await _commander.Call(updateOptionCommand2, true, cancellationToken).ConfigureAwait(false);
     }
 }
