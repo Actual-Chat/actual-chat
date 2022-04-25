@@ -8,16 +8,8 @@
     @apply text-sm text-current break-words;
 }
 
-.chat-message.mention {
-    @apply border-x-2 border-x-mention-hover bg-mention-message border-y border-y-sky-100;
-}
-
 .chat-message:hover {
     @apply bg-message-hover;
-}
-
-.chat-message.mention:hover {
-    @apply bg-mention-message
 }
 
 .chat-message:hover .author-badge {
@@ -28,8 +20,31 @@
     @apply visible;
 }
 
-.chat-message.mention:hover .author-badge {
-    @apply bg-mention-message;
+.chat-message.mention,
+.chat-message.own-message.mention {
+    @apply border-x-2 border-x-mention-hover bg-mention-message;
+}
+
+.chat-message.mention:hover,
+.chat-message.own-message.mention:hover {
+    @apply bg-secondary
+}
+
+.chat-message.mention:hover,
+.chat-message.own-message.mention:hover .author-badge {
+    @apply bg-secondary;
+}
+
+.chat-message.own-message {
+    @apply border-x-2 border-x-sky-100 bg-sky-50;
+}
+
+.chat-message.own-message:hover {
+    @apply bg-secondary;
+}
+
+.chat-message.own-message:hover .author-badge {
+    @apply bg-secondary;
 }
 
 .author-image {
