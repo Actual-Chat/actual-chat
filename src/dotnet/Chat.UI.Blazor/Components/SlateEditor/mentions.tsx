@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react'
+import React, { useMemo, useCallback, useEffect, useState } from 'react'
 import { Editor, Transforms, Range, createEditor, Descendant } from 'slate'
 import { withHistory } from 'slate-history'
 import {
@@ -10,7 +10,6 @@ import {
     useFocused,
 } from 'slate-react'
 
-import { Portal } from './components'
 import { CustomEditor, CustomText, MentionElement, ParagraphElement } from './custom-types';
 import { SlateEditorHandle } from './slate-editor-handle';
 import { serialize } from './serializer';
@@ -102,11 +101,6 @@ export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
         },
         [search, target]
     )
-
-    const onMagicButtonClick = () => {
-      console.log('magic button clicked')
-      resetEditor()
-    }
 
     useEffect(() => {
         if (debug) {
@@ -219,10 +213,6 @@ export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
                 setTarget(null)
             }}
         >
-            {/*Test button*/}
-            {/*<div>*/}
-            {/*    <button onClick={onMagicButtonClick} style={{background: "red"}}>Does Magic!</button>*/}
-            {/*</div>*/}
             <Editable
                 renderElement={renderElement}
                 onKeyDown={onKeyDown}
