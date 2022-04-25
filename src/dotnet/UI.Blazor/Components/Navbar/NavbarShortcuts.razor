@@ -1,5 +1,7 @@
 ﻿@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Authorization
 @using ActualChat.Users
+@using Microsoft.AspNetCore.Authorization
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<NavbarShortcuts.Model>
 
@@ -13,10 +15,10 @@
 @code {
 
     [Inject]
-    private IAuthz Authz { get; set; } = null!;
+    private IAuthorizationService AuthorizationService { get; set; } = null!;
 
     [Inject]
-    private Session Session { get; set; } = null!;
+    private AuthStateProvider AuthStateProvider { get; set; } = null!;
 
     [Inject]
     private HostInfo HostInfo { get; set; } = null!;
@@ -26,7 +28,9 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        return new Model(await Authz.IsActive(Session, cancellationToken));
+        var authenticationState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var authorizationResult = await AuthorizationService.AuthorizeAsync(authenticationState.User, KnownPolicies.IsUserActive);
+        return new Model(authorizationResult.Succeeded);
     }
 
     public sealed record Model(bool IsActive);
