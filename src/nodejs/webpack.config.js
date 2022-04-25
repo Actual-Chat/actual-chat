@@ -50,7 +50,7 @@ const outputPath = _('./../dotnet/UI.Blazor.Host/wwwroot/dist');
 
 module.exports = (env, args) => {
 
-  const isDevelopment = false;
+  const isDevelopment = args.mode === 'development';
 
   /** Use this options to control /// #ifdef preprocessor */
   const ifdef = {
