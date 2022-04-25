@@ -7,6 +7,10 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 
+@{
+    var placeholder = "#" + Chat.Title;
+}
+
 <div @ref="EditorRef" class="chat-message-editor flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary px-1.5 pb-1.5">
     <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border-secondary">
         <input class="files-picker" type="file" hidden multiple/>
@@ -54,11 +58,10 @@
             <div class="flex-none self-center m-3 mr-0">
                 <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
             </div>
-            <div id="message-input"
-                 class="message-input flex-1 -flex-y overflow-y-auto max-h-36 md:max-h-72 my-3 ml-3 mr-1 md:mr-3 break-words outline-none hover:cursor-text text-primary block"
-                 autocomplete="off" autocorrect="off" spellcheck="true" aria-expanded="false" aria-autocomplete="list"
-                 aria-multiline="true" aria-label="Message" dir="auto" contenteditable="true" role="textbox" data-text="#@(Chat.Title)">
-            </div>
+            <SlateEditor @ref="SlateEditorRef" Id="message-input"
+                         Class="message-input flex-1 -flex-y overflow-y-auto max-h-36 md:max-h-72 my-3 ml-3 mr-1 md:mr-3 break-words outline-none hover:cursor-text text-primary block"
+                         Placeholder="@placeholder"
+                         OnPost="Post" OnRendered="OnSlateEditorRendered" />
             <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
                     @onclick="_ => Post()">
                 <svg class="fill-current w-9 h-9 pr-1" viewBox="-4 -4 32 32" id="icon" xmlns="http://www.w3.org/2000/svg">
@@ -87,10 +90,9 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private ElementReference EditorRef { get; set; }
+    private SlateEditor SlateEditorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-    // TODO(AY): Add some store that remembers typed messages
-    private string Text { get; set; } = "";
     private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
@@ -110,26 +112,19 @@
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
                 EditorRef, BlazorRef
                 ).ConfigureAwait(true);
-            await JSRef.InvokeVoidAsync("setText", Text).ConfigureAwait(true);
         }
     }
 
-    [JSInvokable]
-    public void UpdateClientSideState(string? text) {
-        Text = text ?? "";
-    }
-
-    [JSInvokable]
-    public async Task Post(string? text = null)
-    {
-        if (text != null)
-            Text = text;
-        if (Text.IsNullOrEmpty() && !_attachments.Any())
+    public async Task Post(string? text = null) {
+        if (text == null)
+            text = await SlateEditorRef.GetText();
+        if (text.IsNullOrEmpty() && !_attachments.Any())
             return;
 
         try {
-            var response = await JSRef.InvokeAsync<string>("postMessage", Chat.Id).ConfigureAwait(true);
-            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+            var response = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
+            await JSRef.InvokeVoidAsync("onPostSucceeded");
+            await SlateEditorRef.Clear();
             _attachments = _attachments.Clear();
             await InvokeAsync(StateHasChanged);
         }
@@ -158,6 +153,10 @@
         });
         StateHasChanged();
         return true;
+    }
+
+    private async Task OnSlateEditorRendered() {
+        await JSRef.InvokeVoidAsync("onSlateEditorRendered").ConfigureAwait(true);
     }
 
     private async Task RemoveAttachment(Attachment attachment) {

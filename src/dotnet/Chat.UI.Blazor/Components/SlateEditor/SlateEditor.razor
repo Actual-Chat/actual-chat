@@ -3,7 +3,7 @@
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Module
 
-<div @ref="EditorRef" class="slate-editor-root @Class"></div>
+<div @ref="EditorRef" id="@Id" class="slate-editor-root @Class"></div>
 
 @code {
     private ElementReference EditorRef { get; set; }
@@ -13,9 +13,15 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter]
+    public string Id { get; set; } = "";
+    [Parameter]
+    public string Placeholder { get; set; } = "";
+    [Parameter]
     public string Class { get; set; } = "";
     [Parameter]
     public EventCallback<string> OnPost { get; set; }
+    [Parameter]
+    public EventCallback OnRendered { get; set; }
     [CascadingParameter]
     public MentionsState? MentionsState { get; set; }
 
@@ -39,8 +45,9 @@
             BlazorRef = DotNetObjectReference.Create<ISlateEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
-                EditorRef, BlazorRef
+                EditorRef, BlazorRef, true
                 ).ConfigureAwait(true);
+            await OnRendered.InvokeAsync();
         }
     }
 
@@ -50,7 +57,6 @@
     [JSInvokable]
     public async Task Post(string? text = null) {
         await OnPost.InvokeAsync(text);
-        await Clear();
     }
 
     public async Task Clear()

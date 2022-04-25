@@ -11,6 +11,8 @@ export class SlateEditorHandle {
 
     public onPost = (text : string) => {}
 
+    public onHasContentChanged = (hasContent : boolean) => {}
+
     public onMentionCommand = (cmd : string, args : string = "") => {}
 
     public insertMention = (mention : any) => {}

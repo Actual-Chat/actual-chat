@@ -8,14 +8,16 @@ export class SlateEditor {
     private readonly editorDiv: HTMLDivElement;
     private readonly editorHandle: SlateEditorHandle;
     private readonly reactDomRoot: any;
+    private readonly debug: boolean;
 
-    static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): SlateEditor {
-        return new SlateEditor(editorDiv, blazorRef);
+    static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject, debug : boolean): SlateEditor {
+        return new SlateEditor(editorDiv, blazorRef, debug);
     }
 
-    constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+    constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject, debug : boolean) {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
+        this.debug = debug;
         this.editorHandle = new SlateEditorHandle();
         this.editorHandle.onPost = this.onPost;
         this.editorHandle.onMentionCommand = this.onMentionCommand;
@@ -23,9 +25,10 @@ export class SlateEditor {
         // @ts-ignore
         this.editorDiv.editorHandle = this.editorHandle;
 
-        const slateEditor = () => MentionExample(this.editorHandle)
+        const slateEditor = () => MentionExample(this.editorHandle, this.debug)
         this.reactDomRoot = ReactDOM.createRoot(this.editorDiv);
         this.reactDomRoot.render(React.createElement(slateEditor));
+        if (debug) console.log("SlateEditor.constructor");
     }
 
     public getText = () =>
