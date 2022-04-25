@@ -16,6 +16,8 @@ public interface IChatAuthors
     Task<string?> GetChatAuthorAvatarId(Session session, string chatId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 1)]
     Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
 
     // Commands
 

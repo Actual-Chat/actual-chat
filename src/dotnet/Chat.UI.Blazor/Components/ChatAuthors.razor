@@ -1,0 +1,41 @@
+@inherits ComputedStateComponent<ChatAuthors.Model>
+
+@{
+    var model = State.ValueOrDefault ?? new();
+}
+
+<div class="flex-y w-full space-y-3">
+    <h3 class="text-secondary">Authors</h3>
+    @foreach (var authorId in model.AuthorsIds) {
+        <ChatAuthor ChatId="@ChatId" AuthorId="@authorId" @key="@authorId">
+            <div class="flex-x w-full">
+                <div class="author-avatar w-12 h-12 select-none bg-secondary rounded-md">
+                    <img src="@context.Author.Picture" alt="avatar"/>
+                </div>
+                <div class="ml-3 mt-1">
+                    <p class="text-sm leading-5 font-medium text-primary-muted hover:text-primary">
+                        @context.Author.Name
+                    </p>
+                </div>
+            </div>
+        </ChatAuthor>
+    }
+</div>
+
+@code {
+    [Inject] private IChatAuthors Authors { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
+
+    public sealed class Model {
+        public ImmutableArray<string> AuthorsIds { get; init; } = ImmutableArray<string>.Empty;
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var authorIds = await Authors.GetAuthorIds(Session, ChatId, cancellationToken);
+        return new() {
+            AuthorsIds = authorIds,
+        };
+    }
+}
