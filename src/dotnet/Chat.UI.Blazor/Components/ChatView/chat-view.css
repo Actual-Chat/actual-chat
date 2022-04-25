@@ -36,7 +36,7 @@
 }
 
 .chat-message.own-message {
-    @apply border-x-2 border-x-sky-100 bg-sky-50;
+    @apply bg-sky-50;
 }
 
 .chat-message.own-message:hover {
