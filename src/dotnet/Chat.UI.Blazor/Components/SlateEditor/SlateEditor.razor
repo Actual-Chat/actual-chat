@@ -6,6 +6,9 @@
 <div @ref="EditorRef" id="@Id" class="slate-editor-root @Class"></div>
 
 @code {
+    private bool _rendered;
+    private string _placeholder = "";
+
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<ISlateEditorBackend> BlazorRef { get; set; } = null!;
@@ -32,8 +35,14 @@
             state.InsertRequested += OnInsertRequested;
     }
 
-    public async ValueTask DisposeAsync()
-    {
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        if (_rendered && !StringComparer.Ordinal.Equals(_placeholder, Placeholder))
+            _ = SetPlaceholder(Placeholder);
+    }
+
+    public async ValueTask DisposeAsync() {
+        _rendered = false;
         if (JSRef != null!)
             await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         // ReSharper disable once ConstantConditionalAccessQualifier
@@ -47,6 +56,8 @@
                 $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
                 EditorRef, BlazorRef, true
                 ).ConfigureAwait(true);
+            _rendered = true;
+            _ = SetPlaceholder(Placeholder);
             await OnRendered.InvokeAsync();
         }
     }
@@ -63,10 +74,10 @@
         => await JSRef.InvokeAsync<string>("clearText");
 
     [JSInvokable]
-    public Task MentionCommand(string cmd, string args) {
+    public async Task MentionCommand(string cmd, string args) {
         var state = MentionsState;
         if (state == null)
-            return Task.CompletedTask;
+            return;
         switch (cmd) {
             case "insert": {
                 state.Insert();
@@ -85,11 +96,15 @@
                 break;
             }
             case "show": {
-                state.ShowMentions(args);
+                await state.ShowMentions(args);
                 break;
             }
         }
-        return Task.CompletedTask;
+    }
+
+    private async Task SetPlaceholder(string placeholder) {
+        _placeholder = placeholder;
+        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder);
     }
 
     private void OnInsertRequested(Mention mention) {

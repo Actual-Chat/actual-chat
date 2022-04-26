@@ -15,6 +15,7 @@ import { serialize } from './serializer';
 export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
     const [target, setTarget] = useState<Range | undefined>()
     const [search, setSearch] = useState('')
+    const [placeholder, setPlaceholder] = useState('Enter some text...')
     const [hasContent, setHasContent] = useState(false)
     const renderElement = useCallback(props => <Element {...props} />, [])
     const editor = useMemo(
@@ -33,6 +34,7 @@ export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
     }
 
     handle.getText = () => trimLeftSpecial(serialize(editor));
+    handle.setPlaceholder = setPlaceholder;
 
     const resetEditor = () => {
         if (debug) console.log('reset editor started')
@@ -214,7 +216,7 @@ export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
             <Editable
                 renderElement={renderElement}
                 onKeyDown={onKeyDown}
-                placeholder="Enter some text..."
+                placeholder={placeholder}
             />
         </Slate>
     )

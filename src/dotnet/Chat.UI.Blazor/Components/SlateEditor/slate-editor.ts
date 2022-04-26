@@ -47,6 +47,9 @@ export class SlateEditor {
     public insertMention = (mention : any) =>
         this.editorHandle.insertMention(mention);
 
+    public setPlaceholder = (placeholder: string) =>
+        this.editorHandle.setPlaceholder(placeholder);
+
     private dispose() {
         this.reactDomRoot.unmount();
     }

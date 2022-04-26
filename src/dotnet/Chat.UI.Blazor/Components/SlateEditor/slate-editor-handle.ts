@@ -20,6 +20,8 @@ export class SlateEditorHandle {
     get getMention() : Mention {
         return this.mention;
     }
+
+    public setPlaceholder = (placeholder: string) => {}
 }
 
 class Mention
