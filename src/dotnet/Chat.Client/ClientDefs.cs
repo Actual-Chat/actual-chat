@@ -58,6 +58,9 @@ public interface IChatsClientDef
     [Get(nameof(GetUserPeerChatId))]
     Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
 
+    [Get(nameof(GetChatAuthors))]
+    Task<Author[]> GetChatAuthors(Session session, string chatId, CancellationToken cancellationToken);
+
     [Post(nameof(CreateChat))]
     Task<Chat> CreateChat([Body] IChats.CreateChatCommand command, CancellationToken cancellationToken);
     [Post(nameof(UpdateChat))]
