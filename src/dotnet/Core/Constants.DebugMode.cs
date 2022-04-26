@@ -24,5 +24,7 @@ public static partial class Constants
         public static bool WebMReader { get; } = false;
 
         public static bool SignalR { get; } = false;
+
+        public static bool SlateEditor { get; } = false;
     }
 }

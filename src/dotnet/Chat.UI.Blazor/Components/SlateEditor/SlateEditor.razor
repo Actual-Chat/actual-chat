@@ -54,7 +54,7 @@
             BlazorRef = DotNetObjectReference.Create<ISlateEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.SlateEditor.create",
-                EditorRef, BlazorRef, true
+                EditorRef, BlazorRef, Constants.DebugMode.SlateEditor
                 ).ConfigureAwait(true);
             _rendered = true;
             _ = SetPlaceholder(Placeholder);
