@@ -4,6 +4,12 @@ services:
     build:
       context: .
       target: base
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    volumes:
+      - ./artifacts/tests/docker-output/:/src/artifacts/tests/output/
+    environment:
+      NPM_READ_TOKEN: ${NPM_READ_TOKEN}
     command: >-
       /bin/sh -c "
       dotnet build --nologo --no-restore --configuration Debug &&

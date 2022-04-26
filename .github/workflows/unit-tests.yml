@@ -8,7 +8,8 @@ on:
 env:
   DOCKER_BUILDKIT: 1
 jobs:
-  build:
+  build-and-test:
+    name: Build and Run Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,5 +21,12 @@ jobs:
         run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
       - name: Generate Nerdbank.GitVersioning files
         run: dotnet run --project build -- generate-version
-      - name: Run unit tests
+      - name: Build and Run unit tests
         run: docker-compose -f docker-compose.unit-tests.yml up --build --abort-on-container-exit --exit-code-from tests
+      - name: Report test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: Unit tests results            # Name of the check run which will be created
+          path: ./artifacts/tests/docker-output/*.trx    # Path to test results
+          reporter: dotnet-trx        # Format of test results
