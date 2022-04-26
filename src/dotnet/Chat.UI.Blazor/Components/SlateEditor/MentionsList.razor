@@ -9,12 +9,12 @@
     var items = view.Items;
     var currentIndex = view.CurrentIndex;
     var i = 0;
-    <div class="mb-1 p-1 border rounded-md overflow-y-auto max-h-96 w-full">
+    <div class="mb-1 p-1 border rounded-md overflow-y-auto max-h-96 w-full @Class">
         @foreach (var item in items) {
             var iLocal = i;
             var isSelected = i++ == currentIndex;
-            var cls = isSelected ? "bg-blue-200" : "";
-            <div class="@cls hover:cursor-pointer"
+            var cls = isSelected ? "bg-mention" : "";
+            <div class="px-1 rounded hover:cursor-pointer @cls"
                  @onmouseover="@(() => OnMouseOver(iLocal))"
                  @onclick="@(() => OnClick(item))">
                 @item.Name
@@ -26,6 +26,8 @@
 @code {
     [CascadingParameter]
     public MentionsState MentionsState { get; set; } = null!;
+    [Parameter]
+    public string Class { get; set; } = "";
 
     protected override ComputedState<MentionCollectionView?>.Options GetStateOptions() {
         return new ComputedState<MentionCollectionView?>.Options {

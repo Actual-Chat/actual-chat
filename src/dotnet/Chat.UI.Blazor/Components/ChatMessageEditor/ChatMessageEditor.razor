@@ -11,10 +11,17 @@
     var placeholder = "#" + Chat.Title;
 }
 
-<div @ref="EditorRef" class="chat-message-editor px-1.5 pb-1.5 flex-y">
+<div @ref="EditorRef" class="chat-message-editor px-1.5 pb-1.5">
     <MentionsStateProvider>
         <ChatMentionsRetriever ChatId="@Chat.Id" />
-        <MentionsList/>
+        <div class="absolute left-0 right-0 px-1.5 pb-1.5 z-50">
+            <div class="relative w-full">
+                <div class="absolute bottom-0 w-full">
+                    <MentionsList Class="bg-secondary" />
+                </div>
+            </div>
+        </div>
+
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border-secondary">
                 <input class="files-picker" type="file" hidden multiple/>
