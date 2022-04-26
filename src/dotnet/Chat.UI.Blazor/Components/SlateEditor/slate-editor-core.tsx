@@ -12,7 +12,7 @@ import { CustomEditor, CustomText, MentionElement, ParagraphElement } from './cu
 import { SlateEditorHandle } from './slate-editor-handle';
 import { serialize } from './serializer';
 
-export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
+export const createSlateEditorCore = (handle : SlateEditorHandle, debug : boolean) => {
     const [target, setTarget] = useState<Range | undefined>()
     const [search, setSearch] = useState('')
     const [placeholder, setPlaceholder] = useState('')

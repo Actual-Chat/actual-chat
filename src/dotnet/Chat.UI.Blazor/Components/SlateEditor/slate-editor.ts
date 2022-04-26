@@ -1,6 +1,6 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
-import { MentionExample } from './mentions';
+import { createSlateEditorCore } from './slate-editor-core';
 import { SlateEditorHandle } from './slate-editor-handle';
 import './slate-editor.css';
 
@@ -26,7 +26,7 @@ export class SlateEditor {
         // @ts-ignore
         this.editorDiv.editorHandle = this.editorHandle;
 
-        const slateEditor = () => MentionExample(this.editorHandle, this.debug)
+        const slateEditor = () => createSlateEditorCore(this.editorHandle, this.debug)
         this.reactDomRoot = ReactDOM.createRoot(this.editorDiv);
         this.reactDomRoot.render(React.createElement(slateEditor));
         if (debug) console.log("SlateEditor.constructor");
