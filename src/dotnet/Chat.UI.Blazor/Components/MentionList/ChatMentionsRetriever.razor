@@ -35,7 +35,7 @@
                 .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(c => c.Name)
                 .Take(limit);
-            var mentions = candidates.Select(c => new MentionListItem(c.Id, c.Name)).ToArray();
+            var mentions = candidates.Select(c => new MentionListItem("a:" + c.Id, c.Name)).ToArray();
             return mentions;
         }
     }
