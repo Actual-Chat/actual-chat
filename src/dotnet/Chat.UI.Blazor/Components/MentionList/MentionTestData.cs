@@ -1,8 +1,8 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-internal static class MentionData
+internal static class MentionTestData
 {
-    static MentionData()
+    static MentionTestData()
     {
         var random = new Random();
         Candidates = _names.Select(c => new Mention(c.Replace(' ', '-') + random.Next(1000), c)).ToArray();

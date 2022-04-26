@@ -123,9 +123,9 @@ public class MentionListContext
     private static IEnumerable<Mention> GetDemoMentions(string search)
     {
         if (search.IsNullOrEmpty())
-            return MentionData.Candidates;
+            return MentionTestData.Candidates;
         var filter = search.ToLowerInvariant();
-        return MentionData.Candidates
+        return MentionTestData.Candidates
                 .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase));
     }
 }
