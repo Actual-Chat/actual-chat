@@ -1,5 +1,3 @@
-using Stl.Fusion.Authentication.Commands;
-
 namespace ActualChat.Users;
 
 internal class Authz : IAuthz
