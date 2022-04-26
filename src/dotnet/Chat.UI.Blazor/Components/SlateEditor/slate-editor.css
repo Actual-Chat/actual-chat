@@ -1,0 +1,3 @@
+.slate-editor-root .mention {
+    @apply inline-block px-1 bg-mention rounded-md;
+}

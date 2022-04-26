@@ -6,8 +6,6 @@ import {
     Editable,
     ReactEditor,
     withReact,
-    useSelected,
-    useFocused,
 } from 'slate-react'
 
 import { CustomEditor, CustomText, MentionElement, ParagraphElement } from './custom-types';
@@ -261,23 +259,12 @@ const Element = props => {
 }
 
 const Mention = ({ attributes, children, element }) => {
-    const selected = useSelected()
-    const focused = useFocused()
     return (
         <span
             {...attributes}
             contentEditable={false}
+            className="mention"
             data-cy={`mention-${element.mentionId}`}
-            style={{
-                padding: '3px 3px 2px',
-                margin: '0 1px',
-                verticalAlign: 'baseline',
-                display: 'inline-block',
-                borderRadius: '4px',
-                backgroundColor: '#eee',
-                fontSize: '0.9em',
-                boxShadow: selected && focused ? '0 0 0 2px #B4D5FF' : 'none',
-            }}
         >@{element.name}
       {children}
     </span>

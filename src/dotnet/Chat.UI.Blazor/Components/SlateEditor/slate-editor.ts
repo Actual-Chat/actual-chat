@@ -2,6 +2,7 @@ import React from "react"
 import ReactDOM from "react-dom/client"
 import { MentionExample } from './mentions';
 import { SlateEditorHandle } from './slate-editor-handle';
+import './slate-editor.css';
 
 export class SlateEditor {
     private readonly blazorRef: DotNet.DotNetObject;
