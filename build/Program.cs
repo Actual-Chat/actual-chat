@@ -229,7 +229,7 @@ internal static class Program
                 "--blame-hang-timeout 60s " +
                 $"--results-directory {resultsDirectory} " +
                 "--logger:console;verbosity=detailed " +
-                $"--logger:trx;LogFileName=\"{Path.Combine(resultsDirectory, "unit.trx").Replace("\"", "\\\"")}\" " +
+                $"--logger:trx;LogFilePrefix=\"{resultsDirectory.Replace("\"", "\\\"")}/\" " +
                 (IsGitHubActions() ? "--logger GitHubActions " : "") +
                 $"-c {configuration} "
                 )
@@ -323,7 +323,7 @@ internal static class Program
                 "--blame-hang-timeout 300s " +
                 $"--results-directory {resultsDirectory} " +
                 "--logger:console;verbosity=detailed " +
-                $"--logger:trx;LogFileName=\"{Path.Combine(resultsDirectory, "integration.trx").Replace("\"", "\\\"")}\" " +
+                $"--logger:trx;LogFilePrefix=\"{resultsDirectory.Replace("\"", "\\\"")}/\" " +
                 (IsGitHubActions() ? "--logger GitHubActions " : "") +
                 $"-c {configuration} "
                 )

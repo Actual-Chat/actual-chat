@@ -37,3 +37,10 @@ jobs:
           export TESTS__USERS__USER1__EMAIL="${{secrets.TESTS__USERS__USER1__EMAIL}}"
           export TESTS__USERS__USER1__PASSWORD="${{secrets.TESTS__USERS__USER1__PASSWORD}}"
           docker-compose -f docker-compose.yml -f docker-compose.integration-tests.yml up --build --abort-on-container-exit --exit-code-from tests
+      - name: Report test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: Integration tests results            # Name of the check run which will be created
+          path: ./artifacts/tests/docker-output/*.trx    # Path to test results
+          reporter: dotnet-trx        # Format of test results
