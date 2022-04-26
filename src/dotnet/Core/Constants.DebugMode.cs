@@ -22,6 +22,7 @@ public static partial class Constants
         public static bool TranscriberGoogle { get; } = false;
 
         public static bool WebMReader { get; } = false;
+        public static bool MarkupParser { get; } = false;
 
         public static bool SignalR { get; } = false;
     }

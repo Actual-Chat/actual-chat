@@ -1,0 +1,5 @@
+@using Stl.Extensibility
+@inherits MarkupViewBase<PlainTextMarkup>
+@attribute [MatchFor(typeof(PlainTextMarkup), typeof(IMarkupView))]
+
+<span class="plain-text-part-view whitespace-break-spaces">@Markup.Text</span>

@@ -23,7 +23,13 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         Key = entry.Id.ToString(CultureInfo.InvariantCulture);
     }
 
+    public override string ToString()
+        => $"(#{Key} -> {Entry})";
+
     // Equality
+
+    public override bool Equals(object? obj)
+        => ReferenceEquals(this, obj) || (obj is ChatMessageModel other && Equals(other));
 
     public bool Equals(ChatMessageModel? other)
     {
@@ -39,6 +45,10 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             && IsFirstUnread == other.IsFirstUnread
             && Attachments.SequenceEqual(other.Attachments);
     }
+
+    public override int GetHashCode()
+        => HashCode.Combine(Entry, DateLine, IsBlockStart, IsBlockEnd);
+
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
     public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
 
@@ -101,13 +111,4 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             return nextEntry.BeginsAt - prevEndsAt >= BlockSplitPauseDuration;
         }
     }
-
-    public override string ToString()
-        => $"(#{Key} -> {Entry})";
-
-    public override bool Equals(object? obj)
-        => ReferenceEquals(this, obj) || (obj is ChatMessageModel other && Equals(other));
-
-    public override int GetHashCode()
-        => HashCode.Combine(Entry, DateLine, IsBlockStart, IsBlockEnd);
 }

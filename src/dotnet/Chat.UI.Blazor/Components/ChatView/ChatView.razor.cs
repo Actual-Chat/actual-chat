@@ -30,8 +30,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private IMutableState<long> LastReadEntryIdState { get; set; } = null!;
     private IMutableState<List<string>> VisibleKeysState { get; set; } = null!;
 
-    public async ValueTask DisposeAsync()
-        => _disposeToken.Cancel();
+    public ValueTask DisposeAsync()
+    {
+        _disposeToken.Cancel();
+        return ValueTask.CompletedTask;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -71,7 +74,10 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                     continue;
 
                 var lastVisibleEntryId = visibleKeys
-                    .Select(key => long.TryParse(key, out var entryId) ? (long?)entryId : null)
+                    .Select(key =>
+                        long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
+                            ? (long?)entryId
+                            : null)
                     .Where(entryId => entryId.HasValue)
                     .Select(entryId => entryId!.Value)
                     .Max();

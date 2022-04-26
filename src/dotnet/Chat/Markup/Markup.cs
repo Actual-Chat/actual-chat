@@ -1,20 +1,48 @@
-using Stl.Internal;
+﻿namespace ActualChat.Chat;
 
-namespace ActualChat.Chat;
-
-public class Markup
+public abstract record Markup
 {
-    private ImmutableArray<MarkupPart>? _parts;
+    public static Markup Empty { get; } = new PlainTextMarkup("");
 
-    public string Text { get; init; } = "";
-    public LinearMap TextToTimeMap { get; init; } = default;
-
-    public ImmutableArray<MarkupPart> Parts {
-        get => _parts ?? throw Errors.NotInitialized(nameof(Parts));
-        set {
-            if (_parts != null)
-                throw Errors.AlreadyInitialized(nameof(Parts));
-            _parts = value;
+    public static Markup Join(Markup first, Markup second)
+    {
+        if (first == Empty)
+            return second;
+        if (second == Empty)
+            return first;
+        if (first is MarkupSeq f) {
+            if (second is MarkupSeq s)
+                return new MarkupSeq(f.Items.AddRange(s.Items));
+            return new MarkupSeq(f.Items.Append(second));
         }
+        else if (second is MarkupSeq s)
+            return new MarkupSeq(ImmutableArray<Markup>.Empty.Add(first).AddRange(s.Items));
+        return new MarkupSeq(first, second);
     }
+
+    public static Markup Join(IEnumerable<Markup> parts)
+    {
+        var items = new List<Markup>();
+        foreach (var markup in parts) {
+            if (markup is MarkupSeq seq)
+                items.AddRange(seq.Items);
+            else if (markup != Empty)
+                items.Add(markup);
+        }
+        return items.Count switch {
+            0 => Empty,
+            1 => items[0],
+            _ => new MarkupSeq(items),
+        };
+    }
+
+    public abstract string ToMarkupText();
+
+    public virtual Markup Simplify()
+        => this;
+
+    // Operators
+
+    public static Markup operator +(Markup first, Markup second)
+        => Join(first, second);
 }

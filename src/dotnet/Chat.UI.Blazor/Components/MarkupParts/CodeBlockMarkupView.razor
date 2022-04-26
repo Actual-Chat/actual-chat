@@ -1,0 +1,11 @@
+@using Stl.Extensibility
+@inherits MarkupViewBase<CodeBlockMarkup>
+@attribute [MatchFor(typeof(CodeBlockMarkup), typeof(IMarkupView))]
+@{
+    var m = Markup;
+    var cls = "code-part-view";
+    if (!m.Language.IsNullOrEmpty())
+        cls += " language-" + m.Language;
+}
+
+<pre class="mt-2 max-w-[90%]"><code class="@cls block bg-primary p-1 rounded-md border border-gray-300">@m.Code</code></pre>
