@@ -19,7 +19,7 @@ public class UsersClientModule : HostModule
         var fusionClient = services.AddFusion().AddRestEaseClient();
         var fusionAuth = fusion.AddAuthentication().AddRestEaseClient();
 
-        fusionClient.AddReplicaService<IAuthz, IAuthz>();
+        fusionClient.AddReplicaService<IAuthz, IAuthzClientDef>();
         fusionClient.AddReplicaService<IUserProfiles, IUserProfilesClientDef>();
         fusionClient.AddReplicaService<IUserStates, IUserStatesClientDef>();
         fusionClient.AddReplicaService<IUserAvatars, IUserAvatarsClientDef>();

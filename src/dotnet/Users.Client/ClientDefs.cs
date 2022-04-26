@@ -6,7 +6,7 @@ namespace ActualChat.Users.Client;
 public interface IAuthzClientDef
 {
     [Get(nameof(IsActive))]
-    Task<UserProfile?> IsActive(Session session, CancellationToken cancellationToken);
+    public Task<bool> IsActive(Session session, CancellationToken cancellationToken);
 }
 
 [BasePath("userProfiles")]
