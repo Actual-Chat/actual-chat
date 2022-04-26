@@ -9,7 +9,7 @@ public sealed record Mention(
 {
     public Mention() : this("") { }
 
-    public override string ToPlainText()
+    public override string ToMarkupText()
         => Kind switch {
             MentionKind.UserId => $"@u:{Target}",
             MentionKind.AuthorId => $"@a:{Target}",

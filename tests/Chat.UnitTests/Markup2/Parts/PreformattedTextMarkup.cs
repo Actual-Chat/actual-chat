@@ -4,6 +4,6 @@ public sealed record PreformattedTextMarkup(string Text) : TextMarkup
 {
     public PreformattedTextMarkup() : this("") { }
 
-    public override string ToPlainText()
+    public override string ToMarkupText()
         => $"`{Text.Replace("`", "``")}`";
 }

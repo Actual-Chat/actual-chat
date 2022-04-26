@@ -52,7 +52,7 @@ public class MarkupParser2Test : TestBase
     [Fact]
     public void ItalicTest()
     {
-        var m = Parse<StylizedTextMarkup>("*italic text*", out var text);
+        var m = Parse<StylizedMarkup>("*italic text*", out var text);
         m.Style.Should().Be(TextStyle.Italic);
         var m1 = m.Markup.Should().BeOfType<PlainTextMarkup>().Subject;
         m1.Text.Should().Be(text[1..^1]);
@@ -61,7 +61,7 @@ public class MarkupParser2Test : TestBase
     [Fact]
     public void BoldTest()
     {
-        var m = Parse<StylizedTextMarkup>("**bold text**", out var text);
+        var m = Parse<StylizedMarkup>("**bold text**", out var text);
         m.Style.Should().Be(TextStyle.Bold);
         var m1 = m.Markup.Should().BeOfType<PlainTextMarkup>().Subject;
         m1.Text.Should().Be(text[2..^2]);
@@ -103,6 +103,18 @@ code
     }
 
     [Fact]
+    public void ComplexMixedCodeTest()
+    {
+        var m = Parse<MarkupSeq>(@"
+*1* **
+```cs
+code
+```
+2 ```cs", out _);
+        m.Items.Length.Should().Be(9);
+    }
+
+    [Fact]
     public void UnparsedTest()
     {
         var m = Parse<UnparsedMarkup>("**", out var text);
@@ -113,7 +125,7 @@ code
     public void MixedTest()
     {
         var m = Parse<MarkupSeq>("***bi*** @alex `a``b` *i* **b** *", out _);
-        m.Items.Length.Should().Be(2);
+        m.Items.Length.Should().Be(11);
         var um = (UnparsedMarkup) m.Items.Last();
         um.Text.Should().Be("*");
     }
@@ -129,9 +141,9 @@ code
         var parsed = MarkupParser2.Parse(text);
         Out.WriteLine($"<- {parsed}");
         var result = parsed.Should().BeOfType<TResult>().Subject;
-        var plainText = parsed.ToPlainText().Replace("\r\n", "\n");
-        var expectedPlainText = text.Replace("\r\n", "\n");
-        plainText.Should().Be(expectedPlainText);
+        var markupText = parsed.ToMarkupText().Replace("\r\n", "\n");
+        var expectedMarkupText = text.Replace("\r\n", "\n");
+        markupText.Should().Be(expectedMarkupText);
         return result;
     }
 }

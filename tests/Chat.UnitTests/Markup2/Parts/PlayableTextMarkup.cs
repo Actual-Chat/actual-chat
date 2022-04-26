@@ -4,6 +4,6 @@ public sealed record PlayableTextMarkup(string Text, LinearMap TextToTimeMap) : 
 {
     public PlayableTextMarkup() : this("", default) { }
 
-    public override string ToPlainText()
+    public override string ToMarkupText()
         => Text;
 }

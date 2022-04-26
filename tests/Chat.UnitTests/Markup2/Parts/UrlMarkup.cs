@@ -14,6 +14,6 @@ public sealed record UrlMarkup(string Url) : TextMarkup
 
     public UrlMarkup() : this("") { }
 
-    public override string ToPlainText()
+    public override string ToMarkupText()
         => Url;
 }
