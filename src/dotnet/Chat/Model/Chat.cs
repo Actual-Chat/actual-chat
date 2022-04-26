@@ -1,6 +1,4 @@
-﻿using Markdig.Helpers;
-
-#pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
+﻿#pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
 
 namespace ActualChat.Chat;
 
@@ -15,5 +13,5 @@ public record Chat
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;
 
     public static bool IsValidId(string chatId)
-        => chatId.Length > 0 && chatId.All(c => c.IsAlphaNumeric() || c == '-');
+        => chatId.Length > 0 && chatId.All(c => char.IsLetterOrDigit(c) || c == '-');
 }
