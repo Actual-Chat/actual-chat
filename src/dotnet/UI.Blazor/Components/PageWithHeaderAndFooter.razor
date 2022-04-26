@@ -2,16 +2,16 @@
     <div class="flex-none flex-y w-full overflow-hidden shadow-md">
         @Header
     </div>
-    <div class="flex-1 flex-y h-full overflow-hidden">
-        <div class="flex-1 flex-x h-full overflow-hidden">
-            <div class="flex-1 -flex-y overflow-y-auto w-full @BodyClass">
-                <div class="flex-none flex-y w-full overflow-hidden">
-                    @Footer
-                </div>
+    <div class="flex-1 flex-x h-full overflow-hidden">
+        <div class="flex-1 -flex-y h-full overflow-hidden">
+            <div class="flex-none flex-y w-full overflow-hidden">
+                @Footer
+            </div>
+            <div class="flex-1 flex-y overflow-y-auto @BodyClass">
                 @Body
             </div>
-            @RightPanel
         </div>
+        @RightPanel
     </div>
 </div>
 
