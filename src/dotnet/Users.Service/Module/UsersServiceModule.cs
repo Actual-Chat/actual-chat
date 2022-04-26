@@ -11,6 +11,7 @@ using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.Server;
+using Stl.Fusion.Server.Authentication;
 using Stl.Fusion.Server.Controllers;
 using Stl.Plugins;
 using Stl.Redis;
@@ -82,6 +83,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             dbContext.AddEntityResolver<string, DbUserAuthor>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
             dbContext.AddEntityResolver<string, DbUserContact>();
+            dbContext.AddEntityConverter<DbUserProfile, UserProfile, DbUserProfileConverter>();
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
@@ -110,7 +112,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
 
         // Auth services
         var fusionAuth = fusion.AddAuthentication();
-        services.TryAddScoped<ServerAuthHelper>(); // Replacing the default one w/ own
+        services.TryAddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionAuth.AddServer(
             signInControllerSettingsFactory: _ => SignInController.DefaultSettings with {
                 DefaultScheme = GoogleDefaults.AuthenticationScheme,
@@ -126,6 +128,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
+        fusion.AddComputeService<IAuthz, Authz>();
         fusion.AddComputeService<IUserProfiles, UserProfiles>();
         fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
         fusion.AddComputeService<IUserStates, UserStates>();

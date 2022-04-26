@@ -1,5 +1,6 @@
 @page "/new/chat/"
 @using System.ComponentModel.DataAnnotations
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 <MainHeader>New chat</MainHeader>
 
@@ -15,8 +16,8 @@
     </div>
 
     <div class="mt-3 flex-x justify-end">
-        <button type="submit" class="bg-button-success hover:bg-button-success-hover text-white py-1 px-4 rounded">Create</button>
-        <a type="button" class="bg-separate-line hover:bg-avatar text-white py-1 px-4 rounded ml-3" href="/">Cancel</a>
+        <Button Type="ButtonType.Submit">Create</Button>
+        <Button Class="btn-cancel ml-2" OnClick="OnCancel">Cancel</Button>
     </div>
 </EditForm>
 
@@ -36,6 +37,9 @@
         var chatId = result.Result.Id;
         Nav.NavigateTo($"/chat/{chatId}");
     }
+
+    private void OnCancel()
+        => Nav.NavigateTo("/");
 
     public class Model
     {

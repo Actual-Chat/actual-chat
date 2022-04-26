@@ -35,6 +35,10 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                     },
                 },
             });
+            dbContext.UserProfiles.Add(new DbUserProfile {
+                Id = UserConstants.Admin.UserId,
+                Status = UserStatus.Active,
+            });
             var avatarId = Ulid.NewUlid().ToString();
             dbContext.UserAvatars.Add(new DbUserAvatar() {
                 Id = avatarId,

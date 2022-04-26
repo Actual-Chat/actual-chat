@@ -13,9 +13,9 @@ namespace ActualChat.Chat;
 public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+    private static readonly string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
+    private static readonly RandomStringGenerator ChatIdGenerator = new(10, ChatIdAlphabet);
     private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
-    private const string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
-    private readonly RandomStringGenerator _chatIdGenerator = new (10, ChatIdAlphabet);
 
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
@@ -258,7 +258,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
         Symbol chatId = !command.Chat.Id.IsEmpty
             ? command.Chat.Id
-            : _chatIdGenerator.Next(); // TODO: add reprocessing in case uniqueness conflicts
+            : ChatIdGenerator.Next(); // TODO: add reprocessing in case uniqueness conflicts
         var chat = command.Chat with {
             Id = chatId,
             Version = VersionGenerator.NextVersion(),
@@ -443,7 +443,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         else {
             var compositeId = DbChatEntry.GetCompositeId(entry.ChatId, entryType, entry.Id);
             dbEntry = await dbContext.ChatEntries
-                .FindAsync(ComposeKey(compositeId), cancellationToken)
+                .FindAsync(DbKey.Compose(compositeId), cancellationToken)
                 .ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             if (dbEntry.Version != entry.Version)

@@ -38,4 +38,7 @@ public sealed record ChatAuthor : Author
         if (!TryParse(chatAuthorId, out chatId, out localId))
             throw new FormatException();
     }
+
+    public static bool IsValidId(string chatAuthorId)
+        => TryParse(chatAuthorId, out var chatId, out _) && Chat.IsValidId(chatId);
 }

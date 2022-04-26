@@ -3,13 +3,16 @@ namespace ActualChat.Mathematics;
 public static partial class RangeExt
 {
     public static Range<long> ToInclusive(this Range<long> range)
-        => new(range.Start, range.End - 1);
+        => new (range.Start, range.End - 1);
 
     public static Range<long> ToExclusive(this Range<long> range)
-        => new(range.Start, range.End + 1);
+        => new (range.Start, range.End + 1);
+
+    public static Range<long> Expand(this Range<long> range, Range<long> expandBy)
+        => new (range.Start - expandBy.Start, range.End + expandBy.End);
 
     public static Range<long> Move(this Range<long> range, long startOffset, long endOffset)
-        => new(range.Start + startOffset, range.End + endOffset);
+        => new (range.Start + startOffset, range.End + endOffset);
 
     public static (Range<long> FirstHalf, Range<long> SecondHalf) SplitEvenly(this Range<long> range)
     {
@@ -45,4 +48,9 @@ public static partial class RangeExt
         => new (
             range.Start.ToString(CultureInfo.InvariantCulture),
             range.End.ToString(CultureInfo.InvariantCulture));
+
+    public static Range<long> AsLongRange(this Range<string> range)
+        => new (
+            long.Parse(range.Start, NumberStyles.Integer, CultureInfo.InvariantCulture),
+            long.Parse(range.End, NumberStyles.Integer, CultureInfo.InvariantCulture));
 }

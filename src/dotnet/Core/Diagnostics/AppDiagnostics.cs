@@ -4,6 +4,6 @@ namespace ActualChat.Diagnostics;
 
 public static class AppDiagnostics
 {
-    public static ActivitySource AppTrace { get; } = new("ActualChat.App", ThisAssembly.AssemblyInformationalVersion);
-    public static Meter AppMeter { get; } = new("ActualChat.App", ThisAssembly.AssemblyInformationalVersion);
+    public static ActivitySource AppTrace { get; } = new("App", typeof(AppDiagnostics).Assembly.GetInformationalVersion());
+    public static Meter AppMeter { get; } = new("App", typeof(AppDiagnostics).Assembly.GetInformationalVersion());
 }

@@ -1,12 +1,44 @@
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Authorization
+@using ActualChat.Users
+@using Microsoft.AspNetCore.Authorization
 @namespace ActualChat.UI.Blazor.Components
-@inject HostInfo _hostInfo
-@inject IEnumerable<NavBarItem> _navBarItems
+@inherits ComputedStateComponent<NavbarLinks.Model>
 
-@foreach (var barItem in _navBarItems.OrderBy(c => c.Order)) {
-    @barItem.Content
+@code {
+
+    [Inject]
+    private IAuthorizationService AuthorizationService { get; set; } = null!;
+
+    [Inject]
+    private AuthStateProvider AuthStateProvider { get; set; } = null!;
+
+    [Inject]
+    private HostInfo HostInfo { get; set; } = null!;
+
+    [Inject]
+    private IEnumerable<NavBarItem> NavBarItems { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() { InitialValue = new Model(false) };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var authenticationState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var authorizationResult = await AuthorizationService.AuthorizeAsync(authenticationState.User, KnownPolicies.IsUserActive);
+        return new Model(authorizationResult.Succeeded);
+    }
+
+    public sealed record Model(bool IsActive);
 }
-@if (_hostInfo.IsDevelopmentInstance) {
+
+@if (State.LatestNonErrorValue.IsActive) {
+    @foreach (var barItem in NavBarItems.OrderBy(c => c.Order)) {
+        @barItem.Content
+    }
+}
+
+@if (HostInfo.IsDevelopmentInstance) {
     <NavbarGroup Title="Test pages" Class="navbar-pages" Id="testPages">
         <NavbarLink Title="Virtual List" Url="/test/virtual-list" />
         <NavbarLink Title="Audio Player" Url="/test/audio-player" />

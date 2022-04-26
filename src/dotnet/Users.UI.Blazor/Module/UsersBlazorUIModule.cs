@@ -1,4 +1,6 @@
 using ActualChat.Hosting;
+using ActualChat.Users.UI.Blazor.Authorization;
+using ActualChat.Users.UI.Blazor.Services;
 using Microsoft.AspNetCore.Authorization;
 using Stl.Plugins;
 
@@ -17,5 +19,9 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
         services.AddSingleton(_ => new PresenceService.Options() {
             UpdatePeriod = TimeSpan.FromSeconds(50),
         });
+
+        services.AddScoped<IAuthorizationHandler, IsUserActiveRequirementHandler>();
+        var fusion = services.AddFusion();
+        fusion.AddComputeService<UserSettings>(ServiceLifetime.Scoped);
     }
 }

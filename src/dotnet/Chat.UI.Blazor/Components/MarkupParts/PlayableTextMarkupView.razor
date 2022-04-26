@@ -1,0 +1,74 @@
+@using Stl.Extensibility
+@using ActualChat.MediaPlayback
+@inherits ComputedMarkupViewBase<PlayableTextMarkup, float?>
+@attribute [MatchFor(typeof(PlayableTextMarkup), typeof(IMarkupView))]
+@{
+    var playingAt = State.LatestNonErrorValue;
+}
+<span class="plain-text-part-view whitespace-break-spaces">
+    @foreach (var word in Markup.Words) {
+        var text = Markup.Text.AsSpan(word.TextRange.Start, word.TextRange.End - word.TextRange.Start);
+        var cls = "playable";
+        if (playingAt.HasValue && word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt.GetValueOrDefault()))
+            cls = "playable playing";
+        <span class="@cls" @onclick="_ => OnClick(word.TextRange.Start)">@word.Value</span>
+    }
+</span>
+
+@code {
+    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+
+    [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
+    public double? PlayingAt { get; set; }
+
+    private async Task OnClick(int startIndex) {
+        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
+        var markup = Markup;
+        var entry = Entry;
+        var chatId = entry.ChatId;
+        var audioEntryId = entry.AudioEntryId.GetValueOrDefault(); // It's there for sure, otherwise click won't work
+
+        var startTimeOpt = markup.TextToTimeMap.TryMap(startIndex);
+        if (startTimeOpt is not { } startTime)
+            return;
+
+        var session = Services.GetRequiredService<Session>();
+        var chats = Services.GetRequiredService<IChats>();
+        var chatEntryReader = chats.NewEntryReader(session, chatId, ChatEntryType.Audio);
+        var audioEntry = await chatEntryReader.Get(audioEntryId, default).ConfigureAwait(false);
+        if (audioEntry == null) {
+            Log.LogWarning("Can't play: audio entry with Id = {Id} doesn't exist", audioEntryId);
+            return; // We can't do much in this case
+        }
+
+        var startAt = audioEntry.BeginsAt + TimeSpan.FromSeconds(startTime - 0.25);
+        var chatPlayers = Services.GetRequiredService<ChatPlayers>();
+        chatPlayers.StartHistoricalPlayback(chatId, startAt);
+    }
+
+    protected override async Task<float?> ComputeState(CancellationToken cancellationToken) {
+        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
+        var audioEntryId = Entry.AudioEntryId;
+        if (audioEntryId == null)
+            return null;
+
+        var timeRange = Markup.TimeRange;
+        if (timeRange.IsEmpty)
+            return null;
+
+        var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());
+        if (await ActivePlaybackInfo.GetTrackInfo(trackId, cancellationToken).ConfigureAwait(false) is not ChatAudioTrackInfo trackInfo)
+            return null;
+
+        var playbackState = await ActivePlaybackInfo.GetTrackPlaybackState(trackId, cancellationToken).ConfigureAwait(false);
+        if (playbackState == null || playbackState.IsCompleted)
+            return null;
+
+        var playingAt = (float)(trackInfo.RecordedAt + playbackState.PlayingAt - trackInfo.AudioEntry.BeginsAt).TotalSeconds;
+        var playingAtNearbyRange = new Range<float>(playingAt - 2f, playingAt + 2f);
+        if (!playingAtNearbyRange.Overlaps(timeRange))
+            return null;
+
+        return playingAt;
+    }
+}

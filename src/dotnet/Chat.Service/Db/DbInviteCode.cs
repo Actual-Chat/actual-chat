@@ -62,9 +62,6 @@ public class DbInviteCode : IHasId<string>, IHasVersion<long>
     internal class EntityConfiguration : IEntityTypeConfiguration<DbInviteCode>
     {
         public void Configure(EntityTypeBuilder<DbInviteCode> builder)
-        {
-            builder.Property(a => a.Id).ValueGeneratedOnAdd().HasValueGenerator<UlidValueGenerator>();
-            builder.HasIndex(a => a.Value).IsUnique().HasFilter($"\"{nameof(State)}\" = 0");
-        }
+            => builder.HasIndex(a => a.Value).IsUnique().HasFilter($"\"{nameof(State)}\" = 0");
     }
 }

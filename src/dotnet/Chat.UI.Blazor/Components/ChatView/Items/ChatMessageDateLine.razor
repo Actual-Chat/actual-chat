@@ -3,13 +3,11 @@
 @{
     var date = Date.ToString("d MMMM yyyy");
 }
-<div class="flex items-center mb-4">
-    <div class="flex-1 h-px bg-gray-300"></div>
-    <span class="px-2 py-0 text-secondary text-sm font-medium">@date</span>
-    <div class="flex-1 h-px bg-gray-300"></div>
-</div>
+<Separator Title="@date"/>
 
 @code {
+
     [Parameter]
     public DateOnly Date { get; set; }
+
 }

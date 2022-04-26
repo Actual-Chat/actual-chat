@@ -15,4 +15,8 @@ public class UserProfilesController : ControllerBase, IUserProfiles
     [HttpGet, Publish]
     public Task<UserProfile?> Get(Session session, CancellationToken cancellationToken)
         => _service.Get(session, cancellationToken);
+
+    [HttpPost]
+    public Task UpdateStatus([FromBody] IUserProfiles.UpdateStatusCommand command, CancellationToken cancellationToken)
+        => _service.UpdateStatus(command, cancellationToken);
 }

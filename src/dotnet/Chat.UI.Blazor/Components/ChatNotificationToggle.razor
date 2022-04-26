@@ -5,11 +5,9 @@
 @{
     var isSubscribed = State.Value.IsSubscribed;
 }
-<div class="chat-header-button">
-    <button @onclick="OnClick" class="@(isSubscribed ? "on" : "off") p-1">
-        <i class="fa fa-bell fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
-    </button>
-</div>
+<ButtonSquare OnClick="OnClick" Class="@(isSubscribed ? "on" : "off")">
+    <i class="fa fa-bell fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
+</ButtonSquare>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;

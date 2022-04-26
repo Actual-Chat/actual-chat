@@ -1,28 +1,28 @@
 @using System.Net
-<div class="w-[200px]">
-    <div class="flex-x">
+<div class="w-[250px] author-card-modal">
+    <div class="flex-y h-full">
         <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
-            <div class="author-avatar w-9 h-9 select-none bg-secondary rounded-md">
+            <div class="author-avatar w-12 h-12 select-none bg-secondary rounded-md">
                 <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
         </ChatAuthor>
-
-        <div class="ml-2 self-end">
+        <div class="self-start pt-2">
             <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
-                <span class="text-secondary rounded">@context.Author.Name</span>
+                <span class="text-primary font-semibold text-lg rounded">@context.Author.Name</span>
             </ChatAuthor>
         </div>
+        <div class="flex-x font-light text-xs">
+            ID: @ChatAuthorId
+        </div>
+        <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
+            @if (_canAddContact && !_isAlreadyAdded) {
+            <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@_isAddingContact">Add to Contacts</Button>
+            }
+            @if (_canSendMessage) {
+            <Button Class="btn-success" OnClick="OnSendMessageClick">Send Message</Button>
+            }
+        </ButtonGroup>
     </div>
-    @if (_canAddContact && !_isAlreadyAdded) {
-        <div class="mt-4 hover:bg-gray-200">
-            <button type="button" class="on" disabled="@_isAddingContact" @onclick="OnAddContactClick">Add to Contacts</button>
-        </div>
-    }
-    @if (_canSendMessage) {
-        <div class="mt-4 hover:bg-gray-200">
-            <button type="button" class="on" @onclick="OnSendMessageClick">Send Message</button>
-        </div>
-    }
 </div>
 
 @code {
@@ -49,7 +49,7 @@
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
 
-        ModalInstance.SetTitle("User Info");
+        // ModalInstance.SetTitle("User Info");
 
         if (!string.IsNullOrEmpty(ChatId))
             _chatId = ChatId;

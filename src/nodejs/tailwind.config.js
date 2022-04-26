@@ -58,6 +58,7 @@ module.exports = {
         'button-error-hover': 'var(--button-color-error-hover)',
         'button-success-outline': 'var(--button-color-success-outline)',
         'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
+        'mention-hover': 'var(--background-mention-hover)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -77,6 +78,9 @@ module.exports = {
         'message-hover': 'var(--background-message-hover)',
         'separate-line': 'var(--background-separate-line)',
         'avatar': 'var(--background-avatar)',
+        'mention': 'var(--background-mention)',
+        'mention-hover': 'var(--background-mention-hover)',
+        'mention-message': 'var(--background-mention-message)',
       },
     },
     screens: {
@@ -186,6 +190,7 @@ module.exports = {
       spin: 'spin 1s linear infinite',
       ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
       pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      'custom-pulse': 'custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       bounce: 'bounce 1s infinite',
       'instant-display': 'display-element-from-left 0s',
       'display-from-left': 'display-element-from-left 150ms ease-in-out',
@@ -298,6 +303,7 @@ module.exports = {
       '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
       inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
       none: 'none',
+      context: '5px 5px 4px 0px rgba(34, 60, 80, 0.2);',
     },
     boxShadowColor: ({ theme }) => theme('colors'),
     caretColor: ({ theme }) => theme('colors'),
@@ -656,6 +662,11 @@ module.exports = {
           opacity: '.5',
         },
       },
+      pulse: {
+        '50%': {
+          opacity: '.1',
+        },
+      },
       bounce: {
         '0%, 100%': {
           transform: 'translateY(-25%)',
@@ -717,7 +728,7 @@ module.exports = {
           transform: 'scale(1)',
         },
         to: {
-          transform: 'scale(1.1)',
+          transform: 'scale(1.05)',
         },
       },
       'tooltip-vertical': {

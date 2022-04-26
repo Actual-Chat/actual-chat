@@ -2,12 +2,15 @@
     <div class="flex-none flex-y w-full overflow-hidden shadow-md">
         @Header
     </div>
-    <div class="flex-1 -flex-y h-full overflow-hidden">
-        <div class="flex-none flex-y w-full overflow-hidden shadow-[0_0_6px_-1px_rgba(0,0,0,0.1)]">
-            @Footer
-        </div>
-        <div class="flex-1 flex-y overflow-y-auto @BodyClass">
-            @Body
+    <div class="flex-1 flex-y h-full overflow-hidden">
+        <div class="flex-1 flex-x h-full overflow-hidden">
+            <div class="flex-1 -flex-y overflow-y-auto w-full @BodyClass">
+                <div class="flex-none flex-y w-full overflow-hidden">
+                    @Footer
+                </div>
+                @Body
+            </div>
+            @RightPanel
         </div>
     </div>
 </div>
@@ -18,4 +21,5 @@
     [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
+    [Parameter] public RenderFragment? RightPanel { get; set; }
 }

@@ -117,7 +117,7 @@ public readonly struct LinearMap
 
         var p1 = points[i + 1];
         var k = (value - p0.X) / (p1.X - p0.X);
-        return p0.Y + k * (p1.Y - p0.Y);
+        return p0.Y + (k * (p1.Y - p0.Y));
     }
 
     public float Map(float value)

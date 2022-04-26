@@ -77,7 +77,7 @@ button.off,
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
     @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
-    @apply h-8 min-w-16;
+    @apply h-8 min-w-16 max-w-max;
 }
 
 .btn.btn-success {
@@ -105,16 +105,24 @@ button.off,
 }
 
 .btn.btn-sm {
-    @apply h-6 min-w-12 text-xs;
+    @apply min-h-6 min-w-12 text-xs;
 }
 
 .btn.btn-lg {
-    @apply h-10 min-w-20 text-base;
+    @apply min-h-10 min-w-20 text-base;
 }
 
 .btn.btn-square {
     @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
-    @apply p-1 mx-0 min-w-0 border-0 rounded-xl;
+    @apply p-1 mx-0 min-w-0 border-0;
+}
+
+.btn.btn-square.transparent-secondary {
+    @apply bg-secondary hover:bg-accent;
+}
+
+.btn.btn-square.transparent-primary {
+    @apply bg-primary hover:bg-accent;
 }
 
 .btn.btn-square:hover .button-square-child {
@@ -127,6 +135,36 @@ button.off,
 
 .btn.btn-transparent {
     @apply relative flex hover:cursor-pointer border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+}
+
+.btn-group {
+    @apply overflow-hidden rounded-md justify-items-stretch gap-px;
+}
+
+.btn-group .btn {
+    @apply rounded-none;
+}
+
+.btn-group.flex-y .btn {
+    @apply fill-available;
+}
+
+.btn-group.btn-font-normal .btn {
+    @apply font-normal;
+}
+.btn-group.btn-font-light .btn {
+    @apply font-light;
+}
+.btn-group.btn-font-medium .btn {
+    @apply font-medium;
+}
+.btn-group.btn-font-semibold .btn {
+    @apply font-semibold;
+}
+
+.fill-available {
+    min-width: -webkit-fill-available;
+    min-width: -moz-available;
 }
 
 /* Webkit */
@@ -163,3 +201,38 @@ button.off,
     outline: none;
 }
 
+.author-card-modal .btn-group-parent {
+    @apply mt-2 mb-0;
+}
+
+.btn.btn-square.hidden-btn {
+    @apply invisible z-10 absolute;
+}
+
+.context-button {
+    @apply transition duration-150 ease-in-out outline-none;
+    @apply fill-current;
+    @apply max-w-max;
+    @apply text-base font-semibold text-secondary;
+    @apply p-1 mx-0 min-w-0;
+}
+
+.context-button.hidden-btn {
+    @apply invisible z-20 absolute;
+}
+
+.context-button:hover .context-button-child {
+    @apply animate-scale-icon;
+}
+
+.menu-item.context-menu-item {
+    @apply hover:bg-primary;
+}
+
+.btn.btn-square.audio-recorder-toggle {
+    @apply rounded-2xl;
+}
+
+.btn.btn-square.chat-language-toggle {
+    @apply rounded-2xl;
+}

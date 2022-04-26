@@ -235,6 +235,23 @@ namespace ActualChat.Users.Migrations.Migrations
                     b.ToTable("UserContacts");
                 });
 
+            modelBuilder.Entity("ActualChat.Users.Db.DbUserProfile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserProfiles");
+                });
+
             modelBuilder.Entity("ActualChat.Users.Db.DbUserState", b =>
                 {
                     b.Property<string>("UserId")

@@ -1,0 +1,25 @@
+@using Stl.Extensibility
+@inherits MarkupViewBase<UrlMarkup>
+@attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
+@{
+    var m = Markup;
+}
+
+@if (!m.IsImage) {
+    <a class="link-part-view cursor-pointer no-underline hover:underline text-cyan-600"
+       href="@m.Url" target="_blank">@m.Url</a>
+} else {
+    <a class="image-part-view cursor-pointer" href="@m.Url" role="button"
+       @onclick="OnClick" @onclick:preventDefault="true">
+        <img style="max-width: 400px; max-height: 300px" src="@m.Url" alt="@m.Url"/>
+    </a>
+}
+
+@code {
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
+
+    private Task OnClick() {
+        var m = (UrlMarkup)Markup;
+        return ImagePreviewUI.Show(m.Url);
+    }
+}

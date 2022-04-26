@@ -11,7 +11,10 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
         : base(options, services)
         => UserConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
 
-    public override async Task<DbUser> Create(UsersDbContext dbContext, User user, CancellationToken cancellationToken = default)
+    public override async Task<DbUser> Create(
+        UsersDbContext dbContext,
+        User user,
+        CancellationToken cancellationToken)
     {
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
         var dbUserAuthor = new DbUserAuthor();

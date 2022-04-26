@@ -1,5 +1,3 @@
-using ActualChat.Users;
-
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
@@ -16,6 +14,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsBlockEnd { get; init; }
     public bool IsUnread { get; init; }
     public int CountAs { get; init; } = 1;
+    public bool IsFirstUnread { get; init; }
 
     public ChatMessageModel(ChatEntry entry, ImmutableArray<TextEntryAttachment> attachments)
     {
@@ -29,22 +28,27 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     // Equality
 
+    public override bool Equals(object? obj)
+        => ReferenceEquals(this, obj) || (obj is ChatMessageModel other && Equals(other));
+
     public bool Equals(ChatMessageModel? other)
     {
         if (ReferenceEquals(null, other))
             return false;
         if (ReferenceEquals(this, other))
             return true;
+
         return Entry.Equals(other.Entry)
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
+            && IsFirstUnread == other.IsFirstUnread
             && Attachments.SequenceEqual(other.Attachments);
     }
-    public override bool Equals(object? obj)
-        => ReferenceEquals(this, obj) || (obj is ChatMessageModel other && Equals(other));
+
     public override int GetHashCode()
         => HashCode.Combine(Entry, DateLine, IsBlockStart, IsBlockEnd);
+
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
     public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
 
@@ -62,6 +66,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         var blockContentLength = 0;
         var blockLength = 0;
 
+        var isPrevUnread = true;
         for (var index = 0; index < chatEntries.Count; index++) {
             if (isBlockStart) {
                 blockContentLength = 0;
@@ -76,14 +81,17 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             if (!attachmentsLookup.TryGetValue(entry.Id, out var attachments))
                 attachments = ImmutableArray<TextEntryAttachment>.Empty;
+            var isUnread = entry.Id > (lastReadEntryId ?? 0);
             var model = new ChatMessageModel(entry, attachments) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
-                IsUnread = entry.Id > (lastReadEntryId ?? 0),
+                IsUnread = isUnread,
+                IsFirstUnread = isUnread && !isPrevUnread,
             };
             result.Add(model);
 
+            isPrevUnread = isUnread;
             isBlockStart = isBlockEnd;
             blockLength += 1;
             blockContentLength += entry.Content.Length;
@@ -98,6 +106,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 return false;
             if (entry.AuthorId != nextEntry.AuthorId)
                 return true;
+
             var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;
             return nextEntry.BeginsAt - prevEndsAt >= BlockSplitPauseDuration;
         }

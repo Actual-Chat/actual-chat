@@ -86,8 +86,8 @@ internal static class Program
 
         Target("watch", DependsOn("clean-dist"), async () => {
 
-            if (Environment.OSVersion.Platform != PlatformID.Win32NT) {
-                throw new WithoutStackException("Use dotnet watch + webpack watch without build system");
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
+                throw new WithoutStackException($"Watch is not implemented for '{RuntimeInformation.OSDescription}'. Use dotnet watch + webpack watch without build system");
             }
 
             var npm = TryFindCommandPath("npm")
@@ -317,7 +317,7 @@ internal static class Program
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments($"test " +
                 "--nologo " +
-                "--filter \"FullyQualifiedName~IntegrationTests\" " +
+                "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\" " +
                 "--no-restore " +
                 "--blame-hang " +
                 "--blame-hang-timeout 300s " +
@@ -406,7 +406,6 @@ internal static class Program
                         $"-p:Configuration={configuration}"
                     ).ToConsole(Green("dotnet restore: "))
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
-                ;
             }
             finally {
                 cts.Cancel();

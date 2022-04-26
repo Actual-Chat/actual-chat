@@ -1,0 +1,39 @@
+name: Integration tests
+
+on:
+  push:
+    branches: ["master", "release/v*"]
+  pull_request:
+    branches: ["master", "release/v*"]
+env:
+  DOCKER_BUILDKIT: 1
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+      - name: Replace git+ssh://git@ to https://
+        run: sed -i 's/git+ssh:\/\/git@/https:\/\//g' src/nodejs/package-lock.json
+      - name: Generate Nerdbank.GitVersioning files
+        run: dotnet run --project build -- generate-version
+      - name: Run integration tests
+        run: |-
+          mkdir -p ~/.gcp
+          cat <<- 'EOF' > ~/.gcp/key.json
+          ${{secrets.GCP_KEY_JSON}}
+          EOF
+
+          export GOOGLE_APPLICATION_CREDENTIALS=~/.gcp/key.json
+          export GITHUB_TOKEN="${{secrets.GITHUB_TOKEN}}"
+          export NPM_READ_TOKEN="${{secrets.NPM_READ_TOKEN}}"
+          export USERSSETTINGS__GOOGLECLIENTID="${{secrets.USERSSETTINGS__GOOGLECLIENTID}}"
+          export USERSSETTINGS__GOOGLECLIENTSECRET="${{secrets.USERSSETTINGS__GOOGLECLIENTSECRET}}"
+          export USERSSETTINGS__MICROSOFTACCOUNTCLIENTID="${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTID}}"
+          export USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET="${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET}}"
+          export TESTS__USERS__USER1__EMAIL="${{secrets.TESTS__USERS__USER1__EMAIL}}"
+          export TESTS__USERS__USER1__PASSWORD="${{secrets.TESTS__USERS__USER1__PASSWORD}}"
+          docker-compose -f docker-compose.yml -f docker-compose.integration-tests.yml up --build --abort-on-container-exit --exit-code-from tests

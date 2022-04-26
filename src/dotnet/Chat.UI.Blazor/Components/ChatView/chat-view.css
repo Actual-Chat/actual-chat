@@ -8,16 +8,43 @@
     @apply text-sm text-current break-words;
 }
 
-.chat-message .unread {
-    @apply bg-message-hover;
-}
-
 .chat-message:hover {
     @apply bg-message-hover;
 }
 
 .chat-message:hover .author-badge {
     @apply bg-message-hover;
+}
+
+.chat-message:hover .hidden-btn {
+    @apply visible;
+}
+
+.chat-message.mention,
+.chat-message.own-message.mention {
+    @apply border-x-2 border-x-mention-hover bg-mention-message;
+}
+
+.chat-message.mention:hover,
+.chat-message.own-message.mention:hover {
+    @apply bg-secondary
+}
+
+.chat-message.mention:hover,
+.chat-message.own-message.mention:hover .author-badge {
+    @apply bg-secondary;
+}
+
+.chat-message.own-message {
+    @apply bg-sky-50;
+}
+
+.chat-message.own-message:hover {
+    @apply bg-secondary;
+}
+
+.chat-message.own-message:hover .author-badge {
+    @apply bg-secondary;
 }
 
 .author-image {
@@ -42,6 +69,14 @@
 
 .chat-message:hover .chat-message-timestamp-secondary {
     @apply visible;
+}
+
+.chat-message.mention:hover .chat-message-timestamp-secondary {
+    @apply visible;
+}
+
+.chat-message.mention .chat-message-markup {
+    @apply ml-0;
 }
 
 .chat-message:hover .message-menu {
@@ -84,3 +119,12 @@
 .panel-menu-item:hover {
     @apply bg-transparent;
 }
+
+.new-separator {
+    @apply bg-accent;
+}
+
+.new-separator-title {
+    @apply bg-accent text-accent rounded-md;
+}
+

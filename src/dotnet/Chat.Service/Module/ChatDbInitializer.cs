@@ -1,7 +1,5 @@
-using ActualChat.Audio;
 using ActualChat.Chat.Db;
 using ActualChat.Db;
-using ActualChat.Db.Module;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +11,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 {
     private static readonly string[] RandomWords =
         { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
+
     private IBlobStorageProvider Blobs { get; }
 
     public ChatDbInitializer(IServiceProvider services, IBlobStorageProvider blobs) : base(services)
@@ -36,22 +35,22 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             // Creating "The Actual One" chat
             var defaultChatId = Constants.Chat.DefaultChatId;
             var adminUserId = UserConstants.Admin.UserId;
-            var dbChat = new DbChat() {
+            var dbChat = new DbChat {
                 Id = defaultChatId,
                 Version = VersionGenerator.NextVersion(),
                 Title = "The Actual One",
                 CreatedAt = Clocks.SystemClock.Now,
                 IsPublic = true,
                 Owners = {
-                        new DbChatOwner() {
-                            ChatId = defaultChatId,
-                            UserId = adminUserId,
-                        },
+                    new DbChatOwner {
+                        ChatId = defaultChatId,
+                        UserId = adminUserId,
                     },
+                },
             };
             dbContext.Chats.Add(dbChat);
 
-            var dbAuthor = new DbChatAuthor() {
+            var dbAuthor = new DbChatAuthor {
                 Id = DbChatAuthor.ComposeId(defaultChatId, 1),
                 ChatId = defaultChatId,
                 LocalId = 1,
@@ -76,7 +75,14 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 .ConfigureAwait(false);
 
             var now = Clocks.SystemClock.Now;
-            await AddRandomEntries(dbContext, dbChat, dbAuthor, 0.5, 300, null, cancellationToken).ConfigureAwait(false);
+            await AddRandomEntries(dbContext,
+                    dbChat,
+                    dbAuthor,
+                    0.1,
+                    2000,
+                    null,
+                    cancellationToken)
+                .ConfigureAwait(false);
             // await AddRandomEntries(dbContext, dbChat, dbAuthor, 1, 4, now, cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb) {
@@ -105,7 +111,10 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 foreach (var e in duplicateEntries)
                     Log.LogCritical(
                         "- Entry w/ CompositeId = {CompositeId}, Id = {Id}, Type = {Type}, '{Content}'",
-                        e.CompositeId, e.Id, e.Type, e.Content);
+                        e.CompositeId,
+                        e.Id,
+                        e.Type,
+                        e.Content);
             }
         }
     }
@@ -119,21 +128,23 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         Moment? beginsAt,
         CancellationToken cancellationToken)
     {
-        var chats = (ChatsBackend) Services.GetRequiredService<IChatsBackend>();
+        var chats = (ChatsBackend)Services.GetRequiredService<IChatsBackend>();
         var lastBeginsAt = beginsAt ?? SystemClock.Now - TimeSpan.FromDays(1);
         var lastEndsAt = lastBeginsAt;
         if (!beginsAt.HasValue && await dbContext.ChatEntries.AnyAsync(cancellationToken).ConfigureAwait(false)) {
             lastBeginsAt = await dbContext.ChatEntries
-                    .Select(e => e.BeginsAt)
-                    .MaxAsync(cancellationToken).ConfigureAwait(false);
+                .Select(e => e.BeginsAt)
+                .MaxAsync(cancellationToken)
+                .ConfigureAwait(false);
             lastEndsAt = await dbContext.ChatEntries
                     .Select(e => e.EndsAt)
-                    .MaxAsync(cancellationToken).ConfigureAwait(false)
+                    .MaxAsync(cancellationToken)
+                    .ConfigureAwait(false)
                 ?? lastBeginsAt;
         }
 
         var rnd = new Random(1);
-        for (var i = 0; i < count; i++) {
+        for (var i = 0; i < count; i++)
             if (i == 0 && !beginsAt.HasValue)
                 await AddTextEntry("First").ConfigureAwait(false);
             else if (rnd.NextDouble() <= audioRecordProbability) {
@@ -144,7 +155,6 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             }
             else
                 await AddTextEntry().ConfigureAwait(false);
-        }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         async Task AddTextEntry(string? content = null)
@@ -154,7 +164,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
             var id = await chats
                 .DbNextEntryId(dbContext, dbChat.Id, ChatEntryType.Text, cancellationToken)
                 .ConfigureAwait(false);
-            var textEntry = new DbChatEntry() {
+            var textEntry = new DbChatEntry {
                 CompositeId = DbChatEntry.GetCompositeId(dbChat.Id, ChatEntryType.Text, id),
                 Type = ChatEntryType.Text,
                 ChatId = dbChat.Id,
@@ -162,7 +172,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 Version = VersionGenerator.NextVersion(),
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
-                Content = content ?? GetRandomSentence(rnd, 30),
+                Content = $"{id} {content ?? GetRandomSentence(rnd, 30)}",
                 AuthorId = dbAuthor.Id,
             };
             dbContext.Add(textEntry);
@@ -170,8 +180,10 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         async Task AddAudioEntry1()
         {
-            var originalBeginsAt = new Moment(DateTime.Parse("2021-11-05 16:41:18.504314 +00:00", NumberFormatInfo.InvariantInfo));
-            var originalEndsAt = new Moment(DateTime.Parse("2021-11-05 16:41:29.543314 +00:00", NumberFormatInfo.InvariantInfo));
+            var originalBeginsAt =
+                new Moment(DateTime.Parse("2021-11-05 16:41:18.504314 +00:00", NumberFormatInfo.InvariantInfo));
+            var originalEndsAt =
+                new Moment(DateTime.Parse("2021-11-05 16:41:29.543314 +00:00", NumberFormatInfo.InvariantInfo));
             var duration = originalEndsAt - originalBeginsAt;
             lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
             lastEndsAt = lastBeginsAt + duration;
@@ -206,8 +218,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
                 Content =
-                    "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал " +
-                    "открыв мне чудо на Земле",
+                    "Мой друг художник и поэт в Дождливый вечер на стекле мою любовь нарисовал "
+                    + "открыв мне чудо на Земле",
                 TextToTimeMap = textToTimeMap,
                 AudioEntryId = audioEntry.Id,
                 AuthorId = dbAuthor.Id,
@@ -217,8 +229,10 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
 
         async Task AddAudioEntry2()
         {
-            var originalBeginsAt = new Moment(DateTime.Parse("2021-11-05 17:26:05.745700 +00:00", NumberFormatInfo.InvariantInfo));
-            var originalEndsAt = new Moment(DateTime.Parse("2021-11-05 17:26:16.275700 +00:00", NumberFormatInfo.InvariantInfo));
+            var originalBeginsAt =
+                new Moment(DateTime.Parse("2021-11-05 17:26:05.745700 +00:00", NumberFormatInfo.InvariantInfo));
+            var originalEndsAt =
+                new Moment(DateTime.Parse("2021-11-05 17:26:16.275700 +00:00", NumberFormatInfo.InvariantInfo));
             var duration = originalEndsAt - originalBeginsAt;
             lastBeginsAt = Moment.Max(lastBeginsAt, lastEndsAt + TimeSpan.FromSeconds(20 * (rnd.NextDouble() - 0.5)));
             lastEndsAt = lastBeginsAt + duration;
@@ -253,8 +267,8 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
                 BeginsAt = lastBeginsAt,
                 EndsAt = lastEndsAt,
                 Content =
-                    "утро в декабре туманом окутана под ногами белый снег предатель виден каждый " +
-                    "шаг и холоду лютому слишком просто сладить с тобой",
+                    "утро в декабре туманом окутана под ногами белый снег предатель виден каждый "
+                    + "шаг и холоду лютому слишком просто сладить с тобой",
                 TextToTimeMap = textToTimeMap,
                 AudioEntryId = audioEntry.Id,
                 AuthorId = dbAuthor.Id,
@@ -271,10 +285,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var filePath = GetAudioDataDir() & fileName;
         var sourceBlobStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
         var blobs = Blobs.GetBlobStorage(BlobScope.AudioRecord);
-        await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+        await blobs.UploadByteStream(blobId, sourceBlobStream.Replay(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
 
         static FilePath GetAudioDataDir()
-            => new FilePath(Path.GetDirectoryName(typeof(ChatDbInitializer).Assembly.Location)) & "data";
+        {
+            return new FilePath(Path.GetDirectoryName(typeof(ChatDbInitializer).Assembly.Location)) & "data";
+        }
     }
 
     private static string GetRandomSentence(Random random, int maxLength)
@@ -288,6 +305,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
     {
         if (!textToTimeMapJson.StartsWith("{\"SourcePoints\"", StringComparison.InvariantCultureIgnoreCase))
             return textToTimeMapJson;
+
         var oldMap = NewtonsoftJsonSerialized.New<OldLinearMap>(textToTimeMapJson).Value;
         var newMap = oldMap.ToLinearMap();
         textToTimeMapJson = NewtonsoftJsonSerialized.New(newMap).Data;

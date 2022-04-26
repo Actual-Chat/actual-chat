@@ -1,0 +1,8 @@
+@using Stl.Extensibility
+@inherits MarkupViewBase<PreformattedTextMarkup>
+@attribute [MatchFor(typeof(PreformattedTextMarkup), typeof(IMarkupView))]
+@{
+    var m = Markup;
+}
+
+<code class="code-part-view bg-primary p-1 rounded-md">@m.Text</code>

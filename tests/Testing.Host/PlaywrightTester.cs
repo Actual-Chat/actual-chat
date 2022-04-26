@@ -25,6 +25,7 @@ public sealed class PlaywrightTester : WebClientTester
     {
         if (_browser != null)
             return _browser;
+
         var launchOptions = new BrowserTypeLaunchOptions {
             Headless = false,
         };
@@ -39,7 +40,7 @@ public sealed class PlaywrightTester : WebClientTester
             BaseURL = UriMapper.BaseUri.ToString(),
             BypassCSP = true,
         });
-        await context.AddCookiesAsync(new [] {
+        await context.AddCookiesAsync(new[] {
             new Cookie() {
                 Name = "FusionAuth.SessionId",
                 Value = Session.Id,
@@ -52,11 +53,11 @@ public sealed class PlaywrightTester : WebClientTester
         return context;
     }
 
-    public async Task<IPage> NewPage(string relativeUri = "")
+    public async Task<(IPage page, IResponse? response)> NewPage(string relativeUri = "")
     {
         var context = await NewContext();
         var page = await context.NewPageAsync();
-        await page.GotoAsync(UriMapper.ToAbsolute(relativeUri).ToString());
-        return page;
+        var response = await page.GotoAsync(UriMapper.ToAbsolute(relativeUri).ToString());
+        return (page, response);
     }
 }

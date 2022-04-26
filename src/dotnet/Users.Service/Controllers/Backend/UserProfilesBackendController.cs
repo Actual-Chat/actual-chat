@@ -13,10 +13,18 @@ public class UserProfilesBackendController : ControllerBase, IUserProfilesBacken
         => _service = service;
 
     [HttpGet, Publish]
-    public Task<UserProfile?> Get(string userId, CancellationToken cancellationToken)
-        => _service.Get(userId, cancellationToken);
+    public Task<UserProfile?> Get(string id, CancellationToken cancellationToken)
+        => _service.Get(id, cancellationToken);
 
     [HttpGet, Publish]
     public Task<UserProfile?> GetByName(string name, CancellationToken cancellationToken)
         => _service.GetByName(name, cancellationToken);
+
+    [HttpPost]
+    public Task UpdateStatus([FromBody] IUserProfilesBackend.UpdateStatusCommand command, CancellationToken cancellationToken)
+        => _service.UpdateStatus(command, cancellationToken);
+
+    [HttpPost]
+    public Task Create(IUserProfilesBackend.CreateCommand command, CancellationToken cancellationToken)
+        => _service.Create(command, cancellationToken);
 }
