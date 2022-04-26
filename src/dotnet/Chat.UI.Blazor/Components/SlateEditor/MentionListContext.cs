@@ -2,11 +2,11 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public record Mention(string Id, string Name);
 
-public class MentionCollectionView
+public class MentionListViewModel
 {
     private int _index;
 
-    public MentionCollectionView(string search, Mention[] items)
+    public MentionListViewModel(string search, Mention[] items)
     {
         Search = search;
         Items = items;
@@ -57,49 +57,49 @@ public interface IMentionsRetriever
     Task<IEnumerable<Mention>> GetMentions(string search, int limit, CancellationToken cancellationToken);
 }
 
-public class MentionsState
+public class MentionListContext
 {
-    private MentionCollectionView? _view;
+    private MentionListViewModel? _viewModel;
     private IMentionsRetriever? _mentionsRetriever;
 
     public event Action<Mention> InsertRequested = _ => { };
 
     [ComputeMethod]
-    public virtual Task<MentionCollectionView?> GetView()
-        => Task.FromResult(_view);
+    public virtual Task<MentionListViewModel?> GetViewModel()
+        => Task.FromResult(_viewModel);
 
     public void SetMentionsRetriever(IMentionsRetriever mentionsRetriever)
         => _mentionsRetriever = mentionsRetriever;
 
     public async Task ShowMentions(string search)
     {
-        if (_view != null && StringComparer.Ordinal.Equals(_view.Search, search))
+        if (_viewModel != null && StringComparer.Ordinal.Equals(_viewModel.Search, search))
             return;
 
         var mentions = await GetMentions(search, default).ConfigureAwait(false);
 
-        _view = new MentionCollectionView(search, mentions);
+        _viewModel = new MentionListViewModel(search, mentions);
 
         using (Computed.Invalidate())
-            _ = GetView();
+            _ = GetViewModel();
     }
 
     public void HideMentions()
     {
-        _view = null;
+        _viewModel = null;
         using (Computed.Invalidate())
-            _ = GetView();
+            _ = GetViewModel();
     }
 
     public void MoveDown()
-        => _view?.MoveDown();
+        => _viewModel?.MoveDown();
 
     public void MoveUp()
-        => _view?.MoveUp();
+        => _viewModel?.MoveUp();
 
     public void Insert()
     {
-        var view = _view;
+        var view = _viewModel;
         if (view == null)
             return;
         var current = view.GetCurrent();

@@ -12,11 +12,12 @@
     </Body>
     <Footer>
         <div class="flex-y">
-            <MentionsStateProvider>
-                <MentionsList/>
+            <MentionListContextProvider>
+                <MentionListView/>
                 <SlateEditor @ref="_editor" Id="message-input" Class="bg-gray-200 min-h-[50px]"
+                             Placeholder="Enter some text..."
                              OnPost="OnPost"/>
-            </MentionsStateProvider>
+            </MentionListContextProvider>
         </div>
     </Footer>
 </PageWithHeaderAndFooter>

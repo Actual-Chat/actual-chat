@@ -15,7 +15,7 @@ import { serialize } from './serializer';
 export const MentionExample = (handle : SlateEditorHandle, debug : boolean) => {
     const [target, setTarget] = useState<Range | undefined>()
     const [search, setSearch] = useState('')
-    const [placeholder, setPlaceholder] = useState('Enter some text...')
+    const [placeholder, setPlaceholder] = useState('')
     const [hasContent, setHasContent] = useState(false)
     const renderElement = useCallback(props => <Element {...props} />, [])
     const editor = useMemo(

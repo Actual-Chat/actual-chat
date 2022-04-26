@@ -33,7 +33,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         services.AddScoped<ChatActivity>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
-        fusion.AddComputeService<MentionsState>(ServiceLifetime.Transient);
+        fusion.AddComputeService<MentionListContext>(ServiceLifetime.Transient);
 
         services.RegisterNavItems<ChatLinks>();
         services.RegisterNavItems<ContactLinks>();

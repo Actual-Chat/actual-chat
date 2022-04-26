@@ -26,13 +26,13 @@
     [Parameter]
     public EventCallback OnRendered { get; set; }
     [CascadingParameter]
-    public MentionsState? MentionsState { get; set; }
+    public MentionListContext? MentionListContext { get; set; }
 
     protected override void OnInitialized() {
         base.OnInitialized();
-        var state = MentionsState;
-        if (state != null)
-            state.InsertRequested += OnInsertRequested;
+        var context = MentionListContext;
+        if (context != null)
+            context.InsertRequested += OnInsertRequested;
     }
 
     protected override void OnParametersSet() {
@@ -75,28 +75,28 @@
 
     [JSInvokable]
     public async Task MentionCommand(string cmd, string args) {
-        var state = MentionsState;
-        if (state == null)
+        var context = MentionListContext;
+        if (context == null)
             return;
         switch (cmd) {
             case "insert": {
-                state.Insert();
+                context.Insert();
                 break;
             }
             case "moveUp": {
-                state.MoveUp();
+                context.MoveUp();
                 break;
             }
             case "moveDown": {
-                state.MoveDown();
+                context.MoveDown();
                 break;
             }
             case "close": {
-                state.HideMentions();
+                context.HideMentions();
                 break;
             }
             case "show": {
-                await state.ShowMentions(args);
+                await context.ShowMentions(args);
                 break;
             }
         }
@@ -108,7 +108,7 @@
     }
 
     private void OnInsertRequested(Mention mention) {
-        MentionsState!.HideMentions();
+        MentionListContext!.HideMentions();
         _ = InsertMention(mention);
     }
 

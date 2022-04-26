@@ -12,12 +12,12 @@
 }
 
 <div @ref="EditorRef" class="chat-message-editor px-1.5 pb-1.5">
-    <MentionsStateProvider>
+    <MentionListContextProvider>
         <ChatMentionsRetriever ChatId="@Chat.Id" />
         <div class="absolute left-0 right-0 px-1.5 pb-1.5 z-50">
             <div class="relative w-full">
                 <div class="absolute bottom-0 w-full">
-                    <MentionsList Class="bg-secondary" />
+                    <MentionListView Class="bg-secondary" />
                 </div>
             </div>
         </div>
@@ -90,7 +90,7 @@
                 </div>
             </div>
         </div>
-    </MentionsStateProvider>
+    </MentionListContextProvider>
 </div>
 
 @code {

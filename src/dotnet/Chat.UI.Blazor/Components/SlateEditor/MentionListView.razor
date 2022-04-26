@@ -1,5 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<MentionCollectionView?>
+@inherits ComputedStateComponent<MentionListViewModel?>
 
 @{
     var view = State.ValueOrDefault;
@@ -25,18 +25,18 @@
 
 @code {
     [CascadingParameter]
-    public MentionsState MentionsState { get; set; } = null!;
+    public MentionListContext Context { get; set; } = null!;
     [Parameter]
     public string Class { get; set; } = "";
 
-    protected override ComputedState<MentionCollectionView?>.Options GetStateOptions() {
-        return new ComputedState<MentionCollectionView?>.Options {
+    protected override ComputedState<MentionListViewModel?>.Options GetStateOptions() {
+        return new ComputedState<MentionListViewModel?>.Options {
             UpdateDelayer = UpdateDelayer.ZeroDelay
         };
     }
 
-    protected override async Task<MentionCollectionView?> ComputeState(CancellationToken cancellationToken) {
-        var view = await MentionsState.GetView();
+    protected override async Task<MentionListViewModel?> ComputeState(CancellationToken cancellationToken) {
+        var view = await Context.GetViewModel();
         if (view != null)
             view.CurrentIndexChange += () => StateHasChanged();
         return view;
@@ -47,6 +47,6 @@
     }
 
     private void OnClick(Mention mention) {
-        MentionsState.Insert(mention);
+        Context.Insert(mention);
     }
 }

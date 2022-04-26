@@ -4,18 +4,18 @@
     [Inject] IChats Chats { get; set; } = null!;
     [Inject] Session Session { get; set; } = null!;
     [CascadingParameter]
-    public MentionsState MentionsState { get; set; } = null!;
+    public MentionListContext Context { get; set; } = null!;
     [Parameter, EditorRequired]
     public string ChatId { get; set; } = "";
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
 
-        if (MentionsState == null)
-            throw new InvalidOperationException("Component should be used inside MentionsStateProvider component");
+        if (Context == null)
+            throw new InvalidOperationException("Component should be used inside MentionListContextProvider component");
         if (ChatId.IsNullOrEmpty())
             throw new InvalidOperationException("ChatId should be specified");
-        MentionsState.SetMentionsRetriever(new Retriever(Chats, Session, ChatId));
+        Context.SetMentionsRetriever(new Retriever(Chats, Session, ChatId));
     }
 
     class Retriever : IMentionsRetriever {
