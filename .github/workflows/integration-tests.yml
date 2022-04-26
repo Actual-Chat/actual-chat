@@ -1,5 +1,7 @@
 name: Integration tests
-
+concurrency:
+  group: integration-tests-${{ github.ref }}
+  cancel-in-progress: true
 on:
   push:
     branches: ["master", "release/v*"]
