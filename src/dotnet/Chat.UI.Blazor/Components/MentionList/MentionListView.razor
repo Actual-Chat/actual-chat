@@ -46,7 +46,7 @@
         State.ValueOrDefault?.SetCurrentIndex(i);
     }
 
-    private void OnClick(Mention mention) {
-        Context.Insert(mention);
+    private void OnClick(MentionListItem mentionListItem) {
+        Context.Insert(mentionListItem);
     }
 }

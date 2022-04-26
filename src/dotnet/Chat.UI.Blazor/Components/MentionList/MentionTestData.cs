@@ -5,10 +5,10 @@ internal static class MentionTestData
     static MentionTestData()
     {
         var random = new Random();
-        Candidates = _names.Select(c => new Mention(c.Replace(' ', '-') + random.Next(1000), c)).ToArray();
+        Candidates = _names.Select(c => new MentionListItem(c.Replace(' ', '-') + random.Next(1000), c)).ToArray();
     }
 
-    public static Mention[] Candidates { get; }
+    public static MentionListItem[] Candidates { get; }
 
     private static readonly string[] _names = new[] {
         "Aayla Secura",

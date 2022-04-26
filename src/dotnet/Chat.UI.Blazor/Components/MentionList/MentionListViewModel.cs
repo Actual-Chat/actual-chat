@@ -4,7 +4,7 @@ public class MentionListViewModel
 {
     private int _index;
 
-    public MentionListViewModel(string search, Mention[] items)
+    public MentionListViewModel(string search, MentionListItem[] items)
     {
         Search = search;
         Items = items;
@@ -13,11 +13,11 @@ public class MentionListViewModel
 
     public string Search { get; }
 
-    public Mention[] Items { get; }
+    public MentionListItem[] Items { get; }
 
     public int CurrentIndex => _index;
 
-    public Mention? GetCurrent()
+    public MentionListItem? GetCurrent()
         => _index >= 0 ? Items[_index] : null;
 
     public event Action CurrentIndexChange = () => { };

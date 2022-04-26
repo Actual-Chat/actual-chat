@@ -108,12 +108,12 @@
         await JSRef.InvokeAsync<string>("setPlaceholder", placeholder);
     }
 
-    private void OnMentionInsertRequested(Mention mention)
-        => _ = Insert(mention);
+    private void OnMentionInsertRequested(MentionListItem mentionListItem)
+        => _ = Insert(mentionListItem);
 
-    private async Task Insert(Mention mention) {
+    private async Task Insert(MentionListItem mentionListItem) {
         MentionListContext!.HideMentions();
         await JSRef.InvokeVoidAsync("focus");
-        await JSRef.InvokeVoidAsync("insertMention", mention);
+        await JSRef.InvokeVoidAsync("insertMention", mentionListItem);
     }
 }

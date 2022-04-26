@@ -5,7 +5,7 @@ public class MentionListContext
     private MentionListViewModel? _viewModel;
     private IMentionsRetriever? _mentionsRetriever;
 
-    public event Action<Mention> InsertRequested = _ => { };
+    public event Action<MentionListItem> InsertRequested = _ => { };
 
     [ComputeMethod]
     public virtual Task<MentionListViewModel?> GetViewModel()
@@ -51,10 +51,10 @@ public class MentionListContext
         Insert(current);
     }
 
-    public void Insert(Mention mention)
-        => InsertRequested.Invoke(mention);
+    public void Insert(MentionListItem mentionListItem)
+        => InsertRequested.Invoke(mentionListItem);
 
-    private async Task<Mention[]> GetMentions(string search, CancellationToken cancellationToken)
+    private async Task<MentionListItem[]> GetMentions(string search, CancellationToken cancellationToken)
     {
         const int limit = 10;
         var mentions = _mentionsRetriever != null
@@ -63,7 +63,7 @@ public class MentionListContext
         return mentions.Take(limit).ToArray();
     }
 
-    private static IEnumerable<Mention> GetDemoMentions(string search)
+    private static IEnumerable<MentionListItem> GetDemoMentions(string search)
     {
         if (search.IsNullOrEmpty())
             return MentionTestData.Candidates;
