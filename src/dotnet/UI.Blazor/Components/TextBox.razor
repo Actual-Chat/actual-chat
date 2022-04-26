@@ -6,10 +6,11 @@
        @attributes="@AdditionalAttributes"
        class="@CssClass custom-input"
        value="@CurrentValue"
-       @oninput="EventCallback.Factory.CreateBinder<string>(this, __value => CurrentValueAsString = __value, CurrentValueAsString)" />
+       @oninput="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
 
 @code {
     private ElementReference _inputRef;
+
     [Parameter] public bool Autofocus { get; set; }
 
     protected override void OnAfterRender(bool firstRender) {
