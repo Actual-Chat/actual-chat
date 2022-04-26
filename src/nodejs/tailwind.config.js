@@ -59,6 +59,7 @@ module.exports = {
         'button-success-outline': 'var(--button-color-success-outline)',
         'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
         'mention-hover': 'var(--background-mention-hover)',
+        'button-primary': 'var(--background-avatar)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -839,6 +840,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'modal': '480px',
     },
     objectPosition: {
       bottom: 'bottom',
