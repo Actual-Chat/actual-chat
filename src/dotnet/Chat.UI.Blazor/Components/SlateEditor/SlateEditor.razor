@@ -31,8 +31,9 @@
     protected override void OnInitialized() {
         base.OnInitialized();
         var context = MentionListContext;
-        if (context != null)
-            context.InsertRequested += OnInsertRequested;
+        if (context != null) {
+            context.InsertRequested += OnMentionInsertRequested;
+        }
     }
 
     protected override void OnParametersSet() {
@@ -107,11 +108,12 @@
         await JSRef.InvokeAsync<string>("setPlaceholder", placeholder);
     }
 
-    private void OnInsertRequested(Mention mention) {
-        MentionListContext!.HideMentions();
-        _ = InsertMention(mention);
-    }
+    private void OnMentionInsertRequested(Mention mention)
+        => _ = Insert(mention);
 
-    private async Task InsertMention(Mention mention)
-        => await JSRef.InvokeVoidAsync("insertMention", mention);
+    private async Task Insert(Mention mention) {
+        MentionListContext!.HideMentions();
+        await JSRef.InvokeVoidAsync("focus");
+        await JSRef.InvokeVoidAsync("insertMention", mention);
+    }
 }

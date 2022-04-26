@@ -50,6 +50,12 @@ export class SlateEditor {
     public setPlaceholder = (placeholder: string) =>
         this.editorHandle.setPlaceholder(placeholder);
 
+    public focus = () => {
+        const input = this.editorDiv.querySelector('div');
+        input.focus();
+        if (this.debug) console.log('focus');
+    }
+
     private dispose() {
         this.reactDomRoot.unmount();
     }
