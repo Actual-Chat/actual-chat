@@ -69,8 +69,6 @@ public class MentionListContext
             return MentionTestData.Candidates;
         var filter = search.ToLowerInvariant();
         return MentionTestData.Candidates
-                .Where(c => c.Name.StartsWith(filter, StringComparison.OrdinalIgnoreCase));
+                .Where(c => c.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
     }
 }
-
-

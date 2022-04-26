@@ -32,7 +32,7 @@
         public async Task<IEnumerable<Mention>> GetMentions(string search, int limit, CancellationToken cancellationToken) {
             var authors = await _chats.GetChatAuthors(_session, _chatId, cancellationToken);
             var candidates = authors
-                .Where(c => c.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase))
+                .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(c => c.Name)
                 .Take(limit);
             var mentions = candidates.Select(c => new Mention(c.Id, c.Name)).ToArray();
