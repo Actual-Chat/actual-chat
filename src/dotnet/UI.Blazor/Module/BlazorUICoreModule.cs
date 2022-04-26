@@ -21,8 +21,6 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         if (!HostInfo.RequiredServiceScopes.Contains(ServiceScope.BlazorUI))
             return; // Blazor UI only module
 
-        var fusion = services.AddFusion();
-        var fusionAuth = fusion.AddAuthentication().AddBlazor();
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext
         services.AddScoped<BlazorCircuitContext, AppBlazorCircuitContext>();
         services.AddTransient(c => (AppBlazorCircuitContext)c.GetRequiredService<BlazorCircuitContext>());

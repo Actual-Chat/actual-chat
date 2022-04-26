@@ -10,6 +10,7 @@ using ActualChat.Module;
 using ActualChat.MediaPlayback.Module;
 using ActualChat.Notification.Client.Module;
 using ActualChat.Notification.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Host.Authorization;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Client.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -92,6 +93,7 @@ public static class Program
 
         // Fusion services
         var fusion = services.AddFusion();
+        var fusionAuth = fusion.AddAuthentication().AddBlazor(o => o.AddAppPolicies());
         var fusionClient = fusion.AddRestEaseClient((_, o) => {
             o.BaseUri = baseUri;
             o.IsLoggingEnabled = true;

@@ -1,9 +1,7 @@
 using System.Net;
 using System.Reflection;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Authorization;
-using ActualChat.Users.UI.Blazor;
-using ActualChat.Users.UI.Blazor.Authorization;
+using ActualChat.UI.Blazor.Host.Authorization;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -163,9 +161,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromSeconds(15);
             o.DetailedErrors = true;
         });
-        fusionAuth.AddBlazor(o => {
-            o.AddPolicy(KnownPolicies.IsUserActive, builder => builder.AddRequirements(new IsUserActiveRequirement()));
-        }); // Must follow services.AddServerSideBlazor()!
+        fusionAuth.AddBlazor(o => o.AddAppPolicies()); // Must follow services.AddServerSideBlazor()!
 
         // Swagger & debug tools
         services.AddSwaggerGen(c => {
