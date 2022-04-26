@@ -77,7 +77,6 @@ public class MarkupParser2Test : TestBase
     [Fact]
     public void CodeTest()
     {
-        return;
         var m = Parse<CodeBlockMarkup>(@"```cs
 code
 ```", out _);
