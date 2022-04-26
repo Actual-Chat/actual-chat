@@ -163,9 +163,7 @@ public class AppHostModule : HostModule<HostSettings>, IWebModule
             o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromSeconds(15);
             o.DetailedErrors = true;
         });
-        fusionAuth.AddBlazor(o => {
-            o.AddPolicy(KnownPolicies.IsUserActive, builder => builder.AddRequirements(new IsUserActiveRequirement()));
-        }); // Must follow services.AddServerSideBlazor()!
+        fusionAuth.AddBlazor(); // Must follow services.AddServerSideBlazor()!
 
         // Swagger & debug tools
         services.AddSwaggerGen(c => {
