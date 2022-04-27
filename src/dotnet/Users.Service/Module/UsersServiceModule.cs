@@ -128,7 +128,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IAuthz, Authz>();
         fusion.AddComputeService<IUserProfiles, UserProfiles>();
         fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
         fusion.AddComputeService<IUserStates, UserStates>();
