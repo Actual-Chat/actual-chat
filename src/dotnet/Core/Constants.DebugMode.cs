@@ -25,5 +25,7 @@ public static partial class Constants
         public static bool MarkupParser { get; } = false;
 
         public static bool SignalR { get; } = false;
+
+        public static bool SlateEditor { get; } = false;
     }
 }

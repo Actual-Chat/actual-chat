@@ -1,4 +1,5 @@
 import './chat-message-editor.css';
+import { SlateEditorHandle } from '../SlateEditor/slate-editor-handle';
 
 const LogScope: string = 'MessageEditor';
 
@@ -30,9 +31,6 @@ export class ChatMessageEditor {
         this.recordButton = this.recorderButtonDiv.querySelector('button');
 
         // Wiring up event listeners
-        this.input.addEventListener('input', this.inputInputListener);
-        this.input.addEventListener('keydown', this.inputKeydownListener);
-        this.input.addEventListener('mousedown', this.inputMousedownListener);
         this.input.addEventListener('paste', this.inputPasteListener);
         this.filesPicker.addEventListener("change", this.filesPickerChangeListener);
         this.postButton.addEventListener('click', this.postClickListener);
@@ -44,33 +42,14 @@ export class ChatMessageEditor {
         };
         this.recordButtonObserver.observe(this.recordButton, recordButtonObserverConfig);
         this.changeMode();
+        //console.log("ChatMessageEditor.constructor");
     }
-
-    private inputInputListener = ((event: Event & { target: Element; }) => {
-        void this.updateClientSideState();
-        this.changeMode();
-    })
-
-    private inputKeydownListener = ((event: KeyboardEvent & { target: Element; }) => {
-        if (event.key != 'Enter' || event.shiftKey)
-            return;
-        event.preventDefault();
-        this.blazorRef.invokeMethodAsync("Post", this.getText());
-    })
-
-    private inputMousedownListener = ((event: MouseEvent & { target: Element; }) => {
-        this.input.focus();
-    })
 
     private inputPasteListener = ((event: ClipboardEvent & { target: Element; }) => {
         // Get pasted data via clipboard API
+        // We need to handle only files pasting.
+        // Text pasting is controlled by slate editor.
         const clipboardData = event.clipboardData;
-        const pastedData = clipboardData.getData('text/plain');
-        if (pastedData.length > 0) {
-            this.pasteClipboardData(pastedData);
-            event.preventDefault();
-            return;
-        }
         for (const item of clipboardData.items) {
             if (item.kind === 'file') {
                 const file = item.getAsFile();
@@ -104,7 +83,8 @@ export class ChatMessageEditor {
     }
 
     private changeMode() {
-        const isTextMode = this.input.innerText != "" || this.attachments.size > 0;
+        const text = this.getText();
+        const isTextMode = text != "" || this.attachments.size > 0;
         if (this.isTextMode === isTextMode)
             return;
         this.isTextMode = isTextMode;
@@ -116,83 +96,10 @@ export class ChatMessageEditor {
     }
 
     private getText(): string {
-        return this.input.innerText;
-    }
-
-    private setText(text: string) {
-        this.input.innerText = text;
-        this.changeMode();
-        void this.updateClientSideState();
-    }
-
-    private updateClientSideState(): Promise<void> {
-        console.log(`${LogScope}: UpdateClientSideState`);
-        return this.blazorRef.invokeMethodAsync("UpdateClientSideState", this.getText());
-    }
-
-    private pasteClipboardData(pastedData: string) {
-        // document.execCommand api is deprecated
-        // (see https://developer.mozilla.org/ru/docs/Web/API/Document/execCommand)
-        // but it gives better experience for undo (ctrl+z) in comparison with
-        // insertTextWithSelection function implemented with using Selection API
-        // (see https://developer.mozilla.org/en-US/docs/Web/API/Selection)
-        if (ChatMessageEditor.insertTextWithExecCommand(pastedData))
-            return
-        ChatMessageEditor.insertTextWithSelection(pastedData);
-        this.changeMode();
-        void this.updateClientSideState();
-    }
-
-    private static replaceHeadingSpaces(text: string): string {
-        let spacesNumber = 0;
-        for (let i = 0; i < text.length; i++) {
-            if (text.charAt(i) !== " ")
-                break;
-            spacesNumber++;
-        }
-        const repeatNumber = Math.ceil(spacesNumber / 2);
-        return "&nbsp; ".repeat(repeatNumber) + text.substr(spacesNumber);
-    }
-
-    private static insertTextWithExecCommand(text: string): boolean {
-        //return document.execCommand("insertText", false, text)
-        function escapetext(text: string): string {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return text.replace(/[&<>"']/g, function (m) {
-                return map[m];
-            });
-        }
-
-        let html = "";
-        const lines = text.split(/\r\n|\r|\n/);
-        let firstLine = true;
-        for (let line of lines) {
-            if (!firstLine)
-                html += "<br />";
-            html += ChatMessageEditor.replaceHeadingSpaces(escapetext(line));
-            firstLine = false;
-        }
-        return document.execCommand('insertHtml', false, html);
-    }
-
-    private static insertTextWithSelection(text: string) {
-        const selection = window.getSelection();
-        if (!selection)
-            return;
-        if (selection.getRangeAt && selection.rangeCount) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            const lines = text.split(/\r\n|\r|\n/);
-            let lastLine = true;
-            for (let line of lines.reverse()) {
-                if (!lastLine)
-                    range.insertNode(document.createElement("br"));
-                //line = ChatMessageEditor.replaceHeadingSpaces(line);
-                range.insertNode(document.createTextNode(line));
-                lastLine = false;
-            }
-            selection.collapseToEnd();
-        }
+        const editorHandle = this.editorHandle();
+        if (!editorHandle)
+            return '';
+        return editorHandle.getText();
     }
 
     private async addAttachment(file: File): Promise<void> {
@@ -219,7 +126,7 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private postMessage = async (chatId: string): Promise<string> => {
+    public postMessage = async (chatId: string, text : string): Promise<string> => {
         const formData = new FormData();
         const attachmentsList = [];
         if (this.attachments.size > 0) {
@@ -231,7 +138,7 @@ export class ChatMessageEditor {
             })
         }
 
-        const payload = { "text": this.getText(), "attachments": attachmentsList };
+        const payload = { "text": text, "attachments": attachmentsList };
         const payloadJson = JSON.stringify(payload);
         formData.append("payload_json", payloadJson);
 
@@ -248,8 +155,7 @@ export class ChatMessageEditor {
         return response.statusText;
     }
 
-    private onPostSucceeded = () => {
-        this.setText("");
+    public onPostSucceeded = () => {
         for (const attachment of this.attachments.values()) {
             if (attachment.Url)
                 URL.revokeObjectURL(attachment.Url);
@@ -259,14 +165,27 @@ export class ChatMessageEditor {
         this.changeMode();
     }
 
-    private showFilesPicker = () => {
+    public showFilesPicker = () => {
         this.filesPicker.click();
     }
 
-    private dispose() {
-        this.input.removeEventListener('input', this.inputInputListener);
-        this.input.removeEventListener('keydown', this.inputKeydownListener);
-        this.input.removeEventListener('mousedown', this.inputMousedownListener);
+    public onSlateEditorRendered()
+    {
+        const editorHandle = this.editorHandle();
+        if (!editorHandle) {
+            console.error('SlateEditorHandle is undefined');
+            return
+        }
+        this.changeMode();
+        editorHandle.onHasContentChanged = () => this.changeMode();
+    }
+
+    private editorHandle = () : SlateEditorHandle => {
+        // @ts-ignore
+        return this.input.editorHandle as SlateEditorHandle;
+    }
+
+    public dispose() {
         this.input.removeEventListener('paste', this.inputPasteListener);
         this.filesPicker.removeEventListener("change", this.filesPickerChangeListener);
         this.postButton.removeEventListener('click', this.postClickListener);

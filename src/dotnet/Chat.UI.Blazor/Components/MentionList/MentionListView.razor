@@ -1,0 +1,50 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<MentionListViewModel?>
+
+@{
+    var view = State.ValueOrDefault;
+}
+
+@if (view != null && view.Items.Length > 0) {
+    var items = view.Items;
+    var currentIndex = view.CurrentIndex;
+    var i = 0;
+    <div class="mb-1 p-1 border rounded-md overflow-y-auto max-h-96 w-full @Class">
+        @foreach (var item in items) {
+            var iLocal = i;
+            var isSelected = i++ == currentIndex;
+            var cls = isSelected ? "bg-mention" : "";
+            <div class="px-1 rounded hover:cursor-pointer @cls"
+                 @onmouseover="@(() => OnMouseOver(iLocal))"
+                 @onclick="@(() => OnClick(item))">
+                @item.Name
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter] public MentionListContext Context { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
+
+    protected override ComputedState<MentionListViewModel?>.Options GetStateOptions() {
+        return new ComputedState<MentionListViewModel?>.Options {
+            UpdateDelayer = UpdateDelayer.ZeroDelay
+        };
+    }
+
+    protected override async Task<MentionListViewModel?> ComputeState(CancellationToken cancellationToken) {
+        var view = await Context.GetViewModel();
+        if (view != null)
+            view.CurrentIndexChange += () => StateHasChanged();
+        return view;
+    }
+
+    private void OnMouseOver(int i) {
+        State.ValueOrDefault?.SetCurrentIndex(i);
+    }
+
+    private void OnClick(MentionListItem mentionListItem) {
+        Context.Insert(mentionListItem);
+    }
+}
