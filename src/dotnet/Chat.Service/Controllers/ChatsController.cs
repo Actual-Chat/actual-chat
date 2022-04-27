@@ -72,8 +72,8 @@ public class ChatsController : ControllerBase, IChats
     public Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken)
         => _service.GetUserPeerChatId(session, chatAuthorId, cancellationToken);
 
-    [HttpGet, Publish]
-    public Task<Author[]> GetChatAuthors(Session session, string chatId, CancellationToken cancellationToken)
+    [HttpGet]
+    public Task<(string AuthorId, string AuthorName)[]> GetChatAuthors(Session session, string chatId, CancellationToken cancellationToken)
         => _service.GetChatAuthors(session, chatId, cancellationToken);
 
     // Commands
