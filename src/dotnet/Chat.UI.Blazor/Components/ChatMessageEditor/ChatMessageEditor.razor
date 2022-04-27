@@ -12,7 +12,7 @@
 }
 
 <div @ref="EditorRef" class="chat-message-editor px-1.5 pb-1.5">
-    <MentionListContextProvider>
+    <CascadingValue Value="@MentionListContext" IsFixed="true">
         <ChatMentionsRetriever ChatId="@Chat.Id" />
         <div class="absolute left-0 right-0 px-1.5 pb-1.5 z-50">
             <div class="relative w-full">
@@ -90,7 +90,7 @@
                 </div>
             </div>
         </div>
-    </MentionListContextProvider>
+    </CascadingValue>
 </div>
 
 @code {
@@ -101,6 +101,7 @@
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private MentionListContext MentionListContext { get; set; } = null!;
 
     private ElementReference EditorRef { get; set; }
     private SlateEditor SlateEditorRef { get; set; } = null!;
