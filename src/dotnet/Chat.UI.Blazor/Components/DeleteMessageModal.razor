@@ -7,16 +7,16 @@
             </div>
                 <div class="w-full bg-secondary rounded-md border border-primary pt-2 pb-3 mb-4 drop-shadow-lg">
                     <div class="chat-message relative group px-1">
-                        <ChatAuthor ChatId="@Entry.ChatId" AuthorId="@Entry.AuthorId">
+                        <ChatAuthorBadge AuthorId="@Entry.AuthorId">
                             <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
                                 <img src="@context.Author.Picture" alt="@context.Author.Name" class="block"/>
                             </div>
-                        </ChatAuthor>
+                        </ChatAuthorBadge>
                         <div class="flex-1 overflow-hidden">
                             <div class="header chat-message-header ml-1">
-                                <ChatAuthor ChatId="@Entry.ChatId" AuthorId="@Entry.AuthorId">
+                                <ChatAuthorBadge AuthorId="@Entry.AuthorId">
                                     <span class="font-bold text-secondary rounded">@context.Author.Name</span>
-                                </ChatAuthor>
+                                </ChatAuthorBadge>
                                 <ChatMessageTimestamp Value="Entry.BeginsAt"/>
                             </div>
                             <div class="content message-content rounded-sm ml-1">
@@ -39,8 +39,7 @@
 </div>
 
 @code {
-    private ActualChat.Chat.ChatAuthor RequestAuthor { get; set; } = null!;
-    private Author MessageAuthor { get; set; } = null!;
+    private ChatAuthor RequestAuthor { get; set; } = null!;
     private string Message { get; set; } = "";
 
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
@@ -52,17 +51,19 @@
     [CascadingParameter]
     BlazoredModalInstance ModalInstance { get; set; } = null!;
 
-    [Parameter]
+    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatEntry Entry { get; set; } = null!;
 
     private void OnCancel() {
         ModalInstance.CloseAsync(ModalResult.Cancel());
     }
 
+    public override Task SetParametersAsync(ParameterView parameters)
+        => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
+
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
         await InitRequestAuthorId();
-        MessageAuthor = await GetMessageAuthor();
         InitMessage();
     }
 
@@ -71,18 +72,6 @@
         RequestAuthor = requestAuthor ?? throw new InvalidOperationException("Invalid Request Author");
     }
 
-    private async Task<Author> GetMessageAuthor() {
-        var messageAuthor = await ChatAuthors.GetAuthor(Entry.ChatId, Entry.AuthorId, true, CancellationToken.None).ConfigureAwait(true);
-        if (messageAuthor == null)
-            throw new InvalidOperationException("Invalid Message Author");
-        return MessageAuthor;
-    }
-
-    private void InitMessage() {
-        if (Entry.Content.Length < 50)
-            Message = Entry.Content;
-        else {
-            Message = (Entry.Content).Substring(0, 50) + "...";
-        }
-    }
+    private void InitMessage()
+        => Message = Entry.Content.Length < 50 ? Entry.Content : Entry.Content[..50] + "...";
 }
