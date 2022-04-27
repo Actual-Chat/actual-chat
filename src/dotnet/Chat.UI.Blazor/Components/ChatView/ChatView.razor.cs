@@ -108,8 +108,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                 var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, lastVisibleEntryId);
                 await Cmd.Run(command, cancellationToken).ConfigureAwait(true);
             }
-            catch (Exception ex) {
-                Log.LogWarning(ex,
+            catch (Exception e) when(e is not OperationCanceledException) {
+                Log.LogWarning(e,
                     "Error monitoring visible key changes, LastVisibleEntryId = {LastVisibleEntryId}",
                     LastReadEntryIdState.Value);
             }
@@ -117,20 +117,33 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
 
     private async Task MonitorNewEntries(CancellationToken cancellationToken)
     {
-        var chatId = Chat.Id.Value;
-        var chatReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryType.Text);
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
-            .ConfigureAwait(true);
-        var newEntries = chatReader.ReadAllWaitingForNew(chatIdRange.End, cancellationToken);
-        var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
-        await foreach (var entry in newEntries.ConfigureAwait(true))
-            if (entry.AuthorId == currentAuthor?.Id) {
-                // TODO(AK): scroll to the last entry
-                LastReadEntryIdState.Value = entry.Id;
-                UnreadEntryCountState!.Value = 0;
+        while (!cancellationToken.IsCancellationRequested)
+            try {
+                var chatId = Chat.Id.Value;
+                var chatReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryType.Text);
+                var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
+                    .ConfigureAwait(true);
+                var newEntries = chatReader.ReadAllWaitingForNew(chatIdRange.End, cancellationToken);
+                var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, cancellationToken)
+                    .ConfigureAwait(true);
+                await foreach (var entry in newEntries.ConfigureAwait(true))
+                    if (entry.AuthorId == currentAuthor?.Id) {
+                        var currentAuthorEntryId = entry.Id;
+                        LastReadEntryIdState.Value = currentAuthorEntryId;
+                        UnreadEntryCountState!.Value = 0;
+                        NavigateToEntryIdState.Value = currentAuthorEntryId;
+                        NavigateToEntryIdState.Invalidate();
+                        var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, currentAuthorEntryId);
+                        await Cmd.Run(command, cancellationToken).ConfigureAwait(true);
+                    }
+                    else
+                        UnreadEntryCountState!.Value++;
             }
-            else
-                UnreadEntryCountState!.Value++;
+            catch (Exception e) when(e is not OperationCanceledException) {
+                Log.LogWarning(e,
+                    "Error monitoring new entries, LastVisibleEntryId = {LastVisibleEntryId}",
+                    LastReadEntryIdState.Value);
+            }
     }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(

@@ -146,8 +146,10 @@ export class VirtualList {
             if (rs.scrollToKey != null) {
                 // Server-side scroll request
                 const itemRef = this.getItemRef(rs.scrollToKey);
-                this.scrollTo(itemRef, rs.useSmoothScroll, 'center');
-                isScrollHappened = true;
+                if (!this.isItemVisible(itemRef)) {
+                    this.scrollTo(itemRef, rs.useSmoothScroll, 'center');
+                    isScrollHappened = true;
+                }
                 this._scrollTopPivotRef = null;
                 this._scrollTopPivotOffset = null;
             } else if (this.isSafeToScroll && this._stickyEdge != null) {
@@ -406,7 +408,7 @@ export class VirtualList {
 
                         state.isViewportChanged = isScrollTopChanged || isScrollHeightChanged || isViewportHeightChanged;
                         state.isUserScrollDetected = isScrollHappened && !gotResizedItems;
-                        if (state.isUserScrollDetected || isFirstRender)
+                        if (state.isUserScrollDetected || isFirstRender || endSpacerSize == 0 || spacerSize == 0)
                             this.renewStickyEdge();
                         state.isStickyEdgeChanged =
                             rs.stickyEdge?.itemKey !== state.stickyEdge?.itemKey
