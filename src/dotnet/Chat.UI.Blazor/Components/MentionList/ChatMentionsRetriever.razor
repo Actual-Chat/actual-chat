@@ -30,12 +30,12 @@
         }
 
         public async Task<IEnumerable<MentionListItem>> GetMentions(string search, int limit, CancellationToken cancellationToken) {
-            var authors = await _chats.GetChatAuthors(_session, _chatId, cancellationToken);
+            var authors = await _chats.GetMentionListItems(_session, _chatId, cancellationToken);
             var candidates = authors
-                .Where(c => c.AuthorName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(c => c.AuthorName)
+                .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(c => c.Name)
                 .Take(limit);
-            var mentions = candidates.Select(c => new MentionListItem("a:" + c.AuthorId, c.AuthorName)).ToArray();
+            var mentions = candidates.Select(c => new MentionListItem(c.Id, c.Name)).ToArray();
             return mentions;
         }
     }

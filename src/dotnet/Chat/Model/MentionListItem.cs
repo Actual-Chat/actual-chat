@@ -1,3 +1,3 @@
-namespace ActualChat.Chat.UI.Blazor.Components;
+namespace ActualChat.Chat;
 
 public record MentionListItem(string Id, string Name);
