@@ -8,7 +8,7 @@ using Stl.Internal;
 
 namespace ActualChat.Users;
 
-public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
+public class AuthCommandFilters : DbServiceBase<UsersDbContext>
 {
     protected IAuth Auth { get; }
     protected IAuthBackend AuthBackend { get; }
@@ -17,7 +17,7 @@ public class AuthServiceCommandFilters : DbServiceBase<UsersDbContext>
     protected IUserStates UserStates { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
-    public AuthServiceCommandFilters(IServiceProvider services)
+    public AuthCommandFilters(IServiceProvider services)
         : base(services)
     {
         Auth = services.GetRequiredService<IAuth>();
