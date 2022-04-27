@@ -25,9 +25,8 @@
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border-secondary">
                 <input class="files-picker" type="file" hidden multiple/>
-                @if (_attachments.Length > 0) {
-                    <AttachmentListPreview Attachments="_attachments" RemoveRequested="@(c => RemoveAttachment(c))" />
-                }
+                <AttachmentListPreview @ref="AttachmentListPreviewRef"
+                                       RemoveRequested="@(c => RemoveAttachment(c))" />
                 <label for="message-input" class="flex-1 flex-x justify-items-stretch items-center">
                     <div class="flex-none self-center m-3 mr-0">
                         <AttachDropdown UploadFilesRequested="OnUploadFilesRequested"/>
@@ -60,7 +59,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
@@ -68,9 +67,10 @@
 
     private ElementReference EditorRef { get; set; }
     private SlateEditor SlateEditorRef { get; set; } = null!;
+    private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-    private ImmutableArray<Attachment> _attachments = ImmutableArray<Attachment>.Empty;
+
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -92,45 +92,28 @@
         }
     }
 
-    public async Task Post(string? text = null) {
+    private async Task Post(string? text = null) {
         if (text == null)
             text = await SlateEditorRef.GetText();
-        if (text.IsNullOrEmpty() && !_attachments.Any())
+        var attachments = AttachmentListPreviewRef.GetAttachments();
+        if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
             _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
             await JSRef.InvokeVoidAsync("onPostSucceeded");
             await SlateEditorRef.Clear();
-            _attachments = _attachments.Clear();
+            AttachmentListPreviewRef.Clear();
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception e) {
-            ShowError(e);
+            ErrorUI.ShowError(e);
         }
     }
 
     [JSInvokable]
-    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length) {
-        if (length > Constants.Attachments.FileSizeLimit) {
-            ShowError("File is too big. Max file size: 8Mb.");
-            return false;
-        }
-        if (_attachments.Length >= Constants.Attachments.FilesNumberLimit) {
-            ShowError("Too many files. Max allowed number is 10.");
-            return false;
-        }
-
-        _attachments = _attachments.Add(new Attachment {
-            Id = id,
-            Url = url,
-            FileName = fileName ?? "",
-            FileType = fileType ?? "",
-            Length = length,
-        });
-        StateHasChanged();
-        return true;
-    }
+    public bool AddAttachment(int id, string url, string? fileName, string? fileType, int length)
+        => AttachmentListPreviewRef.AddAttachment(id, url, fileName, fileType, length);
 
     private async Task OnSlateEditorRendered() {
         await JSRef.InvokeVoidAsync("onSlateEditorRendered").ConfigureAwait(true);
@@ -138,7 +121,6 @@
 
     private async Task RemoveAttachment(Attachment attachment) {
         await JSRef.InvokeVoidAsync("removeAttachment", attachment.Id).ConfigureAwait(true);
-        _attachments = _attachments.Remove(attachment);
     }
 
     private async Task OnUploadFilesRequested() {
@@ -150,16 +132,5 @@
             return Task.CompletedTask;
         ChatPlayers.StartRealtimePlayback(false);
         return Task.CompletedTask;
-    }
-
-    private void ShowError(string error)
-        => ShowError(new Exception(error));
-
-    private void ShowError(Exception e) {
-    // use command error reporting approach
-        var result = Result.Error<string>(e);
-        var command = new PostChatMessageSurrogateCommand();
-        var completedEvent = new UICommandEvent(command, result);
-        _ = Cmd.UICommandTracker.ProcessEvent(completedEvent);
     }
 }
