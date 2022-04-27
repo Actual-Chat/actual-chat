@@ -153,8 +153,10 @@ public class MarkupParser : IMarkupParser
             .SeparatedAndTerminated(Try(EndOfLine))
             .Select(lines => {
                 using var sb = ZString.CreateStringBuilder();
-                foreach (var line in lines)
-                    sb.AppendLine(line);
+                foreach (var line in lines) {
+                    sb.Append(line);
+                    sb.Append("\r\n"); // We want stable line endings here
+                }
                 return sb.ToString();
             });
     private static readonly Parser<char, Markup> CodeBlock = (
