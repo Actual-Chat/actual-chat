@@ -15,18 +15,12 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter]
-    public string Id { get; set; } = "";
-    [Parameter]
-    public string Placeholder { get; set; } = "";
-    [Parameter]
-    public string Class { get; set; } = "";
-    [Parameter]
-    public EventCallback<string> OnPost { get; set; }
-    [Parameter]
-    public EventCallback OnRendered { get; set; }
-    [CascadingParameter]
-    public MentionListContext? MentionListContext { get; set; }
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<string> OnPost { get; set; }
+    [Parameter] public EventCallback OnRendered { get; set; }
+    [CascadingParameter] public MentionListContext? MentionListContext { get; set; }
 
     protected override void OnInitialized() {
         base.OnInitialized();

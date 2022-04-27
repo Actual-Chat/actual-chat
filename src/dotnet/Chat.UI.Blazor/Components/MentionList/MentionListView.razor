@@ -24,10 +24,8 @@
 }
 
 @code {
-    [CascadingParameter]
-    public MentionListContext Context { get; set; } = null!;
-    [Parameter]
-    public string Class { get; set; } = "";
+    [CascadingParameter] public MentionListContext Context { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
 
     protected override ComputedState<MentionListViewModel?>.Options GetStateOptions() {
         return new ComputedState<MentionListViewModel?>.Options {
