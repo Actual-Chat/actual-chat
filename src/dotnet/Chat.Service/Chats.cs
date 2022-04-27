@@ -84,7 +84,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chatTasks = await Task
             .WhenAll(chatIds.Select(id => Get(session, id, cancellationToken)))
             .ConfigureAwait(false);
-        return chatTasks.Where(c => c != null && c.ChatType == ChatType.Group).Select(c => c!).ToArray();
+        return chatTasks.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
     }
 
     // [ComputeMethod]

@@ -19,9 +19,8 @@
     [Inject]
     private IEnumerable<NavBarItem> NavBarItems { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new() { InitialValue = new Model(false) };
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = new Model(false) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var authenticationState = await AuthStateProvider.GetAuthenticationStateAsync();

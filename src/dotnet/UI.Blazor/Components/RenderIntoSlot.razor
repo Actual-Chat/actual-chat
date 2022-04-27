@@ -13,7 +13,7 @@
     [Inject] private RenderVars RenderVars { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
-    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 
     public void Dispose()
         => RenderVars.RenderSlot(Name).Value = null;

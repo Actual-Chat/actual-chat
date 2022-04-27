@@ -33,9 +33,11 @@
         </CascadingValue>
     </RenderIntoSlot>
 
-    if (State.Value.IsRightPanelDisplayed) {
+    if (State.Value.IsRightPanelVisible) {
         <RenderIntoSlot Name="MainRightPanel" @key="@(chat.Id + "-right-panel")">
-            <ChatRightPanel ChatId="@chat.Id" />
+            <CascadingValue Value="chat">
+                <ChatRightPanel/>
+            </CascadingValue>
         </RenderIntoSlot>
     }
 
@@ -88,7 +90,7 @@
         var isTheSameChat = renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version;
         return new () {
             Chat = isTheSameChat ? renderedChat : chat,
-            IsRightPanelDisplayed = isRightPanelDisplayed,
+            IsRightPanelVisible = isRightPanelDisplayed,
         };
     }
 
@@ -112,7 +114,7 @@
     public record Model {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
-        public bool IsRightPanelDisplayed { get; init; }
+        public bool IsRightPanelVisible { get; init; }
         public Chat? Chat { get; init; }
     }
 }

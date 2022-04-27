@@ -1,77 +1,85 @@
 @using System.Net
+@inherits ComputedStateComponent<ChatAuthorCard.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
 <div class="w-[250px] author-card-modal">
     <div class="flex-y h-full">
-        <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
+        <ChatAuthorBadge AuthorId="@AuthorId">
             <div class="author-avatar w-12 h-12 select-none bg-secondary rounded-md">
                 <img src="@context.Author.Picture" alt="@context.Author.Name"/>
             </div>
-        </ChatAuthor>
+        </ChatAuthorBadge>
         <div class="self-start pt-2">
-            <ChatAuthor ChatId="@_chatId" AuthorId="@ChatAuthorId">
+            <ChatAuthorBadge AuthorId="@AuthorId">
                 <span class="text-primary font-semibold text-lg rounded">@context.Author.Name</span>
-            </ChatAuthor>
+            </ChatAuthorBadge>
         </div>
         <div class="flex-x font-light text-xs">
-            ID: @ChatAuthorId
+            ID: @AuthorId
         </div>
         <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
-            @if (_canAddContact && !_isAlreadyAdded) {
-            <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@_isAddingContact">Add to Contacts</Button>
+            @if (m.CanAddContact) {
+                <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@IsAddingContact">Add to Contacts</Button>
             }
-            @if (_canSendMessage) {
-            <Button Class="btn-success" OnClick="OnSendMessageClick">Send Message</Button>
+            @if (m.CanSendMessage) {
+                <Button Class="btn-success" OnClick="OnSendMessageClick">Send Message</Button>
             }
         </ButtonGroup>
     </div>
 </div>
 
 @code {
-    private string? _chatId;
-    private bool _canAddContact;
-    private bool _isAddingContact;
-    private bool _isAlreadyAdded;
-    private bool _canSendMessage;
-
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
     [Inject] private IChats Chats { get; set; } = null!;
     [Inject] private Session Session { get; set; } = null!;
     [Inject] private UICommandRunner Cmd { get; set; } = null!;
     [Inject] private NavigationManager Nav { get; set; } = null!;
 
-    [CascadingParameter]
-    BlazoredModalInstance ModalInstance { get; set; } = null!;
+    private bool IsAddingContact { get; set; }
 
-    [Parameter]
-    public string ChatId { get; set; } = "";
-    [Parameter, EditorRequired]
-    public string ChatAuthorId { get; set; } = "";
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
 
-    protected override async Task OnInitializedAsync() {
-        await base.OnInitializedAsync();
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
 
-        // ModalInstance.SetTitle("User Info");
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (!ChatAuthor.TryGetChatId(AuthorId, out var chatId))
+            return Model.None;
 
-        if (!string.IsNullOrEmpty(ChatId))
-            _chatId = ChatId;
-        else if (!ActualChat.Chat.ChatAuthor.TryGetChatId(ChatAuthorId, out _chatId))
-            throw new InvalidOperationException("Invalid chat author id given");
-        _canAddContact = await ChatAuthors.CanAddToContacts(Session, ChatAuthorId, default);
-        _canSendMessage = await Chats.CanSendUserPeerChatMessage(Session, ChatAuthorId, default);
+        return new Model() {
+            ChatId = chatId,
+            CanAddContact = await ChatAuthors.CanAddToContacts(Session, AuthorId, default).ConfigureAwait(false),
+            CanSendMessage = await Chats.CanSendUserPeerChatMessage(Session, AuthorId, default).ConfigureAwait(false),
+        };
     }
 
     private async Task OnAddContactClick() {
-        if (_isAddingContact)
+        if (IsAddingContact)
             return;
-        _isAddingContact = true;
-        var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, ChatAuthorId));
-        if (e.IsCompletedSuccessfully)
-            _isAlreadyAdded = true;
-        _isAddingContact = false;
+        IsAddingContact = true;
+        StateHasChanged();
+        try {
+            var (_, e) = await Cmd.Run(new IChatAuthors.AddToContactsCommand(Session, AuthorId));
+        }
+        finally {
+            IsAddingContact = false;
+            StateHasChanged();
+        }
     }
 
     private async Task OnSendMessageClick() {
-        var peerChatId = await Chats.GetUserPeerChatId(Session, ChatAuthorId, default);
+        var peerChatId = await Chats.GetUserPeerChatId(Session, AuthorId, default);
         var encodedUrl = WebUtility.UrlEncode(peerChatId);
         Nav.NavigateTo("/chat/" + encodedUrl);
+    }
+
+    public sealed record Model {
+        public static Model None { get; } = new();
+
+        public string ChatId { get; init; } = "";
+        public bool CanAddContact { get; init; }
+        public bool CanSendMessage { get; init; }
     }
 }

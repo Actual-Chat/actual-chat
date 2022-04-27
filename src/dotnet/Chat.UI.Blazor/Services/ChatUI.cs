@@ -10,7 +10,7 @@ public class ChatUI
     public ChatUI(IModalService modalService)
         => _modalService = modalService;
 
-    public void ShowChatAuthorCard(string chatId, string chatAuthorId)
+    public void ShowChatAuthorCard(string authorId)
     {
         var modalParameters = new ModalParameters();
         var options = new ModalOptions() {
@@ -18,15 +18,7 @@ public class ChatUI
             HideHeader = true,
             Animation = ModalAnimation.FadeIn(0.3),
         };
-        modalParameters.Add(nameof(ChatAuthorCard.ChatId), chatId);
-        modalParameters.Add(nameof(ChatAuthorCard.ChatAuthorId), chatAuthorId);
+        modalParameters.Add(nameof(ChatAuthorCard.AuthorId), authorId);
         _modalService.Show<ChatAuthorCard>(null, modalParameters, options);
-    }
-
-    public void ShowChatAuthorCard(string chatAuthorId)
-    {
-        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
-            throw new ArgumentOutOfRangeException(nameof(chatAuthorId));
-        ShowChatAuthorCard(chatId, chatAuthorId);
     }
 }

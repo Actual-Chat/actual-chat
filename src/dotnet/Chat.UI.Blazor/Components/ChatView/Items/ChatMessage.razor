@@ -22,7 +22,7 @@
 }
 <div class="chat-message @ownMessageClass @mentionClass relative group px-3 @marginClass">
     @if (showPicture) {
-        <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
+        <ChatAuthorBadge AuthorId="@entry.AuthorId">
             <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md"
                  @onclick="OnChatAuthorClick">
                 <img src="@context.Author.Picture" alt="@context.Author.Name" class="block"/>
@@ -34,7 +34,7 @@
                     </div>
                 </div>
             </div>
-        </ChatAuthor>
+        </ChatAuthorBadge>
     } else {
         <div class="w-10 mr-2 mt-1">
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
@@ -43,9 +43,9 @@
     <div class="flex-1 overflow-hidden mb-1 mt-1">
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
-                <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
+                <ChatAuthorBadge AuthorId="@entry.AuthorId">
                     <span class="font-bold text-secondary rounded">@context.Author.Name</span>
-                </ChatAuthor>
+                </ChatAuthorBadge>
                 <ChatMessageTimestamp Value="entry.BeginsAt"/>
                 &nbsp;
                 <span class="text-accent-muted text-xxs">id=@entry.Id</span>
@@ -103,7 +103,7 @@
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorCard(Model.Entry.ChatId, Model.Entry.AuthorId);
+        => ChatUI.ShowChatAuthorCard(Model.Entry.AuthorId);
 
     private async Task InitReaderId()
         => ReaderId = await ChatAuthor.GetChatPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);

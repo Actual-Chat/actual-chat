@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<ChatAuthors.Model>
+@inherits ComputedStateComponent<ChatAuthorList.Model>
 
 @{
     var model = State.ValueOrDefault ?? new();
@@ -6,8 +6,8 @@
 
 <div class="flex-y w-full space-y-3">
     <h3 class="text-secondary">Authors</h3>
-    @foreach (var authorId in model.AuthorsIds) {
-        <ChatAuthor ChatId="@ChatId" AuthorId="@authorId" @key="@authorId">
+    @foreach (var authorId in model.AuthorIds) {
+        <ChatAuthorBadge @key="@authorId" AuthorId="@authorId">
             <div class="flex-x w-full">
                 <div class="author-avatar w-12 h-12 select-none bg-secondary rounded-md">
                     <img src="@context.Author.Picture" alt="avatar"/>
@@ -18,7 +18,7 @@
                     </p>
                 </div>
             </div>
-        </ChatAuthor>
+        </ChatAuthorBadge>
     }
 </div>
 
@@ -26,16 +26,16 @@
     [Inject] private IChatAuthors Authors { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
-
-    public sealed class Model {
-        public ImmutableArray<string> AuthorsIds { get; init; } = ImmutableArray<string>.Empty;
-    }
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var authorIds = await Authors.GetAuthorIds(Session, ChatId, cancellationToken);
+        var authorIds = await Authors.GetAuthorIds(Session, Chat.Id, cancellationToken);
         return new() {
-            AuthorsIds = authorIds,
+            AuthorIds = authorIds,
         };
+    }
+
+    public sealed class Model {
+        public ImmutableArray<string> AuthorIds { get; init; } = ImmutableArray<string>.Empty;
     }
 }
