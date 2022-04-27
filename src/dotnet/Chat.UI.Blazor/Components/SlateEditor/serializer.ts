@@ -20,7 +20,7 @@ export const serialize = node => {
 
     switch (node.type) {
         case 'mention':
-            return `<@${node.mentionId}>`
+            return `@${node.mentionId}`
         case 'paragraph':
             return children
         default:
