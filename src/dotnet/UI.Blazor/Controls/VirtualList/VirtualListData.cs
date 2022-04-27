@@ -12,7 +12,7 @@ public class VirtualListData<TItem>
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
-    public Symbol ScrollToKey { get; init; }
+    public string? ScrollToKey { get; init; }
 
     public VirtualListData(VirtualListDataQuery query, IReadOnlyCollection<TItem> items)
     {
@@ -28,7 +28,7 @@ public static class VirtualListData
         IEnumerable<TItem> items,
         bool hasVeryFirstItem = false,
         bool hasVeryLastItem = false,
-        Symbol scrollToKey = default)
+        string? scrollToKey = default)
         where TItem : IVirtualListItem
     {
         var readOnlyItems = items as IReadOnlyCollection<TItem> ?? items.ToList();

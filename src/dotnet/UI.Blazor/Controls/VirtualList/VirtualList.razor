@@ -23,7 +23,7 @@
         HasVeryLastItem = plan.Data.HasVeryLastItem,
         ScrollToKey = plan.ClientSideState?.IsUserScrollDetected ?? false
             ? null
-            : plan.Data.ScrollToKey.Value.NullIfEmpty(),
+            : Query.ScrollToKey,
         UseSmoothScroll = plan.UseSmoothScroll,
         ItemSizes = plan.Items.ToDictionary(i => i.Key.Value, i => i.Range.Size(), StringComparer.Ordinal),
         HasUnmeasuredItems = plan.HasUnmeasuredItems,

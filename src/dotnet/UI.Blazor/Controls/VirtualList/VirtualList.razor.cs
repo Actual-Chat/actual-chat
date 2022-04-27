@@ -132,14 +132,14 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         if (!State.Computed.IsConsistent()) // Already recomputing
             return;
 
-        if (Plan.IsFullyLoaded() == true && Data.ScrollToKey.IsEmpty)
+        if (Plan.IsFullyLoaded() == true && Data.ScrollToKey.IsNullOrEmpty())
             return;
 
         Query = GetDataQuery(Plan);
-        if (Query.IsSimilarTo(LastQuery) && Data.ScrollToKey.IsEmpty)
+        if (Query.IsSimilarTo(LastQuery))
             return;
 
-        if (LastQuery != VirtualListDataQuery.None)
+        if (!LastQuery.IsNone)
             // Data update
             _ = State.Recompute();
         LastQuery = Query;
@@ -151,10 +151,10 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
-        LastQuery = query;
         VirtualListData<TItem> response;
         try {
             response = await DataSource.Invoke(query, cancellationToken).ConfigureAwait(true);
+            LastQuery = Query = response.Query;
             DebugLog?.LogDebug(
                 nameof(ComputeState)
                 + ": query={Query} -> keys [{Key0}...{KeyE}], has {First} {Last}, scroll to {ScrollTo}",
