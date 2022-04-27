@@ -49,7 +49,6 @@ public class VirtualListStatistics : IVirtualListStatistics
             _itemCount == 0 ? DefaultItemSize : _itemSizeSum / _itemCount,
             MinItemSize, MaxItemSize);
 
-    public double DefaultResponseFulfillmentRatio { get; init; } = 16;
     public double MinResponseFulfillmentRatio { get; init; } = 0.25;
     public double MaxResponseFulfillmentRatio { get; init; } = 1;
     /// <summary>
@@ -64,8 +63,11 @@ public class VirtualListStatistics : IVirtualListStatistics
     /// <inheritdoc />
     public double ResponseFulfillmentRatio
         => Math.Clamp(
-            _responseExpectedCountSum < 1 ? DefaultResponseFulfillmentRatio : _responseActualCountSum / _responseExpectedCountSum,
-            MinResponseFulfillmentRatio, MaxResponseFulfillmentRatio);
+            _responseExpectedCountSum < 1
+                ? MaxResponseFulfillmentRatio
+                : _responseActualCountSum / _responseExpectedCountSum,
+            MinResponseFulfillmentRatio,
+            MaxResponseFulfillmentRatio);
 
     public void AddItem(double size, int countAs)
     {

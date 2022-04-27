@@ -14,6 +14,9 @@ public static partial class RangeExt
     public static Range<long> Move(this Range<long> range, long startOffset, long endOffset)
         => new (range.Start + startOffset, range.End + endOffset);
 
+    public static Range<long> Clamp(this Range<long> range, Range<long> clampBy)
+        => new (Math.Clamp(range.Start, clampBy.Start, clampBy.End), Math.Clamp(range.End, clampBy.Start, clampBy.End));
+
     public static (Range<long> FirstHalf, Range<long> SecondHalf) SplitEvenly(this Range<long> range)
     {
         var splitBoundary = (range.End + range.Start) >> 1;

@@ -162,14 +162,11 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             : query.IsNone
                 ? new Range<long>(
                     chatIdRange.End - (2 * IdTileStack.Layers[1].TileSize),
-                    chatIdRange.End - 1)
+                    chatIdRange.End)
                 : query.InclusiveRange.AsLongRange()
                     .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
 
-        var startId = Math.Clamp(queryRange.Start, chatIdRange.Start, chatIdRange.End);
-        var endId = Math.Clamp(queryRange.End, chatIdRange.Start, chatIdRange.End);
-        var adjustedRange = new Range<long>(startId, endId);
-
+        var adjustedRange = queryRange.Clamp(chatIdRange.ToInclusive());
         var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
         var chatTiles = await Task
             .WhenAll(idTiles.Select(
@@ -225,8 +222,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
                 ? query
                 : new VirtualListDataQuery(adjustedRange.AsStringRange()) { ScrollToKey = scrollToKey },
             chatMessages,
-            startId <= chatIdRange.Start,
-            endId + 1 >= chatIdRange.End,
+            adjustedRange.Start <= chatIdRange.Start,
+            adjustedRange.End + 1 >= chatIdRange.End,
             scrollToKey);
 
         return result;

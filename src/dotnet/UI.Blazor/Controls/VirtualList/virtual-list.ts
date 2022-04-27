@@ -142,23 +142,26 @@ export class VirtualList {
             if (this._debugMode)
                 console.log(`${LogScope}.onRenderEnd, renderIndex = #${rs.renderIndex}`);
 
+            let isScrollHappened = false;
             if (rs.scrollToKey != null) {
                 // Server-side scroll request
                 const itemRef = this.getItemRef(rs.scrollToKey);
                 this.scrollTo(itemRef, rs.useSmoothScroll, 'center');
+                isScrollHappened = true;
                 this._scrollTopPivotRef = null;
                 this._scrollTopPivotOffset = null;
             } else if (this.isSafeToScroll && this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start
-                                ? this.getFirstItemKey()
-                                : this.getLastItemKey();
+                    ? this.getFirstItemKey()
+                    : this.getLastItemKey();
                 if (itemKey == null) {
                     this.setStickyEdge(null);
                 } else if (itemKey !== this._stickyEdge.itemKey) {
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
                     let itemRef = this.getItemRef(itemKey);
                     this.scrollTo(itemRef, true);
+                    isScrollHappened = true;
                 }
                 this._scrollTopPivotRef = null;
                 this._scrollTopPivotOffset = null;
@@ -180,8 +183,10 @@ export class VirtualList {
                         const newScrollTop = scrollTop + dScrollTop;
                         if (this._debugMode)
                             console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-                        if (Math.abs(dScrollTop) > SizeEpsilon)
+                        if (Math.abs(dScrollTop) > SizeEpsilon) {
                             this.setScrollTop(newScrollTop);
+                            isScrollHappened = true;
+                        }
                         this._scrollTopPivotRef = null;
                         this._scrollTopPivotOffset = null;
                     }
@@ -198,13 +203,16 @@ export class VirtualList {
                         const newScrollTop = scrollTop + dScrollTop;
                         if (this._debugMode)
                             console.warn(`${LogScope}.onRenderEnd: resync scrollTop: ${scrollTop} + ${dScrollTop} -> ${newScrollTop}`);
-                        if (Math.abs(dScrollTop) > SizeEpsilon)
+                        if (Math.abs(dScrollTop) > SizeEpsilon) {
                             this.setScrollTop(newScrollTop);
+                            isScrollHappened = true;
+                        }
                         this._scrollTopPivotRef = null;
                         this._scrollTopPivotOffset = null;
                     }
                     else {
                         this.scrollTo(itemRef, false, position);
+                        isScrollHappened = true;
                         this._scrollTopPivotRef = null;
                         this._scrollTopPivotOffset = null;
                     }
@@ -213,10 +221,10 @@ export class VirtualList {
 
             if (this._debugMode)
                 console.log(`${LogScope}.onRenderEnd - ` +
-                                `rs.scrollHeight: #${rs.scrollHeight}; rs.scrollTop: #${rs.scrollTop}; scrollTop: #${this.getScrollTop()}; ` +
-                                `pivotRefKey: ${getItemKey(this._scrollTopPivotRef)}; pivotOffset: ${this._scrollTopPivotOffset}`);
+                    `rs.scrollHeight: #${rs.scrollHeight}; rs.scrollTop: #${rs.scrollTop}; scrollTop: #${this.getScrollTop()}; ` +
+                    `pivotRefKey: ${getItemKey(this._scrollTopPivotRef)}; pivotOffset: ${this._scrollTopPivotOffset}`);
 
-            if (rs.scrollTop != null)
+            if (isScrollHappened)
                 await delayAsync(RenderToUpdateClientSideStateDelay);
         } finally {
             this._isRendering = false;
@@ -224,7 +232,7 @@ export class VirtualList {
                 // This is an outdated update already
                 if (this._debugMode)
                     console.log(`${LogScope}.onRenderEnd skips updateClientSideStateDebounced:` +
-                                    ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
+                        ` #${rs.renderIndex} < #${this._updateClientSideStateRenderIndex}`);
                 // such an update will be ignored anyway
             }
             else {
@@ -389,8 +397,9 @@ export class VirtualList {
                         }
                         state.visibleKeys = visibleItemKeys;
 
+                        const hasItemSizes = Object.keys(state.itemSizes).length > 0 || Object.keys(rs.itemSizes).length > 0;
                         const isFirstRender = rs.renderIndex <= 2;
-                        const isScrollHappened = Math.abs(state.scrollTop - rs.scrollTop) > MoveSizeEpsilon;
+                        const isScrollHappened = hasItemSizes && rs.scrollTop != null &&  Math.abs(state.scrollTop - rs.scrollTop) > MoveSizeEpsilon;
                         const isScrollTopChanged = rs.scrollTop == null || Math.abs(state.scrollTop - rs.scrollTop) > MoveSizeEpsilon;
                         const isScrollHeightChanged = rs.scrollHeight == null || Math.abs(state.scrollHeight - rs.scrollHeight) > MoveSizeEpsilon;
                         const isViewportHeightChanged = rs.viewportHeight == null || Math.abs(state.viewportHeight - rs.viewportHeight) > MoveSizeEpsilon;
@@ -489,8 +498,8 @@ export class VirtualList {
 
     private getFirstItemRef(): HTMLElement | null {
         const itemRef = this._isEndAligned
-                        ? this._spacerRef.previousElementSibling
-                        : this._spacerRef.nextElementSibling;
+            ? this._spacerRef.previousElementSibling
+            : this._spacerRef.nextElementSibling;
         if (itemRef == null || !itemRef.classList.contains('item'))
             return null;
         return itemRef as HTMLElement;
@@ -502,8 +511,8 @@ export class VirtualList {
 
     private getLastItemRef(): HTMLElement | null {
         const itemRef = this._isEndAligned
-                        ? this._endSpacerRef.nextElementSibling
-                        : this._endSpacerRef.previousElementSibling;
+            ? this._endSpacerRef.nextElementSibling
+            : this._endSpacerRef.previousElementSibling;
         if (itemRef == null || !itemRef.classList.contains('item'))
             return null;
         return itemRef as HTMLElement;

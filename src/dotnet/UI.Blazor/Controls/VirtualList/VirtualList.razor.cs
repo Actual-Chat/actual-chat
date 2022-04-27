@@ -48,7 +48,7 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
     [Parameter] public double SpacerSize { get; set; } = 10000;
     [Parameter] public double LoadZoneSize { get; set; } = 2160;
     [Parameter] public double BufferZoneSize { get; set; } = 4320;
-    [Parameter] public long MaxPixelExpandBy { get; set; } = 1_000_000;
+    [Parameter] public long MaxExpandBy { get; set; } = 256;
     [Parameter] public IMutableState<List<string>>? VisibleKeysState { get; set; }
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.InvariantCulture;
 
@@ -246,12 +246,16 @@ public partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData
         var endGap = Math.Max(0, loadZone.End - lastItem.Range.End);
         DebugLog?.LogDebug(nameof(GetDataQuery) + ": startGap={StartGap}, endGap={EndGap}", startGap, endGap);
 
-        var pixelExpandStartBy = Math.Clamp((long)Math.Ceiling(startGap / itemSize), 0, MaxPixelExpandBy);
-        var pixelExpandEndBy = Math.Clamp((long)Math.Ceiling(endGap / itemSize), 0, MaxPixelExpandBy);
+        var expandStartBy = plan.Data.HasVeryFirstItem
+            ? 0
+            : Math.Clamp((long)Math.Ceiling(startGap / itemSize), 0, MaxExpandBy);
+        var expandEndBy = plan.Data.HasVeryLastItem
+            ? 0
+            : Math.Clamp((long)Math.Ceiling(endGap / itemSize), 0, MaxExpandBy);
         var keyRange = new Range<string>(firstItem.Key, lastItem.Key);
         var query = new VirtualListDataQuery(keyRange) {
-            ExpandStartBy = pixelExpandStartBy / responseFulfillmentRatio,
-            ExpandEndBy = pixelExpandEndBy / responseFulfillmentRatio,
+            ExpandStartBy = expandStartBy / responseFulfillmentRatio,
+            ExpandEndBy = expandEndBy / responseFulfillmentRatio,
         };
 
         DebugLog?.LogDebug(
