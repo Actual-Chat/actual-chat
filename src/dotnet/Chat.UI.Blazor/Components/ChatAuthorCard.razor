@@ -15,9 +15,6 @@
                 <span class="text-primary font-semibold text-lg rounded">@context.Author.Name</span>
             </ChatAuthorBadge>
         </div>
-        <div class="flex-x font-light text-xs">
-            ID: @AuthorId
-        </div>
         <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
             @if (m.CanAddContact) {
                 <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@IsAddingContact">Add to Contacts</Button>
