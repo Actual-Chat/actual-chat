@@ -168,7 +168,9 @@ public class VirtualListRenderPlan<TItem>
         var newClientSideState = MemberwiseCloner.Invoke(ClientSideState);
         newClientSideState.SpacerSize = SpacerSize;
         newClientSideState.EndSpacerSize = EndSpacerSize;
-        newClientSideState.ScrollHeight = FullRange?.Size();
+        newClientSideState.ScrollHeight = FullRange.HasValue && Viewport.HasValue
+            ? Math.Max(FullRange.Value.Size(), Viewport.Value.Size())
+            : null;
         newClientSideState.ScrollTop = Viewport?.Start;
         newClientSideState.ViewportHeight = Viewport?.Size();
         ClientSideState = newClientSideState;

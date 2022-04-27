@@ -16,9 +16,9 @@
         RenderIndex = plan.RenderIndex,
         SpacerSize = plan.SpacerSize,
         EndSpacerSize = plan.EndSpacerSize,
-        ScrollHeight = plan.FullRange?.Size(),
-        ScrollTop = plan.Viewport?.Start,
-        ViewportHeight = plan.Viewport?.Size(),
+        ScrollHeight = plan.ClientSideState?.ScrollHeight,
+        ScrollTop = plan.ClientSideState?.ScrollTop,
+        ViewportHeight = plan.ClientSideState?.ViewportHeight,
         HasVeryFirstItem = plan.Data.HasVeryFirstItem,
         HasVeryLastItem = plan.Data.HasVeryLastItem,
         ScrollToKey = plan.ClientSideState?.IsUserScrollDetected ?? false
