@@ -1,7 +1,7 @@
 name: Unit tests
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+#concurrency:
+#  group: ${{ github.workflow }}-${{ github.ref }}
+#  cancel-in-progress: true
 on:
   push:
     branches: ["**"]
