@@ -1,3 +1,4 @@
+using System.Reflection;
 using Stl.Reflection;
 
 namespace ActualChat.Interception;
@@ -10,7 +11,7 @@ public static class ProxyExt
     public static IEnumerable<object> GetInterceptors(object proxy)
     {
         var getter = InterceptorGettersCache.GetOrAdd(proxy.GetType(),
-            t => t.GetField(InterceptorsFieldName)!.GetGetter());
+            t => t.GetField(InterceptorsFieldName, BindingFlags.Instance | BindingFlags.NonPublic)!.GetGetter());
         return (IEnumerable<object>)getter.Invoke(proxy);
     }
 
