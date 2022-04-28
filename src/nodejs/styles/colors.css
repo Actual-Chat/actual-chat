@@ -9,9 +9,12 @@
     --background-separate-line: #2b3641;
     --background-error-alert: #f2b6bb;
     --background-avatar: #5a7188;
-    --background-mention: #7dd3fc;
-    --background-mention-hover: #38bdf8;
-    --background-mention-message: #e0f2fe;
+    --background-mention: #fed7aa;
+    --background-mention-hover: #fb923c;
+    --background-mention-message: #fff7ed;
+    --background-mention-message-hover: #fff7e5;
+    --background-own-hover: #cbd5e1;
+    --background-own-message: #f6f8f9;
 
     --text-color-primary: #2b3641;
     --text-color-primary-muted: #3b4a59;

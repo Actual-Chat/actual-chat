@@ -34,12 +34,14 @@
             <div class="flex-x font-light text-sm mb-2">
                 You can't delete this message.
             </div>
+            <div class="-flex-x gap-x-2 absolute md:static bottom-0 right-0 bg-accent md:bg-primary w-full px-5 py-3 md:p-0">
+                <Button Class="btn-primary" OnClick="OnCancel" Focus="true">Close</Button>
+            </div>
         }
     </div>
 </div>
 
 @code {
-    private ChatAuthor RequestAuthor { get; set; } = null!;
     private string Message { get; set; } = "";
 
     [Inject] private IChatAuthors ChatAuthors { get; set; } = null!;
@@ -53,6 +55,7 @@
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public ChatAuthor RequestAuthor { get; set; } = null!;
 
     private void OnCancel() {
         ModalInstance.CloseAsync(ModalResult.Cancel());
@@ -63,13 +66,7 @@
 
     protected override async Task OnInitializedAsync() {
         await base.OnInitializedAsync();
-        await InitRequestAuthorId();
         InitMessage();
-    }
-
-    private async Task InitRequestAuthorId() {
-        var requestAuthor = await ChatAuthors.GetChatAuthor(Session, Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
-        RequestAuthor = requestAuthor ?? throw new InvalidOperationException("Invalid Request Author");
     }
 
     private void InitMessage()

@@ -2,21 +2,23 @@
 @using ActualChat.UI.Blazor.Components
 
 @{
-    var leftContainerClass = "flex-auto float-left mx-1 h-full";
-    var rightContainerClass  = "flex-auto float-right mx-1 h-full";
+    var leftContainerClass = "flex-auto float-left h-full";
+    var rightContainerClass  = "flex-auto float-right h-full";
 }
 
-<div class="relative">
+<div class="relative !pl-0.5">
     @if (IsHorizontal()) {
-        <button @onclick="OnClick" tooltip="@Title" flow="@TooltipFlow()" class="menu-item flex h-8 w-full text-secondary @GetCss()" name="@Name">
+        <button @onclick="OnClick" tooltip="@Title" flow="@TooltipFlow()" disabled="@Disabled"
+                class="menu-item flex h-8 w-full text-secondary @GetCss()" name="@Name">
             <div class="icon-container horizontal-item relative flex-auto mx-1 h-full">
                 <div class="rounded-sm text-xxs relative">@Icon</div>
             </div>
         </button>
     } else {
-        <button @onclick="OnClick" class="menu-item p-1.5 flex h-8 w-full text-secondary @GetCss()" name="@Name">
+        <button @onclick="OnClick" disabled="@Disabled"
+                class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-6 @GetCss()" name="@Name">
             @if (IsIconOnLeft()) {
-                <div class="w-8 @leftContainerClass">
+                <div class="w-6 @leftContainerClass">
                     <div class="flex">@Icon</div>
                 </div>
                 <div class="w-full @rightContainerClass">
@@ -26,7 +28,7 @@
                 <div class="w-full @rightContainerClass">
                     <div class="flex">@Title</div>
                 </div>
-                <div class="w-10 @leftContainerClass">
+                <div class="w-6 @leftContainerClass">
                     <div class="flex">@Icon</div>
                 </div>
             }
@@ -35,18 +37,13 @@
 </div>
 
 @code {
-    [Parameter]
-    public EventCallback OnItemClick { get; set; }
-    [Parameter]
-    public string Title { get; set; } = "";
-    [Parameter]
-    public RenderFragment? Icon { get; set; }
-    [Parameter]
-    public string Class { get; set; } = "";
-    [Parameter]
-    public string Name { get; set; } = "";
-    [CascadingParameter]
-    public Menu? Menu { get; set; }
+    [CascadingParameter] public Menu? Menu { get; set; }
+    [Parameter] public EventCallback OnItemClick { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public bool Disabled { get; set; }
 
     private string GetCss()
         => $"{Class} {Menu?.ItemClass}";

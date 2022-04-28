@@ -59,6 +59,7 @@ module.exports = {
         'button-success-outline': 'var(--button-color-success-outline)',
         'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
         'mention-hover': 'var(--background-mention-hover)',
+        'own-hover': 'var(--background-own-hover)',
         'button-primary': 'var(--background-avatar)',
       },
       backgroundColor: {
@@ -83,6 +84,9 @@ module.exports = {
         'mention': 'var(--background-mention)',
         'mention-hover': 'var(--background-mention-hover)',
         'mention-message': 'var(--background-mention-message)',
+        'mention-message-hover': 'var(--background-mention-message-hover)',
+        'own-hover': 'var(--background-own-hover)',
+        'own-message': 'var(--background-own-message)',
       },
     },
     screens: {

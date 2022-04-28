@@ -6,6 +6,7 @@
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-sm text-current break-words;
+    @apply border-x-2 border-transparent;
 }
 
 .chat-message:hover {
@@ -27,24 +28,24 @@
 
 .chat-message.mention:hover,
 .chat-message.own-message.mention:hover {
-    @apply bg-secondary
+    @apply bg-mention-message-hover;
 }
 
 .chat-message.mention:hover,
 .chat-message.own-message.mention:hover .author-badge {
-    @apply bg-secondary;
+    @apply bg-mention-message-hover;
 }
 
 .chat-message.own-message {
-    @apply bg-sky-50;
+    @apply border-x-2 border-x-own-hover bg-own-message;
 }
 
 .chat-message.own-message:hover {
-    @apply bg-secondary;
+    @apply bg-message-hover;
 }
 
 .chat-message.own-message:hover .author-badge {
-    @apply bg-secondary;
+    @apply bg-message-hover;
 }
 
 .author-image {
