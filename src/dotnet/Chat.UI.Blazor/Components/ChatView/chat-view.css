@@ -13,6 +13,22 @@
     @apply bg-message-hover;
 }
 
+.message-menu-modal .chat-message:hover {
+    @apply bg-secondary;
+}
+
+.message-menu-modal .message-attachment-file a {
+    @apply cursor-default pointer-events-none;
+}
+
+.message-menu-modal .message-attachment-file a svg {
+    @apply hidden;
+}
+
+.message-menu-modal .message-attachment-image a {
+    @apply cursor-default pointer-events-none;
+}
+
 .chat-message:hover .author-badge {
     @apply bg-message-hover;
 }
@@ -128,4 +144,3 @@
 .new-separator-title {
     @apply bg-accent text-accent rounded-md;
 }
-

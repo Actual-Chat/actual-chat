@@ -23,7 +23,7 @@ public class ChatUI
         _modalService.Show<ChatAuthorCard>(null, modalParameters, options);
     }
 
-    public void ShowDeleteMessageRequest(ChatEntry entry, ChatAuthor requestAuthor)
+    public void ShowDeleteMessageRequest(ChatMessageModel model, ChatAuthor requestAuthor)
     {
         var modalParameters = new ModalParameters();
         var options = new ModalOptions() {
@@ -32,7 +32,7 @@ public class ChatUI
             Class = "custom-modal-class",
         };
 
-        modalParameters.Add(nameof(DeleteMessageModal.Entry), entry);
+        modalParameters.Add(nameof(DeleteMessageModal.Model), model);
         modalParameters.Add(nameof(DeleteMessageModal.RequestAuthor), requestAuthor);
         _modalService.Show<DeleteMessageModal>("Delete Message", modalParameters, options);
     }
