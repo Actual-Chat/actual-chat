@@ -7,16 +7,10 @@
             <div class="modal-body">
                 <div class="w-full">
                     <div class="chat-message group px-1">
-                        <ChatAuthorBadge AuthorId="@Model.Entry.AuthorId">
-                            <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md">
-                                <img src="@context.Author.Picture" alt="@context.Author.Name" class="block"/>
-                            </div>
-                        </ChatAuthorBadge>
                         <div class="flex-1">
                             <div class="header chat-message-header ml-1">
-                                <ChatAuthorBadge AuthorId="@Model.Entry.AuthorId">
-                                    <span class="font-bold text-secondary rounded">@context.Author.Name</span>
-                                </ChatAuthorBadge>
+                                <ChatMessageAuthorAvatar AuthorId="@Model.Entry.AuthorId"/>
+                                <ChatAuthorName AuthorId="@Model.Entry.AuthorId" Class="font-bold text-secondary" />
                                 <ChatMessageTimestamp Value="Model.Entry.BeginsAt"/>
                             </div>
                             <div class="content message-content rounded-sm ml-1">
