@@ -1,5 +1,7 @@
+@using Stl.Extensibility
 @inherits MarkupViewBase<Markup>
+@attribute [MatchFor(typeof(Markup), typeof(IMarkupView))]
 
-<span class="unknown-markup-view text-red-500">
-    [<span class="fa fa-exclamation-triangle"></span> no view for '@Markup.GetType().Name']
+<span class="unknown-markup text-red-500">
+    [<span class="fa fa-exclamation-triangle"></span> No view for '@(Markup.GetType().Name)']
 </span>

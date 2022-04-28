@@ -30,18 +30,16 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
             if (!ReferenceEquals(item, originalItem))
                 isSimplified = true;
 
-            if (item.GetType() != typeof(PlainTextMarkup)) {
+            if (item is not PlainTextMarkup pt) {
                 if (lastPlainText != null)
                     items.Add(lastPlainText);
                 lastPlainText = null;
                 items.Add(item);
-            } else if (item is PlainTextMarkup pt) { // Always true
-                if (lastPlainText == null)
-                    lastPlainText = pt;
-                else {
-                    lastPlainText = lastPlainText with { Text = lastPlainText.Text + pt.Text };
-                    isSimplified = true;
-                }
+            } else if (lastPlainText == null) {
+                lastPlainText = pt;
+            } else {
+                lastPlainText = lastPlainText with { Text = lastPlainText.Text + pt.Text };
+                isSimplified = true;
             }
         }
         if (lastPlainText != null)

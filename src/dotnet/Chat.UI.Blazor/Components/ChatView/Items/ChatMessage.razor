@@ -4,14 +4,14 @@
 
 @{
     var entry = Model.Entry;
+    var markup = Model.Markup;
     var attachments = Model.Attachments;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
 
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
-    var mentionClass = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
-    var contextMenuId = "message-" + Model.Entry.Id;
+    var mentionClass = MarkupValidator.ContainsMention.IsValid(markup) ? "mention" : "";
     var ownMessageClass = ReaderId == Model.Entry.AuthorId ? "own-message" : "";
 }
 @if (Model.DateLine.HasValue) {
@@ -20,7 +20,7 @@
 @if (Model.IsFirstUnread) {
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
-<div class="chat-message @ownMessageClass @mentionClass relative group px-3 @marginClass">
+<div class="chat-message relative group px-3 @ownMessageClass @mentionClass @marginClass">
     @if (showPicture) {
         <ChatAuthorBadge AuthorId="@entry.AuthorId">
             <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md"
@@ -55,7 +55,11 @@
             @if (entry.IsStreaming) {
                 <ChatMessageTranscript Model="@Model"/>
             } else {
-                <ChatMessageMarkup Model="@Model"/>
+                <p class="chat-message-markup text-primary mx-1">
+                    <CascadingValue Value="@entry">
+                        <MarkupView Markup="@markup"/>
+                    </CascadingValue>
+                </p>
             }
         </div>
         @if (attachments.Length > 0) {
@@ -72,9 +76,9 @@
         }
     </div>
 
-    <ContextMenu Id="@contextMenuId"
-                 BtnClass="hidden-btn h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
-                 MenuClass="chat-message-menu absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
+    <ContextMenu
+        BtnClass="hidden-btn h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
+        MenuClass="chat-message-menu absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
         <ButtonTemplate>
             <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
                 <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>

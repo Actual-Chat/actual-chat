@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat.Chat;
 
-public sealed record PlayableTextMarkup(string Text, LinearMap TextToTimeMap) : PlainTextMarkup(Text)
+public sealed record PlayableTextMarkup(string Text, LinearMap TextToTimeMap) : TextMarkup(Text)
 {
     private const float InfTime = 1e6f;
     private static readonly Regex WordRegex = new("\\S+\\s+", RegexOptions.Compiled);

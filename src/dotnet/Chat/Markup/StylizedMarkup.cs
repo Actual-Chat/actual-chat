@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public enum TextStyle { None = 0, Italic = 1, Bold = 2 }
 
-public sealed record StylizedMarkup(Markup Content, TextStyle Style) : TextMarkup
+public sealed record StylizedMarkup(Markup Content, TextStyle Style) : Markup
 {
     public StylizedMarkup() : this(null!, default) { }
 

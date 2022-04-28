@@ -3,10 +3,10 @@
 @attribute [MatchFor(typeof(UrlMarkup), typeof(IMarkupView))]
 
 @if (!Markup.IsImage) {
-    <a class="link-part-view cursor-pointer no-underline hover:underline text-cyan-600"
+    <a class="url-markup cursor-pointer no-underline hover:underline text-cyan-600"
        href="@Markup.Url" target="_blank">@Markup.Url</a>
 } else {
-    <a class="image-part-view cursor-pointer" href="@Markup.Url" role="button"
+    <a class="image-markup cursor-pointer" href="@Markup.Url" role="button"
        @onclick="OnClick" @onclick:preventDefault="true">
         <img style="max-width: 400px; max-height: 300px" src="@Markup.Url" alt="@Markup.Url"/>
     </a>

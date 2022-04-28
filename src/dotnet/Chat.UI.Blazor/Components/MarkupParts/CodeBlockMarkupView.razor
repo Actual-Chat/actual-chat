@@ -2,7 +2,7 @@
 @inherits MarkupViewBase<CodeBlockMarkup>
 @attribute [MatchFor(typeof(CodeBlockMarkup), typeof(IMarkupView))]
 @{
-    var cls = "code-part-view";
+    var cls = "code-markup";
     if (!Markup.Language.IsNullOrEmpty())
         cls += " language-" + Markup.Language;
 }

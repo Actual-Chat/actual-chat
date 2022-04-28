@@ -1,7 +1,8 @@
+using ActualChat.Chat.UI.Blazor.Components.MarkupParts;
 using Microsoft.AspNetCore.Components.Rendering;
 using Stl.Extensibility;
 
-namespace ActualChat.Chat.UI.Blazor.Components.MarkupParts;
+namespace ActualChat.Chat.UI.Blazor.Components;
 
 public class MarkupView : MarkupViewBase<Markup>
 {

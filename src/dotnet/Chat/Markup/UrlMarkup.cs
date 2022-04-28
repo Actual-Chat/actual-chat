@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace ActualChat.Chat;
 
-public sealed record UrlMarkup(string Url) : TextMarkup
+public sealed record UrlMarkup(string Url) : Markup
 {
     private static readonly Regex ImageUrlRegex = new(
         "\\.(jpg|jpeg|png|gif|png|webp)$",

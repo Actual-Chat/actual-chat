@@ -8,6 +8,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public Symbol Key { get; }
     public ChatEntry Entry { get; }
+    public Markup Markup { get; }
     public ImmutableArray<TextEntryAttachment> Attachments { get; }
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
@@ -16,9 +17,10 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnread { get; init; }
 
-    public ChatMessageModel(ChatEntry entry, ImmutableArray<TextEntryAttachment> attachments)
+    public ChatMessageModel(ChatEntry entry, Markup markup, ImmutableArray<TextEntryAttachment> attachments)
     {
         Entry = entry;
+        Markup = markup;
         Attachments = attachments;
         Key = entry.Id.ToString(CultureInfo.InvariantCulture);
     }
@@ -56,8 +58,9 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
 
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
-        IDictionary<long, ImmutableArray<TextEntryAttachment>> attachmentsLookup,
-        long? lastReadEntryId)
+        IDictionary<long, ImmutableArray<TextEntryAttachment>> chatEntryAttachments,
+        long? lastReadEntryId,
+        IMarkupParser markupParser)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
 
@@ -76,13 +79,14 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isLastEntry = index == chatEntries.Count - 1;
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
 
+            var markup = markupParser.Parse(entry.Content);
             var date = DateOnly.FromDateTime(entry.BeginsAt.ToDateTime().ToLocalTime());
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
-            if (!attachmentsLookup.TryGetValue(entry.Id, out var attachments))
+            if (!chatEntryAttachments.TryGetValue(entry.Id, out var attachments))
                 attachments = ImmutableArray<TextEntryAttachment>.Empty;
             var isUnread = entry.Id > (lastReadEntryId ?? 0);
-            var model = new ChatMessageModel(entry, attachments) {
+            var model = new ChatMessageModel(entry, markup, attachments) {
                 DateLine = hasDateLine ? date : null,
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,

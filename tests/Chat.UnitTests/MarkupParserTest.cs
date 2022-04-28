@@ -116,7 +116,7 @@ code
     [Fact]
     public void UnparsedTest()
     {
-        var m = Parse<UnparsedMarkup>("**", out var text);
+        var m = Parse<UnparsedTextMarkup>("**", out var text);
         m.Text.Should().Be(text);
     }
 
@@ -125,7 +125,7 @@ code
     {
         var m = Parse<MarkupSeq>("***bi*** @alex `a``b` *i* **b** *", out _);
         m.Items.Length.Should().Be(11);
-        var um = (UnparsedMarkup) m.Items.Last();
+        var um = (UnparsedTextMarkup) m.Items.Last();
         um.Text.Should().Be("*");
     }
 

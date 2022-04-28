@@ -1,4 +1,4 @@
-namespace ActualChat.Chat.UI.Blazor.Components.MarkupParts;
+namespace ActualChat.Chat.UI.Blazor.Components;
 
 public abstract class ComputedMarkupViewBase<TMarkup, TState> : ComputedStateComponent<TState>, IMarkupView<TMarkup>
     where TMarkup : Markup

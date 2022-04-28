@@ -5,7 +5,7 @@
 @{
     var playingAt = State.LatestNonErrorValue;
 }
-<span class="playable-text-part-view whitespace-break-spaces">
+<span class="playable-text-markup whitespace-break-spaces">
     @foreach (var word in Markup.Words) {
         var isWordPlaying = playingAt.HasValue && word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt.GetValueOrDefault());
         var cls = isWordPlaying ? "playable playing" : "playable";
