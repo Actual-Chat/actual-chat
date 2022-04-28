@@ -9,15 +9,13 @@
 
 @code {
 
-    [Parameter, EditorRequired]
-    public IMutableState<int> UnreadEntryCountState { get; set; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; set; } = null!;
+    [Inject] private Session Session { get; set; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+
     [Parameter] public EventCallback OnClick { get; set; }
 
-    public class Model {
-        public static readonly Model Empty = new();
-
-        public int Count { get; set; }
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -26,9 +24,12 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await UnreadEntryCountState.Use(cancellationToken).ConfigureAwait(true);
-        return new Model {
-            Count = count,
+        var count = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
+        if (!count.HasValue)
+            return Model.Empty;
+
+        return new() {
+            Count = count.Value,
         };
     }
 
@@ -37,6 +38,12 @@
             1 => "message",
             _ => "messages",
         };
+    }
+
+    public class Model {
+        public static readonly Model Empty = new();
+
+        public int Count { get; set; }
     }
 
 }

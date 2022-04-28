@@ -29,7 +29,7 @@
 
     <RenderIntoSlot Name="SubHeader" @key="@(chat.Id + "-sub-header")">
         <CascadingValue Value="chat">
-            <UnreadMessagesHeader UnreadEntryCountState="@UnreadEntryCountState" OnClick="@OnUnreadMessagesHeaderClick"/>
+            <UnreadMessagesHeader OnClick="@OnUnreadMessagesHeaderClick"/>
         </CascadingValue>
     </RenderIntoSlot>
 
@@ -49,7 +49,7 @@
 
     <NoComponent @key="chat.Id">
         <CascadingValue Value="chat">
-            <ChatView @ref="_chatView" UnreadEntryCountState="@UnreadEntryCountState" />
+            <ChatView @ref="_chatView" />
             <HistoricalPlaybackPanel/>
         </CascadingValue>
     </NoComponent>
@@ -60,7 +60,6 @@
 @code {
     private Model? _lastRenderedModel;
     private IComputed? _activeChatIdComputed;
-    private IMutableState<int> UnreadEntryCountState { get; set; } = null!;
     private ChatView _chatView = null!;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -72,11 +71,6 @@
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public string ContactId { get; set; } = "";
-
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        UnreadEntryCountState = StateFactory.NewMutable(0);
-    }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)

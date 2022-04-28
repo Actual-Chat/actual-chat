@@ -41,5 +41,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddStateRestoreHandler<ChatPageStatePersister>();
         services.AddScoped<ContentUrlMapper>();
         services.AddScoped<ChatUI>();
+        services.AddScoped<UnreadMessages>();
     }
 }
