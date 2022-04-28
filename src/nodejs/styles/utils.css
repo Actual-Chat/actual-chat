@@ -1,4 +1,5 @@
 /* Flex shortcuts */
+
 .flex-x {
     @apply flex flex-row;
 }
@@ -13,6 +14,7 @@
 }
 
 /* Inline-flex shortcuts */
+
 .inline-flex-x {
     @apply inline-flex flex-row;
 }
@@ -74,6 +76,8 @@ button.off,
 }
 
 
+/* Buttons */
+
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
     @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
@@ -125,7 +129,11 @@ button.off,
     @apply bg-primary hover:bg-accent;
 }
 
-.btn.btn-square:hover .button-square-child {
+.btn.btn-square.hidden-btn {
+    @apply invisible z-10 absolute;
+}
+
+.btn.btn-square:hover .btn-square-child {
     @apply animate-scale-icon;
 }
 
@@ -140,7 +148,6 @@ button.off,
 .btn-group {
     @apply overflow-hidden rounded-md justify-items-stretch gap-px;
 }
-
 .btn-group .btn {
     @apply rounded-none;
 }
@@ -160,6 +167,12 @@ button.off,
 }
 .btn-group.btn-font-semibold .btn {
     @apply font-semibold;
+}
+
+/* Other */
+
+.whitespace-break-spaces {
+    white-space: break-spaces;
 }
 
 .fill-available {
@@ -199,40 +212,4 @@ button.off,
 
 .invalid {
     outline: none;
-}
-
-.author-card-modal .btn-group-parent {
-    @apply mt-2 mb-0;
-}
-
-.btn.btn-square.hidden-btn {
-    @apply invisible z-10 absolute;
-}
-
-.context-button {
-    @apply transition duration-150 ease-in-out outline-none;
-    @apply fill-current;
-    @apply max-w-max;
-    @apply text-base font-semibold text-secondary;
-    @apply p-1 mx-0 min-w-0;
-}
-
-.context-button.hidden-btn {
-    @apply invisible z-20 absolute;
-}
-
-.context-button:hover .context-button-child {
-    @apply animate-scale-icon;
-}
-
-.menu-item.context-menu-item {
-    @apply hover:bg-primary;
-}
-
-.btn.btn-square.audio-recorder-toggle {
-    @apply rounded-2xl;
-}
-
-.btn.btn-square.chat-language-toggle {
-    @apply rounded-2xl;
 }

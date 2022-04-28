@@ -54,7 +54,7 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<StylizedMarkup>("*italic text*", out var text);
         m.Style.Should().Be(TextStyle.Italic);
-        var m1 = m.Markup.Should().BeOfType<PlainTextMarkup>().Subject;
+        var m1 = m.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m1.Text.Should().Be(text[1..^1]);
     }
 
@@ -63,7 +63,7 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<StylizedMarkup>("**bold text**", out var text);
         m.Style.Should().Be(TextStyle.Bold);
-        var m1 = m.Markup.Should().BeOfType<PlainTextMarkup>().Subject;
+        var m1 = m.Content.Should().BeOfType<PlainTextMarkup>().Subject;
         m1.Text.Should().Be(text[2..^2]);
     }
 

@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Controls;
+namespace ActualChat.UI.Blazor.Components;
 
 public class VirtualListDataQuery
 {

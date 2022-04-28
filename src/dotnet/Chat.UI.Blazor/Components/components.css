@@ -8,3 +8,7 @@
 .chat-header-button:hover button {
     @apply bg-primary z-10;
 }
+
+.author-card-modal .btn-group-parent {
+    @apply mt-2 mb-0;
+}

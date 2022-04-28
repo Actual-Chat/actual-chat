@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.Controls.Internal;
+namespace ActualChat.UI.Blazor.Components.Internal;
 
 /// <summary> The data transferred from JS to Blazor. </summary>
 public class VirtualListClientSideState

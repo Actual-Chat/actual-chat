@@ -5,21 +5,19 @@
 @{
     var playingAt = State.LatestNonErrorValue;
 }
-<span class="plain-text-part-view whitespace-break-spaces">
+<span class="playable-text-part-view whitespace-break-spaces">
     @foreach (var word in Markup.Words) {
-        var text = Markup.Text.AsSpan(word.TextRange.Start, word.TextRange.End - word.TextRange.Start);
-        var cls = "playable";
-        if (playingAt.HasValue && word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt.GetValueOrDefault()))
-            cls = "playable playing";
+        var isWordPlaying = playingAt.HasValue && word.TimeRange.Move(-0.5f, 0.3f).Contains(playingAt.GetValueOrDefault());
+        var cls = isWordPlaying ? "playable playing" : "playable";
         <span class="@cls" @onclick="_ => OnClick(word.TextRange.Start)">@word.Value</span>
     }
 </span>
 
 @code {
-    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
+    private ILogger? _log;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    [Parameter, ParameterComparer(typeof(ByValueParameterComparer))]
-    public double? PlayingAt { get; set; }
+    [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
     private async Task OnClick(int startIndex) {
         // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"

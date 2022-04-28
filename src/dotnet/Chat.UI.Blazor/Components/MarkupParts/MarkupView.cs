@@ -13,10 +13,8 @@ public class MarkupView : MarkupViewBase<Markup>
             MatchingTypeFinder.TryFind(Markup.GetType(), typeof(IMarkupView))
             ?? typeof(UnknownMarkupView);
 
-        var i = 0;
-        builder.OpenComponent(i++, componentType);
-        builder.AddAttribute(i++, nameof(IMarkupView.Entry), Entry);
-        builder.AddAttribute(i++, nameof(IMarkupView.Markup), Markup);
+        builder.OpenComponent(0, componentType);
+        builder.AddAttribute(1, nameof(IMarkupView.Markup), Markup);
         builder.CloseComponent();
     }
 }

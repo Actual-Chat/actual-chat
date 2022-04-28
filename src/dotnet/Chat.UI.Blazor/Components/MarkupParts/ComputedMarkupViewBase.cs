@@ -3,10 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Components.MarkupParts;
 public abstract class ComputedMarkupViewBase<TMarkup, TState> : ComputedStateComponent<TState>, IMarkupView<TMarkup>
     where TMarkup : Markup
 {
-    private ILogger? _log;
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
-
-    [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
+    [CascadingParameter]
     public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired, ParameterComparer(typeof(ByReferenceParameterComparer))]
     public TMarkup Markup { get; set; } = null!;

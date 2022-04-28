@@ -6,7 +6,9 @@
 @using Stl.Extensibility
 
 <p class="chat-message-markup text-primary mx-1">
-    <MarkupView Entry="Entry" Markup="Markup"/>
+    <CascadingValue Value="Entry">
+        <MarkupView Markup="Markup"/>
+    </CascadingValue>
 </p>
 
 @code {

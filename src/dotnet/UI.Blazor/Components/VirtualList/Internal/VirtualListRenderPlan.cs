@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using Stl.Reflection;
 
-namespace ActualChat.UI.Blazor.Controls.Internal;
+namespace ActualChat.UI.Blazor.Components.Internal;
 
 public class VirtualListRenderPlan<TItem>
     where TItem : IVirtualListItem

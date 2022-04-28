@@ -2,13 +2,13 @@ namespace ActualChat.Chat;
 
 public enum TextStyle { None = 0, Italic = 1, Bold = 2 }
 
-public sealed record StylizedMarkup(Markup Markup, TextStyle Style) : TextMarkup
+public sealed record StylizedMarkup(Markup Content, TextStyle Style) : TextMarkup
 {
     public StylizedMarkup() : this(null!, default) { }
 
     public override string ToMarkupText()
     {
-        var markupText = Markup.ToMarkupText();
+        var markupText = Content.ToMarkupText();
         return Style switch {
             0 => markupText,
             TextStyle.Italic => $"*{markupText}*",
@@ -19,7 +19,7 @@ public sealed record StylizedMarkup(Markup Markup, TextStyle Style) : TextMarkup
 
     public override Markup Simplify()
     {
-        var markup = Markup.Simplify();
-        return ReferenceEquals(markup, Markup) ? this : new StylizedMarkup(markup, Style);
+        var markup = Content.Simplify();
+        return ReferenceEquals(markup, Content) ? this : new StylizedMarkup(markup, Style);
     }
 }

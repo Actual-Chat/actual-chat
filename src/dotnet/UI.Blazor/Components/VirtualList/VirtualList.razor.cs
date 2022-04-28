@@ -1,7 +1,7 @@
-using ActualChat.UI.Blazor.Controls.Internal;
+using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Module;
 
-namespace ActualChat.UI.Blazor.Controls;
+namespace ActualChat.UI.Blazor.Components;
 
 public delegate Task<VirtualListData<TItem>> VirtualListDataSource<TItem>(
     VirtualListDataQuery query,
