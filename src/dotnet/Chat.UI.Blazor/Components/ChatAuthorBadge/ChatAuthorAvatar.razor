@@ -1,0 +1,11 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ChatAuthorBadgeBase
+@{
+    var model = State.LatestNonErrorValue;
+    <AuthorAvatar Author="@model.Author" Size="@Size" Status="@Status" />
+}
+
+@code {
+    [Parameter] public AuthorBadgeSize Size { get; set; } = AuthorBadgeSize.Size9;
+    [Parameter] public AuthorBadgeStatus Status { get; set; } = AuthorBadgeStatus.None;
+}

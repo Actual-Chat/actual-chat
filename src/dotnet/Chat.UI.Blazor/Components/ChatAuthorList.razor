@@ -5,20 +5,10 @@
 }
 
 <div class="flex-y w-full space-y-3">
-    <h3 class="text-secondary">Authors</h3>
+    <h3 class="text-secondary">Users</h3>
     @foreach (var authorId in model.AuthorIds) {
-        <ChatAuthorBadge @key="@authorId" AuthorId="@authorId">
-            <div class="flex-x w-full">
-                <div class="author-avatar w-12 h-12 select-none bg-secondary rounded-md">
-                    <img src="@context.Author.Picture" alt="avatar"/>
-                </div>
-                <div class="ml-3 mt-1">
-                    <p class="text-sm leading-5 font-medium text-primary-muted hover:text-primary">
-                        @context.Author.Name
-                    </p>
-                </div>
-            </div>
-        </ChatAuthorBadge>
+        <ChatAuthorBadge AuthorId="@authorId" Size="AuthorBadgeSize.Size12"
+                         TextClass="text-sm font-medium text-primary-muted select-none hover:text-primary" />
     }
 </div>
 

@@ -1,0 +1,68 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+
+<div class="author-badge flex-x items-center">
+    <AuthorAvatar Author="@Author" Size="@Size" Status="@Status" />
+    <div class="@_betweenCls flex-y">
+        <div>
+            <span class="@_textCls">@Author.Name</span>
+        </div>
+        @if (ShowTextualStatus && !_statusText.IsNullOrEmpty()) {
+            <div>
+                <span class="@_statusTextCls">@_statusText</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _textCls = "";
+    private string _betweenCls = "";
+    private string _statusTextCls = "";
+    private string _statusText = "";
+
+    [Parameter] public AuthorBadgeSize Size { get; set; } = AuthorBadgeSize.Size9;
+    [Parameter] public AuthorBadgeStatus Status { get; set; } = AuthorBadgeStatus.None;
+
+    [Parameter] public Author Author { get; set; } = null!;
+    [Parameter] public string TextClass { get; set; } = "";
+    [Parameter] public bool ShowTextualStatus { get; set; }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        _betweenCls = GetBetweenClass();
+        _textCls = GetTextClass();
+        _statusText = GetStatusText();
+        _statusTextCls = GetStatusTextClass();
+    }
+
+    private string GetStatusTextClass() {
+        return Size switch {
+            AuthorBadgeSize.Size12 => "text-sm",
+            _ => "text-xxs leading-4"
+            };
+    }
+
+    private string GetStatusText() {
+        return Status switch {
+            AuthorBadgeStatus.Online => "online",
+            _ => ""
+        };
+    }
+
+    private string GetTextClass() {
+        if (!string.IsNullOrEmpty(TextClass))
+            return TextClass;
+
+        var sizeCls = Size switch {
+            AuthorBadgeSize.Size6 => "text-sm",
+            AuthorBadgeSize.Size8 => "text-sm",
+            _ => "text-base"
+            };
+        return "select-none " + sizeCls;
+    }
+
+    private string GetBetweenClass() {
+        return "ml-3";
+    }
+}

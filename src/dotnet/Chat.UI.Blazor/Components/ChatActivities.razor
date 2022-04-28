@@ -7,25 +7,18 @@
     var recording = model.Recording;
     var zIndex = 1;
     var range = MaxIconCount > recording.Length ? recording.Length : MaxIconCount;
-    var cls = "author-badge w-6 h-6 -mr-2 rounded-full bg-secondary border border-primary text-center text-accent-muted select-none";
+    var cls = "-mr-2 border border-primary rounded-full";
     for (var i = 0; i < range; i++) {
-        var author = recording[i];
-        var picture = author.Picture;
-        if (string.IsNullOrWhiteSpace(picture))
-            // we don't want to bring System.Security.Cryptography to wasm, so just use hashcode
-            picture = $"https://avatars.dicebear.com/api/avataaars/{author.Name.GetHashCode()}.svg";
+        var authorId = recording[i];
         <div class="@cls" style="z-index: @zIndex;">
-            <img src="@picture" alt="@author.Name" title="@author.Name" class="rounded-full"/>
+            <ChatAuthorAvatar AuthorId="@authorId" Size="AuthorBadgeSize.Size6" />
         </div>
         zIndex++;
     }
     if (recording.Length > MaxIconCount) {
-        <div class="@cls bg-avatar" style="z-index: @(range + 1);">
-            @if (recording.Length < 11) {
-                <div class="text-sm">+@(recording.Length - MaxIconCount)</div>
-            } else {
-                <div class="text-sm">...</div>
-            }
+        <div class="@cls" style="z-index: @(range + 1);">
+            @{ var avatarText = recording.Length < 11 ? "+" + (recording.Length - MaxIconCount) : "..."; }
+            <TextualAvatar Size="AuthorBadgeSize.Size6" Text="@avatarText" />
         </div>
     }
 }
@@ -58,16 +51,14 @@
             return Model.None;
 
         var authorIds = await ChatRecordingActivity.GetActiveAuthorIds(cancellationToken);
-        var authorTasks = authorIds.Select(id => ChatAuthors.GetAuthor(Chat.Id, id, true, cancellationToken));
-        var authors = await Task.WhenAll(authorTasks);
         return new() {
-            Recording = authors.Where(a => a != null).ToArray()!,
+            Recording = authorIds,
         };
     }
 
     public sealed class Model {
         public static Model None { get; } = new();
 
-        public Author[] Recording { get; init; } = Array.Empty<Author>();
+        public ImmutableArray<Symbol> Recording { get; init; } = ImmutableArray<Symbol>.Empty;
     }
 }

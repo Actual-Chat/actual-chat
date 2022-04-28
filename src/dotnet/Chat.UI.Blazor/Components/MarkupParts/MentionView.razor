@@ -3,19 +3,19 @@
 @attribute [MatchFor(typeof(Mention), typeof(IMarkupView))]
 
 @if (ChatAuthor.IsValidId(Target)) {
-    <ChatAuthorBadge AuthorId="@Target">
+    <ChatAuthorTemplatedBadge AuthorId="@Target">
         @if (!context.Author.Id.IsEmpty) {
-            <div class="inline-block px-1 bg-mention hover:bg-mention-hover cursor-pointer rounded-md"
+            <div class="inline-block px-1 rounded-md bg-mention select-none cursor-pointer hover:bg-mention-hover"
                  @onclick="OnChatAuthorClick">
                 @@@context.Author.Name
             </div>
         } else {
-            <div class="inline-block px-1 bg-mention hover:bg-mention-hover rounded-md">@@@Target</div>
+            <div class="inline-block px-1 rounded-md bg-mention">@@@Target</div>
         }
-    </ChatAuthorBadge>
+    </ChatAuthorTemplatedBadge>
 }
 else {
-    <div class="inline-block px-1 bg-mention hover:bg-mention-hover rounded-md">@@@Target</div>
+    <div class="inline-block px-1 rounded-md bg-mention">@@@Target</div>
 }
 
 @code {

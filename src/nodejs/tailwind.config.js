@@ -39,7 +39,7 @@ module.exports = {
         'rating': 'var(--text-color-rating)',
         'inline-code': 'var(--text-inline-code)',
         'white': 'var(--text-color-white)',
-
+        'online': 'var(--text-color-online)',
       },
       borderColor: {
         'primary': 'var(--background-primary)',

@@ -5,15 +5,9 @@
 }
 <div class="w-[250px] author-card-modal">
     <div class="flex-y h-full">
-        <ChatAuthorBadge AuthorId="@AuthorId">
-            <div class="author-avatar w-12 h-12 select-none bg-secondary rounded-md">
-                <img src="@context.Author.Picture" alt="@context.Author.Name"/>
-            </div>
-        </ChatAuthorBadge>
+        <ChatAuthorAvatar AuthorId="@AuthorId" Size="AuthorBadgeSize.Size12" />
         <div class="self-start pt-2">
-            <ChatAuthorBadge AuthorId="@AuthorId">
-                <span class="text-primary font-semibold text-lg rounded">@context.Author.Name</span>
-            </ChatAuthorBadge>
+            <ChatAuthorName AuthorId="@AuthorId" Class="text-primary font-semibold text-lg"/>
         </div>
         <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
             @if (m.CanAddContact) {

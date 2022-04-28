@@ -1,0 +1,25 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="flex-x justify-center items-center @_sizeCls
+            rounded-full bg-avatar
+            text-center text-sm text-accent-muted select-none">
+    <div>@Text</div>
+</div>
+
+@code {
+    private string _sizeCls = "";
+
+    [Parameter] public AuthorBadgeSize Size { get; set; } = AuthorBadgeSize.Size6;
+
+    [Parameter] public string Text { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        _sizeCls = GetSizeClass();
+    }
+
+    private string GetSizeClass() {
+        var size = (int) Size;
+        return $"h-{size} w-{size}";
+    }
+}

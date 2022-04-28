@@ -125,7 +125,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         return userProfile;
     }
 
-    private string GetDefaultPicture(User? user, int size = 480)
+    private string GetDefaultPicture(User? user, int size = 80)
     {
         if (user == null) return "";
 

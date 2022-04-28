@@ -1,11 +1,10 @@
-﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatAuthorBadge.Model>
-@{
-    var model = State.LatestNonErrorValue;
-}
-@ChildContent?.Invoke(model)
+using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Users;
 
-@code {
+namespace ActualChat.Chat.UI.Blazor.Components;
+
+public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBadgeBase.Model>
+{
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private ChatActivity ChatActivity { get; init; } = null!;
 
@@ -13,7 +12,7 @@
     private IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
-    [Parameter] public RenderFragment<Model>? ChildContent { get; set; }
+    protected bool TrackRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await base.DisposeAsync();
@@ -27,7 +26,8 @@
             throw new InvalidOperationException("Invalid AuthorId");
         ChatId = chatId;
         ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
+        if (TrackRecording)
+            ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None).ConfigureAwait(false);
         _ = State.Recompute(); // ~ Same as what's in base.OnParametersSetAsync()
     }
 
