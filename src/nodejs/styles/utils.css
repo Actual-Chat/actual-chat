@@ -230,7 +230,7 @@ button.off,
 .custom-modal-class {
     z-index: 100000;
     @apply flex-y bg-secondary rounded-md border border-primary overflow-hidden;
-    @apply h-screen md:h-auto min-w-full md:min-w-modal;
+    @apply h-screen md:h-auto min-w-full md:min-w-modal max-w-full md:max-w-modal;
     box-shadow: 0 2px 2px rgba(0,0,0,.25);
 }
 
@@ -255,8 +255,18 @@ button.off,
     display: flex;
 }
 
+.custom-modal-class .message-content {
+    word-break: break-word !important;
+    overflow-y: auto !important;
+    @apply max-h-48 custom-scrollbar;
+}
+
+.custom-modal-class .modal-body {
+    @apply bg-secondary rounded-md border border-primary py-1 md:mb-5 drop-shadow-lg;
+}
+
 .custom-modal-class .blazored-modal-header {
-    @apply flex items-start justify-between px-5 py-3 border-b border-accent bg-accent;
+    @apply flex items-start justify-between px-5 py-3 border-b border-accent bg-accent top-0;
 }
 
 .custom-modal-class .blazored-modal-title {
