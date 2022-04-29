@@ -79,7 +79,9 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isLastEntry = index == chatEntries.Count - 1;
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
 
-            var markup = markupParser.Parse(entry.Content);
+            var markup = entry.AudioEntryId == null
+                ? markupParser.Parse(entry.Content)
+                : new PlayableTextMarkup(entry.Content, entry.TextToTimeMap);
             var date = DateOnly.FromDateTime(entry.BeginsAt.ToDateTime().ToLocalTime());
             var hasDateLine = date != lastDate;
             var isBlockEnd = ShouldSplit(entry, nextEntry);
