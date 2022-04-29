@@ -13,27 +13,14 @@ public class ChatUI
     public void ShowChatAuthorCard(string authorId)
     {
         var modalParameters = new ModalParameters();
-        var options = new ModalOptions() {
-            HideCloseButton = true,
-            HideHeader = true,
-            Animation = ModalAnimation.FadeIn(0.3),
-            Class = "custom-modal-class",
-        };
         modalParameters.Add(nameof(ChatAuthorCard.AuthorId), authorId);
-        _modalService.Show<ChatAuthorCard>(null, modalParameters, options);
+        _modalService.Show<ChatAuthorCard>(null, modalParameters, CustomModalOptions.DialogHeaderless);
     }
 
-    public void ShowDeleteMessageRequest(ChatMessageModel model, ChatAuthor requestAuthor)
+    public void ShowDeleteMessageRequest(ChatMessageModel model)
     {
         var modalParameters = new ModalParameters();
-        var options = new ModalOptions() {
-            HideCloseButton = true,
-            Animation = ModalAnimation.FadeIn(0.3),
-            Class = "custom-modal-class",
-        };
-
         modalParameters.Add(nameof(DeleteMessageModal.Model), model);
-        modalParameters.Add(nameof(DeleteMessageModal.RequestAuthor), requestAuthor);
-        _modalService.Show<DeleteMessageModal>("Delete Message", modalParameters, options);
+        _modalService.Show<DeleteMessageModal>("Delete Message", modalParameters, CustomModalOptions.Dialog);
     }
 }

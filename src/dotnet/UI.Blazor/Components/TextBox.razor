@@ -4,7 +4,7 @@
 <input @ref="_inputRef"
        type="text"
        @attributes="@AdditionalAttributes"
-       class="@CssClass custom-input"
+       class="custom-input @CssClass"
        value="@CurrentValue"
        @oninput="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
 
@@ -15,7 +15,7 @@
 
     protected override void OnAfterRender(bool firstRender) {
         base.OnInitialized();
-        if (Autofocus)
+        if (firstRender && Autofocus)
             _inputRef.FocusAsync();
     }
 }

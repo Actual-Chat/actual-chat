@@ -1,7 +1,7 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button @onclick="OnClick" class="btn @Class" title="@Title" disabled="@Disabled" name="@Name" type="@GetButtonType" @attributes="@ButtonAttributes">
+<button @onclick="OnClick" class="btn @Class" title="@Title" disabled="@Disabled" name="@Name" type="@GetButtonType()" @attributes="@ButtonAttributes">
     <div class="btn-content">
         @ChildContent
     </div>
@@ -26,5 +26,4 @@
         if (Focus)
             ButtonAttributes.Add("autofocus", "");
     }
-
 }

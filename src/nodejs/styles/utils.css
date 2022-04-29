@@ -87,26 +87,38 @@ button.off,
     @apply flex-x place-self-center;
 }
 
+.btn:disabled {
+    @apply opacity-70;
+}
+
 .btn.btn-success {
     @apply bg-button-success border-success text-white;
+}
+.btn.btn-success:enabled {
     @apply hover:bg-button-success-hover hover:border-success-muted;
     @apply active:bg-button-success-hover;
 }
 
 .btn.btn-success-outline {
     @apply bg-button-success-outline border-success border-2 text-success;
+}
+.btn.btn-success-outline:enabled {
     @apply hover:bg-button-success-outline-hover;
     @apply active:bg-button-success-outline-hover active:border-button-success-outline-hover;
 }
 
 .btn.btn-cancel {
     @apply bg-button-cancel border-button-cancel text-white;
+}
+.btn.btn-cancel:enabled {
     @apply hover:bg-button-cancel-hover hover:border-button-cancel-hover;
     @apply active:bg-button-cancel-hover;
 }
 
 .btn.btn-error {
     @apply bg-button-error border-button-error text-white;
+}
+.btn.btn-error:enabled {
     @apply hover:bg-button-error-hover hover:border-button-error-hover;
     @apply active:bg-button-error-hover;
 }
@@ -220,8 +232,12 @@ button.off,
 
 /* Custom Input */
 
-.custom-input {
+.custom-input.input-imprinted {
     @apply border-0 bg-accent;
+}
+
+.custom-input.input-underlined {
+    @apply bg-transparent border-b border-placeholder;
 }
 
 .valid.modified:is(.custom-input) {
@@ -238,6 +254,7 @@ button.off,
     z-index: 100000;
     @apply flex-y bg-secondary rounded-md border border-primary overflow-hidden;
     @apply h-screen md:h-auto min-w-full md:min-w-modal max-w-full md:max-w-modal;
+    @apply text-secondary;
     box-shadow: 0 2px 2px rgba(0,0,0,.25);
 }
 
@@ -262,22 +279,16 @@ button.off,
     display: flex;
 }
 
-.custom-modal-class .message-content {
-    word-break: break-word !important;
-    overflow-y: auto !important;
-    @apply max-h-48 custom-scrollbar;
-}
-
-.custom-modal-class .modal-body {
-    @apply bg-secondary rounded-md border border-primary py-1 md:mb-5 drop-shadow-lg;
-}
-
 .custom-modal-class .blazored-modal-header {
     @apply flex items-start justify-between px-5 py-3 border-b border-accent bg-accent top-0;
 }
 
 .custom-modal-class .blazored-modal-title {
     @apply text-lg font-bold;
+}
+
+.custom-modal-class .modal-body {
+    @apply md:mb-5;
 }
 
 .blazored-modal-close {
@@ -322,4 +333,16 @@ button.off,
     position: absolute;
     bottom: 32px;
     right: 32px;
+}
+
+/* DeleteMessageModal */
+
+.delete-message-modal .message-content {
+    word-break: break-word !important;
+    overflow-y: auto !important;
+    @apply max-h-48 custom-scrollbar;
+}
+
+.delete-message-modal .modal-body {
+    @apply bg-secondary rounded-md border border-primary py-1 drop-shadow-lg;
 }

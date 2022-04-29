@@ -46,6 +46,7 @@ module.exports = {
         'primary-inverted': 'var(--text-color-primary)',
         'secondary': 'var(--background-secondary)',
         'secondary-inverted': 'var(--text-color-secondary)',
+        'placeholder': 'var(--text-color-placeholder)',
         'accent': 'var(--background-accent)',
         'accent-inverted': 'var(--text-color-accent)',
         'success': 'var(--button-color-success)',
