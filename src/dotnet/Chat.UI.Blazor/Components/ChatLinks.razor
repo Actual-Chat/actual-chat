@@ -7,9 +7,11 @@
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
     <Icons>
-        <ButtonSquare Title="Create new chat" OnClick="OnCreateNewChatClick">
-            <i class="fa fa-plus fa-fw pt-0.5" aria-hidden="true"></i>
-        </ButtonSquare>
+        @if (model.CanCreateChat) {
+            <ButtonSquare Title="Create new chat" OnClick="OnCreateNewChatClick">
+                <i class="fa fa-plus fa-fw pt-0.5" aria-hidden="true"></i>
+            </ButtonSquare>
+        }
     </Icons>
     <ChildContent>
         @foreach (var chat in chats) {
@@ -25,6 +27,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
     [Inject] private IModalService ModalService { get; init; } = null!;
 
@@ -44,9 +47,11 @@
                 chatsToShow.Add(defaultChat);
             }
         }
+        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
 
         return new () {
             Chats = chatsToShow.ToArray(),
+            CanCreateChat = user.IsAuthenticated,
             ActiveChatId = await ChatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
         };
     }
@@ -57,6 +62,7 @@
     public class Model
     {
         public Chat[] Chats { get; set; } = Array.Empty<Chat>();
+        public bool CanCreateChat { get; set; }
         public Symbol ActiveChatId { get; set; } = Constants.Chat.DefaultChatId;
     }
 }
