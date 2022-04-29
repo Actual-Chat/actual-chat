@@ -830,6 +830,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'footer': '3.75rem',
     },
     minWidth: {
       0: '0px',

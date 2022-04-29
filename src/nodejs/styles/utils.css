@@ -140,6 +140,10 @@ button.off,
     @apply animate-scale-icon;
 }
 
+.btn.blazor-mode-btn {
+    @apply text-xxs h-4 py-0 px-0.5 bg-accent hover:bg-primary min-w-0 rounded-none border-0;
+}
+
 .btn.menu-item-btn {
     @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
 }

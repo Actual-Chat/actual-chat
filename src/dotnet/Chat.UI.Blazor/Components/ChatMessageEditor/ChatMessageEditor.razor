@@ -11,7 +11,7 @@
     var placeholder = "#" + Chat.Title;
 }
 
-<div @ref="Ref" class="chat-message-editor">
+<div @ref="Ref" class="chat-message-editor min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-accent w-full border-secondary">

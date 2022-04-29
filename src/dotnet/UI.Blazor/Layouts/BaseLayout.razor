@@ -33,13 +33,11 @@
                     </div>
                     @* Bottom sticky panel *@
                     <div class="flex-none flex-y">
-                        <div class="flex-none p-3">
-                            <div class="flex-x text-xxs divide-x-2 divide-accent px-2 py-1 rounded-md border-2 border-accent">
-                                <div class="pr-2"><b class="text-primary font-medium">@version</b></div>
-                                <div class="pl-2"><BlazorModeToggle/></div>
+                            <div class="flex-y text-xxs p-3">
+                                <div class="px-0.5"><b class="text-primary font-medium">@version</b></div>
+                                <div class="pt-0.5"><BlazorModeToggle/></div>
                             </div>
-                        </div>
-                        <div class="flex-none w-full py-2 px-2.5 border-t-2 border-accent">
+                        <div class="flex-none w-full py-2 px-2.5 border-t-2 border-accent min-h-footer">
                             <AccountDropdown/>
                         </div>
                     </div>
