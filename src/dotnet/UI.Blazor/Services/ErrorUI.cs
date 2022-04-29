@@ -28,7 +28,7 @@ public class ErrorUI
     }
 
     [Serializable]
-    public class SurrogateException : ApplicationException
+    public class SurrogateException : Exception
     {
         public SurrogateException() { }
         protected SurrogateException(SerializationInfo info, StreamingContext context) : base(info, context) { }
