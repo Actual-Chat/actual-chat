@@ -4,7 +4,7 @@
 @{
     var isRecording = IsRecordingState.Value;
     var recordingStatus = isRecording ? "on" : "off";
-    var cls = $"audio-recorder-toggle {recordingStatus}";
+    var cls = $"audio-recorder-toggle !rounded-xl {recordingStatus}";
 }
 
 <ButtonSquare Class="@cls" OnClick="_ => IsRecordingState.Value = !isRecording">
