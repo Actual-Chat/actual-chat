@@ -19,7 +19,7 @@ public class MessageController : ControllerBase
     }
 
     [HttpPost]
-    [DisableFormValueModelBindingAttribute]
+    [DisableFormValueModelBinding]
     [Route("api/chats/{chatId}/message")]
     public async Task<IActionResult> PostMessage(string chatId)
     {
