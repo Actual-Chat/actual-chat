@@ -14,7 +14,7 @@
                         <ChatMessageTimestamp Value="Model.Entry.BeginsAt"/>
                     </div>
                 </div>
-                <div class="content message-content rounded-sm ml-1">
+                <div class="content message-content custom-scrollbar rounded-sm ml-1">
                     @if (Model.Attachments.Length > 0) {
                         var attachment = Model.Attachments[0];
                         var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);

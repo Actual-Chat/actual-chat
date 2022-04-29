@@ -119,6 +119,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Feedback.Service.Migration"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47B5-30E6-4B2A-A8DB-1B1FD644948F}"
 	ProjectSection(SolutionItems) = preProject
+		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
 		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
 	EndProjectSection
 EndProject

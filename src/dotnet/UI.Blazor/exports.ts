@@ -1,6 +1,7 @@
 import './Components/AccountDropdown/account-dropdown.css'
 import './Components/ContextMenu/context-menu.css';
 import './Components/Menu/menu.css'
+import './Components/Modal/modal.css'
 import './Components/Navbar/navbar.css'
 import './Components/feedback.css'
 import './Components/tooltip.css'

@@ -669,7 +669,7 @@ module.exports = {
           opacity: '.5',
         },
       },
-      pulse: {
+      'custom-pulse': {
         '50%': {
           opacity: '.1',
         },
