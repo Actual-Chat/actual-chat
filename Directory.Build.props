@@ -15,6 +15,7 @@
     <RepositoryUrl>https://github.com/Actual-Chat/actual-chat</RepositoryUrl>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
     <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service.Migration'))">$(AssemblyName.Replace('.Service.Migration',''))</RootNamespace>
+    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service'))">$(AssemblyName.Replace('.Service',''))</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
 
     <!-- C# / language settings -->
