@@ -361,6 +361,8 @@ dotnet_naming_symbols.any_typeparam.applicable_accessibilities = *
 dotnet_naming_symbols.any_typeparam.applicable_kinds = type_parameter
 
 
+MA0004.report = Always        # Always report missing ConfigureAwait whatever the context
+
 dotnet_code_quality_unused_parameters = non_public # IDE0060: Remove unused parameter
 dotnet_diagnostic.ide0032.severity = silent # Use auto properties
 dotnet_diagnostic.vsthrd200.severity = silent # VSTHRD200: Use "Async" suffix in names of methods that return an awaitable type. (misses with DisposeAsyncCore)
