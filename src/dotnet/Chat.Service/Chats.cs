@@ -208,7 +208,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             OwnerIds = ImmutableArray.Create(user.Id),
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
-        return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+        chat = await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chat.Id, user.Id);
+        _ = await _commander.Call(createAuthorCommand, cancellationToken).ConfigureAwait(false);
+        return chat;
     }
 
     // [CommandHandler]
