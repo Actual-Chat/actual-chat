@@ -1,16 +1,23 @@
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@inject NavbarUI _navbarUI
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
 
 @{
-    var title = _navbarUI.ActiveGroupTitle.ToUpper();
+    var title = NavbarUI.ActiveGroupTitle.ToUpper();
 }
 
 @title
 
 @code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    private EventHandler? _onActiveGroupChanged;
+
     protected override void OnInitialized() {
-        _navbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
+        _onActiveGroupChanged = (s, e) => StateHasChanged();
+        NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
     }
+
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 }
 

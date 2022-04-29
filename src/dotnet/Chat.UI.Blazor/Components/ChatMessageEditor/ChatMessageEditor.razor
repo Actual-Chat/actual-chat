@@ -11,17 +11,8 @@
     var placeholder = "#" + Chat.Title;
 }
 
-<div @ref="EditorRef" class="chat-message-editor px-1.5 pb-1.5">
-    <CascadingValue Value="@MentionListContext" IsFixed="true">
-        <ChatMentionsRetriever ChatId="@Chat.Id" />
-        <div class="absolute left-0 right-0 px-1.5 pb-1.5 z-50">
-            <div class="relative w-full">
-                <div class="absolute bottom-0 w-full">
-                    <MentionListView Class="bg-secondary" />
-                </div>
-            </div>
-        </div>
-
+<div @ref="Ref" class="chat-message-editor px-1.5 pb-1.5">
+    <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-primary w-full rounded-md border-secondary">
                 <input class="files-picker" type="file" hidden multiple/>
@@ -52,25 +43,24 @@
                 </div>
             </div>
         </div>
-    </CascadingValue>
+    </MentionCandidateListManager>
 </div>
 
 @code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private MentionListContext MentionListContext { get; set; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    private ElementReference EditorRef { get; set; }
+    private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
     private SlateEditor SlateEditorRef { get; set; } = null!;
     private AttachmentListPreview AttachmentListPreviewRef { get; set; } = null!;
-    private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
-
+    private IMentionCandidateProvider MentionCandidateProvider { get; set; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
@@ -82,29 +72,32 @@
         BlazorRef?.Dispose();
     }
 
+    protected override void OnParametersSet()
+        => MentionCandidateProvider = new ChatMentionCandidateProvider(Session, Chat.Id, Chats);
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                EditorRef, BlazorRef
+                Ref, BlazorRef
                 ).ConfigureAwait(true);
         }
     }
 
     private async Task Post(string? text = null) {
         if (text == null)
-            text = await SlateEditorRef.GetText();
+            text = await SlateEditorRef.GetText().ConfigureAwait(true);
         var attachments = AttachmentListPreviewRef.GetAttachments();
         if (text.IsNullOrEmpty() && !attachments.Any())
             return;
 
         try {
             _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
-            await JSRef.InvokeVoidAsync("onPostSucceeded");
-            await SlateEditorRef.Clear();
+            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
+            await SlateEditorRef.Clear().ConfigureAwait(true);
             AttachmentListPreviewRef.Clear();
-            await InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged).ConfigureAwait(true);
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);

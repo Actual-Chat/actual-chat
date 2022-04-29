@@ -13,7 +13,7 @@
 }
 
 @code {
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
 
     private Task OnClick()
         => ImagePreviewUI.Show(Markup.Url);

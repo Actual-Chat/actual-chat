@@ -17,21 +17,21 @@
 </NavbarGroup>
 
 @code {
-    public class Model
-    {
-        public UserContact[] Contacts { get; set; } = new UserContact[0];
-    }
-
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IUserContacts Contacts { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserContacts Contacts { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new () };
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var contacts = await Contacts.GetContacts(Session, cancellationToken).ConfigureAwait(false);
         return new () {
             Contacts = contacts.OrderBy(c => c.Name).ToArray(),
         };
+    }
+
+    public class Model {
+        public static Model None { get; } = new();
+        public UserContact[] Contacts { get; set; } = new UserContact[0];
     }
 }

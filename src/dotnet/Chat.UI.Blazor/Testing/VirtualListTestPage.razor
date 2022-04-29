@@ -1,7 +1,7 @@
 @page "/test/virtual-list"
 @using ActualChat.Comparison
-@inject ILogger<VirtualListTestPage> _log
-@inject VirtualListTestService _service
+@inject VirtualListTestService Service
+@inject ILogger<VirtualListTestPage> Log
 
 <MainHeader>VirtualList Test Page</MainHeader>
 
@@ -41,5 +41,5 @@
     private Task<VirtualListData<TestListItemRef>> GetVirtualListItems(
         VirtualListDataQuery query,
         CancellationToken cancellationToken)
-        => _service.GetItemKeys(query, RangeSeed, ContentSeed, IsEndAligned, cancellationToken);
+        => Service.GetItemKeys(query, RangeSeed, ContentSeed, IsEndAligned, cancellationToken);
 }

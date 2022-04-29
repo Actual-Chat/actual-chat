@@ -23,7 +23,7 @@ You must sign in @(Reason.NullIfEmpty() ?? "to use this page").
 
     protected override async Task OnParametersSetAsync()
     {
-        var authState = await AuthState;
+        var authState = await AuthState.ConfigureAwait(true);
         if (authState.User.IsAuthenticated)
             Nav.NavigateTo(RedirectTo.NullIfEmpty() ?? "/");
     }

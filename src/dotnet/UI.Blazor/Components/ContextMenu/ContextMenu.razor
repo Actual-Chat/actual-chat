@@ -1,42 +1,52 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IContextMenuBackend
-@using ActualChat.UI.Blazor.Module
 @implements IAsyncDisposable
-
+@using ActualChat.UI.Blazor.Module
 @{
-    var btnId = string.IsNullOrWhiteSpace(Id) ? "" : "context-button-" + Id;
-    var menuId = string.IsNullOrWhiteSpace(Id) ? "" : "context-menu-" + Id;
-    var btnCss = "context-button " + BtnClass;
-    var menuCss = "context-menu " + MenuClass;
+    var menuClass = "context-menu " + MenuClass;
 }
 
-<div @ref="MenuRef">
-    <ContextMenuButton Class="@btnCss" OnClick="OnClick" Id="@btnId">
-        @ButtonTemplate
-    </ContextMenuButton>
-    @if (_showContextMenu) {
-        <ContextMenuContent Id="@menuId" Class="@menuCss">
-            @ContentTemplate
-        </ContextMenuContent>
-    }
-</div>
+<CascadingValue Value="@this" IsFixed="true">
+    <div @ref="Ref" class="context-menu @Class">
+        <button class="context-menu-button @ButtonClass" @onclick="_ => Toggle()">
+            <div class="context-menu-button-inner">
+                @ButtonTemplate
+            </div>
+        </button>
+        @if (_isOpen) {
+            <div class="context-menu-menu @MenuClass">
+                <div class="select-none relative p-1 flex-y context-menu-menu-inner">
+                    @MenuTemplate
+                </div>
+            </div>
+        }
+    </div>
+</CascadingValue>
 
 @code {
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter] public string Id { get; set; } = "";
-    [Parameter] public RenderFragment? ContentTemplate { get; set; }
-    [Parameter] public RenderFragment? ButtonTemplate { get; set; }
-    [Parameter] public string MenuClass { get; set; } = "";
-    [Parameter] public string BtnClass { get; set; } = "";
-    private bool _showContextMenu;
-
-    private ElementReference MenuRef { get; set; }
-    private IJSObjectReference? JSRef { get; set; } = null!;
     private DotNetObjectReference<IContextMenuBackend>? BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private bool _isOpen;
 
-    private void OnClick() {
-        _showContextMenu = !_showContextMenu;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonClass { get; set; } = "";
+    [Parameter] public string MenuClass { get; set; } = "";
+    [Parameter] public RenderFragment? ButtonTemplate { get; set; }
+    [Parameter] public RenderFragment? MenuTemplate { get; set; }
+    [Parameter] public EventCallback<bool> OpenStateChanged { get; set; }
+
+    public bool IsOpen {
+        get => _isOpen;
+        set {
+            if (_isOpen == value)
+                return;
+            _isOpen = value;
+            OpenStateChanged.InvokeAsync(value);
+            StateHasChanged();
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -55,20 +65,19 @@
         }
     }
 
-    [JSInvokable]
-    public Task HideContent() {
-        _showContextMenu = false;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IContextMenuBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.ContextMenu.create",
-                MenuRef, BlazorRef
+                Ref, BlazorRef
                 ).ConfigureAwait(true);
         }
+    }
+
+    [JSInvokable]
+    public Task Toggle(bool? mustOpen = null) {
+        IsOpen = mustOpen ?? !IsOpen;
+        return Task.CompletedTask;
     }
 }

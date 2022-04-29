@@ -1,9 +1,9 @@
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@inject NavbarUI _navbarUI
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
 
 @{
-    var isVisible = _navbarUI.ActiveGroupId == Id;
+    var isVisible = NavbarUI.ActiveGroupId == Id;
     var cls = isVisible ? "flex" : "hidden";
 }
 
@@ -16,6 +16,9 @@
 </div>
 
 @code{
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    private EventHandler? _onActiveGroupChanged;
+
     [Parameter] public string? Class { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Icons { get; set; }
@@ -23,6 +26,10 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     protected override void OnInitialized() {
-        _navbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
+        _onActiveGroupChanged = (s, e) => StateHasChanged();
+        NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
     }
+
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 }

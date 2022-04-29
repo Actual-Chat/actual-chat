@@ -9,13 +9,11 @@
 
 @code {
 
-    [Inject] private UnreadMessages UnreadMessages { get; set; } = null!;
-    [Inject] private Session Session { get; set; } = null!;
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-
     [Parameter] public EventCallback OnClick { get; set; }
-
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {

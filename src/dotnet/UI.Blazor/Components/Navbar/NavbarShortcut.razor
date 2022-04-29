@@ -1,11 +1,9 @@
-﻿@using ActualChat.Hosting
+﻿@namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
-@namespace ActualChat.UI.Blazor.Components
-@inject HostInfo _hostInfo
-@inject NavbarUI _navbarUI
-
 @{
-    var isActive = _navbarUI.ActiveGroupId == Id;
+    var isActive = NavbarUI.ActiveGroupId == Id;
     var cls = isActive ? "text-primary bg-primary" : "text-secondary bg-accent";
 }
 
@@ -16,6 +14,10 @@
 </button>
 
 @code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    private EventHandler? _onActiveGroupChanged;
+
     [Parameter] public string? Class { get; set; } = "";
     [Parameter] public string? IconPath { get; set; }
     [Parameter] public int IconHeight { get; set; } = 8;
@@ -24,12 +26,15 @@
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
-    private void OnClicked() {
-        _navbarUI.ActivateGroup(Id, Title);
+    protected override void OnInitialized() {
+        _onActiveGroupChanged = (s, e) => StateHasChanged();
+        NavbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
     }
 
-    protected override void OnInitialized() {
-        _navbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
-    }
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+
+    private void OnClicked()
+        => NavbarUI.ActivateGroup(Id, Title);
 
 }

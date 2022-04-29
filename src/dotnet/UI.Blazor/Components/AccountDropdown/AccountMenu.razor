@@ -6,11 +6,11 @@
     var profile = State.ValueOrDefault ?? UserProfile.Guest;
 }
 
-<Dropdown ContentPositionCss="bottom-12 w-48 rounded-md" Class="relative mt-1" ButtonClass="!border-0 !pl-0.5">
+<Dropdown Class="relative mt-1" MenuClass="bottom-12 w-48 rounded-md" ButtonClass="!border-0 !pl-0.5">
     <ButtonTemplate>
         <AccountView/>
     </ButtonTemplate>
-    <ContentTemplate>
+    <MenuTemplate>
         <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             @if (profile.IsAdmin) {
                 <MenuItem Title="New chat" Name="newChat" OnItemClick="OnNewChatClick"/>
@@ -37,7 +37,7 @@
                 </Icon>
             </MenuItem>
         </Menu>
-    </ContentTemplate>
+    </MenuTemplate>
 </Dropdown>
 
 @code {

@@ -8,6 +8,7 @@
 @code {
     private bool _rendered;
     private string _placeholder = "";
+    private MentionCandidateListManager? _lastMentionCandidateListManager;
 
     private ElementReference EditorRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -20,23 +21,22 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback<string> OnPost { get; set; }
     [Parameter] public EventCallback OnRendered { get; set; }
-    [CascadingParameter] public MentionListContext? MentionListContext { get; set; }
-
-    protected override void OnInitialized() {
-        base.OnInitialized();
-        var context = MentionListContext;
-        if (context != null) {
-            context.InsertRequested += OnMentionInsertRequested;
-        }
-    }
+    [CascadingParameter] public MentionCandidateListManager? MentionCandidateListManager { get; set; }
 
     protected override void OnParametersSet() {
-        base.OnParametersSet();
+        if (_lastMentionCandidateListManager != null)
+            _lastMentionCandidateListManager.Selected -= OnMentionCandidateSelected;
+        _lastMentionCandidateListManager = MentionCandidateListManager;
+        if (_lastMentionCandidateListManager != null)
+            _lastMentionCandidateListManager.Selected += OnMentionCandidateSelected;
+
         if (_rendered && !StringComparer.Ordinal.Equals(_placeholder, Placeholder))
             _ = SetPlaceholder(Placeholder);
     }
 
     public async ValueTask DisposeAsync() {
+        if (_lastMentionCandidateListManager != null)
+            _lastMentionCandidateListManager.Selected -= OnMentionCandidateSelected;
         _rendered = false;
         if (JSRef != null!)
             await JSRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
@@ -53,45 +53,44 @@
                 ).ConfigureAwait(true);
             _rendered = true;
             _ = SetPlaceholder(Placeholder);
-            await OnRendered.InvokeAsync();
+            await OnRendered.InvokeAsync().ConfigureAwait(false);
         }
     }
 
     public async Task<string> GetText()
-        => await JSRef.InvokeAsync<string>("getText");
+        => await JSRef.InvokeAsync<string>("getText").ConfigureAwait(false);
 
     [JSInvokable]
-    public async Task Post(string? text = null) {
-        await OnPost.InvokeAsync(text);
-    }
+    public Task Post(string? text = null)
+        => OnPost.InvokeAsync(text);
 
     public async Task Clear()
-        => await JSRef.InvokeAsync<string>("clearText");
+        => await JSRef.InvokeAsync<string>("clearText").ConfigureAwait(false);
 
     [JSInvokable]
     public async Task MentionCommand(string cmd, string args) {
-        var context = MentionListContext;
-        if (context == null)
+        var manager = MentionCandidateListManager;
+        if (manager == null)
             return;
         switch (cmd) {
             case "insert": {
-                context.Insert();
+                await Insert(manager.ListView?.Selection).ConfigureAwait(true);
                 break;
             }
             case "moveUp": {
-                context.MoveUp();
+                manager.ListView?.MoveSelectionUp();
                 break;
             }
             case "moveDown": {
-                context.MoveDown();
+                manager.ListView?.MoveSelectionDown();
                 break;
             }
             case "close": {
-                context.HideMentions();
+                await manager.Hide().ConfigureAwait(true);
                 break;
             }
             case "show": {
-                await context.ShowMentions(args);
+                await manager.Show(args).ConfigureAwait(true);
                 break;
             }
         }
@@ -99,15 +98,17 @@
 
     private async Task SetPlaceholder(string placeholder) {
         _placeholder = placeholder;
-        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder);
+        await JSRef.InvokeAsync<string>("setPlaceholder", placeholder).ConfigureAwait(false);
     }
 
-    private void OnMentionInsertRequested(MentionListItem mentionListItem)
-        => _ = Insert(mentionListItem);
+    private void OnMentionCandidateSelected(MentionCandidate mentionCandidate)
+        => _ = Insert(mentionCandidate);
 
-    private async Task Insert(MentionListItem mentionListItem) {
-        MentionListContext!.HideMentions();
-        await JSRef.InvokeVoidAsync("focus");
-        await JSRef.InvokeVoidAsync("insertMention", mentionListItem);
+    private async Task Insert(MentionCandidate? mentionCandidate) {
+        MentionCandidateListManager?.Hide();
+        if (mentionCandidate == null)
+            return;
+        await JSRef.InvokeVoidAsync("focus").ConfigureAwait(false);
+        await JSRef.InvokeVoidAsync("insertMention", mentionCandidate).ConfigureAwait(false);
     }
 }

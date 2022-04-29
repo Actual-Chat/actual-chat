@@ -24,9 +24,9 @@
 </div>
 
 @code {
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
-    [Inject] private NavigationManager Nav { get; set; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; set; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;

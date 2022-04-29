@@ -19,7 +19,7 @@ else {
 }
 
 @code {
-    [Inject] private ChatUI ChatUI { get; set; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     private string Target => Markup.Target;
 
     private void OnChatAuthorClick()

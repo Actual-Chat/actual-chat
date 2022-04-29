@@ -1,55 +1,50 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
-@inject ClientAuthHelper _clientAuthHelper
-
 @{
     var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
     var buttonClass = "btn btn-success " + ButtonClass;
 }
 
-<Dropdown ContentPositionCss="@ContentPositionClass" ButtonClass="@buttonClass">
+<Dropdown MenuClass="@ContentPositionClass" ButtonClass="@buttonClass">
     <ButtonTemplate>
         <span>Sign in</span>
         <svg class="ml-1 -mr-2 w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 48 48">
             <path d="M0 16.67l2.829 2.83 9.175-9.339 9.167 9.339 2.829-2.83-11.996-12.17z"/>
         </svg>
     </ButtonTemplate>
-    <ContentTemplate>
+    <MenuTemplate>
         <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             @foreach (var (name, displayName) in unusedAuthSchemas) {
                 MenuItemTitle = "Sign in with " + displayName;
                 <MenuItem Title="@MenuItemTitle" OnItemClick="(() => SignIn(name))"/>
             }
         </Menu>
-    </ContentTemplate>
+    </MenuTemplate>
 </Dropdown>
 
 @code {
-    [CascadingParameter]
-    private Task<AuthState> AuthStateTask { get; set; } = null!;
-    [Parameter]
-    public string ButtonClass { get; set; } = "";
-    [Parameter]
-    public string ContentPositionClass { get; set; } = "";
+    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+
     private AuthState AuthState { get; set; } = new(new User("")); // For SSB pre-render
     private User User => AuthState.User;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
-    private bool IsOpen { get; set; }
     private string MenuItemTitle { get; set; } = "";
+
+    [CascadingParameter] private Task<AuthState> AuthStateTask { get; set; } = null!;
+    [Parameter] public string ButtonClass { get; set; } = "";
+    [Parameter] public string ContentPositionClass { get; set; } = "";
 
     protected override async Task OnParametersSetAsync()
         => AuthState = await AuthStateTask;
 
-    public void SignIn(string name) {
-        _clientAuthHelper.SignIn(name);
-        IsOpen = false;
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
     // GetSchemas requires JS interop, so it can be called only at this point
-            AuthSchemas = await _clientAuthHelper.GetSchemas();
+            AuthSchemas = await ClientAuthHelper.GetSchemas();
             StateHasChanged();
         }
     }
+
+    private void SignIn(string name)
+        => ClientAuthHelper.SignIn(name);
 }

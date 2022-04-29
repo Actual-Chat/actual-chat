@@ -73,8 +73,8 @@ public class ChatsController : ControllerBase, IChats
         => _service.GetUserPeerChatId(session, chatAuthorId, cancellationToken);
 
     [HttpGet]
-    public Task<MentionListItem[]> GetMentionListItems(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.GetMentionListItems(session, chatId, cancellationToken);
+    public Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetMentionCandidates(session, chatId, cancellationToken);
 
     // Commands
 

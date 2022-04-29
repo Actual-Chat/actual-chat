@@ -62,7 +62,7 @@
 
     private async Task OnClick() {
         if (Menu != null)
-            await Menu.OnItemClicking(this);
-        await OnItemClick.InvokeAsync();
+            await Menu.OnItemClick(this).ConfigureAwait(true);
+        await OnItemClick.InvokeAsync().ConfigureAwait(true);
     }
 }

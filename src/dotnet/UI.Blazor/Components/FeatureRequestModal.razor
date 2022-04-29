@@ -1,10 +1,6 @@
-@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Module
 @implements IFeatureBackend
 @implements IAsyncDisposable
-@inject IJSRuntime _js
-@inject MomentClockSet _clocks
-@inject HostInfo _hostInfo
 
 <div class="relative p-4">
     @{
@@ -43,15 +39,14 @@
 @code {
     private int _rating;
     private string _comment = "";
-    private ElementReference _feedbackRef;
-    private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<IFeatureBackend> _blazorRef = null!;
+    private IJSObjectReference _jsRef = null!;
+    private ElementReference _feedbackRef;
 
-    [CascadingParameter]
-    BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    [Parameter]
-    public string? FeatureTitle { get; set; }
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public string? FeatureTitle { get; set; }
 
     [JSInvokable]
     private async Task SetRating(int rating) {
@@ -70,7 +65,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create<IFeatureBackend>(this);
-            _jsRef = await _js.InvokeAsync<IJSObjectReference>(
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.Feedback.create",
                 _feedbackRef, _blazorRef
                 ).ConfigureAwait(true);

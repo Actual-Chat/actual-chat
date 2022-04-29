@@ -12,12 +12,11 @@
     </Body>
     <Footer>
         <div class="flex-y">
-            <CascadingValue Value="@MentionListContext" IsFixed="true">
-                <MentionListView/>
+            <MentionCandidateListManager>
                 <SlateEditor @ref="_editor" Id="message-input" Class="bg-gray-200 min-h-[50px]"
                              Placeholder="Enter some text..."
                              OnPost="OnPost"/>
-            </CascadingValue>
+            </MentionCandidateListManager>
         </div>
     </Footer>
 </PageWithHeaderAndFooter>
@@ -25,8 +24,6 @@
 @code{
     private SlateEditor? _editor;
     private string _text = "";
-
-    [Inject] private MentionListContext MentionListContext { get; set; } = null!;
 
     private async Task OnGetTextClicked() {
         if (_editor == null)

@@ -9,7 +9,9 @@ public class NavbarUI
 
     public void ActivateGroup(string id, string title)
     {
-        if (string.Equals(id, ActiveGroupId, StringComparison.Ordinal)) return;
+        if (StringComparer.Ordinal.Equals(id, ActiveGroupId))
+            return;
+
         ActiveGroupId = id;
         ActiveGroupTitle = title;
         ActiveGroupChanged?.Invoke(this, EventArgs.Empty);

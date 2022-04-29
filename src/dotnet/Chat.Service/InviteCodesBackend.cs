@@ -63,7 +63,7 @@ internal class InviteCodesBackend : DbServiceBase<ChatDbContext>, IInviteCodesBa
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
         if (!options.Items.TryGetValue("InviteCode::ChatId", out var inviteChatId))
             return false;
-        if (!string.Equals(chatId, inviteChatId as string, StringComparison.Ordinal))
+        if (!StringComparer.Ordinal.Equals(chatId, inviteChatId as string))
             return false;
 
         return true;

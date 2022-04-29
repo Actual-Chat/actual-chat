@@ -39,13 +39,13 @@
                     <span class="float-left text-secondary font-semibold chat-header-title">@userProfile.Status</span>
                 </div>
             </ButtonTemplate>
-            <ContentTemplate>
+            <MenuTemplate>
                 <Menu Class="rounded-md border border-accent p-1 sm:right-8" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
                     @foreach (var value in Enum.GetValues<UserStatus>()) {
                         <MenuItem Title="@value.ToString()" OnItemClick="_ => OnStatusSelected(value)"></MenuItem>
                     }
                 </Menu>
-            </ContentTemplate>
+            </MenuTemplate>
         </Dropdown>
     </div>
     }

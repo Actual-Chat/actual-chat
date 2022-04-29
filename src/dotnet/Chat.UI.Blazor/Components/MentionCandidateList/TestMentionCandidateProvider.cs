@@ -1,16 +1,22 @@
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-internal static class MentionTestData
+public class TestMentionCandidateProvider : IMentionCandidateProvider
 {
-    static MentionTestData()
+    public static TestMentionCandidateProvider Instance { get; } = new();
+
+    public Task<MentionCandidate[]> GetMentionCandidates(
+        string search, int limit,
+        CancellationToken cancellationToken)
     {
-        var random = new Random();
-        Candidates = _names.Select(c => new MentionListItem(c.Replace(' ', '-') + random.Next(1000), c)).ToArray();
+        var candidates = Candidates
+            .Where(c => c.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.Name)
+            .Take(limit);
+        var filteredCandidates = candidates.Select(c => new MentionCandidate(c.Id, c.Name)).ToArray();
+        return Task.FromResult(filteredCandidates);
     }
 
-    public static MentionListItem[] Candidates { get; }
-
-    private static readonly string[] _names = new[] {
+    private static string[] Names { get; } = {
         "Aayla Secura",
         "Adi Gallia",
         "Admiral Dodd Rancit",
@@ -415,4 +421,7 @@ internal static class MentionTestData
         "Ziro the Hutt",
         "Zuckuss",
     };
+
+    private static MentionCandidate[] Candidates { get; } =
+        Names.Select(c => new MentionCandidate(c.Replace(' ', '-') + Random.Shared.Next(1000), c)).ToArray();
 }

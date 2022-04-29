@@ -2,6 +2,13 @@ namespace ActualChat.Collections;
 
 public static class ArrayExt
 {
+    public static T? GetValueOrDefault<T>(this T[] items, int index)
+    {
+        if (index < 0 || index >= items.Length)
+            return default;
+        return items[index];
+    }
+
     public static int CommonPrefixLength<T>(this T[] first, T[] second, IEqualityComparer<T>? comparer = null)
     {
         var c = comparer ?? EqualityComparer<T>.Default;
