@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <RootNamespace>ActualChat.Audio</RootNamespace>
-  </PropertyGroup>
-
   <ItemGroup>
 <!--    <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />-->
     <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
