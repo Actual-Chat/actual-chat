@@ -59,6 +59,8 @@ module.exports = {
         'button-success-outline': 'var(--button-color-success-outline)',
         'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
         'mention-hover': 'var(--background-mention-hover)',
+        'own-hover': 'var(--background-own-hover)',
+        'button-primary': 'var(--background-avatar)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -82,6 +84,9 @@ module.exports = {
         'mention': 'var(--background-mention)',
         'mention-hover': 'var(--background-mention-hover)',
         'mention-message': 'var(--background-mention-message)',
+        'mention-message-hover': 'var(--background-mention-message-hover)',
+        'own-hover': 'var(--background-own-hover)',
+        'own-message': 'var(--background-own-message)',
       },
     },
     screens: {
@@ -785,6 +790,8 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      '60': '60vh',
+      '75': '75vh',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       none: 'none',
@@ -806,6 +813,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       prose: '65ch',
+      'modal': '480px',
       ...breakpoints(theme('screens')),
     }),
     minHeight: {
@@ -839,6 +847,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'modal': '480px',
     },
     objectPosition: {
       bottom: 'bottom',
