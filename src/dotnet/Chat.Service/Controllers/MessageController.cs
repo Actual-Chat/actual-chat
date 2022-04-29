@@ -54,6 +54,7 @@ public class MessageController : ControllerBase
             // DispositionType is StringSegment, StringComparer.Ordinal doesn't support it (always returns false)!
             if (hasContentDispositionHeader && contentDisposition!.DispositionType.Equals("form-data", StringComparison.Ordinal)) {
                 var partName = contentDisposition.Name;
+                // NOTE(AY): Same here
                 if (partName.Equals("payload_json", StringComparison.Ordinal)) {
                     if (!await HandlePayloadJsonPart(post, section).ConfigureAwait(false))
                         incorrectPart = true;
