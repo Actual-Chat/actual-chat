@@ -2,7 +2,7 @@ using ActualChat.Feedback.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace ActualChat.Feedback.Migrations;
+namespace ActualChat.Feedback;
 
 public class FeedbackDbContextContextFactory : IDesignTimeDbContextFactory<FeedbackDbContext>
 {

@@ -2,7 +2,7 @@ using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace ActualChat.Chat.Migrations;
+namespace ActualChat.Chat;
 
 public class ChatDbContextContextFactory : IDesignTimeDbContextFactory<ChatDbContext>
 {

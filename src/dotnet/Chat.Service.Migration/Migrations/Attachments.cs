@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace ActualChat.Chat.Migrations.Migrations
+namespace ActualChat.Chat.Migrations
 {
     public partial class Attachments : Migration
     {

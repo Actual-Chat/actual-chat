@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>ActualChat.Feedback.Migrations</RootNamespace>
+    <RootNamespace>ActualChat.Feedback</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
