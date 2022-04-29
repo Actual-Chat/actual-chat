@@ -1,7 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>ActualChat.Chat</RootNamespace>
-  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Chat.Service\Chat.Service.csproj" />
   </ItemGroup>
