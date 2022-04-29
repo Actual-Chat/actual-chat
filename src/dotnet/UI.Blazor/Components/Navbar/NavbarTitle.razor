@@ -3,10 +3,11 @@
 @using ActualChat.UI.Blazor.Services
 
 @{
-    var title = NavbarUI.ActiveGroupTitle.ToUpper();
+    var slotName = "NavbarGroupTitle-" + NavbarUI.ActiveGroupId;
 }
-
-@title
+<div class="-flex-x items-center gap-x-2">
+    <RenderSlot Name="@slotName" />
+</div>
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
@@ -20,4 +21,3 @@
     public void Dispose()
         => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 }
-

@@ -11,7 +11,7 @@
 }
 
 @if (chat != null) {
-    <MainHeader>Inviting to <b>"@(chat.Title)"</b></MainHeader>
+    <MainHeader>Inviting to&nbsp<b>"@(chat.Title)"</b></MainHeader>
 
     @if (!model.PermanentLink.IsNullOrEmpty()) {
         <div>
@@ -19,7 +19,7 @@
             <div class="mt-1 flex-x">
                 <input type="text" value="@model.PermanentLink" disabled
                        class="flex-1 px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500"/>
-                <ButtonSquare OnClick="_ => CopyToClipboard(model.PermanentLink)" Class="transparent-secondary !mx-2">
+                <ButtonSquare OnClick="_ => CopyToClipboard(model.PermanentLink)" Class="transparent !mx-2">
                     <i class="fa fa-files-o w-5 h-5" aria-hidden="true"></i>
                 </ButtonSquare>
             </div>

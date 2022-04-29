@@ -80,7 +80,7 @@ button.off,
 
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
+    @apply py-2 px-3 text-sm text-sm font-medium fill-current rounded-md border;
     @apply h-8 min-w-16 max-w-max;
 }
 .btn .btn-content {
@@ -136,12 +136,8 @@ button.off,
     @apply p-1 mx-0 min-w-0 border-0;
 }
 
-.btn.btn-square.transparent-secondary {
-    @apply bg-secondary hover:bg-accent;
-}
-
-.btn.btn-square.transparent-primary {
-    @apply bg-primary hover:bg-accent;
+.btn.btn-square.transparent {
+    @apply bg-transparent hover:bg-accent;
 }
 
 .btn.btn-square.hidden-btn {
@@ -150,6 +146,14 @@ button.off,
 
 .btn.btn-square:hover .btn-content {
     @apply animate-scale-icon;
+}
+
+.navbar-menu-group .btn {
+    @apply bg-transparent hover:bg-accent;
+}
+
+.mobile-menu-header-title .btn {
+    @apply p-0.5 text-base bg-transparent hover:bg-secondary;
 }
 
 .btn.blazor-mode-btn {

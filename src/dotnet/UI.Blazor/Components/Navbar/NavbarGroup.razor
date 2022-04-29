@@ -5,15 +5,21 @@
 @{
     var isVisible = NavbarUI.ActiveGroupId == Id;
     var cls = isVisible ? "flex" : "hidden";
+    var slotName = "NavbarGroupTitle-" + Id;
 }
 
 <div class="@Class navbar-menu-group flex-col space-y-2 @cls">
-    <div class="hidden md:flex flex-row justify-between items-center mt-2">
-        <div class="text-secondary-muted text-sm uppercase font-medium">@Title</div>
-        @Icons
+    <div class="hidden md:flex flex-row justify-between items-center mt-2
+                text-secondary-muted text-sm font-medium">
+        <RenderSlot Name="@slotName" />
     </div>
     @ChildContent
 </div>
+
+<RenderIntoSlot Name="@slotName">
+    <span class="uppercase">@Title</span>
+    @Icons
+</RenderIntoSlot>
 
 @code{
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;

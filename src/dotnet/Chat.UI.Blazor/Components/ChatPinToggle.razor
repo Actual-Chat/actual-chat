@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<bool>
 @{
     var isPinned = State.ValueOrDefault;
-    var cls = "pin-toggle transparent-primary " + (isPinned ? "on" : "off");
+    var cls = "pin-toggle transparent " + (isPinned ? "on" : "off");
 }
 
 <ButtonSquare OnClick="@Toggle" Class="@cls">
