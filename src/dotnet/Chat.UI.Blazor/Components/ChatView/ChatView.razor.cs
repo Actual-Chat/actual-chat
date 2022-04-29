@@ -151,7 +151,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             chatId,
             ChatEntryType.Text,
             lastIdTile.Range,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(true);
         foreach (var entry in lastTile.Entries) {
             if (entry.AuthorId != _currentAuthorId || entry.Id <= _lastReadEntryId)
                 continue;
@@ -217,8 +217,8 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .ToDictionary(c => c[0].EntryId, c => c);
 
         var chatMessages = ChatMessageModel.FromEntries(
-            chatEntries, 
-			attachments, 
+            chatEntries,
+			attachments,
 			_initialLastReadEntryId,
             MarkupParser);
         var scrollToKey = mustScrollToEntry

@@ -15,10 +15,8 @@ public abstract class ChatAuthorBadgeBase : ComputedStateComponent<ChatAuthorBad
     protected bool TrackRecording { get; set; }
 
     public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-
+        await base.DisposeAsync().ConfigureAwait(true);
         ChatRecordingActivity?.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     protected override async Task OnParametersSetAsync() {

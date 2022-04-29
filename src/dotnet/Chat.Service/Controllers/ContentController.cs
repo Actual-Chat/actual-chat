@@ -15,7 +15,7 @@ public class ContentController : ControllerBase
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {
         var blobStorage = _blobs.GetBlobStorage(BlobScope.ContentRecord);
-        var byteStream = await blobStorage.OpenReadAsync(blobId, cancellationToken);
+        var byteStream = await blobStorage.OpenReadAsync(blobId, cancellationToken).ConfigureAwait(false);
         if (byteStream == null)
             return NotFound();
         var blob = (await blobStorage.GetBlobsAsync(new[] {blobId}, cancellationToken).ConfigureAwait(false)).Single();
