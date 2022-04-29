@@ -8,10 +8,14 @@
                 <div class="w-full">
                     <div class="chat-message group px-1">
                         <div class="flex-1">
-                            <div class="header chat-message-header ml-1">
-                                <ChatMessageAuthorAvatar AuthorId="@Model.Entry.AuthorId"/>
-                                <ChatAuthorName AuthorId="@Model.Entry.AuthorId" Class="font-bold text-secondary" />
-                                <ChatMessageTimestamp Value="Model.Entry.BeginsAt"/>
+                            <div class="header chat-message-header ml-1 flex-x py-2">
+                                <div class="">
+                                    <ChatMessageAuthorAvatar AuthorId="@Model.Entry.AuthorId"/>
+                                </div>
+                                <div class="flex-y float-left px-2">
+                                    <ChatAuthorName AuthorId="@Model.Entry.AuthorId" Class="font-bold text-secondary"/>
+                                    <ChatMessageTimestamp Value="Model.Entry.BeginsAt"/>
+                                </div>
                             </div>
                             <div class="content message-content rounded-sm ml-1">
                                 @if (Model.Attachments.Length > 0) {
