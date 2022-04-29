@@ -20,9 +20,9 @@
 @if (Model.IsFirstUnread) {
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
-<div class="chat-message relative group px-3 @ownMessageClass @mentionClass @marginClass">
+<div class="chat-message px-1.5 py-0.5 relative group @ownMessageClass @mentionClass @marginClass">
     @if (showPicture) {
-        <div class="mx-1.5 mt-1.5">
+        <div class="m-1.5">
             <ChatMessageAuthorAvatar AuthorId="@entry.AuthorId" OnClick="@OnChatAuthorClick" />
         </div>
     } else {
