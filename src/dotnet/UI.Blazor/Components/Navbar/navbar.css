@@ -8,12 +8,32 @@
     @apply scale-105 ease-in-out duration-150;
 }
 
-.navbar-link .menu-chat-pin-toggle button {
+/* Navbar item */
+.navbar-item.active .navbar-item-content {
+    @apply font-semibold;
+}
+
+.navbar-item .navbar-item-status {
+    @apply rounded-full block w-2 h-2 mr-2;
+}
+
+.navbar-item.status-unknown .navbar-item-status {
+    @apply hidden;
+}
+.navbar-item.status-online .navbar-item-status {
+    @apply bg-online;
+}
+.navbar-item.status-offline .navbar-item-status {
+    @apply border border-primary-inverted;
+}
+
+.navbar-item .btn.btn-square {
+    @apply p-0 rounded;
+}
+
+.navbar-item .pin-toggle.off {
     @apply invisible;
 }
-.navbar-link:hover .menu-chat-pin-toggle button {
-    @apply visible;
-}
-.navbar-link .menu-chat-pin-toggle button.on {
+.navbar-item:hover .pin-toggle {
     @apply visible;
 }

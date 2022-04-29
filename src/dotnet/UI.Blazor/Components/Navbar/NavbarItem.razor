@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var activeClass = IsActive ? "active" : "inactive";
+    var statusClass = IsOnline switch { true  => "status-online", false  => "status-offline", _ => "status-unknown" };
+}
+
+<div class="flex-x justify-start items-center w-full navbar-item @Class @activeClass @statusClass">
+    <div class="navbar-item-status"></div>
+    <div class="text-primary-muted text-sm hover:text-primary">
+        @if (Url.IsNullOrEmpty()) {
+            @ChildContent
+        } else {
+            <a href="@Url">@ChildContent</a>
+        }
+    </div>
+    <div class="flex-1 justify-self-end flex-x justify-end">
+        @Ending
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool? IsOnline { get; set; }
+    [Parameter] public bool IsActive { get; set; }
+    [Parameter] public string Url { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Ending { get; set; }
+}

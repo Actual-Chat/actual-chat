@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button @onclick="OnClick" class="btn @Class" title="@Title" disabled="@Disabled" name="@Name" type="@GetButtonType" @attributes="@ButtonAttributes">
-    <div class="flex place-self-center">
+    <div class="btn-content">
         @ChildContent
     </div>
 </button>

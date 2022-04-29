@@ -83,6 +83,9 @@ button.off,
     @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
     @apply h-8 min-w-16 max-w-max;
 }
+.btn .btn-content {
+    @apply flex-x place-self-center;
+}
 
 .btn.btn-success {
     @apply bg-button-success border-success text-white;
@@ -133,7 +136,7 @@ button.off,
     @apply invisible z-10 absolute;
 }
 
-.btn.btn-square:hover .btn-square-child {
+.btn.btn-square:hover .btn-content {
     @apply animate-scale-icon;
 }
 

@@ -9,13 +9,10 @@
     <ChildContent>
         @foreach(var chat in chats) {
             var isActive = model.ActiveChatId == chat.Id;
-            <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
-                <PostFragment>
-                    <div class="menu-chat-pin-toggle justify-self-end flex-1 flex justify-end">
-                        <ChatPinToggle ChatId="@chat.Id" />
-                    </div>
-                </PostFragment>
-            </NavbarLink>
+            <NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
+                <ChildContent>@chat.Title</ChildContent>
+                <Ending><ChatPinToggle ChatId="@chat.Id"/></Ending>
+            </NavbarItem>
         }
     </ChildContent>
 </NavbarGroup>

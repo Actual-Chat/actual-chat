@@ -1,11 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<bool>
-
 @{
     var isPinned = State.ValueOrDefault;
-    var modeClass = isPinned ? "on" : "off";
-    var cls = "chat-pin-toggle transparent-primary " + modeClass;
-
+    var cls = "pin-toggle transparent-primary " + (isPinned ? "on" : "off");
 }
 
 <ButtonSquare OnClick="@Toggle" Class="@cls">
