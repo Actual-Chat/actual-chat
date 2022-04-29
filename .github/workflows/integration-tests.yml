@@ -44,5 +44,5 @@ jobs:
         if: success() || failure()    # run this step even if previous step failed
         with:
           name: Integration tests results            # Name of the check run which will be created
-          path: './output/**/*.trx'   # Path to test results
+          path: './artifacts/**/*.trx'   # Path to test results
           reporter: dotnet-trx        # Format of test results
