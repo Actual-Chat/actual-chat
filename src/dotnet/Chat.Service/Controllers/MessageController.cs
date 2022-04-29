@@ -50,9 +50,11 @@ public class MessageController : ControllerBase
             var hasContentDispositionHeader = ContentDispositionHeaderValue.TryParse(section.ContentDisposition,
                 out var contentDisposition);
 
-            if (hasContentDispositionHeader && StringComparer.Ordinal.Equals(contentDisposition!.DispositionType, "form-data")) {
+            // NOTE(AY): Don't change .Equals(.., StringComparison.Ordinal) here -
+            // DispositionType is StringSegment, StringComparer.Ordinal doesn't support it (always returns false)!
+            if (hasContentDispositionHeader && contentDisposition!.DispositionType.Equals("form-data", StringComparison.Ordinal)) {
                 var partName = contentDisposition.Name;
-                if (StringComparer.Ordinal.Equals(partName, "payload_json")) {
+                if (partName.Equals("payload_json", StringComparison.Ordinal)) {
                     if (!await HandlePayloadJsonPart(post, section).ConfigureAwait(false))
                         incorrectPart = true;
                 }
