@@ -1,11 +1,11 @@
 /* Navbar */
-.navbar .btn {
+.navbar-content .btn {
     @apply bg-transparent hover:bg-accent;
 }
-.navbar .btn.btn-square {
+.navbar-content .btn.btn-square {
     @apply p-0 rounded;
 }
-.navbar .btn.btn-square:hover {
+.navbar-content .btn.btn-square:hover {
     @apply text-toggle-on;
 }
 
@@ -47,6 +47,6 @@
 .navbar-item .pin-toggle.off {
     @apply invisible;
 }
-.navbar-item:hover .pin-toggle {
-    @apply visible text-toggle-on;
+.navbar-item:hover .pin-toggle.off {
+    @apply visible;
 }

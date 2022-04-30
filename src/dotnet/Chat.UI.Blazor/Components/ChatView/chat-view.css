@@ -32,8 +32,7 @@
 .chat-message:hover .author-badge {
     @apply bg-message-hover;
 }
-
-.chat-message:hover .hidden-btn {
+.chat-message:hover .btn.show-on-hover {
     @apply visible;
 }
 
@@ -96,12 +95,8 @@
     @apply ml-0;
 }
 
-.chat-message:hover .message-menu {
+.chat-message:hover .chat-message-menu .context-menu-button {
     @apply visible;
-}
-
-.chat-message:hover .menu-body {
-    @apply flex;
 }
 
 .chat-message-markup .playable {
@@ -123,18 +118,6 @@
 
 .chat-header-title:hover {
     @apply text-accent;
-}
-
-.panel-menu {
-    @apply bg-transparent shadow-none;
-}
-
-.panel-menu-item {
-    @apply h-5;
-}
-
-.panel-menu-item:hover {
-    @apply bg-transparent;
 }
 
 .new-separator {

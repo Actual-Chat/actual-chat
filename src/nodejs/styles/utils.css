@@ -28,29 +28,12 @@
     @apply inline-flex flex-col-reverse;
 }
 
-/* Groups */
-
-.group:hover .hover-item {
-    position: absolute;
-    opacity: 0;
-}
-.group .hover-item.alt {
-    position: absolute;
-    opacity: 0;
-}
-.group:hover .hover-item.alt {
-    position: static;
-    opacity: 100%;
-}
-
 /* Suffixes */
 
-button.on,
-.btn.on {
+button.on, .btn.on, btn.btn-square.on{
     @apply text-toggle-on;
 }
-button.off,
-.btn.off {
+button.off, .btn.off, btn.btn-square.on {
     @apply text-secondary;
 }
 
@@ -115,20 +98,21 @@ button.off,
 }
 
 .btn.btn-square {
-    @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
+    @apply text-base font-semibold bg-accent hover:bg-primary h-full inline-block;
     @apply p-1 mx-0 min-w-0 border-0;
+}
+.btn-square { /* We want this selector to be less important than other selectors settings text color */
+    @apply text-secondary;
+}
+.btn.btn-square:hover .btn-content {
+    @apply animate-scale-icon;
 }
 
 .btn.btn-square.transparent {
     @apply bg-transparent hover:bg-accent;
 }
-
-.btn.btn-square.hidden-btn {
+.btn.btn-square.show-on-hover {
     @apply invisible z-10 absolute;
-}
-
-.btn.btn-square:hover .btn-content {
-    @apply animate-scale-icon;
 }
 
 .btn.menu-item-btn {
@@ -136,7 +120,8 @@ button.off,
 }
 
 .btn.btn-transparent {
-    @apply relative flex hover:cursor-pointer border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+    @apply relative flex border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+    @apply hover:cursor-pointer;
 }
 
 .btn.btn-primary {

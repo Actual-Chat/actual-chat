@@ -4,7 +4,7 @@
     var statusClass = IsOnline switch { true  => "status-online", false  => "status-offline", _ => "status-unknown" };
 }
 
-<div class="flex-x justify-start items-center gap-x-1 w-full navbar-item @Class @activeClass @statusClass">
+<div class="flex-x justify-start items-center gap-x-1 w-full navbar-item group @Class @activeClass @statusClass">
     <div class="navbar-item-status"></div>
     <div class="navbar-item-content">
         @if (Url.IsNullOrEmpty()) {

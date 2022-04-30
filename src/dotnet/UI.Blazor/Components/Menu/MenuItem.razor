@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Components
-
 @{
     var leftContainerClass = "flex-auto float-left h-full";
     var rightContainerClass  = "flex-auto float-right h-full";
@@ -18,9 +17,11 @@
         <button @onclick="OnClick" disabled="@Disabled"
                 class="menu-item p-1.5 flex h-8 w-full text-secondary gap-x-6 @GetCss()" name="@Name">
             @if (IsIconOnLeft()) {
-                <div class="w-6 @leftContainerClass">
-                    <div class="flex">@Icon</div>
-                </div>
+                @if (Icon != null) {
+                    <div class="w-6 @leftContainerClass">
+                        <div class="flex">@Icon</div>
+                    </div>
+                }
                 <div class="w-full @rightContainerClass">
                     <div class="flex">@Title</div>
                 </div>
@@ -28,9 +29,11 @@
                 <div class="w-full @rightContainerClass">
                     <div class="flex">@Title</div>
                 </div>
-                <div class="w-6 @leftContainerClass">
-                    <div class="flex">@Icon</div>
-                </div>
+                @if (Icon != null) {
+                    <div class="w-6 @leftContainerClass">
+                        <div class="flex">@Icon</div>
+                    </div>
+                }
             }
         </button>
     }

@@ -20,7 +20,7 @@
 @if (Model.IsFirstUnread) {
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
-<div class="chat-message px-1.5 py-0.5 relative group @ownMessageClass @mentionClass @marginClass">
+<div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
     @if (showPicture) {
         <div class="m-1.5">
             <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" OnClick="@OnChatAuthorClick" />
@@ -66,8 +66,9 @@
 
     <CascadingValue Value="@Model">
         <ContextMenu
-             ButtonClass="hidden-btn h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
-             MenuClass="chat-message-menu absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
+            Class="chat-message-menu "
+            ButtonClass="show-on-hover h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
+            MenuClass="absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
             <ButtonTemplate>
                 <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
                     <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>

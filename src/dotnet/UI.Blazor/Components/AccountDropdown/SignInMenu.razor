@@ -2,7 +2,7 @@
 @{
     var usedAuthSchemas = User.Identities.Select(kv => kv.Key.Schema).ToHashSet();
     var unusedAuthSchemas = AuthSchemas.Where(p => !usedAuthSchemas.Contains(p.Name)).ToArray();
-    var buttonClass = "btn btn-success " + ButtonClass;
+    var buttonClass = "btn-success " + ButtonClass;
 }
 
 <Dropdown MenuClass="@ContentPositionClass" ButtonClass="@buttonClass">
