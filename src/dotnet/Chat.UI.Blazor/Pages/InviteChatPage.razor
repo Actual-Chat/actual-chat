@@ -1,9 +1,8 @@
 @page "/chat/{ChatId}/invite"
 @inherits ComputedStateComponent<InviteChatPage.Model>
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
-
 @{
-    var model = State.LatestNonErrorValue ?? new();
+    var model = State.LatestNonErrorValue;
     if (model.IsUnavailable)
         Nav.Unavailable("chat");
     var chat = model.Chat;
@@ -97,10 +96,14 @@
         return "less than 1 hour";
     }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = await Chats.Get(Session, ChatId, default);
         if (chat == null)
-            return new () { IsUnavailable = true };
+            return Model.Unavailable;
+
         var inviteCodes = await InviteCodes.Get(Session, ChatId, cancellationToken);
         var threshold = DateTime.Now.AddDays(-3);
         inviteCodes = inviteCodes
@@ -108,7 +111,11 @@
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
         var permanentLink = chat.IsPublic ? Nav.BaseUri + "chat/" + chat.Id.Value : "";
-        return new () {Chat = chat, InviteCodes = inviteCodes, PermanentLink = permanentLink };
+        return new () {
+            Chat = chat,
+            InviteCodes = inviteCodes,
+            PermanentLink = permanentLink,
+        };
     }
 
     private void OnGenerateNewLinkClick() {
@@ -123,6 +130,9 @@
         => await Clipboard.WriteText(link);
 
     public record Model {
+        public static Model None { get; } = new();
+        public static Model Unavailable { get; } = new() { IsUnavailable = true };
+
         public bool IsUnavailable { get; init; }
         public Chat? Chat { get; init; }
         public string? PermanentLink { get; set; }

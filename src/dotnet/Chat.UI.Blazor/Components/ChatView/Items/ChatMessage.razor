@@ -23,7 +23,7 @@
 <div class="chat-message px-1.5 py-0.5 relative group @ownMessageClass @mentionClass @marginClass">
     @if (showPicture) {
         <div class="m-1.5">
-            <ChatMessageAuthorAvatar AuthorId="@entry.AuthorId" OnClick="@OnChatAuthorClick" />
+            <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" OnClick="@OnChatAuthorClick" />
         </div>
     } else {
         <div class="w-10 mr-2 mt-1">

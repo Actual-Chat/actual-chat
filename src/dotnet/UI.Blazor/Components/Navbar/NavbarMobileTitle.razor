@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
-
 @{
-    var slotName = "NavbarGroupTitle-" + NavbarUI.ActiveGroupId;
+    var groupTitleSlotName = "NavbarGroupTitle-" + NavbarUI.ActiveGroupId;
 }
-<div class="-flex-x items-center gap-x-2">
-    <RenderSlot Name="@slotName" />
+
+<div class="flex-initial flex-x justify-end gap-x-1">
+    <RenderSlot Name="@groupTitleSlotName" />
 </div>
 
 @code {

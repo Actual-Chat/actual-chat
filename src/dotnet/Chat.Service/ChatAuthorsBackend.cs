@@ -2,12 +2,42 @@ using ActualChat.Chat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
+using Stl.Redis;
 
 namespace ActualChat.Chat;
 
-public partial class ChatAuthors
+public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBackend
 {
     private readonly ThreadSafeLruCache<Symbol, long> _maxLocalIdCache = new(16384);
+
+    private const string AuthorIdSuffix = "::authorId";
+
+    private readonly ICommander _commander;
+    private readonly IAuth _auth;
+    private readonly IAuthBackend _authBackend;
+    private readonly Lazy<IChatAuthors> _frontendLazy;
+    private readonly IUserAuthorsBackend _userAuthorsBackend;
+    private readonly IUserAvatarsBackend _userAvatarsBackend;
+    private readonly RedisSequenceSet<ChatAuthor> _idSequences;
+    private readonly IRandomNameGenerator _randomNameGenerator;
+    private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
+    private readonly IChatUserSettingsBackend _chatUserSettingsBackend;
+
+    private IChatAuthors Frontend => _frontendLazy.Value;
+
+    public ChatAuthorsBackend(IServiceProvider services) : base(services)
+    {
+        _commander = services.Commander();
+        _auth = services.GetRequiredService<IAuth>();
+        _authBackend = services.GetRequiredService<IAuthBackend>();
+        _frontendLazy = new Lazy<IChatAuthors>(services.GetRequiredService<IChatAuthors>);
+        _userAuthorsBackend = services.GetRequiredService<IUserAuthorsBackend>();
+        _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
+        _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
+        _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
+        _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
+        _chatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<ChatAuthor?> Get(
@@ -62,7 +92,7 @@ public partial class ChatAuthors
     // Not a [ComputeMethod]!
     public async Task<ChatAuthor> GetOrCreate(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var chatAuthor = await GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chatAuthor = await Frontend.GetChatAuthor(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor != null)
             return chatAuthor;
 

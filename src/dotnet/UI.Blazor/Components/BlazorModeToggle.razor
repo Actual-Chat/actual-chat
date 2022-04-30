@@ -2,15 +2,17 @@
 @using System.Reflection
 @inject BlazorModeHelper BlazorModeHelper
 @inject BlazorCircuitContext CircuitContext
-
 @{
-    var serverClass = IsServerSideBlazor ? "blazor-mode-btn !font-bold" : "blazor-mode-btn";
-    var wasmClass = !IsServerSideBlazor ? "blazor-mode-btn !font-bold" : "blazor-mode-btn";
+    string GetButtonClass(bool isActive)
+        => isActive ? "on bg-accent -disabled" : "bg-accent hover:bg-primary";
+
+    var serverClass = $"btn-xs !rounded-r-none !border-r !border-r-primary {GetButtonClass(IsServerSideBlazor)}";
+    var wasmClass = $"btn-xs !rounded-l-none {GetButtonClass(!IsServerSideBlazor)}";
 }
 
 <div class="flex-x rounded-sm overflow-hidden w-max">
-    <Button Class="@serverClass" OnClick="() => BlazorModeHelper.ChangeMode(true)" Disabled="@IsServerSideBlazor">Server</Button>
-    <Button Class="@wasmClass" OnClick="() => BlazorModeHelper.ChangeMode(false)" Disabled="@(!IsServerSideBlazor)">WASM</Button>
+    <Button Class="@serverClass" OnClick="_ => BlazorModeHelper.ChangeMode(true)" Disabled="@IsServerSideBlazor">Server</Button>
+    <Button Class="@wasmClass" OnClick="_ => BlazorModeHelper.ChangeMode(false)" Disabled="@(!IsServerSideBlazor)">WASM</Button>
 </div>
 
 @code {

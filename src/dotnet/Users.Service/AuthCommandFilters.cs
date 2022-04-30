@@ -14,7 +14,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     protected IAuthBackend AuthBackend { get; }
     protected IUserProfilesBackend UserProfilesBackend { get; }
     protected UserNamer UserNamer { get; }
-    protected IUserStates UserStates { get; }
+    protected IUserPresences UserPresences { get; }
     protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
 
     public AuthCommandFilters(IServiceProvider services)
@@ -24,7 +24,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         UserProfilesBackend = services.GetRequiredService<IUserProfilesBackend>();
         UserNamer = services.GetRequiredService<UserNamer>();
-        UserStates = services.GetRequiredService<IUserStates>();
+        UserPresences = services.GetRequiredService<IUserPresences>();
         DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
     }
 
@@ -62,7 +62,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         if (Computed.IsInvalidating()) {
             var invUserId = context.Operation().Items.Get<string>();
             if (!invUserId.IsNullOrEmpty())
-                _ = UserStates.IsOnline(invUserId, default);
+                _ = UserPresences.Get(invUserId, default);
             return;
         }
 
@@ -159,24 +159,24 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     private async Task MarkOnline(string userId, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating()) {
-            var c = Computed.GetExisting(() => UserStates.IsOnline(userId, default));
+            var c = Computed.GetExisting(() => UserPresences.Get(userId, default));
             if (c?.IsConsistent() != true)
                 return;
-            if (c.IsValue(out var v) && v)
+            if (c.IsValue(out var v) && v is Presence.Online or Presence.Recording)
                 return;
             // We invalidate only when there is a cached value, and it is
             // either false or an error, because the only change that may happen
             // due to sign-in is that this value becomes true.
-            _ = UserStates.IsOnline(userId, default);
+            _ = UserPresences.Get(userId, default);
             return;
         }
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var userState = await dbContext.UserStates.FindAsync(DbKey.Compose(userId), cancellationToken).ConfigureAwait(false);
+        var userState = await dbContext.UserPresences.FindAsync(DbKey.Compose(userId), cancellationToken).ConfigureAwait(false);
         if (userState == null) {
-            userState = new DbUserState() { UserId = userId };
+            userState = new DbUserPresence() { UserId = userId };
             dbContext.Add(userState);
         }
         userState.OnlineCheckInAt = Clocks.SystemClock.Now;

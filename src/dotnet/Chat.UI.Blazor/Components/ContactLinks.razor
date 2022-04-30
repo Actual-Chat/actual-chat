@@ -1,9 +1,8 @@
 @using System.Net
 @inherits ComputedStateComponent<ContactLinks.Model>
-
 @{
-    var model = State.LatestNonErrorValue;
-    var contacts = model.Contacts;
+    var m = State.LatestNonErrorValue;
+    var contacts = m.Contacts;
 }
 
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">

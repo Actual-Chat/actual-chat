@@ -13,11 +13,12 @@ public enum UserAvatarType { User = 0, AnonymousChatAuthor = 1 }
 [Table("UserAvatars")]
 public class DbUserAvatar : IHasId<string>
 {
-    [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
+    [Key] public string Id { get; set; } = null!;
+    [ConcurrencyCheck] public long Version { get; set; }
+
     public string UserId { get; set; } = null!;
     public long LocalId { get; set; }
-    [ConcurrencyCheck] public long Version { get; set; }
 
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
@@ -51,8 +52,6 @@ public class DbUserAvatar : IHasId<string>
     internal class EntityConfiguration : IEntityTypeConfiguration<DbUserAvatar>
     {
         public void Configure(EntityTypeBuilder<DbUserAvatar> builder)
-        {
-            builder.Property(a => a.Id).IsRequired();
-        }
+            => builder.Property(a => a.Id).IsRequired();
     }
 }

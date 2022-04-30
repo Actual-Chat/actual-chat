@@ -46,11 +46,11 @@
 /* Suffixes */
 
 button.on,
-.btn.btn-square.on {
+.btn.on {
     @apply text-toggle-on;
 }
 button.off,
-.btn.btn-square.off {
+.btn.off {
     @apply text-secondary;
 }
 
@@ -67,6 +67,9 @@ button.off,
 
 .btn:disabled {
     @apply opacity-70;
+}
+.btn.-disabled:disabled {
+    @apply opacity-100;
 }
 
 .btn.btn-success {
@@ -101,10 +104,12 @@ button.off,
     @apply active:bg-button-error-hover;
 }
 
-.btn.btn-sm {
-    @apply min-h-6 min-w-12 text-xs;
+.btn.btn-xs {
+    @apply text-xxs min-h-0 min-w-0 h-3.5 py-0 px-1 rounded-sm border-0;
 }
-
+.btn.btn-sm {
+    @apply text-xs min-h-6 min-w-12;
+}
 .btn.btn-lg {
     @apply min-h-10 min-w-20 text-base;
 }
@@ -124,18 +129,6 @@ button.off,
 
 .btn.btn-square:hover .btn-content {
     @apply animate-scale-icon;
-}
-
-.navbar-menu-group .btn {
-    @apply bg-transparent hover:bg-accent;
-}
-
-.mobile-menu-header-title .btn {
-    @apply p-0.5 text-base bg-transparent hover:bg-secondary;
-}
-
-.btn.blazor-mode-btn {
-    @apply text-xxs h-4 py-0 px-0.5 bg-accent hover:bg-primary min-w-0 rounded-none border-0;
 }
 
 .btn.menu-item-btn {

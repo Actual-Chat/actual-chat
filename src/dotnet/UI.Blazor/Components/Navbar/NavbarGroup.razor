@@ -1,24 +1,23 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
 @using ActualChat.UI.Blazor.Services
-
 @{
     var isVisible = NavbarUI.ActiveGroupId == Id;
-    var cls = isVisible ? "flex" : "hidden";
-    var slotName = "NavbarGroupTitle-" + Id;
+    var cls = isVisible ? "flex-y" : "hidden";
+    var groupTitleSlotName = "NavbarGroupTitle-" + Id;
 }
 
-<div class="@Class navbar-menu-group flex-col space-y-2 @cls">
-    <div class="hidden md:flex flex-row justify-between items-center mt-2
+<div class="@Class navbar-group flex space-y-2 @cls">
+    <div class="hidden md:flex flex-row justify-start items-center mt-2
                 text-secondary-muted text-sm font-medium">
-        <RenderSlot Name="@slotName" />
+        <RenderSlot Name="@groupTitleSlotName" />
     </div>
     @ChildContent
 </div>
 
-<RenderIntoSlot Name="@slotName">
-    <span class="uppercase">@Title</span>
-    @Icons
+<RenderIntoSlot Name="@groupTitleSlotName">
+    <div class="flex-1 uppercase">@Title</div>
+    <div class="flex-1 flex-x justify-end">@Icons</div>
 </RenderIntoSlot>
 
 @code{

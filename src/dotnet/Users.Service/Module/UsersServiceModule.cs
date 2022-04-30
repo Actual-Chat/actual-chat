@@ -79,7 +79,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             services.TryAddSingleton<DbUserByNameResolver>();
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
-            dbContext.AddEntityResolver<string, DbUserState>();
+            dbContext.AddEntityResolver<string, DbUserPresence>();
             dbContext.AddEntityResolver<string, DbUserAuthor>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
             dbContext.AddEntityResolver<string, DbUserContact>();
@@ -130,7 +130,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddSingleton<UserNamer>();
         fusion.AddComputeService<IUserProfiles, UserProfiles>();
         fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
-        fusion.AddComputeService<IUserStates, UserStates>();
+        fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IUserAuthors, UserAuthors>();
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
         fusion.AddComputeService<IUserAvatars, UserAvatars>();

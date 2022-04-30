@@ -1,13 +1,12 @@
 @inherits ComputedStateComponent<ChatAuthorList.Model>
-
 @{
-    var model = State.ValueOrDefault ?? new();
+    var m = State.LatestNonErrorValue;
 }
 
 <div class="flex-y w-full space-y-3">
     <h3 class="text-secondary">Users</h3>
-    @foreach (var authorId in model.AuthorIds) {
-        <ChatAuthorBadge AuthorId="@authorId" Size="AuthorBadgeSize.Size12"
+    @foreach (var authorId in m.AuthorIds) {
+        <ChatAuthorBadge AuthorId="@authorId" Size="PersonCircleSize.Size12"
                          TextClass="text-sm font-medium text-primary-muted select-none hover:text-primary" />
     }
 </div>

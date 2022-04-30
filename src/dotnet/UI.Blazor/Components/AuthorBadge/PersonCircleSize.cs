@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public enum AuthorBadgeSize
+public enum PersonCircleSize
 {
     Size6 = 6,
     Size8 = 8,

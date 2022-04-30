@@ -1,13 +1,12 @@
 @inherits ComputedStateComponent<ChatLinks.Model>
-
 @{
-    var model = State.LatestNonErrorValue;
-    var chats = model.Chats;
+    var m = State.LatestNonErrorValue;
+    var chats = m.Chats;
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
     <Icons>
-        @if (model.CanCreateChat) {
+        @if (m.CanCreateChat) {
             <ButtonSquare Title="Create new chat" OnClick="OnCreateNewChatClick">
                 <i class="fa fa-plus fa-fw pt-0.5" aria-hidden="true"></i>
             </ButtonSquare>
@@ -15,7 +14,7 @@
     </Icons>
     <ChildContent>
         @foreach (var chat in chats) {
-            var isActive = model.ActiveChatId == chat.Id;
+            var isActive = m.ActiveChatId == chat.Id;
             <NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
                 <ChildContent>@chat.Title</ChildContent>
                 <Ending><ChatPinToggle ChatId="@chat.Id"/></Ending>

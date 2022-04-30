@@ -3,22 +3,26 @@
 
 <div class="chat-activity-panel flex-x pr-3">
 @{
-    var model = State.LatestNonErrorValue;
-    var recording = model.Recording;
+    var m = State.LatestNonErrorValue;
+    var recordingAuthorIds = m.RecordingAuthorIds;
     var zIndex = 1;
-    var range = MaxIconCount > recording.Length ? recording.Length : MaxIconCount;
+    var range = MaxIconCount > recordingAuthorIds.Length ? recordingAuthorIds.Length : MaxIconCount;
     var cls = "-mr-2 border border-primary rounded-full";
     for (var i = 0; i < range; i++) {
-        var authorId = recording[i];
+        var authorId = recordingAuthorIds[i];
         <div class="@cls" style="z-index: @zIndex;">
-            <ChatAuthorAvatar AuthorId="@authorId" Size="AuthorBadgeSize.Size6" />
+            <ChatAuthorCircle AuthorId="@authorId" Size="PersonCircleSize.Size6" />
         </div>
         zIndex++;
     }
-    if (recording.Length > MaxIconCount) {
+    if (recordingAuthorIds.Length > MaxIconCount) {
         <div class="@cls" style="z-index: @(range + 1);">
-            @{ var avatarText = recording.Length < 11 ? "+" + (recording.Length - MaxIconCount) : "..."; }
-            <TextualAvatar Size="AuthorBadgeSize.Size6" Text="@avatarText" />
+            @{
+                var avatarText = recordingAuthorIds.Length < 11
+                    ? "+" + (recordingAuthorIds.Length - MaxIconCount)
+                    : "...";
+            }
+            <TextualAuthorBadge Size="PersonCircleSize.Size6" Text="@avatarText" />
         </div>
     }
 }
@@ -52,13 +56,12 @@
 
         var authorIds = await ChatRecordingActivity.GetActiveAuthorIds(cancellationToken);
         return new() {
-            Recording = authorIds,
+            RecordingAuthorIds = authorIds,
         };
     }
 
     public sealed class Model {
         public static Model None { get; } = new();
-
-        public ImmutableArray<Symbol> Recording { get; init; } = ImmutableArray<Symbol>.Empty;
+        public ImmutableArray<Symbol> RecordingAuthorIds { get; init; } = ImmutableArray<Symbol>.Empty;
     }
 }

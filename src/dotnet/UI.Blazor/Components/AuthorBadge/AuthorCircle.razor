@@ -1,20 +1,19 @@
 @using ActualChat.Users
 @namespace ActualChat.UI.Blazor.Components
-
 @{
-    RenderFragment? statusRenderFragment = null;
-    var title = ShowTooltip ? Author.Name : "";
+    RenderFragment? presenceFragment = null;
+    var title = HasTooltip ? Author.Name : "";
 
-    if (Status == AuthorBadgeStatus.Recording) {
-        statusRenderFragment =
+    if (Presence == Presence.Recording) {
+        presenceFragment =
             @<div class="text-inline-code animate-pulse">
                 <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -4 32 32">
                     <circle cx="8" cy="9" r="6"/>
                 </svg>
             </div>;
     }
-    else if (Status == AuthorBadgeStatus.Online) {
-        statusRenderFragment =
+    else if (Presence == Presence.Online) {
+        presenceFragment =
             @<div class="text-online">
                 <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -4 32 32">
                     <circle cx="8" cy="8" r="7"/>
@@ -25,41 +24,42 @@
 
 <div class="author-avatar-badge flex-x items-center rounded-full">
     <div class="relative">
-        <img class="@_avatarCls rounded-full block @Class" @onclick="@OnClick"
+        <img class="@_avatarClass rounded-full block @Class" @onclick="@OnClick"
              src="@Author.Picture" alt="avatar" title="@title"/>
 
-        @if (statusRenderFragment != null) {
-            <div class="absolute bg-secondary @_statusCls">
-                @statusRenderFragment
+        @if (presenceFragment != null) {
+            <div class="absolute bg-secondary @_presenceClass">
+                @presenceFragment
             </div>
         }
     </div>
 </div>
 
 @code {
-    private string _avatarCls = "";
-    private string _statusCls = "";
+    private string _avatarClass = "";
+    private string _presenceClass = "";
 
-    [Parameter] public AuthorBadgeSize Size { get; set; } = AuthorBadgeSize.Size9;
-    [Parameter] public AuthorBadgeStatus Status { get; set; } = AuthorBadgeStatus.None;
+    [Parameter] public PersonCircleSize Size { get; set; } = PersonCircleSize.Size9;
+    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
 
     [Parameter] public IAuthorLike Author { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool ShowTooltip { get; set; }
+    [Parameter] public bool HasTooltip { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
-        _avatarCls = GetSizeClass();
+        _avatarClass = GetSizeClass();
         if (OnClick.HasDelegate)
-            _avatarCls += " cursor-pointer";
-        _statusCls = GetStatusCls();
+            _avatarClass += " cursor-pointer";
+        _presenceClass = GetPresenceClass();
     }
 
-    private string GetStatusCls() {
-        return Status switch {
-            AuthorBadgeStatus.None => "",
-            _ => "right-0 bottom-0 w-4 h-4 rounded-full"
+    private string GetPresenceClass() {
+        return Presence switch {
+            Presence.Unknown => "",
+            Presence.Offline => "",
+            _ => "right-0 bottom-0 w-4 h-4 rounded-full",
             };
     }
 
