@@ -15,6 +15,6 @@ public class DbChatReadPosition
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatReadPosition>
     {
         public void Configure(EntityTypeBuilder<DbChatReadPosition> builder)
-            => builder.HasKey(e => new { e.UserId, e.ChatId});
+            => builder.HasKey(e => new { e.UserId, e.ChatId });
     }
 }

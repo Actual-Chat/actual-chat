@@ -22,12 +22,4 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public UsersDbContext(DbContextOptions options) : base(options) { }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
-        base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<DbChatReadPosition>()
-            .HasKey(nameof(DbChatReadPosition.UserId), nameof(DbChatReadPosition.ChatId));
-    }
 }
