@@ -3,9 +3,10 @@
     var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
 
-<ButtonSquare Class="chat-language-toggle z-10 w-12 !rounded-xl"
-        OnClick="OnClick">
-    <span class="w-10 h-10 m-2">
+<ButtonSquare
+    Class="chat-language-toggle z-10 w-12 !rounded-xl"
+    OnClick="OnClick">
+    <span class="w-10 m-2">
         @language.Shortcut
     </span>
 </ButtonSquare>

@@ -122,8 +122,6 @@ public class DbChatEntry : IHasId<long>, IHasVersion<long>
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>
     {
         public void Configure(EntityTypeBuilder<DbChatEntry> builder)
-        {
-            builder.Property(x => x.AuthorId).IsRequired();
-        }
+            => builder.Property(x => x.AuthorId).IsRequired();
     }
 }

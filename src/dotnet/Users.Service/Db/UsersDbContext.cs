@@ -22,4 +22,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public UsersDbContext(DbContextOptions options) : base(options) { }
+
+    protected override void OnModelCreating(ModelBuilder model)
+        => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
 }
