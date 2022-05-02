@@ -108,19 +108,6 @@ public interface IUserAuthorsClientDef
     Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
 }
 
-[BasePath("inviteCodes")]
-public interface IInviteCodesClientDef
-{
-    [Get(nameof(Get))]
-    Task<ImmutableArray<InviteCode>> Get(Session session, string chatId, CancellationToken cancellationToken);
-
-    [Post(nameof(Generate))]
-    Task<InviteCode> Generate([Body] IInviteCodes.GenerateCommand command, CancellationToken cancellationToken);
-
-    [Post(nameof(UseInviteCode))]
-    Task<InviteCodeUseResult> UseInviteCode([Body] IInviteCodes.UseInviteCodeCommand command, CancellationToken cancellationToken);
-}
-
 [BasePath("userContacts")]
 public interface IUserContactsClientDef
 {

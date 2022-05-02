@@ -6,7 +6,7 @@ public interface IUserProfiles
     Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task UpdateStatus(UpdateStatusCommand command, CancellationToken cancellationToken);
+    public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
-    public record UpdateStatusCommand(string UserProfileId, UserStatus NewStatus, Session Session) : ISessionCommand<Unit>;
+    public record UpdateCommand(Session Session, UserProfile UserProfile) : ISessionCommand<Unit>;
 }

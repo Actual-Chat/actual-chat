@@ -13,7 +13,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
     private readonly IAuth _auth;
     private readonly IChatAuthors _chatAuthors;
     private readonly IChatAuthorsBackend _chatAuthorsBackend;
-    private readonly IInviteCodesBackend _inviteCodesBackend;
     private readonly IUserContactsBackend _userContactsBackend;
     private readonly IChatsBackend _backend;
 
@@ -23,7 +22,6 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         _auth = Services.GetRequiredService<IAuth>();
         _chatAuthors = Services.GetRequiredService<IChatAuthors>();
         _chatAuthorsBackend = Services.GetRequiredService<IChatAuthorsBackend>();
-        _inviteCodesBackend = Services.GetRequiredService<IInviteCodesBackend>();
         _userContactsBackend = Services.GetRequiredService<IUserContactsBackend>();
         _backend = Services.GetRequiredService<IChatsBackend>();
     }
@@ -136,7 +134,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat != null && chat.IsPublic)
             return true;
-        var invited = await _inviteCodesBackend.CheckIfInviteCodeUsed(session, chatId, cancellationToken).ConfigureAwait(false);
+
+        var invited = await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
         return invited;
     }
 
@@ -331,7 +330,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var permissions = await _backend.GetPermissions(session, chatId, cancellationToken).ConfigureAwait(false);
         var enoughPermissions = permissions.CheckHasPermissions(requiredPermissions);
         if (!enoughPermissions && requiredPermissions==ChatPermissions.Read)
-            return await _inviteCodesBackend.CheckIfInviteCodeUsed(session, chatId, cancellationToken).ConfigureAwait(false);
+            return await IsInvited(session, chatId, cancellationToken).ConfigureAwait(false);
         return enoughPermissions;
     }
 
@@ -363,6 +362,20 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 return await GetUsersPeerChatId(session, chatId, cancellationToken).ConfigureAwait(false);
         }
         return chatId;
+    }
+
+    private async Task<bool> IsInvited(
+        Session session,
+        string chatId,
+        CancellationToken cancellationToken)
+    {
+        var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
+        if (!options.Items.TryGetValue("InviteCode::ChatId", out var inviteChatId))
+            return false;
+        if (!StringComparer.Ordinal.Equals(chatId, inviteChatId as string))
+            return false;
+
+        return true;
     }
 
     [ComputeMethod]

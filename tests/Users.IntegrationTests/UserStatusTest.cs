@@ -34,30 +34,28 @@ public class UserStatusTest : AppHostTestBase
     public async Task ShouldUpdateStatus()
     {
         // arrange
-        var user = new User("", "Bob");
-        user = await _tester.SignIn(user);
+        await _tester.SignIn(new User("", "Bob"));
 
         // act
-        var status = await GetStatus();
+        var userProfile = await GetUserProfile();
 
         // assert
-        status.Should().Be(NewUserStatus);
+        userProfile.Status.Should().Be(NewUserStatus);
 
         // act
         foreach (var newStatus in new[] {
                      UserStatus.Inactive, UserStatus.Suspended, UserStatus.Active, UserStatus.Inactive,
                      UserStatus.Suspended, UserStatus.Active,
-                 })
-        {
-            Out.WriteLine($"Changing user status {status} => {newStatus}");
-            await _userProfiles.UpdateStatus(new IUserProfiles.UpdateStatusCommand(user.Id, newStatus, _tester.Session) ,default);
+                 }) {
+            userProfile.Status = newStatus;
+            await _userProfiles.Update(new IUserProfiles.UpdateCommand(_tester.Session, userProfile), default);
 
             // assert
-            status = await GetStatus();
-            status.Should().Be(newStatus);
+            userProfile = await GetUserProfile();
+            userProfile.Status.Should().Be(newStatus);
         }
     }
 
-    private async Task<UserStatus> GetStatus()
-        => (await _userProfiles.Get(_tester.Session, default))!.Status;
+    private async Task<UserProfile> GetUserProfile()
+        => await _userProfiles.Get(_tester.Session, default) ?? throw new Exception("User profile not found");
 }

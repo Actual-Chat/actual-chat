@@ -1,0 +1,35 @@
+@page "/user/activate/{InviteCode}"
+@using ActualChat.Invite
+@attribute [Authorize]
+
+<MainHeader>Joining via invite code</MainHeader>
+
+@if (UsageResult != null) {
+    if (UsageResult.Succeeded) {
+        <div>Your account has been successfully activated</div>
+    } else {
+        <div>Failed to activate your account: @UsageResult.Message</div>
+    }
+}
+
+@code {
+
+    [Parameter]
+    public string InviteCode { get; set; } = "";
+
+    [Inject]
+    private Session Session { get; init; } = null!;
+
+    [Inject]
+    private UICommandRunner Cmd { get; init; } = null!;
+
+    private InviteUsageResult? UsageResult { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
+        var cmd = new IInvites.UseInviteCommand(Session, InviteCode);
+        var (result, _) = await Cmd.Run(cmd);
+        UsageResult = result;
+    }
+
+}

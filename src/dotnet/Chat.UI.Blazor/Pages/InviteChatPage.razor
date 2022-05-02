@@ -1,4 +1,5 @@
 @page "/chat/{ChatId}/invite"
+@using ActualChat.Invite
 @inherits ComputedStateComponent<InviteChatPage.Model>
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
@@ -6,7 +7,7 @@
     if (model.IsUnavailable)
         Nav.Unavailable("chat");
     var chat = model.Chat;
-    var inviteCodes = model.InviteCodes;
+    var invites = model.Invites;
 }
 
 @if (chat != null) {
@@ -14,7 +15,7 @@
 
     @if (!model.PermanentLink.IsNullOrEmpty()) {
         <div>
-            <span  class="block text-sm font-medium text-secondary">Permanent link</span>
+            <span class="block text-sm font-medium text-secondary">Permanent link</span>
             <div class="mt-1 flex-x">
                 <input type="text" value="@model.PermanentLink" disabled
                        class="flex-1 px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500"/>
@@ -25,76 +26,41 @@
         </div>
     }
 
-    <div class="mt-5">
-        <span class="block text-sm font-medium text-secondary">Invite Links</span>
-        <ButtonGroup>
+    <InviteList Invites="invites"
+                LinkFormat="join/{0}">
+        <Buttons>
             <Button OnClick="OnGenerateNewLinkClick" Class="btn-success">
                 + Create a New Link
             </Button>
             <Button OnClick="OnNavigateToChatClick" Class="btn-cancel">
                 Cancel
             </Button>
-        </ButtonGroup>
-
-        @if (inviteCodes.Length > 0) {
-            <ul class="mt-3">
-                @foreach (var inviteCode in inviteCodes) {
-                    <li>
-                        @{
-                            var link = GenerateLink(inviteCode);
-                            var expiresOn = inviteCode.ExpiresOn.ToLocalTime();
-                            var now = DateTime.Now;
-                            var remained = expiresOn - now;
-                            var description = remained > TimeSpan.Zero ? GetRemainedTimeDescription(remained) : "Expired";
-                        }
-                        <div class="mt-4">
-                            <div class="mt-1 flex-x">
-                                <span class="font-medium">@inviteCode.Value</span>
-                                <button type="button" @onclick="_ => CopyToClipboard(link)" class="ml-2 px-1 hover:bg-accent">
-
-                                    @* <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24"><path d="M16 10c3.469 0 2 4 2 4s4-1.594 4 2v6h-10v-12h4zm.827-2h-6.827v16h14v-8.842c0-2.392-4.011-7.158-7.173-7.158zm-8.827 12h-6v-16h4l2.102 2h3.898l2-2h4v2.145c.656.143 1.327.391 2 .754v-4.899h-3c-1.229 0-2.18-1.084-3-2h-8c-.82.916-1.771 2-3 2h-3v20h8v-2zm2-18c.553 0 1 .448 1 1s-.447 1-1 1-1-.448-1-1 .447-1 1-1zm4 18h6v-1h-6v1zm0-2h6v-1h-6v1zm0-2h6v-1h-6v1z"/></svg> *@
-                                    <i class="fa fa-files-o w-5 h-5" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div>
-                                <span class="text-sm">@description</span>
-                            </div>
-                        </div>
-                    </li>
-                }
-            </ul>
-        }
-    </div>
+        </Buttons>
+    </InviteList>
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IInviteCodes InviteCodes { get; init; } = null!;
-    [Inject] private UICommandRunner Cmd { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private Clipboard Clipboard { get; init; } = null!;
 
-    [Parameter] public string ChatId { get; set; } = "";
+    [Inject]
+    private Session Session { get; init; } = null!;
 
-    private string GenerateLink(InviteCode inviteCode)
-        => Nav.BaseUri + "join/" + inviteCode.Value;
+    [Inject]
+    private IChats Chats { get; init; } = null!;
 
-    private string GetRemainedTimeDescription(TimeSpan remained) {
-        var totalDays = (int)remained.TotalDays;
-        if (totalDays > 0) {
-            if (totalDays == 1)
-                return "1 day left";
-            return $"{totalDays} days left";
-        }
-        var totalHours = (int)remained.TotalHours;
-        if (totalHours > 0) {
-            if (totalHours == 1)
-                return "1 hour left";
-            return $"{totalHours} hours left";
-        }
-        return "less than 1 hour";
-    }
+    [Inject]
+    private IInvites Invites { get; init; } = null!;
+
+    [Inject]
+    private UICommandRunner Cmd { get; init; } = null!;
+
+    [Inject]
+    private NavigationManager Nav { get; init; } = null!;
+
+    [Inject]
+    private Clipboard Clipboard { get; init; } = null!;
+
+    [Parameter]
+    public string ChatId { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
@@ -104,23 +70,25 @@
         if (chat == null)
             return Model.Unavailable;
 
-        var inviteCodes = await InviteCodes.Get(Session, ChatId, cancellationToken);
+        var invites = await Invites.GetChatInvites(Session, ChatId, cancellationToken);
         var threshold = DateTime.Now.AddDays(-3);
-        inviteCodes = inviteCodes
+        invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToImmutableArray();
         var permanentLink = chat.IsPublic ? Nav.BaseUri + "chat/" + chat.Id.Value : "";
-        return new () {
-            Chat = chat,
-            InviteCodes = inviteCodes,
-            PermanentLink = permanentLink,
-        };
+        return new() { Chat = chat, Invites = invites, PermanentLink = permanentLink };
     }
 
-    private void OnGenerateNewLinkClick() {
-        var command = new IInviteCodes.GenerateCommand(Session, ChatId);
-        _ = Cmd.Run(command);
+    private async Task OnGenerateNewLinkClick() {
+        var invite = new Invite {
+            Details = new InviteDetailsDiscriminator {
+                Chat = new(ChatId),
+            },
+            Remaining = 10, // TODO: configurable
+        };
+        var command = new IInvites.GenerateCommand(Session, invite);
+        _ = await Cmd.Run(command);
     }
 
     private void OnNavigateToChatClick()
@@ -136,6 +104,7 @@
         public bool IsUnavailable { get; init; }
         public Chat? Chat { get; init; }
         public string? PermanentLink { get; set; }
-        public ImmutableArray<InviteCode> InviteCodes { get; set; } = ImmutableArray.Create<InviteCode>();
+        public IImmutableList<Invite> Invites { get; set; } = ImmutableArray.Create<Invite>();
     }
+
 }

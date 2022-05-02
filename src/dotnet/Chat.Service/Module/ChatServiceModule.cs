@@ -75,10 +75,6 @@ public class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddComputeService<IChatAuthors, ChatAuthors>();
         fusion.AddComputeService<IChatAuthorsBackend, ChatAuthorsBackend>();
 
-        // InviteCodes
-        fusion.AddComputeService<IInviteCodes, InviteCodes>();
-        fusion.AddComputeService<IInviteCodesBackend, InviteCodesBackend>();
-
         // ContentSaver
         services.AddResponseCaching();
         services.AddCommander().AddCommandService<IContentSaverBackend, ContentSaverBackend>();

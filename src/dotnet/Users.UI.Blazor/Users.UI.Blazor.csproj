@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
+    <ProjectReference Include="..\Invite.Contracts\Invite.Contracts.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>

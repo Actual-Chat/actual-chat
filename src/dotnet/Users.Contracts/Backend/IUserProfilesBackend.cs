@@ -11,9 +11,9 @@ public interface IUserProfilesBackend
     public Task Create(CreateCommand command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task UpdateStatus(UpdateStatusCommand command, CancellationToken cancellationToken);
+    public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
     public record CreateCommand(string UserProfileOrUserId) : ICommand<Unit>, IBackendCommand;
 
-    public record UpdateStatusCommand(string UserProfileId, UserStatus NewStatus) : ICommand<Unit>, IBackendCommand;
+    public record UpdateCommand(UserProfile UserProfile) : ICommand<Unit>, IBackendCommand;
 }
