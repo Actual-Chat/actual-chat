@@ -10,6 +10,10 @@ public interface IChatUserSettingsBackend
     [CommandHandler]
     Task<ChatUserSettings> Upsert(UpsertCommand command, CancellationToken cancellationToken);
 
-    public record UpsertCommand(string UserId, string ChatId, ChatUserSettings Settings)
-        : ICommand<ChatUserSettings>, IBackendCommand { }
+    [DataContract]
+    public record UpsertCommand(
+        [property: DataMember] string UserId,
+        [property: DataMember] string ChatId,
+        [property: DataMember] ChatUserSettings Settings)
+        : ICommand<ChatUserSettings>, IBackendCommand;
 }

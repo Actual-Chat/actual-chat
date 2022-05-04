@@ -26,5 +26,9 @@ public interface IChatAuthors
     [CommandHandler]
     Task AddToContacts(AddToContactsCommand command, CancellationToken cancellationToken);
 
-    public record AddToContactsCommand(Session Session, string ChatAuthorId) : ISessionCommand<Unit>;
+    [DataContract]
+    public record AddToContactsCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatAuthorId
+        ) : ISessionCommand<Unit>;
 }

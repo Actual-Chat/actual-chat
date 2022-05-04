@@ -5,6 +5,10 @@ public interface IContentSaverBackend
     [CommandHandler]
     Task SaveContent(SaveContentCommand command, CancellationToken cancellationToken);
 
-    public record SaveContentCommand(string ContentId, byte[] Content, string ContentType) : ICommand<Unit>,
-        IBackendCommand {}
+    [DataContract]
+    public record SaveContentCommand(
+        [property: DataMember] string ContentId,
+        [property: DataMember] byte[] Content,
+        [property: DataMember] string ContentType
+        ) : ICommand<Unit>, IBackendCommand;
 }

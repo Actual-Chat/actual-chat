@@ -14,7 +14,22 @@ public interface INotifications
     [CommandHandler]
     Task UnsubscribeToChat(UnsubscribeToChatCommand command, CancellationToken cancellationToken);
 
-    public record RegisterDeviceCommand(Session Session, string DeviceId, DeviceType DeviceType) : ISessionCommand<bool>;
-    public record SubscribeToChatCommand(Session Session, string ChatId) : ISessionCommand<bool>;
-    public record UnsubscribeToChatCommand(Session Session, string ChatId) : ISessionCommand<Unit>;
+    [DataContract]
+    public record RegisterDeviceCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string DeviceId,
+        [property: DataMember] DeviceType DeviceType
+        ) : ISessionCommand<bool>;
+
+    [DataContract]
+    public record SubscribeToChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+        ) : ISessionCommand<bool>;
+
+    [DataContract]
+    public record UnsubscribeToChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+        ) : ISessionCommand<Unit>;
 }
