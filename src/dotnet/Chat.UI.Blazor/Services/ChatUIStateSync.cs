@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatUIStateSynchronizer : WorkerBase
+public class ChatUIStateSync : WorkerBase
 {
     // All properties are resolved in lazy fashion because otherwise we'll get a dependency cycle
     private ChatUI? _chatUI;
@@ -10,7 +10,7 @@ public class ChatUIStateSynchronizer : WorkerBase
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
 
-    public ChatUIStateSynchronizer(IServiceProvider services)
+    public ChatUIStateSync(IServiceProvider services)
         => Services = services;
 
     // Protected methods

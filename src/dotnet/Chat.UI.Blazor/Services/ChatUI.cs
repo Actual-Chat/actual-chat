@@ -21,8 +21,8 @@ public class ChatUI
         ActiveChatId = stateFactory.NewMutable<Symbol>();
         PinnedChatIds = stateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
 
-        var stateSynchronizer = Services.GetRequiredService<ChatUIStateSynchronizer>();
-        stateSynchronizer.Start();
+        var stateSync = Services.GetRequiredService<ChatUIStateSync>();
+        stateSync.Start();
     }
 
     [ComputeMethod]
