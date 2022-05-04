@@ -18,6 +18,7 @@
             <NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
                 <ChildContent>@chat.Title</ChildContent>
                 <Ending>
+                    <ChatListRecordingToggle ChatId="@chat.Id"/>
                     <ChatListPinToggle ChatId="@chat.Id"/>
                 </Ending>
             </NavbarItem>

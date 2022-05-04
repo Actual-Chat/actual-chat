@@ -10,6 +10,7 @@ public class ChatUI
     private IModalService ModalService { get; }
 
     public IMutableState<Symbol> ActiveChatId { get; }
+    public IMutableState<Symbol> RecordingChatId { get; }
     public IMutableState<ImmutableHashSet<Symbol>> PinnedChatIds { get; }
 
     public ChatUI(IServiceProvider services)
@@ -19,6 +20,7 @@ public class ChatUI
 
         var stateFactory = services.StateFactory();
         ActiveChatId = stateFactory.NewMutable<Symbol>();
+        RecordingChatId = stateFactory.NewMutable<Symbol>();
         PinnedChatIds = stateFactory.NewMutable(ImmutableHashSet<Symbol>.Empty);
 
         var stateSync = Services.GetRequiredService<ChatUIStateSync>();
