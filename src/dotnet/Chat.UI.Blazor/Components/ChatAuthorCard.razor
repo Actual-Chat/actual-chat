@@ -1,24 +1,30 @@
 @using System.Net
-@inherits ComputedStateComponent<ChatAuthorCard.Model>
+@using Stl.Extensibility
+@implements IModalView<ChatAuthorCard.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@inherits ComputedStateComponent<ChatAuthorCard.ComputedModel>
 @{
     var m = State.LatestNonErrorValue;
 }
-<div class="w-[250px] author-card-modal p-3">
-    <div class="flex-y h-full">
-        <ChatAuthorCircle AuthorId="@AuthorId" Size="PersonCircleSize.Size12" ShowsPresence="true" ShowsRecording="true" />
-        <div class="self-start pt-2">
-            <ChatAuthorName AuthorId="@AuthorId" Class="text-primary font-semibold text-lg"/>
+
+<ModalLayout HideHeader="true">
+    <div class="w-[250px] author-card-modal p-3">
+        <div class="flex-y h-full">
+            <ChatAuthorCircle AuthorId="@AuthorId" Size="PersonCircleSize.Size12" ShowsPresence="true" ShowsRecording="true" />
+            <div class="self-start pt-2">
+                <ChatAuthorName AuthorId="@AuthorId" Class="text-primary font-semibold text-lg"/>
+            </div>
+            <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
+                @if (m.CanAddContact) {
+                    <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@IsAddingContact">Add to Contacts</Button>
+                }
+                @if (m.CanSendMessage) {
+                    <Button Class="btn-success" OnClick="OnSendMessageClick">Send Message</Button>
+                }
+            </ButtonGroup>
         </div>
-        <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
-            @if (m.CanAddContact) {
-                <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@IsAddingContact">Add to Contacts</Button>
-            }
-            @if (m.CanSendMessage) {
-                <Button Class="btn-success" OnClick="OnSendMessageClick">Send Message</Button>
-            }
-        </ButtonGroup>
     </div>
-</div>
+</ModalLayout>
 
 @code {
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
@@ -28,18 +34,19 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private bool IsAddingContact { get; set; }
+    private string AuthorId => ModalModel.AuthorId;
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
-    [Parameter, EditorRequired] public string AuthorId { get; set; } = "";
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = Model.None };
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() { InitialValue = ComputedModel.None };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         if (!ChatAuthor.TryGetChatId(AuthorId, out var chatId))
-            return Model.None;
+            return ComputedModel.None;
 
-        return new Model() {
+        return new ComputedModel() {
             ChatId = chatId,
             CanAddContact = await ChatAuthors.CanAddToContacts(Session, AuthorId, default).ConfigureAwait(false),
             CanSendMessage = await Chats.CanSendUserPeerChatMessage(Session, AuthorId, default).ConfigureAwait(false),
@@ -66,11 +73,13 @@
         Nav.NavigateTo("/chat/" + encodedUrl);
     }
 
-    public sealed record Model {
-        public static Model None { get; } = new();
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new();
 
         public string ChatId { get; init; } = "";
         public bool CanAddContact { get; init; }
         public bool CanSendMessage { get; init; }
     }
+
+    public sealed record Model(string AuthorId);
 }

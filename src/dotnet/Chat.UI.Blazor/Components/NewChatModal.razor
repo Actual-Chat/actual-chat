@@ -1,33 +1,37 @@
 @using System.ComponentModel.DataAnnotations
+@using Stl.Extensibility
+@implements IModalView<NewChatModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<EditForm Model="@_model" OnValidSubmit="@OnCreate">
+<EditForm Model="@_editModel" OnValidSubmit="@OnCreate">
     <DataAnnotationsValidator/>
-    <DialogLayout Class="new-chat-modal">
+    <DialogLayout Title="Create Chat">
         <Body>
-        <div class="flex-y">
-            <label for="Title" class="block text-sm font-medium text-secondary">Chat title</label>
-            <TextBox @bind-Value="@_model.Title" id="Title" tabIndex="1" Autofocus="true"
-                     class="input-underlined mt-1 text-primary focus:outline-none"/>
-        </div>
+            <div class="flex-y">
+                <label for="Title" class="block text-sm font-medium text-secondary">Chat title</label>
+                <TextBox @bind-Value="@_editModel.Title" id="Title" tabIndex="1" Autofocus="true"
+                         class="input-underlined mt-1 text-primary focus:outline-none"/>
+            </div>
         </Body>
         <Buttons>
-            <Button Type="ButtonType.Submit" class="btn-success" Disabled="@(!context.Validate())">Create</Button>
             <Button Type="ButtonType.Button" OnClick="OnCancel" class="btn-primary">Cancel</Button>
+            <Button Type="ButtonType.Submit" class="btn-success" Disabled="@(!context.Validate())">Create</Button>
         </Buttons>
     </DialogLayout>
 </EditForm>
 
 @code {
-    private readonly Model _model = new();
+    private readonly EditModel _editModel = new();
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     private async Task OnCreate()
     {
-        var command = new IChats.CreateChatCommand(Session, _model.Title) { IsPublic = true };
+        var command = new IChats.CreateChatCommand(Session, _editModel.Title) { IsPublic = true };
         var result = await Cmd.Run(command, default);
         if (!result.CommandEvent.IsCompletedSuccessfully)
             return;
@@ -39,9 +43,11 @@
     private void OnCancel()
         => ModalInstance.CancelAsync();
 
-    public class Model
+    public class EditModel
     {
         [Required]
         public string Title { get; set; } = "";
     }
+
+    public record Model;
 }

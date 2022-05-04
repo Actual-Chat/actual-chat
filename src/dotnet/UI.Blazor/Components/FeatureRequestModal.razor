@@ -1,40 +1,43 @@
 @using ActualChat.UI.Blazor.Module
+@using Stl.Extensibility
 @implements IFeatureBackend
 @implements IAsyncDisposable
+@implements IModalView<FeatureRequestModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<div class="relative p-4">
-    @{
-        var featureTitle = FeatureTitle.IsNullOrEmpty() ? "This" : FeatureTitle;
-    }
-    <div class="flex-x mb-8">
-        <h1 class="font-bold text-center flex-1 left-0">Sorry, this feature is not implemented yet</h1>
-        <CloseButton Click="OnCancel" Class="w-6 h-6 ml-3"/>
-    </div>
-
-    <div class="text-sm md:text-md my-4">
-        <p>Help us to prioritize features.</p>
-        <p>Please vote how <span class="p-0.5 bg-secondary rounded-sm font-mono text-inline-code border">@featureTitle</span> feature is important for you.</p>
-        <p>1 = not important, 5 = very important!</p>
-    </div>
-
-    <div @ref="_feedbackRef" class="flex justify-center my-4">
-        @for (var i = 1; i <= 5; i++) {
-            var cls = _rating >= i ? "fa-star" : "fa-star-o";
-            var rating = i;
-            var id = "rating-button-" + (rating - 1);
-            <button class="rating-button px-1 md:px-2" role="button" @onclick="_ => SetRating(rating)">
-                <i class="fa @cls fa-2x rating-icon" aria-hidden="true" id="@id"></i>
-            </button>
+<DialogLayout Title="Sorry, this feature is not implemented yet">
+    <Body>
+        @{
+            var title = ModalModel.FeatureTitle;
+            var featureTitle = title.IsNullOrEmpty() ? "This" : title;
         }
-    </div>
-    <div class="my-4">
-        <label>Comment:</label>
-        <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
-    </div>
-    <div class="mt-4">
+
+        <div class="text-sm md:text-md">
+            <p>Help us to prioritize features.</p>
+            <p>Please vote how <span class="p-0.5 bg-secondary rounded-sm font-mono text-inline-code border">@featureTitle</span> feature is important for you.</p>
+            <p>1 = not important, 5 = very important!</p>
+        </div>
+
+        <div @ref="_feedbackRef" class="flex justify-center my-4">
+            @for (var i = 1; i <= 5; i++) {
+                var cls = _rating >= i ? "fa-star" : "fa-star-o";
+                var rating = i;
+                var id = "rating-button-" + (rating - 1);
+                <button class="rating-button px-1 md:px-2" role="button" @onclick="_ => SetRating(rating)">
+                    <i class="fa @cls fa-2x rating-icon" aria-hidden="true" id="@id"></i>
+                </button>
+            }
+        </div>
+        <div>
+            <label>Comment:</label>
+            <textarea class="feedback-textarea border border-accent w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
+        </div>
+    </Body>
+    <Buttons>
+        <Button Class="btn-primary" OnClick="OnCancel" Focus="true">Cancel</Button>
         <Button OnClick="OnSubmit">Send feedback</Button>
-    </div>
-</div>
+    </Buttons>
+</DialogLayout>
 
 @code {
     private int _rating;
@@ -46,7 +49,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
-    [Parameter] public string? FeatureTitle { get; set; }
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     [JSInvokable]
     private async Task SetRating(int rating) {
@@ -55,7 +58,9 @@
     }
 
     private void OnSubmit() {
-        ModalInstance.CloseAsync(ModalResult.Ok((_rating, _comment)));
+        ModalModel.Comment = _comment;
+        ModalModel.Rating = _rating;
+        ModalInstance.CloseAsync(ModalResult.Ok(true));
     }
 
     private void OnCancel() {
@@ -77,5 +82,11 @@
         if (_jsRef != null!)
             await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
         _blazorRef?.Dispose();
+    }
+
+    public class Model {
+        public string? FeatureTitle { get; init; }
+        public int Rating { get; set; }
+        public string Comment { get; set; } = "";
     }
 }

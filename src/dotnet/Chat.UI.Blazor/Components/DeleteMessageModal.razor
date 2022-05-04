@@ -1,39 +1,48 @@
-<DialogLayout Class="delete-message-modal chat-message-modal inline">
-    <SubTitle>
-        Are you sure you want to delete this message?
-    </SubTitle>
+@using Stl.Extensibility
+@implements IModalView<DeleteMessageModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@{
+    var model = ModalModel.MessageModel;
+}
+
+<DialogLayout Title="Delete Message" Class="delete-message-modal chat-message-modal inline">
     <Body>
-        <div class="chat-message group px-1">
-            <div class="flex-1">
-                <div class="header chat-message-header ml-1 flex-x py-2">
-                    <div class="">
-                        <ChatMessageAuthorCircle AuthorId="@Model.Entry.AuthorId"/>
+        <div class="text-sm mb-2 min-h-8">
+            Are you sure you want to delete this message?
+        </div>
+        <div class="bg-secondary rounded-md border border-primary py-1 drop-shadow-lg">
+            <div class="chat-message group px-1">
+                <div class="flex-1">
+                    <div class="header chat-message-header ml-1 flex-x py-2">
+                        <div class="">
+                            <ChatMessageAuthorCircle AuthorId="@model.Entry.AuthorId"/>
+                        </div>
+                        <div class="flex-y float-left px-2">
+                            <ChatAuthorName AuthorId="@model.Entry.AuthorId" Class="font-bold text-secondary"/>
+                            <ChatMessageTimestamp Value="model.Entry.BeginsAt"/>
+                        </div>
                     </div>
-                    <div class="flex-y float-left px-2">
-                        <ChatAuthorName AuthorId="@Model.Entry.AuthorId" Class="font-bold text-secondary"/>
-                        <ChatMessageTimestamp Value="Model.Entry.BeginsAt"/>
-                    </div>
-                </div>
-                <div class="content message-content custom-scrollbar rounded-sm ml-1">
-                    @if (Model.Attachments.Length > 0) {
-                        var attachment = Model.Attachments[0];
-                        var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
-                        @if (isImage) {
-                            <ImageAttachment Attachment="@attachment"/>
-                        } else {
-                            <FileAttachment Attachment="@attachment"/>
+                    <div class="content message-content custom-scrollbar max-h-48 rounded-sm ml-1">
+                        @if (model.Attachments.Length > 0) {
+                            var attachment = model.Attachments[0];
+                            var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                            @if (isImage) {
+                                <ImageAttachment Attachment="@attachment"/>
+                            } else {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
                         }
-                    }
-                    <CascadingValue Value="@Model.Entry">
-                        <MarkupView Markup="@Model.Markup"/>
-                    </CascadingValue>
+                        <CascadingValue Value="@model.Entry">
+                            <MarkupView Markup="@model.Markup"/>
+                        </CascadingValue>
+                    </div>
                 </div>
             </div>
         </div>
     </Body>
     <Buttons>
-        <Button Class="btn-error" OnClick="OnDelete">Delete</Button>
         <Button Class="btn-primary" OnClick="OnCancel" Focus="true">Cancel</Button>
+        <Button Class="btn-error" OnClick="OnDelete">Delete</Button>
     </Buttons>
 </DialogLayout>
 
@@ -42,7 +51,7 @@
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
-    [Parameter] public ChatMessageModel Model { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnCancel()
         => ModalInstance.CloseAsync(ModalResult.Cancel());
@@ -51,4 +60,6 @@
         await ModalInstance.CloseAsync(ModalResult.Cancel());
         await FeedbackUI.AskFeatureRequestFeedback("message-menu/delete-message", "Delete Message");
     }
+
+    public sealed record Model(ChatMessageModel MessageModel);
 }

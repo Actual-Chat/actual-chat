@@ -31,7 +31,7 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IModalService ModalService { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -59,12 +59,12 @@
     }
 
     private void OnCreateNewChatClick()
-        => ModalService.Show<NewChatModal>("Create Chat", CustomModalOptions.Dialog);
+        => ModalUI.Show(new NewChatModal.Model());
 
     public class Model
     {
-        public bool CanCreateChat { get; set; }
-        public ImmutableArray<Chat> Chats { get; set; } = ImmutableArray<Chat>.Empty;
-        public Symbol ActiveChatId { get; set; } = Constants.Chat.DefaultChatId;
+        public bool CanCreateChat { get; init; }
+        public ImmutableArray<Chat> Chats { get; init; } = ImmutableArray<Chat>.Empty;
+        public Symbol ActiveChatId { get; init; } = Constants.Chat.DefaultChatId;
     }
 }

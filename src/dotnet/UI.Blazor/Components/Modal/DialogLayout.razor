@@ -1,24 +1,21 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class">
-    <div class="bg-primary p-5 h-screen md:h-auto">
-        @if (SubTitle != null) {
-            <div class="modal-subtitle relative flex-x text-sm mb-2 min-h-8">
-                @SubTitle
-            </div>
-        }
-        <div class="modal-body">
+<ModalLayout Class="@Class" Title="@Title" HideHeader="HideHeader" ShowCloseButton="ShowCloseButton">
+    <div class="flex-y grow p-5">
+        <div class="modal-body grow">
             @Body
         </div>
-        <div class="-flex-x gap-x-2 bottom-0 right-5 absolute md:static bg-primary w-full py-4 md:p-0 min-h-24 md:min-h-0">
+        <div class="flex-x justify-end gap-x-2 pt-4 min-h-24 md:min-h-0">
             @Buttons
         </div>
     </div>
-</div>
+</ModalLayout>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public RenderFragment? SubTitle { get; set; }
+    [Parameter] public bool HideHeader { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
 }

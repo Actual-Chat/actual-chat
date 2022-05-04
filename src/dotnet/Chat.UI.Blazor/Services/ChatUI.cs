@@ -1,5 +1,4 @@
-using Blazored.Modal;
-using Blazored.Modal.Services;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -7,7 +6,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ChatUI
 {
     private IServiceProvider Services { get; }
-    private IModalService ModalService { get; }
+    private ModalUI ModalUI { get; }
 
     public IMutableState<Symbol> ActiveChatId { get; }
     public IMutableState<Symbol> RecordingChatId { get; }
@@ -16,7 +15,7 @@ public class ChatUI
     public ChatUI(IServiceProvider services)
     {
         Services = services;
-        ModalService = services.GetRequiredService<IModalService>();
+        ModalUI = services.GetRequiredService<ModalUI>();
 
         var stateFactory = services.StateFactory();
         ActiveChatId = stateFactory.NewMutable<Symbol>();
@@ -42,16 +41,8 @@ public class ChatUI
     }
 
     public void ShowChatAuthorCard(string authorId)
-    {
-        var modalParameters = new ModalParameters();
-        modalParameters.Add(nameof(ChatAuthorCard.AuthorId), authorId);
-        ModalService.Show<ChatAuthorCard>(null, modalParameters, CustomModalOptions.DialogHeaderless);
-    }
+        => ModalUI.Show(new ChatAuthorCard.Model(authorId));
 
     public void ShowDeleteMessageRequest(ChatMessageModel model)
-    {
-        var modalParameters = new ModalParameters();
-        modalParameters.Add(nameof(DeleteMessageModal.Model), model);
-        ModalService.Show<DeleteMessageModal>("Delete Message", modalParameters, CustomModalOptions.Dialog);
-    }
+        => ModalUI.Show(new DeleteMessageModal.Model(model));
 }

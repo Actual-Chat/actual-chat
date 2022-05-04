@@ -1,0 +1,11 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="modal-chrome overflow-hidden rounded-lg md:shadow-2xl
+            bg-primary text-secondary @Class">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

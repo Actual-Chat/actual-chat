@@ -1112,6 +1112,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'modal': '480px',
     }),
     willChange: {
       auto: 'auto',

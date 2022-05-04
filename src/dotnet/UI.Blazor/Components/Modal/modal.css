@@ -1,35 +1,16 @@
-.blazored-modal {
-    @apply bg-secondary overflow-hidden;
-    @apply border-none rounded-lg shadow-2xl;
-}
+/*Original style*/
+/*.blazored-modal {*/
+/*    display: flex;*/
+/*    z-index: 102;*/
+/*    flex-direction: column;*/
+/*    background-color: #fff;*/
+/*    border-radius: 4px;*/
+/*    border: 1px solid #fff;*/
+/*    padding: 1.5rem;*/
+/*    box-shadow: 0 2px 2px rgba(0,0,0,.25);*/
+/*}*/
 
-.blazored-modal.blazored-modal-p0 {
-    padding: 0;
-}
-
-.blazored-modal.blazored-modal-transparent {
-    background-color:transparent;
-}
-
-.blazored-modal.blazored-modal-border-none {
-    border:0;
+.blazored-modal.custom-modal-class {
+    @apply p-0 bg-transparent border-0 rounded-none;
     box-shadow: none;
-    border-radius: unset;
-}
-
-.custom-modal-class {
-    @apply h-screen md:h-auto min-w-full md:min-w-modal max-w-full md:max-w-modal;
-    @apply text-secondary;
-}
-
-.custom-modal-class .blazored-modal-header {
-    @apply flex items-start justify-between px-5 py-3 border-b border-accent bg-accent top-0;
-}
-
-.custom-modal-class .blazored-modal-title {
-    @apply text-lg font-bold;
-}
-
-.custom-modal-class .modal-body {
-    @apply md:mb-5;
 }
