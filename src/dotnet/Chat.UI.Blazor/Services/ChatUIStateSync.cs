@@ -97,7 +97,7 @@ public class ChatUIStateSync : WorkerBase
         } else if (recordingChatIdChanged) {
             // The recording was activated or deactivates
             SyncRecorderState();
-            if (!recorderChatId.IsEmpty) // Start recording = start realtime playback
+            if (!recordingChatId.IsEmpty) // Start recording = start realtime playback
                 ChatPlayers.StartRealtimePlayback(false);
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder
