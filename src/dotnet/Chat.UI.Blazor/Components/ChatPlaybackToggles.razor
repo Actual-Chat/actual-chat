@@ -30,7 +30,7 @@
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
 
     protected override ComputedState<(ChatPlaybackState?, bool)>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<(ChatPlaybackState?, bool)> ComputeState(CancellationToken cancellationToken) {
         var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);

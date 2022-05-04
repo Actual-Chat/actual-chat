@@ -34,7 +34,7 @@
     }
 
     protected override ComputedState<bool>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var settings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
@@ -57,16 +57,16 @@
 
         if (isRecording == actualIsRecording) {
             if (isRecording && isLanguageChanged)
-                UpdateActualIsRecording();
+                ApplyIsRecordingStateChange();
         } else {
             if (isRecordingChanged)
-                UpdateActualIsRecording();
-            else if (actualIsRecordingChanged)
+                ApplyIsRecordingStateChange();
+            else if (actualIsRecordingChanged) // External stop or something like this
                 IsRecordingState.Value = actualIsRecording;
         }
         return actualIsRecording;
 
-        void UpdateActualIsRecording() =>
+        void ApplyIsRecordingStateChange() =>
             BackgroundTask.Run(async () => {
                 if (actualState != null) {
                     // Recording is running - let's top it first;
@@ -78,6 +78,6 @@
                     var startRecordingProcess = AudioRecorder.StartRecording(ChatId, cancellationToken);
                     await startRecordingProcess.WhenCompleted.ConfigureAwait(false);
                 }
-            }, Log, "Failed to update recording state.", CancellationToken.None);
+            }, Log, "Failed to apply new recording state.", CancellationToken.None);
     }
 }

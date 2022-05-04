@@ -36,11 +36,13 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
-    [CascadingParameter]
-    public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
+        => new() {
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            InitialValue = Model.NotPlaying,
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var player = await ChatPlayers.Get(Chat.Id, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
