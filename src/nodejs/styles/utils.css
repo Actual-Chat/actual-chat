@@ -104,9 +104,6 @@ button.off, .btn.off, btn.btn-square.on {
 .btn-square { /* We want this selector to be less important than other selectors settings text color */
     @apply text-secondary;
 }
-.btn.btn-square:hover .btn-content {
-    @apply animate-scale-icon;
-}
 
 .btn.btn-square.transparent {
     @apply bg-transparent hover:bg-accent;

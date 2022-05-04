@@ -11,7 +11,7 @@
     var placeholder = "#" + Chat.Title;
 }
 
-<div @ref="Ref" class="chat-message-editor min-h-footer">
+<div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-accent w-full border-secondary">
@@ -34,7 +34,7 @@
                     </button>
                 </label>
             </div>
-            <div class="recorder-buttons flex-x absolute right-4 bottom-4 z-40 shadow-[0_35px_35px_rgba(0,0,0,0.25)] animate-display-from-right">
+            <div class="recorder-buttons absolute bottom-4 z-40 shadow-[0_35px_35px_rgba(0,0,0,0.25)] animate-display-from-right hidden">
                 <div class="language-button flex hidden">
                     <ChatLanguageToggle/>
                 </div>
