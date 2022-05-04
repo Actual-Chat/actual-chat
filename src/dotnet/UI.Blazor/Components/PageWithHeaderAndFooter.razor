@@ -1,6 +1,9 @@
 <div class="page-with-header-and-footer h-full w-full flex-y flex-nowrap justify-between overflow-hidden @Class">
-    <div class="flex-none flex-y w-full overflow-hidden shadow-md">
+    <div class="flex-none flex-y w-full overflow-hidden shadow-md z-40">
         @Header
+    </div>
+    <div class="flex-none flex-y w-full overflow-hidden z-30">
+        @SubHeader
     </div>
     <div class="flex-1 flex-x h-full overflow-hidden">
         <div class="flex-1 -flex-y h-full overflow-hidden">
@@ -19,6 +22,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string BodyClass { get; set; } = "";
     [Parameter] public RenderFragment? Header { get; set; }
+    [Parameter] public RenderFragment? SubHeader { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? RightPanel { get; set; }

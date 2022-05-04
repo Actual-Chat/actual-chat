@@ -37,7 +37,7 @@ public class ChatPageState : WorkerBase
 
     protected override async Task RunInternal(CancellationToken cancellationToken)
     {
-        var playbackState = ChatPlayers.PlaybackState;
+        var playbackState = ChatPlayers.ChatPlaybackState;
         var cRealtimePlaybackState = await Computed
             .Capture(ct => GetRealtimeChatPlaybackState(true, ct), cancellationToken)
             .ConfigureAwait(false);

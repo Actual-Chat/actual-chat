@@ -3,8 +3,8 @@
 @inherits ComputedStateComponent<AccountView.Model>
 
 @{
-    var model = State.ValueOrDefault ?? Model.Guest;
-    var profile = model.Profile;
+    var m = State.ValueOrDefault ?? Model.Guest;
+    var profile = m.Profile;
 }
 
 <img class="inline-block h-8 w-8 rounded-full my-1" src="@profile.Picture" alt="avatar">
@@ -28,15 +28,13 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
         var profile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(true);
-        if (profile == null) return Model.Guest;
-
-        return new Model() { Profile = profile };
+        return profile == null
+            ? Model.Guest
+            : new Model() { Profile = profile };
     }
 
-    public class Model
-    {
+    public sealed record Model {
         public static Model Guest => new () { Profile = UserProfile.Guest };
-
         public UserProfile Profile { get; init; } = null!;
     }
 }

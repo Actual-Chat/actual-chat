@@ -4,15 +4,15 @@
 
 @{
     var entry = Model.Entry;
+    var markup = Model.Markup;
     var attachments = Model.Attachments;
     var timestamp = entry.BeginsAt.ToDateTime().ToLocalTime().ToShortTimeString();
 
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
-    var mentionClass = Model.Entry.Content.Contains($@"<@{ReaderId}>") ? "mention" : "";
-    var contextMenuId = "message-" + Model.Entry.Id;
-    var ownMessageClass = ReaderId == Model.Entry.AuthorId ? "own-message" : "";
+    var mentionClass = MarkupValidator.ContainsMention.IsValid(markup) ? "mention" : "";
+    var ownMessageClass = PrincipalId == Model.Entry.AuthorId ? "own-message" : "";
 }
 @if (Model.DateLine.HasValue) {
     <ChatMessageDateLine Date="@Model.DateLine.GetValueOrDefault()"/>
@@ -20,21 +20,11 @@
 @if (Model.IsFirstUnread) {
     <Separator Title="new" Class="new-separator" TitleClass="new-separator-title"/>
 }
-<div class="chat-message @ownMessageClass @mentionClass relative group px-3 @marginClass">
+<div class="chat-message group px-1.5 py-0.5 relative @ownMessageClass @mentionClass @marginClass">
     @if (showPicture) {
-        <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-            <div class="relative author-badge w-9 h-9 mx-1.5 mt-1.5 select-none bg-secondary rounded-md"
-                 @onclick="OnChatAuthorClick">
-                <img src="@context.Author.Picture" alt="@context.Author.Name" class="block"/>
-                <div class="absolute left-5 bottom-0 bg-secondary w-4 h-4 rounded-l-xl rounded-tr-xl @(context.IsRecording ? "" : "hidden")">
-                    <div class="text-inline-code animate-pulse">
-                        <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -4 32 32">
-                            <circle cx="8" cy="9" r="6"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-        </ChatAuthor>
+        <div class="m-1.5">
+            <ChatMessageAuthorCircle AuthorId="@entry.AuthorId" OnClick="@OnChatAuthorClick" />
+        </div>
     } else {
         <div class="w-10 mr-2 mt-1">
             <span class="chat-message-timestamp-secondary text-secondary text-xs invisible float-right mr-1 mt-0.5">@timestamp</span>
@@ -43,9 +33,7 @@
     <div class="flex-1 overflow-hidden mb-1 mt-1">
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
-                <ChatAuthor ChatId="@entry.ChatId" AuthorId="@entry.AuthorId">
-                    <span class="font-bold text-secondary rounded">@context.Author.Name</span>
-                </ChatAuthor>
+                <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary" />
                 <ChatMessageTimestamp Value="entry.BeginsAt"/>
                 &nbsp;
                 <span class="text-accent-muted text-xxs">id=@entry.Id</span>
@@ -55,7 +43,11 @@
             @if (entry.IsStreaming) {
                 <ChatMessageTranscript Model="@Model"/>
             } else {
-                <ChatMessageMarkup Model="@Model"/>
+                <p class="chat-message-markup text-primary mx-1">
+                    <CascadingValue Value="@entry">
+                        <MarkupView Markup="@markup"/>
+                    </CascadingValue>
+                </p>
             }
         </div>
         @if (attachments.Length > 0) {
@@ -72,39 +64,41 @@
         }
     </div>
 
-    <ContextMenu Id="@contextMenuId"
-                 BtnClass="hidden-btn h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
-                 MenuClass="absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
-        <ButtonTemplate>
-            <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-                <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
-            </svg>
-        </ButtonTemplate>
-        <ContentTemplate>
-            <MessageContextMenu/>
-        </ContentTemplate>
-    </ContextMenu>
+    <CascadingValue Value="@Model">
+        <ContextMenu
+            Class="chat-message-menu "
+            ButtonClass="show-on-hover h-8 min-w-12 right-4 -mt-3 bg-secondary rounded-r-lg rounded-l-lg border-r border-t border-b border-l border-accent shadow-context"
+            MenuClass="absolute z-10 right-14 -mt-3 bg-secondary -mr-2 border rounded-l-md rounded-tr-md rounded-br-md shadow-context">
+            <ButtonTemplate>
+                <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+                    <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+                </svg>
+            </ButtonTemplate>
+            <MenuTemplate>
+                <MessageContextMenu/>
+            </MenuTemplate>
+        </ContextMenu>
+    </CascadingValue>
 </div>
 
 @code {
-    [Inject] private ChatUI ChatUI { get; set; } = null!;
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChatAuthors ChatAuthor { get; set; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
 
-    private string ReaderId { get; set; } = "";
+    private string PrincipalId { get; set; } = "";
 
     [Parameter, EditorRequired, ParameterComparer(typeof(ByValueParameterComparer))]
     public ChatMessageModel Model { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
-        => await InitReaderId();
+        => PrincipalId = await ChatAuthor
+            .GetChatPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None)
+            .ConfigureAwait(true);
 
     public override Task SetParametersAsync(ParameterView parameters)
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorCard(Model.Entry.ChatId, Model.Entry.AuthorId);
-
-    private async Task InitReaderId()
-        => ReaderId = await ChatAuthor.GetChatPrincipalId(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
+        => ChatUI.ShowChatAuthorCard(Model.Entry.AuthorId);
 }

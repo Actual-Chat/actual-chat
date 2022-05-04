@@ -9,11 +9,12 @@ namespace ActualChat.Users.Db;
 [Index(nameof(OwnerUserId))]
 public class DbUserContact : IHasId<string>
 {
-    [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
+    [Key] public string Id { get; set; } = null!;
+    [ConcurrencyCheck] public long Version { get; set; }
+
     public string OwnerUserId { get; set; } = null!;
     public string TargetUserId { get; set; } = null!;
-    [ConcurrencyCheck] public long Version { get; set; }
     public string Name { get; set; } = null!;
 
     public static string GetCompositeId(string ownerUserId, string contactUserId)

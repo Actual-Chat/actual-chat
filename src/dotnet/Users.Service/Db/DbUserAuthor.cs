@@ -43,8 +43,6 @@ public class DbUserAuthor : IHasId<string>
     internal class EntityConfiguration : IEntityTypeConfiguration<DbUserAuthor>
     {
         public void Configure(EntityTypeBuilder<DbUserAuthor> builder)
-        {
-            builder.Property(a => a.UserId).IsRequired();
-        }
+            => builder.Property(a => a.UserId).IsRequired();
     }
 }

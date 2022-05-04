@@ -39,13 +39,14 @@ module.exports = {
         'rating': 'var(--text-color-rating)',
         'inline-code': 'var(--text-inline-code)',
         'white': 'var(--text-color-white)',
-
+        'online': 'var(--text-color-online)',
       },
       borderColor: {
         'primary': 'var(--background-primary)',
         'primary-inverted': 'var(--text-color-primary)',
         'secondary': 'var(--background-secondary)',
         'secondary-inverted': 'var(--text-color-secondary)',
+        'placeholder': 'var(--text-color-placeholder)',
         'accent': 'var(--background-accent)',
         'accent-inverted': 'var(--text-color-accent)',
         'success': 'var(--button-color-success)',
@@ -59,11 +60,14 @@ module.exports = {
         'button-success-outline': 'var(--button-color-success-outline)',
         'button-success-outline-hover': 'var(--button-color-success-outline-hover)',
         'mention-hover': 'var(--background-mention-hover)',
+        'own-hover': 'var(--background-own-hover)',
+        'button-primary': 'var(--background-avatar)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
         'secondary': 'var(--background-secondary)',
         'accent': 'var(--background-accent)',
+        'strong-accent': 'var(--background-strong-accent)',
         'online': 'var(--background-online)',
         'button-success': 'var(--button-color-success)',
         'button-success-hover': 'var(--button-color-success-hover)',
@@ -81,6 +85,9 @@ module.exports = {
         'mention': 'var(--background-mention)',
         'mention-hover': 'var(--background-mention-hover)',
         'mention-message': 'var(--background-mention-message)',
+        'mention-message-hover': 'var(--background-mention-message-hover)',
+        'own-hover': 'var(--background-own-hover)',
+        'own-message': 'var(--background-own-message)',
       },
     },
     screens: {
@@ -662,7 +669,7 @@ module.exports = {
           opacity: '.5',
         },
       },
-      pulse: {
+      'custom-pulse': {
         '50%': {
           opacity: '.1',
         },
@@ -784,6 +791,8 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      '60': '60vh',
+      '75': '75vh',
     }),
     maxWidth: ({ theme, breakpoints }) => ({
       none: 'none',
@@ -805,6 +814,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       prose: '65ch',
+      'modal': '480px',
       ...breakpoints(theme('screens')),
     }),
     minHeight: {
@@ -821,6 +831,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'footer': '3.75rem',
     },
     minWidth: {
       0: '0px',
@@ -838,6 +849,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'modal': '480px',
     },
     objectPosition: {
       bottom: 'bottom',

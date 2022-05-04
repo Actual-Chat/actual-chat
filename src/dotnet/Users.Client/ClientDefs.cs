@@ -2,13 +2,6 @@ using RestEase;
 
 namespace ActualChat.Users.Client;
 
-[BasePath("authz")]
-public interface IAuthzClientDef
-{
-    [Get(nameof(IsActive))]
-    Task<UserProfile?> IsActive(Session session, CancellationToken cancellationToken);
-}
-
 [BasePath("userProfiles")]
 public interface IUserProfilesClientDef
 {
@@ -16,11 +9,11 @@ public interface IUserProfilesClientDef
     Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
 }
 
-[BasePath("userStates")]
-public interface IUserStatesClientDef
+[BasePath("userPresences")]
+public interface IUserPresencesClientDef
 {
-    [Get(nameof(IsOnline))]
-    Task<bool> IsOnline(string userId, CancellationToken cancellationToken);
+    [Get(nameof(Get))]
+    Task<Presence> Get(string userId, CancellationToken cancellationToken);
 }
 
 [BasePath("userAuthors")]

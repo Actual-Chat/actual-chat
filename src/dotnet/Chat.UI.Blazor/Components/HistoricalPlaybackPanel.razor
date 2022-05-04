@@ -2,11 +2,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.MediaPlayback
-
 @{
-    var model = State.ValueOrDefault ?? Model.NotPlaying;
+    var m = State.ValueOrDefault ?? Model.NotPlaying;
 }
-@if (model != Model.NotPlaying) {
+
+@if (m != Model.NotPlaying) {
     <div class="historical-playback-panel flex-x mx-3 lg:mb-14 items-center justify-center sm:animate-display-from-bottom-faster lg:animate-display-from-bottom inset-x-0 lg:inset-x-1/3 relative lg:absolute bottom-0 bg-accent rounded-md shadow-lg">
         <div class="flex-x rounded-md px-4 py-2 outline-none bg-accent items-center justify-center">
             @* Icons *@
@@ -18,7 +18,7 @@
             </div>
             @* Position *@
             <div class="c-position text-sm px-2">
-                <span class="ml-1">@(model.PlayingAt is {} playingAt ? playingAt.ToLocalTime().ToString("F") : "")</span>
+                <span class="ml-1">@(m.PlayingAt is {} playingAt ? playingAt.ToLocalTime().ToString("F") : "")</span>
             </div>
             @* Stop button *@
             <div class="c-stop flex-x items-center">
@@ -36,11 +36,13 @@
     [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
     [Inject] private IActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
 
-    [CascadingParameter]
-    public Chat Chat { get; set; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay, InitialValue = Model.NotPlaying };
+        => new() {
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+            InitialValue = Model.NotPlaying,
+        };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var player = await ChatPlayers.Get(Chat.Id, ChatPlayerKind.Historical, cancellationToken).ConfigureAwait(false);
@@ -48,11 +50,11 @@
             return Model.NotPlaying;
 
         var playback = player.Playback;
-        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
+        var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         if (!isPlaying)
             return Model.NotPlaying;
 
-        var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);

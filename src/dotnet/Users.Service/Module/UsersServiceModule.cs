@@ -79,7 +79,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             services.TryAddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             services.TryAddSingleton<DbUserByNameResolver>();
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
-            dbContext.AddEntityResolver<string, DbUserState>();
+            dbContext.AddEntityResolver<string, DbUserPresence>();
             dbContext.AddEntityResolver<string, DbUserAuthor>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
             dbContext.AddEntityResolver<string, DbUserContact>();
@@ -102,7 +102,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
             if (commandAssembly == typeof(EditUserCommand).Assembly
-                && string.Equals(commandType.Namespace, typeof(EditUserCommand).Namespace, StringComparison.Ordinal))
+                && StringComparer.Ordinal.Equals(commandType.Namespace, typeof(EditUserCommand).Namespace))
                 return true;
             if (commandAssembly == typeof(UserProfile).Assembly)
                 return true;
@@ -128,10 +128,9 @@ public class UsersServiceModule : HostModule<UsersSettings>
         services.AddMvc().AddApplicationPart(GetType().Assembly);
         services.AddSingleton<IRandomNameGenerator, RandomNameGenerator>();
         services.AddSingleton<UserNamer>();
-        fusion.AddComputeService<IAuthz, Authz>();
         fusion.AddComputeService<IUserProfiles, UserProfiles>();
         fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
-        fusion.AddComputeService<IUserStates, UserStates>();
+        fusion.AddComputeService<IUserPresences, UserPresences>();
         fusion.AddComputeService<IUserAuthors, UserAuthors>();
         fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
         fusion.AddComputeService<IUserAvatars, UserAvatars>();
@@ -141,7 +140,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<ISessionOptionsBackend, SessionOptionsBackend>();
         fusion.AddComputeService<IChatReadPositions, ChatReadPositions>();
         services.AddCommander()
-            .AddCommandService<AuthServiceCommandFilters>();
+            .AddCommandService<AuthCommandFilters>();
         services.AddSingleton<ClaimMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
         services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());

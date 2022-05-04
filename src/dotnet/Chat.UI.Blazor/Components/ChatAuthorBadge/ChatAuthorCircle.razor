@@ -1,0 +1,11 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ChatAuthorBadgeBase
+@{
+    var m = State.LatestNonErrorValue;
+}
+<AuthorCircle Author="@m.Author" Size="@Size" Presence="@Presence" />
+
+@code {
+    [Parameter] public PersonCircleSize Size { get; set; } = PersonCircleSize.Size9;
+    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
+}

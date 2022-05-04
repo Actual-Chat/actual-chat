@@ -1,0 +1,47 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<UnreadMessagesHeader.Model>
+
+@if (State.Value.Count > 0) {
+    <div class="mx-4 px-1.5 bg-strong-accent rounded-b-md shadow hover:cursor-pointer text-white font-bold" @onclick="OnClick">
+        @State.Value.Count unread @PluralizeMessage(@State.Value.Count)
+    </div>
+}
+
+@code {
+
+    [Inject] private UnreadMessages UnreadMessages { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new() {
+            InitialValue = Model.Empty,
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var count = await UnreadMessages.GetUnreadMessageCount(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
+        if (!count.HasValue)
+            return Model.Empty;
+
+        return new() {
+            Count = count.Value,
+        };
+    }
+
+    private string PluralizeMessage(int count) {
+        return count switch {
+            1 => "message",
+            _ => "messages",
+        };
+    }
+
+    public class Model {
+        public static readonly Model Empty = new();
+
+        public int Count { get; set; }
+    }
+
+}

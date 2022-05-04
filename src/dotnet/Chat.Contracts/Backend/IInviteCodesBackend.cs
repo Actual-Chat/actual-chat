@@ -16,7 +16,14 @@ public interface IInviteCodesBackend
     [CommandHandler]
     Task UseInviteCode(UseInviteCodeCommand command, CancellationToken cancellationToken);
 
-    public record GenerateCommand(InviteCode InviteCode) : ICommand<InviteCode>, IBackendCommand;
+    [DataContract]
+    public record GenerateCommand(
+        [property: DataMember] InviteCode InviteCode
+        ) : ICommand<InviteCode>, IBackendCommand;
 
-    public record UseInviteCodeCommand(Session Session, InviteCode InviteCode) : ISessionCommand<Unit>, IBackendCommand;
+    [DataContract]
+    public record UseInviteCodeCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] InviteCode InviteCode
+        ) : ISessionCommand<Unit>, IBackendCommand;
 }

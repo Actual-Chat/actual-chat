@@ -1,26 +1,25 @@
 @using Stl.Extensibility
-@using ChatAuthor = ActualChat.Chat.ChatAuthor
 @inherits MarkupViewBase<Mention>
 @attribute [MatchFor(typeof(Mention), typeof(IMarkupView))]
 
 @if (ChatAuthor.IsValidId(Target)) {
-    <ChatAuthor AuthorId="@Target">
+    <ChatAuthorBadgeTemplate AuthorId="@Target">
         @if (!context.Author.Id.IsEmpty) {
-            <div class="inline-block px-1 bg-mention hover:bg-mention-hover cursor-pointer rounded-md"
+            <div class="inline-block px-1 rounded-md bg-mention select-none cursor-pointer hover:bg-mention-hover"
                  @onclick="OnChatAuthorClick">
                 @@@context.Author.Name
             </div>
         } else {
-            <div class="inline-block px-1 bg-mention hover:bg-mention-hover rounded-md">@@@Target</div>
+            <div class="inline-block px-1 rounded-md bg-mention">@@@Target</div>
         }
-    </ChatAuthor>
+    </ChatAuthorBadgeTemplate>
 }
 else {
-    <div class="inline-block px-1 bg-mention hover:bg-mention-hover rounded-md">@@@Target</div>
+    <div class="inline-block px-1 rounded-md bg-mention">@@@Target</div>
 }
 
 @code {
-    [Inject] private ChatUI ChatUI { get; set; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     private string Target => Markup.Target;
 
     private void OnChatAuthorClick()

@@ -84,7 +84,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         var chatTasks = await Task
             .WhenAll(chatIds.Select(id => Get(session, id, cancellationToken)))
             .ConfigureAwait(false);
-        return chatTasks.Where(c => c != null && c.ChatType == ChatType.Group).Select(c => c!).ToArray();
+        return chatTasks.Where(c => c is { ChatType: ChatType.Group }).Select(c => c!).ToArray();
     }
 
     // [ComputeMethod]
@@ -174,6 +174,24 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         return peerChatId;
     }
 
+    public virtual async Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        await AssertHasPermissions(session, chatId, ChatPermissions.Read, cancellationToken).ConfigureAwait(false);
+        var chatAuthorIds = await _chatAuthorsBackend.GetAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+
+        var authorTasks = await Task
+            .WhenAll(chatAuthorIds.Select(id
+                => _chatAuthors.GetAuthor(chatId, id, true, cancellationToken)))
+            .ConfigureAwait(false);
+        var items = authorTasks
+            .Where(c => c != null)
+            .Select(c => c!)
+            .OrderBy(c => c.Name)
+            .Select(c => new MentionCandidate("a:" + c.Id, c.Name))
+            .ToArray();
+        return items;
+    }
+
     // [CommandHandler]
     public virtual async Task<Chat> CreateChat(IChats.CreateChatCommand command, CancellationToken cancellationToken)
     {
@@ -190,7 +208,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             OwnerIds = ImmutableArray.Create(user.Id),
         };
         var createChatCommand = new IChatsBackend.CreateChatCommand(chat);
-        return await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+        chat = await _commander.Call(createChatCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chat.Id, user.Id);
+        _ = await _commander.Call(createAuthorCommand, cancellationToken).ConfigureAwait(false);
+        return chat;
     }
 
     // [CommandHandler]

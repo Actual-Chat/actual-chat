@@ -1,9 +1,8 @@
 @using System.Net
 @inherits ComputedStateComponent<ContactLinks.Model>
-
 @{
-    var model = State.LatestNonErrorValue;
-    var contacts = model.Contacts;
+    var m = State.LatestNonErrorValue;
+    var contacts = m.Contacts;
 }
 
 <NavbarGroup Title="Contacts" Class="navbar-contacts" Id="contacts">
@@ -11,27 +10,27 @@
         @foreach(var contact in contacts) {
             var url = PeerChatExt.CreatePeerChatLink(contact.TargetUserId);
             var encodedUrl = WebUtility.UrlEncode(url);
-            <NavbarLink Title="@contact.Name" Url="@($"/chat/{encodedUrl}")" IsOnline="true" />
+            <NavbarItem Url="@($"/chat/{encodedUrl}")" IsOnline="true">@contact.Name</NavbarItem>
         }
     </ChildContent>
 </NavbarGroup>
 
 @code {
-    public class Model
-    {
-        public UserContact[] Contacts { get; set; } = new UserContact[0];
-    }
-
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IUserContacts Contacts { get; set; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserContacts Contacts { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new () };
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var contacts = await Contacts.GetContacts(Session, cancellationToken).ConfigureAwait(false);
         return new () {
             Contacts = contacts.OrderBy(c => c.Name).ToArray(),
         };
+    }
+
+    public class Model {
+        public static Model None { get; } = new();
+        public UserContact[] Contacts { get; set; } = new UserContact[0];
     }
 }

@@ -6,17 +6,33 @@
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-sm text-current break-words;
+    @apply border-x-2 border-transparent;
 }
 
 .chat-message:hover {
     @apply bg-message-hover;
 }
 
+.chat-message-modal .chat-message:hover {
+    @apply bg-secondary;
+}
+
+.chat-message-modal .message-attachment-file a {
+    @apply cursor-default pointer-events-none;
+}
+
+.chat-message-modal .message-attachment-file a svg {
+    @apply hidden;
+}
+
+.chat-message-modal .message-attachment-image a {
+    @apply cursor-default pointer-events-none;
+}
+
 .chat-message:hover .author-badge {
     @apply bg-message-hover;
 }
-
-.chat-message:hover .hidden-btn {
+.chat-message:hover .btn.show-on-hover {
     @apply visible;
 }
 
@@ -27,24 +43,24 @@
 
 .chat-message.mention:hover,
 .chat-message.own-message.mention:hover {
-    @apply bg-secondary
+    @apply bg-mention-message-hover;
 }
 
 .chat-message.mention:hover,
 .chat-message.own-message.mention:hover .author-badge {
-    @apply bg-secondary;
+    @apply bg-mention-message-hover;
 }
 
 .chat-message.own-message {
-    @apply bg-sky-50;
+    @apply border-x-2 border-x-own-hover bg-own-message;
 }
 
 .chat-message.own-message:hover {
-    @apply bg-secondary;
+    @apply bg-message-hover;
 }
 
 .chat-message.own-message:hover .author-badge {
-    @apply bg-secondary;
+    @apply bg-message-hover;
 }
 
 .author-image {
@@ -79,12 +95,8 @@
     @apply ml-0;
 }
 
-.chat-message:hover .message-menu {
+.chat-message:hover .chat-message-menu .context-menu-button {
     @apply visible;
-}
-
-.chat-message:hover .menu-body {
-    @apply flex;
 }
 
 .chat-message-markup .playable {
@@ -100,24 +112,12 @@
     text-shadow: 0 0 2px var(--playing-glow-max), 0 0 4px var(--playing-glow-mid), 0 0 8px var(--playing-glow-min);
 }
 
+.chat-message-menu .menu-item {
+    @apply hover:bg-primary;
+}
+
 .chat-header-title:hover {
     @apply text-accent;
-}
-
-.whitespace-break-spaces {
-    white-space: break-spaces;
-}
-
-.panel-menu {
-    @apply bg-transparent shadow-none;
-}
-
-.panel-menu-item {
-    @apply h-5;
-}
-
-.panel-menu-item:hover {
-    @apply bg-transparent;
 }
 
 .new-separator {
@@ -127,4 +127,3 @@
 .new-separator-title {
     @apply bg-accent text-accent rounded-md;
 }
-

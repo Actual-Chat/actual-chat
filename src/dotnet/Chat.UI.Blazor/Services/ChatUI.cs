@@ -10,23 +10,17 @@ public class ChatUI
     public ChatUI(IModalService modalService)
         => _modalService = modalService;
 
-    public void ShowChatAuthorCard(string chatId, string chatAuthorId)
+    public void ShowChatAuthorCard(string authorId)
     {
         var modalParameters = new ModalParameters();
-        var options = new ModalOptions() {
-            HideCloseButton = true,
-            HideHeader = true,
-            Animation = ModalAnimation.FadeIn(0.3),
-        };
-        modalParameters.Add(nameof(ChatAuthorCard.ChatId), chatId);
-        modalParameters.Add(nameof(ChatAuthorCard.ChatAuthorId), chatAuthorId);
-        _modalService.Show<ChatAuthorCard>(null, modalParameters, options);
+        modalParameters.Add(nameof(ChatAuthorCard.AuthorId), authorId);
+        _modalService.Show<ChatAuthorCard>(null, modalParameters, CustomModalOptions.DialogHeaderless);
     }
 
-    public void ShowChatAuthorCard(string chatAuthorId)
+    public void ShowDeleteMessageRequest(ChatMessageModel model)
     {
-        if (!ChatAuthor.TryGetChatId(chatAuthorId, out var chatId))
-            throw new ArgumentOutOfRangeException(nameof(chatAuthorId));
-        ShowChatAuthorCard(chatId, chatAuthorId);
+        var modalParameters = new ModalParameters();
+        modalParameters.Add(nameof(DeleteMessageModal.Model), model);
+        _modalService.Show<DeleteMessageModal>("Delete Message", modalParameters, CustomModalOptions.Dialog);
     }
 }

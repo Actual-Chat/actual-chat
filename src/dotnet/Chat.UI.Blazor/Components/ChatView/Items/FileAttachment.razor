@@ -29,7 +29,7 @@
 </div>
 
 @code {
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; set; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;

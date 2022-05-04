@@ -1,10 +1,10 @@
-﻿<Dropdown ContentPositionCss="top-10 w-max md:w-min left-4" Class="static align-middle" ButtonClass="btn-transparent">
+﻿<Dropdown MenuClass="top-10 w-max md:w-min left-4" Class="static align-middle" ButtonClass="btn-transparent">
     <ButtonTemplate>
         <div class="inline-flex">
             <span class="float-left text-secondary font-semibold chat-header-title">@Chat.Title</span>
         </div>
     </ButtonTemplate>
-    <ContentTemplate>
+    <MenuTemplate>
         <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             <MenuItem Title="Edit your name, image and bio in this chat" OnItemClick="OnEditChatAuthorAvatar" Class="truncate"></MenuItem>
             @if (_canEdit) {
@@ -14,7 +14,7 @@
                 <MenuItem Title="Invite people" OnItemClick="OnInvite"></MenuItem>
             }
         </Menu>
-    </ContentTemplate>
+    </MenuTemplate>
 </Dropdown>
 
 @code {

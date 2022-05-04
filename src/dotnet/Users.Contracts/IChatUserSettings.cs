@@ -8,5 +8,10 @@ public interface IChatUserSettings
     [CommandHandler]
     Task Set(SetCommand command, CancellationToken cancellationToken);
 
-    public record SetCommand(Session Session, string ChatId, ChatUserSettings Settings) : ISessionCommand<Unit>;
+    [DataContract]
+    public record SetCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId,
+        [property: DataMember] ChatUserSettings Settings
+        ) : ISessionCommand<Unit>;
 }

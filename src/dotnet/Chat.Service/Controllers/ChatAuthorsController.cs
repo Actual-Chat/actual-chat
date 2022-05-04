@@ -41,6 +41,10 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
         => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
 
+    [HttpGet, Publish]
+    public Task<Presence> GetAuthorPresence(string chatId, string authorId, CancellationToken cancellationToken)
+        => _service.GetAuthorPresence(chatId, authorId, cancellationToken);
+
     // Commands
 
     [HttpPost]

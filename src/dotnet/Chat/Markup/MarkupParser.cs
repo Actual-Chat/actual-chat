@@ -9,12 +9,12 @@ namespace ActualChat.Chat;
 
 public class MarkupParser : IMarkupParser
 {
-    public bool UseUnparsedMarkup { get; init; }
+    public bool UseUnparsedTextMarkup { get; init; }
     public bool MustSimplify { get; init; } = true;
 
     public Markup Parse(string text)
     {
-        var markup = ParseRaw(text, UseUnparsedMarkup);
+        var markup = ParseRaw(text, UseUnparsedTextMarkup);
         if (MustSimplify)
             markup = markup.Simplify();
         return markup;
@@ -153,8 +153,10 @@ public class MarkupParser : IMarkupParser
             .SeparatedAndTerminated(Try(EndOfLine))
             .Select(lines => {
                 using var sb = ZString.CreateStringBuilder();
-                foreach (var line in lines)
-                    sb.AppendLine(line);
+                foreach (var line in lines) {
+                    sb.Append(line);
+                    sb.Append("\r\n"); // We want stable line endings here
+                }
                 return sb.ToString();
             });
     private static readonly Parser<char, Markup> CodeBlock = (
@@ -170,12 +172,12 @@ public class MarkupParser : IMarkupParser
             .Debug("<Whitespace>");
 
     // Unparsed block
-    private static readonly Parser<char, Markup> UnparsedBlock = (
+    private static readonly Parser<char, Markup> UnparsedTextBlock = (
         from whitespace in WhitespaceString
         from special in SpecialChar.AtLeastOnceString()
-        select (Markup)new UnparsedMarkup(whitespace + special)
+        select (Markup)new UnparsedTextMarkup(whitespace + special)
         ).Debug("<Unparsed>");
-    private static readonly Parser<char, Markup> UnparsedAsParsedBlock = (
+    private static readonly Parser<char, Markup> UnparsedTextAsPlainTextBlock = (
         from whitespace in WhitespaceString
         from special in SpecialChar.AtLeastOnceString()
         select (Markup)new PlainTextMarkup(whitespace + special) // Plain text instead of UnparsedMarkup
@@ -183,13 +185,13 @@ public class MarkupParser : IMarkupParser
 
     // Full markup
     private static readonly Parser<char, Markup> FullWithUnparsedMarkup =
-        SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedBlock).ManyMarkup();
+        SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextBlock).ManyMarkup();
     private static readonly Parser<char, Markup> FullMarkup =
-        SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedAsParsedBlock).ManyMarkup();
+        SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
 
-    public static Markup ParseRaw(string text, bool useUnparsedMarkup = false)
+    public static Markup ParseRaw(string text, bool useUnparsedTextMarkup = false)
     {
-        var parser = useUnparsedMarkup ? FullWithUnparsedMarkup : FullMarkup;
+        var parser = useUnparsedTextMarkup ? FullWithUnparsedMarkup : FullMarkup;
         var result = parser.Parse(text);
         return result.Success ? result.Value : Markup.Empty;
     }

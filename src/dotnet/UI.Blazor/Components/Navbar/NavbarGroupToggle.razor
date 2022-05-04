@@ -1,0 +1,40 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
+@using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
+@{
+    var isActive = NavbarUI.ActiveGroupId == Id;
+    var cls = isActive ? "text-primary bg-primary" : "text-secondary bg-accent";
+}
+
+<button onclick="@OnClicked" title="@Title" class="navbar-group-toggle @cls p-2.5 py-2 flex justify-center grid content-center cursor-pointer @Class">
+    <svg xmlns="http://www.w3.org/2000/svg" class="navbar-group-icon fill-current h-@IconHeight w-@IconWidth" viewBox="@ViewBox">
+        <path d="@IconPath"></path>
+    </svg>
+</button>
+
+@code {
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    private EventHandler? _onActiveGroupChanged;
+
+    [Parameter] public string? Class { get; set; } = "";
+    [Parameter] public string? IconPath { get; set; }
+    [Parameter] public int IconHeight { get; set; } = 8;
+    [Parameter] public int IconWidth { get; set; } = 8;
+    [Parameter] public string ViewBox { get; set; } = "0 0 24 24";
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+
+    protected override void OnInitialized() {
+        _onActiveGroupChanged = (s, e) => StateHasChanged();
+        NavbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
+    }
+
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
+
+    private void OnClicked()
+        => NavbarUI.ActivateGroup(Id, Title);
+
+}

@@ -1,0 +1,54 @@
+<DialogLayout Class="delete-message-modal chat-message-modal inline">
+    <SubTitle>
+        Are you sure you want to delete this message?
+    </SubTitle>
+    <Body>
+        <div class="chat-message group px-1">
+            <div class="flex-1">
+                <div class="header chat-message-header ml-1 flex-x py-2">
+                    <div class="">
+                        <ChatMessageAuthorCircle AuthorId="@Model.Entry.AuthorId"/>
+                    </div>
+                    <div class="flex-y float-left px-2">
+                        <ChatAuthorName AuthorId="@Model.Entry.AuthorId" Class="font-bold text-secondary"/>
+                        <ChatMessageTimestamp Value="Model.Entry.BeginsAt"/>
+                    </div>
+                </div>
+                <div class="content message-content custom-scrollbar rounded-sm ml-1">
+                    @if (Model.Attachments.Length > 0) {
+                        var attachment = Model.Attachments[0];
+                        var isImage = attachment.ContentType.StartsWith("image", StringComparison.OrdinalIgnoreCase);
+                        @if (isImage) {
+                            <ImageAttachment Attachment="@attachment"/>
+                        } else {
+                            <FileAttachment Attachment="@attachment"/>
+                        }
+                    }
+                    <CascadingValue Value="@Model.Entry">
+                        <MarkupView Markup="@Model.Markup"/>
+                    </CascadingValue>
+                </div>
+            </div>
+        </div>
+    </Body>
+    <Buttons>
+        <Button Class="btn-error" OnClick="OnDelete">Delete</Button>
+        <Button Class="btn-primary" OnClick="OnCancel" Focus="true">Cancel</Button>
+    </Buttons>
+</DialogLayout>
+
+@code {
+    [Inject] private FeedbackUI FeedbackUI { get; set; } = null!;
+
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    [Parameter] public ChatMessageModel Model { get; set; } = null!;
+
+    private void OnCancel()
+        => ModalInstance.CloseAsync(ModalResult.Cancel());
+
+    private async Task OnDelete() {
+        await ModalInstance.CloseAsync(ModalResult.Cancel());
+        await FeedbackUI.AskFeatureRequestFeedback("message-menu/delete-message", "Delete Message");
+    }
+}

@@ -1,4 +1,5 @@
 /* Flex shortcuts */
+
 .flex-x {
     @apply flex flex-row;
 }
@@ -13,6 +14,7 @@
 }
 
 /* Inline-flex shortcuts */
+
 .inline-flex-x {
     @apply inline-flex flex-row;
 }
@@ -26,107 +28,91 @@
     @apply inline-flex flex-col-reverse;
 }
 
-/* Groups */
-
-.group:hover .hover-item {
-    position: absolute;
-    opacity: 0;
-}
-.group .hover-item.alt {
-    position: absolute;
-    opacity: 0;
-}
-.group:hover .hover-item.alt {
-    position: static;
-    opacity: 100%;
-}
-
 /* Suffixes */
 
-button.on,
-.btn.btn-square.on {
+button.on, .btn.on, btn.btn-square.on{
     @apply text-toggle-on;
 }
-button.off,
-.btn.btn-square.off {
+button.off, .btn.off, btn.btn-square.on {
     @apply text-secondary;
 }
 
-/* Modal */
-
-.modal {
-    z-index: 1000;
-    max-width: 96%;
-    @apply flex-col;
-    @apply bg-secondary;
-    @apply border-0 rounded-lg shadow-2xl;
-}
-
-.blazored-modal-base {
-    display: flex;
-    z-index: 103;
-    flex-direction: column;
-}
-.blazored-modal-border {
-    border-radius: 4px;
-    border: 1px solid #fff;
-    box-shadow: 0 2px 2px rgba(0,0,0,.25);
-}
-
+/* Buttons */
 
 .btn {
     @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
-    @apply py-2 px-3 text-sm font-medium fill-current rounded-md border;
+    @apply py-2 px-3 text-sm text-sm font-medium fill-current rounded-md border;
     @apply h-8 min-w-16 max-w-max;
+}
+.btn .btn-content {
+    @apply flex-x place-self-center;
+}
+
+.btn:disabled {
+    @apply opacity-70;
+}
+.btn.-disabled:disabled {
+    @apply opacity-100;
 }
 
 .btn.btn-success {
     @apply bg-button-success border-success text-white;
+}
+.btn.btn-success:enabled {
     @apply hover:bg-button-success-hover hover:border-success-muted;
     @apply active:bg-button-success-hover;
 }
 
 .btn.btn-success-outline {
     @apply bg-button-success-outline border-success border-2 text-success;
+}
+.btn.btn-success-outline:enabled {
     @apply hover:bg-button-success-outline-hover;
     @apply active:bg-button-success-outline-hover active:border-button-success-outline-hover;
 }
 
 .btn.btn-cancel {
     @apply bg-button-cancel border-button-cancel text-white;
+}
+.btn.btn-cancel:enabled {
     @apply hover:bg-button-cancel-hover hover:border-button-cancel-hover;
     @apply active:bg-button-cancel-hover;
 }
 
 .btn.btn-error {
     @apply bg-button-error border-button-error text-white;
+}
+.btn.btn-error:enabled {
     @apply hover:bg-button-error-hover hover:border-button-error-hover;
     @apply active:bg-button-error-hover;
 }
 
-.btn.btn-sm {
-    @apply min-h-6 min-w-12 text-xs;
+.btn.btn-xs {
+    @apply text-xxs min-h-0 min-w-0 h-3.5 py-0 px-1 rounded-sm border-0;
 }
-
+.btn.btn-sm {
+    @apply text-xs min-h-6 min-w-12;
+}
 .btn.btn-lg {
     @apply min-h-10 min-w-20 text-base;
 }
 
 .btn.btn-square {
-    @apply text-base font-semibold text-secondary bg-accent hover:bg-primary h-full inline-block;
+    @apply text-base font-semibold bg-accent hover:bg-primary h-full inline-block;
     @apply p-1 mx-0 min-w-0 border-0;
 }
-
-.btn.btn-square.transparent-secondary {
-    @apply bg-secondary hover:bg-accent;
+.btn-square { /* We want this selector to be less important than other selectors settings text color */
+    @apply text-secondary;
 }
-
-.btn.btn-square.transparent-primary {
-    @apply bg-primary hover:bg-accent;
-}
-
-.btn.btn-square:hover .button-square-child {
+.btn.btn-square:hover .btn-content {
     @apply animate-scale-icon;
+}
+
+.btn.btn-square.transparent {
+    @apply bg-transparent hover:bg-accent;
+}
+.btn.btn-square.show-on-hover {
+    @apply invisible z-10 absolute;
 }
 
 .btn.menu-item-btn {
@@ -134,13 +120,24 @@ button.off,
 }
 
 .btn.btn-transparent {
-    @apply relative flex hover:cursor-pointer border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+    @apply relative flex border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+    @apply hover:cursor-pointer;
+}
+
+.btn.btn-primary {
+    @apply relative flex hover:cursor-pointer border border-button-primary bg-primary text-secondary-muted;
+    @apply hover:bg-avatar hover:text-white;
+    @apply active:bg-avatar;
+}
+
+.btn.btn-secondary {
+    @apply relative flex hover:cursor-pointer border-2 border-accent bg-secondary text-primary;
+    @apply active:bg-accent;
 }
 
 .btn-group {
     @apply overflow-hidden rounded-md justify-items-stretch gap-px;
 }
-
 .btn-group .btn {
     @apply rounded-none;
 }
@@ -160,6 +157,12 @@ button.off,
 }
 .btn-group.btn-font-semibold .btn {
     @apply font-semibold;
+}
+
+/* Other */
+
+.whitespace-break-spaces {
+    white-space: break-spaces;
 }
 
 .fill-available {
@@ -189,8 +192,12 @@ button.off,
 
 /* Custom Input */
 
-.custom-input {
+.custom-input.input-imprinted {
     @apply border-0 bg-accent;
+}
+
+.custom-input.input-underlined {
+    @apply bg-transparent border-b border-placeholder;
 }
 
 .valid.modified:is(.custom-input) {
@@ -199,40 +206,4 @@ button.off,
 
 .invalid {
     outline: none;
-}
-
-.author-card-modal .btn-group-parent {
-    @apply mt-2 mb-0;
-}
-
-.btn.btn-square.hidden-btn {
-    @apply invisible z-10 absolute;
-}
-
-.context-button {
-    @apply transition duration-150 ease-in-out outline-none;
-    @apply fill-current;
-    @apply max-w-max;
-    @apply text-base font-semibold text-secondary;
-    @apply p-1 mx-0 min-w-0;
-}
-
-.context-button.hidden-btn {
-    @apply invisible z-20 absolute;
-}
-
-.context-button:hover .context-button-child {
-    @apply animate-scale-icon;
-}
-
-.menu-item.context-menu-item {
-    @apply hover:bg-primary;
-}
-
-.btn.btn-square.audio-recorder-toggle {
-    @apply rounded-2xl;
-}
-
-.btn.btn-square.chat-language-toggle {
-    @apply rounded-2xl;
 }

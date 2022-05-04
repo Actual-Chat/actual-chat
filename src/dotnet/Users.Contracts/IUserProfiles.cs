@@ -8,5 +8,10 @@ public interface IUserProfiles
     [CommandHandler]
     public Task UpdateStatus(UpdateStatusCommand command, CancellationToken cancellationToken);
 
-    public record UpdateStatusCommand(string UserProfileId, UserStatus NewStatus, Session Session) : ISessionCommand<Unit>;
+    [DataContract]
+    public record UpdateStatusCommand(
+        [property: DataMember] string UserProfileId,
+        [property: DataMember] UserStatus NewStatus,
+        [property: DataMember] Session Session
+        ) : ISessionCommand<Unit>;
 }

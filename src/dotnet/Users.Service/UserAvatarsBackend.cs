@@ -52,10 +52,11 @@ public class UserAvatarsBackend : DbServiceBase<UsersDbContext>, IUserAvatarsBac
         var avatarId = DbUserAvatar.GetCompositeId(chatAuthorId, UserAvatarType.AnonymousChatAuthor, 1);
         var avatar = await Get(avatarId, cancellationToken).ConfigureAwait(false);
         if (avatar != null) {
-            if (!name.IsNullOrEmpty() && !string.Equals(avatar.Name, name, StringComparison.Ordinal)) {
-                var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatar.Id, name, avatar.Picture, avatar.Bio);
-                await _commander.Run(updateCommand, true, cancellationToken).ConfigureAwait(false);
-            }
+            if (name.IsNullOrEmpty() || StringComparer.Ordinal.Equals(avatar.Name, name))
+                return avatar;
+
+            var updateCommand = new IUserAvatarsBackend.UpdateCommand(avatar.Id, name, avatar.Picture, avatar.Bio);
+            await _commander.Run(updateCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else {
             var createCommand = new IUserAvatarsBackend.CreateCommand(chatAuthorId, name);

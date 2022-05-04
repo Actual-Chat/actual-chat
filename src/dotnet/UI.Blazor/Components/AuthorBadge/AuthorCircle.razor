@@ -1,0 +1,70 @@
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+@{
+    RenderFragment? presenceFragment = null;
+    var title = HasTooltip ? Author.Name : "";
+
+    if (Presence == Presence.Recording) {
+        presenceFragment =
+            @<div class="text-inline-code animate-pulse">
+                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -4 32 32">
+                    <circle cx="8" cy="9" r="6"/>
+                </svg>
+            </div>;
+    }
+    else if (Presence == Presence.Online) {
+        presenceFragment =
+            @<div class="text-online">
+                <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -4 32 32">
+                    <circle cx="8" cy="8" r="7"/>
+                </svg>
+            </div>;
+    }
+}
+
+<div class="author-avatar-badge flex-x items-center rounded-full">
+    <div class="relative">
+        <img class="@_avatarClass rounded-full block @Class" @onclick="@OnClick"
+             src="@Author.Picture" alt="avatar" title="@title"/>
+
+        @if (presenceFragment != null) {
+            <div class="absolute bg-secondary @_presenceClass">
+                @presenceFragment
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _avatarClass = "";
+    private string _presenceClass = "";
+
+    [Parameter] public PersonCircleSize Size { get; set; } = PersonCircleSize.Size9;
+    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
+
+    [Parameter] public IAuthorLike Author { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HasTooltip { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        _avatarClass = GetSizeClass();
+        if (OnClick.HasDelegate)
+            _avatarClass += " cursor-pointer";
+        _presenceClass = GetPresenceClass();
+    }
+
+    private string GetPresenceClass() {
+        return Presence switch {
+            Presence.Unknown => "",
+            Presence.Offline => "",
+            _ => "right-0 bottom-0 w-4 h-4 rounded-full",
+            };
+    }
+
+    private string GetSizeClass() {
+        var size = (int) Size;
+        return $"h-{size} w-{size}";
+    }
+}

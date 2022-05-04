@@ -1,16 +1,11 @@
 @using Stl.Extensibility
 @inherits MarkupViewBase<StylizedMarkup>
 @attribute [MatchFor(typeof(StylizedMarkup), typeof(IMarkupView))]
-@{
-    var m = Markup;
-}
 
-<span class="formatted-text-part-view whitespace-break-spaces">
-    @if (m.Style == TextStyle.Bold) {
-        <strong><MarkupView Entry="@Entry" Markup="@m.Markup"/></strong>
-    } else if (m.Style == TextStyle.Italic) {
-        <em><MarkupView Entry="@Entry" Markup="@m.Markup"/></em>
-    } else {
-        <MarkupView Entry="@Entry" Markup="@m.Markup"/>
-    }
-</span>
+@if (Markup.Style == TextStyle.Bold) {
+    <strong><MarkupView Markup="@Markup.Content"/></strong>
+} else if (Markup.Style == TextStyle.Italic) {
+    <em><MarkupView Markup="@Markup.Content"/></em>
+} else {
+    <MarkupView Markup="@Markup.Content"/>
+}

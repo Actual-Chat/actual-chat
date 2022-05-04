@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
-@inject ClientAuthHelper _clientAuthHelper
+@inject ClientAuthHelper ClientAuthHelper
 
 <AuthorizeView>
     <Authorized>
         <AccountMenu/>
     </Authorized>
     <NotAuthorized>
-        <SignInMenu ButtonClass="px-4 py-2" ContentPositionClass="bottom-12 "/>
+        <SignInMenu ButtonClass="px-4 py-2" ContentPositionClass="bottom-12"/>
     </NotAuthorized>
 </AuthorizeView>
 

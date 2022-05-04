@@ -58,9 +58,8 @@
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public Action? CancelRequested { get; set; } = default!;
 
-    protected override ComputedState<Model>.Options GetStateOptions() {
-        return new () { InitialValue = new ()};
-    }
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new () { InitialValue = new() };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await UserAvatars.GetAvatarIds(Session, cancellationToken);

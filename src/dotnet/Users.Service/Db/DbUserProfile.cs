@@ -10,9 +10,7 @@ public class DbUserProfile : IHasId<string>, IHasVersion<long>
     /// Stores same value as <see cref="DbUser.Id"/>
     /// </summary>
     [Key] public string Id { get; set; } = null!;
-
-    [ConcurrencyCheck]
-    public long Version { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
 
     [Column(TypeName = "smallint")]
     public UserStatus Status { get; set; }

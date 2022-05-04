@@ -19,6 +19,10 @@ public static partial class RangeExt
 
     public static Range<double> ScrollInto(this Range<double> range, Range<double> fitRange, bool isEndAligned = false)
     {
+        // no need to scroll
+        if(range.Contains(fitRange))
+            return range;
+
         var size = range.Size();
         if (isEndAligned) {
             if (range.Start < fitRange.Start)

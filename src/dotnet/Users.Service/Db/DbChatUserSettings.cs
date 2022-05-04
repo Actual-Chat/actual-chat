@@ -9,11 +9,12 @@ namespace ActualChat.Users.Db;
 [Index(nameof(ChatId), nameof(UserId))]
 public class DbChatUserSettings : IHasId<string>
 {
-    [Key] public string Id { get; set; } = null!;
     string IHasId<string>.Id => Id;
+    [Key] public string Id { get; set; } = null!; // See ComposeId(...)
+    [ConcurrencyCheck] public long Version { get; set; }
+
     public string ChatId { get; set; } = null!;
     public string UserId { get; set; } = null!;
-    [ConcurrencyCheck] public long Version { get; set; }
 
     public string Language { get; set; } = "";
     public string AvatarId { get; set; } = "";

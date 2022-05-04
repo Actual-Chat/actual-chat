@@ -1,7 +1,3 @@
 <div class="flex-y overflow-y-auto w-80 border-l-2 p-3">
-    <ChatAuthors ChatId="@ChatId"/>
+    <ChatAuthorList />
 </div>
-
-@code {
-    [Parameter, EditorRequired] public string ChatId { get; set; } = "";
-}

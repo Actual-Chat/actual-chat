@@ -12,6 +12,15 @@ public interface IInviteCodes
     [CommandHandler]
     Task<InviteCodeUseResult> UseInviteCode(UseInviteCodeCommand command, CancellationToken cancellationToken);
 
-    public record GenerateCommand(Session Session, string ChatId) : ISessionCommand<InviteCode>;
-    public record UseInviteCodeCommand(Session Session, string InviteCode) : ISessionCommand<InviteCodeUseResult>;
+    [DataContract]
+    public record GenerateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+        ) : ISessionCommand<InviteCode>;
+
+    [DataContract]
+    public record UseInviteCodeCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string InviteCode
+        ) : ISessionCommand<InviteCodeUseResult>;
 }

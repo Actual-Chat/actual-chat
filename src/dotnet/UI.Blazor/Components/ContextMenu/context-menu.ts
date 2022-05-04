@@ -1,115 +1,116 @@
 export class ContextMenu {
-
-    private blazorRef: DotNet.DotNetObject;
-    private mainDiv: HTMLDivElement;
-    private menu: HTMLDivElement;
-    private btn: HTMLButtonElement;
-    private topLimit: number = 70;
-    private bottomLimit: number;
+    private _blazorRef: DotNet.DotNetObject;
+    private _ref: HTMLDivElement;
+    private _menu: HTMLDivElement;
+    private _button: HTMLButtonElement;
+    private _showObserver: MutationObserver;
+    private _hideObserver: MutationObserver;
 
     public static create(mainDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ContextMenu {
         return new ContextMenu(mainDiv, blazorRef);
     }
 
-    constructor(mainDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
-        this.blazorRef = blazorRef;
-        this.mainDiv = mainDiv;
-        this.btn = this.mainDiv.querySelector('.context-button');
+    constructor(ref: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this._blazorRef = blazorRef;
+        this._ref = ref;
+        this._button = this._ref.querySelector('.context-menu-button');
 
-        window.addEventListener('mouseup', this.mouseListener);
-        document.addEventListener('keydown', this.escapeListener);
+        window.addEventListener('mouseup', this.onMouseUp);
+        document.addEventListener('keydown', this.onKeyDown);
 
-        let showObserver = new MutationObserver(mutations => {
-            for(let mutation of mutations) {
-                for(let node of mutation.addedNodes) {
+        this._showObserver = new MutationObserver(mutations => {
+            for (let mutation of mutations) {
+                for (let node of mutation.addedNodes) {
                     if (node.nodeName.toLowerCase() == 'div') {
                         let elem = node as HTMLDivElement;
-                        if (elem.classList.contains('context-menu')) {
-                            this.menu = elem;
-                            this.alignMenuVertically(this.menu);
-                            this.menuOpenedStyle(true);
+                        if (elem.classList.contains('context-menu-menu')) {
+                            this._menu = elem;
+                            this.updatePosition(this._menu);
+                            this.updateStyle(true);
                         }
                     }
                 }
             }
         });
 
-        let hideObserver = new MutationObserver(mutations => {
-            for(let mutation of mutations) {
-                for(let node of mutation.removedNodes) {
+        this._hideObserver = new MutationObserver(mutations => {
+            for (let mutation of mutations) {
+                for (let node of mutation.removedNodes) {
                     if (node.nodeName.toLowerCase() == 'div') {
                         let elem = node as HTMLDivElement;
-                        if (elem.classList.contains('context-menu')) {
-                            this.menu = null;
-                            this.menuOpenedStyle(false);
+                        if (elem.classList.contains('context-menu-menu')) {
+                            this._menu = null;
+                            this.updateStyle(false);
                         }
                     }
                 }
             }
         });
-        showObserver.observe(this.mainDiv, {childList: true, subtree: true});
-        hideObserver.observe(this.mainDiv, {childList: true, subtree: true});
+
+        this._showObserver.observe(this._ref, {childList: true, subtree: true});
+        this._hideObserver.observe(this._ref, {childList: true, subtree: true});
     }
 
-    private menuOpenedStyle(opened: boolean) {
-        const btn = this.btn;
-        const menu = this.menu;
-        if (opened) {
-            const menuSize = menu.getBoundingClientRect();
-            const btnSize = btn.getBoundingClientRect();
-            const sameBottom = menuSize.bottom == btnSize.bottom;
-            const sameTop = menuSize.top == btnSize.top;
-            btn.classList.remove('rounded-l-lg');
-            btn.classList.remove('border-l');
-            if (sameTop)
-                menu.classList.remove('rounded-tr-md');
-            if (sameBottom)
-                menu.classList.remove('rounded-br-md');
-        }
-        else {
-            btn.classList.add('rounded-l-lg');
-            btn.classList.add('border-l');
-        }
-    }
-
-    private alignMenuVertically(menu: HTMLDivElement) {
-        this.bottomLimit = document.documentElement.clientHeight - 110
-        let size = menu.getBoundingClientRect();
-        let bottom = size.bottom;
-        if (bottom > this.bottomLimit) {
-            let tr = bottom - this.bottomLimit;
-            menu.style.transform=`translate(0,-${tr}px)`;
-        }
-    }
-
-    private mouseListener = ((event: MouseEvent & { target: Element; }) => {
-        const { menu, btn, mainDiv } = this;
-        if (btn.contains(event.target))
-            return;
-        if (!mainDiv.contains(event.target) && menu != null) {
-            void this.hideContent();
-        }
-    });
-
-    private escapeListener = ((event: KeyboardEvent & { target: Element; }) => {
-        if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
-            const content = this.menu;
-            if (content != null) {
-                void this.hideContent();
-            }
-        }
-    });
-
-    private async hideContent(): Promise<void> {
-        await this.blazorRef.invokeMethodAsync('HideContent');
-    }
 
     public dispose() {
-        window.removeEventListener('mouseup', this.mouseListener);
-        document.removeEventListener('keydown', this.escapeListener);
-        this.blazorRef = null;
-        this.menu = null;
-        this.mainDiv = null;
-        this.btn = null;
+        window.removeEventListener('mouseup', this.onMouseUp);
+        document.removeEventListener('keydown', this.onKeyDown);
+        this._showObserver.disconnect();
+        this._hideObserver.disconnect();
+
+        this._blazorRef = null;
+        this._ref = null;
+        this._menu = null;
+        this._button = null;
+    }
+
+    private updatePosition(menu: HTMLDivElement) {
+        let maxBottom = document.documentElement.clientHeight - 110
+        let size = this._menu.getBoundingClientRect();
+        let bottom = size.bottom;
+        if (bottom > maxBottom) {
+            let offset = bottom - maxBottom;
+            this._menu.style.transform=`translate(0,-${offset}px)`;
+        }
+    }
+
+    private updateStyle(isOpen: boolean) {
+        if (isOpen) {
+            const menuSize = this._menu.getBoundingClientRect();
+            const buttonSize = this._button.getBoundingClientRect();
+            const sameBottom = menuSize.bottom == buttonSize.bottom;
+            const sameTop = menuSize.top == buttonSize.top;
+            this._button.classList.remove('rounded-l-lg');
+            this._button.classList.remove('border-l');
+            if (sameTop)
+                this._menu.classList.remove('rounded-tr-md');
+            if (sameBottom)
+                this._menu.classList.remove('rounded-br-md');
+        }
+        else {
+            this._button.classList.add('rounded-l-lg');
+            this._button.classList.add('border-l');
+        }
+    }
+
+    private onMouseUp = ((event: MouseEvent & { target: Element; }) => {
+        if (this._button.contains(event.target))
+            return;
+        if (!this._ref.contains(event.target) && this._menu != null) {
+            void this.toggle(false);
+        }
+    });
+
+    private onKeyDown = ((event: KeyboardEvent & { target: Element; }) => {
+        if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
+            const content = this._menu;
+            if (content != null) {
+                void this.toggle(false);
+            }
+        }
+    });
+
+    private async toggle(mustOpen?: boolean): Promise<void> {
+        await this._blazorRef.invokeMethodAsync('Toggle', mustOpen);
     }
 }

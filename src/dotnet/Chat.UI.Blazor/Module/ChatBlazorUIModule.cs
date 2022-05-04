@@ -34,11 +34,12 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<ChatActivity>();
         fusion.AddComputeService<ChatRecordingActivity>(ServiceLifetime.Transient);
 
-        services.RegisterNavItems<ChatLinks>();
-        services.RegisterNavItems<ContactLinks>();
+        services.RegisterNavbarWidget<ChatLinks>();
+        services.RegisterNavbarWidget<ContactLinks>();
 
         services.AddStateRestoreHandler<ChatPageStatePersister>();
         services.AddScoped<ContentUrlMapper>();
         services.AddScoped<ChatUI>();
+        services.AddScoped<UnreadMessages>();
     }
 }

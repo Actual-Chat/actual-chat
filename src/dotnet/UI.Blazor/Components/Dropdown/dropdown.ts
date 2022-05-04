@@ -1,52 +1,50 @@
 ﻿export class Dropdown {
-
-    private blazorRef: DotNet.DotNetObject;
-    private dropdown: HTMLDivElement;
-    private contentDiv: HTMLDivElement;
-    private controlBtn: HTMLButtonElement;
+    private _blazorRef: DotNet.DotNetObject;
+    private _ref: HTMLDivElement;
+    private _menu: HTMLDivElement;
+    private _button: HTMLButtonElement;
 
     public static create(dropdown: HTMLDivElement, blazorRef: DotNet.DotNetObject): Dropdown {
         return new Dropdown(dropdown, blazorRef);
     }
 
-    constructor(dropdown: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
-        this.blazorRef = blazorRef;
-        this.dropdown = dropdown;
-        this.contentDiv = this.dropdown.querySelector('.dropdown-content');
-        this.controlBtn = this.dropdown.querySelector('.control-button');
+    constructor(ref: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        this._blazorRef = blazorRef;
+        this._ref = ref;
+        this._menu = this._ref.querySelector('.dropdown-menu');
+        this._button = this._ref.querySelector('.dropdown-menu');
 
-        window.addEventListener('mouseup', this.mouseListener);
-        document.addEventListener('keydown', this.escapeListener);
+        window.addEventListener('mouseup', this.onMouseUp);
+        document.addEventListener('keydown', this.onKeyDown);
     }
 
-    private mouseListener = ((event: MouseEvent & { target: Element; }) => {
-        const { contentDiv, controlBtn, dropdown } = this;
-        if (controlBtn.contains(event.target))
+    public dispose() {
+        window.removeEventListener('mouseup', this.onMouseUp);
+        document.removeEventListener('keydown', this.onKeyDown);
+        this._blazorRef = null;
+        this._menu = null;
+        this._ref = null;
+        this._button = null;
+    }
+
+    private onMouseUp = ((event: MouseEvent & { target: Element; }) => {
+        if (this._button.contains(event.target))
             return;
-        if (!dropdown.contains(event.target) && contentDiv.classList.contains('dropdown-content-opened')) {
-            void this.hideContent();
+        if (!this._ref.contains(event.target) && this._menu.classList.contains('dropdown-menu-opened')) {
+            void this.toggle(false);
         }
     });
 
-    private escapeListener = ((event: KeyboardEvent & { target: Element; }) => {
+    private onKeyDown = ((event: KeyboardEvent & { target: Element; }) => {
         if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
-            const content = this.contentDiv;
-            if (content.classList.contains('dropdown-content-opened')) {
-                void this.hideContent();
+            const content = this._menu;
+            if (content.classList.contains('dropdown-menu-opened')) {
+                void this.toggle(false);
             }
         }
     });
 
-    public dispose() {
-        window.removeEventListener('mouseup', this.mouseListener);
-        document.removeEventListener('keydown', this.escapeListener);
-        this.blazorRef = null;
-        this.contentDiv = null;
-        this.dropdown = null;
-        this.controlBtn = null;
-    }
-
-    private async hideContent(): Promise<void> {
-        await this.blazorRef.invokeMethodAsync('HideContent');
+    private async toggle(mustOpen?: boolean): Promise<void> {
+        await this._blazorRef.invokeMethodAsync('Toggle', mustOpen);
     }
 }

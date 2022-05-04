@@ -2,13 +2,13 @@
 @using ActualChat.Notification
 @using ActualChat.Users.UI.Blazor.Services
 @inherits ComputedStateComponent<ChatSettingsToggle.Model>
-
 @{
-    var isRightPanelDisplayed = State.Value.IsRightPanelDisplayed;
+    var isRightPanelShown = State.Value.IsRightPanelShown;
 }
+
 <ButtonSquare OnClick="OnClick"
-              Class="@(isRightPanelDisplayed ? "on" : "off")"
-              Title="@(isRightPanelDisplayed ? "Hide settings" : "Show settings")">
+              Class="@(isRightPanelShown ? "on" : "off")"
+              Title="@(isRightPanelShown ? "Hide settings" : "Show settings")">
     <i class="fa fa-cogs fa-sidebar-flip fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
 </ButtonSquare>
 
@@ -16,20 +16,20 @@
     [Inject] private UserSettings UserSettings { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new () };
+        => new() { InitialValue = Model.None };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isRightPanelDisplayed = await UserSettings.ShowRightPanelState.Use(cancellationToken);
+        var isRightPanelShown = await UserSettings.IsRightPanelShown.Use(cancellationToken);
         return new() {
-            IsRightPanelDisplayed = isRightPanelDisplayed,
+            IsRightPanelShown = isRightPanelShown,
         };
     }
 
-    private void OnClick() {
-        UserSettings.ShowRightPanelState.Value = !State.Value.IsRightPanelDisplayed;
-    }
+    private void OnClick()
+        => UserSettings.IsRightPanelShown.Value = !State.Value.IsRightPanelShown;
 
     public class Model {
-        public bool IsRightPanelDisplayed { get; init; }
+        public static Model None { get; } = new();
+        public bool IsRightPanelShown { get; init; }
     }
 }

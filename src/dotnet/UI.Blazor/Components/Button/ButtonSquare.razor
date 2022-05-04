@@ -2,8 +2,8 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <button @onclick="OnClick" class="btn btn-square @Class" title="@Title" disabled="@Disabled"
-        name="@Name" type="@GetButtonType" id="@Id">
-    <div class="button-square-child">
+        name="@Name" type="@GetButtonType()" id="@Id">
+    <div class="btn-content">
         @ChildContent
     </div>
 </button>

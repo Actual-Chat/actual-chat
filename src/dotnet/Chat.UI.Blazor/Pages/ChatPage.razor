@@ -27,21 +27,29 @@
         </CascadingValue>
     </RenderIntoSlot>
 
+    <RenderIntoSlot Name="SubHeader" @key="@(chat.Id + "-sub-header")">
+        <CascadingValue Value="chat">
+            <UnreadMessagesHeader OnClick="@OnUnreadMessagesHeaderClick"/>
+        </CascadingValue>
+    </RenderIntoSlot>
+
     <RenderIntoSlot Name="MainFooter" @key="@(chat.Id + "-footer")">
         <CascadingValue Value="chat">
             <ChatFooter/>
         </CascadingValue>
     </RenderIntoSlot>
 
-    if (State.Value.IsRightPanelDisplayed) {
+    if (State.Value.IsRightPanelVisible) {
         <RenderIntoSlot Name="MainRightPanel" @key="@(chat.Id + "-right-panel")">
-            <ChatRightPanel ChatId="@chat.Id" />
+            <CascadingValue Value="chat">
+                <ChatRightPanel/>
+            </CascadingValue>
         </RenderIntoSlot>
     }
 
     <NoComponent @key="chat.Id">
         <CascadingValue Value="chat">
-            <ChatView/>
+            <ChatView @ref="_chatView" />
             <HistoricalPlaybackPanel/>
         </CascadingValue>
     </NoComponent>
@@ -52,6 +60,7 @@
 @code {
     private Model? _lastRenderedModel;
     private IComputed? _activeChatIdComputed;
+    private ChatView _chatView = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
@@ -81,14 +90,14 @@
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        var isRightPanelDisplayed = await UserSettings.ShowRightPanelState.Use(cancellationToken);
+        var isRightPanelDisplayed = await UserSettings.IsRightPanelShown.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
         var isTheSameChat = renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version;
         return new () {
             Chat = isTheSameChat ? renderedChat : chat,
-            IsRightPanelDisplayed = isRightPanelDisplayed,
+            IsRightPanelVisible = isRightPanelDisplayed,
         };
     }
 
@@ -109,10 +118,14 @@
         });
     }
 
+    private void OnUnreadMessagesHeaderClick() {
+        _ = _chatView.NavigateToLastUnreadTopic();
+    }
+
     public record Model {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
-        public bool IsRightPanelDisplayed { get; init; }
+        public bool IsRightPanelVisible { get; init; }
         public Chat? Chat { get; init; }
     }
 }

@@ -1,21 +1,24 @@
 @inherits ComputedStateComponent<ChatLinks.Model>
-
 @{
-    var model = State.LatestNonErrorValue;
-    var chats = model.Chats;
+    var m = State.LatestNonErrorValue;
+    var chats = m.Chats;
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
+    <Icons>
+        @if (m.CanCreateChat) {
+            <ButtonSquare Title="Create new chat" OnClick="OnCreateNewChatClick">
+                <i class="fa fa-plus fa-fw pt-0.5" aria-hidden="true"></i>
+            </ButtonSquare>
+        }
+    </Icons>
     <ChildContent>
-        @foreach(var chat in chats) {
-            var isActive = model.ActiveChatId == chat.Id;
-            <NavbarLink Title="@chat.Title" Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
-                <PostFragment>
-                    <div class="menu-chat-pin-toggle justify-self-end flex-1 flex justify-end">
-                        <ChatPinToggle ChatId="@chat.Id" />
-                    </div>
-                </PostFragment>
-            </NavbarLink>
+        @foreach (var chat in chats) {
+            var isActive = m.ActiveChatId == chat.Id;
+            <NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
+                <ChildContent>@chat.Title</ChildContent>
+                <Ending><ChatPinToggle ChatId="@chat.Id"/></Ending>
+            </NavbarItem>
         }
     </ChildContent>
 </NavbarGroup>
@@ -23,7 +26,9 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
+    [Inject] private IModalService ModalService { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -41,16 +46,22 @@
                 chatsToShow.Add(defaultChat);
             }
         }
+        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
 
         return new () {
             Chats = chatsToShow.ToArray(),
+            CanCreateChat = user.IsAuthenticated,
             ActiveChatId = await ChatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
         };
     }
 
+    private void OnCreateNewChatClick()
+        => ModalService.Show<NewChatModal>("Create Chat", CustomModalOptions.Dialog);
+
     public class Model
     {
         public Chat[] Chats { get; set; } = Array.Empty<Chat>();
+        public bool CanCreateChat { get; set; }
         public Symbol ActiveChatId { get; set; } = Constants.Chat.DefaultChatId;
     }
 }

@@ -14,7 +14,7 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
     public override async Task<DbUser> Create(
         UsersDbContext dbContext,
         User user,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
         var dbUserAuthor = new DbUserAuthor();

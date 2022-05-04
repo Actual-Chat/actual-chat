@@ -2,7 +2,7 @@ using ActualChat.Notification.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace ActualChat.Notification.Migrations;
+namespace ActualChat.Notification;
 
 public class NotificationDbContextContextFactory : IDesignTimeDbContextFactory<NotificationDbContext>
 {

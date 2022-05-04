@@ -9,6 +9,12 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     private readonly CancellationTokenSource _disposeToken = new ();
     private readonly TaskSource<Unit> _initializeTaskSource = TaskSource.New<Unit>(true);
 
+    private Symbol _currentAuthorId;
+    private long _lastNavigateToEntryId;
+    private long _lastReadEntryId;
+    private long _initialLastReadEntryId;
+    private HashSet<long> _fullyVisibleEntryIds = new ();
+
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IStateFactory StateFactory { get; init; } = null!;
@@ -16,19 +22,19 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IChatReadPositions ChatReadPositions { get; init; } = null!;
+    [Inject] private IMarkupParser MarkupParser { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private ChatPageState ChatPageState { get; init; } = null!;
+
+    private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
+    private IMutableState<long> NavigateToEntryId { get; set; } = null!;
+    private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
 
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
-
-    private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
-
-    private IMutableState<int> UnreadEntryCountState { get; set; } = null!;
-    private IMutableState<long> LastReadEntryIdState { get; set; } = null!;
-    private IMutableState<List<string>> VisibleKeysState { get; set; } = null!;
 
     public ValueTask DisposeAsync()
     {
@@ -36,22 +42,44 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
+    public async Task NavigateToLastUnreadTopic()
+    {
+        long navigateToEntryId;
+        var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
+            .ConfigureAwait(true);
+        if (readPosition.HasValue)
+            navigateToEntryId = readPosition.Value;
+        else {
+            var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token)
+                .ConfigureAwait(true);
+            navigateToEntryId = chatIdRange.ToInclusive().End;
+        }
+        // reset to ensure navigation will happen
+        _lastNavigateToEntryId = 0;
+        _lastReadEntryId = navigateToEntryId;
+        _initialLastReadEntryId = navigateToEntryId;
+        NavigateToEntryId.Value = navigateToEntryId;
+        NavigateToEntryId.Invalidate();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (VisibleKeysState == null)
+        if (VisibleKeys == null)
             try {
-                UnreadEntryCountState = StateFactory.NewMutable(0);
-                VisibleKeysState = StateFactory.NewMutable(new List<string>());
+                NavigateToEntryId = StateFactory.NewMutable(0L);
+                VisibleKeys = StateFactory.NewMutable(new List<string>());
                 _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
-                _ = BackgroundTask.Run(() => MonitorNewEntries(_disposeToken.Token), _disposeToken.Token);
+
+                var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, _disposeToken.Token)
+                    .ConfigureAwait(true);
+                _currentAuthorId = currentAuthor?.Id ?? Symbol.Empty;
 
                 var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)
                     .ConfigureAwait(true);
-                LastReadEntryIdState = StateFactory.NewMutable(readPosition ?? 0L);
                 if (readPosition.HasValue) {
-                    var idRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryType.Text, _disposeToken.Token).ConfigureAwait(true);
-                    UnreadEntryCountState.Value = (int)(idRange.End - readPosition.Value);
+                    _lastReadEntryId = readPosition.Value;
+                    _initialLastReadEntryId = readPosition.Value;
                 }
             }
             finally {
@@ -67,47 +95,40 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var clock = Clocks.CoarseCpuClock;
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await VisibleKeysState.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
-                await clock.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(true);
-                var visibleKeys = await VisibleKeysState.Use(cancellationToken).ConfigureAwait(true);
+                await VisibleKeys.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
+                await clock.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(true);
+                var visibleKeys = await VisibleKeys.Use(cancellationToken).ConfigureAwait(true);
                 if (visibleKeys.Count == 0)
                     continue;
 
-                var lastVisibleEntryId = visibleKeys
+                var visibleEntryIds = visibleKeys
                     .Select(key =>
                         long.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId)
                             ? (long?)entryId
                             : null)
                     .Where(entryId => entryId.HasValue)
                     .Select(entryId => entryId!.Value)
-                    .Max();
-                if (LastReadEntryIdState.Value >= lastVisibleEntryId)
+                    .ToHashSet();
+
+                var maxVisibleEntryId = visibleEntryIds.Max();
+                var minVisibleEntryId = visibleEntryIds.Min();
+                visibleEntryIds.Remove(maxVisibleEntryId);
+                visibleEntryIds.Remove(minVisibleEntryId);
+                await InvokeAsync(() => { _fullyVisibleEntryIds = visibleEntryIds; }).ConfigureAwait(false);
+
+                if (_lastReadEntryId >= maxVisibleEntryId)
                     continue;
 
-                LastReadEntryIdState.Value = lastVisibleEntryId;
-                var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, lastVisibleEntryId);
+                _lastReadEntryId = maxVisibleEntryId;
+
+                var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, maxVisibleEntryId);
                 await Cmd.Run(command, cancellationToken).ConfigureAwait(true);
             }
-            catch (Exception ex) {
-                Log.LogWarning(ex,
+            catch (Exception e) when(e is not OperationCanceledException) {
+                Log.LogWarning(e,
                     "Error monitoring visible key changes, LastVisibleEntryId = {LastVisibleEntryId}",
-                    LastReadEntryIdState.Value);
+                    _lastReadEntryId);
             }
-    }
-
-    private async Task MonitorNewEntries(CancellationToken cancellationToken)
-    {
-        var chatId = Chat.Id.Value;
-        var chatReader = new ChatEntryReader(Chats, Session, chatId, ChatEntryType.Text);
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
-            .ConfigureAwait(true);
-        var newEntries = chatReader.ReadAllWaitingForNew(chatIdRange.End, cancellationToken);
-        var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, cancellationToken).ConfigureAwait(true);
-        await foreach (var entry in newEntries.ConfigureAwait(true))
-            if (entry.AuthorId == currentAuthor?.Id)
-                LastReadEntryIdState.Value = entry.Id;
-            else
-                LastReadEntryIdState.Value++;
     }
 
     private async Task<VirtualListData<ChatMessageModel>> GetMessages(
@@ -118,29 +139,59 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             await _initializeTaskSource.Task.ConfigureAwait(true);
 
         var chat = Chat;
-        var chatId = chat.Id;
-        var chatIdRange = await Chats.GetIdRange(Session, chatId.Value, ChatEntryType.Text, cancellationToken)
+        var chatId = chat.Id.Value;
+        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryType.Text, cancellationToken)
             .ConfigureAwait(true);
-        // do not add as dependency
-        var lastReadEntryId = LastReadEntryIdState.Value;
-        var mustScrollToLastReadPosition = query.IsNone && lastReadEntryId != 0;
-        var queryRange = mustScrollToLastReadPosition
-            ? IdTileStack.Layers[0].GetTile(lastReadEntryId).Range.Expand(IdTileStack.Layers[1].TileSize)
+        var entryId = _lastReadEntryId;
+        var mustScrollToEntry = query.IsNone && entryId != 0;
+
+        var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
+        var lastTile = await Chats.GetTile(Session,
+            chatId,
+            ChatEntryType.Text,
+            lastIdTile.Range,
+            cancellationToken).ConfigureAwait(true);
+        foreach (var entry in lastTile.Entries) {
+            if (entry.AuthorId != _currentAuthorId || entry.Id <= _lastReadEntryId)
+                continue;
+
+            _lastReadEntryId = entry.Id;
+            _initialLastReadEntryId = entry.Id;
+            entryId = entry.Id;
+            mustScrollToEntry = true;
+            var command = new IChatReadPositions.UpdateReadPositionCommand(Session, Chat.Id, entryId);
+            await Cmd.Run(command, cancellationToken).ConfigureAwait(true);
+        }
+
+        var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken).ConfigureAwait(true);
+        if (!mustScrollToEntry) {
+            if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
+                _lastNavigateToEntryId = navigateToEntryId;
+                entryId = navigateToEntryId;
+                mustScrollToEntry = true;
+            }
+            else if (query.ScrollToKey != null) {
+                entryId = long.Parse(query.ScrollToKey, NumberStyles.Number, CultureInfo.InvariantCulture);
+                mustScrollToEntry = true;
+            }
+        }
+        var queryRange = mustScrollToEntry
+            ? IdTileStack.Layers[1].GetTile(entryId).Range.Expand(IdTileStack.Layers[1].TileSize)
             : query.IsNone
                 ? new Range<long>(
-                    chatIdRange.End - (2 * IdTileStack.Layers[1].TileSize),
-                    chatIdRange.End - 1)
-                : query.InclusiveRange.AsLongRange()
+                    chatIdRange.End - (3 * IdTileStack.Layers[1].TileSize),
+                    chatIdRange.End)
+                : query.InclusiveRange
+                    .AsLongRange()
+                    .ToExclusive()
                     .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
 
-        var startId = Math.Clamp(queryRange.Start, chatIdRange.Start, chatIdRange.End);
-        var endId = Math.Clamp(queryRange.End, chatIdRange.Start, chatIdRange.End);
-
-        var idTiles = IdTileStack.GetOptimalCoveringTiles((startId, endId + 1));
+        var adjustedRange = queryRange.Clamp(chatIdRange);
+        var idTiles = IdTileStack.GetOptimalCoveringTiles(adjustedRange);
         var chatTiles = await Task
             .WhenAll(idTiles.Select(
                 idTile => Chats.GetTile(Session,
-                    chatId.Value,
+                    chatId,
                     ChatEntryType.Text,
                     idTile.Range,
                     cancellationToken)))
@@ -150,24 +201,6 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Type == ChatEntryType.Text)
             .ToList();
-
-        // AY: Uncomment if you see any issues w/ duplicate entries
-        /*
-        var duplicateEntries = (
-            from e in chatEntries
-            let count = chatEntries.Count(e1 => e1.Id == e.Id)
-            where count > 1
-            select e
-            ).ToList();
-        if (duplicateEntries.Count > 0) {
-            Log.LogCritical("Duplicate entries in Chat #{ChatId}:", chatId);
-            foreach (var e in duplicateEntries)
-                Log.LogCritical(
-                    "- Entry w/ Id = {Id}, Version = {Version}, Type = {Type}, '{Content}'",
-                    e.Id, e.Version, e.Type, e.Content);
-            chatEntries = chatEntries.DistinctBy(e => e.Id).ToList();
-        }
-        */
 
         var attachmentEntryIds = chatEntries
             .Where(c => c.HasAttachments)
@@ -182,15 +215,21 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             .Where(c => c.Length > 0)
             .ToDictionary(c => c[0].EntryId, c => c);
 
-        var chatMessages = ChatMessageModel.FromEntries(chatEntries, attachments, lastReadEntryId);
-        var scrollToKey = mustScrollToLastReadPosition
-            ? (Symbol)lastReadEntryId.ToString(CultureInfo.InvariantCulture)
-            : Symbol.Empty;
+        var chatMessages = ChatMessageModel.FromEntries(
+            chatEntries,
+			attachments,
+			_initialLastReadEntryId,
+            MarkupParser);
+        var scrollToKey = mustScrollToEntry
+            ? entryId.ToString(CultureInfo.InvariantCulture)
+            : null;
         var result = VirtualListData.New(
-            query,
+			StringComparer.Ordinal.Equals(query.ScrollToKey, scrollToKey)
+                ? query
+                : new VirtualListDataQuery(adjustedRange.AsStringRange()) { ScrollToKey = scrollToKey },
             chatMessages,
-            startId <= chatIdRange.Start,
-            endId + 1 >= chatIdRange.End,
+            adjustedRange.Start <= chatIdRange.Start,
+            adjustedRange.End + 1 >= chatIdRange.End,
             scrollToKey);
 
         return result;

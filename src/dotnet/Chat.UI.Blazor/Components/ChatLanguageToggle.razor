@@ -1,32 +1,34 @@
 @inherits ComputedStateComponent<ChatUserSettings?>
-@inject Session _session
-@inject IChatUserSettings _chatUserSettings
-@inject UICommandRunner _cmd
-
 @{
     var language = State.LatestNonErrorValue.LanguageOrDefault();
 }
-<ButtonSquare Class="chat-language-toggle z-10 w-12"
-        OnClick="OnClick">
-    <span class="w-10 h-10 m-2">
+
+<ButtonSquare
+    Class="chat-language-toggle z-10 w-12 !rounded-xl"
+    OnClick="OnClick">
+    <span class="w-10 m-2">
         @language.Shortcut
     </span>
 </ButtonSquare>
 
 @code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
-        => await _chatUserSettings.Get(_session, Chat.Id, cancellationToken);
+        => await ChatUserSettings.Get(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
 
     private async Task OnClick()
     {
         var settings = State.Value ?? new() { Language = LanguageId.Default };
         settings = settings with { Language = settings.LanguageOrDefault().Next() };
-        var command = new IChatUserSettings.SetCommand(_session, Chat.Id, settings);
-        await _cmd.Run(command).ConfigureAwait(true);
+        var command = new IChatUserSettings.SetCommand(Session, Chat.Id, settings);
+        await Cmd.Run(command).ConfigureAwait(false);
     }
 }

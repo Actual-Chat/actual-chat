@@ -8,3 +8,19 @@
 .chat-header-button:hover button {
     @apply bg-primary z-10;
 }
+
+.author-card-modal .btn-group-parent {
+    @apply mt-2 mb-0;
+}
+
+/* DeleteMessageModal */
+
+.delete-message-modal .modal-body {
+    @apply bg-secondary rounded-md border border-primary py-1 drop-shadow-lg;
+}
+
+.delete-message-modal .message-content {
+    word-break: break-word !important;
+    overflow-y: auto !important;
+    @apply max-h-48;
+}

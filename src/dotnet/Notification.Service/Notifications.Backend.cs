@@ -90,7 +90,7 @@ public partial class Notifications
             },
         };
         var deviceIdGroups = userIds
-            .Where(uid => !string.Equals(uid, userId, StringComparison.Ordinal))
+            .Where(uid => !StringComparer.Ordinal.Equals(uid, userId))
             .ToAsyncEnumerable()
             .SelectMany(uid => GetDevicesInternal(uid, cancellationToken))
             .Chunk(200, cancellationToken);

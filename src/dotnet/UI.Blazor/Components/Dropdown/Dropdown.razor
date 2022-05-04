@@ -1,62 +1,48 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @using System.Net.NetworkInformation
 @using ActualChat.UI.Blazor.Module
-@inject IJSRuntime _js
 @implements IDropdownBackend
 @implements IAsyncDisposable
-
 @{
-    var cls = "control-button " + ButtonClass;
+    var buttonClass = "btn-dropdown " + ButtonClass;
 }
-
-<div class="dropdown @Class" @ref="DropdownRef">
-    <CascadingValue Value="@this" IsFixed="true">
-        <Button Class="@cls" OnClick="_ => _isOpened = !_isOpened">
-            @ButtonTemplate
-        </Button>
-        <div class="dropdown-content absolute z-50 @ContentPositionCss @(_isOpened ? "dropdown-content-opened" : "")" name="@Name">
-            <div class="dropdown-content-body relative @(_isOpened ? "" : "hidden")">
-                @ContentTemplate
+<CascadingValue Value="@this" IsFixed="true">
+    <div @ref="Ref" class="dropdown @Class">
+            <Button Class="@buttonClass" OnClick="_ => _isOpen = !_isOpen">
+                @ButtonTemplate
+            </Button>
+            <div class="dropdown-menu absolute z-50 @MenuClass @(_isOpen ? "dropdown-menu-opened" : "")">
+                <div class="dropdown-menu relative @(_isOpen ? "" : "hidden")">
+                    @MenuTemplate
+                </div>
             </div>
-        </div>
-    </CascadingValue>
-</div>
+    </div>
+</CascadingValue>
 
 @code {
-    private bool _isOpened;
-
-    [Parameter]
-    public string Class { get; set; } = "";
-    [Parameter]
-    public string Name { get; set; } = "";
-    [Parameter]
-    public RenderFragment ContentTemplate { get; set; } = default!;
-    [Parameter]
-    public RenderFragment ButtonTemplate { get; set; } = default!;
-    [Parameter]
-    public string ButtonClass { get; set; } = "";
-    [Parameter]
-    public string ContentPositionCss { get; set; } = "";
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private DotNetObjectReference<IDropdownBackend>? BlazorRef { get; set; } = null!;
-    private ElementReference DropdownRef { get; set; }
     private IJSObjectReference? JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private bool _isOpen;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create<IDropdownBackend>(this);
-            JSRef = await _js.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.Dropdown.create",
-                DropdownRef, BlazorRef
-                ).ConfigureAwait(true);
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonClass { get; set; } = "";
+    [Parameter] public string MenuClass { get; set; } = "";
+    [Parameter] public RenderFragment ButtonTemplate { get; set; } = default!;
+    [Parameter] public RenderFragment MenuTemplate { get; set; } = default!;
+    [Parameter] public EventCallback<bool> OpenStateChanged { get; set; }
+
+    public bool IsOpen {
+        get => _isOpen;
+        set {
+            if (_isOpen == value)
+                return;
+            _isOpen = value;
+            OpenStateChanged.InvokeAsync(value);
+            StateHasChanged();
         }
-    }
-
-    [JSInvokable]
-    public Task HideContent() {
-        _isOpened = false;
-        StateHasChanged();
-        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
@@ -73,5 +59,21 @@
             BlazorRef.Dispose();
             BlazorRef = null;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IDropdownBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.Dropdown.create",
+                Ref, BlazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+
+    [JSInvokable]
+    public Task Toggle(bool? mustOpen = null) {
+        IsOpen = mustOpen ?? !IsOpen;
+        return Task.CompletedTask;
     }
 }

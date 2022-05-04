@@ -1,5 +1,4 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var attachment = Attachment;
     var url = ContentUrlMapper.ContentUrl(Attachment.ContentId);
@@ -16,6 +15,7 @@
         imgStyle = $"width: {width}px; height: {height}px";
     }
 }
+
 <div class="message-attachment-image mt-1">
     <a class="cursor-pointer" href="@url"
        role="button" @onclick="_ => ImagePreviewUI.Show(url)" @onclick:preventDefault="true">
@@ -24,9 +24,9 @@
 </div>
 
 @code {
-    [Inject] private ImagePreviewUI ImagePreviewUI { get; set; } = null!;
-    [Inject] private NavigationManager Nav { get; set; } = null!;
-    [Inject] private ContentUrlMapper ContentUrlMapper { get; set; } = null!;
+    [Inject] private ImagePreviewUI ImagePreviewUI { get; init; } = null!;
+    [Inject] private ContentUrlMapper ContentUrlMapper { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter, EditorRequired]
     public TextEntryAttachment Attachment { get; set; } = null!;

@@ -5,7 +5,7 @@ public enum MentionKind { Unknown, UserId, AuthorId }
 public sealed record Mention(
     string Target,
     MentionKind Kind = MentionKind.Unknown
-    ) : TextMarkup
+    ) : Markup
 {
     public Mention() : this("") { }
 

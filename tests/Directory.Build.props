@@ -82,7 +82,6 @@
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and $(MSBuildProjectFile.Contains('UI.Blazor'))">
     <!-- Global usings for UI.Blazor projects -->
     <Using Include="ActualChat.UI.Blazor" />
-    <Using Include="ActualChat.UI.Blazor.Controls" />
     <Using Include="ActualChat.UI.Blazor.Components" />
     <Using Include="ActualChat.UI.Blazor.Layouts" />
     <Using Include="Microsoft.AspNetCore.Components" />

@@ -1,3 +1,5 @@
+using ActualChat.Users;
+
 namespace ActualChat.Chat;
 
 public interface IChats
@@ -55,6 +57,8 @@ public interface IChats
     [ComputeMethod(KeepAliveTime = 1)]
     Task<string?> GetUserPeerChatId(Session session, string chatAuthorId, CancellationToken cancellationToken);
 
+    Task<MentionCandidate[]> GetMentionCandidates(Session session, string chatId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
@@ -68,16 +72,42 @@ public interface IChats
     [CommandHandler]
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
-    public record CreateChatCommand(Session Session, string Title) : ISessionCommand<Chat>
+    [DataContract]
+    public record CreateChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string Title
+        ) : ISessionCommand<Chat>
     {
-        public bool IsPublic { get; init; }
+        [DataMember] public bool IsPublic { get; init; }
     }
 
-    public record UpdateChatCommand(Session Session, Chat Chat) : ISessionCommand<Unit>;
-    public record JoinChatCommand(Session Session, string ChatId) : ISessionCommand<Unit>;
-    public record CreateTextEntryCommand(Session Session, string ChatId, string Text) : ISessionCommand<ChatEntry>
+    [DataContract]
+    public record UpdateChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] Chat Chat
+        ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public record JoinChatCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId
+        ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public record CreateTextEntryCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId,
+        [property: DataMember] string Text
+        ) : ISessionCommand<ChatEntry>
     {
-        public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } = ImmutableArray<TextEntryAttachmentUpload>.Empty;
+        [DataMember] public ImmutableArray<TextEntryAttachmentUpload> Attachments { get; set; } =
+            ImmutableArray<TextEntryAttachmentUpload>.Empty;
     }
-    public record RemoveTextEntryCommand(Session Session, string ChatId, long EntryId) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public record RemoveTextEntryCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId,
+        [property: DataMember] long EntryId
+        ) : ISessionCommand<Unit>;
 }

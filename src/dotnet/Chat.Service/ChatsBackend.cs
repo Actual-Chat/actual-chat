@@ -520,9 +520,9 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
             return ChatPermissions.None;
         string? targetUserId = null;
-        if (string.Equals(userId1, userId, StringComparison.Ordinal))
+        if (StringComparer.Ordinal.Equals(userId1, userId))
             targetUserId = userId2;
-        else if (string.Equals(userId2, userId, StringComparison.Ordinal))
+        else if (StringComparer.Ordinal.Equals(userId2, userId))
             targetUserId = userId1;
         if (string.IsNullOrEmpty(targetUserId))
             return ChatPermissions.None;

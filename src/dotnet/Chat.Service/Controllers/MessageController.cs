@@ -19,7 +19,7 @@ public class MessageController : ControllerBase
     }
 
     [HttpPost]
-    [DisableFormValueModelBindingAttribute]
+    [DisableFormValueModelBinding]
     [Route("api/chats/{chatId}/message")]
     public async Task<IActionResult> PostMessage(string chatId)
     {
@@ -38,7 +38,7 @@ public class MessageController : ControllerBase
         }
 
         var reader = new MultipartReader(mediaTypeHeader.Boundary.Value, request.Body);
-        var section = await reader.ReadNextSectionAsync();
+        var section = await reader.ReadNextSectionAsync().ConfigureAwait(false);
 
         // This sample try to get the first file from request and save it
         // Make changes according to your needs in actual use
@@ -50,14 +50,17 @@ public class MessageController : ControllerBase
             var hasContentDispositionHeader = ContentDispositionHeaderValue.TryParse(section.ContentDisposition,
                 out var contentDisposition);
 
+            // NOTE(AY): Don't change .Equals(.., StringComparison.Ordinal) here -
+            // DispositionType is StringSegment, StringComparer.Ordinal doesn't support it (always returns false)!
             if (hasContentDispositionHeader && contentDisposition!.DispositionType.Equals("form-data", StringComparison.Ordinal)) {
                 var partName = contentDisposition.Name;
+                // NOTE(AY): Same here
                 if (partName.Equals("payload_json", StringComparison.Ordinal)) {
-                    if (!await HandlePayloadJsonPart(post, section))
+                    if (!await HandlePayloadJsonPart(post, section).ConfigureAwait(false))
                         incorrectPart = true;
                 }
                 else if (TryExtractFileId(partName, out var fileId)) {
-                    var file = await HandleFilePart(section, contentDisposition, fileId);
+                    var file = await HandleFilePart(section, contentDisposition, fileId).ConfigureAwait(false);
                     if (file == null)
                         incorrectPart = true;
                     else if (file.Content.Length > Constants.Attachments.FileSizeLimit)
@@ -76,7 +79,7 @@ public class MessageController : ControllerBase
             }
             if (incorrectPart)
                 break;
-            section = await reader.ReadNextSectionAsync();
+            section = await reader.ReadNextSectionAsync().ConfigureAwait(false);
         }
 
         if (incorrectPart)
@@ -103,7 +106,7 @@ public class MessageController : ControllerBase
         }
 
         try {
-            var chatEntry = await _commander.Call(command, true, CancellationToken.None);
+            var chatEntry = await _commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
             return Ok();
         }
         catch {
@@ -153,8 +156,9 @@ public class MessageController : ControllerBase
 
         try {
             byte[] content;
-            await using (var targetStream = new MemoryStream()) {
-                await section.Body.CopyToAsync(targetStream);
+            var targetStream = new MemoryStream();
+            await using (var _ = targetStream.ConfigureAwait(false)) {
+                await section.Body.CopyToAsync(targetStream).ConfigureAwait(false);
                 targetStream.Position = 0;
                 content = targetStream.ToArray();
             }
@@ -190,7 +194,7 @@ public class MessageController : ControllerBase
         if (messagePost.Payload != null)
             return false;
 
-        var payloadJson = await section.ReadAsStringAsync();
+        var payloadJson = await section.ReadAsStringAsync().ConfigureAwait(false);
         try {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 #pragma warning disable IL2026

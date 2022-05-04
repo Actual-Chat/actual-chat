@@ -1,20 +1,13 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<ActualChat.Users.UserProfile?>
-@{
-    var profile = State.ValueOrDefault ?? UserProfile.Guest;
-}
 
-<Dropdown ContentPositionCss="bottom-12 w-48 rounded-md" Class="relative mt-1" ButtonClass="!border-0 !pl-0.5">
+<Dropdown Class="relative mt-1" MenuClass="bottom-12 w-48 rounded-md" ButtonClass="!border-0 !pl-0.5 !bg-primary">
     <ButtonTemplate>
         <AccountView/>
     </ButtonTemplate>
-    <ContentTemplate>
-        <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
-            @if (profile.IsAdmin) {
-                <MenuItem Title="New chat" Name="newChat" OnItemClick="OnNewChatClick"/>
-            }
+    <MenuTemplate>
+        <Menu Class="rounded-md border border-accent" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             <MenuItem Title="Settings" Name="settings" OnItemClick="OnSettingsClick">
                 <Icon>
                     <svg class="fill-current h-6 w-6" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 32 32">
@@ -37,7 +30,7 @@
                 </Icon>
             </MenuItem>
         </Menu>
-    </ContentTemplate>
+    </MenuTemplate>
 </Dropdown>
 
 @code {
@@ -48,18 +41,6 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     private bool IsOpen { get; set; }
-
-    protected override ComputedState<UserProfile?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
-
-    protected override Task<UserProfile?> ComputeState(CancellationToken cancellationToken)
-        => UserProfiles.Get(Session, cancellationToken);
-
-
-    private Task OnNewChatClick() {
-        Nav.NavigateTo("/new/chat");
-        return Task.CompletedTask;
-    }
 
     private async  Task OnSettingsClick() {
         await FeedbackUI.AskFeatureRequestFeedback("profile/settings", "Settings");

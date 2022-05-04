@@ -1,0 +1,15 @@
+.context-menu-button {
+    @apply transition duration-150 ease-in-out outline-none;
+    @apply fill-current;
+    @apply max-w-max;
+    @apply text-base font-semibold text-secondary;
+    @apply p-1 mx-0 min-w-0;
+}
+
+.context-menu-button.show-on-hover {
+    @apply invisible z-20 absolute;
+}
+
+.context-menu-button:hover .context-menu-button-inner {
+    @apply animate-scale-icon;
+}

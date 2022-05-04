@@ -82,7 +82,7 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
         var activeChatId = await _chatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
         var pinnedChatIds = await _chatPageState.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var audioRecorderState = await _audioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
-        var playbackState = await _chatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackState = await _chatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var realtimeChatPlaybackState = playbackState as RealtimeChatPlaybackState;
         return new Model() {
             ActiveChatId = activeChatId,

@@ -32,7 +32,7 @@ public static class PeerChatExt
         userId1 = parts[1];
         userId2 = parts[2];
         return !string.IsNullOrEmpty(userId1) && !string.IsNullOrEmpty(userId2)
-            && !string.Equals(userId1, userId2, StringComparison.Ordinal);
+            && !StringComparer.Ordinal.Equals(userId1, userId2);
     }
 
     public static PeerChatShortIdKind GetChatShortIdKind(string chatShortId)

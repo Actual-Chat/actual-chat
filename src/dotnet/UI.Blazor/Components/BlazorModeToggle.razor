@@ -1,26 +1,20 @@
 @namespace ActualChat.UI.Blazor.Components
 @using System.Reflection
-@inject BlazorModeHelper _blazorModeHelper
-@inject BlazorCircuitContext _circuitContext
+@inject BlazorModeHelper BlazorModeHelper
+@inject BlazorCircuitContext CircuitContext
+@{
+    string GetButtonClass(bool isActive)
+        => isActive ? "on bg-accent -disabled" : "bg-accent hover:bg-primary";
 
-<span class="blazor-mode-toggle select-none cursor-pointer transition duration-500 ease-in-out group"
-     @onclick="_ => _blazorModeHelper.ChangeMode(!IsServerSideBlazor)">
-    @if (_circuitContext.IsPrerendering) {
-        <span>"Loading..."</span>
-    } else {
-        <span class="hover-item">Blazor: <b>@(ModeNames[IsServerSideBlazor ? 1 : 0])</b></span>
-        <span class="hover-item alt">Switch to <b>@(ModeNames[IsServerSideBlazor ? 0 : 1])</b></span>
-    }
-</span>
+    var serverClass = $"btn-xs !rounded-r-none !border-r !border-r-primary {GetButtonClass(IsServerSideBlazor)}";
+    var wasmClass = $"btn-xs !rounded-l-none {GetButtonClass(!IsServerSideBlazor)}";
+}
+
+<div class="flex-x rounded-sm overflow-hidden w-max">
+    <Button Class="@serverClass" OnClick="_ => BlazorModeHelper.ChangeMode(true)" Disabled="@IsServerSideBlazor">Server</Button>
+    <Button Class="@wasmClass" OnClick="_ => BlazorModeHelper.ChangeMode(false)" Disabled="@(!IsServerSideBlazor)">WASM</Button>
+</div>
 
 @code {
-    private static readonly string[] ModeNames = { "WASM", "Server" };
-
     private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsServerSideBlazor;
-
-    private string GetActiveText(bool isServerSideBlazor)
-        => isServerSideBlazor ? "Blazor Server" : "Blazor WASM";
-
-    private string GetInactiveText(bool isServerSideBlazor)
-        => isServerSideBlazor ? "Switch to WASM" : "Switch to Server";
 }

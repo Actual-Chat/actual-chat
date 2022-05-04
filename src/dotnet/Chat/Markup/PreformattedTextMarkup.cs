@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-public sealed record PreformattedTextMarkup(string Text) : TextMarkup
+public sealed record PreformattedTextMarkup(string Text) : TextMarkup(Text)
 {
     public PreformattedTextMarkup() : this("") { }
 

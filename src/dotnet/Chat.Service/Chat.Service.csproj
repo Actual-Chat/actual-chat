@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <RootNamespace>ActualChat.Chat</RootNamespace>
-  </PropertyGroup>
-
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\..\..\tests\Audio.IntegrationTests\data\**" Link="data\%(RecursiveDir)%(Filename)%(Extension)" Visible="false" CopyToOutputDirectory="PreserveNewest" />
 

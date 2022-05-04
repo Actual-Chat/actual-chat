@@ -1,21 +1,29 @@
-@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
-@inject NavbarUI _navbarUI
-
+@implements IDisposable
+@using ActualChat.UI.Blazor.Services
 @{
-    var isVisible = _navbarUI.ActiveGroupId == Id;
-    var cls = isVisible ? "flex" : "hidden";
+    var isVisible = NavbarUI.ActiveGroupId == Id;
+    var cls = isVisible ? "flex-y" : "hidden";
+    var groupTitleSlotName = "NavbarGroupTitle-" + Id;
 }
 
-<div class="@Class navbar-menu-group flex-col space-y-2 @cls">
-    <div class="hidden md:flex flex-col justify-between items-center mt-2">
-        <div class="text-secondary-muted text-sm uppercase font-medium">@Title</div>
-        @Icons
+<div class="@Class navbar-group flex space-y-2 @cls">
+    <div class="hidden md:flex flex-row justify-start items-center mt-2
+                text-secondary-muted text-sm font-medium">
+        <RenderSlot Name="@groupTitleSlotName" />
     </div>
     @ChildContent
 </div>
 
+<RenderIntoSlot Name="@groupTitleSlotName">
+    <div class="flex-1 uppercase">@Title</div>
+    <div class="flex-1 flex-x justify-end">@Icons</div>
+</RenderIntoSlot>
+
 @code{
+    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    private EventHandler? _onActiveGroupChanged;
+
     [Parameter] public string? Class { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Icons { get; set; }
@@ -23,6 +31,10 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     protected override void OnInitialized() {
-        _navbarUI.ActiveGroupChanged += (s, e) => StateHasChanged();
+        _onActiveGroupChanged = (s, e) => StateHasChanged();
+        NavbarUI.ActiveGroupChanged += _onActiveGroupChanged;
     }
+
+    public void Dispose()
+        => NavbarUI.ActiveGroupChanged -= _onActiveGroupChanged;
 }

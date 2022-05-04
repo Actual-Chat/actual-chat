@@ -14,8 +14,8 @@ public sealed class Playback : ProcessorBase
     private readonly ConcurrentDictionary<PlayTrackCommand, (TrackPlayer Player, Task PlayTask)> _trackPlayers = new();
     private readonly object _stateUpdateLock = new();
 
-    public IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracksState { get; }
-    public IMutableState<bool> IsPlayingState { get; }
+    public IMutableState<ImmutableList<(TrackInfo TrackInfo, PlayerState State)>> PlayingTracks { get; }
+    public IMutableState<bool> IsPlaying { get; }
 
     public event Action<TrackInfo, PlayerState>? OnTrackPlayingChanged;
 
@@ -29,8 +29,8 @@ public sealed class Playback : ProcessorBase
         _messageProcessor = new MessageProcessor<IPlaybackCommand>(ProcessCommand) {
             QueueFullMode = BoundedChannelFullMode.DropOldest,
         };
-        PlayingTracksState = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
-        IsPlayingState = stateFactory.NewMutable(false);
+        PlayingTracks = stateFactory.NewMutable(ImmutableList<(TrackInfo TrackInfo, PlayerState State)>.Empty);
+        IsPlaying = stateFactory.NewMutable(false);
     }
 
     protected override async Task DisposeAsyncCore()
@@ -49,7 +49,7 @@ public sealed class Playback : ProcessorBase
         CancellationToken cancellationToken)
     {
         lock (_stateUpdateLock)
-            IsPlayingState.Value = true;
+            IsPlaying.Value = true;
         var command = new PlayTrackCommand(trackInfo, source) { PlayAt = playAt };
         return _messageProcessor.Enqueue(command, cancellationToken);
     }
@@ -117,15 +117,15 @@ public sealed class Playback : ProcessorBase
         }
         if (!prev.IsStarted && state.IsStarted) {
             lock (_stateUpdateLock) {
-                PlayingTracksState.Value = PlayingTracksState.Value.Insert(0, (trackInfo, state));
-                IsPlayingState.Value = true;
+                PlayingTracks.Value = PlayingTracks.Value.Insert(0, (trackInfo, state));
+                IsPlaying.Value = true;
             }
         }
         else if (state.IsCompleted && !prev.IsCompleted) {
             lock (_stateUpdateLock) {
-                PlayingTracksState.Value = PlayingTracksState.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
-                if (PlayingTracksState.Value.Count == 0)
-                    IsPlayingState.Value = false;
+                PlayingTracks.Value = PlayingTracks.Value.RemoveAll(x => x.TrackInfo.TrackId == trackInfo.TrackId);
+                if (PlayingTracks.Value.Count == 0)
+                    IsPlaying.Value = false;
             }
         }
     }

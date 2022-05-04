@@ -1,0 +1,65 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+
+<div class="author-badge flex-x items-center">
+    <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" />
+    <div class="flex-y @_contentClass">
+        <div>
+            <span class="@_nameClass">@Author.Name</span>
+        </div>
+        @if (ShowsStatusText && !_statusText.IsNullOrEmpty()) {
+            <div>
+                <span class="@_statusTextClass">@_statusText</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _contentClass = "";
+    private string _nameClass = "";
+    private string _statusTextClass = "";
+    private string _statusText = "";
+
+    [Parameter] public PersonCircleSize Size { get; set; } = PersonCircleSize.Size9;
+    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
+    [Parameter] public string TextClass { get; set; } = "";
+    [Parameter] public IAuthorLike Author { get; set; } = null!;
+    [Parameter] public bool ShowsStatusText { get; set; }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        _nameClass = GetNameClass();
+        _contentClass = GetContentClass();
+        _statusText = GetStatusText();
+        _statusTextClass = GetStatusTextClass();
+    }
+
+    private string GetStatusText()
+        => Presence switch {
+            Presence.Recording => "recording",
+            Presence.Online => "online",
+            _ => "",
+        };
+
+    private string GetStatusTextClass()
+        => Size switch {
+            PersonCircleSize.Size12 => "text-sm",
+            _ => "text-xxs leading-4",
+        };
+
+    private string GetNameClass() {
+        if (!string.IsNullOrEmpty(TextClass))
+            return TextClass;
+
+        var sizeClass = Size switch {
+            PersonCircleSize.Size6 => "text-sm",
+            PersonCircleSize.Size8 => "text-sm",
+            _ => "text-base",
+            };
+        return "select-none " + sizeClass;
+    }
+
+    private string GetContentClass()
+        => "ml-3";
+}
