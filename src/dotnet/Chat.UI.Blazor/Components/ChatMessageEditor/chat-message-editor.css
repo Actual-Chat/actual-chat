@@ -48,3 +48,11 @@
 .recorder-buttons {
     @apply flex-none rounded-2xl bg-accent ml-3;
 }
+
+.btn.audio-recorder-toggle.on {
+    @apply text-button-on;
+}
+
+.btn.audio-recorder-toggle.on svg {
+    filter: drop-shadow(0px 0px 5px rgb(239 68 68 / 0.7));
+}

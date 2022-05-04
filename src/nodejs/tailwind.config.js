@@ -40,6 +40,7 @@ module.exports = {
         'inline-code': 'var(--text-inline-code)',
         'white': 'var(--text-color-white)',
         'online': 'var(--text-color-online)',
+        'button-on': 'var(--text-button-on)',
       },
       borderColor: {
         'primary': 'var(--background-primary)',

@@ -13,6 +13,10 @@
     @apply mt-2 mb-0;
 }
 
+.chat-playback-toggles .btn.btn-square {
+    @apply block;
+}
+
 /* DeleteMessageModal */
 
 .delete-message-modal .modal-body {

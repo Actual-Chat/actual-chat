@@ -9,7 +9,9 @@
 <ButtonSquare OnClick="OnClick"
               Class="@(isRightPanelShown ? "on" : "off")"
               Title="@(isRightPanelShown ? "Hide settings" : "Show settings")">
-    <i class="fa fa-cogs fa-sidebar-flip fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 fill-current" viewBox="-4 -4 32 32">
+        <path d="M12 18c1.657 0 3 1.343 3 3s-1.343 3-3 3-3-1.343-3-3 1.343-3 3-3zm0-9c1.657 0 3 1.343 3 3s-1.343 3-3 3-3-1.343-3-3 1.343-3 3-3zm0-9c1.657 0 3 1.343 3 3s-1.343 3-3 3-3-1.343-3-3 1.343-3 3-3z"/>
+    </svg>
 </ButtonSquare>
 
 @code {
