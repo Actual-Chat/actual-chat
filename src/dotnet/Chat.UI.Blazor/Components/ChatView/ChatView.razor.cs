@@ -29,13 +29,12 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private ChatPageState ChatPageState { get; init; } = null!;
 
+    private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
+    private IMutableState<long> NavigateToEntryId { get; set; } = null!;
+    private IMutableState<List<string>> VisibleKeys { get; set; } = null!;
+
     [CascadingParameter]
     public Chat Chat { get; set; } = null!;
-
-    private bool InitCompleted => _initializeTaskSource.Task.IsCompleted;
-
-    private IMutableState<long> NavigateToEntryIdState { get; set; } = null!;
-    private IMutableState<List<string>> VisibleKeysState { get; set; } = null!;
 
     public ValueTask DisposeAsync()
     {
@@ -59,17 +58,17 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         _lastNavigateToEntryId = 0;
         _lastReadEntryId = navigateToEntryId;
         _initialLastReadEntryId = navigateToEntryId;
-        NavigateToEntryIdState.Value = navigateToEntryId;
-        NavigateToEntryIdState.Invalidate();
+        NavigateToEntryId.Value = navigateToEntryId;
+        NavigateToEntryId.Invalidate();
     }
 
     protected override async Task OnInitializedAsync()
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (VisibleKeysState == null)
+        if (VisibleKeys == null)
             try {
-                NavigateToEntryIdState = StateFactory.NewMutable(0L);
-                VisibleKeysState = StateFactory.NewMutable(new List<string>());
+                NavigateToEntryId = StateFactory.NewMutable(0L);
+                VisibleKeys = StateFactory.NewMutable(new List<string>());
                 _ = BackgroundTask.Run(() => MonitorVisibleKeyChanges(_disposeToken.Token), _disposeToken.Token);
 
                 var currentAuthor = await ChatAuthors.GetChatAuthor(Session, Chat.Id, _disposeToken.Token)
@@ -96,9 +95,9 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         var clock = Clocks.CoarseCpuClock;
         while (!cancellationToken.IsCancellationRequested)
             try {
-                await VisibleKeysState.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
+                await VisibleKeys.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(true);
                 await clock.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(true);
-                var visibleKeys = await VisibleKeysState.Use(cancellationToken).ConfigureAwait(true);
+                var visibleKeys = await VisibleKeys.Use(cancellationToken).ConfigureAwait(true);
                 if (visibleKeys.Count == 0)
                     continue;
 
@@ -164,7 +163,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
             await Cmd.Run(command, cancellationToken).ConfigureAwait(true);
         }
 
-        var navigateToEntryId = await NavigateToEntryIdState.Use(cancellationToken).ConfigureAwait(true);
+        var navigateToEntryId = await NavigateToEntryId.Use(cancellationToken).ConfigureAwait(true);
         if (!mustScrollToEntry) {
             if (navigateToEntryId != _lastNavigateToEntryId && !_fullyVisibleEntryIds.Contains(navigateToEntryId)) {
                 _lastNavigateToEntryId = navigateToEntryId;

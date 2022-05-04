@@ -90,7 +90,7 @@
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        var isRightPanelDisplayed = await UserSettings.ShowRightPanelState.Use(cancellationToken);
+        var isRightPanelDisplayed = await UserSettings.IsRightPanelShown.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;

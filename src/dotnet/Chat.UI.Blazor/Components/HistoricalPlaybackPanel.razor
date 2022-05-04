@@ -50,11 +50,11 @@
             return Model.NotPlaying;
 
         var playback = player.Playback;
-        var isPlaying = await playback.IsPlayingState.Use(cancellationToken).ConfigureAwait(false);
+        var isPlaying = await playback.IsPlaying.Use(cancellationToken).ConfigureAwait(false);
         if (!isPlaying)
             return Model.NotPlaying;
 
-        var playbackStates = await playback.PlayingTracksState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackStates = await playback.PlayingTracks.Use(cancellationToken).ConfigureAwait(false);
         Moment? playingAt = null;
         foreach (var playbackState in playbackStates) {
             var actualPlaybackState = await ActivePlaybackInfo.GetTrackPlaybackState(playbackState.TrackInfo.TrackId, cancellationToken);

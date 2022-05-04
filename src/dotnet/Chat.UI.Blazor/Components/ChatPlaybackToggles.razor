@@ -33,14 +33,14 @@
         => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<(ChatPlaybackState?, bool)> ComputeState(CancellationToken cancellationToken) {
-        var playbackState = await ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackState = await ChatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var mustPlayPinned = playbackState is RealtimeChatPlaybackState { IsPlayingPinned: true };
         return (playbackState, mustPlayPinned);
     }
 
     private Task SwitchPlayback(bool mustPlay, bool mustPlayPinned) {
         var isOn =
-            ChatPlayers.PlaybackState.Value is RealtimeChatPlaybackState realtime
+            ChatPlayers.ChatPlaybackState.Value is RealtimeChatPlaybackState realtime
             && realtime.IsPlayingPinned == mustPlayPinned;
         if (mustPlay && !isOn)
             ChatPlayers.StartRealtimePlayback(mustPlayPinned);

@@ -13,14 +13,14 @@ public class ChatPlayers : WorkerBase
         ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private ChatPageState ChatPageState => _chatPageState ??= _services.GetRequiredService<ChatPageState>();
-    public IMutableState<ChatPlaybackState?> PlaybackState { get; }
+    public IMutableState<ChatPlaybackState?> ChatPlaybackState { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
         _services = services;
         _log = services.LogFor(GetType());
         _clocks = services.Clocks();
-        PlaybackState = services.StateFactory().NewMutable<ChatPlaybackState?>();
+        ChatPlaybackState = services.StateFactory().NewMutable<ChatPlaybackState?>();
         Start();
     }
 
@@ -40,23 +40,23 @@ public class ChatPlayers : WorkerBase
     public void StartRealtimePlayback(bool mustPlayPinned)
         => BackgroundTask.Run(async () => {
             var playbackState = await ChatPageState.GetRealtimeChatPlaybackState(mustPlayPinned, default).ConfigureAwait(false);
-            PlaybackState.Value = playbackState;
+            ChatPlaybackState.Value = playbackState;
         }, CancellationToken.None);
 
     public void StartHistoricalPlayback(Symbol chatId, Moment startAt, RealtimeChatPlaybackState? previousState = null)
     {
-        previousState ??= PlaybackState.Value switch {
+        previousState ??= ChatPlaybackState.Value switch {
             RealtimeChatPlaybackState realtime => realtime,
             HistoricalChatPlaybackState historical => historical.PreviousState,
             _ => null,
         };
-        PlaybackState.Value = new HistoricalChatPlaybackState(chatId, startAt, previousState);
+        ChatPlaybackState.Value = new HistoricalChatPlaybackState(chatId, startAt, previousState);
     }
 
     public void StopPlayback(bool restorePreviousState)
-        => PlaybackState.Value =
+        => ChatPlaybackState.Value =
             restorePreviousState
-                ? PlaybackState.Value is HistoricalChatPlaybackState historical ? historical.PreviousState : null
+                ? ChatPlaybackState.Value is HistoricalChatPlaybackState historical ? historical.PreviousState : null
                 : null;
 
     // Protected methods
@@ -65,7 +65,7 @@ public class ChatPlayers : WorkerBase
     {
         // TODO(AY): Implement _players cleanup here
         var lastPlaybackState = (ChatPlaybackState?) null;
-        var cPlaybackState = PlaybackState.Computed;
+        var cPlaybackState = ChatPlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
             if (!cPlaybackState.IsConsistent())
                 cPlaybackState = await cPlaybackState.Update(cancellationToken).ConfigureAwait(false);
@@ -79,7 +79,7 @@ public class ChatPlayers : WorkerBase
                     // Let's stop everything in this case
                     await Stop(cancellationToken).SuppressExceptions().ConfigureAwait(false);
                     newPlaybackState = null;
-                    PlaybackState.Value = null;
+                    ChatPlaybackState.Value = null;
                 }
             }
             lastPlaybackState = newPlaybackState;
@@ -128,9 +128,9 @@ public class ChatPlayers : WorkerBase
                     var endPlaybackTask = await result.ConfigureAwait(false);
                     await endPlaybackTask.ConfigureAwait(false);
                     await _clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, ct).ConfigureAwait(false);
-                    if (PlaybackState.Value == historical) {
+                    if (ChatPlaybackState.Value == historical) {
                         // TODO(AY): We should beep if we restore non-null state, I guess...
-                        PlaybackState.Value = historical.PreviousState;
+                        ChatPlaybackState.Value = historical.PreviousState;
                     }
                 }, ct);
                 return result;
