@@ -19,7 +19,7 @@ public class ImagePreviewUI
         var modalOptions = new ModalOptions {
             Animation = ModalAnimation.FadeIn(0.2),
             HideHeader = true,
-            Class = "blazored-modal-base",
+            Class = "blazored-modal blazored-modal-p0 blazored-modal-transparent blazored-modal-border-none",
         };
         var reference = _modalService.Show<ImagePreview>(null, modalParameters, modalOptions);
         return reference.Result;
