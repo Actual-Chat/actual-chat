@@ -39,7 +39,7 @@
                     <ChatLanguageToggle/>
                 </div>
                 <div class="recorder-button flex">
-                    <AudioRecorderToggle ChatId="@Chat.Id" Toggled="@(new EventCallback<bool>(null, OnRecorderButtonToggled))"/>
+                    <ChatRecorderToggle ChatId="@Chat.Id" Toggled="@(new EventCallback<bool>(null, OnRecorderButtonToggled))"/>
                 </div>
             </div>
         </div>

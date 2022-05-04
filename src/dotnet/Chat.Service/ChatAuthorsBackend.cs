@@ -11,32 +11,28 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private readonly ThreadSafeLruCache<Symbol, long> _maxLocalIdCache = new(16384);
 
     private const string AuthorIdSuffix = "::authorId";
+    private IChatAuthors? _frontend;
 
-    private readonly ICommander _commander;
-    private readonly IAuth _auth;
-    private readonly IAuthBackend _authBackend;
-    private readonly Lazy<IChatAuthors> _frontendLazy;
-    private readonly IUserAuthorsBackend _userAuthorsBackend;
-    private readonly IUserAvatarsBackend _userAvatarsBackend;
-    private readonly RedisSequenceSet<ChatAuthor> _idSequences;
-    private readonly IRandomNameGenerator _randomNameGenerator;
-    private readonly IDbEntityResolver<string, DbChatAuthor> _dbChatAuthorResolver;
-    private readonly IChatUserSettingsBackend _chatUserSettingsBackend;
-
-    private IChatAuthors Frontend => _frontendLazy.Value;
+    private ICommander Commander { get; }
+    private IAuth Auth { get; }
+    private IUserAuthorsBackend UserAuthorsBackend { get; }
+    private IUserAvatarsBackend UserAvatarsBackend { get; }
+    private RedisSequenceSet<ChatAuthor> IdSequences { get; }
+    private IRandomNameGenerator RandomNameGenerator { get; }
+    private IDbEntityResolver<string, DbChatAuthor> DbChatAuthorResolver { get; }
+    private IChatUserSettingsBackend ChatUserSettingsBackend { get; }
+    private IChatAuthors Frontend => _frontend ??= Services.GetRequiredService<IChatAuthors>();
 
     public ChatAuthorsBackend(IServiceProvider services) : base(services)
     {
-        _commander = services.Commander();
-        _auth = services.GetRequiredService<IAuth>();
-        _authBackend = services.GetRequiredService<IAuthBackend>();
-        _frontendLazy = new Lazy<IChatAuthors>(services.GetRequiredService<IChatAuthors>);
-        _userAuthorsBackend = services.GetRequiredService<IUserAuthorsBackend>();
-        _idSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
-        _randomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
-        _dbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
-        _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
-        _chatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
+        Commander = services.Commander();
+        Auth = services.GetRequiredService<IAuth>();
+        UserAuthorsBackend = services.GetRequiredService<IUserAuthorsBackend>();
+        IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
+        RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
+        DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
+        UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
+        ChatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
     }
 
     // [ComputeMethod]
@@ -44,7 +40,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         string chatId, string authorId, bool inherit,
         CancellationToken cancellationToken)
     {
-        var dbChatAuthor = await _dbChatAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
+        var dbChatAuthor = await DbChatAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
         if (!StringComparer.Ordinal.Equals(dbChatAuthor?.ChatId, chatId))
             return null;
         var chatAuthor = dbChatAuthor.ToModel();
@@ -96,17 +92,17 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         if (chatAuthor != null)
             return chatAuthor;
 
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         var userId = user.IsAuthenticated ? user.Id : Symbol.Empty;
 
         var createAuthorCommand = new IChatAuthorsBackend.CreateCommand(chatId, userId);
-        chatAuthor = await _commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
+        chatAuthor = await Commander.Call(createAuthorCommand, true, cancellationToken).ConfigureAwait(false);
 
         if (!user.IsAuthenticated) {
             var updateOptionCommand = new ISessionOptionsBackend.UpsertCommand(
                 session,
                 new(chatId + AuthorIdSuffix, chatAuthor.Id));
-            await _commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(updateOptionCommand, true, cancellationToken).ConfigureAwait(false);
         }
         return chatAuthor;
     }
@@ -160,14 +156,14 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
 
         DbChatAuthor? dbChatAuthor;
         if (userId.IsNullOrEmpty()) {
-            var name = _randomNameGenerator.Generate('_');
+            var name = RandomNameGenerator.Generate('_');
             dbChatAuthor = new DbChatAuthor() {
                 Name = name,
                 IsAnonymous = true,
             };
         }
         else {
-            var userAuthor = await _userAuthorsBackend.Get(userId, true, cancellationToken).ConfigureAwait(false)
+            var userAuthor = await UserAuthorsBackend.Get(userId, true, cancellationToken).ConfigureAwait(false)
                 ?? throw new KeyNotFoundException();
             dbChatAuthor = new DbChatAuthor() {
                 IsAnonymous = userAuthor.IsAnonymous,
@@ -203,7 +199,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         var model = context.Items.Get<ChatAuthor>()!;
         if (!model.UserId.IsEmpty)
             return;
-        await _userAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
+        await UserAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -226,7 +222,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
                     .ConfigureAwait(false);
         }
 
-        var localId = await _idSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
+        var localId = await IdSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
         _maxLocalIdCache[idSequenceKey] = localId;
         return localId;
     }
@@ -237,23 +233,23 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
             return chatAuthor;
 
         if (!chatAuthor.UserId.IsEmpty) {
-            var chatUserSettings = await _chatUserSettingsBackend
+            var chatUserSettings = await ChatUserSettingsBackend
                 .Get(chatAuthor.UserId.Value, chatAuthor.ChatId, cancellationToken)
                 .ConfigureAwait(false);
             var avatarId = chatUserSettings?.AvatarId ?? Symbol.Empty;
             if (!avatarId.IsEmpty) {
-                var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+                var avatar = await UserAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
                 return chatAuthor.InheritFrom(avatar);
             }
 
-            var userAuthor = await _userAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken)
+            var userAuthor = await UserAuthorsBackend.Get(chatAuthor.UserId, true, cancellationToken)
                 .ConfigureAwait(false);
             return chatAuthor.InheritFrom(userAuthor);
         }
         else {
-            var avatarId = await _userAvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
+            var avatarId = await UserAvatarsBackend.GetAvatarIdByChatAuthorId(chatAuthor.Id, cancellationToken)
                 .ConfigureAwait(false);
-            var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
+            var avatar = await UserAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
             return chatAuthor.InheritFrom(avatar);
         }
     }

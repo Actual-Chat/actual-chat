@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.Audio.UI.Blazor.Components
 @inherits MixedStateComponent<bool, bool>
-@using ActualChat.Users
 @{
     var isRecording = IsRecordingState.Value;
     var recordingStatus = isRecording ? "on" : "off";
@@ -18,7 +17,7 @@
     private bool? _lastActualIsRecording;
     private LanguageId? _lastLanguageId;
 
-    [Inject] ILogger<AudioRecorderToggle> Log { get; init; } = null!;
+    [Inject] ILogger<ChatRecorderToggle> Log { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
