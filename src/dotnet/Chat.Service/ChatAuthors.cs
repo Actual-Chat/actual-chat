@@ -128,6 +128,16 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
         return await Backend.GetAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ImmutableArray<string>> GetUserIds(Session session, string chatId, CancellationToken cancellationToken)
+    {
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return ImmutableArray<string>.Empty;
+
+        return await Backend.GetUserIds(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     public virtual async Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -138,6 +148,22 @@ public class ChatAuthors : DbServiceBase<ChatDbContext>, IChatAuthors
             return;
         _ = await UserContactsBackend.GetOrCreate(userId1, user2Id, cancellationToken).ConfigureAwait(false);
         _ = await UserContactsBackend.GetOrCreate(user2Id, userId1, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task CreateChatAuthors(IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var chatUserIds = await Backend.GetUserIds(command.ChatId, cancellationToken).ConfigureAwait(false);
+        var existingUserIds = new HashSet<string>(chatUserIds, StringComparer.Ordinal);
+        foreach (var userId in command.UserIds) {
+            if (existingUserIds.Contains(userId))
+                continue;
+
+            var createCommand = new IChatAuthorsBackend.CreateCommand(command.ChatId, userId);
+            await Backend.Create(createCommand, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task<(string, string)> GetPeerChatUserIds(Session session, string chatAuthorId, CancellationToken cancellationToken)

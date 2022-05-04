@@ -20,15 +20,27 @@ public interface IChatAuthors
     Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
     Task<ImmutableArray<string>> GetAuthorIds(Session session, string chatId, CancellationToken cancellationToken);
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<ImmutableArray<string>> GetUserIds(Session session, string chatId, CancellationToken cancellationToken);
 
     // Commands
 
     [CommandHandler]
     Task AddToContacts(AddToContactsCommand command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task CreateChatAuthors(CreateChatAuthorsCommand command, CancellationToken cancellationToken);
+
     [DataContract]
     public record AddToContactsCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatAuthorId
+        ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public record CreateChatAuthorsCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string ChatId,
+        [property: DataMember] string[] UserIds
         ) : ISessionCommand<Unit>;
 }
