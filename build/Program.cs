@@ -217,27 +217,20 @@ internal static class Program
         });
 
         Target("unit-tests", async () => {
-            var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
-            if (!Directory.Exists(resultsDirectory))
-                Directory.CreateDirectory(resultsDirectory);
-            var cmd = await Cli.Wrap(dotnet)
+            await Cli.Wrap(dotnet)
                 .WithArguments("test " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~UnitTests\" " +
                 "--no-restore " +
                 "--blame-hang " +
                 "--blame-hang-timeout 60s " +
-                $"--results-directory {resultsDirectory} " +
-                "--logger:console;verbosity=detailed " +
-                $"--logger:trx;LogFilePrefix=\"{resultsDirectory.Replace("\"", "\\\"")}/\" " +
+                "--logger \"console;verbosity=detailed\" " +
+                "--logger \"trx;LogFileName=Results.trx\" " +
                 (IsGitHubActions() ? "--logger GitHubActions " : "") +
                 $"-c {configuration} "
                 )
                 .ToConsole()
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
-
-            MoveAttachmentsToResultsDirectory(resultsDirectory, cmd.StandardOutput);
-            TryRemoveTestsOutputDirectories(resultsDirectory);
         });
 
         Target("generate-version", DependsOn("restore-tools"), async () => {
@@ -311,27 +304,20 @@ internal static class Program
         });
 
         Target("integration-tests", DependsOn("restore-tools"), async () => {
-            var resultsDirectory = Path.GetFullPath(Path.Combine("artifacts", "tests", "output"));
-            if (!Directory.Exists(resultsDirectory))
-                Directory.CreateDirectory(resultsDirectory);
-            var cmd = await Cli.Wrap(dotnet)
+            await Cli.Wrap(dotnet)
                 .WithArguments($"test " +
                 "--nologo " +
                 "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\" " +
                 "--no-restore " +
                 "--blame-hang " +
                 "--blame-hang-timeout 300s " +
-                $"--results-directory {resultsDirectory} " +
-                "--logger:console;verbosity=detailed " +
-                $"--logger:trx;LogFilePrefix=\"{resultsDirectory.Replace("\"", "\\\"")}/\" " +
+                "--logger \"console;verbosity=detailed\" " +
+                "--logger \"trx;LogFileName=Results.trx\" " +
                 (IsGitHubActions() ? "--logger GitHubActions " : "") +
                 $"-c {configuration} "
                 )
                 .ToConsole()
                 .ExecuteBufferedAsync(cancellationToken).Task.ConfigureAwait(false);
-
-            MoveAttachmentsToResultsDirectory(resultsDirectory, cmd.StandardOutput);
-            TryRemoveTestsOutputDirectories(resultsDirectory);
         });
 
         Target("clean-tests", () => {
@@ -522,43 +508,6 @@ internal static class Program
                 return fullPath;
         }
         return null;
-    }
-
-    // Removes all files in inner folders, workaround of https://github.com/microsoft/vstest/issues/2334
-    private static void TryRemoveTestsOutputDirectories(string resultsDirectory)
-    {
-        foreach (var directory in Directory.EnumerateDirectories(resultsDirectory)) {
-            try {
-                Directory.Delete(directory, recursive: true);
-            }
-            catch { }
-        }
-    }
-
-    // Removes guid from tests output path, workaround of https://github.com/microsoft/vstest/issues/2378
-    private static void MoveAttachmentsToResultsDirectory(string resultsDirectory, string output)
-    {
-        var attachmentsRegex = new Regex($@"Attachments:(?<filepaths>(?<filepath>[\s]+[^\n]+{Regex.Escape(resultsDirectory)}[^\n]+[\n])+)", RegexOptions.Singleline | RegexOptions.CultureInvariant);
-        foreach (var match in attachmentsRegex.Matches(output).Cast<Match>()) {
-            var regexPaths = match.Groups["filepaths"].Value.Trim('\n', ' ', '\t', '\r');
-            var paths = regexPaths.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToArray();
-            if (paths.Length > 0) {
-                foreach (var path in paths) {
-                    var filename = Path.GetFileNameWithoutExtension(path);
-                    var extension = Path.GetExtension(path);
-                    string newPath = null!;
-                    int index = 0;
-                    do {
-                        newPath = Path.Combine(resultsDirectory, $"{filename}.{index++}{extension}");
-                    }
-                    while (File.Exists(newPath));
-                    Console.WriteLine(Underline(Magenta($"Moving: {path} -> {newPath}")));
-                    File.Move(path, newPath, overwrite: true);
-                }
-                Directory.Delete(Path.GetDirectoryName(paths[0])!, true);
-            }
-
-        }
     }
 
     private static bool IsGitHubActions()

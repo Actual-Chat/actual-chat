@@ -8,7 +8,7 @@ services:
         GITHUB_TOKEN: ${GITHUB_TOKEN}
     volumes:
       - ${GOOGLE_APPLICATION_CREDENTIALS:-PLEASE_SET_GOOGLE_APPLICATION_CREDENTIALS_ENV_VAR}:/etc/.gcp/key.json
-      - ./artifacts/tests/docker-output/:/src/artifacts/tests/output/
+      - ./artifacts:/artifacts
     environment:
       Hosting__WebRootPath: /src/src/dotnet/UI.Blazor.Host/wwwroot/
       GOOGLE_APPLICATION_CREDENTIALS: /etc/.gcp/key.json
@@ -24,7 +24,8 @@ services:
     command: >-
       /bin/sh -c "
       dotnet build --nologo --no-restore --configuration Release &&
-      dotnet run --project build --configuration Release --no-build --no-launch-profile -- --skip-dependencies --configuration Release integration-tests
+      dotnet run --project build --configuration Release --no-build --no-launch-profile -- --skip-dependencies --configuration Release integration-tests &&
+      cp -R /src/tests/. /artifacts
       "
     depends_on:
       - redis
