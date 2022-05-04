@@ -28,7 +28,7 @@ public class FeedbackUI
         var modalOptions = new ModalOptions {
             HideHeader = true,
             DisableBackgroundCancel = false,
-            Class = "modal",
+            Class = "blazored-modal blazored-modal-p0",
         };
         _modal = _modalService.Show<FeatureRequestModal>("", parameters, modalOptions);
         var result = await _modal.Result.ConfigureAwait(false);
