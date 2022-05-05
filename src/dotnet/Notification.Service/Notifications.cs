@@ -2,6 +2,7 @@
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
@@ -69,8 +70,8 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         var userId = user.Id.ToString();
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var existingDbDevice = await dbContext.Devices
-            .FindAsync(new object?[] { deviceId }, cancellationToken)
+        var existingDbDevice = await dbContext.Devices.ForUpdate()
+            .SingleOrDefaultAsync(d => d.Id == deviceId, cancellationToken)
             .ConfigureAwait(false);
 
         var dbDevice = existingDbDevice;

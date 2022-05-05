@@ -47,7 +47,7 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingPosition = await dbContext.ChatReadPositions
-            .FindAsync(new object?[] { userId, chatId }, cancellationToken)
+            .FindAsync(DbKey.Compose(userId, chatId), cancellationToken)
             .ConfigureAwait(false);
 
         var dbPosition = existingPosition;

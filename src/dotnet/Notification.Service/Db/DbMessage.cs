@@ -25,9 +25,7 @@ public class DbMessage : IHasId<string>
     }
 
     public DateTime? AccessedAt {
-        get => _accessedAt == default
-            ? null
-            : _accessedAt.DefaultKind(DateTimeKind.Utc);
+        get => _accessedAt.DefaultKind(DateTimeKind.Utc);
         set => _accessedAt = value?.DefaultKind(DateTimeKind.Utc) ?? default;
     }
 }
