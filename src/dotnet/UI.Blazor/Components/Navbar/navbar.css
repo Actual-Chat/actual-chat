@@ -24,7 +24,7 @@
 
 /* Navbar item */
 .navbar-item .navbar-item-content {
-    @apply text-primary-muted text-sm hover:text-primary;
+    @apply text-sm text-primary;
 }
 .navbar-item.active .navbar-item-content {
     @apply font-semibold;

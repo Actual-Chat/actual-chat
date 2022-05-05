@@ -9,7 +9,8 @@
 }
 
 [tooltip]::after {
-    @apply text-center whitespace-nowrap overflow-hidden text-ellipsis py-1 px-2 z-20 bg-separate-line text-accent-muted shadow-current shadow-md rounded-sm min-w-12 max-w-xxs;
+    @apply text-center whitespace-nowrap overflow-hidden text-ellipsis py-1 px-2 z-20 bg-separate-line;
+    @apply text-primary-inverted shadow-current shadow-md rounded-sm min-w-12 max-w-xxs;
     content: attr(tooltip);
 }
 

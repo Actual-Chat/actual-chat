@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<UnreadMessagesHeader.Model>
 
 @if (State.Value.Count > 0) {
-    <div class="mx-4 px-1.5 bg-strong-accent rounded-b-md shadow hover:cursor-pointer text-white font-bold" @onclick="OnClick">
+    <div class="mx-4 px-1.5 bg-strong-accent rounded-b-md shadow hover:cursor-pointer text-primary-inverted font-bold" @onclick="OnClick">
         @State.Value.Count unread @PluralizeMessage(@State.Value.Count)
     </div>
 }

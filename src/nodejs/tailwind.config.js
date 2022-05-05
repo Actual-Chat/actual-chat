@@ -26,11 +26,9 @@ module.exports = {
       },
       textColor: {
         'primary': 'var(--text-color-primary)',
-        'primary-muted': 'var(--text-color-primary-muted)',
+        'primary-inverted': 'var(--text-color-primary-inverted)',
         'secondary': 'var(--text-color-secondary)',
-        'secondary-muted': 'var(--text-color-secondary-muted)',
         'accent': 'var(--text-color-accent)',
-        'accent-muted': 'var(--text-color-accent-muted)',
         'placeholder': 'var(--text-color-placeholder)',
         'success': 'var(--button-color-success)',
         'toggle-off': 'var(--text-color-toggle-off)',
@@ -202,7 +200,8 @@ module.exports = {
       bounce: 'bounce 1s infinite',
       'instant-display': 'display-element-from-left 0s',
       'display-from-left': 'display-element-from-left 150ms ease-in-out',
-      'display-from-right': 'display-element-from-right 150ms ease-in-out',
+      'scale-from-right': 'scale-from-right 150ms ease-in-out',
+      'from-right': 'from-right 150ms ease-in-out',
       'hide-to-left': 'hide-element-to-left 150ms ease-in-out',
       'hide-to-right': 'hide-element-to-right 150ms ease-in-out',
       'display-from-bottom': 'display-element-from-bottom 400ms ease-in-out',
@@ -703,12 +702,20 @@ module.exports = {
             opacity: 0,
         },
       },
-      'display-element-from-right': {
+      'scale-from-right': {
         from: {
           transform: 'translateX(1rem) scale(.05)',
         },
         to: {
           transform: 'translateX(0rem) scale(1)',
+        },
+      },
+      'from-right': {
+        from: {
+          transform: 'translate(8rem, 0rem) scale(1)',
+        },
+        to: {
+          transform: 'translate(0rem, 0rem) scale(1)',
         },
       },
       'hide-element-to-right': {
