@@ -6,6 +6,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Feedback.Client.Module;
 using ActualChat.Hosting;
+using ActualChat.Invite.Client.Module;
 using ActualChat.Module;
 using ActualChat.MediaPlayback.Module;
 using ActualChat.Notification.Client.Module;
@@ -81,6 +82,7 @@ public static class Program
             typeof(ChatModule),
             typeof(ChatClientModule),
             typeof(ChatBlazorUIModule),
+            typeof(InviteClientModule),
             typeof(UsersClientModule),
             typeof(UsersBlazorUIModule),
             typeof(FeedbackClientModule),

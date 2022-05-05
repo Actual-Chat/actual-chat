@@ -24,8 +24,10 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
 
         // Authorization
         services.AddScoped<IAuthorizationHandler, IsUserActiveRequirementHandler>();
+        services.AddScoped<IAuthorizationHandler, IsAdminRequirementHandler>();
         services.Configure<AuthorizationOptions>(o => {
             o.AddPolicy(KnownPolicies.IsUserActive, builder => builder.AddRequirements(new IsUserActiveRequirement()));
+            o.AddPolicy(KnownPolicies.IsAdmin, builder => builder.AddRequirements(new IsAdminRequirement()));
         });
 
         // Fusion services

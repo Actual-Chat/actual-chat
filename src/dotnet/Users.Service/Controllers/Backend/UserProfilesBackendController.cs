@@ -21,8 +21,8 @@ public class UserProfilesBackendController : ControllerBase, IUserProfilesBacken
         => _service.GetByName(name, cancellationToken);
 
     [HttpPost]
-    public Task UpdateStatus([FromBody] IUserProfilesBackend.UpdateStatusCommand command, CancellationToken cancellationToken)
-        => _service.UpdateStatus(command, cancellationToken);
+    public Task Update([FromBody] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken)
+        => _service.Update(command, cancellationToken);
 
     [HttpPost]
     public Task Create(IUserProfilesBackend.CreateCommand command, CancellationToken cancellationToken)

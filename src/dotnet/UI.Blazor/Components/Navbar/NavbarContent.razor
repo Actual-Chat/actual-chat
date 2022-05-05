@@ -20,10 +20,10 @@
         return new Model(authorizationResult.Succeeded);
     }
 
-    public sealed record Model(bool IsActive);
+    public sealed record Model(bool IsUserActive);
 }
 
-@if (State.LatestNonErrorValue.IsActive) {
+@if (State.LatestNonErrorValue.IsUserActive) {
     @foreach (var widget in Widgets.OrderBy(c => c.Order)) {
         @widget.Content
     }

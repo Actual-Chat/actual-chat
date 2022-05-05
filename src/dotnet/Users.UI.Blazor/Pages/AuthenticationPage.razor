@@ -164,7 +164,8 @@
             return;
         }
 
-        await UserProfiles.UpdateStatus(new IUserProfiles.UpdateStatusCommand(userProfile.Id, newStatus, Session), default);
+        userProfile.Status = newStatus;
+        await UserProfiles.Update(new IUserProfiles.UpdateCommand(Session, userProfile), default);
     }
 
     public class SessionModel

@@ -78,24 +78,21 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     }
 
     // [CommandHandler]
-    public virtual async Task UpdateStatus(
-        IUserProfilesBackend.UpdateStatusCommand command,
+    public virtual async Task Update(
+        IUserProfilesBackend.UpdateCommand command,
         CancellationToken cancellationToken)
     {
-        var userProfileId = command.UserProfileId;
+        var userProfile = command.UserProfile;
         if (Computed.IsInvalidating()) {
-            _ = Get(userProfileId, default);
+            _ = Get(userProfile.Id, default);
             return;
         }
 
         var context = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = context.ConfigureAwait(false);
 
-        var user = await AuthBackend.GetUser(userProfileId, cancellationToken).ConfigureAwait(false)
-            ?? throw new KeyNotFoundException($"User id='{userProfileId}' not found");
-
-        var dbUserProfile = await GetDbUserProfile(context, user.Id, cancellationToken).ConfigureAwait(false);
-        dbUserProfile.Status = command.NewStatus;
+        var dbUserProfile = await GetDbUserProfile(context, userProfile.Id, cancellationToken).ConfigureAwait(false);
+        _converter.UpdateEntity(userProfile, dbUserProfile);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

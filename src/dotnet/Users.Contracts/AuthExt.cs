@@ -9,4 +9,10 @@ public static class AuthExt
             .GetServices(auth)
             .GetRequiredService<IUserProfiles>()
             .IsActive(session, cancellationToken);
+
+    public static ValueTask<bool> IsAdmin(this IAuth auth, Session session, CancellationToken cancellationToken)
+        => ProxyExt
+            .GetServices(auth)
+            .GetRequiredService<IUserProfiles>()
+            .IsAdmin(session, cancellationToken);
 }

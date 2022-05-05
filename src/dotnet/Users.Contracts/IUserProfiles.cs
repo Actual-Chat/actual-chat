@@ -6,12 +6,11 @@ public interface IUserProfiles
     Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
-    public Task UpdateStatus(UpdateStatusCommand command, CancellationToken cancellationToken);
+    public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record UpdateStatusCommand(
-        [property: DataMember] string UserProfileId,
-        [property: DataMember] UserStatus NewStatus,
-        [property: DataMember] Session Session
+    public record UpdateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] UserProfile UserProfile
         ) : ISessionCommand<Unit>;
 }

@@ -1,3 +1,4 @@
+using System.Security;
 using ActualChat.Users.Db;
 using Stl.Fusion.Authentication.Commands;
 using Stl.Fusion.EntityFramework;
@@ -23,20 +24,20 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
             return null;
+
         return await _backend.Get(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
-    public virtual async Task UpdateStatus(IUserProfiles.UpdateStatusCommand command, CancellationToken cancellationToken)
+    public virtual async Task Update(IUserProfiles.UpdateCommand command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var userProfile = await Get(command.Session, cancellationToken).ConfigureAwait(false) ?? throw new Exception("User profile is not available");
-        if (!userProfile.IsAdmin)
-            throw new UnauthorizedAccessException($"User id='{userProfile.User.Id}' is not allowed to update user status");
+        var (session, userProfile) = command;
 
-        await _commander.Call(new IUserProfilesBackend.UpdateStatusCommand(command.UserProfileId, command.NewStatus), cancellationToken)
+        await AssertCanUpdateUserProfile(session, userProfile, cancellationToken).ConfigureAwait(false);
+        await _commander.Call(new IUserProfilesBackend.UpdateCommand(command.UserProfile), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -58,5 +59,26 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         await _commander
             .Call(new IUserProfilesBackend.CreateCommand(userId), cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task AssertCanUpdateUserProfile(
+        Session session,
+        UserProfile userProfileToUpdate,
+        CancellationToken cancellationToken)
+    {
+        var currentUserProfile = await Get(session, cancellationToken).ConfigureAwait(false)
+            ?? throw new Exception("User profile not found");
+        if (userProfileToUpdate.User.Id == currentUserProfile.Id) {
+            if (currentUserProfile.Status != userProfileToUpdate.Status)
+                throw new SecurityException("User cannot update it's own status");
+
+            return;
+        }
+
+        if (currentUserProfile.IsAdmin)
+            return;
+
+        throw new UnauthorizedAccessException(
+            $"User id='{currentUserProfile.User.Id}' is not allowed to update status of user id='{userProfileToUpdate.Id}'");
     }
 }

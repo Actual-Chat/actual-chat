@@ -1,17 +1,18 @@
 ﻿@page "/join/{InviteCode}"
+@using ActualChat.Invite
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
 <MainHeader>Joining via invite code</MainHeader>
 
-@if (_inviteCodeUseResult is { IsValid: false }) {
+@if (_usageResult is { Succeeded: false }) {
     @* NOTE(AY): We should use error style here! *@
-    <p>Invite code is invalid or expired!</p>
+    <p>Failed to join chat: @_usageResult.Message</p>
 } else {
     <p>Processing invite code, please wait...</p>
 }
 
 @code {
-    private InviteCodeUseResult? _inviteCodeUseResult;
+    private InviteUsageResult? _usageResult;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
@@ -21,12 +22,14 @@
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
-        var cmd = new IInviteCodes.UseInviteCodeCommand(Session, InviteCode);
+        var cmd = new IInvites.UseInviteCommand(Session, InviteCode);
         var cmdResult = await Cmd.Run(cmd);
-        _inviteCodeUseResult = cmdResult.Result;
-        if (!_inviteCodeUseResult.IsValid)
+
+        _usageResult = cmdResult.Result;
+        if (!_usageResult.Succeeded)
             return;
-        var uri = $"/chat/{_inviteCodeUseResult.ChatId}";
+        var invite = _usageResult.Invite!;
+        var uri = $"/chat/{invite.Details!.Chat!.ChatId}";
         Nav.NavigateTo(uri);
     }
 }
