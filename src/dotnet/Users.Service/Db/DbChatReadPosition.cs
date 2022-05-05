@@ -1,20 +1,14 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace ActualChat.Users.Db;
 
 [Table("ChatReadPositions")]
-public class DbChatReadPosition
+public class DbChatReadPosition : IHasId<string>
 {
-    // TODO(AY): Add Id + ComposeId on migration to MySql & start use entity resolver, remove UserId & ChatId
-    public string UserId { get; set; } = null!;
-    public string ChatId { get; set; } = null!;
-    public long EntryId { get; set; }
+    [Key] public string Id { get; set; } = "";
+    public long ReadEntryId { get; set; }
 
-    internal class EntityConfiguration : IEntityTypeConfiguration<DbChatReadPosition>
-    {
-        public void Configure(EntityTypeBuilder<DbChatReadPosition> builder)
-            => builder.HasKey(e => new { e.UserId, e.ChatId });
-    }
+    public static string ComposeId(string userId, string chatId)
+        => $"{userId} {chatId}";
 }

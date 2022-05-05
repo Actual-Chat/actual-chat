@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Users.Db;
-using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
@@ -8,26 +7,25 @@ namespace ActualChat.Users;
 [SuppressMessage("Usage", "MA0006:Use String.Equals instead of equality operator")]
 public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPositions
 {
-    private readonly IAuth _auth;
+    private IAuth Auth { get; }
+    private IDbEntityResolver<string, DbChatReadPosition> DbChatReadPositionResolver { get; }
 
-    public ChatReadPositions(IServiceProvider services, IAuth auth) : base(services)
-        => _auth = auth;
+    public ChatReadPositions(IServiceProvider services) : base(services)
+    {
+        Auth = services.GetRequiredService<IAuth>();
+        DbChatReadPositionResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatReadPosition>>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<long?> GetReadPosition(Session session, string chatId, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
             return null;
 
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        string userId = user.Id;
-        var position = await dbContext.ChatReadPositions
-            .FirstOrDefaultAsync(d => d.UserId == userId && d.ChatId == chatId, cancellationToken)
-            .ConfigureAwait(false);
-        return position?.EntryId;
+        var compositeId = DbChatReadPosition.ComposeId(user.Id, chatId);
+        var position = await DbChatReadPositionResolver.Get(compositeId, cancellationToken).ConfigureAwait(false);
+        return position?.ReadEntryId;
     }
 
     // [CommandHandler]
@@ -39,29 +37,26 @@ public class ChatReadPositions: DbServiceBase<UsersDbContext>, IChatReadPosition
             return;
         }
 
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
+        var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
             return;
 
-        string userId = user.Id;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var existingPosition = await dbContext.ChatReadPositions
-            .FindAsync(DbKey.Compose(userId, chatId), cancellationToken)
-            .ConfigureAwait(false);
 
-        var dbPosition = existingPosition;
+        var dbPosition = await dbContext.ChatReadPositions
+            .FindAsync(DbKey.Compose(DbChatReadPosition.ComposeId(user.Id, chatId)), cancellationToken)
+            .ConfigureAwait(false);
         if (dbPosition == null) {
             dbPosition = new DbChatReadPosition {
-                UserId = userId,
-                ChatId = chatId,
-                EntryId = entryId,
+                Id = DbChatReadPosition.ComposeId(user.Id, chatId),
+                ReadEntryId = entryId,
             };
             dbContext.Add(dbPosition);
         }
         else {
-            if (entryId > dbPosition.EntryId)
-                dbPosition.EntryId = entryId;
+            if (entryId > dbPosition.ReadEntryId)
+                dbPosition.ReadEntryId = entryId;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

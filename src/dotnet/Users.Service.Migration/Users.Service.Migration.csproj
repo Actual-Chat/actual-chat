@@ -7,4 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Users.Service\Users.Service.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Migrations" />
+  </ItemGroup>
 </Project>

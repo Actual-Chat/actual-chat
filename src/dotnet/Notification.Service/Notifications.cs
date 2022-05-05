@@ -67,7 +67,6 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         if (!user.IsAuthenticated)
             return false;
 
-        var userId = user.Id.ToString();
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
         var existingDbDevice = await dbContext.Devices.ForUpdate()
@@ -79,7 +78,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             dbDevice = new DbDevice {
                 Id = deviceId,
                 Type = deviceType,
-                UserId = userId,
+                UserId = user.Id,
                 Version = VersionGenerator.NextVersion(),
                 CreatedAt = _clocks.SystemClock.Now,
             };

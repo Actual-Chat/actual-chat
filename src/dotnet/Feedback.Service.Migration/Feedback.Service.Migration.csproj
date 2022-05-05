@@ -8,4 +8,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Migrations" />
+  </ItemGroup>
+
 </Project>

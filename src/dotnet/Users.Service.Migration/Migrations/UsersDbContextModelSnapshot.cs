@@ -4,11 +4,10 @@ using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace ActualChat.Users.Migrations.Migrations
+namespace ActualChat.Users.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
     partial class UsersDbContextModelSnapshot : ModelSnapshot
@@ -17,23 +16,18 @@ namespace ActualChat.Users.Migrations.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.3")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+                .HasAnnotation("ProductVersion", "6.0.4")
+                .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             modelBuilder.Entity("ActualChat.Users.Db.DbChatReadPosition", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
 
-                    b.Property<string>("ChatId")
-                        .HasColumnType("text");
-
-                    b.Property<long>("EntryId")
+                    b.Property<long>("ReadEntryId")
                         .HasColumnType("bigint");
 
-                    b.HasKey("UserId", "ChatId");
+                    b.HasKey("Id");
 
                     b.ToTable("ChatReadPositions");
                 });
@@ -41,23 +35,23 @@ namespace ActualChat.Users.Migrations.Migrations
             modelBuilder.Entity("ActualChat.Users.Db.DbChatUserSettings", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("AvatarId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("ChatId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("Language")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -74,36 +68,36 @@ namespace ActualChat.Users.Migrations.Migrations
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("AuthenticatedIdentity")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("IPAddress")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<bool>("IsSignOutForced")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("OptionsJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserAgent")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -125,18 +119,18 @@ namespace ActualChat.Users.Migrations.Migrations
             modelBuilder.Entity("ActualChat.Users.Db.DbUser", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("ClaimsJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -152,18 +146,18 @@ namespace ActualChat.Users.Migrations.Migrations
             modelBuilder.Entity("ActualChat.Users.Db.DbUserAuthor", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("AvatarId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("IsAnonymous")
-                        .HasColumnType("boolean");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -177,26 +171,26 @@ namespace ActualChat.Users.Migrations.Migrations
             modelBuilder.Entity("ActualChat.Users.Db.DbUserAvatar", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("Bio")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<long>("LocalId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Picture")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -210,19 +204,19 @@ namespace ActualChat.Users.Migrations.Migrations
             modelBuilder.Entity("ActualChat.Users.Db.DbUserContact", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("OwnerUserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("TargetUserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
@@ -235,10 +229,23 @@ namespace ActualChat.Users.Migrations.Migrations
                     b.ToTable("UserContacts");
                 });
 
+            modelBuilder.Entity("ActualChat.Users.Db.DbUserPresence", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("OnlineCheckInAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserPresences");
+                });
+
             modelBuilder.Entity("ActualChat.Users.Db.DbUserProfile", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<short>("Status")
                         .HasColumnType("smallint");
@@ -252,32 +259,19 @@ namespace ActualChat.Users.Migrations.Migrations
                     b.ToTable("UserProfiles");
                 });
 
-            modelBuilder.Entity("ActualChat.Users.Db.DbUserState", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("OnlineCheckInAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("UserStates");
-                });
-
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("DbUserId")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("varchar(255)")
                         .HasColumnName("UserId");
 
                     b.Property<string>("Secret")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
@@ -291,25 +285,25 @@ namespace ActualChat.Users.Migrations.Migrations
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("AgentId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("CommandJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CommitTime")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("ItemsJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 

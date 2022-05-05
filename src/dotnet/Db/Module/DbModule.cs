@@ -78,7 +78,7 @@ public class DbModule : HostModule<DbSettings>
                 builder.UseMySql(dbInfo.ConnectionString, serverVersion, mySql => {
                     mySql.EnableRetryOnFailure(0);
                     // mySql.MaxBatchSize(1);
-                    // mySql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
+                    mySql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));

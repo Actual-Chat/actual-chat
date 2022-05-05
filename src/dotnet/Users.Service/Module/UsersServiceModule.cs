@@ -83,6 +83,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             dbContext.AddEntityResolver<string, DbUserAuthor>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
             dbContext.AddEntityResolver<string, DbUserContact>();
+            dbContext.AddEntityResolver<string, DbChatReadPosition>();
             dbContext.AddEntityConverter<DbUserProfile, UserProfile, DbUserProfileConverter>();
 
             // DB authentication services

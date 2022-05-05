@@ -2,7 +2,7 @@ using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace ActualChat.Users.Migrations;
+namespace ActualChat.Users;
 
 public class UsersDbContextContextFactory : IDesignTimeDbContextFactory<UsersDbContext>
 {
