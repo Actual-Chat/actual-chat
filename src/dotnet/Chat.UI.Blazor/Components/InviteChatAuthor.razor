@@ -45,15 +45,14 @@
     </Body>
     <Buttons>
         <Button
-            Type="ButtonType.Button"
             OnClick="OnCancel"
             class="btn-primary bg-primary">
             Cancel
         </Button>
         <Button
-            Type="ButtonType.Submit"
+            Type="@ButtonType.Submit"
             OnClick="OnInvite"
-            Disabled="!CanInvite"
+            Disabled="@(!CanInvite)"
             class="btn-success">
             Invite
         </Button>
@@ -94,10 +93,9 @@
                     Picture = picture,
                 };
             })
-            .Select(x => new Contact {
+            .Select(x => new Contact(x) {
                 IsExisting = existingChatUserIds.Contains(x.Id),
                 IsChecked = existingChatUserIds.Contains(x.Id),
-                Author = x,
             })
             .ToArray();
         AllChatContacts = chatContacts;
@@ -138,9 +136,12 @@
     }
 
     private class Contact {
+        public UserAuthor Author { get; }
         public bool IsExisting { get; set; }
         public bool IsChecked { get; set; }
-        public UserAuthor Author { get; init; }
+
+        public Contact(UserAuthor author)
+            => Author = author;
     }
 
     public record Model(Chat Chat);
