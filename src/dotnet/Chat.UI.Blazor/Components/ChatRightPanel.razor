@@ -1,3 +1,40 @@
-<div class="flex-y overflow-y-auto w-full md:w-80 border-l-2 p-3 custom-scrollbar animate-from-right">
-    <ChatAuthorList />
+<div class="flex-y w-full md:w-80 border-l-2 p-3 animate-from-right">
+    <ul class="flex-x flex-wrap list-none border-b-0 pl-0 mb-2 text-secondary" role="tablist">
+        @foreach (var page in _pages) {
+            var isActive = page == _currentPage;
+            var cls = isActive ? "border-success" : "border-transparent";
+
+            <li class="nav-item" role="presentation">
+                <button class="block cursor-pointer px-3 py-1
+                               font-medium text-xs leading-tight uppercase
+                               border-x-0 border-t-0 border-b-2 hover:bg-primary @cls"
+                        role="tab" aria-selected="@isActive"
+                        @onclick="@(() => _currentPage = page)">
+                    @GetTabTitle(page)
+                </button>
+            </li>
+        }
+    </ul>
+    <div class="overflow-y-auto custom-scrollbar">
+        @if (_currentPage == Page.Users) {
+            <ChatAuthorList />
+        }
+        else if (_currentPage == Page.Settings) {
+            <ChatSettings />
+        }
+    </div>
 </div>
+
+@code {
+    private enum Page { Users, Settings }
+
+    private Page _currentPage = Page.Users;
+    private Page[] _pages = Enum.GetValues<Page>().ToArray();
+
+    private string GetTabTitle(Page page)
+        => page switch{
+            Page.Users => "Users",
+            Page.Settings => "Settings",
+            _ => "???"
+            };
+}
