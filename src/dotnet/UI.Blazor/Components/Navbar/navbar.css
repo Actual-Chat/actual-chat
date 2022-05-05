@@ -50,3 +50,12 @@
 .navbar-item:hover .pin-toggle.off {
     @apply visible;
 }
+
+.navbar-item .pin-toggle.recorder,
+.navbar-item:hover .pin-toggle.recorder {
+    @apply text-button-on;
+}
+
+.navbar-item .pin-toggle.recorder svg {
+    filter: drop-shadow(0px 0px 3px rgb(239 68 68 / 0.7));
+}

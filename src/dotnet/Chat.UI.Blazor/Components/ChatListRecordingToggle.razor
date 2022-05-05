@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<Symbol>
 @{
     var isRecording = RecordingChatId == ChatId;
-    var cls = "pin-toggle transparent " + (isRecording ? "on" : "off");
+    var cls = "pin-toggle recorder transparent " + (isRecording ? "on" : "off");
 }
 
 @if (isRecording) {

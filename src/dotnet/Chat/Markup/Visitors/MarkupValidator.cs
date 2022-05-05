@@ -6,6 +6,11 @@ public class MarkupValidator : MarkupVisitor<bool>
 
     public static MarkupValidator ContainsMention { get; } = new(m => m is Mention, AggregationMode.Any);
 
+    public static MarkupValidator ContainsAuthorMention(string authorId)
+        => new (m
+                => m is Mention {Kind: MentionKind.AuthorId} mention && StringComparer.Ordinal.Equals(mention.Target, authorId),
+            AggregationMode.Any);
+
     private readonly Func<Markup, bool> _predicate;
     private readonly AggregationMode _aggregationMode;
 
