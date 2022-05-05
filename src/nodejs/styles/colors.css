@@ -74,3 +74,57 @@
     --playing-glow-mid: rgb(0, 204, 255);
     --playing-glow-min: rgb(0, 139, 173);
 }
+
+.theme-white-blue {
+    --background-primary: #B3B6B7;
+    --background-secondary: #bdc0c1;
+    --background-accent: #a9acad;
+    --background-strong-accent: #93c5fd;
+    --background-online: #31d872;
+    --background-message-hover: #f3f4f6;
+    --background-separate-line: #2b3641;
+    --background-error-alert: #f2b6bb;
+    --background-avatar: #5a7188;
+    --background-mention: #fed7aa;
+    --background-mention-hover: #fb923c;
+    --background-mention-message: #fff7ed;
+    --background-mention-message-hover: #fff7e5;
+    --background-own-hover: #cbd5e1;
+    --background-own-message: #f6f8f9;
+
+    --text-color-primary: #171819;
+    --text-color-primary-muted: #3b4a59;
+    --text-color-secondary: #212223;
+    --text-color-secondary-muted: #5a7188;
+    --text-color-accent: #0e0e0f;
+    --text-color-online: #31d872;
+    --text-color-accent-muted: #e1e6eb;
+    --text-color-white: #ffffff;
+    --text-color-placeholder: #788ea5;
+    --text-color-toggle-off: #d87330;
+    --text-color-toggle-on: #09a7ec;
+    --text-color-toggle-hover: #0899d9;
+    --text-color-rating: #fde047;
+    --text-inline-code: #D83E52;
+    --text-button-on: #ef4444;
+
+    --button-color-success: #3da9fc;
+    --button-color-success-hover: #0284c7;
+    --button-color-success-outline: #F9FAFB;
+    --button-color-success-outline-hover: #e0f2fe;
+    --button-color-accent: #ffffff;
+    --button-color-accent-hover: #FAFAFA;
+    --button-color-cancel: #64748b;
+    --button-color-cancel-hover: #475569;
+    --button-color-error: #ef4444;
+    --button-color-error-hover: #dc2626;
+    --error-toast-header: #feb7b7;
+    --error-toast-body: #fecaca;
+
+    --glow-max: #fff;
+    --glow-mid: rgb(181, 240, 255);
+    --glow-min: rgb(0, 204, 255);
+    --playing-glow-max: rgb(181, 240, 255);
+    --playing-glow-mid: rgb(0, 204, 255);
+    --playing-glow-min: rgb(0, 139, 173);
+}
