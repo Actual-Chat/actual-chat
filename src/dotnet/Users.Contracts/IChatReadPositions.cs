@@ -9,7 +9,7 @@ public interface IChatReadPositions
     Task UpdateReadPosition(UpdateReadPositionCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record UpdateReadPositionCommand(
+    public sealed record UpdateReadPositionCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] long EntryId

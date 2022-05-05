@@ -14,12 +14,12 @@ public interface IUserProfilesBackend
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record CreateCommand(
+    public sealed record CreateCommand(
         [property: DataMember] string UserProfileOrUserId
         ) : ICommand<Unit>, IBackendCommand;
 
     [DataContract]
-    public record UpdateCommand(
+    public sealed record UpdateCommand(
         [property: DataMember] UserProfile UserProfile
         ) : ICommand<Unit>, IBackendCommand;
 }

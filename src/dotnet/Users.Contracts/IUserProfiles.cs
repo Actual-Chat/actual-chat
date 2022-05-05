@@ -9,7 +9,7 @@ public interface IUserProfiles
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record UpdateCommand(
+    public sealed record UpdateCommand(
         [property: DataMember] Session Session,
         [property: DataMember] UserProfile UserProfile
         ) : ISessionCommand<Unit>;

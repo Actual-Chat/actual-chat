@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class ErrorUI
 {
-    private record ErrorSurrogateCommand : ICommand;
+    private sealed record ErrorSurrogateCommand : ICommand;
     private readonly UICommandRunner _cmd;
 
     public ErrorUI(UICommandRunner cmd)

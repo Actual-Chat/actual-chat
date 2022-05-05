@@ -20,7 +20,7 @@ public interface IUserContactsBackend
     public Task<UserContact> CreateContact(CreateContactCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record CreateContactCommand(
+    public sealed record CreateContactCommand(
         [property: DataMember] UserContact Contact
     ) : ICommand<UserContact>, IBackendCommand;
 }

@@ -14,7 +14,15 @@ public interface IInvites
     [CommandHandler]
     Task<InviteUsageResult> UseInvite(UseInviteCommand command, CancellationToken cancellationToken);
 
-    public record UseInviteCommand(Session Session, string InviteCode) : ISessionCommand<InviteUsageResult>;
+    [DataContract]
+    public sealed record UseInviteCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string InviteCode
+        ) : ISessionCommand<InviteUsageResult>;
 
-    public record GenerateCommand(Session Session, Invite Invite) : ISessionCommand<Invite>;
+    [DataContract]
+    public sealed record GenerateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] Invite Invite
+        ) : ISessionCommand<Invite>;
 }

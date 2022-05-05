@@ -20,7 +20,7 @@ public interface IChatAuthorsBackend
     Task<ChatAuthor> Create(CreateCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record CreateCommand(
+    public sealed record CreateCommand(
         [property: DataMember] string ChatId,
         [property: DataMember] string UserId
         ) : ICommand<ChatAuthor>, IBackendCommand;

@@ -15,20 +15,20 @@ public interface INotifications
     Task UnsubscribeToChat(UnsubscribeToChatCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record RegisterDeviceCommand(
+    public sealed record RegisterDeviceCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string DeviceId,
         [property: DataMember] DeviceType DeviceType
         ) : ISessionCommand<bool>;
 
     [DataContract]
-    public record SubscribeToChatCommand(
+    public sealed record SubscribeToChatCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId
         ) : ISessionCommand<bool>;
 
     [DataContract]
-    public record UnsubscribeToChatCommand(
+    public sealed record UnsubscribeToChatCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId
         ) : ISessionCommand<Unit>;

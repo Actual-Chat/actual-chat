@@ -11,7 +11,7 @@ public interface IChatUserSettingsBackend
     Task<ChatUserSettings> Upsert(UpsertCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record UpsertCommand(
+    public sealed record UpsertCommand(
         [property: DataMember] string UserId,
         [property: DataMember] string ChatId,
         [property: DataMember] ChatUserSettings Settings)

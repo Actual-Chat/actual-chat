@@ -14,7 +14,13 @@ public interface IInvitesBackend
     [CommandHandler]
     Task UseInvite(UseInviteCommand command, CancellationToken cancellationToken);
 
-    public record GenerateCommand(Invite Invite) : ICommand<Invite>, IBackendCommand;
+    [DataContract]
+    public sealed record GenerateCommand(
+        [property: DataMember] Invite Invite
+        ) : ICommand<Invite>, IBackendCommand;
 
-    public record UseInviteCommand(Invite Invite) : ICommand<Unit>, IBackendCommand;
+    [DataContract]
+    public sealed record UseInviteCommand(
+        [property: DataMember] Invite Invite
+        ) : ICommand<Unit>, IBackendCommand;
 }

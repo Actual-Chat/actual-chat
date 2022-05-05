@@ -12,7 +12,7 @@ public interface INotificationsBackend
      Task NotifySubscribers(NotifySubscribersCommand subscribersCommand, CancellationToken cancellationToken);
 
      [DataContract]
-     public record NotifySubscribersCommand(
+     public sealed record NotifySubscribersCommand(
          [property: DataMember] string ChatId,
          [property: DataMember] long EntryId,
          [property: DataMember] string AuthorUserId,

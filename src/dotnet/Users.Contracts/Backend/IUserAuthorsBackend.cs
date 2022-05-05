@@ -9,7 +9,7 @@ public interface IUserAuthorsBackend
     public Task SetAvatar(SetAvatarCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record SetAvatarCommand(
+    public sealed record SetAvatarCommand(
         [property: DataMember] string UserId,
         [property: DataMember] string AvatarId
     ) : ICommand<Unit>, IBackendCommand;

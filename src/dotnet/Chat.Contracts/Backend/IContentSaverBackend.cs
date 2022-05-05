@@ -6,7 +6,7 @@ public interface IContentSaverBackend
     Task SaveContent(SaveContentCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record SaveContentCommand(
+    public sealed record SaveContentCommand(
         [property: DataMember] string ContentId,
         [property: DataMember] byte[] Content,
         [property: DataMember] string ContentType

@@ -6,7 +6,7 @@ public interface IFeedbacks
     public Task CreateFeatureRequest(FeatureRequestCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record FeatureRequestCommand(
+    public sealed record FeatureRequestCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string Feature
         ) : ISessionCommand<Unit>

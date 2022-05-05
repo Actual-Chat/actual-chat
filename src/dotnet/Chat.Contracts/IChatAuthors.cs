@@ -32,13 +32,13 @@ public interface IChatAuthors
     Task CreateChatAuthors(CreateChatAuthorsCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record AddToContactsCommand(
+    public sealed record AddToContactsCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatAuthorId
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public record CreateChatAuthorsCommand(
+    public sealed record CreateChatAuthorsCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] string[] UserIds

@@ -73,7 +73,7 @@ public interface IChats
     Task RemoveTextEntry(RemoveTextEntryCommand command, CancellationToken cancellationToken);
 
     [DataContract]
-    public record CreateChatCommand(
+    public sealed record CreateChatCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string Title
         ) : ISessionCommand<Chat>
@@ -82,19 +82,19 @@ public interface IChats
     }
 
     [DataContract]
-    public record UpdateChatCommand(
+    public sealed record UpdateChatCommand(
         [property: DataMember] Session Session,
         [property: DataMember] Chat Chat
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public record JoinChatCommand(
+    public sealed record JoinChatCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId
         ) : ISessionCommand<Unit>;
 
     [DataContract]
-    public record CreateTextEntryCommand(
+    public sealed record CreateTextEntryCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] string Text
@@ -105,7 +105,7 @@ public interface IChats
     }
 
     [DataContract]
-    public record RemoveTextEntryCommand(
+    public sealed record RemoveTextEntryCommand(
         [property: DataMember] Session Session,
         [property: DataMember] string ChatId,
         [property: DataMember] long EntryId
