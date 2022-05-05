@@ -1,5 +1,11 @@
-<h3>ChatSettings</h3>
+<div class="flex-y text-secondary">
+    <div class="flex-x justify-between items-center mt-1">
+        <div class="mr-2">Notifications:</div>
+        <ChatNotificationToggle ChatId="@Chat.Id"/>
+    </div>
+    <div class="my-2 h-0 border-b bg-primary"></div>
+</div>
 
 @code {
-    
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 }
