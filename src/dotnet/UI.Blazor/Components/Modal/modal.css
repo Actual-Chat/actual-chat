@@ -4,6 +4,29 @@
 */
 
 .modal {
-    @apply p-0 bg-transparent border-0 rounded-none;
+    @apply border-0 rounded-none;
+    @apply p-0 bg-transparent;
     box-shadow: none;
+}
+.modal-chrome {
+    @apply rounded-lg md:shadow-2xl;
+    @apply bg-primary text-secondary;
+    @apply overflow-hidden;
+}
+.modal-frame {
+    @apply h-screen md:h-auto w-screen md:max-w-modal;
+    @apply md:rounded-lg rounded-none;
+    @apply flex-y;
+}
+
+.dialog-content {
+    @apply p-5;
+    @apply grow flex-y;
+}
+.dialog-body {
+    @apply grow;
+}
+.dialog-buttons {
+    @apply pt-4 min-h-24 md:min-h-0;
+    @apply flex-x justify-end gap-x-2;
 }

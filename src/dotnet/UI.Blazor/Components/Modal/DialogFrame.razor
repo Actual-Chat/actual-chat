@@ -1,11 +1,11 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
-    <div class="flex-y grow p-5">
-        <div class="modal-body grow">
+    <div class="dialog-content">
+        <div class="dialog-body">
             @Body
         </div>
-        <div class="flex-x justify-end gap-x-2 pt-4 min-h-24 md:min-h-0">
+        <div class="dialog-buttons">
             @Buttons
         </div>
     </div>
