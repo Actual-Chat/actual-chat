@@ -16,17 +16,17 @@
 .modal-frame {
     @apply h-screen md:h-auto w-screen md:max-w-modal;
     @apply md:rounded-lg rounded-none;
-    @apply flex-y;
+    @apply flex flex-col;
 }
 
 .dialog-content {
     @apply p-5;
-    @apply grow flex-y;
+    @apply grow flex flex-col;
 }
 .dialog-body {
     @apply grow;
 }
 .dialog-buttons {
     @apply pt-4 min-h-24 md:min-h-0;
-    @apply flex-x justify-end gap-x-2;
+    @apply flex flex-row justify-end gap-x-2;
 }
