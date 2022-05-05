@@ -7,10 +7,6 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 
-@{
-    var placeholder = "#" + Chat.Title;
-}
-
 <div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
@@ -24,7 +20,7 @@
                     </div>
                     <SlateEditor @ref="SlateEditorRef" Id="message-input"
                                  Class="message-input flex-1 -flex-y overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3 break-words outline-none hover:cursor-text text-primary block"
-                                 Placeholder="@placeholder"
+                                 Placeholder="@("#" + Chat.Title)"
                                  OnPost="Post" OnRendered="OnSlateEditorRendered"/>
                     <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
                             @onclick="_ => Post()">
@@ -93,11 +89,11 @@
             return;
 
         try {
-            _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
-            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
             await SlateEditorRef.Clear().ConfigureAwait(true);
             AttachmentListPreviewRef.Clear();
-            await InvokeAsync(StateHasChanged).ConfigureAwait(true);
+            StateHasChanged();
+            _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
+            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);
