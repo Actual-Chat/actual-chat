@@ -5,7 +5,7 @@
 @implements IModalView<FeatureRequestModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogLayout Title="Sorry, this feature is not implemented yet">
+<DialogFrame Title="Sorry, this feature is not implemented yet">
     <Body>
         @{
             var title = ModalModel.FeatureTitle;
@@ -37,7 +37,7 @@
         <Button Class="btn-primary" OnClick="OnCancel" Focus="true">Cancel</Button>
         <Button OnClick="OnSubmit">Send feedback</Button>
     </Buttons>
-</DialogLayout>
+</DialogFrame>
 
 @code {
     private int _rating;

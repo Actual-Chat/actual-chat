@@ -5,7 +5,7 @@
 
 <EditForm Model="@_editModel" OnValidSubmit="@OnCreate">
     <DataAnnotationsValidator/>
-    <DialogLayout Title="Create Chat">
+    <DialogFrame Title="Create Chat">
         <Body>
             <div class="flex-y">
                 <label for="Title" class="block text-sm font-medium text-secondary">Chat title</label>
@@ -17,7 +17,7 @@
             <Button Type="ButtonType.Button" OnClick="OnCancel" class="btn-primary">Cancel</Button>
             <Button Type="ButtonType.Submit" class="btn-success" Disabled="@(!context.Validate())">Create</Button>
         </Buttons>
-    </DialogLayout>
+    </DialogFrame>
 </EditForm>
 
 @code {

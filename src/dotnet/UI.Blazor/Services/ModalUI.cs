@@ -20,10 +20,12 @@ public class ModalUI
     {
         var componentType = _matchingTypeFinder.TryFind(model.GetType(), typeof(IModalView));
         if (componentType == null)
-            throw new InvalidOperationException($"Can not find matching modal view component for model '{model.GetType()}'");
+            throw new InvalidOperationException(
+                $"Can not find matching modal view component for '{model.GetType()}' model type.");
+
         var modalOptions = new ModalOptions {
+            Class = "blazored-modal modal",
             HideHeader = true,
-            Class = "blazored-modal custom-modal-class",
         };
         var modalParameters = new ModalParameters();
         modalParameters.Add(nameof(IModalView<TModel>.ModalModel), model);

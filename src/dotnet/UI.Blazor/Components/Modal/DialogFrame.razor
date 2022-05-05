@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<ModalLayout Class="@Class" Title="@Title" HideHeader="HideHeader" ShowCloseButton="ShowCloseButton">
+<ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
     <div class="flex-y grow p-5">
         <div class="modal-body grow">
             @Body
@@ -9,12 +9,12 @@
             @Buttons
         </div>
     </div>
-</ModalLayout>
+</ModalFrame>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool HideHeader { get; set; }
-    [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public bool HasHeader { get; set; } = true;
+    [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }

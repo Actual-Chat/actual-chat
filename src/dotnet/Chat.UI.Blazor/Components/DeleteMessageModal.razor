@@ -5,7 +5,7 @@
     var model = ModalModel.MessageModel;
 }
 
-<DialogLayout Title="Delete Message" Class="delete-message-modal chat-message-modal inline">
+<DialogFrame Title="Delete Message" Class="delete-message-modal chat-message-modal inline">
     <Body>
         <div class="text-sm mb-2 min-h-8">
             Are you sure you want to delete this message?
@@ -44,7 +44,7 @@
         <Button Class="btn-primary" OnClick="OnCancel" Focus="true">Cancel</Button>
         <Button Class="btn-error" OnClick="OnDelete">Delete</Button>
     </Buttons>
-</DialogLayout>
+</DialogFrame>
 
 @code {
     [Inject] private FeedbackUI FeedbackUI { get; set; } = null!;

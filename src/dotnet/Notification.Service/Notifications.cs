@@ -48,10 +48,6 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             .ConfigureAwait(false);
     }
 
-    // [ComputeMethod]
-
-    // [ComputeMethod]
-
     // [CommandHandler]
     public virtual async Task<bool> RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
