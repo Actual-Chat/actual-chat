@@ -16,19 +16,19 @@
             <div class="relative">
                 <UserAvatar AvatarId="@item.AvatarId" Class="@brdCls">
                     <ActionsTemplate>
-                        <button class="bg-accent px-8 py-2 mt-4 rounded-3xl text-secondary font-semibold hover:bg-primary"
-                                @onclick="@(() => EditAvatar(item.AvatarId))">Edit</button>
+                        <ButtonGroup ButtonsPosition="ButtonGroupPosition.Center">
+                            <Button OnClick="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
+                            @if (item.IsSelected) {
+                                <Button Class="btn-error" OnClick="@(() => Select(""))">Refuse</Button>
+                            } else {
+                                <Button Class="btn-success" OnClick="@(() => Select(item.AvatarId))">Select</Button>
+                            }
+                        </ButtonGroup>
                     </ActionsTemplate>
                 </UserAvatar>
                 <div class="absolute top-0 right-0 mr-4 mt-2">
                     @if (item.IsSelected) {
-                        <button type="button" title="Selected" @onclick="@(() => Select(""))">
-                            <i class="fa fa-check fa-2x scale-125 text-green-500" aria-hidden="true"></i>
-                        </button>
-                    } else {
-                        <button type="button" title="Select" @onclick="@(() => Select(item.AvatarId))">
-                            <i class="fa fa-check fa-2x text-gray-200 hover:scale-110 hover:text-green-500 transition duration-300 ease-in-out" aria-hidden="true"></i>
-                        </button>
+                        <i class="fa fa-check fa-2x scale-125 text-online" aria-hidden="true"></i>
                     }
                 </div>
             </div>
