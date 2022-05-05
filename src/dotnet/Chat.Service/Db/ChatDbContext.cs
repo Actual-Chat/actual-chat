@@ -11,7 +11,6 @@ public class ChatDbContext : DbContextBase
     public DbSet<DbTextEntryAttachment> TextEntryAttachments { get; protected set; } = null!;
     public DbSet<DbChatOwner> ChatOwners { get; protected set; } = null!;
     public DbSet<DbChatAuthor> ChatAuthors { get; protected set; } = null!;
-    public DbSet<DbInviteCode> InviteCodes { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
