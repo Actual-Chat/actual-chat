@@ -3,8 +3,8 @@
     "DefaultRedis": "localhost|test_{instance.}{context}"
   },
   "DbSettings": {
-    "DefaultDb": "Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
-    // "DefaultDb": "mysql:Server=localhost;Database=ac_test_{instance_}{context};Port=3306;User=root;Password=mariadb",
+    "DefaultDb": "mysql:Server=localhost;Database=ac_test_{instance_}{context};Port=3306;User=root;Password=mariadb",
+    // "DefaultDb": "postgresql:Server=localhost;Database=ac_test_{instance_}{context};Port=5432;User Id=postgres;Password=postgres",
     // "DefaultDb": "memory:ac_test_{instance_}{context}",
     "OverrideDb": "",
     // OverrideDb": "memory:ac_test_{instance_}{context}",

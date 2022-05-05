@@ -6,16 +6,16 @@ namespace ActualChat.Feedback;
 
 public class FeedbackDbContextContextFactory : IDesignTimeDbContextFactory<FeedbackDbContext>
 {
-    public string UsePostgreSql =
-            "Server=localhost;Database=ac_dev_feedback;Port=5432;User Id=postgres;Password=postgres";
+    public string ConnectionString =
+        "Server=localhost;Database=ac_dev_invite;Port=3306;User=root;Password=mariadb";
 
     public FeedbackDbContext CreateDbContext(string[] args)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<FeedbackDbContext>();
-        optionsBuilder.UseNpgsql(
-            UsePostgreSql,
+        var builder = new DbContextOptionsBuilder<FeedbackDbContext>();
+        builder.UseMySql(ConnectionString,
+            ServerVersion.AutoDetect(ConnectionString),
             o => o.MigrationsAssembly(typeof(FeedbackDbContextContextFactory).Assembly.FullName));
 
-        return new FeedbackDbContext(optionsBuilder.Options);
+        return new FeedbackDbContext(builder.Options);
     }
 }

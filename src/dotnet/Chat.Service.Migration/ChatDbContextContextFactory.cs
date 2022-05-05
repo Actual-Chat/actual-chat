@@ -6,16 +6,16 @@ namespace ActualChat.Chat;
 
 public class ChatDbContextContextFactory : IDesignTimeDbContextFactory<ChatDbContext>
 {
-    public string UsePostgreSql =
-            "Server=localhost;Database=ac_dev_chat;Port=5432;User Id=postgres;Password=postgres";
+    public string ConnectionString =
+        "Server=localhost;Database=ac_dev_invite;Port=3306;User=root;Password=mariadb";
 
     public ChatDbContext CreateDbContext(string[] args)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<ChatDbContext>();
-        optionsBuilder.UseNpgsql(
-            UsePostgreSql,
+        var builder = new DbContextOptionsBuilder<ChatDbContext>();
+        builder.UseMySql(ConnectionString,
+            ServerVersion.AutoDetect(ConnectionString),
             o => o.MigrationsAssembly(typeof(ChatDbContextContextFactory).Assembly.FullName));
 
-        return new ChatDbContext(optionsBuilder.Options);
+        return new ChatDbContext(builder.Options);
     }
 }

@@ -6,16 +6,16 @@ namespace ActualChat.Users.Migrations;
 
 public class UsersDbContextContextFactory : IDesignTimeDbContextFactory<UsersDbContext>
 {
-    public string UsePostgreSql =
-            "Server=localhost;Database=ac_dev_users;Port=5432;User Id=postgres;Password=postgres";
+    public string ConnectionString =
+        "Server=localhost;Database=ac_dev_invite;Port=3306;User=root;Password=mariadb";
 
     public UsersDbContext CreateDbContext(string[] args)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<UsersDbContext>();
-        optionsBuilder.UseNpgsql(
-            UsePostgreSql,
+        var builder = new DbContextOptionsBuilder<UsersDbContext>();
+        builder.UseMySql(ConnectionString,
+            ServerVersion.AutoDetect(ConnectionString),
             o => o.MigrationsAssembly(typeof(UsersDbContextContextFactory).Assembly.FullName));
 
-        return new UsersDbContext(optionsBuilder.Options);
+        return new UsersDbContext(builder.Options);
     }
 }
