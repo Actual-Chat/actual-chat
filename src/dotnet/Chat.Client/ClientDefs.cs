@@ -90,6 +90,8 @@ public interface IChatAuthorsClientDef
     Task<bool> CanAddToContacts(Session session, string chatAuthorId, CancellationToken cancellationToken);
     [Post(nameof(AddToContacts))]
     Task<UserContact> AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
+    [Post(nameof(CreateChatAuthors))]
+    Task CreateChatAuthors([Body] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]

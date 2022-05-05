@@ -38,6 +38,10 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
         => _service.GetAuthorIds(session, chatId, cancellationToken);
 
     [HttpGet, Publish]
+    public Task<ImmutableArray<string>> GetUserIds(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetUserIds(session, chatId, cancellationToken);
+
+    [HttpGet, Publish]
     public Task<Author?> GetAuthor(string chatId, string authorId, bool inherit, CancellationToken cancellationToken)
         => _service.GetAuthor(chatId, authorId, inherit, cancellationToken);
 
@@ -50,4 +54,8 @@ public class ChatAuthorsController : ControllerBase, IChatAuthors
     [HttpPost]
     public Task AddToContacts(IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken)
         => _service.AddToContacts(command, cancellationToken);
+
+    [HttpPost]
+    public Task CreateChatAuthors(IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken)
+        => _service.CreateChatAuthors(command, cancellationToken);
 }
