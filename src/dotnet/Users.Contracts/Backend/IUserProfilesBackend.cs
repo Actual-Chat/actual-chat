@@ -13,7 +13,13 @@ public interface IUserProfilesBackend
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
-    public record CreateCommand(string UserProfileOrUserId) : ICommand<Unit>, IBackendCommand;
+    [DataContract]
+    public record CreateCommand(
+        [property: DataMember] string UserProfileOrUserId
+        ) : ICommand<Unit>, IBackendCommand;
 
-    public record UpdateCommand(UserProfile UserProfile) : ICommand<Unit>, IBackendCommand;
+    [DataContract]
+    public record UpdateCommand(
+        [property: DataMember] UserProfile UserProfile
+        ) : ICommand<Unit>, IBackendCommand;
 }

@@ -4,23 +4,22 @@ public class ChatPlayers : WorkerBase
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
-    private readonly ILogger _log;
-    private readonly IServiceProvider _services;
-    private readonly MomentClockSet _clocks;
-    private ChatPageState? _chatPageState;
-
     private volatile ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer> _players =
         ImmutableDictionary<(Symbol ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
-    private ChatPageState ChatPageState => _chatPageState ??= _services.GetRequiredService<ChatPageState>();
-    public IMutableState<ChatPlaybackState?> PlaybackState { get; }
+    private IServiceProvider Services { get; }
+    private MomentClockSet Clocks { get; }
+    private ChatUI ChatUI { get; }
+    public IMutableState<ChatPlaybackState?> ChatPlaybackState { get; }
 
     public ChatPlayers(IServiceProvider services)
     {
-        _services = services;
-        _log = services.LogFor(GetType());
-        _clocks = services.Clocks();
-        PlaybackState = services.StateFactory().NewMutable<ChatPlaybackState?>();
+        Services = services;
+        Clocks = services.Clocks();
+        ChatUI = services.GetRequiredService<ChatUI>();
+
+        var stateFactory = services.StateFactory();
+        ChatPlaybackState = stateFactory.NewMutable<ChatPlaybackState?>();
         Start();
     }
 
@@ -39,24 +38,24 @@ public class ChatPlayers : WorkerBase
 
     public void StartRealtimePlayback(bool mustPlayPinned)
         => BackgroundTask.Run(async () => {
-            var playbackState = await ChatPageState.GetRealtimeChatPlaybackState(mustPlayPinned, default).ConfigureAwait(false);
-            PlaybackState.Value = playbackState;
+            var playbackState = await ChatUI.GetRealtimeChatPlaybackState(mustPlayPinned, default).ConfigureAwait(false);
+            ChatPlaybackState.Value = playbackState;
         }, CancellationToken.None);
 
     public void StartHistoricalPlayback(Symbol chatId, Moment startAt, RealtimeChatPlaybackState? previousState = null)
     {
-        previousState ??= PlaybackState.Value switch {
+        previousState ??= ChatPlaybackState.Value switch {
             RealtimeChatPlaybackState realtime => realtime,
             HistoricalChatPlaybackState historical => historical.PreviousState,
             _ => null,
         };
-        PlaybackState.Value = new HistoricalChatPlaybackState(chatId, startAt, previousState);
+        ChatPlaybackState.Value = new HistoricalChatPlaybackState(chatId, startAt, previousState);
     }
 
     public void StopPlayback(bool restorePreviousState)
-        => PlaybackState.Value =
+        => ChatPlaybackState.Value =
             restorePreviousState
-                ? PlaybackState.Value is HistoricalChatPlaybackState historical ? historical.PreviousState : null
+                ? ChatPlaybackState.Value is HistoricalChatPlaybackState historical ? historical.PreviousState : null
                 : null;
 
     // Protected methods
@@ -65,7 +64,7 @@ public class ChatPlayers : WorkerBase
     {
         // TODO(AY): Implement _players cleanup here
         var lastPlaybackState = (ChatPlaybackState?) null;
-        var cPlaybackState = PlaybackState.Computed;
+        var cPlaybackState = ChatPlaybackState.Computed;
         while (!cancellationToken.IsCancellationRequested) {
             if (!cPlaybackState.IsConsistent())
                 cPlaybackState = await cPlaybackState.Update(cancellationToken).ConfigureAwait(false);
@@ -79,7 +78,7 @@ public class ChatPlayers : WorkerBase
                     // Let's stop everything in this case
                     await Stop(cancellationToken).SuppressExceptions().ConfigureAwait(false);
                     newPlaybackState = null;
-                    PlaybackState.Value = null;
+                    ChatPlaybackState.Value = null;
                 }
             }
             lastPlaybackState = newPlaybackState;
@@ -127,10 +126,10 @@ public class ChatPlayers : WorkerBase
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await result.ConfigureAwait(false);
                     await endPlaybackTask.ConfigureAwait(false);
-                    await _clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, ct).ConfigureAwait(false);
-                    if (PlaybackState.Value == historical) {
+                    await Clocks.CpuClock.Delay(RestorePreviousPlaybackStateDelay, ct).ConfigureAwait(false);
+                    if (ChatPlaybackState.Value == historical) {
                         // TODO(AY): We should beep if we restore non-null state, I guess...
-                        PlaybackState.Value = historical.PreviousState;
+                        ChatPlaybackState.Value = historical.PreviousState;
                     }
                 }, ct);
                 return result;
@@ -161,8 +160,8 @@ public class ChatPlayers : WorkerBase
             if (player != null)
                 return player;
             newPlayer = playerKind switch {
-                ChatPlayerKind.Realtime => _services.Activate<RealtimeChatPlayer>(chatId),
-                ChatPlayerKind.Historical => _services.Activate<HistoricalChatPlayer>(chatId),
+                ChatPlayerKind.Realtime => Services.Activate<RealtimeChatPlayer>(chatId),
+                ChatPlayerKind.Historical => Services.Activate<HistoricalChatPlayer>(chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
             _players = _players.Add((chatId, playerKind), newPlayer);
@@ -196,7 +195,7 @@ public class ChatPlayers : WorkerBase
         var whenPlaying = player.WhenPlaying;
         return whenPlaying is { IsCompleted: false }
             ? Task.FromResult(whenPlaying)
-            : player.Start(_clocks.SystemClock.Now, cancellationToken);
+            : player.Start(Clocks.SystemClock.Now, cancellationToken);
     }
 
     private async Task<Task> StartRealtimePlayback(IEnumerable<Symbol> chatIds, CancellationToken cancellationToken)

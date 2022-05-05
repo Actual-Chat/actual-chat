@@ -13,15 +13,10 @@ public class DbDevice : IHasId<string>, IHasVersion<long>
     private DateTime _createdAt;
     private DateTime _accessedAt;
 
-    public DbDevice() { }
-
     [Key] public string Id { get; set; } = null!;
-
-    [ConcurrencyCheck]
-    public long Version { get; set; }
+    [ConcurrencyCheck] public long Version { get; set; }
 
     public string UserId { get; set; } = null!;
-
     public DeviceType Type { get; set; }
 
     public DateTime CreatedAt {
@@ -30,11 +25,10 @@ public class DbDevice : IHasId<string>, IHasVersion<long>
     }
 
     public DateTime? AccessedAt {
-        get => _accessedAt == default
-            ? null
-            : _accessedAt.DefaultKind(DateTimeKind.Utc);
+        get => _accessedAt.DefaultKind(DateTimeKind.Utc);
         set => _accessedAt = value?.DefaultKind(DateTimeKind.Utc) ?? default;
     }
 
-    public Device ToModel() => new (Id, Type, CreatedAt, AccessedAt);
+    public Device ToModel()
+        => new (Id, Type, CreatedAt, AccessedAt);
 }

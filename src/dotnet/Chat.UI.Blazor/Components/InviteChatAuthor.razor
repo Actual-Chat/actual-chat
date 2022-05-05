@@ -1,0 +1,147 @@
+@using Stl.Extensibility
+@implements IModalView<InviteChatAuthor.Model>
+@implements IDisposable
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<DialogFrame Class="invite-chat-author-modal" Title="Add users">
+    <Body>
+    <div class="flex-y h-full w-full">
+        <div class="relative text-gray-400 -ml-0.5">
+            <span class="absolute inset-y-0 left-0 flex items-center">
+                <button type="submit" class="focus:outline-none focus:shadow-outline">
+                    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" class="w-6 h-6">
+                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </button>
+            </span>
+            <input type="search"
+                   name="q"
+                   class="pl-7 py-2 focus:outline-none border-gray-400 border-b bg-transparent text-gray-600 w-full"
+                   @oninput="OnFilter"
+                   placeholder="Search..."
+                   autocomplete="off">
+        </div>
+        <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 -ml-5 -mr-5 mt-5 max-h-[60vh] min-h-[60vh]">
+            @foreach (var contact in FilteredChatContacts) {
+                <div class="flex-x w-full hover:bg-gray-200"
+                     @key="@contact.Author.Id"
+                     @onclick="() => OnContactClick(contact)">
+                    @if (contact.IsExisting) {
+                        <input type="checkbox"
+                               checked
+                               disabled
+                               class="ml-5 mr-3 self-center"/>
+                    } else {
+                        <input type="checkbox"
+                               checked="@contact.IsChecked"
+                               class="ml-5 mr-3 self-center"/>
+                    }
+                    <AuthorBadge Author="@contact.Author"
+                                 Size="PersonCircleSize.Size12"/>
+                </div>
+            }
+        </div>
+    </div>
+    </Body>
+    <Buttons>
+        <Button
+            Type="ButtonType.Button"
+            OnClick="OnCancel"
+            class="btn-primary bg-primary">
+            Cancel
+        </Button>
+        <Button
+            Type="ButtonType.Submit"
+            OnClick="OnInvite"
+            Disabled="!CanInvite"
+            class="btn-success">
+            Invite
+        </Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserContacts UserContacts { get; init; } = null!;
+    [Inject] private IUserAuthors UserAuthors { get; init; } = null!;
+    [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+
+    private Contact[] FilteredChatContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllChatContacts { get; set; } = Array.Empty<Contact>();
+    private bool CanInvite { get; set; }
+    private CancellationTokenSource DisposeTokenSource { get; } = new();
+
+    protected override async Task OnInitializedAsync() {
+        var existingChatUserIds = new HashSet<string>(
+            await ChatAuthors.GetUserIds(Session, ModalModel.Chat.Id, DisposeTokenSource.Token).ConfigureAwait(false),
+            StringComparer.Ordinal);
+
+        var contacts = await UserContacts.GetContacts(Session, DisposeTokenSource.Token).ConfigureAwait(false);
+        var resolveUserAuthors = contacts.Select(x => UserAuthors.Get(x.TargetUserId, true, DisposeTokenSource.Token));
+        var userAuthors = await Task.WhenAll(resolveUserAuthors).ConfigureAwait(false);
+        var chatContacts = userAuthors
+            .Where(x => x != null)
+            .Select(x => x!)
+            .Select(contact => {
+                if (!string.IsNullOrWhiteSpace(contact.Picture))
+                    return contact;
+
+                var picture = $"https://avatars.dicebear.com/api/avataaars/{contact.Name}.svg";
+                return contact with {
+                    Picture = picture,
+                };
+            })
+            .Select(x => new Contact {
+                IsExisting = existingChatUserIds.Contains(x.Id),
+                IsChecked = existingChatUserIds.Contains(x.Id),
+                Author = x,
+            })
+            .ToArray();
+        AllChatContacts = chatContacts;
+        FilteredChatContacts = chatContacts;
+    }
+
+    public void Dispose() => DisposeTokenSource.Cancel();
+
+    private async Task OnInvite() {
+        CanInvite = false;
+
+        var userIds = AllChatContacts
+            .Where(x => !x.IsExisting && x.IsChecked)
+            .Select(x => x.Author.Id.Value)
+            .ToArray();
+        var createChatAuthorsCommand = new IChatAuthors.CreateChatAuthorsCommand(Session, ModalModel.Chat.Id, userIds);
+        await ChatAuthors.CreateChatAuthors(createChatAuthorsCommand, DisposeTokenSource.Token).ConfigureAwait(false);
+        await ModalInstance.CloseAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnCancel() => await ModalInstance.CancelAsync().ConfigureAwait(false);
+
+    private void OnFilter(ChangeEventArgs args) {
+        var filter = args.Value?.ToString();
+        FilteredChatContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllChatContacts.ToArray()
+            : AllChatContacts
+                .Where(x => x.Author.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+    }
+
+    private void OnContactClick(Contact contact) {
+        if (contact.IsExisting)
+            return;
+
+        contact.IsChecked = !contact.IsChecked;
+        CanInvite = AllChatContacts.Any(x => !x.IsExisting && x.IsChecked);
+    }
+
+    private class Contact {
+        public bool IsExisting { get; set; }
+        public bool IsChecked { get; set; }
+        public UserAuthor Author { get; init; }
+    }
+
+    public record Model(Chat Chat);
+}

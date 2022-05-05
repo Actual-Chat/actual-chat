@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<ChatLinks.Model>
+@inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
     var m = State.LatestNonErrorValue;
     var chats = m.Chats;
@@ -17,7 +17,10 @@
             var isActive = m.ActiveChatId == chat.Id;
             <NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
                 <ChildContent>@chat.Title</ChildContent>
-                <Ending><ChatPinToggle ChatId="@chat.Id"/></Ending>
+                <Ending>
+                    <ChatListRecordingToggle ChatId="@chat.Id"/>
+                    <ChatListPinToggle ChatId="@chat.Id"/>
+                </Ending>
             </NavbarItem>
         }
     </ChildContent>
@@ -27,8 +30,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
-    [Inject] private ChatPageState ChatPageState { get; init; } = null!;
-    [Inject] private IModalService ModalService { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -49,19 +52,19 @@
         var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
 
         return new () {
-            Chats = chatsToShow.ToArray(),
             CanCreateChat = user.IsAuthenticated,
-            ActiveChatId = await ChatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
+            Chats = chatsToShow.ToImmutableArray(),
+            ActiveChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
         };
     }
 
     private void OnCreateNewChatClick()
-        => ModalService.Show<NewChatModal>("Create Chat", CustomModalOptions.Dialog);
+        => ModalUI.Show(new NewChatModal.Model());
 
     public class Model
     {
-        public Chat[] Chats { get; set; } = Array.Empty<Chat>();
-        public bool CanCreateChat { get; set; }
-        public Symbol ActiveChatId { get; set; } = Constants.Chat.DefaultChatId;
+        public bool CanCreateChat { get; init; }
+        public ImmutableArray<Chat> Chats { get; init; } = ImmutableArray<Chat>.Empty;
+        public Symbol ActiveChatId { get; init; } = Constants.Chat.DefaultChatId;
     }
 }

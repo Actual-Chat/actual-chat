@@ -6,7 +6,7 @@
     @apply flex items-start;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
     @apply text-sm text-current break-words;
-    @apply border-x-2 border-transparent;
+    @apply border-l-2 border-transparent;
 }
 
 .chat-message:hover {
@@ -38,7 +38,7 @@
 
 .chat-message.mention,
 .chat-message.own-message.mention {
-    @apply border-x-2 border-x-mention-hover bg-mention-message;
+    @apply border-l-2 border-x-mention-hover bg-mention-message;
 }
 
 .chat-message.mention:hover,
@@ -52,7 +52,7 @@
 }
 
 .chat-message.own-message {
-    @apply border-x-2 border-x-own-hover bg-own-message;
+    @apply border-l-2 border-x-own-hover bg-own-message;
 }
 
 .chat-message.own-message:hover {

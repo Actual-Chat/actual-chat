@@ -1,16 +1,22 @@
-<div class="max-w-sm">
+@using Stl.Extensibility
+@implements IModalView<UserInteractionRequestModal.Model>
+@attribute [MatchFor(typeof(Model), typeof(IModalView))]
+
+<ModalChrome class="max-w-sm">
     <div class="p-4">
-        <p>Starting @Operation.</p>
+        <p>Starting @ModalModel.Operation.</p>
     </div>
     <div class="p-4 pt-1 flex justify-center">
-        <Button Class="btn btn-success" OnClick="OnContinueClick">Continue</Button>
+        <Button OnClick="OnContinueClick">Continue</Button>
     </div>
-</div>
+</ModalChrome>
 
 @code {
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
-    [Parameter] public string Operation { get; set; } = "audio playback or capture";
+    [Parameter] public Model ModalModel { get; set; } = null!;
 
     private void OnContinueClick()
         => ModalInstance.CloseAsync();
+
+    public record Model(string Operation = "audio playback or capture");
 }

@@ -3,9 +3,10 @@ using ActualChat.Messaging;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public record AudioRecorderState(Symbol ChatId, bool IsRecording)
+public record AudioRecorderState(Symbol ChatId) : IHasId<Ulid>
 {
     public Ulid Id { get; init; } = Ulid.NewUlid();
+    public bool IsRecording { get; init; }
 }
 
 public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
@@ -90,7 +91,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         if (IsRecordingStarted) return;
         DebugLog?.LogDebug(nameof(StartRecordingInternal) + ": chat #{ChatId}", chatId);
 
-        State.Value = new AudioRecorderState(chatId, false);
+        State.Value = new AudioRecorderState(chatId);
         if (JSRef != null)
             await JSRef.InvokeVoidAsync("startRecording", chatId).ConfigureAwait(false);
     }
@@ -122,7 +123,7 @@ public class AudioRecorder : IAudioRecorderBackend, IAsyncDisposable
         if (!IsRecordingStarted) return;
         DebugLog?.LogDebug(nameof(OnRecordingStarted) + ": chat #{ChatId}", chatId);
 
-        State.Value = (State.Value ?? new AudioRecorderState(chatId, true)) with { IsRecording = true };
+        State.Value = (State.Value ?? new AudioRecorderState(chatId)) with { IsRecording = true };
     }
 
     [JSInvokable]

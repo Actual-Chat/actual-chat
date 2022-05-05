@@ -4,7 +4,7 @@
 }
 
 <ButtonSquare
-    Class="chat-language-toggle z-10 w-12 !rounded-xl"
+    Class="chat-language-toggle w-12 !rounded-xl"
     OnClick="OnClick">
     <span class="w-10 m-2">
         @language.Shortcut
@@ -19,7 +19,7 @@
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override ComputedState<ChatUserSettings?>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
 
     protected override async Task<ChatUserSettings?> ComputeState(CancellationToken cancellationToken)
         => await ChatUserSettings.Get(Session, Chat.Id, cancellationToken).ConfigureAwait(false);

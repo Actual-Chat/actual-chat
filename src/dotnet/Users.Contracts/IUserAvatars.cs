@@ -18,7 +18,23 @@ public interface IUserAvatars
     [CommandHandler]
     Task SetDefault(SetDefaultCommand command, CancellationToken cancellationToken);
 
-    public record CreateCommand(Session Session) : ISessionCommand<UserAvatar>;
-    public record UpdateCommand(Session Session, string AvatarId, string Name, string Picture, string Bio) : ISessionCommand<Unit>;
-    public record SetDefaultCommand(Session Session, string AvatarId) : ISessionCommand<Unit>;
+    [DataContract]
+    public record CreateCommand(
+        [property: DataMember] Session Session
+        ) : ISessionCommand<UserAvatar>;
+
+    [DataContract]
+    public record UpdateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string AvatarId,
+        [property: DataMember] string Name,
+        [property: DataMember] string Picture,
+        [property: DataMember] string Bio
+        ) : ISessionCommand<Unit>;
+
+    [DataContract]
+    public record SetDefaultCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] string AvatarId
+        ) : ISessionCommand<Unit>;
 }

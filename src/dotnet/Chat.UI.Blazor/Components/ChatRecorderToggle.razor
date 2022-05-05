@@ -1,0 +1,32 @@
+﻿@namespace ActualChat.Audio.UI.Blazor.Components
+@inherits ComputedStateComponent<Symbol>
+@{
+    var isRecording = !RecordingChatId.IsEmpty;
+    var isRecordingInThisChat = RecordingChatId == ChatId;
+    var recordingStatus = isRecordingInThisChat ? "on" : "off";
+    var cls = $"audio-recorder-toggle !rounded-xl {recordingStatus}";
+}
+
+<ButtonSquare Class="@cls" OnClick="_ => RecordingChatId = RecordingChatId.IsEmpty ? ChatId : Symbol.Empty">
+    <svg class="fill-current w-14 h-14 m-1.5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 32 32">
+        <path d="M16 11c0 2.209-1.791 4-4 4s-4-1.791-4-4v-7c0-2.209 1.791-4 4-4s4 1.791 4 4v7zm4-2v2c0 4.418-3.582 8-8 8s-8-3.582-8-8v-2h2v2c0 3.309 2.691 6 6 6s6-2.691 6-6v-2h2zm-7 13v-2h-2v2h-4v2h10v-2h-4z"/>
+    </svg>
+</ButtonSquare>
+
+@code {
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+
+    [Parameter] public string ChatId { get; set; } = "";
+
+    private Symbol RecordingChatId {
+        get => State.ValueOrDefault;
+        set => ChatUI.RecordingChatId.Value = value;
+    }
+
+    protected override ComputedState<Symbol>.Options GetStateOptions()
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+
+    protected override async Task<Symbol> ComputeState(CancellationToken cancellationToken) {
+        return await ChatUI.RecordingChatId.Use(cancellationToken).ConfigureAwait(false);
+    }
+}

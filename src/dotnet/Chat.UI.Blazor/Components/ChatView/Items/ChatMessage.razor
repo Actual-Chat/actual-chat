@@ -11,7 +11,7 @@
     var showHeader = Model.IsBlockStart;
     var showPicture = showHeader;
     var marginClass = Model.IsBlockEnd ? "mb-3" : "mb-0";
-    var mentionClass = MarkupValidator.ContainsMention.IsValid(markup) ? "mention" : "";
+    var mentionClass = MarkupValidator.ContainsMention.IsValid(markup) && markup.ToString().Contains(PrincipalId) ? "mention" : "";
     var ownMessageClass = PrincipalId == Model.Entry.AuthorId ? "own-message" : "";
 }
 @if (Model.DateLine.HasValue) {

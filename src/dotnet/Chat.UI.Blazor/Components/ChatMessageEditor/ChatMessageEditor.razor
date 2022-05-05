@@ -7,11 +7,7 @@
 @using ActualChat.Hosting
 @using ActualChat.MediaPlayback
 
-@{
-    var placeholder = "#" + Chat.Title;
-}
-
-<div @ref="Ref" class="chat-message-editor min-h-footer">
+<div @ref="Ref" class="chat-message-editor min-h-auto md:min-h-footer">
     <MentionCandidateListManager MentionCandidateProvider="@MentionCandidateProvider" @key="@("MentionCandidateProvider")">
         <div class="flex-none flex-x justify-items-stretch items-stretch w-full bg-secondary ">
             <div class="flex-y justify-between outline-none bg-accent w-full border-secondary">
@@ -24,7 +20,7 @@
                     </div>
                     <SlateEditor @ref="SlateEditorRef" Id="message-input"
                                  Class="message-input flex-1 -flex-y overflow-y-auto max-h-36 md:max-h-72 my-4 ml-3 mr-1 md:mr-3 break-words outline-none hover:cursor-text text-primary block"
-                                 Placeholder="@placeholder"
+                                 Placeholder="@("#" + Chat.Title)"
                                  OnPost="Post" OnRendered="OnSlateEditorRendered"/>
                     <button class="post-message sticky self-end outline-none text-secondary pr-1 py-1 hidden"
                             @onclick="_ => Post()">
@@ -34,12 +30,12 @@
                     </button>
                 </label>
             </div>
-            <div class="recorder-buttons flex-x absolute right-4 bottom-4 z-40 shadow-[0_35px_35px_rgba(0,0,0,0.25)] animate-display-from-right">
+            <div class="recorder-buttons absolute bottom-4 z-40 shadow-[0_35px_35px_rgba(0,0,0,0.25)] animate-display-from-right hidden">
                 <div class="language-button flex hidden">
                     <ChatLanguageToggle/>
                 </div>
                 <div class="recorder-button flex">
-                    <AudioRecorderToggle ChatId="@Chat.Id" Toggled="@(new EventCallback<bool>(null, OnRecorderButtonToggled))"/>
+                    <ChatRecorderToggle ChatId="@Chat.Id"/>
                 </div>
             </div>
         </div>
@@ -93,11 +89,11 @@
             return;
 
         try {
-            _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
-            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
             await SlateEditorRef.Clear().ConfigureAwait(true);
             AttachmentListPreviewRef.Clear();
-            await InvokeAsync(StateHasChanged).ConfigureAwait(true);
+            StateHasChanged();
+            _ = await JSRef.InvokeAsync<string>("postMessage", Chat.Id, text).ConfigureAwait(true);
+            await JSRef.InvokeVoidAsync("onPostSucceeded").ConfigureAwait(true);
         }
         catch (Exception e) {
             ErrorUI.ShowError(e);
@@ -118,12 +114,5 @@
 
     private async Task OnUploadFilesRequested() {
         await JSRef.InvokeVoidAsync("showFilesPicker").ConfigureAwait(true);
-    }
-
-    private Task OnRecorderButtonToggled(bool isRecording) {
-        if (isRecording == false)
-            return Task.CompletedTask;
-        ChatPlayers.StartRealtimePlayback(false);
-        return Task.CompletedTask;
     }
 }

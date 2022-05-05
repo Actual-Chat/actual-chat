@@ -3,8 +3,10 @@ using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 
-public class SharedResourcePoolTest
+public class SharedResourcePoolTest : TestBase
 {
+    public SharedResourcePoolTest(ITestOutputHelper @out) : base(@out) { }
+
     [Fact]
     public async Task BasicTest()
     {

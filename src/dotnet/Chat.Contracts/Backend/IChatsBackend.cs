@@ -53,9 +53,28 @@ public interface IChatsBackend
     [CommandHandler]
     Task<TextEntryAttachment> CreateTextEntryAttachment(CreateTextEntryAttachmentCommand command, CancellationToken cancellationToken);
 
-    public record CreateChatCommand(Chat Chat) : ICommand<Chat>, IBackendCommand;
-    public record UpdateChatCommand(Chat Chat) : ICommand<Unit>, IBackendCommand;
-    public record CreateAudioEntryCommand(ChatEntry AudioEntry) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
-    public record UpsertEntryCommand(ChatEntry Entry) : ICommand<ChatEntry>, IBackendCommand;
-    public record CreateTextEntryAttachmentCommand(TextEntryAttachment Attachment) : ICommand<TextEntryAttachment>, IBackendCommand;
+    [DataContract]
+    public record CreateChatCommand(
+        [property: DataMember] Chat Chat
+        ) : ICommand<Chat>, IBackendCommand;
+
+    [DataContract]
+    public record UpdateChatCommand(
+        [property: DataMember] Chat Chat
+        ) : ICommand<Unit>, IBackendCommand;
+
+    [DataContract]
+    public record CreateAudioEntryCommand(
+        [property: DataMember] ChatEntry AudioEntry
+        ) : ICommand<(ChatEntry AudioEntry, ChatEntry TextEntry)>, IBackendCommand;
+
+    [DataContract]
+    public record UpsertEntryCommand(
+        [property: DataMember] ChatEntry Entry
+        ) : ICommand<ChatEntry>, IBackendCommand;
+
+    [DataContract]
+    public record CreateTextEntryAttachmentCommand(
+        [property: DataMember] TextEntryAttachment Attachment
+        ) : ICommand<TextEntryAttachment>, IBackendCommand;
 }

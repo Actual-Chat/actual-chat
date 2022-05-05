@@ -61,7 +61,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUserProfile = await dbContext.UserProfiles.FindAsync(new object?[] { command.UserProfileOrUserId }, cancellationToken)
+        var dbUserProfile = await dbContext.UserProfiles
+            .FindAsync(DbKey.Compose(command.UserProfileOrUserId), cancellationToken)
             .ConfigureAwait(false);
         if (dbUserProfile != null)
             return;
@@ -101,7 +102,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         UsersDbContext context,
         string userId,
         CancellationToken cancellationToken)
-        => await context.UserProfiles.FindAsync(new object?[] { userId }, cancellationToken)
+        => await context.UserProfiles
+                .FindAsync(DbKey.Compose(userId), cancellationToken)
                 .ConfigureAwait(false)
             ?? throw new KeyNotFoundException($"User profile id='{userId}' not found");
 

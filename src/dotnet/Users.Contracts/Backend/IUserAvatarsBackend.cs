@@ -14,6 +14,17 @@ public interface IUserAvatarsBackend
     [CommandHandler]
     Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
-    public record CreateCommand(string PrincipalId, string Name) : ICommand<UserAvatar>, IBackendCommand;
-    public record UpdateCommand(string AvatarId, string Name, string Picture, string Bio) : ICommand<Unit>, IBackendCommand;
+    [DataContract]
+    public record CreateCommand(
+        [property: DataMember] string PrincipalId,
+        [property: DataMember] string Name
+        ) : ICommand<UserAvatar>, IBackendCommand;
+
+    [DataContract]
+    public record UpdateCommand(
+        [property: DataMember] string AvatarId,
+        [property: DataMember] string Name,
+        [property: DataMember] string Picture,
+        [property: DataMember] string Bio
+        ) : ICommand<Unit>, IBackendCommand;
 }

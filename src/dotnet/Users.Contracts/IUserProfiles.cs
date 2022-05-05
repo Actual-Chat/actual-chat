@@ -8,5 +8,9 @@ public interface IUserProfiles
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 
-    public record UpdateCommand(Session Session, UserProfile UserProfile) : ISessionCommand<Unit>;
+    [DataContract]
+    public record UpdateCommand(
+        [property: DataMember] Session Session,
+        [property: DataMember] UserProfile UserProfile
+        ) : ISessionCommand<Unit>;
 }

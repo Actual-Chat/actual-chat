@@ -11,10 +11,12 @@ public interface INotificationsBackend
      [CommandHandler]
      Task NotifySubscribers(NotifySubscribersCommand subscribersCommand, CancellationToken cancellationToken);
 
+     [DataContract]
      public record NotifySubscribersCommand(
-         string ChatId,
-         long EntryId,
-         string AuthorUserId,
-         string Title,
-         string Content) : ICommand<Unit>, IBackendCommand;
+         [property: DataMember] string ChatId,
+         [property: DataMember] long EntryId,
+         [property: DataMember] string AuthorUserId,
+         [property: DataMember] string Title,
+         [property: DataMember] string Content
+         ) : ICommand<Unit>, IBackendCommand;
 }

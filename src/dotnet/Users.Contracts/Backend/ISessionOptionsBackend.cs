@@ -7,8 +7,9 @@ public interface ISessionOptionsBackend
     [CommandHandler]
     Task Upsert(UpsertCommand command, CancellationToken cancellationToken);
 
+    [DataContract]
     public record UpsertCommand(
-            Session Session,
-            KeyValuePair<string, string> Option
+        [property: DataMember] Session Session,
+        [property: DataMember] KeyValuePair<string, string> Option
         ) : ISessionCommand<Unit>, IBackendCommand;
 }

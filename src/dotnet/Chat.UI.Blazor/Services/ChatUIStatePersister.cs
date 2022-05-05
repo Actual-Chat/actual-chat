@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Model>
+public class ChatUIStatePersister : StatePersister<ChatUIStatePersister.Model>
 {
     private static TimeSpan ChatActivationTimeout { get; } = TimeSpan.FromSeconds(1);
 
@@ -11,15 +11,15 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
     private readonly IChats _chats;
     private readonly ChatPlayers _chatPlayers;
     private readonly AudioRecorder _audioRecorder;
-    private readonly ChatPageState _chatPageState;
+    private readonly ChatUI _chatUI;
     private readonly UserInteractionUI _userInteractionUI;
 
-    public ChatPageStatePersister(
+    public ChatUIStatePersister(
         Session session,
         IChats chats,
         ChatPlayers chatPlayers,
         AudioRecorder audioRecorder,
-        ChatPageState chatPageState,
+        ChatUI chatUI,
         UserInteractionUI userInteractionUI,
         IServiceProvider services)
         : base(services)
@@ -28,7 +28,7 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
         _chats = chats;
         _chatPlayers = chatPlayers;
         _audioRecorder = audioRecorder;
-        _chatPageState = chatPageState;
+        _chatUI = chatUI;
         _userInteractionUI = userInteractionUI;
     }
 
@@ -40,12 +40,12 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
         // We'll be waiting for chat activation, so let's do the rest as background task
         _ = BackgroundTask.Run(async () => {
             var pinnedChatIds = await Normalize(state.PinnedChatIds).ConfigureAwait(false);
-            _chatPageState.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
+            _chatUI.PinnedChatIds.Value = pinnedChatIds.ToImmutableHashSet();
 
             // Let's wait for activation of the last active chat before any further actions
             using var timoutCts = new CancellationTokenSource(ChatActivationTimeout);
             try {
-                await _chatPageState.ActiveChatId
+                await _chatUI.ActiveChatId
                     .When(chatId => chatId == state.ActiveChatId, timoutCts.Token)
                     .ConfigureAwait(false);
             }
@@ -53,7 +53,7 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
                 // Intended
             }
 
-            var activeChatId = _chatPageState.ActiveChatId.Value;
+            var activeChatId = _chatUI.ActiveChatId.Value;
             if (activeChatId.IsEmpty || activeChatId != state.ActiveChatId)
                 return;
 
@@ -79,10 +79,10 @@ public class ChatPageStatePersister : StatePersister<ChatPageStatePersister.Mode
 
     protected override async Task<Model> Compute(CancellationToken cancellationToken)
     {
-        var activeChatId = await _chatPageState.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
-        var pinnedChatIds = await _chatPageState.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var activeChatId = await _chatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await _chatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
         var audioRecorderState = await _audioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
-        var playbackState = await _chatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        var playbackState = await _chatPlayers.ChatPlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var realtimeChatPlaybackState = playbackState as RealtimeChatPlaybackState;
         return new Model() {
             ActiveChatId = activeChatId,

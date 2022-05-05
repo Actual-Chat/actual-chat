@@ -13,14 +13,13 @@
     @apply mt-2 mb-0;
 }
 
-/* DeleteMessageModal */
-
-.delete-message-modal .modal-body {
-    @apply bg-secondary rounded-md border border-primary py-1 drop-shadow-lg;
+.chat-playback-toggles .btn.btn-square {
+    @apply block;
 }
+
+/* DeleteMessageModal */
 
 .delete-message-modal .message-content {
     word-break: break-word !important;
     overflow-y: auto !important;
-    @apply max-h-48;
 }

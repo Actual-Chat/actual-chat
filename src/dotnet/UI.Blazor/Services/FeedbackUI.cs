@@ -1,20 +1,19 @@
 ﻿using ActualChat.Feedback;
 using Blazored.Modal;
-using Blazored.Modal.Services;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class FeedbackUI
 {
     private readonly Session _session;
-    private readonly IModalService _modalService;
+    private readonly ModalUI _modalUI;
     private readonly IFeedbacks _feedbacks;
     private IModalReference? _modal;
 
-    public FeedbackUI(Session session, IModalService modalService, IFeedbacks feedbacks)
+    public FeedbackUI(Session session, ModalUI modalUI, IFeedbacks feedbacks)
     {
         _session = session;
-        _modalService = modalService;
+        _modalUI = modalUI;
         _feedbacks = feedbacks;
     }
 
@@ -23,23 +22,16 @@ public class FeedbackUI
         if (_modal != null)
             return;
 
-        var parameters = new ModalParameters();
-        parameters.Add(nameof(FeatureRequestModal.FeatureTitle), featureTitle);
-        var modalOptions = new ModalOptions {
-            HideHeader = true,
-            DisableBackgroundCancel = false,
-            Class = "modal",
-        };
-        _modal = _modalService.Show<FeatureRequestModal>("", parameters, modalOptions);
+        var model = new FeatureRequestModal.Model { FeatureTitle = featureTitle };
+        _modal = _modalUI.Show(model);
         var result = await _modal.Result.ConfigureAwait(false);
         _modal = null;
         if (result.Cancelled)
             return;
 
-        var data = ((int,string))result.Data;
         var command = new IFeedbacks.FeatureRequestCommand(_session, feature) {
-            Rating = data.Item1,
-            Comment = data.Item2
+            Rating = model.Rating,
+            Comment = model.Comment
         };
         await _feedbacks.CreateFeatureRequest(command, default).ConfigureAwait(false);
     }

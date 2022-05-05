@@ -17,13 +17,13 @@ You must sign in @(Reason.NullIfEmpty() ?? "to use this page").
 @code {
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [CascadingParameter] public Task<AuthState> AuthState { get; set; } = null!;
+    [CascadingParameter] public Task<AuthState> AuthStateTask { get; set; } = null!;
     [Parameter] public string? Reason { get; set; }
     [Parameter] public string? RedirectTo { get; set; }
 
     protected override async Task OnParametersSetAsync()
     {
-        var authState = await AuthState.ConfigureAwait(true);
+        var authState = await AuthStateTask.ConfigureAwait(true);
         if (authState.User.IsAuthenticated)
             Nav.NavigateTo(RedirectTo.NullIfEmpty() ?? "/");
     }

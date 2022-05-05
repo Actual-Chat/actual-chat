@@ -19,5 +19,8 @@ public interface IUserContactsBackend
     [CommandHandler]
     public Task<UserContact> CreateContact(CreateContactCommand command, CancellationToken cancellationToken);
 
-    public record CreateContactCommand(UserContact Contact) : ICommand<UserContact>, IBackendCommand;
+    [DataContract]
+    public record CreateContactCommand(
+        [property: DataMember] UserContact Contact
+    ) : ICommand<UserContact>, IBackendCommand;
 }

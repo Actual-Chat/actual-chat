@@ -1,0 +1,21 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
+    <div class="dialog-content">
+        <div class="dialog-body">
+            @Body
+        </div>
+        <div class="dialog-buttons">
+            @Buttons
+        </div>
+    </div>
+</ModalFrame>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool HasHeader { get; set; } = true;
+    [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? Body { get; set; }
+    [Parameter] public RenderFragment? Buttons { get; set; }
+}

@@ -1,20 +1,18 @@
-using Blazored.Modal;
-using Blazored.Modal.Services;
 using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class UserInteractionUI
 {
-    private readonly IModalService _modalService;
+    private readonly ModalUI _modalUI;
     private readonly AsyncLock _asyncLock = new(ReentryMode.CheckedFail);
     private readonly TaskSource<Unit> _whenInteractionHappenedSource;
 
     public Task WhenInteractionHappened => _whenInteractionHappenedSource.Task;
 
-    public UserInteractionUI(IModalService modalService)
+    public UserInteractionUI(ModalUI modalUI)
     {
-        _modalService = modalService;
+        _modalUI = modalUI;
         _whenInteractionHappenedSource = TaskSource.New<Unit>(true);
     }
 
@@ -28,17 +26,10 @@ public class UserInteractionUI
         using var _ = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
         if (WhenInteractionHappened.IsCompleted)
             return;
-        var parameters = new ModalParameters();
-        if (!operation.IsNullOrEmpty())
-            parameters.Add("Operation", operation);
-        var modal = _modalService.Show<UserInteractionRequestModal>(
-            null,
-            parameters,
-            new ModalOptions {
-                HideHeader = true,
-                Class = "modal",
-            }
-        );
+        var model = operation.IsNullOrEmpty()
+            ? new UserInteractionRequestModal.Model()
+            : new UserInteractionRequestModal.Model { Operation = operation };
+        var modal = _modalUI.Show(model);
         await modal.Result.ConfigureAwait(false);
         MarkInteractionHappened();
     }
