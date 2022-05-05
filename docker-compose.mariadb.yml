@@ -1,9 +1,0 @@
-# for experiments, start with `docker-compose -f docker-compose.mariadb.yml -f docker-compose.yml up`
-version: '3.4'
-services:
-  mariadb:
-    image: mariadb
-    environment:
-      MYSQL_ROOT_PASSWORD: mariadb
-    ports:
-     - "3306:3306"
