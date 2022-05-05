@@ -69,8 +69,8 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
-    private ContactViewModel[] FilteredChatContacts { get; set; } = Array.Empty<ContactViewModel>();
-    private ContactViewModel[] AllChatContacts { get; set; } = Array.Empty<ContactViewModel>();
+    private Contact[] FilteredChatContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllChatContacts { get; set; } = Array.Empty<Contact>();
     private bool CanInvite { get; set; }
     private CancellationTokenSource DisposeTokenSource { get; } = new();
 
@@ -94,7 +94,7 @@
                     Picture = picture,
                 };
             })
-            .Select(x => new ContactViewModel {
+            .Select(x => new Contact {
                 IsExisting = existingChatUserIds.Contains(x.Id),
                 IsChecked = existingChatUserIds.Contains(x.Id),
                 Author = x,
@@ -129,7 +129,7 @@
                 .ToArray();
     }
 
-    private void OnContactClick(ContactViewModel contact) {
+    private void OnContactClick(Contact contact) {
         if (contact.IsExisting)
             return;
 
@@ -137,7 +137,7 @@
         CanInvite = AllChatContacts.Any(x => !x.IsExisting && x.IsChecked);
     }
 
-    private class ContactViewModel {
+    private class Contact {
         public bool IsExisting { get; set; }
         public bool IsChecked { get; set; }
         public UserAuthor Author { get; init; }
