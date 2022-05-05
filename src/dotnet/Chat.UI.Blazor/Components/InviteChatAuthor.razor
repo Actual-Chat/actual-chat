@@ -135,7 +135,7 @@
         CanInvite = AllChatContacts.Any(x => !x.IsExisting && x.IsChecked);
     }
 
-    private class Contact {
+    private sealed class Contact {
         public UserAuthor Author { get; }
         public bool IsExisting { get; init; }
         public bool IsChecked { get; set; }
@@ -144,5 +144,5 @@
             => Author = author;
     }
 
-    public record Model(Chat Chat);
+    public sealed record Model(Chat Chat);
 }
