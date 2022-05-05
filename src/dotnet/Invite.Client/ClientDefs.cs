@@ -14,6 +14,6 @@ public interface IInvitesClientDef
     [Post(nameof(Generate))]
     Task<Invite> Generate([Body] IInvites.GenerateCommand command, CancellationToken cancellationToken);
 
-    [Post(nameof(UseInvite))]
-    Task<InviteUsageResult> UseInvite([Body] IInvites.UseInviteCommand command, CancellationToken cancellationToken);
+    [Post(nameof(Use))]
+    Task<Invite> Use([Body] IInvites.UseCommand command, CancellationToken cancellationToken);
 }

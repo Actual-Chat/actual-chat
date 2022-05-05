@@ -13,5 +13,5 @@
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public record Model(string Url, string? AltText);
+    public sealed record Model(string Url, string? AltText);
 }

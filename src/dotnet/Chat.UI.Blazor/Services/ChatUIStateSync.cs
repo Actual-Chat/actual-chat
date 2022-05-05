@@ -80,11 +80,6 @@ public class ChatUIStateSync : WorkerBase
         var recordingChatIdChanged = recordingChatId != _lastRecordingChatId;
         _lastRecordingChatId = recordingChatId;
 
-        var settings = await ChatUserSettings.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
-        var languageId = settings.LanguageOrDefault();
-        var isLanguageChanged = _lastLanguageId.HasValue && languageId != _lastLanguageId;
-        _lastLanguageId = languageId;
-
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         var recorderChatId = recorderState?.ChatId ?? Symbol.Empty;
         var recorderChatIdChanged = recorderChatId != _lastRecorderChatId;
@@ -92,21 +87,36 @@ public class ChatUIStateSync : WorkerBase
 
         if (recordingChatId == recorderChatId) {
             // The state is in sync
-            if (isLanguageChanged && !recordingChatId.IsEmpty)
-                SyncRecorderState(); // We need to toggle the recording in this case
+            if (!recordingChatId.IsEmpty) {
+                if (await IsLanguageChanged().ConfigureAwait(false))
+                    await SyncRecorderState().ConfigureAwait(false); // We need to toggle the recording in this case
+            }
         } else if (recordingChatIdChanged) {
             // The recording was activated or deactivates
-            SyncRecorderState();
-            if (!recordingChatId.IsEmpty) // Start recording = start realtime playback
+            await SyncRecorderState().ConfigureAwait(false);
+            if (!recordingChatId.IsEmpty) {
+                // Update _lastLanguageId
+                await IsLanguageChanged().ConfigureAwait(false);
+                // Start recording = start realtime playback
                 ChatPlayers.StartRealtimePlayback(false);
+            }
         } else if (recorderChatIdChanged) {
             // Something stopped (or started?) the recorder
             ChatUI.RecordingChatId.Value = recordingChatId = recorderChatId;
         }
         return recordingChatId;
 
-        void SyncRecorderState() =>
-            BackgroundTask.Run(async () => {
+        async ValueTask<bool> IsLanguageChanged()
+        {
+            var settings = await ChatUserSettings.Get(Session, recordingChatId, cancellationToken).ConfigureAwait(false);
+            var languageId = settings.LanguageOrDefault();
+            var isLanguageChanged = _lastLanguageId.HasValue && languageId != _lastLanguageId;
+            _lastLanguageId = languageId;
+            return isLanguageChanged;
+        }
+
+        Task SyncRecorderState()
+            => BackgroundTask.Run(async () => {
                 if (recorderState != null) {
                     // Recording is running - let's top it first;
                     var stopRecordingProcess = AudioRecorder.StopRecording();

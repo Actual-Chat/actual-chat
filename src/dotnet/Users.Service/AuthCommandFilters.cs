@@ -119,8 +119,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             if (error != null)
                 throw error;
 
-            var user = await Auth.GetUser(command.Session, cancellationToken).ConfigureAwait(false);
-            user = user.MustBeAuthenticated();
+            var user = await Auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
             var userId = user.Id;
 
             var dbContext = CreateDbContext();

@@ -3,6 +3,7 @@ using System;
 using ActualChat.Invite.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Invite.Migrations
 {
     [DbContext(typeof(InviteDbContext))]
-    partial class InviteDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220505120503_AddSearchKey")]
+    partial class AddSearchKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

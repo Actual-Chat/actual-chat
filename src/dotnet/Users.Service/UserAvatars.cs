@@ -44,26 +44,20 @@ public class UserAvatars : IUserAvatars
 
     public virtual async Task<string[]> GetAvatarIds(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
-
+        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
         return await _userAvatarsBackend.GetAvatarIds(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
     public virtual async Task<string> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
-
+        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
         var userAuthor = await _userAuthorsBackend.Get(user.Id, false, cancellationToken).ConfigureAwait(false);
         return userAuthor?.AvatarId ?? "";
     }
 
     public virtual async Task SetDefault(IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken)
     {
-        var user = await _auth.GetUser(command.Session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
-
+        var user = await _auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
         var avatarId = command.AvatarId;
         if (!avatarId.IsNullOrEmpty()) {
             var avatar = await _userAvatarsBackend.Get(avatarId, cancellationToken).ConfigureAwait(false);
@@ -82,11 +76,9 @@ public class UserAvatars : IUserAvatars
             return default!;
 
         var session = command.Session;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
-
-        var createCommand = new IUserAvatarsBackend.CreateCommand( user.Id, user.Name);
-        var userAvatar = await _commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
+        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
+        var cmd = new IUserAvatarsBackend.CreateCommand( user.Id, user.Name);
+        var userAvatar = await _commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         return userAvatar;
     }
 

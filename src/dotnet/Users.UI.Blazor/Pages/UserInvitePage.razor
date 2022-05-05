@@ -4,11 +4,9 @@
 @attribute [Authorize(Policy = KnownPolicies.IsAdmin)]
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
-
 <MainHeader>User invites</MainHeader>
 
-<InviteList Invites="State.LatestNonErrorValue"
-            LinkFormat="user/activate/{0}">
+<InviteList Invites="State.LatestNonErrorValue" LinkFormat="user/activate/{0}">
     <Buttons>
         <Button OnClick="OnGenerateLinkClick" Class="btn-success">
             + Generate
@@ -17,33 +15,24 @@
 </InviteList>
 
 @code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
-    [Inject]
-    private Session Session { get; init; } = null!;
+    protected override ComputedState<IImmutableList<Invite>>.Options GetStateOptions()
+        => new() { InitialValue = ImmutableArray<Invite>.Empty };
 
-    [Inject]
-    private IInvites Invites { get; init; } = null!;
-
-    [Inject]
-    private UICommandRunner Cmd { get; init; } = null!;
-
-    protected override ComputedState<IImmutableList<Invite>>.Options GetStateOptions() {
-        return new() { InitialValue = ImmutableArray<Invite>.Empty };
-    }
-
-    protected override Task<IImmutableList<Invite>> ComputeState(CancellationToken cancellationToken) {
-        return Invites.GetUserInvites(Session, cancellationToken);
-    }
+    protected override Task<IImmutableList<Invite>> ComputeState(CancellationToken cancellationToken)
+        => Invites.GetUserInvites(Session, cancellationToken);
 
     private async Task OnGenerateLinkClick() {
         var invite = new Invite {
             Remaining = 10,
-            Details = new InviteDetailsDiscriminator {
+            Details = new InviteDetails {
                 User = new(),
             },
         };
         var command = new IInvites.GenerateCommand(Session, invite);
         _ = await Cmd.Run(command);
     }
-
 }

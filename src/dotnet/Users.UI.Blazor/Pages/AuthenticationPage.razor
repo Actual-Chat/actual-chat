@@ -1,6 +1,5 @@
 @page "/test/auth"
 @inherits ComputedStateComponent<(UserProfile UserProfile, List<AuthenticationPage.SessionModel> Sessions)>
-
 @{
     var state = State.LatestNonErrorValue;
     var error = State.Error;

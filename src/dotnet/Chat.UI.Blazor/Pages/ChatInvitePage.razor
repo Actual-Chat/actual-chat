@@ -1,6 +1,6 @@
 @page "/chat/{ChatId}/invite"
 @using ActualChat.Invite
-@inherits ComputedStateComponent<InviteChatPage.Model>
+@inherits ComputedStateComponent<ChatInvitePage.Model>
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
     var model = State.LatestNonErrorValue;
@@ -26,8 +26,7 @@
         </div>
     }
 
-    <InviteList Invites="invites"
-                LinkFormat="join/{0}">
+    <InviteList Invites="invites" LinkFormat="join/{0}">
         <Buttons>
             <Button OnClick="OnGenerateNewLinkClick" Class="btn-success">
                 + Create a New Link
@@ -40,27 +39,15 @@
 }
 
 @code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
+    [Inject] private Clipboard Clipboard { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
-    [Inject]
-    private Session Session { get; init; } = null!;
-
-    [Inject]
-    private IChats Chats { get; init; } = null!;
-
-    [Inject]
-    private IInvites Invites { get; init; } = null!;
-
-    [Inject]
-    private UICommandRunner Cmd { get; init; } = null!;
-
-    [Inject]
-    private NavigationManager Nav { get; init; } = null!;
-
-    [Inject]
-    private Clipboard Clipboard { get; init; } = null!;
-
-    [Parameter]
-    public string ChatId { get; set; } = "";
+    [Parameter] public string ChatId { get; set; } = "";
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None };
@@ -71,7 +58,7 @@
             return Model.Unavailable;
 
         var invites = await Invites.GetChatInvites(Session, ChatId, cancellationToken);
-        var threshold = DateTime.Now.AddDays(-3);
+        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
         invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
@@ -82,7 +69,7 @@
 
     private async Task OnGenerateNewLinkClick() {
         var invite = new Invite {
-            Details = new InviteDetailsDiscriminator {
+            Details = new InviteDetails {
                 Chat = new(ChatId),
             },
             Remaining = 10, // TODO: configurable
@@ -97,14 +84,13 @@
     private async Task CopyToClipboard(string link)
         => await Clipboard.WriteText(link);
 
-    public record Model {
+    public sealed record Model {
         public static Model None { get; } = new();
         public static Model Unavailable { get; } = new() { IsUnavailable = true };
 
         public bool IsUnavailable { get; init; }
         public Chat? Chat { get; init; }
-        public string? PermanentLink { get; set; }
-        public IImmutableList<Invite> Invites { get; set; } = ImmutableArray.Create<Invite>();
+        public string? PermanentLink { get; init; }
+        public IImmutableList<Invite> Invites { get; init; } = ImmutableArray<Invite>.Empty;
     }
-
 }

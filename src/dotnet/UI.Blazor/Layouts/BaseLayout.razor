@@ -1,7 +1,6 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @implements IDisposable
-
 @{
     var failures = UICommandFailureList.Items;
     var version = "v" + (GetType().Assembly.GetInformationalVersion() ?? "n/a").Replace('+', ' ');

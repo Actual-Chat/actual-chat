@@ -25,6 +25,6 @@ public class InvitesController : ControllerBase, IInvites
         => _service.Generate(command, cancellationToken);
 
     [HttpPost]
-    public Task<InviteUsageResult> UseInvite(IInvites.UseInviteCommand command, CancellationToken cancellationToken)
-        => _service.UseInvite(command, cancellationToken);
+    public Task<Invite> Use(IInvites.UseCommand command, CancellationToken cancellationToken)
+        => _service.Use(command, cancellationToken);
 }

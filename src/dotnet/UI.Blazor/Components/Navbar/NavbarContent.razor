@@ -3,32 +3,21 @@
 @using ActualChat.Users
 @using Microsoft.AspNetCore.Authorization
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<NavbarContent.Model>
-
-@code {
-    [Inject] private IAuthorizationService AuthorizationService { get; set; } = null!;
-    [Inject] private AuthStateProvider AuthStateProvider { get; set; } = null!;
-    [Inject] private IEnumerable<NavbarWidget> Widgets { get; set; } = null!;
-    [Inject] private HostInfo HostInfo { get; set; } = null!;
-
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() { InitialValue = new Model(false) };
-
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var authenticationState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var authorizationResult = await AuthorizationService.AuthorizeAsync(authenticationState.User, KnownPolicies.IsUserActive);
-        return new Model(authorizationResult.Succeeded);
-    }
-
-    public sealed record Model(bool IsUserActive);
+@inherits NavbarContentBase
+@{
+    var m = State.LatestNonErrorValue;
 }
 
-@if (State.LatestNonErrorValue.IsUserActive) {
+@if (m.UserProfile.Status == UserStatus.Active) {
     @foreach (var widget in Widgets.OrderBy(c => c.Order)) {
         @widget.Content
     }
 }
-
+@if (m.UserProfile.IsAdmin) {
+    <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
+        <NavbarItem Url="/user/invite">Invite Users</NavbarItem>
+    </NavbarGroup>
+}
 @if (HostInfo.IsDevelopmentInstance) {
     <NavbarGroup Title="Test pages" Class="navbar-pages" Id="testPages">
         <NavbarItem Url="/test/virtual-list">Virtual List</NavbarItem>
@@ -39,3 +28,4 @@
         <NavbarItem Url="/test/auth">Authentication</NavbarItem>
     </NavbarGroup>
 }
+

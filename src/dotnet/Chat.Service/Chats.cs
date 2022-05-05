@@ -198,9 +198,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             return default!; // It just spawns other commands, so nothing to do here
 
         var (session, title) = command;
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        user.MustBeAuthenticated();
-
+        var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
         var chat = new Chat() {
             Title = title,
             IsPublic = command.IsPublic,
@@ -370,7 +368,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         CancellationToken cancellationToken)
     {
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        if (!options.Items.TryGetValue("InviteCode::ChatId", out var inviteChatId))
+        if (!options.Items.TryGetValue("Invite::ChatId", out var inviteChatId))
             return false;
         if (!StringComparer.Ordinal.Equals(chatId, inviteChatId as string))
             return false;

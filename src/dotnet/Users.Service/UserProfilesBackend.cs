@@ -9,7 +9,7 @@ namespace ActualChat.Users;
 public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesBackend
 {
     private const string AdminEmailDomain = "actual.chat";
-    private readonly HashSet<string> AdminEmails = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
+    private HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
     private IUserAuthorsBackend? _userAuthorsBackend; // Dep. cycle elimination
     private readonly IDbEntityConverter<DbUserProfile, UserProfile> _converter;

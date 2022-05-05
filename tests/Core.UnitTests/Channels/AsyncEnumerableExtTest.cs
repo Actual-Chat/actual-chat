@@ -165,7 +165,7 @@ public class AsyncEnumerableExtTest
             .OrderBy(x => x.random)
             .Select(x => x.i);
         foreach (var number in randomNumbers) {
-            await delayClock.Delay(random.Next(100), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await delayClock.Delay(random.Next(100), cancellationToken).ConfigureAwait(false);
             yield return number;
         }
     }

@@ -5,6 +5,9 @@ namespace ActualChat.Users;
 
 public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IChatUserSettings, IChatUserSettingsBackend
 {
+    private static ITextSerializer<ChatUserSettings> Serializer { get; } =
+        SystemJsonSerializer.Default.ToTyped<ChatUserSettings>();
+
     private readonly IAuth _auth;
     private readonly ICommander _commander;
 
@@ -26,10 +29,15 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
             return await Get(user.Id, chatId, cancellationToken).ConfigureAwait(false);
 
         var options = await _auth.GetOptions(session, cancellationToken).ConfigureAwait(false);
-        var serializedSettings = options[$"{chatId}::settings"] as string;
-        return serializedSettings.IsNullOrEmpty()
-            ? null
-            : SystemJsonSerializer.Default.Read<ChatUserSettings>(serializedSettings);
+        var serializedSettings = options[$"ChatUserSettings::{chatId}"] as string;
+        if (serializedSettings.IsNullOrEmpty())
+            return null;
+        try {
+            return Serializer.Read(serializedSettings);
+        }
+        catch {
+            return null;
+        }
     }
 
     // [CommandHandler]
@@ -44,8 +52,8 @@ public partial class ChatUserSettingsService : DbServiceBase<UsersDbContext>, IC
             await _commander.Call(command1, true, cancellationToken).ConfigureAwait(false);
         }
         else {
-            var serializedSettings = SystemJsonSerializer.Default.Write(settings);
-            var updatedPair = KeyValuePair.Create($"{chatId}::settings", serializedSettings);
+            var serializedSettings = Serializer.Write(settings);
+            var updatedPair = KeyValuePair.Create($"ChatUserSettings::{chatId}", serializedSettings);
             var command2 = new ISessionOptionsBackend.UpsertCommand(session, updatedPair);
             await _commander.Call(command2, true, cancellationToken).ConfigureAwait(false);
         }

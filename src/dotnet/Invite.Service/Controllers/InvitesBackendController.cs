@@ -14,18 +14,18 @@ public class InvitesBackendController : ControllerBase, IInvitesBackend
         => _service = service;
 
     [HttpGet, Publish]
-    public Task<IImmutableList<Invite>> GetAll(CancellationToken cancellationToken)
-        => _service.GetAll(cancellationToken);
+    public Task<IImmutableList<Invite>> GetAll(string searchKey, int minRemaining, CancellationToken cancellationToken)
+        => _service.GetAll(searchKey, minRemaining, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<Invite?> GetByCode(string inviteCode, CancellationToken cancellationToken)
-        => _service.GetByCode(inviteCode, cancellationToken);
+    public Task<Invite?> Get(string id, CancellationToken cancellationToken)
+        => _service.Get(id, cancellationToken);
 
     [HttpPost]
     public Task<Invite> Generate(IInvitesBackend.GenerateCommand command, CancellationToken cancellationToken)
         => _service.Generate(command, cancellationToken);
 
     [HttpPost]
-    public Task UseInvite(IInvitesBackend.UseInviteCommand command, CancellationToken cancellationToken)
-        => _service.UseInvite(command, cancellationToken);
+    public Task<Invite> Use(IInvitesBackend.UseCommand command, CancellationToken cancellationToken)
+        => _service.Use(command, cancellationToken);
 }

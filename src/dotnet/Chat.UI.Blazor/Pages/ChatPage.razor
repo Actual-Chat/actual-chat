@@ -122,7 +122,7 @@
         _ = _chatView.NavigateToLastUnreadTopic();
     }
 
-    public record Model {
+    public sealed record Model {
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
         public bool IsRightPanelVisible { get; init; }

@@ -1,35 +1,28 @@
-@page "/user/activate/{InviteCode}"
+@page "/user/activate/{InviteId}"
 @using ActualChat.Invite
 @attribute [Authorize]
 
 <MainHeader>Joining via invite code</MainHeader>
 
-@if (UsageResult != null) {
-    if (UsageResult.Succeeded) {
-        <div>Your account has been successfully activated</div>
+@if (_useResult is { } useResult) {
+    if (useResult.Error is { } error) {
+        <div>Failed to activate your account: @error.Message</div>
     } else {
-        <div>Failed to activate your account: @UsageResult.Message</div>
+        <div>Your account has been successfully activated!</div>
     }
 }
 
 @code {
+    private Result<Invite>? _useResult;
 
-    [Parameter]
-    public string InviteCode { get; set; } = "";
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
-    [Inject]
-    private Session Session { get; init; } = null!;
-
-    [Inject]
-    private UICommandRunner Cmd { get; init; } = null!;
-
-    private InviteUsageResult? UsageResult { get; set; }
+    [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
         await base.OnParametersSetAsync();
-        var cmd = new IInvites.UseInviteCommand(Session, InviteCode);
-        var (result, _) = await Cmd.Run(cmd);
-        UsageResult = result;
+        var cmd = new IInvites.UseCommand(Session, InviteId);
+        _useResult = await Cmd.Run(cmd, CancellationToken.None).AsResult().ConfigureAwait(true);
     }
-
 }
