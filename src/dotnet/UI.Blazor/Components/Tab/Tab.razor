@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<CascadingValue IsFixed="true" Value="@this">
+    <div class="flex-y h-full">
+        <ul class="flex-x flex-wrap list-none border-b-0 pl-0 mb-2 text-secondary" role="tablist">
+            @foreach (var tabItem in _tabItems) {
+                var isActive = tabItem == ActiveTabItem;
+                var cls = isActive ? "border-success" : "border-transparent";
+
+                <li class="nav-item" role="presentation">
+                    <button class="block cursor-pointer px-3 py-1
+                                   font-medium text-xs leading-tight uppercase
+                                   border-x-0 border-t-0 border-b-2 hover:bg-primary @cls"
+                            role="tab" aria-selected="@isActive"
+                            @onclick="@(() => OnSelectPage(tabItem))">
+                        @tabItem.Title
+                    </button>
+                </li>
+            }
+        </ul>
+        <div class="grow">
+            @ChildContent
+        </div>
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly List<TabItem> _tabItems = new List<TabItem>();
+    internal TabItem? ActiveTabItem { get; private set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    internal void RegisterTabItem(TabItem tabItem) {
+        _tabItems.Add(tabItem);
+        if (ActiveTabItem == null)
+            ActiveTabItem = tabItem;
+        StateHasChanged();
+    }
+
+    private void OnSelectPage(TabItem tabItem) {
+        ActiveTabItem = tabItem;
+    }
+}
