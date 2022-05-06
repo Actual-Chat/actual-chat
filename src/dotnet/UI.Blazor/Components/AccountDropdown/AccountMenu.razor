@@ -42,8 +42,8 @@
 
     private bool IsOpen { get; set; }
 
-    private async  Task OnSettingsClick() {
-        await FeedbackUI.AskFeatureRequestFeedback("profile/settings", "Settings");
+    private void OnSettingsClick() {
+        Nav.NavigateTo("/settings");
     }
 
     private Task OnAvatarsClick() {
