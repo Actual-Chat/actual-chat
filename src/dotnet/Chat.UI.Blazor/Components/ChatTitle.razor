@@ -7,12 +7,6 @@
     <MenuTemplate>
         <Menu Class="rounded-md border border-accent p-1" ItemClass="text-left" Orientation="Orientation.Vertical" IconPosition="IconPosition.Right">
             <MenuItem Title="Edit your name, image and bio in this chat" OnItemClick="OnEditChatAuthorAvatar" Class="truncate"></MenuItem>
-            @if (_canEdit) {
-                <MenuItem Title="Edit chat" OnItemClick="OnEditChat"></MenuItem>
-            }
-            @if (_canInvite) {
-                <MenuItem Title="Invite people" OnItemClick="OnInvite"></MenuItem>
-            }
         </Menu>
     </MenuTemplate>
 </Dropdown>
@@ -36,10 +30,4 @@
 
     private void OnEditChatAuthorAvatar()
         => Nav.NavigateTo($"/chat/{Chat.Id}/edit/avatar");
-
-    private void OnEditChat()
-        => Nav.NavigateTo($"/chat/{Chat.Id}/edit");
-
-    private void OnInvite()
-        => Nav.NavigateTo($"/chat/{Chat.Id}/invite");
 }

@@ -2,7 +2,6 @@
 @page "/chat/{ChatId}"
 @page "/direct/{ContactId}"
 @using ActualChat.Notification.UI.Blazor
-@using ActualChat.Users.UI.Blazor.Services
 @inherits ComputedStateComponent<ChatPage.Model>
 @layout ChatPageLayout
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
@@ -64,7 +63,7 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private UserSettings UserSettings { get; init; } = null!;
+    [Inject] private RightPanelSettings RightPanelSettings { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
@@ -90,7 +89,7 @@
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        var isRightPanelDisplayed = await UserSettings.IsRightPanelShown.Use(cancellationToken);
+        var isRightPanelDisplayed = await RightPanelSettings.IsPanelShown.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
