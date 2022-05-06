@@ -92,6 +92,8 @@ public interface IChatAuthorsClientDef
     Task<UserContact> AddToContacts([Body] IChatAuthors.AddToContactsCommand command, CancellationToken cancellationToken);
     [Post(nameof(CreateChatAuthors))]
     Task CreateChatAuthors([Body] IChatAuthors.CreateChatAuthorsCommand command, CancellationToken cancellationToken);
+    [Get(nameof(GetUserIds))]
+    Task<ImmutableArray<string>> GetUserIds(Session session, string chatId, CancellationToken cancellationToken);
 }
 
 [BasePath("chatUserSettings")]
