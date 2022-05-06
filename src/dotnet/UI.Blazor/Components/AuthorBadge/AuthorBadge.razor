@@ -2,7 +2,7 @@
 @using ActualChat.Users
 
 <div class="author-badge flex-x items-center">
-    <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" />
+    <AuthorCircle Author="@Author" Size="@Size" Presence="@Presence" OnClick="@OnClick"/>
     <div class="flex-y @_contentClass">
         <div>
             <span class="@_nameClass">@Author.Name</span>
@@ -26,6 +26,7 @@
     [Parameter] public string TextClass { get; set; } = "";
     [Parameter] public IAuthorLike Author { get; set; } = null!;
     [Parameter] public bool ShowsStatusText { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
