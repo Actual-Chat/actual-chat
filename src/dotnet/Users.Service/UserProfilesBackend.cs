@@ -67,9 +67,12 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (dbUserProfile != null)
             return;
 
+        var user = await AuthBackend.GetUser(command.UserProfileOrUserId, cancellationToken).ConfigureAwait(false);
+        var isAdmin = user != null && IsAdmin(user);
+
         dbUserProfile = new DbUserProfile {
             Id = command.UserProfileOrUserId,
-            Status = _usersSettings.NewUserStatus,
+            Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
             Version = VersionGenerator.NextVersion(),
         };
 
