@@ -12,7 +12,7 @@
                                    font-medium text-xs leading-tight uppercase
                                    border-x-0 border-t-0 border-b-2 hover:bg-primary @cls"
                             role="tab" aria-selected="@isActive"
-                            @onclick="@(() => OnSelectPage(tabItem))">
+                            @onclick="@(() => OnActivateTabItem(tabItem))">
                         @tabItem.Title
                     </button>
                 </li>
@@ -26,18 +26,39 @@
 
 @code {
     private readonly List<TabItem> _tabItems = new List<TabItem>();
+    private object? _lastKnownActiveTabItemId;
     internal TabItem? ActiveTabItem { get; private set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public object? ActiveTabItemId { get; set; }
+    [Parameter] public EventCallback<object> ActiveTabItemIdChanged { get; set; }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+
+        if (!Equals(_lastKnownActiveTabItemId, ActiveTabItemId)) {
+            var tabItemToActivate = _tabItems.FirstOrDefault(c => Equals(c.Id, ActiveTabItemId));
+            if (ActiveTabItem != tabItemToActivate)
+                OnActivateTabItem(tabItemToActivate);
+        }
+    }
 
     internal void RegisterTabItem(TabItem tabItem) {
         _tabItems.Add(tabItem);
-        if (ActiveTabItem == null)
-            ActiveTabItem = tabItem;
+        if (ActiveTabItemId != null) {
+            if (Equals(tabItem.Id, ActiveTabItemId))
+                ActiveTabItem = tabItem;
+        } else {
+            if (ActiveTabItem == null)
+                ActiveTabItem = tabItem;
+        }
         StateHasChanged();
     }
 
-    private void OnSelectPage(TabItem tabItem) {
+    private void OnActivateTabItem(TabItem? tabItem) {
         ActiveTabItem = tabItem;
+        var id = tabItem?.Id ?? null;
+        _lastKnownActiveTabItemId = id;
+        ActiveTabItemIdChanged.InvokeAsync(id);
     }
 }

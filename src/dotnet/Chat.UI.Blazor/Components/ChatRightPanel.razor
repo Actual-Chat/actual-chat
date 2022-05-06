@@ -1,55 +1,32 @@
 @inherits ComputedStateComponent<ChatRightPanel.Page>
-@{
-    var currentPage = State.ValueOrDefault;
-}
 
 <div class="flex-y w-full md:w-80 border-l-2 p-3 animate-from-right">
-    <ul class="flex-x flex-wrap list-none border-b-0 pl-0 mb-2 text-secondary" role="tablist">
-        @foreach (var page in _pages) {
-            var isActive = page == currentPage;
-            var cls = isActive ? "border-success" : "border-transparent";
-
-            <li class="nav-item" role="presentation">
-                <button class="block cursor-pointer px-3 py-1
-                               font-medium text-xs leading-tight uppercase
-                               border-x-0 border-t-0 border-b-2 hover:bg-primary @cls"
-                        role="tab" aria-selected="@isActive"
-                        @onclick="@(() => OnSelectPage(page))">
-                    @GetTabTitle(page)
-                </button>
-            </li>
-        }
-    </ul>
-    <div class="grow overflow-y-auto custom-scrollbar">
-        @if (currentPage == Page.Users) {
+    <Tab @bind-ActiveTabItemId="ActivePage">
+        <TabItem Title="Users" Id="@Page.Users">
             <ChatAuthorList />
-        }
-        else if (currentPage == Page.Settings) {
+        </TabItem>
+        <TabItem Title="Settings" Id="@Page.Settings">
             <ChatSettings />
-        }
-    </div>
+        </TabItem>
+    </Tab>
 </div>
 
 @code {
-    public enum Page { Users, Settings }
-
     [Inject] private RightPanelSettings RightPanelSettings { get; init; } = null!;
 
-    private Page[] _pages = Enum.GetValues<Page>().ToArray();
-
-    private string GetTabTitle(Page page)
-        => page switch{
-            Page.Users => "Users",
-            Page.Settings => "Settings",
-            _ => "???"
-            };
+    private object ActivePage {
+        get => State.LatestNonErrorValue;
+        set => OnSelectPage(value is Page page ? page : Page.Users);
+    }
 
     protected override ComputedState<Page>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay };
+        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay, InitialValue = Page.Users };
 
     protected override async Task<Page> ComputeState(CancellationToken cancellationToken)
         => await RightPanelSettings.SelectedPage.Use(cancellationToken);
 
     private void OnSelectPage(Page page)
         => RightPanelSettings.SelectedPage.Value = page;
+
+    public enum Page { Users, Settings }
 }
