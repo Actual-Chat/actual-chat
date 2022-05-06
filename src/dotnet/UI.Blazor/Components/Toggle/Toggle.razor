@@ -1,3 +1,5 @@
+@namespace ActualChat.UI.Blazor.Components
+
 <div class="flex-x items-center form-switch">
     @if (!string.IsNullOrEmpty(Label)) {
         <label class="inline-block text-secondary mr-2" for="@Id">@Label</label>
@@ -26,7 +28,7 @@
     }
 
     private void OnChange(ChangeEventArgs eventArgs) {
-        var boolValue = (bool)eventArgs.Value;
+        var boolValue = eventArgs.Value is bool ? (bool)eventArgs.Value : false;
         _isOn = boolValue;
         IsOnChanged.InvokeAsync(boolValue);
     }

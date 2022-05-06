@@ -12,12 +12,9 @@
         </div>
     </div>
 
-    <div class="mt-3">
-        <label for="ChatType" class="block text-sm font-medium text-secondary">Chat type</label>
-        <InputRadioGroup @bind-Value="_model.IsPublic" id="ChatType">
-            <InputRadio Value="@true"/><text>&nbsp;</text>Public chat<br>
-            <InputRadio Value="@false"/><text>&nbsp;</text>Private chat<br>
-        </InputRadioGroup>
+    <div class="mt-3 flex-x items-center">
+        <label for="IsPrivateChatToggle" class="block text-sm font-medium text-secondary mr-2">Private chat</label>
+        <ToggleEdit Id="IsPrivateChatToggle" @bind-Value="_model.IsPrivate" />
     </div>
 
     <div class="mt-3 flex-x justify-end">
@@ -39,14 +36,14 @@
     protected override Task OnParametersSetAsync() {
         _chat = Chat;
         _model.Title = _chat.Title;
-        _model.IsPublic = _chat.IsPublic;
+        _model.IsPrivate = !_chat.IsPublic;
         return Task.CompletedTask;
     }
 
     private async Task OnSave() {
         var modifiedChat = Chat with {
             Title = _model.Title,
-            IsPublic = _model.IsPublic
+            IsPublic = !_model.IsPrivate
         };
         var command = new IChats.UpdateChatCommand(Session, modifiedChat);
         var (_, cmdEvent) = await Cmd.Run(command);
@@ -56,6 +53,6 @@
     {
         [Required]
         public string Title { get; set; } = "";
-        public bool IsPublic { get; set; }
+        public bool IsPrivate { get; set; }
     }
 }

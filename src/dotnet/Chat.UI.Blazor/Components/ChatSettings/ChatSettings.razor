@@ -8,9 +8,7 @@
     <div class="flex-x flex-nowrap justify-start items-center mt-1">
         <i class="fa fa-bell mr-2" aria-hidden="true"></i>
         <div class="text-sm font-medium text-secondary mr-2">Notifications</div>
-        <div class="ml-auto">
-            <ChatNotificationToggle ChatId="@Chat.Id"/>
-        </div>
+        <ChatNotificationToggle ChatId="@Chat.Id"/>
     </div>
     @if (model.CanEdit) {
         <div class="mt-3 mb-4 h-0 border-b bg-primary"></div>
