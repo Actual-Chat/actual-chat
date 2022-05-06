@@ -24,11 +24,7 @@ public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDb
         if (db.IsInMemory())
             return;
 
-        if (DbInfo.DbKind == DbKind.MySql) {
-            await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-            await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
-        }
-        else if (DbInfo.ShouldRecreateDb) {
+        if (DbInfo.ShouldRecreateDb) {
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             //await db.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
             await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
