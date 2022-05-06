@@ -37,6 +37,7 @@
                                class="ml-5 mr-3 self-center"/>
                     }
                     <AuthorBadge Author="@contact.Author"
+                                 Presence="@contact.Presence"
                                  Size="PersonCircleSize.Size12"/>
                 </div>
             }
@@ -64,6 +65,7 @@
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
     [Inject] private IUserAuthors UserAuthors { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
@@ -79,27 +81,27 @@
             StringComparer.Ordinal);
 
         var contacts = await UserContacts.GetContacts(Session, DisposeTokenSource.Token).ConfigureAwait(false);
-        var resolveUserAuthors = contacts.Select(x => UserAuthors.Get(x.TargetUserId, true, DisposeTokenSource.Token));
-        var userAuthors = await Task.WhenAll(resolveUserAuthors).ConfigureAwait(false);
-        var chatContacts = userAuthors
-            .Where(x => x != null)
-            .Select(x => x!)
-            .Select(contact => {
-                if (!string.IsNullOrWhiteSpace(contact.Picture))
-                    return contact;
+        var chatContacts = new ConcurrentBag<Contact>();
+        var resolveChatContacts = contacts
+            .Select(async userContact => {
+                var userAuthor = await UserAuthors.Get(userContact.TargetUserId, true, DisposeTokenSource.Token).ConfigureAwait(false);
+                if (userAuthor == null)
+                    return;
 
-                var picture = $"https://avatars.dicebear.com/api/avataaars/{contact.Name}.svg";
-                return contact with {
-                    Picture = picture,
-                };
+                if (string.IsNullOrWhiteSpace(userAuthor.Picture)) {
+                    userAuthor = userAuthor with {
+                        Picture = $"https://avatars.dicebear.com/api/avataaars/{userAuthor.Name}.svg",
+                    };
+                }
+
+                var presence = await UserPresences.Get(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
+                chatContacts.Add(new Contact(userAuthor, presence, existingChatUserIds.Contains(userAuthor.Id)));
             })
-            .Select(x => new Contact(x) {
-                IsExisting = existingChatUserIds.Contains(x.Id),
-                IsChecked = existingChatUserIds.Contains(x.Id),
-            })
-            .ToArray();
-        AllChatContacts = chatContacts;
-        FilteredChatContacts = chatContacts;
+            .ToList();
+        await Task.WhenAll(resolveChatContacts).ConfigureAwait(false);
+
+        AllChatContacts = chatContacts.OrderBy(x => x.Author.Name).ToArray();
+        FilteredChatContacts = AllChatContacts;
     }
 
     public void Dispose() => DisposeTokenSource.Cancel();
@@ -137,11 +139,16 @@
 
     private sealed class Contact {
         public UserAuthor Author { get; }
-        public bool IsExisting { get; init; }
+        public bool IsExisting { get; }
+        public Presence Presence { get; }
         public bool IsChecked { get; set; }
 
-        public Contact(UserAuthor author)
-            => Author = author;
+        public Contact(UserAuthor author, Presence presence, bool isExisting) {
+            Author = author;
+            Presence = presence;
+            IsExisting = isExisting;
+            IsChecked = isExisting;
+        }
     }
 
     public sealed record Model(Chat Chat);
