@@ -1,7 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Authorization;
 using ActualChat.Users.UI.Blazor.Authorization;
-using ActualChat.Users.UI.Blazor.Services;
 using Microsoft.AspNetCore.Authorization;
 using Stl.Plugins;
 
@@ -29,9 +28,5 @@ public class UsersBlazorUIModule : HostModule, IBlazorUIModule
             o.AddPolicy(KnownPolicies.IsUserActive, builder => builder.AddRequirements(new IsUserActiveRequirement()));
             o.AddPolicy(KnownPolicies.IsAdmin, builder => builder.AddRequirements(new IsAdminRequirement()));
         });
-
-        // Fusion services
-        var fusion = services.AddFusion();
-        fusion.AddComputeService<UserSettings>(ServiceLifetime.Scoped);
     }
 }

@@ -41,5 +41,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         services.AddScoped<ContentUrlMapper>();
         services.AddScoped<UnreadMessages>();
+
+        fusion.AddComputeService<RightPanelSettings>(ServiceLifetime.Scoped);
     }
 }
