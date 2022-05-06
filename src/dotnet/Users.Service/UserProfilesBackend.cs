@@ -14,6 +14,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     private IUserAuthorsBackend? _userAuthorsBackend; // Dep. cycle elimination
     private readonly IDbEntityConverter<DbUserProfile, UserProfile> _converter;
     private readonly UsersSettings _usersSettings;
+    private readonly DbUserRepo _dbUserRepo;
+    private readonly IDbEntityConverter<DbUser, User> _userConverter;
 
     private IAuthBackend AuthBackend { get; }
 
@@ -25,6 +27,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     {
         _converter = converter;
         _usersSettings = usersSettings;
+        _dbUserRepo = services.GetRequiredService<DbUserRepo>();
+        _userConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
     }
@@ -67,7 +71,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (dbUserProfile != null)
             return;
 
-        var user = await AuthBackend.GetUser(command.UserProfileOrUserId, cancellationToken).ConfigureAwait(false);
+        var dbUser = await _dbUserRepo.Get(dbContext, command.UserProfileOrUserId, false, cancellationToken).ConfigureAwait(false);
+        var user = _userConverter.ToModel(dbUser);
         var isAdmin = user != null && IsAdmin(user);
 
         dbUserProfile = new DbUserProfile {
