@@ -19,7 +19,7 @@
                         <ButtonGroup ButtonsPosition="ButtonGroupPosition.Center">
                             <Button OnClick="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
                             @if (item.IsSelected) {
-                                <Button Class="btn-error" OnClick="@(() => Select(""))">Refuse</Button>
+                                <Button Class="btn-success" OnClick="@(() => Select(""))">Unselect</Button>
                             } else {
                                 <Button Class="btn-success" OnClick="@(() => Select(item.AvatarId))">Select</Button>
                             }
@@ -28,7 +28,7 @@
                 </UserAvatar>
                 <div class="absolute top-0 right-0 mr-4 mt-2">
                     @if (item.IsSelected) {
-                        <i class="fa fa-check fa-2x scale-125 text-online" aria-hidden="true"></i>
+                        <i class="fa fa-check fa-2x text-success" aria-hidden="true"></i>
                     }
                 </div>
             </div>
