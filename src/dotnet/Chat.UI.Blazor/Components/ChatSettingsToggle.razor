@@ -5,7 +5,7 @@
     var isRightPanelShown = State.Value.IsRightPanelShown;
 }
 
-<ButtonSquare OnClick="OnClick"
+<ButtonSquare Click="OnClick"
               Class="@(isRightPanelShown ? "on" : "off")"
               Title="@(isRightPanelShown ? "Hide settings" : "Show settings")">
     <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 fill-current" viewBox="-4 -4 32 32">

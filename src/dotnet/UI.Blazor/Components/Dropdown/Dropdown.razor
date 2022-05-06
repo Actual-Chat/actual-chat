@@ -8,7 +8,7 @@
 }
 <CascadingValue Value="@this" IsFixed="true">
     <div @ref="Ref" class="dropdown @Class">
-            <Button Class="@buttonClass" OnClick="_ => _isOpen = !_isOpen">
+            <Button Class="@buttonClass" Click="_ => _isOpen = !_isOpen">
                 @ButtonTemplate
             </Button>
             <div class="dropdown-menu absolute z-50 @MenuClass @(_isOpen ? "dropdown-menu-opened" : "")">

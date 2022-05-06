@@ -17,11 +17,11 @@
                 <UserAvatar AvatarId="@item.AvatarId" Class="@brdCls">
                     <ActionsTemplate>
                         <ButtonGroup ButtonsPosition="ButtonGroupPosition.Center">
-                            <Button OnClick="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
+                            <Button Click="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
                             @if (item.IsSelected) {
-                                <Button Class="btn-success" OnClick="@(() => Select(""))">Unselect</Button>
+                                <Button Class="btn-success" Click="@(() => Select(""))">Unselect</Button>
                             } else {
-                                <Button Class="btn-success" OnClick="@(() => Select(item.AvatarId))">Select</Button>
+                                <Button Class="btn-success" Click="@(() => Select(item.AvatarId))">Select</Button>
                             }
                         </ButtonGroup>
                     </ActionsTemplate>
@@ -37,7 +37,7 @@
 </ul>
 
 <Button Class="btn btn-success hover:scale-110 ease-in-out duration-150 !rounded-full !min-w-0 !w-10 absolute bottom-0 right-0 !m-0 !mr-4 !mb-4 !p-0"
-        OnClick="OnAddNewAvatar"
+        Click="OnAddNewAvatar"
         Title="Create new Avatar">
     <svg class="w-6 h-6 mx-auto" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M0 0h24v24H0z" fill="none"></path>

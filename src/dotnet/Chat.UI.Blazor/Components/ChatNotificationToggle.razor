@@ -5,7 +5,7 @@
 @{
     var isSubscribed = State.Value.IsSubscribed;
 }
-<ButtonSquare OnClick="OnClick" Class="@(isSubscribed ? "on" : "off")">
+<ButtonSquare Click="OnClick" Class="@(isSubscribed ? "on" : "off")">
     <i class="fa fa-bell fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
 </ButtonSquare>
 

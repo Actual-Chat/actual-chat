@@ -19,7 +19,7 @@
             <div class="mt-1 flex-x">
                 <input type="text" value="@model.PermanentLink" disabled
                        class="flex-1 px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500"/>
-                <ButtonSquare OnClick="_ => CopyToClipboard(model.PermanentLink)" Class="transparent !mx-2">
+                <ButtonSquare Click="_ => CopyToClipboard(model.PermanentLink)" Class="transparent !mx-2">
                     <i class="fa fa-files-o w-5 h-5" aria-hidden="true"></i>
                 </ButtonSquare>
             </div>
@@ -28,10 +28,10 @@
 
     <InviteList Invites="invites" LinkFormat="join/{0}">
         <Buttons>
-            <Button OnClick="OnGenerateNewLinkClick" Class="btn-success">
+            <Button Click="OnGenerateNewLinkClick" Class="btn-success">
                 + Create a New Link
             </Button>
-            <Button OnClick="OnNavigateToChatClick" Class="btn-cancel">
+            <Button Click="OnNavigateToChatClick" Class="btn-cancel">
                 Cancel
             </Button>
         </Buttons>

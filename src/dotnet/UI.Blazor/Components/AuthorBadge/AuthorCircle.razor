@@ -24,7 +24,7 @@
 
 <div class="author-avatar-badge flex-x items-center rounded-full">
     <div class="relative">
-        <img class="@_avatarClass rounded-full block @Class" @onclick="@OnClick"
+        <img class="@_avatarClass rounded-full block @Class" @onclick="@Click"
              src="@Author.Picture" alt="avatar" title="@title"/>
 
         @if (presenceFragment != null) {
@@ -45,12 +45,12 @@
     [Parameter] public IAuthorLike Author { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasTooltip { get; set; }
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
         base.OnParametersSet();
         _avatarClass = GetSizeClass();
-        if (OnClick.HasDelegate)
+        if (Click.HasDelegate)
             _avatarClass += " cursor-pointer";
         _presenceClass = GetPresenceClass();
     }

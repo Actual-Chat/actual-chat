@@ -11,7 +11,7 @@
         <div class="flex-1">
         </div>
         <div class="flex">
-            <ButtonSquare OnClick="OnAddAuthorClick" Title="Invite user">
+            <ButtonSquare Click="OnAddAuthorClick" Title="Invite user">
                 <i class="fa fa-user-plus fa-fw" aria-hidden="true"></i>
             </ButtonSquare>
         </div>
@@ -21,7 +21,7 @@
             AuthorId="@authorId"
             Size="PersonCircleSize.Size12"
             ShowsPresence="true"
-            OnClick="() => OnChatAuthorClick(authorId)"
+            Click="() => OnChatAuthorClick(authorId)"
             TextClass="text-sm font-medium text-primary select-none"/>
     }
 </div>

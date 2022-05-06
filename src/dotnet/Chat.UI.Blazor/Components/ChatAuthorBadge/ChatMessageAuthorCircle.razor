@@ -7,11 +7,11 @@
 <div class="author-badge">
     <AuthorCircle
         Author="@m.Author" Size="PersonCircleSize.Size9" Presence="@m.Presence"
-        OnClick="@OnClick"/>
+        Click="@Click"/>
 </div>
 
 @code {
-    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     public ChatMessageAuthorCircle() {
         ShowsPresence = true;

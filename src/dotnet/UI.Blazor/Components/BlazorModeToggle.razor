@@ -11,8 +11,8 @@
 }
 
 <div class="flex-x rounded-sm overflow-hidden w-max">
-    <Button Class="@serverClass" OnClick="_ => BlazorModeHelper.ChangeMode(true)" Disabled="@IsServerSideBlazor">Server</Button>
-    <Button Class="@wasmClass" OnClick="_ => BlazorModeHelper.ChangeMode(false)" Disabled="@(!IsServerSideBlazor)">WASM</Button>
+    <Button Class="@serverClass" Click="_ => BlazorModeHelper.ChangeMode(true)" Disabled="@IsServerSideBlazor">Server</Button>
+    <Button Class="@wasmClass" Click="_ => BlazorModeHelper.ChangeMode(false)" Disabled="@(!IsServerSideBlazor)">WASM</Button>
 </div>
 
 @code {

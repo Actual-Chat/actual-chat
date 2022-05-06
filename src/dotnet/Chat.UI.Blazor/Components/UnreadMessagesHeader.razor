@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<UnreadMessagesHeader.Model>
 
 @if (State.Value.Count > 0) {
-    <div class="mx-4 px-1.5 bg-strong-accent rounded-b-md shadow hover:cursor-pointer text-primary-inverted font-bold" @onclick="OnClick">
+    <div class="mx-4 px-1.5 bg-strong-accent rounded-b-md shadow hover:cursor-pointer text-primary-inverted font-bold" @onclick="Click">
         @State.Value.Count unread @PluralizeMessage(@State.Value.Count)
     </div>
 }
@@ -13,7 +13,7 @@
     [Inject] private Session Session { get; init; } = null!;
 
     [CascadingParameter] public Chat Chat { get; set; } = null!;
-    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {

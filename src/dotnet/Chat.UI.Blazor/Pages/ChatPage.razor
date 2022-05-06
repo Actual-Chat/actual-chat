@@ -28,7 +28,7 @@
 
     <RenderIntoSlot Name="SubHeader" @key="@(chat.Id + "-sub-header")">
         <CascadingValue Value="chat">
-            <UnreadMessagesHeader OnClick="@OnUnreadMessagesHeaderClick"/>
+            <UnreadMessagesHeader Click="@OnUnreadMessagesHeaderClick"/>
         </CascadingValue>
     </RenderIntoSlot>
 

@@ -16,10 +16,10 @@
             </div>
             <ButtonGroup Class="btn-font-normal" ButtonsPosition="ButtonGroupPosition.Left">
                 @if (m.CanAddContact) {
-                    <Button Class="btn-success" OnClick="OnAddContactClick" Disabled="@IsAddingContact">Add to Contacts</Button>
+                    <Button Class="btn-success" Click="OnAddContactClick" Disabled="@IsAddingContact">Add to Contacts</Button>
                 }
                 @if (m.CanSendMessage) {
-                    <Button Class="btn-success" OnClick="OnSendMessageClick">Send Message</Button>
+                    <Button Class="btn-success" Click="OnSendMessageClick">Send Message</Button>
                 }
             </ButtonGroup>
         </div>
