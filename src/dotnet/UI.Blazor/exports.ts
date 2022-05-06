@@ -6,6 +6,7 @@ import './Components/Navbar/navbar.css'
 import './Components/feedback.css'
 import './Components/tooltip.css'
 import './Components/Tab/tab.css'
+import './Components/toggle.css'
 
 export * from './Components/ContextMenu/context-menu';
 export * from './Components/Dropdown/dropdown';

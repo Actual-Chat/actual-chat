@@ -2,12 +2,8 @@
 @using ActualChat.Notification
 @inherits ComputedStateComponent<ChatNotificationToggle.Model>
 
-@{
-    var isSubscribed = State.Value.IsSubscribed;
-}
-<ButtonSquare Click="OnClick" Class="@(isSubscribed ? "on" : "off")">
-    <i class="fa fa-bell fa-lg w-8 h-8 pt-2" aria-hidden="true"></i>
-</ButtonSquare>
+<Toggle Id="ChatNotificationToggle" IsOffText="Off" IsOnText="On"
+        IsOn="State.LatestNonErrorValue.IsSubscribed" IsOnChanged="OnIsOnChanged" />
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
@@ -26,7 +22,7 @@
         };
     }
 
-    private async Task OnClick() {
+    private async Task OnIsOnChanged() {
         var isSubscribed = State.Value.IsSubscribed;
         ICommand command = isSubscribed
             ? new INotifications.UnsubscribeToChatCommand(Session, ChatId)
@@ -35,6 +31,6 @@
     }
 
     public class Model {
-        public bool IsSubscribed { get; set; }
+        public bool IsSubscribed { get; init; }
     }
 }

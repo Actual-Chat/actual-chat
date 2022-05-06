@@ -61,6 +61,7 @@ module.exports = {
         'mention-hover': 'var(--background-mention-hover)',
         'own-hover': 'var(--background-own-hover)',
         'button-primary': 'var(--background-avatar)',
+        'toggle-on': 'var(--text-color-toggle-on)',
       },
       backgroundColor: {
         'primary': 'var(--background-primary)',
@@ -87,6 +88,7 @@ module.exports = {
         'mention-message-hover': 'var(--background-mention-message-hover)',
         'own-hover': 'var(--background-own-hover)',
         'own-message': 'var(--background-own-message)',
+        'toggle-on': 'var(--text-color-toggle-on)',
       },
     },
     screens: {
