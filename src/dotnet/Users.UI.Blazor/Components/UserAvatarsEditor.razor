@@ -45,9 +45,11 @@
     </svg>
 </Button>
 
-<div class="absolute top-0 right-0 mr-4 mt-14">
-    <CloseButton Click="OnCancel" />
-</div>
+@if (CancelRequested != null) {
+    <div class="absolute top-0 right-0 mr-4 mt-14">
+        <CloseButton Click="@(() => CancelRequested?.Invoke())"/>
+    </div>
+}
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
@@ -102,10 +104,6 @@
     private void EditAvatar(string avatarId) {
         var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
         Nav.NavigateTo("user/avatar/" + avatarId + "?returnUrl=" + UrlEncoder.Default.Encode(returnUrl));
-    }
-
-    private void OnCancel() {
-        CancelRequested?.Invoke();
     }
 
     public class Model {
