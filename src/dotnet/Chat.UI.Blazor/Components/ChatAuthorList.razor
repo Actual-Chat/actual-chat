@@ -21,6 +21,7 @@
             AuthorId="@authorId"
             Size="PersonCircleSize.Size12"
             ShowsPresence="true"
+            OnClick="() => OnChatAuthorClick(authorId)"
             TextClass="text-sm font-medium text-primary select-none"/>
     }
 </div>
@@ -43,6 +44,8 @@
     }
 
     private void OnAddAuthorClick() => ModalUI.Show(new InviteChatAuthor.Model(Chat));
+
+    private void OnChatAuthorClick(string authorId) => ModalUI.Show(new ChatAuthorCard.Model(authorId));
 
     public sealed class Model {
         public static Model None { get; } = new();
