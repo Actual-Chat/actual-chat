@@ -1,0 +1,14 @@
+@page "/settings"
+@attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
+
+<MainHeader><span class="text-secondary">Settings</span></MainHeader>
+
+<Tab>
+    <TabItem Title="Avatars">
+        <UserAvatarsEditor />
+    </TabItem>
+</Tab>
+
+@code {
+
+}

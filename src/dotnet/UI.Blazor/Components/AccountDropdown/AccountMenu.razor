@@ -15,13 +15,6 @@
                     </svg>
                 </Icon>
             </MenuItem>
-            <MenuItem Title="Avatars" Name="avatars" OnItemClick="OnAvatarsClick">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="fill-current h-6 w-6" viewBox="-4 -1 32 32">
-                        <path d="M16.5 14.5c0 .828-.56 1.5-1.25 1.5s-1.25-.672-1.25-1.5.56-1.5 1.25-1.5 1.25.672 1.25 1.5zm-7.75-1.5c-.69 0-1.25.672-1.25 1.5s.56 1.5 1.25 1.5 1.25-.672 1.25-1.5-.56-1.5-1.25-1.5zm3.25 8.354c2.235 0 3-2.354 3-2.354h-6s.847 2.354 3 2.354zm12-6.041c0 1.765-.985 3.991-3.138 4.906-2.025 3.233-4.824 5.781-8.862 5.781-3.826 0-6.837-2.548-8.862-5.781-2.153-.916-3.138-3.142-3.138-4.906 0-2.053.862-3.8 2.71-3.964.852-9.099 8.57-8.408 9.837-10.849.323.559.477 1.571-.02 2.286.873-.045 2.344-1.304 2.755-2.552.754.366 1.033 1.577.656 2.354.542-.103 2.187-1.15 3.062-2.588.688 1.563.026 3.563-.708 4.771l-.012.001c1.796 1.707 2.781 4.129 3.01 6.576 1.859.165 2.71 1.917 2.71 3.965zm-2.58-1.866c-.235-.152-.531-.115-.672-.053-.56.25-1.214-.062-1.372-.66l-.001.016c-.333-2.604-1.125-4.854-2.611-5.565-6.427 7.009-10.82-.914-11.94 3.529-.101.582-.166 1.172-.166 1.766 0 .719-.743 1.209-1.406.914-.14-.062-.437-.1-.672.053-1 .651-.894 4.184 1.554 5.012.224.076.413.228.535.43 2.447 4.053 5.225 5.111 7.331 5.111 3.288 0 5.615-2.269 7.332-5.111.122-.202.312-.354.535-.43 2.447-.828 2.553-4.361 1.553-5.012z"/>
-                    </svg>
-                </Icon>
-            </MenuItem>
             <MenuItem Title="Sign Out" Name="singOut" OnItemClick="OnSignOutClick">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg" class="fill-current h-6 w-6" viewBox="-6 -2 32 32">
@@ -42,13 +35,8 @@
 
     private bool IsOpen { get; set; }
 
-    private async  Task OnSettingsClick() {
-        await FeedbackUI.AskFeatureRequestFeedback("profile/settings", "Settings");
-    }
-
-    private Task OnAvatarsClick() {
-        Nav.NavigateTo("/user/avatars");
-        return Task.CompletedTask;
+    private void OnSettingsClick() {
+        Nav.NavigateTo("/settings");
     }
 
     private async Task OnSignOutClick() {

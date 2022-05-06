@@ -50,7 +50,6 @@
     protected override async Task<Page> ComputeState(CancellationToken cancellationToken)
         => await RightPanelSettings.SelectedPage.Use(cancellationToken);
 
-    private void OnSelectPage(Page page) {
-        RightPanelSettings.SelectedPage.Value = page;
-    }
+    private void OnSelectPage(Page page)
+        => RightPanelSettings.SelectedPage.Value = page;
 }
