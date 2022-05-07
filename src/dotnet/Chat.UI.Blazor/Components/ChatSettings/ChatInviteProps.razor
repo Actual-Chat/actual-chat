@@ -2,16 +2,16 @@
 @using ActualChat.Invite
 @inherits ComputedStateComponent<ChatInviteProps.Model>
 @{
-    var model = State.LatestNonErrorValue;
+    var m = State.LatestNonErrorValue;
 }
 
-@if (!model.PermanentLink.IsNullOrEmpty()) {
+@if (!m.PermanentLink.IsNullOrEmpty()) {
     <div>
         <div class="block text-sm font-medium text-secondary">Permanent invite link</div>
         <div class="mt-2 flex-x">
-            <input type="text" value="@model.PermanentLink" disabled
+            <input type="text" value="@m.PermanentLink" disabled
                    class="custom-input input-underlined w-full focus:outline-none focus:border-sky-500"/>
-            <ButtonSquare Click="_ => CopyToClipboard(model.PermanentLink)" Class="transparent !mx-2">
+            <ButtonSquare Click="_ => CopyToClipboard(m.PermanentLink)" Class="transparent !mx-2">
                 <i class="fa fa-files-o w-5 h-5" aria-hidden="true"></i>
             </ButtonSquare>
         </div>

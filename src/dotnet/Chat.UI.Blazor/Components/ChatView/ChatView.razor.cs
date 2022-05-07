@@ -42,7 +42,7 @@ public partial class ChatView : ComponentBase, IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    public async Task NavigateToLastUnreadTopic()
+    public async Task NavigateToUnreadEntry()
     {
         long navigateToEntryId;
         var readPosition = await ChatReadPositions.GetReadPosition(Session, Chat.Id, _disposeToken.Token)

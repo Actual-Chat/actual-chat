@@ -1,32 +1,10 @@
-@inherits ComputedStateComponent<ChatRightPanel.Page>
-
 <div class="flex-y w-full md:w-80 border-l-2 p-3 animate-from-right">
-    <Tab @bind-ActiveTabItemId="ActivePage">
-        <TabItem Title="Users" Id="@Page.Users">
+    <TabPanel>
+        <Tab Title="Users" Id="Users">
             <ChatAuthorList />
-        </TabItem>
-        <TabItem Title="Settings" Id="@Page.Settings">
+        </Tab>
+        <Tab Title="Settings" Id="Settings">
             <ChatSettings />
-        </TabItem>
-    </Tab>
+        </Tab>
+    </TabPanel>
 </div>
-
-@code {
-    [Inject] private RightPanelSettings RightPanelSettings { get; init; } = null!;
-
-    private object ActivePage {
-        get => State.LatestNonErrorValue;
-        set => OnSelectPage(value is Page page ? page : Page.Users);
-    }
-
-    protected override ComputedState<Page>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.ZeroDelay, InitialValue = Page.Users };
-
-    protected override async Task<Page> ComputeState(CancellationToken cancellationToken)
-        => await RightPanelSettings.SelectedPage.Use(cancellationToken);
-
-    private void OnSelectPage(Page page)
-        => RightPanelSettings.SelectedPage.Value = page;
-
-    public enum Page { Users, Settings }
-}

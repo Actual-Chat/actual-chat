@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatSettings.Model>
 @{
-    var model = State.ValueOrDefault ?? new Model(false, false);
+    var m = State.LatestNonErrorValue;
 }
 
 <div class="flex-y text-secondary">
@@ -10,11 +10,11 @@
         <div class="text-sm font-medium text-secondary mr-2">Notifications</div>
         <ChatNotificationToggle ChatId="@Chat.Id"/>
     </div>
-    @if (model.CanEdit) {
+    @if (m.CanEdit) {
         <div class="mt-3 mb-4 h-0 border-b bg-primary"></div>
         <ChatMainProps/>
     }
-    @if (model.CanInvite) {
+    @if (m.CanInvite) {
         <div class="mt-3 mb-4 h-0 border-b bg-primary"></div>
         <ChatInviteProps />
     }
@@ -26,6 +26,9 @@
     [Inject] private IChats Chats { get; init; } = null!;
     [CascadingParameter] public Chat Chat { get; set; } = null!;
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None };
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var permissions = await Chats.GetPermissions(Session, Chat.Id, default);
         var canEdit = permissions.HasFlag(ChatPermissions.Admin);
@@ -33,5 +36,7 @@
         return new Model(canEdit, canInvite);
     }
 
-    public record Model(bool CanEdit, bool CanInvite);
+    public sealed record Model(bool CanEdit, bool CanInvite) {
+        public static Model None { get; } = new(false, false);
+    };
 }

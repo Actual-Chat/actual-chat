@@ -3,23 +3,23 @@
 @inherits ComputedStateComponent<ChatInvitePage.Model>
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
-    var model = State.LatestNonErrorValue;
-    if (model.IsUnavailable)
+    var m = State.LatestNonErrorValue;
+    if (m.IsUnavailable)
         Nav.Unavailable("chat");
-    var chat = model.Chat;
-    var invites = model.Invites;
+    var chat = m.Chat;
+    var invites = m.Invites;
 }
 
 @if (chat != null) {
-    <MainHeader>Inviting to&nbsp<b>"@(chat.Title)"</b></MainHeader>
+    <MainHeader>Invite to&nbsp<b>"@(chat.Title)"</b></MainHeader>
 
-    @if (!model.PermanentLink.IsNullOrEmpty()) {
+    @if (!m.PermanentLink.IsNullOrEmpty()) {
         <div>
             <span class="block text-sm font-medium text-secondary">Permanent link</span>
             <div class="mt-1 flex-x">
-                <input type="text" value="@model.PermanentLink" disabled
+                <input type="text" value="@m.PermanentLink" disabled
                        class="flex-1 px-2 py-1 border border-1 border-gray-300 rounded-md focus:outline-none focus:border-sky-500"/>
-                <ButtonSquare Click="_ => CopyToClipboard(model.PermanentLink)" Class="transparent !mx-2">
+                <ButtonSquare Click="_ => CopyToClipboard(m.PermanentLink)" Class="transparent !mx-2">
                     <i class="fa fa-files-o w-5 h-5" aria-hidden="true"></i>
                 </ButtonSquare>
             </div>

@@ -6,14 +6,13 @@
 @layout ChatPageLayout
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 @{
-    _lastRenderedModel = State.LatestNonErrorValue ?? new();
-    var model = _lastRenderedModel;
+    var m = _lastRenderedModel = State.LatestNonErrorValue;
     var error = State.Error;
-    if (model.IsUnavailable)
+    if (m.IsUnavailable)
         Nav.Unavailable("chat");
-    if (model.MustLogin)
+    if (m.MustLogin)
         Nav.Login("to view this chat");
-    var chat = model.Chat;
+    var chat = m.Chat;
 }
 
 @if (error != null) {
@@ -28,7 +27,7 @@
 
     <RenderIntoSlot Name="SubHeader" @key="@(chat.Id + "-sub-header")">
         <CascadingValue Value="chat">
-            <UnreadMessagesHeader Click="@OnUnreadMessagesHeaderClick"/>
+            <UnreadMessagesHeader Click="@OnUnreadMessagesClick"/>
         </CascadingValue>
     </RenderIntoSlot>
 
@@ -38,7 +37,7 @@
         </CascadingValue>
     </RenderIntoSlot>
 
-    if (State.Value.IsRightPanelVisible) {
+    if (m.IsRightPanelVisible) {
         <RenderIntoSlot Name="MainRightPanel" @key="@(chat.Id + "-right-panel")">
             <CascadingValue Value="chat">
                 <ChatRightPanel/>
@@ -63,13 +62,19 @@
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private RightPanelSettings RightPanelSettings { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private RightPanelUI RightPanelUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private DeviceInfo DeviceInfo { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
     [Parameter] public string ContactId { get; set; } = "";
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        ChatUI.ActiveChatId.Value = ChatId;
+        _activeChatIdComputed = ChatUI.ActiveChatId.Computed;
+    }
 
     protected override bool ShouldRender()
         => ReferenceEquals(_lastRenderedModel, null)
@@ -83,27 +88,27 @@
         return Task.CompletedTask;
     }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.None,
+            UpdateDelayer = UpdateDelayer.ZeroDelay,
+        };
+
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         Chat? chat = null;
         if (!string.IsNullOrEmpty(ChatId))
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };
-        var isRightPanelDisplayed = await RightPanelSettings.IsPanelShown.Use(cancellationToken);
+        var isRightPanelVisible = await RightPanelUI.IsVisible.Use(cancellationToken);
 
         // We want to return the same Chat instance while it stays unchanged
         var renderedChat = _lastRenderedModel?.Chat;
         var isTheSameChat = renderedChat != null && renderedChat.Id == chat.Id && renderedChat.Version == chat.Version;
         return new () {
             Chat = isTheSameChat ? renderedChat : chat,
-            IsRightPanelVisible = isRightPanelDisplayed,
+            IsRightPanelVisible = isRightPanelVisible,
         };
-    }
-
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
-        ChatUI.ActiveChatId.Value = ChatId;
-        _activeChatIdComputed = ChatUI.ActiveChatId.Computed;
     }
 
     public override async ValueTask DisposeAsync() {
@@ -117,11 +122,12 @@
         });
     }
 
-    private void OnUnreadMessagesHeaderClick() {
-        _ = _chatView.NavigateToLastUnreadTopic();
-    }
+    private void OnUnreadMessagesClick()
+        => _ = _chatView.NavigateToUnreadEntry();
 
     public sealed record Model {
+        public static Model None { get; } = new();
+
         public bool IsUnavailable { get; init; }
         public bool MustLogin { get; init; }
         public bool IsRightPanelVisible { get; init; }

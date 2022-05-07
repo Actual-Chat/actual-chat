@@ -7,6 +7,7 @@ public interface IUserAvatarsBackend
     Task<string> GetAvatarIdByChatAuthorId(string chatAuthorId, CancellationToken cancellationToken);
     [ComputeMethod(KeepAliveTime = 10)]
     Task<string[]> GetAvatarIds(string userId, CancellationToken cancellationToken);
+
     Task<UserAvatar> EnsureChatAuthorAvatarCreated(string chatAuthorId, string name, CancellationToken cancellationToken);
 
     [CommandHandler]

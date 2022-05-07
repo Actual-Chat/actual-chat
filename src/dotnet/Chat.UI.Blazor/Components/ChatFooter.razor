@@ -1,14 +1,14 @@
 ﻿@using ActualChat.Chat.UI.Blazor.Pages
 @inherits ComputedStateComponent<ChatFooter.Model>
 @{
-    var model = State.LatestNonErrorValue ?? new();
+    var m = State.LatestNonErrorValue ?? new();
 }
 
-@if (model.HasFooter) {
+@if (m.HasFooter) {
     <div class="flex-y w-full">
-        @if (model.CanPost) {
+        @if (m.CanPost) {
             <ChatMessageEditor/>
-        } else if (model.CanJoin) {
+        } else if (m.CanJoin) {
             <div class="bg-secondary rounded-md mx-3 py-1.5 px-2 flex justify-center">
                 <AuthorizeView>
                     <Authorized>

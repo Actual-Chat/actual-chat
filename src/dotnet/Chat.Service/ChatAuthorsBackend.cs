@@ -180,9 +180,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         dbContext.Add(dbChatAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        var model = dbChatAuthor.ToModel();
-        CommandContext.GetCurrent().Items.Set(model);
-        return model;
+        var chatAuthor = dbChatAuthor.ToModel();
+        CommandContext.GetCurrent().Items.Set(chatAuthor);
+        return chatAuthor;
     }
 
     /// <summary> The filter which creates default avatar for anonymous chat author</summary>
@@ -196,10 +196,10 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         if (Computed.IsInvalidating())
             return;
 
-        var model = context.Items.Get<ChatAuthor>()!;
-        if (!model.UserId.IsEmpty)
+        var chatAuthor = context.Items.Get<ChatAuthor>()!;
+        if (!chatAuthor.UserId.IsEmpty)
             return;
-        await UserAvatarsBackend.EnsureChatAuthorAvatarCreated(model.Id, model.Name, cancellationToken)
+        await UserAvatarsBackend.EnsureChatAuthorAvatarCreated(chatAuthor.Id, chatAuthor.Name, cancellationToken)
             .ConfigureAwait(false);
     }
 

@@ -79,7 +79,7 @@ export class ChatMessageEditor {
         this.audioButtons.classList.add('flex');
         const inputWidth = this.input.offsetWidth;
         const screenWidth = window.innerWidth;
-        console.log('inputWidth: ', inputWidth);
+        // console.log('inputWidth: ', inputWidth);
         if (inputWidth < screenWidth/4){
             this.audioButtons.classList.add('hidden');
             this.audioButtons.classList.remove('flex');

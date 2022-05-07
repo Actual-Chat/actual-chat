@@ -1,0 +1,23 @@
+.tab-panel {
+    @apply flex flex-col h-full;
+}
+.tab-panel-tabs {
+    @apply flex flex-row flex-wrap;
+    @apply mb-2;
+}
+.tab-panel-tabs button {
+    @apply px-3 py-1;
+    @apply border-x-0 border-t-0 border-b-2;
+    @apply cursor-pointer hover:bg-primary;
+    @apply text-secondary font-medium leading-tight uppercase;
+}
+.tab-panel-tabs button.on {
+    @apply border-success;
+}
+.tab-panel-tabs button.off {
+    @apply border-transparent;
+}
+
+.tab-panel .tab {
+    @apply grow;
+}

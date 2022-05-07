@@ -3,7 +3,7 @@
 @implements IDisposable
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
 
-<DialogFrame Class="invite-chat-author-modal" Title="Add users">
+<DialogFrame Class="invite-chat-author-modal" Title="Invite users">
     <Body>
     <div class="flex-y h-full w-full">
         <div class="relative text-gray-400 -ml-0.5">
@@ -47,14 +47,14 @@
     <Buttons>
         <Button
             Click="OnCancel"
-            class="btn-primary bg-primary">
+            Class="btn-primary bg-primary">
             Cancel
         </Button>
         <Button
-            Type="@ButtonType.Submit"
             Click="OnInvite"
-            Disabled="@(!CanInvite)"
-            class="btn-success">
+            Type="@ButtonType.Submit"
+            IsDisabled="@(!CanInvite)"
+            Class="btn-success">
             Invite
         </Button>
     </Buttons>

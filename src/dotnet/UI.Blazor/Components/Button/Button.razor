@@ -1,29 +1,32 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var extraAttributes = IsAutofocused ? AutofocusAttributes : EmptyAttributes;
+}
 
-<button @onclick="Click" class="btn @Class" title="@Title" disabled="@Disabled" name="@Name" type="@GetButtonType()" @attributes="@ButtonAttributes">
+<button @onclick="Click" class="btn @Class" title="@Title" disabled="@IsDisabled"
+        name="@Name" type="@GetButtonType()"
+        @attributes="@extraAttributes">
     <div class="btn-content">
         @ChildContent
     </div>
 </button>
 
 @code {
+    private static ImmutableDictionary<string, object> EmptyAttributes { get; } =
+        ImmutableDictionary<string, object>.Empty;
+    private static ImmutableDictionary<string, object> AutofocusAttributes { get; } =
+        EmptyAttributes.Add("autofocus", "");
+
     [Parameter] public string Class { get; set; } = "btn-success";
-    [Parameter] public string? Title { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
-    [Parameter] public bool Disabled { get; set; }
-    [Parameter] public bool Focus { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
-    private Dictionary<string, object> ButtonAttributes { get; set; } = new();
-
     private string GetButtonType()
         => Type.ToString().ToLower();
-
-    private void AddAutofocus() {
-        if (Focus)
-            ButtonAttributes.Add("autofocus", "");
-    }
 }

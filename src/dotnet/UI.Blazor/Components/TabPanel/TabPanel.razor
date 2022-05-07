@@ -1,0 +1,44 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<CascadingValue Value="@this" IsFixed="true" >
+    <div class="tab-panel @Class">
+        <div class="tab-panel-tabs" role="tablist">
+            @foreach (var tab in Tabs) {
+                var isActive = tab == ActiveTab;
+                <button class="@tab.ButtonClass @(isActive ? "on" : "off")"
+                        role="tab" aria-selected="@isActive"
+                        data-id="@tab.Id"
+                        @onclick="_ => ActiveTab = tab">
+                    @tab.Title
+                </button>
+            }
+        </div>
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly List<Tab> _tabs = new();
+    private Tab? _activeTab;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<Tab> ActiveTabChanged { get; set; }
+
+    public IReadOnlyList<Tab> Tabs => _tabs;
+    public Tab? ActiveTab {
+        get => _activeTab;
+        private set {
+            if (_activeTab == value)
+                return;
+            _activeTab = value;
+            ActiveTabChanged.InvokeAsync(value);
+        }
+    }
+
+    internal void RegisterTab(Tab tab) {
+        _tabs.Add(tab);
+        ActiveTab ??= tab;
+        StateHasChanged();
+    }
+}

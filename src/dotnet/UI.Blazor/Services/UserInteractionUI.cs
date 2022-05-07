@@ -26,9 +26,7 @@ public class UserInteractionUI
         using var _ = await _asyncLock.Lock(CancellationToken.None).ConfigureAwait(false);
         if (WhenInteractionHappened.IsCompleted)
             return;
-        var model = operation.IsNullOrEmpty()
-            ? new UserInteractionRequestModal.Model()
-            : new UserInteractionRequestModal.Model { Operation = operation };
+        var model = new UserInteractionRequestModal.Model(operation.NullIfEmpty() ?? "audio playback or capture");
         var modal = _modalUI.Show(model);
         await modal.Result.ConfigureAwait(false);
         MarkInteractionHappened();
