@@ -120,7 +120,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ClientAuthHelper AuthHelper { get; init; } = null!;
-    [Inject] private IFusionTime FusionTime { get; init; } = null!;
+    [Inject] private ILiveTime LiveTime { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     private (string Name, string DisplayName)[] AuthSchemas { get; set; } = Array.Empty<(string, string)>();
@@ -148,8 +148,8 @@
                 IsCurrent = Session.Id == session.Id,
                 IPAddress = session.IPAddress,
                 UserAgent = session.UserAgent,
-                Created = await FusionTime.GetMomentsAgo(session.CreatedAt),
-                LastSeen = await FusionTime.GetMomentsAgo(session.LastSeenAt),
+                Created = await LiveTime.GetDeltaText(session.CreatedAt, cancellationToken),
+                LastSeen = await LiveTime.GetDeltaText(session.LastSeenAt, cancellationToken),
                 Version = session.Version,
             };
             result.Add(model);

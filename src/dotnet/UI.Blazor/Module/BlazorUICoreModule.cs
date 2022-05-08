@@ -38,7 +38,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddBlazoredModal();
         services.AddBlazorContextMenu();
         services.AddScoped<RenderVars>();
-        services.AddScoped<Clipboard>();
+        services.AddScoped<ClipboardUI>();
         services.AddScoped<UserInteractionUI>();
         services.AddScoped<FeedbackUI>();
         services.AddScoped<NavbarUI>();

@@ -37,6 +37,8 @@ button.off, .btn.off, btn.btn-square.on {
     @apply text-secondary;
 }
 
+/* Forms */
+
 /* Buttons */
 
 .btn {
@@ -133,28 +135,43 @@ button.off, .btn.off, btn.btn-square.on {
 }
 
 .btn-group {
-    @apply overflow-hidden rounded-md justify-items-stretch gap-px;
+    @apply overflow-hidden rounded-md;
+    @apply flex flex-row gap-px;
 }
 .btn-group .btn {
     @apply rounded-none;
 }
-
 .btn-group.flex-y .btn {
     @apply fill-available;
 }
-
-.btn-group.btn-font-normal .btn {
+.btn-group.btn-group-font-normal .btn {
     @apply font-normal;
 }
-.btn-group.btn-font-light .btn {
+.btn-group.btn-group-font-light .btn {
     @apply font-light;
 }
-.btn-group.btn-font-medium .btn {
+.btn-group.btn-group-font-medium .btn {
     @apply font-medium;
 }
-.btn-group.btn-font-semibold .btn {
+.btn-group.btn-group-font-semibold .btn {
     @apply font-semibold;
 }
+
+/* Other inputs */
+
+input.input-copy-to-clipboard {
+    @apply bg-transparent border-b border-placeholder;
+    @apply focus:outline-none focus:border-sky-500;
+}
+
+input.input-imprinted {
+    @apply border-0 bg-accent;
+}
+
+input.input-underlined {
+    @apply bg-transparent border-b border-placeholder;
+}
+
 
 /* Other */
 
@@ -185,22 +202,4 @@ button.off, .btn.off, btn.btn-square.on {
 .custom-scrollbar {
     scrollbar-width: 2px;
     scrollbar-color: #e2e7ec #F9FAFB;
-}
-
-/* Custom Input */
-
-.custom-input.input-imprinted {
-    @apply border-0 bg-accent;
-}
-
-.custom-input.input-underlined {
-    @apply bg-transparent border-b border-placeholder;
-}
-
-.valid.modified:is(.custom-input) {
-    outline: none;
-}
-
-.invalid {
-    outline: none;
 }

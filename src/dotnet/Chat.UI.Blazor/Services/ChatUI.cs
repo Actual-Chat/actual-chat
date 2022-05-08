@@ -40,8 +40,8 @@ public class ChatUI
         return new RealtimeChatPlaybackState(chatIds, mustPlayPinned);
     }
 
-    public void ShowChatAuthorCard(string authorId)
-        => ModalUI.Show(new ChatAuthorCard.Model(authorId));
+    public void ShowChatAuthorDialog(string authorId)
+        => ModalUI.Show(new ChatAuthorDialog.Model(authorId));
 
     public void ShowDeleteMessageRequest(ChatMessageModel model)
         => ModalUI.Show(new DeleteMessageModal.Model(model));

@@ -5,31 +5,28 @@
         <label class="inline-block text-secondary mr-2" for="@Id">@Label</label>
     }
     <input class="form-check-input appearance-none w-9 rounded-full h-5 bg-no-repeat bg-contain bg-gray-300 focus:outline-none cursor-pointer shadow-sm"
-           type="checkbox" role="switch" id="@Id" checked="@_isOn" @onchange="OnChange">
-    @if (!string.IsNullOrEmpty(IsOnText) || !string.IsNullOrEmpty(IsOffText)) {
-        var statusText = _isOn ? IsOnText : IsOffText;
+           type="checkbox" role="switch" id="@Id" checked="@_value" @onchange="OnChange">
+    @if (!string.IsNullOrEmpty(WhenOnText) || !string.IsNullOrEmpty(WhenOffText)) {
+        var statusText = _value ? WhenOnText : WhenOffText;
         <label class="inline-block text-secondary ml-2" for="@Id">@statusText</label>
     }
 </div>
 
 @code {
-    private bool _isOn;
+    private bool _value;
 
     [Parameter] public string Id { get; set; } = "";
-    [Parameter] public bool IsOn { get; set; }
-    [Parameter] public EventCallback<bool> IsOnChanged { get; set; }
     [Parameter] public string Label { get; set; } = "";
-    [Parameter] public string IsOnText { get; set; } = "";
-    [Parameter] public string IsOffText { get; set; } = "";
+    [Parameter] public string WhenOnText { get; set; } = "";
+    [Parameter] public string WhenOffText { get; set; } = "";
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
-        _isOn = IsOn;
-    }
+    protected override void OnParametersSet()
+        => _value = Value;
 
     private void OnChange(ChangeEventArgs eventArgs) {
-        var boolValue = eventArgs.Value is bool ? (bool)eventArgs.Value : false;
-        _isOn = boolValue;
-        IsOnChanged.InvokeAsync(boolValue);
+        _value = eventArgs.Value is bool and true;
+        ValueChanged.InvokeAsync(_value);
     }
 }

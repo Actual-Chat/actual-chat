@@ -5,11 +5,11 @@ import './Components/Modal/modal.css'
 import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
 import './Components/Toggle/toggle.css'
-import './Components/feedback.css'
 import './Components/tooltip.css'
 
+export * from './Components/Clipboard/clipboard';
 export * from './Components/ContextMenu/context-menu';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/VirtualList/virtual-list';
-export * from './Components/feedback';
+export * from './Components/Feedback/feedback';
 export * from './messaging-init';

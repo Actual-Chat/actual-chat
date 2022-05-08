@@ -1,0 +1,33 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+
+<div class="copy-to-clipboard flex-x items-center w-full gap-x-1 @Class">
+    <input @ref="InputRef" class="input-copy-to-clipboard flex-auto @InputClass" type="text" value="@Text" onclick="@OnClick"/>
+    <ButtonSquare Click="OnClick" Class="flex-none transparent !p-1" ContentClass="flex-x gap-x-1">
+        <i class="fa fa-files-o" aria-hidden="true"></i>
+        @if (StringComparer.Ordinal.Equals(_lastCopiedText, Text)) {
+            <div class="font-light text-xs">
+                copied!
+            </div>
+        }
+    </ButtonSquare>
+</div>
+
+@code {
+    private string? _lastCopiedText = null;
+
+    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+
+    private ElementReference InputRef { get; set; }
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string InputClass { get; set; } = "";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string? CopyText { get; set; }
+
+    private async Task OnClick() {
+        await ClipboardUI.CopyTextFrom(InputRef, CopyText ?? Text);
+        _lastCopiedText = Text;
+    }
+}
+

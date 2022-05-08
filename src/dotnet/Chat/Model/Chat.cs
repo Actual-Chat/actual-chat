@@ -2,12 +2,12 @@
 
 namespace ActualChat.Chat;
 
-public record Chat
+public sealed record Chat
 {
     public Symbol Id { get; init; } = "";
     public long Version { get; init; }
     public string Title { get; init; } = "";
-    public DateTime CreatedAt { get; init; }
+    public Moment CreatedAt { get; init; }
     public bool IsPublic { get; init; }
     public ChatType ChatType { get; init; } = ChatType.Group;
     public ImmutableArray<Symbol> OwnerIds { get; init; } = ImmutableArray<Symbol>.Empty;

@@ -2,12 +2,14 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var extraAttributes = IsAutofocused ? AutofocusAttributes : EmptyAttributes;
+    if (AdditionalAttributes is { Count: > 0 })
+        extraAttributes = extraAttributes.AddRange(AdditionalAttributes);
 }
 
 <button @onclick="Click" class="btn @Class" title="@Title" disabled="@IsDisabled"
         name="@Name" type="@GetButtonType()"
         @attributes="@extraAttributes">
-    <div class="btn-content">
+    <div class="btn-content @ContentClass">
         @ChildContent
     </div>
 </button>
@@ -19,6 +21,7 @@
         EmptyAttributes.Add("autofocus", "");
 
     [Parameter] public string Class { get; set; } = "btn-success";
+    [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
@@ -26,6 +29,7 @@
     [Parameter] public bool IsAutofocused { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string GetButtonType()
         => Type.ToString().ToLower();

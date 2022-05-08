@@ -3,16 +3,16 @@
 @inherits ComputedStateComponent<IImmutableList<Invite>>
 @attribute [Authorize(Policy = KnownPolicies.IsAdmin)]
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
+@{
+    var m = State.LatestNonErrorValue;
+}
 
-<MainHeader>User invites</MainHeader>
+<MainHeader>User invite codes</MainHeader>
 
-<InviteList Invites="State.LatestNonErrorValue" LinkFormat="user/activate/{0}">
-    <Buttons>
-        <Button Click="OnGenerateLinkClick" Class="btn-success">
-            + Generate
-        </Button>
-    </Buttons>
-</InviteList>
+<div class="-flex-x">
+    <Button Click="OnNewInviteClick" Class="btn-success">New invite code</Button>
+</div>
+<InviteList Invites="@m" LinkFormat="user/activate/{0}"/>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
@@ -25,14 +25,11 @@
     protected override Task<IImmutableList<Invite>> ComputeState(CancellationToken cancellationToken)
         => Invites.GetUserInvites(Session, cancellationToken);
 
-    private async Task OnGenerateLinkClick() {
+    private async Task OnNewInviteClick() {
         var invite = new Invite {
             Remaining = 10,
-            Details = new InviteDetails {
-                User = new(),
-            },
+            Details = new InviteDetails { User = new() },
         };
-        var command = new IInvites.GenerateCommand(Session, invite);
-        _ = await Cmd.Run(command);
+        _ = await Cmd.Run(new IInvites.GenerateCommand(Session, invite));
     }
 }

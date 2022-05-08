@@ -1,0 +1,23 @@
+@inherits ComputedStateComponent<string>
+@{
+    var m = State.ValueOrDefault;
+    var tooltip = Tooltip;
+    if (tooltip == null) {
+        var localTime = Moment.GetValueOrDefault().ToDateTime().ToLocalTime();
+        tooltip = Moment.HasValue ? $"{localTime.ToLongDateString()}, {localTime.ToShortTimeString()}" : NullText;
+    }
+}
+
+<span class="live-time-text @Class" title="@tooltip">@m</span>
+
+@code {
+    [Inject] private ILiveTime LiveTime { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public Moment? Moment { get; set; }
+    [Parameter] public string? Tooltip { get; set; }
+    [Parameter] public string NullText { get; set; } = "n/a";
+
+    protected override Task<string> ComputeState(CancellationToken cancellationToken)
+        => Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value, cancellationToken) : Task.FromResult(NullText);
+}

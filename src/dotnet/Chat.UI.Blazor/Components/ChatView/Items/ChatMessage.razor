@@ -1,7 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
-
 @{
     var entry = Model.Entry;
     var markup = Model.Markup;
@@ -34,7 +33,7 @@
         @if (showHeader) {
             <div class="header chat-message-header ml-1">
                 <ChatAuthorName AuthorId="@entry.AuthorId" Class="font-bold text-secondary" />
-                <ChatMessageTimestamp Value="entry.BeginsAt"/>
+                <ChatMessageTimestamp Moment="entry.BeginsAt"/>
                 &nbsp;
                 <span class="text-accent opacity-20 text-xxs">id=@entry.Id</span>
             </div>
@@ -100,5 +99,5 @@
         => this.HasChangedParameters(parameters) ? base.SetParametersAsync(parameters) : Task.CompletedTask;
 
     private void OnChatAuthorClick()
-        => ChatUI.ShowChatAuthorCard(Model.Entry.AuthorId);
+        => ChatUI.ShowChatAuthorDialog(Model.Entry.AuthorId);
 }

@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits InputBase<bool>
 
-<Toggle Id="@Id" Label="@Label" IsOnText="@IsOnText" IsOffText="@IsOffText"
-        @bind-IsOn="@CurrentValue" />
+<Toggle Id="@Id" Label="@Label" WhenOnText="@IsOnText" WhenOffText="@IsOffText"
+        @bind-Value="@CurrentValue" />
 
 @code {
     [Parameter] public string Id { get; set; } = "";

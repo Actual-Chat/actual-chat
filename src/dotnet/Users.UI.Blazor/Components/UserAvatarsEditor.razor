@@ -16,14 +16,14 @@
             <div class="relative">
                 <UserAvatar AvatarId="@item.AvatarId" Class="@brdCls">
                     <ActionsTemplate>
-                        <ButtonGroup ButtonsPosition="ButtonGroupPosition.Center">
+                        <div class="btn-group justify-center">
                             <Button Click="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
                             @if (item.IsSelected) {
                                 <Button Class="btn-success" Click="@(() => Select(""))">Unselect</Button>
                             } else {
                                 <Button Class="btn-success" Click="@(() => Select(item.AvatarId))">Select</Button>
                             }
-                        </ButtonGroup>
+                        </div>
                     </ActionsTemplate>
                 </UserAvatar>
                 <div class="absolute top-0 right-0 mr-4 mt-2">

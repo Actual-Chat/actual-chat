@@ -1,0 +1,15 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="flex-y w-full md:w-80 border-l-2 p-3 animate-from-right">
+    <TabPanel>
+        <Tab Title="Users" Id="Users">
+            <ChatAuthorsTab />
+        </Tab>
+        <Tab Title="You" Id="You">
+            <ChatUserTab />
+        </Tab>
+        <Tab Title="Chat" Id="Chat">
+            <ChatTab />
+        </Tab>
+    </TabPanel>
+</div>

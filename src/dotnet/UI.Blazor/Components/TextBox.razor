@@ -1,11 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits InputText
 
-<input @ref="_inputRef"
-       type="text"
-       @attributes="@AdditionalAttributes"
-       class="custom-input @CssClass"
+<input @ref="_inputRef" type="text"
+       class="@CssClass"
        value="@CurrentValue"
+       @attributes="@AdditionalAttributes"
        @oninput="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
 
 @code {

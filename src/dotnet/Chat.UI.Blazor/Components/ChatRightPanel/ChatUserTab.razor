@@ -1,0 +1,15 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="flex-y text-secondary">
+    <div class="flex-x flex-nowrap justify-start items-center mt-1">
+        <i class="fa fa-bell mr-2" aria-hidden="true"></i>
+        <div class="text-sm font-medium text-secondary mr-2">Notifications</div>
+        <ChatNotificationToggle ChatId="@Chat.Id"/>
+    </div>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
+}

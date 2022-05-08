@@ -1,4 +1,5 @@
-@inherits ComputedStateComponent<ChatAuthorList.Model>
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatAuthorsTab.Model>
 @{
     var m = State.LatestNonErrorValue;
 }
@@ -40,9 +41,11 @@
         };
     }
 
-    private void OnInviteClick() => ModalUI.Show(new InviteChatAuthor.Model(Chat));
+    private void OnInviteClick()
+        => ModalUI.Show(new InviteChatAuthor.Model(Chat));
 
-    private void OnChatAuthorClick(string authorId) => ModalUI.Show(new ChatAuthorCard.Model(authorId));
+    private void OnChatAuthorClick(string authorId)
+        => ModalUI.Show(new ChatAuthorDialog.Model(authorId));
 
     public sealed class Model {
         public static Model None { get; } = new();

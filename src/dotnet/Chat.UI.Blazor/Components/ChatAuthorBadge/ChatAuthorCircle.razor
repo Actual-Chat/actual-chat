@@ -3,9 +3,8 @@
 @{
     var m = State.LatestNonErrorValue;
 }
-<AuthorCircle Author="@m.Author" Size="@Size" Presence="@Presence" />
+<AuthorCircle Author="@m.Author" Size="@Size" Presence="@m.Presence" />
 
 @code {
     [Parameter] public PersonCircleSize Size { get; set; } = PersonCircleSize.Size9;
-    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
 }

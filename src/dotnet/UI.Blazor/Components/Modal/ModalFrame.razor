@@ -8,9 +8,9 @@
         <div class="modal-header flex items-start justify-between px-5 py-3 border-b border-accent bg-accent top-0">
             <h3 class="modal-title text-lg font-bold">@Title</h3>
             @if (HasCloseButton) {
-                <button type="button" class="modal-close" aria-label="close" @onclick="OnClose" @attributes="@_closeButtonAttributes">
+                <ButtonSquare Class="modal-close" Click="OnCloseClick" tabindex="-1" aria-label="close">
                     <span>&times;</span>
-                </button>
+                </ButtonSquare>
             }
         </div>
     }
@@ -18,10 +18,6 @@
 </ModalChrome>
 
 @code {
-    // Temporarily add a tabindex of -1 to the close button so it doesn't get selected
-    // as the first element by activateFocusTrap -- copied from Blazored.Modal.
-    private readonly Dictionary<string, object> _closeButtonAttributes = new() { { "tabindex", "-1" } };
-
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
@@ -29,13 +25,6 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
 
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender && HasCloseButton && HasHeader) {
-            _closeButtonAttributes.Clear();
-            StateHasChanged();
-        }
-    }
-
-    private void OnClose()
-        => ModalInstance.CancelAsync();
+    private void OnCloseClick()
+        => ModalInstance.CloseAsync();
 }

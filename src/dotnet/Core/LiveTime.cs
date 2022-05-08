@@ -3,61 +3,84 @@ namespace ActualChat;
 public interface ILiveTime
 {
     [ComputeMethod]
-    Task<string> GetMomentsAgo(DateTime time);
+    Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken);
+
+    string GetDeltaText(Moment time);
+    string GetDeltaText(Moment time, Moment now);
 }
 
-internal class LiveTime : ILiveTime
+public class LiveTime : ILiveTime
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
-    public virtual Task<string> GetMomentsAgo(DateTime time)
+    private MomentClockSet Clocks { get; }
+
+    public LiveTime(MomentClockSet clocks)
+        => Clocks = clocks;
+
+    // [ComputeMethod]
+    public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
     {
-        var (result, delay) = GetText(time);
+        var (text, delay) = GetDeltaTextImpl(time, Clocks.SystemClock.Now);
         if (delay < TimeSpan.MaxValue) {
             // Invalidate the result when it's supposed to change
             delay = TrimInvalidationDelay(delay + TimeSpan.FromMilliseconds(100));
             Computed.GetCurrent()!.Invalidate(delay, false);
         }
-        return Task.FromResult(result);
+        return Task.FromResult(text);
     }
 
-    private (string moment, TimeSpan delay) GetText(DateTime time)
+    public string GetDeltaText(Moment time)
+        => GetDeltaTextImpl(time, Clocks.SystemClock.Now).Text;
+
+    public string GetDeltaText(Moment time, Moment now)
+        => GetDeltaTextImpl(time, now).Text;
+
+    // Private methods
+
+    private (string Text, TimeSpan Delay) GetDeltaTextImpl(Moment time, Moment now)
     {
         string result;
         TimeSpan delay;
 
-        var delta = DateTime.UtcNow - time.ToUniversalTime();
-        if (delta < TimeSpan.Zero)
-            delta = TimeSpan.Zero;
+        var delta = time - now;
+        var isFuture = delta > TimeSpan.Zero;
+        if (!isFuture)
+            delta = TimeSpan.Zero - delta;
 
         if (delta.TotalSeconds <= 5)
             return ("just now", TimeSpan.FromSeconds(5) - delta);
         if (delta.TotalMinutes < 1)
-            return ("few seconds ago", TimeSpan.FromMinutes(1) - delta);
+            return (isFuture ? "in few seconds" : "few seconds ago", TimeSpan.FromMinutes(1) - delta);
         if (delta.TotalMinutes < 2)
-            return ("a minute ago", TimeSpan.FromMinutes(2) - delta);
+            return (isFuture ? "in about 1 minute" : "a minute ago", TimeSpan.FromMinutes(2) - delta);
         if (delta.TotalMinutes < 5)
-            return ("few minutes ago", TimeSpan.FromMinutes(5) - delta);
+            return (isFuture ? "in few minutes" : "few minutes ago", TimeSpan.FromMinutes(5) - delta);
         if (delta < TimeSpan.FromMinutes(11)) {
             var minutes = (int)delta.TotalMinutes;
-            result = $"{minutes} minutes ago";
+            result = isFuture ? $"in {minutes} minutes" : $"{minutes} minutes ago";
             delay = TimeSpan.FromMinutes(1).Multiply(minutes + 1) - delta;
             return (result, delay);
         }
 
-        var now = DateTime.Now;
-        var today = now.Date;
-        var yesterday = today.AddDays(-1);
-        if (time.Date == today) {
-            result = $"today, {time.ToShortTimeString()}";
-            delay = TimeSpan.FromDays(1) - now.TimeOfDay;
+        var localTime = time.ToDateTime().ToLocalTime();
+        var localTimeDate = localTime.Date;
+        var localNow = now.ToDateTime().ToLocalTime();
+        var localToday = localNow.Date;
+        if (localTimeDate == localToday) {
+            result = $"today, {localTime.ToShortTimeString()}";
+            delay = TimeSpan.FromDays(1) - localNow.TimeOfDay;
         }
-        else if (time.Date == yesterday) {
-            result = $"yesterday, {time.ToShortTimeString()}";
-            delay = TimeSpan.FromDays(1) - now.TimeOfDay;
+        else if (isFuture && localTimeDate == localToday.AddDays(1)) {
+            result = $"tomorrow, {localTime.ToShortTimeString()}";
+            delay = TimeSpan.FromDays(1) - localNow.TimeOfDay;
+        }
+        else if (!isFuture && localTimeDate == localToday.AddDays(-1)) {
+            result = $"yesterday, {localTime.ToShortTimeString()}";
+            delay = TimeSpan.FromDays(1) - localNow.TimeOfDay;
         }
         else {
-            result = $"{time.ToShortDateString()}, {time.ToShortTimeString()}";
+            result = $"{localTime.ToShortDateString()}, {localTime.ToShortTimeString()}";
             delay = TimeSpan.MaxValue;
         }
         return (result, delay);

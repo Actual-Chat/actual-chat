@@ -25,13 +25,13 @@
 
 @code {
     private Chat? _chat;
-    private readonly ChatPropsEditModel _model = new();
+    private readonly Model _model = new();
+
+    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
-
-    [CascadingParameter] public Chat Chat { get; set; } = null!;
 
     protected override Task OnParametersSetAsync() {
         _chat = Chat;
@@ -41,18 +41,16 @@
     }
 
     private async Task OnSave() {
-        var modifiedChat = Chat with {
+        var newChat = Chat with {
             Title = _model.Title,
             IsPublic = !_model.IsPrivate
         };
-        var command = new IChats.UpdateChatCommand(Session, modifiedChat);
-        var (_, cmdEvent) = await Cmd.Run(command);
+        await Cmd.Run(new IChats.UpdateChatCommand(Session, newChat));
     }
 
-    public class ChatPropsEditModel
+    public sealed class Model
     {
-        [Required]
-        public string Title { get; set; } = "";
+        [Required] public string Title { get; set; } = "";
         public bool IsPrivate { get; set; }
     }
 }

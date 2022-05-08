@@ -9,10 +9,6 @@
     @apply bg-primary z-10;
 }
 
-.author-card-modal .btn-group-parent {
-    @apply mt-2 mb-0;
-}
-
 .chat-playback-toggles .btn.btn-square {
     @apply block;
 }
