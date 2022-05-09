@@ -46,7 +46,7 @@ button.off, .btn.off, btn.btn-square.on {
     @apply mt-1 text-sm font-medium text-secondary;
 }
 .form section input {
-    @apply mt-1 border rounded-md outline-none p-1;
+    @apply mt-1 border rounded-md outline-none p-1 px-2;
 }
 .form section input:focus {
     @apply outline-none border-success;
