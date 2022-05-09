@@ -69,8 +69,7 @@
         CancelRequested?.Invoke();
     }
 
-    public class Model
-    {
+    public sealed class Model {
         public string Name { get; set; } = "";
         public string Picture { get; set; } = "";
         public string Bio { get; set; } = "";

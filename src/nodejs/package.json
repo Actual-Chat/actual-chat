@@ -8,6 +8,7 @@
     "lint": "eslint --ext .ts --config .eslintrc.yml ../"
   },
   "devDependencies": {
+    "@tailwindcss/forms": "^0.5.1",
     "@types/blazor__javascript-interop": "^3.1.2",
     "@types/dom-inputevent": "^1.0.7",
     "@types/react": "^18.0.5",

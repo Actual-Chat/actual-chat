@@ -19,7 +19,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Components\ChatSettings" />
+    <Compile Remove="Components\ChatSettings\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Components\ChatSettings\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Components\ChatSettings\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Components\ChatSettings\**" />
   </ItemGroup>
 
 </Project>

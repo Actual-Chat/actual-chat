@@ -909,9 +909,9 @@ module.exports = {
     },
     ringColor: ({ theme }) => ({
       DEFAULT: theme('colors.blue.500', '#3b82f6'),
-      ...theme('colors'),
+      ...theme('borderColor'),
     }),
-    ringOffsetColor: ({ theme }) => theme('colors'),
+    ringOffsetColor: ({ theme }) => theme('borderColor'),
     ringOffsetWidth: {
       0: '0px',
       1: '1px',
@@ -920,7 +920,7 @@ module.exports = {
       8: '8px',
     },
     ringOpacity: ({ theme }) => ({
-      DEFAULT: '0.5',
+      DEFAULT: '0.1',
       ...theme('opacity'),
     }),
     ringWidth: {
@@ -1140,5 +1140,7 @@ module.exports = {
     'active',
     'disabled',
   ],
-  plugins: [],
+  plugins: [
+      // require('@tailwindcss/forms'),
+  ],
 };

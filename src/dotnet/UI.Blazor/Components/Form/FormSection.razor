@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+
+<section data-control-id="@InputId">
+    <label class="@LabelClass" for="@(InputId.NullIfEmpty() ?? "-")">@Label</label>
+    @ChildContent
+</section>
+
+@code {
+    private string? _controlId;
+
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string InputId { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

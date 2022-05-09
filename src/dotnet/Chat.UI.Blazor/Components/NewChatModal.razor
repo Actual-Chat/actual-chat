@@ -2,30 +2,35 @@
 @using Stl.Extensibility
 @implements IModalView<NewChatModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@{
+    _formId ??= ComponentIdGenerator.Next("new-chat-form");
+    var titleInputId = $"{_formId}-title";
+}
 
-<EditForm Model="@_editModel" OnValidSubmit="@OnCreate">
+<Form Model="@_editModel" OnValidSubmit="@OnCreate">
     <DataAnnotationsValidator/>
     <DialogFrame Title="New chat">
         <Body>
-            <div class="flex-y">
-                <label for="Title" class="block text-sm font-medium text-secondary">Chat title</label>
-                <TextBox @bind-Value="@_editModel.Title" id="Title" tabIndex="1" Autofocus="true"
-                         class="input-underlined mt-1 text-primary focus:outline-none"/>
-            </div>
+            <FormSection Label="Chat title" InputId="@titleInputId">
+                <TextBox @bind-Value="@_editModel.Title" id="@titleInputId" tabIndex="1" Autofocus="true"/>
+            </FormSection>
         </Body>
         <Buttons>
             <Button Type="@ButtonType.Button" Click="OnCancel" Class="btn-primary">Cancel</Button>
             <Button Type="@ButtonType.Submit" Class="btn-success" IsDisabled="@(!context.Validate())">Create</Button>
         </Buttons>
     </DialogFrame>
-</EditForm>
+</Form>
 
 @code {
     private readonly EditModel _editModel = new();
+    private string? _formId;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
