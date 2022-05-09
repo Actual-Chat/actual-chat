@@ -2,7 +2,6 @@
 using ActualChat.Notification.Db;
 using FirebaseAdmin.Messaging;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
@@ -34,23 +33,24 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken)
+    public virtual async Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
     {
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
-            return false;
+            return ChatNotificationStatus.NotSubscribed;
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         string userId = user.Id;
-        return await dbContext.ChatSubscriptions
+        var isSubscribed = await dbContext.ChatSubscriptions
             .AnyAsync(d => d.UserId == userId && d.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
+        return isSubscribed ? ChatNotificationStatus.Subscribed : ChatNotificationStatus.NotSubscribed;
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
+    public virtual async Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
@@ -58,14 +58,13 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             var isNew = context.Operation().Items.GetOrDefault(false);
             if (isNew && device != null)
                 _ = GetDevices(device.UserId, default);
-
-            return default;
+            return;
         }
 
         var (session, deviceId, deviceType) = command;
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
-            return false;
+            return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -90,36 +89,40 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(dbDevice);
         context.Operation().Items.Set(existingDbDevice == null);
-        return true;
     }
 
     // [CommandHandler]
-    public virtual async Task<bool> SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
+    public virtual async Task SetStatus(INotifications.SetStatusCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        var (session, chatId) = command;
+        var (session, chatId, mustSubscribe) = command;
         if (Computed.IsInvalidating()) {
-            var isNew = context.Operation().Items.GetOrDefault(false);
-            if (isNew) {
-                _ = IsSubscribedToChat(session, chatId, default);
+            var invWasSubscribed = context.Operation().Items.GetOrDefault(false);
+            if (invWasSubscribed != mustSubscribe) {
+                _ = GetStatus(session, chatId, default);
                 _ = GetSubscribers(chatId, default);
             }
-            return default;
+            return;
         }
 
         var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
-            return false;
+            return;
 
         string userId = user.Id;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var existingSubscription = await dbContext.ChatSubscriptions
+
+        var dbSubscription = await dbContext.ChatSubscriptions
             .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
-        var dbSubscription = existingSubscription;
-        if (dbSubscription == null) {
+        var isSubscribed = dbSubscription != null;
+        context.Operation().Items.Set(isSubscribed);
+        if (isSubscribed == mustSubscribe)
+            return;
+
+        if (mustSubscribe) {
             dbSubscription = new DbChatSubscription {
                 Id = Ulid.NewUlid().ToString(),
                 UserId = userId,
@@ -129,43 +132,9 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
             dbContext.Add(dbSubscription);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-
-        context.Operation().Items.Set(existingSubscription == null);
-        return true;
-    }
-
-    // [CommandHandler]
-    public virtual async Task UnsubscribeToChat(INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        var (session, chatId) = command;
-        if (Computed.IsInvalidating()) {
-            var isRemoved = context.Operation().Items.GetOrDefault(false);
-            if (isRemoved) {
-                _ = IsSubscribedToChat(session, chatId, default);
-                _ = GetSubscribers(chatId, default);
-            }
-            return;
-        }
-
-        var user = await _auth.GetUser(session, cancellationToken).ConfigureAwait(false);
-        if (!user.IsAuthenticated)
-            return;
-
-        string userId = user.Id;
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-        var existingSubscription = await dbContext.ChatSubscriptions
-            .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (existingSubscription != null) {
-            dbContext.Remove(existingSubscription);
+        else {
+            dbContext.Remove(dbSubscription!);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
-
-        context.Operation().Items.Set(existingSubscription != null);
     }
-
-    // [CommandHandler]
 }

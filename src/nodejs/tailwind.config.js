@@ -51,6 +51,7 @@ module.exports = {
         'accent-inverted': 'var(--text-color-accent)',
         'success': 'var(--button-color-success)',
         'success-muted': 'var(--button-color-success-hover)',
+        'error': 'var(--button-color-error)',
         'separate-line': 'var(--background-separate-line)',
         'button-cancel': 'var(--button-color-cancel)',
         'message-hover': 'var(--background-message-hover)',

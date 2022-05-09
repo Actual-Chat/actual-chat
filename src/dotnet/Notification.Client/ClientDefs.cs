@@ -5,15 +5,12 @@ namespace ActualChat.Notification.Client;
 [BasePath("notifications")]
 public interface INotificationsClientDef
 {
-    [Get(nameof(IsSubscribedToChat))]
-    Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken);
+    [Get(nameof(GetStatus))]
+    Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken);
+
+    [Post(nameof(SetStatus))]
+    Task SetStatus([Body] INotifications.SetStatusCommand command, CancellationToken cancellationToken);
 
     [Post(nameof(RegisterDevice))]
-    Task<bool> RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
-
-    [Post(nameof(SubscribeToChat))]
-    Task<bool> SubscribeToChat([Body] INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken);
-
-    [Post(nameof(UnsubscribeToChat))]
-    Task UnsubscribeToChat([Body] INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken);
+    Task RegisterDevice([Body] INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken);
 }

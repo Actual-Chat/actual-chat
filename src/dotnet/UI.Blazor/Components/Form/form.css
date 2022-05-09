@@ -14,10 +14,16 @@
 .form input:not([type='checkbox']) {
     @apply border rounded-md outline-none p-1 px-2;
 }
+.form input:not([type='checkbox']).invalid {
+    @apply border-error;
+}
 .form input:focus {
     @apply outline-none border-success;
     @apply ring;
     --tw-ring-color: rgba(14, 165, 233, 0.25);
+}
+.form input:not([type='checkbox']).invalid:focus {
+    @apply border-error;
 }
 
 .form.form-y section > * {

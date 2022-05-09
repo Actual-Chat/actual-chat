@@ -14,18 +14,14 @@ public class NotificationsController : ControllerBase, INotifications
 
     [HttpGet]
     [Publish]
-    public Task<bool> IsSubscribedToChat(Session session, string chatId, CancellationToken cancellationToken)
-        => _service.IsSubscribedToChat(session, chatId, cancellationToken);
+    public Task<ChatNotificationStatus> GetStatus(Session session, string chatId, CancellationToken cancellationToken)
+        => _service.GetStatus(session, chatId, cancellationToken);
 
     [HttpPost]
-    public Task<bool> RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
+    public Task RegisterDevice(INotifications.RegisterDeviceCommand command, CancellationToken cancellationToken)
         => _service.RegisterDevice(command, cancellationToken);
 
     [HttpPost]
-    public Task<bool> SubscribeToChat(INotifications.SubscribeToChatCommand command, CancellationToken cancellationToken)
-        => _service.SubscribeToChat(command, cancellationToken);
-
-    [HttpPost]
-    public Task UnsubscribeToChat(INotifications.UnsubscribeToChatCommand command, CancellationToken cancellationToken)
-        => _service.UnsubscribeToChat(command, cancellationToken);
+    public Task SetStatus(INotifications.SetStatusCommand command, CancellationToken cancellationToken)
+        => _service.SetStatus(command, cancellationToken);
 }

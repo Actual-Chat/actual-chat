@@ -19,7 +19,7 @@
 </Form>
 
 @code {
-    private FormModel _form;
+    private FormModel _form = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
