@@ -21,7 +21,7 @@ internal static class AppPathResolver
             ? Path.GetDirectoryName(path)!
             : Directory.GetCurrentDirectory());
 
-        while (!string.IsNullOrEmpty(projectRoot) && Directory.Exists(projectRoot)) {
+        while (!projectRoot.IsNullOrEmpty() && Directory.Exists(projectRoot)) {
             var gitPath = Path.Combine(projectRoot, ".git");
             if (Directory.Exists(gitPath) || File.Exists(gitPath)) {
                 return Path.Combine(projectRoot, "src", "dotnet", projectName);
@@ -44,7 +44,8 @@ internal static class AppPathResolver
                 .Select(baseProbePath => File.Exists(Path.Combine(baseProbePath, "wwwroot", "favicon.ico"))
                     ? Path.GetFullPath(Path.Combine(baseProbePath, "wwwroot"))
                     : null)
-                .FirstOrDefault(webRootPath => !string.IsNullOrEmpty(webRootPath))
-            ?? throw new DirectoryNotFoundException($"Could not find web root directory\n Searched dirs: \n{string.Join("\n", probeDirectories)}");
+                .FirstOrDefault(webRootPath => !webRootPath.IsNullOrEmpty())
+            ?? throw new DirectoryNotFoundException(
+                $"Could not find web root directory\n Searched dirs: \n{string.Join("\n", probeDirectories)}");
     }
 }

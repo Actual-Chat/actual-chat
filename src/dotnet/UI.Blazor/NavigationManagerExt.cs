@@ -24,7 +24,7 @@ public static class NavigationManagerExt
 
     private static string MaybePathComponent(string? input)
     {
-        if (string.IsNullOrEmpty(input))
+        if (input.IsNullOrEmpty())
             return "";
         return ZString.Concat('/' + UrlEncode(input));
     }

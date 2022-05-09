@@ -11,7 +11,7 @@
 }
 <ul class="flex flex-wrap">
     @foreach (var item in items) {
-        var brdCls = !string.IsNullOrEmpty(ChatId) && item.IsUserDefault ? "border border-green-300" : "";
+        var brdCls = !ChatId.IsNullOrEmpty() && item.IsUserDefault ? "border border-green-300" : "";
         <li class="group m-4">
             <div class="relative">
                 <UserAvatar AvatarId="@item.AvatarId" Class="@brdCls">
@@ -68,7 +68,7 @@
         var avatarIds = await UserAvatars.GetAvatarIds(Session, cancellationToken);
         var userDefaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken);
         string selectedAvatarId;
-        if (string.IsNullOrEmpty(ChatId)) {
+        if (ChatId.IsNullOrEmpty()) {
             selectedAvatarId = userDefaultAvatarId;
         } else {
             var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(false);

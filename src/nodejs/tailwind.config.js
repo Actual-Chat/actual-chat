@@ -35,6 +35,7 @@ module.exports = {
         'toggle-on': 'var(--text-color-toggle-on)',
         'toggle-hover': 'var(--text-color-toggle-hover)',
         'rating': 'var(--text-color-rating)',
+        'error': 'var(--text-color-error)',
         'inline-code': 'var(--text-inline-code)',
         'white': 'var(--text-color-white)',
         'online': 'var(--text-color-online)',

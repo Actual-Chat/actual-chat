@@ -31,7 +31,7 @@ public static class PeerChatExt
             return false;
         userId1 = parts[1];
         userId2 = parts[2];
-        return !string.IsNullOrEmpty(userId1) && !string.IsNullOrEmpty(userId2)
+        return !userId1.IsNullOrEmpty() && !userId2.IsNullOrEmpty()
             && !StringComparer.Ordinal.Equals(userId1, userId2);
     }
 

@@ -44,7 +44,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                 targetUserId = userId2;
             else if (userId2 == user.Id)
                 targetUserId = userId1;
-            if (!string.IsNullOrEmpty(targetUserId)) {
+            if (!targetUserId.IsNullOrEmpty()) {
                 var userContact = await _userContactsBackend.GetByTargetId(user.Id, targetUserId, cancellationToken).ConfigureAwait(false);
                 if (userContact != null)
                     return userContact.Name;

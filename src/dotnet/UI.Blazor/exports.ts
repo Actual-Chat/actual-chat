@@ -4,7 +4,8 @@ import './Components/Menu/menu.css'
 import './Components/Modal/modal.css'
 import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
-import './Components/Toggle/toggle.css'
+import './Components/Form/form.css'
+import './Components/Form/toggle.css'
 import './Components/tooltip.css'
 
 export * from './Components/Clipboard/clipboard';

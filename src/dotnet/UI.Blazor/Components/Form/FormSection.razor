@@ -2,8 +2,19 @@
 @using ActualChat.UI.Blazor.Services
 
 <section data-control-id="@InputId">
-    <label class="@LabelClass" for="@(InputId.NullIfEmpty() ?? "-")">@Label</label>
-    @ChildContent
+    @if (!Label.IsNullOrEmpty()) {
+        <div class="form-section-label @LabelClass">
+            <label for="@(InputId.NullIfEmpty() ?? "-")">
+                <span>@Label</span>
+                @if (IsRequired) {
+                    <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
+                }
+            </label>
+        </div>
+    }
+    <div class="form-section-content @ContentClass">
+        @ChildContent
+    </div>
 </section>
 
 @code {
@@ -13,7 +24,9 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string LabelClass { get; set; } = "";
-    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string ContentClass { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
     [Parameter] public string InputId { get; set; } = "";
+    [Parameter] public bool IsRequired { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

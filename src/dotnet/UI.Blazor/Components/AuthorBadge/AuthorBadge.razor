@@ -50,7 +50,7 @@
         };
 
     private string GetNameClass() {
-        if (!string.IsNullOrEmpty(TextClass))
+        if (!TextClass.IsNullOrEmpty())
             return TextClass;
 
         var sizeClass = Size switch {

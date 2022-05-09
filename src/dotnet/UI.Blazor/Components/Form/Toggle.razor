@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="form-toggle form-input @Class">
+    <input class="form-toggle-input" type="checkbox" role="switch" id="@Id" checked="@CurrentValue" @onchange="OnChange" disabled="@IsDisabled">
+    @if (!Label.IsNullOrEmpty()) {
+        <label class="form-toggle-label @LabelClass" for="@(Id.NullIfEmpty() ?? "-")">@Label</label>
+    }
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    public bool CurrentValue { get; set; }
+
+    protected override void OnParametersSet()
+        => CurrentValue = Value;
+
+    private void OnChange(ChangeEventArgs eventArgs) {
+        CurrentValue = eventArgs.Value is bool and true;
+        ValueChanged.InvokeAsync(CurrentValue);
+    }
+}

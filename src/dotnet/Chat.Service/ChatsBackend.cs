@@ -515,7 +515,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             if (chatAuthor != null)
                 userId = chatAuthor.UserId;
         }
-        if (string.IsNullOrEmpty(userId))
+        if (userId.IsNullOrEmpty())
             return ChatPermissions.None;
         if (!PeerChatExt.TryParseUsersPeerChatId(chatId, out var userId1, out var userId2))
             return ChatPermissions.None;
@@ -524,7 +524,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             targetUserId = userId2;
         else if (StringComparer.Ordinal.Equals(userId2, userId))
             targetUserId = userId1;
-        if (string.IsNullOrEmpty(targetUserId))
+        if (targetUserId.IsNullOrEmpty())
             return ChatPermissions.None;
         var targetUser = await _authBackend.GetUser(targetUserId, cancellationToken).ConfigureAwait(false);
         if (targetUser != null)

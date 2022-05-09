@@ -2,17 +2,13 @@
 @using Stl.Extensibility
 @implements IModalView<NewChatModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
-@{
-    _formId ??= ComponentIdGenerator.Next("new-chat-form");
-    var titleInputId = $"{_formId}-title";
-}
 
-<Form Model="@_editModel" OnValidSubmit="@OnCreate">
+<Form Model="@_form" OnValidSubmit="@OnCreate">
     <DataAnnotationsValidator/>
     <DialogFrame Title="New chat">
         <Body>
-            <FormSection Label="Chat title" InputId="@titleInputId">
-                <TextBox @bind-Value="@_editModel.Title" id="@titleInputId" tabIndex="1" Autofocus="true"/>
+            <FormSection Label="Chat title" InputId="@_form.TitleId" IsRequired="true">
+                <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true"/>
             </FormSection>
         </Body>
         <Buttons>
@@ -23,8 +19,7 @@
 </Form>
 
 @code {
-    private readonly EditModel _editModel = new();
-    private string? _formId;
+    private FormModel _form;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
@@ -34,9 +29,12 @@
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    protected override void OnInitialized()
+        => _form = new(ComponentIdGenerator);
+
     private async Task OnCreate()
     {
-        var command = new IChats.CreateChatCommand(Session, _editModel.Title) { IsPublic = true };
+        var command = new IChats.CreateChatCommand(Session, _form.Title) { IsPublic = true };
         var result = await Cmd.Run(command, default);
         if (!result.CommandEvent.IsCompletedSuccessfully)
             return;
@@ -48,10 +46,17 @@
     private void OnCancel()
         => ModalInstance.CancelAsync();
 
-    public class EditModel
+    public class FormModel
     {
-        [Required]
-        public string Title { get; set; } = "";
+        [Required] public string Title { get; set; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+        }
     }
 
     public sealed record Model;

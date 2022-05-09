@@ -1,14 +1,15 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits InputBase<bool>
 
-<Toggle Id="@Id" Label="@Label" WhenOnText="@IsOnText" WhenOffText="@IsOffText"
+<Toggle Class="@Class" LabelClass="@LabelClass" Id="@Id" Label="@Label" IsDisabled="@IsDisabled"
         @bind-Value="@CurrentValue" />
 
 @code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Label { get; set; } = "";
-    [Parameter] public string IsOnText { get; set; } = "";
-    [Parameter] public string IsOffText { get; set; } = "";
+    [Parameter] public bool IsDisabled { get; set; }
 
     protected override bool TryParseValueFromString(string? value, out bool result, out string validationErrorMessage) {
         throw new NotSupportedException();

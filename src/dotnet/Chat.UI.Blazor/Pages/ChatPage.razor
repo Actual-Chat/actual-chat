@@ -96,7 +96,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         Chat? chat = null;
-        if (!string.IsNullOrEmpty(ChatId))
+        if (!ChatId.IsNullOrEmpty())
             chat = await Chats.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
         if (chat == null)
             return new () { IsUnavailable = true };

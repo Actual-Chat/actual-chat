@@ -32,7 +32,7 @@ public class MessageController : ControllerBase
         // 2. a boundary should be found in the Content-Type
         if (!request.HasFormContentType ||
             !MediaTypeHeaderValue.TryParse(request.ContentType, out var mediaTypeHeader) ||
-            string.IsNullOrEmpty(mediaTypeHeader.Boundary.Value))
+            mediaTypeHeader.Boundary.Value.IsNullOrEmpty())
         {
             return new UnsupportedMediaTypeResult();
         }
@@ -134,7 +134,7 @@ public class MessageController : ControllerBase
         ContentDispositionHeaderValue contentDisposition,
         int fileId)
     {
-        if (string.IsNullOrEmpty(contentDisposition.FileName.Value))
+        if (contentDisposition.FileName.Value.IsNullOrEmpty())
             return null;
 
         // Don't trust any file name, file extension, and file data from the request unless you trust them completely

@@ -41,7 +41,7 @@ public class StartupBase
 
     private void InitializeSettingsCore(TestSettings settings)
     {
-        if (string.IsNullOrEmpty(settings.TempDirectory))
+        if (settings.TempDirectory.IsNullOrEmpty())
             settings.TempDirectory = GetBaseDirectory() & "tmp";
 
         settings.IsRunningInContainer = EnvExt.IsRunningInContainer();

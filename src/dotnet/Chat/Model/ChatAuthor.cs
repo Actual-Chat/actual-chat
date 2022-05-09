@@ -10,7 +10,7 @@ public sealed record ChatAuthor : Author
     public static bool TryGetChatId(string chatAuthorId, out string chatId)
     {
         chatId = "";
-        if (string.IsNullOrEmpty(chatAuthorId))
+        if (chatAuthorId.IsNullOrEmpty())
             return false;
         var chatIdLength = chatAuthorId.IndexOf(":", StringComparison.Ordinal);
         if (chatIdLength == -1)
@@ -23,7 +23,7 @@ public sealed record ChatAuthor : Author
     {
         chatId = "";
         localId = 0;
-        if (string.IsNullOrEmpty(chatAuthorId))
+        if (chatAuthorId.IsNullOrEmpty())
             return false;
         var chatIdLength = chatAuthorId.IndexOf(":", StringComparison.Ordinal);
         if (chatIdLength == -1)
