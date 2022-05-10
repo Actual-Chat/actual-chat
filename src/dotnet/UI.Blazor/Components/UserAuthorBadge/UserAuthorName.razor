@@ -1,0 +1,11 @@
+@namespace ActualChat.UI.Blazor.Components
+@inherits UserAuthorBadgeBase
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+<span class="@Class">@m.Author.Name</span>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+}
