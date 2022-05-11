@@ -44,7 +44,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private IChatUserSettings ChatUserSettings { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
@@ -90,17 +90,16 @@
     }
 
     private void EditAvatar(string avatarId) {
-        var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
-        Nav.NavigateTo("user/avatar/" + avatarId + "?returnUrl=" + UrlEncoder.Default.Encode(returnUrl));
+        ModalUI.Show(new UserAvatarEditorModal.Model(avatarId));
     }
 
     public class Model {
-        public Item[] Items { get; set; } = Array.Empty<Item>();
+        public Item[] Items { get; init; } = Array.Empty<Item>();
     }
 
     public class Item {
-        public bool IsUserDefault { get; set; }
-        public bool IsSelected { get; set; }
-        public string AvatarId { get; set; } = "";
+        public bool IsUserDefault { get; init; }
+        public bool IsSelected { get; init; }
+        public string AvatarId { get; init; } = "";
     }
 }
