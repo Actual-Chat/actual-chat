@@ -53,7 +53,7 @@
 
 .navbar-item .pin-toggle.recorder,
 .navbar-item:hover .pin-toggle.recorder {
-    @apply text-button-on;
+    @apply text-recorder-on;
 }
 
 .navbar-item .pin-toggle.recorder svg {

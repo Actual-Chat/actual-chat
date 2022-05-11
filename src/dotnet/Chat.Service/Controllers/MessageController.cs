@@ -83,9 +83,9 @@ public class MessageController : ControllerBase
         }
 
         if (incorrectPart)
-            return BadRequest("incorrect part");
+            return BadRequest("Incorrect part");
         if (!ValidatePost(post))
-            return BadRequest("required part is missing");
+            return BadRequest("Required part is missing");
 
         // TODO(DF): add security checks
         // TODO(DF): storing uploads to blob, check on viruses, detect real content type with file signatures

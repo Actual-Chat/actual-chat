@@ -2,9 +2,9 @@
 @inherits MarkupViewBase<CodeBlockMarkup>
 @attribute [MatchFor(typeof(CodeBlockMarkup), typeof(IMarkupView))]
 @{
-    var cls = "code-markup";
+    var cls = "code-block-markup-view";
     if (!Markup.Language.IsNullOrEmpty())
         cls += " language-" + Markup.Language;
 }
 
-<pre class="mt-2 max-w-[90%]"><code class="@cls block bg-primary p-1 rounded-md border border-gray-300">@Markup.Code</code></pre>
+<pre class="my-1 max-w-[90%] @cls"><code class="block border-0 border-l-4 rounded-l p-1 px-1.5 bg-primary @cls">@Markup.Code</code></pre>

@@ -20,16 +20,16 @@
     --text-color-primary-inverted: #f3f3f3;
     --text-color-secondary: #4b5e71;
     --text-color-accent: #232c35;
+    --text-color-placeholder: #788ea5;
     --text-color-online: #31d872;
     --text-color-white: #ffffff;
-    --text-color-placeholder: #788ea5;
+    --text-color-rating: #fde047;
+    --text-color-error: #ef4444;
+    --text-color-code: #D83E52;
     --text-color-toggle-off: #d87330;
     --text-color-toggle-on: #09a7ec;
     --text-color-toggle-hover: #0899d9;
-    --text-color-rating: #fde047;
-    --text-color-error: #ef4444;
-    --text-inline-code: #D83E52;
-    --text-button-on: #ef4444;
+    --text-color-recorder-on: #ef4444;
 
     --button-color-success: #0ea5e9;
     --button-color-success-hover: #0284c7;
@@ -41,6 +41,7 @@
     --button-color-cancel-hover: #475569;
     --button-color-error: #ef4444;
     --button-color-error-hover: #dc2626;
+
     --error-toast-header: #feb7b7;
     --error-toast-body: #fecaca;
 

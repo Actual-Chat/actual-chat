@@ -61,7 +61,7 @@
 
     private async void OnSave() {
         var command = new IUserAvatars.UpdateCommand(Session, AvatarId, _model.Name, _model.Picture, _model.Bio);
-        await Cmd.Run(command, default);
+        await Cmd.Run(command).ConfigureAwait(true);
         OnUpdated?.Invoke();
     }
 

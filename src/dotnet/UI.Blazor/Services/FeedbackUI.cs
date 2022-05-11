@@ -7,14 +7,14 @@ public class FeedbackUI
 {
     private readonly Session _session;
     private readonly ModalUI _modalUI;
-    private readonly IFeedbacks _feedbacks;
+    private readonly UICommandRunner _cmd;
     private IModalReference? _modal;
 
-    public FeedbackUI(Session session, ModalUI modalUI, IFeedbacks feedbacks)
+    public FeedbackUI(Session session, ModalUI modalUI, UICommandRunner cmd)
     {
         _session = session;
         _modalUI = modalUI;
-        _feedbacks = feedbacks;
+        _cmd = cmd;
     }
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
@@ -31,8 +31,8 @@ public class FeedbackUI
 
         var command = new IFeedbacks.FeatureRequestCommand(_session, feature) {
             Rating = model.Rating,
-            Comment = model.Comment
+            Comment = model.Comment,
         };
-        await _feedbacks.CreateFeatureRequest(command, default).ConfigureAwait(false);
+        await _cmd.Run(command, CancellationToken.None).ConfigureAwait(false);
     }
 }

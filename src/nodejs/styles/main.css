@@ -13,3 +13,11 @@ select,
 a {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
+
+code {
+    @apply px-0.5;
+    @apply rounded-sm border border-accent;
+    /* @apply rounded-sm border-0 ring ring-1 ring-accent; */
+    @apply bg-secondary;
+    @apply font-mono;
+}

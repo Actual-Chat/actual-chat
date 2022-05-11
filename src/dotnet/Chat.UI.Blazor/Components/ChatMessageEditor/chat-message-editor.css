@@ -50,7 +50,7 @@
 }
 
 .btn.audio-recorder-toggle.on {
-    @apply text-button-on;
+    @apply text-recorder-on;
 }
 
 .btn.audio-recorder-toggle.on svg {
