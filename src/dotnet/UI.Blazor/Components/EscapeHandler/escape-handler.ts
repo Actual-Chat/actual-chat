@@ -1,26 +1,28 @@
-export class EscapeHandler {
-    private _blazorRef: DotNet.DotNetObject;
-    private _elementRef: HTMLDivElement;
+import { fromEvent, Subject, takeUntil} from 'rxjs';
+
+export interface Disposable {
+    dispose(): void;
+}
+
+export class EscapeHandler implements Disposable {
+    private disposed$: Subject<void> = new Subject<void>();
 
     public static create(elementRef: HTMLDivElement, blazorRef: DotNet.DotNetObject): EscapeHandler {
         return new EscapeHandler(elementRef, blazorRef);
     }
 
     constructor(element: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
-        this._blazorRef = blazorRef;
-        this._elementRef = element;
-        this._elementRef.addEventListener('keydown', this.onKeyDown);
+        fromEvent<KeyboardEvent & { target: Element; }>(element, 'keydown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(async event => {
+                if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
+                    await blazorRef.invokeMethodAsync('OnEscape');
+                }
+            })
     }
 
     public dispose() {
-        this._elementRef.removeEventListener('keydown', this.onKeyDown);
-        this._elementRef = null;
-        this._blazorRef = null;
+        this.disposed$.next();
+        this.disposed$.complete();
     }
-
-    private onKeyDown = async (event: KeyboardEvent & { target: Element; }): Promise<void> => {
-        if (event.keyCode === 27 || event.key === 'Escape' || event.key === 'Esc') {
-            await this._blazorRef.invokeMethodAsync('OnEscape');
-        }
-    };
 }
