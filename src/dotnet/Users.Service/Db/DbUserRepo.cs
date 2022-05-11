@@ -18,9 +18,12 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
     {
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
         var dbUserAuthor = new DbUserAuthor();
+        var userName = dbUser.Claims[System.Security.Claims.ClaimTypes.Name];
+        if (userName.IsNullOrEmpty())
+            userName = user.Name;
         var userAuthor = new UserAuthor() {
             Id = dbUser.Id,
-            Name = user.Name,
+            Name = userName,
         };
         dbUserAuthor.UpdateFrom(userAuthor);
         dbContext.Add(dbUserAuthor);
