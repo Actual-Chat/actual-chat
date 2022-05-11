@@ -36,6 +36,10 @@
     @apply visible;
 }
 
+.chat-message:hover button.show-on-hover {
+    @apply visible;
+}
+
 .chat-message.mention,
 .chat-message.own-message.mention {
     @apply border-l-2 border-x-mention-hover bg-mention-message;
@@ -126,4 +130,12 @@
 
 .new-separator-title {
     @apply bg-accent text-accent rounded-md;
+}
+
+.btn.btn-square.message-menu-btn {
+    @apply invisible h-8 min-w-8 right-4 -mt-3 rounded-lg bg-secondary border border-accent shadow-context;
+}
+
+.btn.btn-square.message-menu-btn:hover {
+    @apply bg-primary;
 }

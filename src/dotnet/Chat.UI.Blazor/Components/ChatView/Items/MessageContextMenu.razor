@@ -73,6 +73,10 @@
     }
 
     private async Task InitRequestAuthorId() {
+        if (Session == null)
+            throw new Exception("Session is null");
+        if (Model == null)
+            throw new Exception("Model is null");
         var requestAuthor = await ChatAuthors.GetChatAuthor(Session, Model.Entry.ChatId, CancellationToken.None).ConfigureAwait(true);
         if (requestAuthor == null)
             return;

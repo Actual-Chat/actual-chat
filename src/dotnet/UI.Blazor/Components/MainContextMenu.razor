@@ -1,0 +1,61 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@implements IAsyncDisposable
+@implements IMainContextMenuBackend
+
+@* <RenderIntoSlot Name="MainContextMenu"> *@
+@*     <div @ref="Ref"> *@
+@*         @ChildContent *@
+@*     </div> *@
+@* </RenderIntoSlot> *@
+
+<div>
+    <ButtonSquare OnClick="@OpenTestRenderSlot" Class="message-menu-btn show-on-hover">
+        <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
+            <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
+        </svg>
+    </ButtonSquare>
+    @if (IsContextMenuOpened) {
+        <RenderIntoSlot Name="MainContextMenu">
+            <CascadingValue Value="@Model">
+                <MessageContextMenu/>
+            </CascadingValue>
+        </RenderIntoSlot>
+    }
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private DotNetObjectReference<IMainContextMenuBackend> BlazorRef { get; set; } = null!;
+    private IJSObjectReference? JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (JSRef != null) {
+            try {
+                await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
+                await JSRef.DisposeAsync().ConfigureAwait(true);
+            }
+            catch (JSDisconnectedException) { }
+            JSRef = null;
+        }
+        if (BlazorRef != null) {
+            BlazorRef.Dispose();
+            BlazorRef = null;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create<IMainContextMenuBackend>(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(
+                $"{BlazorUICoreModule.ImportName}.MainContextMenu.create",
+                Ref, BlazorRef
+                ).ConfigureAwait(true);
+        }
+    }
+}

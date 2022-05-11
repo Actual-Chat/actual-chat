@@ -2,6 +2,9 @@
 @layout BaseLayout
 
 <PageWithHeaderAndFooter Class="chat-page" BodyClass="pt-0">
+    <MainContextMenu>
+        <RenderSlot Name="MainContextMenu"/>
+    </MainContextMenu>
     <Header>
         <RenderSlot Name="MainHeader"/>
     </Header>
@@ -12,7 +15,7 @@
         <RenderSlot Name="MainFooter"/>
     </Footer>
     <Body>
-        @Body
+    @Body
     </Body>
     <RightPanel>
         <RenderSlot Name="MainRightPanel"/>

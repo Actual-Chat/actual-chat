@@ -1,0 +1,3 @@
+.main-context-menu {
+    @apply absolute z-50 bg-secondary rounded-md border border-primary shadow-lg;
+}

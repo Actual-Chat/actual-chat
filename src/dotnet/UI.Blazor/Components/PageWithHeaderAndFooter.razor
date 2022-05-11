@@ -1,4 +1,7 @@
 <div class="page-with-header-and-footer h-full w-full flex-y flex-nowrap justify-between overflow-hidden @Class">
+    <div class="main-context-menu">
+        @MainContextMenu
+    </div>
     <div class="flex-none flex-y w-full overflow-hidden shadow-md z-40">
         @Header
     </div>
@@ -26,4 +29,5 @@
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? RightPanel { get; set; }
+    [Parameter] public RenderFragment? MainContextMenu { get; set; }
 }

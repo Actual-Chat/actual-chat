@@ -21,4 +21,8 @@
     <ServiceWorker Include="ServiceWorkers\messaging-service-worker.ts" />
   </ItemGroup>
 
+  <ItemGroup>
+    <TypeScriptCompile Include="Components\main-context-menu.ts" />
+  </ItemGroup>
+
 </Project>

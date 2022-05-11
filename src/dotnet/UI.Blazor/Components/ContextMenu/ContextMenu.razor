@@ -2,9 +2,6 @@
 @implements IContextMenuBackend
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.Module
-@{
-    var menuClass = "context-menu " + MenuClass;
-}
 
 <CascadingValue Value="@this" IsFixed="true">
     <div @ref="Ref" class="context-menu @Class">
