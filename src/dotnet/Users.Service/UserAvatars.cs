@@ -57,6 +57,9 @@ public class UserAvatars : IUserAvatars
 
     public virtual async Task SetDefault(IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken)
     {
+        if (Computed.IsInvalidating())
+            return;
+
         var user = await _auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
         var avatarId = command.AvatarId;
         if (!avatarId.IsNullOrEmpty()) {
