@@ -40,12 +40,6 @@
     </li>
 </ul>
 
-@if (CancelRequested != null) {
-    <div class="absolute top-0 right-0 mr-4 mt-14">
-        <CloseButton Click="@(() => CancelRequested?.Invoke())"/>
-    </div>
-}
-
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
@@ -54,7 +48,6 @@
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
     [Parameter] public string ChatId { get; set; } = "";
-    [Parameter] public Action? CancelRequested { get; set; } = default!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new () { InitialValue = new() };
