@@ -1,19 +1,43 @@
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@implements IAsyncDisposable
 
-<ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
-    <div class="dialog-body">
-        @Body
-    </div>
-    <div class="dialog-buttons">
-        @Buttons
-    </div>
-</ModalFrame>
+<div @ref="_elementRef" tabindex="-1" autofocus>
+    <ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
+        <div class="dialog-body">
+            @Body
+        </div>
+        <div class="dialog-buttons">
+            @Buttons
+        </div>
+    </ModalFrame>
+</div>
 
 @code {
+    [Inject] private EscapeHandler EscapeHandler { get; init; } = null!;
+    private ElementReference _elementRef;
+
+    [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
+
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; } = true;
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            await EscapeHandler.ConnectAsync(_elementRef);
+            EscapeHandler.Escape += OnEscape;
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        EscapeHandler.Escape -= OnEscape;
+        await EscapeHandler.DisposeAsync().ConfigureAwait(true);
+    }
+
+    private void OnEscape(object? sender, EventArgs e)
+        => ModalInstance.CancelAsync();
 }
