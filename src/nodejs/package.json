@@ -50,9 +50,11 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "readable-stream": "^3.6.0",
+    "rxjs": "^7.5.5",
     "slate": "^0.77.2",
     "slate-history": "^0.66.0",
     "slate-react": "^0.77.2",
+    "tslib": "^2.4.0",
     "wasm-audio-resampler": "^2.0.0"
   },
   "prettier": {
