@@ -24,6 +24,19 @@ code {
     @apply font-mono;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold leading-loose;
+}
+h1 {
+    @apply text-2xl;
+}
+h2 {
+    @apply text-xl;
+}
+h3 {
+    @apply text-lg;
+}
+
 /* Flex shortcuts */
 
 .flex-x {
@@ -52,6 +65,19 @@ code {
 }
 .-inline-flex-y {
     @apply inline-flex flex-col-reverse;
+}
+
+/* Sections */
+
+h1.section, h2.section, h3.section, h4.section {
+    @apply mt-4 pt-1;
+    @apply border-0 border-t-2 border-accent;
+    @apply text-secondary subpixel-antialiased;
+}
+
+h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.section:nth-child(1) {
+    @apply mt-0;
+    @apply border-0;
 }
 
 /* Suffixes */

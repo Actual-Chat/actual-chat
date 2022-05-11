@@ -6,18 +6,14 @@
 }
 
 @if (!m.PublicUrl.IsNullOrEmpty()) {
-    <div class="mt-2">
-        <div class="text-sm font-medium text-secondary">Public join link:</div>
-        <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl"/>
-    </div>
+    <h4 class="section">Public join link</h4>
+    <CopyToClipboard Class="px-1 pl-2" Text="@m.PublicUrl"/>
 }
 @if (m.Invites.Count > 0 || m.PublicUrl.IsNullOrEmpty()) {
-    <div class="mt-2">
-        <div class="text-sm font-medium text-secondary">Private join links:</div>
-        <InviteList Invites="m.Invites" LinkFormat="join/{0}"/>
-        <div class="mt-2 @(new FlexMode(FlexAlignment.End))">
-            <Button Click="OnNewInviteClick" Class="btn-success">New private invite code</Button>
-        </div>
+    <h4 class="section">Private join links</h4>
+    <InviteList Invites="m.Invites" LinkFormat="join/{0}"/>
+    <div class="mt-2 @(new FlexMode(FlexAlignment.End))">
+        <Button Click="OnNewInviteClick" Class="btn-success">New private invite code</Button>
     </div>
 }
 

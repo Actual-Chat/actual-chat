@@ -6,8 +6,8 @@
     @apply mb-2;
 }
 .tab-panel-tabs button {
-    @apply px-3 py-1;
-    @apply border-x-0 border-t-0 border-b-2;
+    @apply px-2 py-1;
+    @apply border-0 border-b-2;
     @apply cursor-pointer hover:bg-primary;
     @apply text-secondary font-medium leading-tight uppercase;
 }
