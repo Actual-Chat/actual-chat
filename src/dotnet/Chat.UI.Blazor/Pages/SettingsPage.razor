@@ -1,7 +1,14 @@
 @page "/settings"
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
-<MainHeader><span class="text-secondary">Settings</span></MainHeader>
+<MainHeader>
+    <ButtonSquare Class="transparent" Click="OnBackClicked">
+        <i class="fa fa-arrow-left" aria-hidden="true"></i>
+    </ButtonSquare>
+    <div class="ml-1">
+        <span class="text-secondary">Settings</span>
+    </div>
+</MainHeader>
 
 <UserNameEditor />
 
@@ -14,5 +21,9 @@
 
 
 @code {
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
+    private async Task OnBackClicked() {
+        await JS.InvokeVoidAsync("window.history.back", Array.Empty<object>());
+    }
 }
