@@ -8,14 +8,6 @@
             <ValidationSummary />
 
             <div>
-                <label for="Name" class="block text-sm font-medium text-secondary">Name</label>
-                <div class="mt-1">
-                    <TextBox @bind-Value="@_model.Name" id="Name" Autofocus="true"
-                             class="w-full px-2 py-1 border rounded-md focus:outline-none focus:border-success" />
-                </div>
-            </div>
-
-            <div class="mt-2">
                 <label for="Picture" class="block text-sm font-medium text-secondary">Picture</label>
                 <div class="mt-1">
                     <TextBox @bind-Value="_model.Picture" id="Picture"
@@ -62,9 +54,8 @@
         CloseModal();
     }
 
-    private void OnCancel() {
-        CloseModal();
-    }
+    private void OnCancel()
+        => CloseModal();
 
     private void CloseModal()
         => ModalInstance.CancelAsync();
