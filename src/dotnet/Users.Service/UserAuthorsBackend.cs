@@ -69,4 +69,29 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    public virtual async Task UpdateName(IUserAuthorsBackend.UpdateNameCommand command, CancellationToken cancellationToken)
+    {
+        var userId = command.UserId;
+
+        if (Computed.IsInvalidating()) {
+            _ = Get(userId, false, default);
+            _ = Get(userId, true, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbUserAuthor= await dbContext.UserAuthors
+            .SingleOrDefaultAsync(a => a.UserId == userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbUserAuthor == null)
+            throw new InvalidOperationException("user author does not exists");
+
+        dbUserAuthor.Name = command.Name;
+        dbUserAuthor.Version = VersionGenerator.NextVersion();
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
 }

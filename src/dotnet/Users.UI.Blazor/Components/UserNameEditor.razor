@@ -19,23 +19,16 @@
     private readonly Model _model = new();
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
+    [Inject] private IUserAuthors UserAuthors { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string AvatarId { get; set; } = "";
-    [Parameter] public Action? OnUpdated { get; set; } = default!;
-    [Parameter] public Action? CancelRequested { get; set; } = default!;
-
     protected override async Task OnParametersSetAsync() {
-        //var userAvatar = await UserAvatars.Get(Session, AvatarId, default);
-        _model.Name = "NONAME"; // userAvatar?.Name ?? "";
+        _model.Name = await UserAuthors.GetName(Session, default).ConfigureAwait(true);
     }
 
     private async void OnSave() {
-        // var userAvatar = await UserAvatars.Get(Session, AvatarId, default).ConfigureAwait(false);
-        // var command = new IUserAvatars.UpdateCommand(Session, AvatarId, _model.Name, userAvatar.Picture, userAvatar.Bio);
-        // await Cmd.Run(command).ConfigureAwait(true);
-        // OnUpdated?.Invoke();
+        var command = new IUserAuthors.UpdateNameCommand(Session, _model.Name);
+        await Cmd.Run(command).ConfigureAwait(true);
     }
 
     public sealed class Model {

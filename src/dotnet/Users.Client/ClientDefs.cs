@@ -21,6 +21,10 @@ public interface IUserAuthorsClientDef
 {
     [Get(nameof(Get))]
     Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
+    [Get(nameof(GetName))]
+    Task<string> GetName(Session session, CancellationToken cancellationToken);
+    [Post(nameof(UpdateName))]
+    Task UpdateName([Body] IUserAuthors.UpdateNameCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userAvatars")]

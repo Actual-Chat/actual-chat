@@ -19,4 +19,8 @@ public class UserAuthorsBackendController : ControllerBase, IUserAuthorsBackend
     [HttpPost]
     public Task SetAvatar([FromBody] IUserAuthorsBackend.SetAvatarCommand command, CancellationToken cancellationToken)
         => _service.SetAvatar(command, cancellationToken);
+
+    [HttpPost]
+    public Task UpdateName([FromBody] IUserAuthorsBackend.UpdateNameCommand command, CancellationToken cancellationToken)
+        => _service.UpdateName(command, cancellationToken);
 }
