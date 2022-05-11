@@ -1,3 +1,5 @@
+/* Default styling */
+
 html {
     height: 100%;
 }
@@ -21,3 +23,188 @@ code {
     @apply bg-secondary;
     @apply font-mono;
 }
+
+/* Flex shortcuts */
+
+.flex-x {
+    @apply flex flex-row;
+}
+.-flex-x {
+    @apply flex flex-row-reverse;
+}
+.flex-y {
+    @apply flex flex-col;
+}
+.-flex-y {
+    @apply flex flex-col-reverse;
+}
+
+/* Inline-flex shortcuts */
+
+.inline-flex-x {
+    @apply inline-flex flex-row;
+}
+.-inline-flex-x {
+    @apply inline-flex flex-row-reverse;
+}
+.inline-flex-y {
+    @apply inline-flex flex-col;
+}
+.-inline-flex-y {
+    @apply inline-flex flex-col-reverse;
+}
+
+/* Suffixes */
+
+button.on, .btn.on, btn.btn-square.on{
+    @apply text-toggle-on;
+}
+button.off, .btn.off, btn.btn-square.on {
+    @apply text-secondary;
+}
+
+/* Buttons */
+
+.btn {
+    @apply transition duration-150 ease-in-out outline-none inline-flex justify-center;
+    @apply py-2 px-3 text-sm text-sm font-medium fill-current rounded-md border;
+    @apply h-8 min-w-16 max-w-max;
+}
+.btn .btn-content {
+    @apply flex-x place-self-center;
+}
+
+.btn:disabled {
+    @apply opacity-70;
+}
+.btn.-disabled:disabled {
+    @apply opacity-100;
+}
+
+.btn.btn-success {
+    @apply bg-button-success border-success text-primary-inverted;
+}
+.btn.btn-success:enabled {
+    @apply hover:bg-button-success-hover hover:border-success-muted;
+    @apply active:bg-button-success-hover;
+}
+
+.btn.btn-success-outline {
+    @apply bg-button-success-outline border-success border-2 text-success;
+}
+.btn.btn-success-outline:enabled {
+    @apply hover:bg-button-success-outline-hover;
+    @apply active:bg-button-success-outline-hover active:border-button-success-outline-hover;
+}
+
+.btn.btn-cancel {
+    @apply bg-button-cancel border-button-cancel text-primary-inverted;
+}
+.btn.btn-cancel:enabled {
+    @apply hover:bg-button-cancel-hover hover:border-button-cancel-hover;
+    @apply active:bg-button-cancel-hover;
+}
+
+.btn.btn-error {
+    @apply bg-button-error border-button-error text-primary-inverted;
+}
+.btn.btn-error:enabled {
+    @apply hover:bg-button-error-hover hover:border-button-error-hover;
+    @apply active:bg-button-error-hover;
+}
+
+.btn.btn-xs {
+    @apply text-xxs min-h-0 min-w-0 h-3.5 py-0 px-1 rounded-sm border-0;
+}
+.btn.btn-sm {
+    @apply text-xs min-h-6 min-w-12;
+}
+.btn.btn-lg {
+    @apply min-h-10 min-w-20 text-base;
+}
+
+.btn.btn-square {
+    @apply text-base font-semibold bg-accent hover:bg-primary h-full inline-block;
+    @apply p-1 mx-0 min-w-0 border-0;
+}
+.btn-square { /* We want this selector to be less important than other selectors settings text color */
+    @apply text-secondary;
+}
+
+.btn.btn-square.transparent {
+    @apply bg-transparent hover:bg-accent;
+}
+.btn.btn-square.show-on-hover {
+    @apply invisible z-10 absolute;
+}
+
+.btn.menu-item-btn {
+    @apply flex h-8 w-full text-secondary p-1 mx-0 min-w-0 border-0;
+}
+
+.btn.btn-transparent {
+    @apply relative flex border-0 rounded-none min-w-0 m-0 p-0 text-base h-min;
+    @apply hover:cursor-pointer;
+}
+
+.btn.btn-primary {
+    @apply relative flex hover:cursor-pointer border border-button-primary bg-primary text-secondary;
+    @apply hover:bg-avatar hover:text-primary-inverted;
+    @apply active:bg-avatar;
+}
+
+.btn.btn-secondary {
+    @apply relative flex hover:cursor-pointer border-2 border-accent bg-secondary text-primary;
+    @apply active:bg-accent;
+}
+
+.btn-group {
+    @apply overflow-hidden rounded-md;
+    @apply flex flex-row gap-px;
+}
+.btn-group .btn {
+    @apply rounded-none;
+}
+.btn-group.flex-y .btn {
+    @apply fill-available;
+}
+.btn-group.btn-group-font-normal .btn {
+    @apply font-normal;
+}
+.btn-group.btn-group-font-light .btn {
+    @apply font-light;
+}
+.btn-group.btn-group-font-medium .btn {
+    @apply font-medium;
+}
+.btn-group.btn-group-font-semibold .btn {
+    @apply font-semibold;
+}
+
+/* Other inputs */
+
+input.input-copy-to-clipboard {
+    @apply bg-transparent border-b border-placeholder;
+    @apply focus:outline-none focus:border-sky-500;
+}
+
+input.input-imprinted {
+    @apply border-0 bg-accent;
+}
+
+input.input-underlined {
+    @apply bg-transparent border-b border-placeholder;
+}
+
+
+/* Other */
+
+.whitespace-break-spaces {
+    white-space: break-spaces;
+}
+
+.fill-available {
+    min-width: -webkit-fill-available;
+    min-width: -moz-available;
+}
+

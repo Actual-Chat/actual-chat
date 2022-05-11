@@ -1,12 +1,12 @@
-/* Firefox */
+/* Default scrollbars */
 
+/* Firefox */
 * {
     scrollbar-width: thin;
     scrollbar-color: theme('colors.gray.700') theme('colors.gray.800');
 }
 
 /* Chrome, Edge, and Safari */
-
 *::-webkit-scrollbar {
     @apply w-3;
 }
@@ -22,4 +22,24 @@
 }
 *:hover::-webkit-scrollbar-thumb {
     background-color: theme('colors.gray.500');
+}
+
+/* Custom scrollbars */
+
+/* Webkit */
+.custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-secondary rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-accent rounded-full border-2 border-secondary;
+}
+
+/* Mozilla */
+.custom-scrollbar {
+    scrollbar-width: 2px;
+    scrollbar-color: #e2e7ec #F9FAFB;
 }
