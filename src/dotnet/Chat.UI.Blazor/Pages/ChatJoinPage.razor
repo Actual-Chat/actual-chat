@@ -2,13 +2,13 @@
 @using ActualChat.Invite
 @attribute [Authorize(Policy = KnownPolicies.IsUserActive)]
 
-<MainHeader>Joining via invite code</MainHeader>
+<MainHeader>Joining via invite link</MainHeader>
 
 @if (_useResult is { } useResult) {
     if (useResult.Error is { } error) {
         <p>Failed to join chat: @error.Message</p>
     } else {
-        <p>Processing invite code, please wait..</p>
+        <p>Processing invite, please wait..</p>
     }
 }
 

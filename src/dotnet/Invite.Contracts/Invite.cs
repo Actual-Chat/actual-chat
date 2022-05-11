@@ -18,7 +18,7 @@ public sealed record Invite : IHasId<Symbol>
     public Invite Use(VersionGenerator<long> versionGenerator, int useCount = 1)
     {
         if (Remaining < useCount)
-            throw new InvalidOperationException("The invite code is already used.");
+            throw new InvalidOperationException("The invite link is already used.");
         return this with {
             Version = versionGenerator.NextVersion(Version),
             Remaining = Remaining - useCount,

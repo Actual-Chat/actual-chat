@@ -2,7 +2,7 @@
 @using ActualChat.Invite
 @attribute [Authorize]
 
-<MainHeader>Joining via invite code</MainHeader>
+<MainHeader>Joining via invite link</MainHeader>
 
 @if (_useResult is { } useResult) {
     if (useResult.Error is { } error) {
