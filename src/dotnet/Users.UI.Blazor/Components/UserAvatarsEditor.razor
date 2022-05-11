@@ -4,15 +4,10 @@
     var items = State.LatestNonErrorValue.Items;
 }
 
-@if (items.Length == 0) {
-    <div class="absolute top-0 left-0 h-full w-full grid justify-items-center items-center">
-        <span>Create your first Avatar</span>
-    </div>
-}
-<ul class="flex flex-wrap">
+<ul class="flex flex-wrap gap-4">
     @foreach (var item in items) {
         var brdCls = !ChatId.IsNullOrEmpty() && item.IsUserDefault ? "border border-green-300" : "";
-        <li class="group m-4">
+        <li class="group">
             <div class="relative">
                 <UserAvatar AvatarId="@item.AvatarId" Class="@brdCls">
                     <ActionsTemplate>
@@ -26,24 +21,24 @@
                         </div>
                     </ActionsTemplate>
                 </UserAvatar>
-                <div class="absolute top-0 right-0 mr-4 mt-2">
+                <div class="absolute top-0 right-0 mr-3 mt-2">
                     @if (item.IsSelected) {
-                        <i class="fa fa-check fa-2x text-success" aria-hidden="true"></i>
+                        <i class="fa fa-check fa-lg text-success" aria-hidden="true"></i>
                     }
                 </div>
             </div>
         </li>
     }
+    <li class="group">
+        <UserAvatar>
+            <ActionsTemplate>
+                <div class="btn-group justify-center">
+                    <Button Class="btn-success" Click="OnAddNewAvatar">Add new</Button>
+                </div>
+            </ActionsTemplate>
+        </UserAvatar>
+    </li>
 </ul>
-
-<Button Class="btn btn-success hover:scale-110 ease-in-out duration-150 !rounded-full !min-w-0 !w-10 absolute bottom-0 right-0 !m-0 !mr-4 !mb-4 !p-0"
-        Click="OnAddNewAvatar"
-        Title="Create new Avatar">
-    <svg class="w-6 h-6 mx-auto" focusable="false" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M0 0h24v24H0z" fill="none"></path>
-        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
-    </svg>
-</Button>
 
 @if (CancelRequested != null) {
     <div class="absolute top-0 right-0 mr-4 mt-14">
