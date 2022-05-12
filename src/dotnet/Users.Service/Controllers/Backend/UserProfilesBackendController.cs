@@ -23,8 +23,4 @@ public class UserProfilesBackendController : ControllerBase, IUserProfilesBacken
     [HttpPost]
     public Task Update([FromBody] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken)
         => _service.Update(command, cancellationToken);
-
-    [HttpPost]
-    public Task Create(IUserProfilesBackend.CreateCommand command, CancellationToken cancellationToken)
-        => _service.Create(command, cancellationToken);
 }

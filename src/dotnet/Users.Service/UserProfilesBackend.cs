@@ -9,25 +9,16 @@ namespace ActualChat.Users;
 public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesBackend
 {
     private const string AdminEmailDomain = "actual.chat";
-    private HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
+    private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
-    private readonly UsersSettings _usersSettings;
-    private readonly DbUserRepo _dbUserRepo;
-    private readonly IDbEntityConverter<DbUser, User> _userConverter;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
 
     private IAuthBackend AuthBackend { get; }
 
-    private DbUserByNameResolver DbUserByNameResolver { get; }
-
-    public UserProfilesBackend(IServiceProvider services, UsersSettings usersSettings) : base(services)
+    public UserProfilesBackend(IServiceProvider services) : base(services)
     {
-        _usersSettings = usersSettings;
-        _dbUserRepo = services.GetRequiredService<DbUserRepo>();
-        _userConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
         _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
-        DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
     }
 
     // [ComputeMethod]
@@ -76,37 +67,6 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     }
 
     // [CommandHandler]
-    public virtual async Task Create(IUserProfilesBackend.CreateCommand command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating()) {
-            _ = Get(command.UserProfileOrUserId, default);
-            return;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbUserProfile = await dbContext.UserProfiles
-            .FindAsync(DbKey.Compose(command.UserProfileOrUserId), cancellationToken)
-            .ConfigureAwait(false);
-        if (dbUserProfile != null)
-            return;
-
-        var dbUser = await _dbUserRepo.Get(dbContext, command.UserProfileOrUserId, false, cancellationToken).ConfigureAwait(false);
-        var user = _userConverter.ToModel(dbUser);
-        var isAdmin = user != null && IsAdmin(user);
-
-        dbUserProfile = new DbUserProfile {
-            UserId = command.UserProfileOrUserId,
-            Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
-            Version = VersionGenerator.NextVersion(),
-        };
-
-        await dbContext.AddAsync(dbUserProfile, cancellationToken).ConfigureAwait(false);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
     public virtual async Task Update(
         IUserProfilesBackend.UpdateCommand command,
         CancellationToken cancellationToken)
@@ -149,7 +109,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         return "";
     }
 
-    private bool IsAdmin(User user)
+    internal static bool IsAdmin(User user)
     {
         if (!user.IsAuthenticated) return false;
 
@@ -168,9 +128,9 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         return false;
     }
 
-    private bool HasGoogleIdentity(User user)
+    private static bool HasGoogleIdentity(User user)
         => HasIdentity(user, GoogleDefaults.AuthenticationScheme);
 
-    private bool HasIdentity(User user, string provider)
+    private static bool HasIdentity(User user, string provider)
         => user.Identities.Keys.Select(x => x.Schema).Contains(provider, StringComparer.Ordinal);
 }

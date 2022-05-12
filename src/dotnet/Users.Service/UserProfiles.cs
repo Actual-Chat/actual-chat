@@ -44,26 +44,6 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
             .ConfigureAwait(false);
     }
 
-    [CommandHandler(IsFilter = true, Priority = 1)]
-    protected virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        var isNewUser = context.Operation().Items.Get<bool>();
-        if (!isNewUser)
-            return;
-
-        var userId = context.Operation().Items.Get<SessionInfo>()!.UserId;
-
-        await _commander
-            .Call(new IUserProfilesBackend.CreateCommand(userId), cancellationToken)
-            .ConfigureAwait(false);
-    }
-
     private async Task AssertCanUpdateUserProfile(
         Session session,
         UserProfile userProfileToUpdate,
