@@ -2,9 +2,9 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <PropertyGroup>
-    <AspNetCoreVersion>6.0.4</AspNetCoreVersion>
+    <AspNetCoreVersion>6.0.5</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>6.0.4</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>6.0.5</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>6.0.4</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreMySqlVersion>6.0.1</EntityFrameworkCoreMySqlVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
@@ -13,9 +13,9 @@
     <MySqlVersion>2.1.8</MySqlVersion>
     <NpgsqlVersion>6.0.3</NpgsqlVersion>
     <OpenTelemetryNpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</OpenTelemetryNpgsqlVersion>
-    <RedisVersion>2.6.28</RedisVersion>
+    <RedisVersion>2.6.35</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>2.4.22</StlFusionVersion>
+    <StlFusionVersion>2.4.45</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.2.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9</OpenTelemetryAspNetCoreVersion>
@@ -23,7 +23,7 @@
 
   <ItemGroup Label="Nupkg Versions">
     <PackageReference Update="AspNet.Security.OAuth.GitHub" Version="6.0.2"/>
-    <PackageReference Update="Blazor.ContextMenu" Version="1.13.0" />
+    <PackageReference Update="Blazor.ContextMenu" Version="1.14.0" />
     <PackageReference Update="Blazored.Modal" Version="6.0.1" />
     <PackageReference Update="Blazored.SessionStorage" Version="2.2.0" />
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
@@ -98,7 +98,7 @@
     <PackageReference Update="Stl.Testing" Version="$(StlFusionVersion)"/>
     <PackageReference Update="Storage.NetCore" Version="9.27.0"/>
     <PackageReference Update="Storage.NetCore.Gcp.CloudStorage" Version="1.0.1"/>
-    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.3.0"/>
+    <PackageReference Update="Swashbuckle.AspNetCore" Version="6.3.1"/>
     <PackageReference Update="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)"/>
     <PackageReference Update="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)"/>
     <PackageReference Update="System.Threading.Channels" Version="$(AspNetCoreVersion)"/>
@@ -128,27 +128,27 @@
     <PackageReference Update="Crayon" Version="2.0.62"/>
 
     <!-- Build / test time only -->
-    <PackageReference Update="bunit" Version="1.6.4"/>
+    <PackageReference Update="bunit" Version="1.7.7"/>
     <PackageReference Update="FluentAssertions" Version="6.6.*"/>
     <PackageReference Update="GitHubActionsTestLogger" Version="1.4.1" />
-    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.1.0"/>
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="17.2.0"/>
     <PackageReference Update="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all"/>
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
     <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;"/>
     <PackageReference Update="Microsoft.Playwright" Version="1.21.*"/>
-    <PackageReference Update="Moq" Version="4.17.2"/>
+    <PackageReference Update="Moq" Version="4.18.0"/>
     <PackageReference Update="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Nerdbank.GitVersioning" Version="3.4.255" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.5.104" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit" Version="2.4.1"/>
     <PackageReference Update="Xunit.DependencyInjection" Version="8.5.0"/>
     <PackageReference Update="Xunit.DependencyInjection.Logging" Version="8.0.1"/>
-    <PackageReference Update="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="xunit.runner.visualstudio" Version="2.4.5" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
 
     <!-- Analyzers -->
     <PackageReference Update="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="xunit.analyzers" Version="0.10.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
-    <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.1.46" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
+    <PackageReference Update="Microsoft.VisualStudio.Threading.Analyzers" Version="17.2.32" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Roslynator.Analyzers" Version="4.1.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
     <PackageReference Update="Meziantou.Analyzer" Version="1.0.701" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers"/>
   </ItemGroup>
