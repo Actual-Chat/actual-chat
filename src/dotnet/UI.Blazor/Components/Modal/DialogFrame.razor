@@ -2,7 +2,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @implements IAsyncDisposable
 
-<div @ref="_elementRef" tabindex="-1" autofocus>
+<div>
     <ModalFrame Class="@Class" Title="@Title" HasHeader="HasHeader" HasCloseButton="HasCloseButton">
         <div class="dialog-body">
             @Body
@@ -14,8 +14,7 @@
 </div>
 
 @code {
-    [Inject] private EscapeHandler EscapeHandler { get; init; } = null!;
-    private ElementReference _elementRef;
+    [Inject] private Escapist Escapist { get; init; } = null!;
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
@@ -28,16 +27,15 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            await EscapeHandler.ConnectAsync(_elementRef);
-            EscapeHandler.Escape += OnEscape;
+            await Escapist.ConnectAsync();
+            Escapist.Escape += OnEscape;
         }
     }
 
     public async ValueTask DisposeAsync() {
-        EscapeHandler.Escape -= OnEscape;
-        await EscapeHandler.DisposeAsync().ConfigureAwait(true);
+        Escapist.Escape -= OnEscape;
+        await Escapist.DisposeAsync().ConfigureAwait(true);
     }
 
-    private void OnEscape(object? sender, EventArgs e)
-        => ModalInstance.CancelAsync();
+    private void OnEscape() => ModalInstance.CancelAsync();
 }

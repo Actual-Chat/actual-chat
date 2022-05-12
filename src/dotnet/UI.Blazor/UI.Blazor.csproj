@@ -21,4 +21,9 @@
     <ServiceWorker Include="ServiceWorkers\messaging-service-worker.ts" />
   </ItemGroup>
 
+  <ItemGroup>
+    <TypeScriptCompile Include="Components\EscapeHandler\disposable.ts" />
+    <TypeScriptCompile Include="Components\EscapeHandler\keyboard-dispatcher.ts" />
+  </ItemGroup>
+
 </Project>

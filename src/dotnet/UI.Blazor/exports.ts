@@ -13,5 +13,10 @@ export * from './Components/ContextMenu/context-menu';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/Feedback/feedback';
-export * from './Components/EscapeHandler/escape-handler';
+
 export * from './messaging-init';
+
+export * from './Components/EscapeHandler/escapist';
+export * from './Components/EscapeHandler/keyboard-dispatcher';
+export * from './Components/EscapeHandler/disposable';
+export * from './Components/EscapeHandler/escape-handler';
