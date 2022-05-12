@@ -6,9 +6,6 @@ namespace ActualChat.Users.Db;
 
 public class DbUserProfile : IHasId<string>, IHasVersion<long>
 {
-    /// <summary>
-    /// Stores same value as <see cref="DbUser.Id"/>
-    /// </summary>
     [Key] public string UserId { get; set; } = null!;
     string IHasId<string>.Id => UserId;
     [ConcurrencyCheck] public long Version { get; set; }
