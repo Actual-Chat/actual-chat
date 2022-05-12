@@ -83,7 +83,7 @@ public class UserAuthorsBackend : DbServiceBase<UsersDbContext>, IUserAuthorsBac
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbUserAuthor= await dbContext.UserAuthors
+        var dbUserAuthor = await dbContext.UserAuthors
             .SingleOrDefaultAsync(a => a.UserId == userId, cancellationToken)
             .ConfigureAwait(false);
         if (dbUserAuthor == null)
