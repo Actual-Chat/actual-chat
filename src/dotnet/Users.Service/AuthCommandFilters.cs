@@ -33,21 +33,17 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     public virtual async Task OnSignOut(SignOutCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-        if (!Computed.IsInvalidating())
-            await ResetSessionOptions().ConfigureAwait(false);
+        var session = command.Session;
 
-        async Task ResetSessionOptions()
-        {
-            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-            await using var __ = dbContext.ConfigureAwait(false);
-            var dbSession = await dbContext.Sessions.FirstOrDefaultAsync(x => x.Id == command.Session.Id.Value, cancellationToken)
-                .ConfigureAwait(false);
-            if (dbSession != null) {
-                dbSession.Options = new ImmutableOptionSet();
-                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            }
+        // Invoke command handlers with lower priority
+        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
+
+        if (Computed.IsInvalidating()) {
+            _ = Auth.GetOptions(session, default);
+            return;
         }
+
+        await ResetSessionOptions(session, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary> Takes care of invalidation of IsOnlineAsync once user signs in. </summary>
@@ -55,20 +51,23 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
     public virtual async Task OnSignInMarkOnline(SignInCommand command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
+        var session = command.Session;
 
         // Invoke command handlers with lower priority
         await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
 
         if (Computed.IsInvalidating()) {
+            _ = Auth.GetOptions(session, default);
             var invUserId = context.Operation().Items.Get<string>();
             if (!invUserId.IsNullOrEmpty())
                 _ = UserPresences.Get(invUserId, default);
             return;
         }
 
+        await ResetSessionOptions(command.Session, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        await ResetSessionOptions().ConfigureAwait(false);
 
         var sessionInfo = context.Operation().Items.Get<SessionInfo>(); // Set by default command handler
         if (sessionInfo == null)
@@ -87,17 +86,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         }
         context.Operation().Items.Set(dbUser.Id);
         await MarkOnline(userId, cancellationToken).ConfigureAwait(false);
-
-        async Task ResetSessionOptions()
-        {
-            var dbSession = await dbContext.Sessions
-                .FirstOrDefaultAsync(x => x.Id == command.Session.Id.Value, cancellationToken).ConfigureAwait(false);
-
-            if (dbSession != null) {
-                dbSession.Options = new ImmutableOptionSet();
-                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
     }
 
     /// <summary> Validates user name on edit + makes sure user edits invalidate UserProfiles </summary>
@@ -173,7 +161,10 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var userState = await dbContext.UserPresences.FindAsync(DbKey.Compose(userId), cancellationToken).ConfigureAwait(false);
+        var userState = await dbContext.UserPresences
+            .ForUpdate()
+            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken)
+            .ConfigureAwait(false);
         if (userState == null) {
             userState = new DbUserPresence() { UserId = userId };
             dbContext.Add(userState);
@@ -223,4 +214,20 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         }
         return name;
     }
+
+    private async Task ResetSessionOptions(Session session, CancellationToken cancellationToken)
+    {
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbSession = await dbContext.Sessions
+            .ForUpdate()
+            .FirstOrDefaultAsync(x => x.Id == session.Id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbSession != null) {
+            dbSession.Options = new ImmutableOptionSet();
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
 }

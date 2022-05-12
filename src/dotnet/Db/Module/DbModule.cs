@@ -1,9 +1,11 @@
 using ActualChat.Configuration;
+using ActualChat.Db.MySql;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Stl.Fusion.EntityFramework;
+using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Redis;
 using Stl.Fusion.Operations.Internal;
 using Stl.Plugins;
@@ -70,6 +72,7 @@ public class DbModule : HostModule<DbSettings>
                     npgsql.MaxBatchSize(1);
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
+                builder.UseNpgsqlHintFormatter();
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;
@@ -80,6 +83,7 @@ public class DbModule : HostModule<DbSettings>
                     // mySql.MaxBatchSize(1);
                     mySql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
+                builder.UseMySqlHintFormatter();
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;

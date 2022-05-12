@@ -6,18 +6,18 @@
 @using Stl.Fusion.Blazor
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Controllers
-@inject IServiceProvider _services
-@inject ServerAuthHelper _serverAuthHelper
-@inject HostSettings _hostSettings
-@inject BlazorCircuitContext _circuitContext
-@inject HostInfo _hostInfo
+@inject IServiceProvider Services
+@inject ServerAuthHelper ServerAuthHelper
+@inject HostSettings HostSettings
+@inject BlazorCircuitContext CircuitContext
+@inject HostInfo HostInfo
 @{
-    await _serverAuthHelper.UpdateAuthState(HttpContext);
-    var authSchemas = await _serverAuthHelper.GetSchemas(HttpContext);
-    var sessionId = _serverAuthHelper.Session.Id.Value;
+    await ServerAuthHelper.UpdateAuthState(HttpContext);
+    var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
+    var sessionId = ServerAuthHelper.Session.Id.Value;
     var isServerSideBlazor = BlazorModeController.IsServerSideBlazor(HttpContext);
-    var isCloseWindowRequest = _serverAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
-    var blazorMaxReconnectRetries = _hostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
+    var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
+    var blazorMaxReconnectRetries = HostInfo.IsDevelopmentInstance ? 10_000_000 : 1_800; // 1h of retries
     Layout = null;
     // TODO: add HeadOutlet component (to edit <head>)
     // https://devblogs.microsoft.com/aspnet/asp-net-core-updates-in-net-6-preview-7/#modify-html-head-content-from-blazor-components
@@ -86,7 +86,7 @@
     </div>
 } else {
     <app id="app" class="flex flex-col h-full" >
-        @(await Html.RenderApp(_services, HttpContext))
+        @(await Html.RenderApp(Services, HttpContext))
         @* <component type="typeof(App)" render-mode="Server" /> *@
     </app>
 
