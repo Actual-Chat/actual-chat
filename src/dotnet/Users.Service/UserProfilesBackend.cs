@@ -80,7 +80,6 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     {
         if (Computed.IsInvalidating()) {
             _ = Get(command.UserProfileOrUserId, default);
-            _ = GetUserAuthor(command.UserProfileOrUserId, default);
             return;
         }
 
@@ -115,7 +114,6 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         var userProfile = command.UserProfile;
         if (Computed.IsInvalidating()) {
             _ = Get(userProfile.Id, default);
-            _ = GetUserAuthor(userProfile.Id, default);
             return;
         }
 
