@@ -18,4 +18,20 @@ public class DbUserProfile : IHasId<string>, IHasVersion<long>
     public UserStatus Status { get; set; }
 
     public string AvatarId { get; set; } = "";
+
+    public UserProfile ToModel(UserProfile model)
+        => model with {
+            Id = Id,
+            Status = Status,
+            AvatarId = AvatarId,
+            Version = Version
+        };
+
+    public void UpdateFrom(UserProfile model)
+    {
+        Id = model.Id;
+        Version = model.Version;
+        Status = model.Status;
+        AvatarId = model.AvatarId;
+    }
 }
