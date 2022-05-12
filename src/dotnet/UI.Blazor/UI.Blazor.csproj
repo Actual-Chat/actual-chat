@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <TypeScriptCompile Include="Components\main-context-menu.ts" />
+    <TypeScriptCompile Include="Components\MainContextMenu\main-context-menu.ts" />
   </ItemGroup>
 
 </Project>

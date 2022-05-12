@@ -139,3 +139,11 @@
 .btn.btn-square.message-menu-btn:hover {
     @apply bg-primary;
 }
+
+.btn.btn-square.message-menu-btn.selected {
+    @apply visible bg-accent;
+}
+
+.btn.btn-square.message-menu-btn.selected:hover {
+    @apply bg-accent;
+}

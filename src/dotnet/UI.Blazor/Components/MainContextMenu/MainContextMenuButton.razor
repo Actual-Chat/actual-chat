@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+
+<ButtonSquare Click="@Click" Class="@Class" Id="@Id">
+    @ChildContent
+</ButtonSquare>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Id { get; set; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
+}

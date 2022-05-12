@@ -1,46 +1,43 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
 @implements IAsyncDisposable
 @implements IMainContextMenuBackend
 
-@* <RenderIntoSlot Name="MainContextMenu"> *@
-@*     <div @ref="Ref"> *@
-@*         @ChildContent *@
-@*     </div> *@
-@* </RenderIntoSlot> *@
-
-<div>
-    <ButtonSquare OnClick="@OpenTestRenderSlot" Class="message-menu-btn show-on-hover">
-        <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
-            <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
-        </svg>
-    </ButtonSquare>
-    @if (IsContextMenuOpened) {
-        <RenderIntoSlot Name="MainContextMenu">
-            <CascadingValue Value="@Model">
-                <MessageContextMenu/>
-            </CascadingValue>
-        </RenderIntoSlot>
-    }
+<div @ref="Ref" id="@Id">
+    <RenderIntoSlot Name="@SlotName">
+        <div class="context-menu-child">
+            @ChildContent
+        </div>
+    </RenderIntoSlot>
 </div>
 
 @code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    public enum Direction {
+        Col,
+        Row,
+    }
 
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private MainContextMenuUI MenuUI { get; set; } = null!;
+
+    [Parameter] public string SlotName { get; set; } = null!;
+    [Parameter] public string Id { get; set; } = null!;
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public Direction MenuDirection { get; set; } = Direction.Row;
 
     private DotNetObjectReference<IMainContextMenuBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference? JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         if (JSRef != null) {
             try {
                 await JSRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
                 await JSRef.DisposeAsync().ConfigureAwait(true);
             }
-            catch (JSDisconnectedException) { }
+            catch (JSDisconnectedException) {
+            }
             JSRef = null;
         }
         if (BlazorRef != null) {
@@ -54,7 +51,7 @@
             BlazorRef = DotNetObjectReference.Create<IMainContextMenuBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUICoreModule.ImportName}.MainContextMenu.create",
-                Ref, BlazorRef
+                Ref, BlazorRef, MenuDirection.ToString().ToLower()
                 ).ConfigureAwait(true);
         }
     }

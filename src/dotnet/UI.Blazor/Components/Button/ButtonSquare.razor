@@ -1,7 +1,7 @@
 @using System.Text
 @namespace ActualChat.UI.Blazor.Components
 
-<button class="btn btn-square @Class" title="@Title" disabled="@IsDisabled"
+<button class="btn btn-square @Class" title="@Title" disabled="@IsDisabled" id="@Id"
         name="@Name" type="@GetButtonType()"
         @attributes="@AdditionalAttributes"
         @onclick="Click">
@@ -15,6 +15,7 @@
     [Parameter] public string ContentClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
+    [Parameter] public string Id { get; set; } = "";
     [Parameter] public ButtonType Type { get; set; } = ButtonType.Button;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
