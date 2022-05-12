@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = IsEndAligned ? "justify-end" : "justify-start";
+}
+
+<div class="form-buttons @cls @Class">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool IsEndAligned { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

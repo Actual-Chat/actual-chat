@@ -42,3 +42,8 @@
 .form.form-x section > .form-section-label {
     @apply flex-none w-1/3 pt-1;
 }
+
+.form-buttons {
+    @apply mt-2;
+    @apply flex flex-row w-full items-center gap-x-1;
+}
