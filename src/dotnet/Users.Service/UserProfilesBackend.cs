@@ -97,7 +97,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         var isAdmin = user != null && IsAdmin(user);
 
         dbUserProfile = new DbUserProfile {
-            Id = command.UserProfileOrUserId,
+            UserId = command.UserProfileOrUserId,
             Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
             Version = VersionGenerator.NextVersion(),
         };
