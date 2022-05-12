@@ -1,4 +1,5 @@
 @using System.ComponentModel.DataAnnotations
+@using Stl.Fusion.Authentication.Commands
 @{
     var m = _model;
 }
@@ -19,17 +20,18 @@
     private Model _model = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IUserAuthors UserAuthors { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     protected override async Task OnParametersSetAsync() {
         _model ??= new Model(ComponentIdGenerator);
-        _model.Name = await UserAuthors.GetName(Session, default).ConfigureAwait(true);
+        var user = await Auth.GetUser(Session, default).ConfigureAwait(true);
+        _model.Name = user.Name;
     }
 
     private async void OnSave() {
-        var command = new IUserAuthors.UpdateNameCommand(Session, _model.Name);
+        var command = new EditUserCommand(Session, _model.Name);
         await Cmd.Run(command).ConfigureAwait(true);
     }
 

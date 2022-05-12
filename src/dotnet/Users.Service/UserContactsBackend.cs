@@ -7,13 +7,13 @@ namespace ActualChat.Users;
 public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsBackend
 {
     private readonly IDbEntityResolver<string,DbUserContact> _dbUserContactResolver;
-    private readonly IUserAuthorsBackend _userAuthorsBackend;
+    private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly ICommander _commander;
 
     public UserContactsBackend(IServiceProvider services) : base(services)
     {
         _dbUserContactResolver = Services.GetRequiredService<IDbEntityResolver<string, DbUserContact>>();
-        _userAuthorsBackend = Services.GetRequiredService<IUserAuthorsBackend>();
+        _userProfilesBackend = Services.GetRequiredService<IUserProfilesBackend>();
         _commander = Services.GetRequiredService<ICommander>();
     }
 
@@ -68,7 +68,7 @@ public class UserContactsBackend : DbServiceBase<UsersDbContext>, IUserContactsB
 
     public virtual async Task<string> SuggestContactName(string targetUserId, CancellationToken cancellationToken)
     {
-        var userAuthor = await _userAuthorsBackend.Get(targetUserId, true, cancellationToken).ConfigureAwait(false);
+        var userAuthor = await _userProfilesBackend.GetUserAuthor(targetUserId, cancellationToken).ConfigureAwait(false);
         if (userAuthor != null)
             return userAuthor.Name;
         return "user:" + targetUserId;

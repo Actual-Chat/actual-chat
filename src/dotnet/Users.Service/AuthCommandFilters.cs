@@ -95,11 +95,6 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-            var invUser = context.Operation().Items.Get<User>();
-            if (invUser?.Name != null)
-                _ = UserProfilesBackend.GetByName(invUser.Name, default); // Invalidating old user name
-            if (command.Name != null)
-                _ = UserProfilesBackend.GetByName(command.Name, default); // Invalidating new user name
             return;
         }
         if (command.Name != null) {
@@ -108,7 +103,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
                 throw error;
 
             var user = await Auth.RequireUser(command.Session, cancellationToken).ConfigureAwait(false);
-            var userId = user.Id;
+            var userId = (string)user.Id;
 
             var dbContext = CreateDbContext();
             await using var _ = dbContext.ConfigureAwait(false);

@@ -26,7 +26,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
             var adminIdentity = new UserIdentity("internal", "admin");
             dbContext.Users.Add(new DbUser() {
                 Id = UserConstants.Admin.UserId,
-                Name = "Admin",
+                Name = UserConstants.Admin.Name,
                 Identities = {
                     new DbUserIdentity<string>() {
                         DbUserId = UserConstants.Admin.UserId,
@@ -35,11 +35,12 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                     },
                 },
             });
+            var avatarId = Ulid.NewUlid().ToString();
             dbContext.UserProfiles.Add(new DbUserProfile {
                 Id = UserConstants.Admin.UserId,
                 Status = UserStatus.Active,
+                AvatarId = avatarId,
             });
-            var avatarId = Ulid.NewUlid().ToString();
             dbContext.UserAvatars.Add(new DbUserAvatar() {
                 Id = avatarId,
                 UserId = UserConstants.Admin.UserId,
@@ -47,11 +48,6 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
                 Picture = UserConstants.Admin.Picture,
             });
 
-            dbContext.UserAuthors.Add(new DbUserAuthor() {
-                UserId = UserConstants.Admin.UserId,
-                Name = UserConstants.Admin.Name,
-                AvatarId = avatarId,
-            });
             try {
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }

@@ -17,14 +17,15 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
         CancellationToken cancellationToken = default)
     {
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
-        var dbUserAuthor = new DbUserAuthor();
-        string userName = dbUser.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Name) ?? user.Name;
-        var userAuthor = new UserAuthor() {
-            Id = dbUser.Id,
-            Name = userName,
-        };
-        dbUserAuthor.UpdateFrom(userAuthor);
-        dbContext.Add(dbUserAuthor);
+        // TODO(DF): can we put DbUserProfile creation here?
+        // var dbUserAuthor = new DbUserAuthor();
+        // string userName = dbUser.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Name) ?? user.Name;
+        // var userAuthor = new UserAuthor() {
+        //     Id = dbUser.Id,
+        //     Name = userName,
+        // };
+        // dbUserAuthor.UpdateFrom(userAuthor);
+        // dbContext.Add(dbUserAuthor);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbUser;

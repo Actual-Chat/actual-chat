@@ -28,6 +28,9 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         return await _backend.Get(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
+        => _backend.GetUserAuthor(userId, cancellationToken);
+
     // [CommandHandler]
     public virtual async Task Update(IUserProfiles.UpdateCommand command, CancellationToken cancellationToken)
     {

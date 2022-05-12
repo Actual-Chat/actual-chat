@@ -17,12 +17,14 @@ public class DbUserProfileConverter : DbEntityConverter<UsersDbContext, DbUserPr
         target.Id = source.Id;
         target.Version = source.Version;
         target.Status = source.Status;
+        target.AvatarId = source.AvatarId;
     }
 
     public override UserProfile UpdateModel(DbUserProfile source, UserProfile target)
         => target with {
             Id = source.Id,
             Status = source.Status,
+            AvatarId = source.AvatarId,
             Version = source.Version,
         };
 }

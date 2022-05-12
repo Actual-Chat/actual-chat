@@ -17,8 +17,8 @@ public class UserProfilesBackendController : ControllerBase, IUserProfilesBacken
         => _service.Get(id, cancellationToken);
 
     [HttpGet, Publish]
-    public Task<UserProfile?> GetByName(string name, CancellationToken cancellationToken)
-        => _service.GetByName(name, cancellationToken);
+    public Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
+        => _service.GetUserAuthor(userId, cancellationToken);
 
     [HttpPost]
     public Task Update([FromBody] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken)

@@ -11,16 +11,14 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     private const string AdminEmailDomain = "actual.chat";
     private HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
-    private IUserAuthorsBackend? _userAuthorsBackend; // Dep. cycle elimination
     private readonly IDbEntityConverter<DbUserProfile, UserProfile> _converter;
     private readonly UsersSettings _usersSettings;
     private readonly DbUserRepo _dbUserRepo;
     private readonly IDbEntityConverter<DbUser, User> _userConverter;
+    private readonly IUserAvatarsBackend _userAvatarsBackend;
 
     private IAuthBackend AuthBackend { get; }
 
-    private IUserAuthorsBackend UserAuthorsBackend
-        => _userAuthorsBackend ??= Services.GetRequiredService<IUserAuthorsBackend>();
     private DbUserByNameResolver DbUserByNameResolver { get; }
 
     public UserProfilesBackend(IServiceProvider services, IDbEntityConverter<DbUserProfile, UserProfile> converter, UsersSettings usersSettings) : base(services)
@@ -29,6 +27,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         _usersSettings = usersSettings;
         _dbUserRepo = services.GetRequiredService<DbUserRepo>();
         _userConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
+        _userAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
         AuthBackend = services.GetRequiredService<IAuthBackend>();
         DbUserByNameResolver = services.GetRequiredService<DbUserByNameResolver>();
     }
@@ -45,13 +44,30 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         return await ToUserProfile(dbUserProfile, user, cancellationToken).ConfigureAwait(false);
     }
 
-    // [ComputeMethod]
-    public virtual async Task<UserProfile?> GetByName(string name, CancellationToken cancellationToken)
+    public virtual async Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
     {
-        var dbUser = await DbUserByNameResolver.Get(name, cancellationToken).ConfigureAwait(false);
-        if (dbUser == null) return null;
+        if (userId.IsNullOrEmpty())
+            return null;
 
-        return await Get(dbUser.Id, cancellationToken).ConfigureAwait(false);
+        var user = await AuthBackend.GetUser(userId, cancellationToken).ConfigureAwait(false);
+        if (user == null)
+            return null;
+
+        var userAuthor = new UserAuthor { Name = user.Name };
+
+        var profile = await Get(userId, cancellationToken).ConfigureAwait(false);
+        if (profile == null)
+            return userAuthor;
+
+        if (!profile.AvatarId.IsEmpty) {
+            var avatar = await _userAvatarsBackend.Get(profile.AvatarId, cancellationToken).ConfigureAwait(false);
+            if (avatar != null) {
+                userAuthor = userAuthor with { Picture = avatar.Picture };
+            }
+        }
+        if (userAuthor.Picture.IsNullOrEmpty())
+            userAuthor = userAuthor with { Picture = GetDefaultPicture(user) };
+        return userAuthor;
     }
 
     // [CommandHandler]
@@ -59,6 +75,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
     {
         if (Computed.IsInvalidating()) {
             _ = Get(command.UserProfileOrUserId, default);
+            _ = GetUserAuthor(command.UserProfileOrUserId, default);
             return;
         }
 
@@ -93,6 +110,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         var userProfile = command.UserProfile;
         if (Computed.IsInvalidating()) {
             _ = Get(userProfile.Id, default);
+            _ = GetUserAuthor(userProfile.Id, default);
             return;
         }
 
@@ -102,6 +120,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         var dbUserProfile = await GetDbUserProfile(context, userProfile.Id, cancellationToken).ConfigureAwait(false);
         _converter.UpdateEntity(userProfile, dbUserProfile);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+
     }
 
     // Private methods
@@ -123,10 +143,8 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
         if (user == null || !user.IsAuthenticated)
             return null;
 
-        var userAuthor = await UserAuthorsBackend.Get(user.Id, false, cancellationToken).ConfigureAwait(false);
         var userProfile = _converter.ToModel(dbUserProfile) with {
             User = user,
-            Picture = userAuthor?.Picture.NullIfEmpty() ?? GetDefaultPicture(user),
             IsAdmin = IsAdmin(user),
         };
         return userProfile;
@@ -142,9 +160,7 @@ public class UserProfilesBackend : DbServiceBase<UsersDbContext>, IUserProfilesB
             var emailHash = email.GetMD5HashCode().ToLowerInvariant();
             return $"https://www.gravatar.com/avatar/{emailHash}?s={size}";
         }
-        var name = user.Name.NullIfEmpty() ?? "@" +user.Id;
-        var nameHash = name.GetMD5HashCode().ToLowerInvariant();
-        return $"https://avatars.dicebear.com/api/avataaars/{nameHash}.svg";
+        return "";
     }
 
     private bool IsAdmin(User user)
