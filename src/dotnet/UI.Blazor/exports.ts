@@ -16,7 +16,7 @@ export * from './Components/Feedback/feedback';
 
 export * from './messaging-init';
 
-export * from './Components/EscapeHandler/escapist';
-export * from './Components/EscapeHandler/keyboard-dispatcher';
-export * from './Components/EscapeHandler/disposable';
-export * from './Components/EscapeHandler/escape-handler';
+export * from './Components/Escapist/escapist';
+export * from './Components/Escapist/keyboard-dispatcher';
+export * from './Components/Escapist/disposable';
+export * from './Components/Escapist/escapist-subscription';

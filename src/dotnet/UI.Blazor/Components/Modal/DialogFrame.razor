@@ -16,6 +16,9 @@
 @code {
     [Inject] private Escapist Escapist { get; init; } = null!;
 
+    private CancellationTokenSource TokenSource { get; } = new();
+    private IAsyncDisposable? EscapeSubscription { get; set; }
+
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
@@ -27,15 +30,16 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            await Escapist.ConnectAsync();
-            Escapist.Escape += OnEscape;
+            EscapeSubscription = await Escapist.SubscribeAsync(
+                () => ModalInstance.CancelAsync(),
+                TokenSource.Token).ConfigureAwait(false);
         }
     }
 
     public async ValueTask DisposeAsync() {
-        Escapist.Escape -= OnEscape;
-        await Escapist.DisposeAsync().ConfigureAwait(true);
+        TokenSource.Cancel();
+        if (EscapeSubscription != null) {
+            await EscapeSubscription.DisposeAsync().AsTask().ConfigureAwait(false);
+        }
     }
-
-    private void OnEscape() => ModalInstance.CancelAsync();
 }

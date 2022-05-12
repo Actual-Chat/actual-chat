@@ -2,11 +2,11 @@ import { Disposable } from './disposable';
 import { Subject, takeUntil } from 'rxjs';
 import escapist from './escapist';
 
-export class EscapeHandler implements Disposable {
+export class EscapistSubscription implements Disposable {
     private disposed$: Subject<void> = new Subject<void>();
 
-    public static create(blazorRef: DotNet.DotNetObject): EscapeHandler {
-        return new EscapeHandler(blazorRef);
+    public static create(blazorRef: DotNet.DotNetObject): EscapistSubscription {
+        return new EscapistSubscription(blazorRef);
     }
 
     constructor(blazorRef: DotNet.DotNetObject) {

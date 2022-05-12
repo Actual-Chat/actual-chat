@@ -1,37 +1,17 @@
-using ActualChat.UI.Blazor.Module;
-
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class Escapist : IAsyncDisposable
+public sealed class Escapist
 {
-    private readonly DotNetObjectReference<Escapist> _blazorRef;
-    private readonly IJSRuntime _jsRuntime;
+    private readonly Func<EscapistSubscription> _factory;
 
-    private IJSObjectReference? _jsRef;
+    public Escapist(Func<EscapistSubscription> factory)
+        => _factory = factory;
 
-    public event Action? Escape;
-
-    public Escapist(IJSRuntime jsRuntime)
+    public async Task<IAsyncDisposable> SubscribeAsync(Action action, CancellationToken token)
     {
-        _blazorRef = DotNetObjectReference.Create(this);
-        _jsRuntime = jsRuntime;
-    }
+        if (action == null) throw new ArgumentNullException(nameof(action));
 
-    [JSInvokable]
-    public void OnEscape() => Escape?.Invoke();
-
-    public async Task ConnectAsync()
-    {
-        var factory = $"{BlazorUICoreModule.ImportName}.EscapeHandler.create";
-        _jsRef = await _jsRuntime.InvokeAsync<IJSObjectReference>(factory, _blazorRef).ConfigureAwait(true);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_jsRef == null)
-            return;
-
-        await _jsRef.InvokeVoidAsync("dispose").ConfigureAwait(true);
-        _jsRef = null;
+        var handler = _factory();
+        return await handler.SubscribeAsync(action, token).ConfigureAwait(false);
     }
 }
