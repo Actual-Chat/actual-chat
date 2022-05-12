@@ -68,7 +68,8 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
-        var existingDbDevice = await dbContext.Devices.ForUpdate()
+        var existingDbDevice = await dbContext.Devices
+            .ForUpdate()
             .SingleOrDefaultAsync(d => d.Id == deviceId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -114,6 +115,7 @@ public partial class Notifications : DbServiceBase<NotificationDbContext>, INoti
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbSubscription = await dbContext.ChatSubscriptions
+            .ForUpdate()
             .FirstOrDefaultAsync(cs => cs.UserId == userId && cs.ChatId == chatId, cancellationToken)
             .ConfigureAwait(false);
 
