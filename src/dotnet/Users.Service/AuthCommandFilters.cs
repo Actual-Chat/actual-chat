@@ -226,6 +226,7 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>
             .ConfigureAwait(false);
         if (dbSession != null) {
             dbSession.Options = new ImmutableOptionSet();
+            dbSession.Version = VersionGenerator.NextVersion(dbSession.Version);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
     }
