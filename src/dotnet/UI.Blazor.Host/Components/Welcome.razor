@@ -5,7 +5,7 @@
 }
 
 @if (m.IsAuthenticated) {
-    if (m.UserStatus == UserStatus.Active) {
+    if (m.RenderChildContent) {
         @ChildContent
     } else {
         <WelcomeLayout>
@@ -39,31 +39,42 @@
     [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new ComputedState<Model>.Options() {
-            InitialValue = new Model()
+            InitialValue = new Model(false)
         };
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
         if (!user.IsAuthenticated)
-            return new Model { IsAuthenticated = false };
+            return new Model(false);
         var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
         var userStatus = userProfile?.Status ?? UserStatus.Inactive;
-        return new Model { IsAuthenticated = true, UserName = user.Name, UserStatus = userStatus };
+        bool activate = false;
+        if (userStatus == UserStatus.Inactive) {
+            var relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+            const string activationPath = "user/activate/";
+            if (relativePath.StartsWith(activationPath, StringComparison.OrdinalIgnoreCase)
+                && relativePath.Length > activationPath.Length) {
+                activate = true;
+            }
+        }
+        return new Model(true) { UserName = user.Name, UserStatus = userStatus, ActivationWithInvite = activate };
     }
 
     private async Task OnSignOutClick() {
         await ClientAuthHelper.SignOut();
     }
 
-    public record Model {
-        public bool IsAuthenticated { get; init; }
+    public record Model(bool IsAuthenticated) {
         public string UserName { get; init; } = "";
         public UserStatus UserStatus { get; init; } = UserStatus.Inactive;
+        public bool ActivationWithInvite { get; init; }
+        public bool RenderChildContent => UserStatus == UserStatus.Active || ActivationWithInvite;
     }
 }
