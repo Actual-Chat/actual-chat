@@ -2,16 +2,14 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class Escapist
 {
-    private readonly Func<EscapistSubscription> _factory;
+    private readonly Func<EscapistSubscription> _subscriptionFactory;
 
-    public Escapist(Func<EscapistSubscription> factory)
-        => _factory = factory;
+    public Escapist(Func<EscapistSubscription> subscriptionFactory)
+        => _subscriptionFactory = subscriptionFactory;
 
     public async Task<IAsyncDisposable> SubscribeAsync(Action action, CancellationToken token)
     {
-        if (action == null) throw new ArgumentNullException(nameof(action));
-
-        var handler = _factory();
-        return await handler.SubscribeAsync(action, token).ConfigureAwait(false);
+        var subscription = _subscriptionFactory();
+        return await subscription.SubscribeAsync(action, token).ConfigureAwait(false);
     }
 }

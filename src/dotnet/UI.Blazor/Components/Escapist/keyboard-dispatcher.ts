@@ -1,7 +1,7 @@
 import { Subject } from 'rxjs';
 
 export class KeyboardDispatcher {
-    private subjects: Subject<KeyboardEvent>[] = [];
+    private readonly subjects: Subject<KeyboardEvent>[] = [];
     private _isAttached: boolean;
 
     public add(subject: Subject<KeyboardEvent>): void {

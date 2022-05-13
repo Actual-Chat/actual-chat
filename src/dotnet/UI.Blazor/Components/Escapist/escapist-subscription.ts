@@ -1,4 +1,4 @@
-import { Disposable } from './disposable';
+import { Disposable } from 'disposable';
 import { Subject, takeUntil } from 'rxjs';
 import escapist from './escapist';
 
