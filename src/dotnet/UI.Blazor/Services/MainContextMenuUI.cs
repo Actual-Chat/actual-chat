@@ -4,22 +4,15 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class MainContextMenuUI
 {
-    public bool IsMenuOpened { get; set; }
+    public bool IsOpen { get; set; }
 
-    public MainContextMenuUI(IServiceProvider serviceProvider)
+    public MainContextMenuUI()
     {
     }
 
-    public string GetButtonId()
-    {
-        return "";
-    }
+    public void CloseMenu()
+        => IsOpen = false;
 
-    public string GetMenuId()
-    {
-        return "";
-    }
-
-    public void OpenContextMenu()
-        => IsMenuOpened = !IsMenuOpened;
+    public void MenuToggle()
+        => IsOpen = !IsOpen;
 }

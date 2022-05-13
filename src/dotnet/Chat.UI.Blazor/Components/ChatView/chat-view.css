@@ -141,9 +141,9 @@
 }
 
 .btn.btn-square.message-menu-btn.selected {
-    @apply visible bg-accent;
+    @apply visible bg-secondary shadow-none;
 }
 
 .btn.btn-square.message-menu-btn.selected:hover {
-    @apply bg-accent;
+    @apply bg-secondary;
 }

@@ -19,7 +19,7 @@
     }
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private MainContextMenuUI MenuUI { get; set; } = null!;
+    [Inject] private MainContextMenuUI MenuUI { get; init; } = null!;
 
     [Parameter] public string SlotName { get; set; } = null!;
     [Parameter] public string Id { get; set; } = null!;
@@ -54,5 +54,10 @@
                 Ref, BlazorRef, MenuDirection.ToString().ToLower()
                 ).ConfigureAwait(true);
         }
+    }
+
+    [JSInvokable]
+    public void CloseMenu() {
+        MenuUI.CloseMenu();
     }
 }
