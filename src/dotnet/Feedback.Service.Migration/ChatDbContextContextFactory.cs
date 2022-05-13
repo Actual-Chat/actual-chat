@@ -12,12 +12,9 @@ public class FeedbackDbContextContextFactory : IDesignTimeDbContextFactory<Feedb
     public FeedbackDbContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<FeedbackDbContext>();
-        builder
-            .UseNpgsql(
-                ConnectionString,
-                o => o.MigrationsAssembly(typeof(FeedbackDbContextContextFactory).Assembly.FullName)
-            )
-            .UseSnakeCaseNamingConvention();
+        builder.UseNpgsql(
+            ConnectionString,
+            o => o.MigrationsAssembly(typeof(FeedbackDbContextContextFactory).Assembly.FullName));
 
         return new FeedbackDbContext(builder.Options);
     }

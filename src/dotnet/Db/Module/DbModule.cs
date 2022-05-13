@@ -73,7 +73,6 @@ public class DbModule : HostModule<DbSettings>
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
                 builder.UseNpgsqlHintFormatter();
-                builder.UseSnakeCaseNamingConvention();
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;

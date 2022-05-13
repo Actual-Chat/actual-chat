@@ -12,12 +12,9 @@ public class NotificationDbContextContextFactory : IDesignTimeDbContextFactory<N
     public NotificationDbContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<NotificationDbContext>();
-        builder
-            .UseNpgsql(
-                ConnectionString,
-                o => o.MigrationsAssembly(typeof(NotificationDbContextContextFactory).Assembly.FullName)
-            )
-            .UseSnakeCaseNamingConvention();
+        builder.UseNpgsql(
+            ConnectionString,
+            o => o.MigrationsAssembly(typeof(NotificationDbContextContextFactory).Assembly.FullName));
 
         return new NotificationDbContext(builder.Options);
     }

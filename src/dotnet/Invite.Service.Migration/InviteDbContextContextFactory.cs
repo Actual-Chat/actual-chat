@@ -12,12 +12,9 @@ public class InviteDbContextContextFactory : IDesignTimeDbContextFactory<InviteD
     public InviteDbContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<InviteDbContext>();
-        builder
-            .UseNpgsql(
-                ConnectionString,
-                o => o.MigrationsAssembly(typeof(InviteDbContextContextFactory).Assembly.FullName)
-            )
-            .UseSnakeCaseNamingConvention();
+        builder.UseNpgsql(
+            ConnectionString,
+            o => o.MigrationsAssembly(typeof(InviteDbContextContextFactory).Assembly.FullName));
 
         return new InviteDbContext(builder.Options);
     }

@@ -12,12 +12,9 @@ public class ChatDbContextContextFactory : IDesignTimeDbContextFactory<ChatDbCon
     public ChatDbContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<ChatDbContext>();
-        builder
-            .UseNpgsql(
-                ConnectionString,
-                o => o.MigrationsAssembly(typeof(ChatDbContextContextFactory).Assembly.FullName)
-            )
-            .UseSnakeCaseNamingConvention();
+        builder.UseNpgsql(
+            ConnectionString,
+            o => o.MigrationsAssembly(typeof(ChatDbContextContextFactory).Assembly.FullName));
 
         return new ChatDbContext(builder.Options);
     }

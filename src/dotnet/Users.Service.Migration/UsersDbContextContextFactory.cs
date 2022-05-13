@@ -12,12 +12,9 @@ public class UsersDbContextContextFactory : IDesignTimeDbContextFactory<UsersDbC
     public UsersDbContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<UsersDbContext>();
-        builder
-            .UseNpgsql(
-                ConnectionString,
-                o => o.MigrationsAssembly(typeof(UsersDbContextContextFactory).Assembly.FullName)
-            )
-            .UseSnakeCaseNamingConvention();
+        builder.UseNpgsql(
+            ConnectionString,
+            o => o.MigrationsAssembly(typeof(UsersDbContextContextFactory).Assembly.FullName));
 
         return new UsersDbContext(builder.Options);
     }

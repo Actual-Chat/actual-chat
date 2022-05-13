@@ -27,7 +27,6 @@
     <PackageReference Update="Blazored.Modal" Version="6.0.1" />
     <PackageReference Update="Blazored.SessionStorage" Version="2.2.0" />
     <PackageReference Update="EFCore.CheckConstraints" Version="6.0.0" />
-    <PackageReference Update="EFCore.NamingConventions" Version="6.0.0" />
     <PackageReference Update="FirebaseAdmin" Version="2.3.0" />
     <PackageReference Update="Google.Api.Gax" Version="3.7.0" />
     <PackageReference Update="Google.Api.Gax.Rest" Version="3.7.0" />
