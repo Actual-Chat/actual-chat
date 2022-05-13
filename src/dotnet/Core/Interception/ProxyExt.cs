@@ -11,7 +11,10 @@ public static class ProxyExt
     public static IEnumerable<object> GetInterceptors(object proxy)
     {
         var getter = InterceptorGettersCache.GetOrAdd(proxy.GetType(),
-            t => t.GetField(InterceptorsFieldName, BindingFlags.Instance | BindingFlags.NonPublic)!.GetGetter());
+            t => {
+                var bindingFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+                return t.GetField(InterceptorsFieldName, bindingFlags)!.GetGetter();
+            });
         return (IEnumerable<object>)getter.Invoke(proxy);
     }
 
