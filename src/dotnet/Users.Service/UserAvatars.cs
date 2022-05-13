@@ -4,20 +4,17 @@ public class UserAvatars : IUserAvatars
 {
     private readonly IAuth _auth;
     private readonly IUserAvatarsBackend _userAvatarsBackend;
-    private readonly IUserAuthorsBackend _userAuthorsBackend;
     private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly ICommander _commander;
 
     public UserAvatars(
         IAuth auth,
         IUserAvatarsBackend userAvatarsBackend,
-        IUserAuthorsBackend userAuthorsBackend,
         IUserProfilesBackend userProfilesBackend,
         ICommander commander)
     {
         _auth = auth;
         _userAvatarsBackend = userAvatarsBackend;
-        _userAuthorsBackend = userAuthorsBackend;
         _userProfilesBackend = userProfilesBackend;
         _commander = commander;
     }
@@ -51,8 +48,8 @@ public class UserAvatars : IUserAvatars
     public virtual async Task<string> GetDefaultAvatarId(Session session, CancellationToken cancellationToken)
     {
         var user = await _auth.RequireUser(session, cancellationToken).ConfigureAwait(false);
-        var userAuthor = await _userAuthorsBackend.Get(user.Id, false, cancellationToken).ConfigureAwait(false);
-        return userAuthor?.AvatarId ?? "";
+        var profile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
+        return profile?.AvatarId ?? "";
     }
 
     public virtual async Task SetDefault(IUserAvatars.SetDefaultCommand command, CancellationToken cancellationToken)
@@ -68,8 +65,12 @@ public class UserAvatars : IUserAvatars
                 throw new InvalidOperationException("Invalid AvatarId");
         }
 
-        var setCommand = new IUserAuthorsBackend.SetAvatarCommand(user.Id, avatarId);
-        await _commander.Call(setCommand, true, cancellationToken).ConfigureAwait(false);
+        var userProfile = await _userProfilesBackend.Get(user.Id, cancellationToken).ConfigureAwait(false);
+        if (userProfile == null)
+            throw new InvalidOperationException("User profile does not exist");
+        userProfile = userProfile with { AvatarId = avatarId };
+        var updateCommand = new IUserProfilesBackend.UpdateCommand(userProfile);
+        await _commander.Call(updateCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]

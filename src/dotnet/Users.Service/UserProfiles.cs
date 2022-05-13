@@ -28,6 +28,9 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
         return await _backend.Get(user.Id, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken)
+        => _backend.GetUserAuthor(userId, cancellationToken);
+
     // [CommandHandler]
     public virtual async Task Update(IUserProfiles.UpdateCommand command, CancellationToken cancellationToken)
     {
@@ -38,26 +41,6 @@ public class UserProfiles : DbServiceBase<UsersDbContext>, IUserProfiles
 
         await AssertCanUpdateUserProfile(session, userProfile, cancellationToken).ConfigureAwait(false);
         await _commander.Call(new IUserProfilesBackend.UpdateCommand(command.UserProfile), cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    [CommandHandler(IsFilter = true, Priority = 1)]
-    protected virtual async Task OnSignIn(SignInCommand command, CancellationToken cancellationToken)
-    {
-        var context = CommandContext.GetCurrent();
-        await context.InvokeRemainingHandlers(cancellationToken).ConfigureAwait(false);
-
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        var isNewUser = context.Operation().Items.Get<bool>();
-        if (!isNewUser)
-            return;
-
-        var userId = context.Operation().Items.Get<SessionInfo>()!.UserId;
-
-        await _commander
-            .Call(new IUserProfilesBackend.CreateCommand(userId), cancellationToken)
             .ConfigureAwait(false);
     }
 

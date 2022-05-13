@@ -63,7 +63,7 @@
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserContacts UserContacts { get; init; } = null!;
-    [Inject] private IUserAuthors UserAuthors { get; init; } = null!;
+    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthors { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
@@ -84,7 +84,7 @@
         var chatContacts = new ConcurrentBag<Contact>();
         var resolveChatContacts = contacts
             .Select(async userContact => {
-                var userAuthor = await UserAuthors.Get(userContact.TargetUserId, true, DisposeTokenSource.Token).ConfigureAwait(false);
+                var userAuthor = await UserProfiles.GetUserAuthor(userContact.TargetUserId, DisposeTokenSource.Token).ConfigureAwait(false);
                 if (userAuthor == null)
                     return;
 

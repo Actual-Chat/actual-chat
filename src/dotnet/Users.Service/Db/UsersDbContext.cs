@@ -9,7 +9,6 @@ public class UsersDbContext : DbContextBase
 {
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbUserProfile> UserProfiles { get; protected set; } = null!;
-    public DbSet<DbUserAuthor> UserAuthors { get; protected set; } = null!;
     public DbSet<DbUserAvatar> UserAvatars { get; protected set; } = null!;
     public DbSet<DbUserContact> UserContacts { get; protected set; } = null!;
     public DbSet<DbChatUserSettings> ChatUserSettings { get; protected set; } = null!;

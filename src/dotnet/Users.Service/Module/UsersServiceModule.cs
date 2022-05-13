@@ -80,11 +80,9 @@ public class UsersServiceModule : HostModule<UsersSettings>
             services.TryAddSingleton<DbUserByNameResolver>();
             dbContext.AddEntityResolver<string, DbUserIdentity<string>>();
             dbContext.AddEntityResolver<string, DbUserPresence>();
-            dbContext.AddEntityResolver<string, DbUserAuthor>();
             dbContext.AddEntityResolver<string, DbUserAvatar>();
             dbContext.AddEntityResolver<string, DbUserContact>();
             dbContext.AddEntityResolver<string, DbChatReadPosition>();
-            dbContext.AddEntityConverter<DbUserProfile, UserProfile, DbUserProfileConverter>();
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {
@@ -132,8 +130,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddComputeService<IUserProfiles, UserProfiles>();
         fusion.AddComputeService<IUserProfilesBackend, UserProfilesBackend>();
         fusion.AddComputeService<IUserPresences, UserPresences>();
-        fusion.AddComputeService<IUserAuthors, UserAuthors>();
-        fusion.AddComputeService<IUserAuthorsBackend, UserAuthorsBackend>();
         fusion.AddComputeService<IUserAvatars, UserAvatars>();
         fusion.AddComputeService<IUserAvatarsBackend, UserAvatarsBackend>();
         fusion.AddComputeService<IUserContacts, UserContacts>();

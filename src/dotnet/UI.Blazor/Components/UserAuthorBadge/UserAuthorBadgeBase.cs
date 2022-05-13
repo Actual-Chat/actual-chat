@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBadgeBase.Model>
 {
-    [Inject] private IUserAuthors UserAuthors { get; init; } = null!;
+    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     [Parameter, EditorRequired] public string UserId { get; set; } = "";
@@ -17,7 +17,7 @@ public abstract class UserAuthorBadgeBase : ComputedStateComponent<UserAuthorBad
         if (UserId.IsNullOrEmpty())
             return Model.None;
 
-        var author = await UserAuthors.Get(UserId, true, cancellationToken).ConfigureAwait(true);
+        var author = await UserProfiles.GetUserAuthor(UserId, cancellationToken).ConfigureAwait(true);
         if (author == null)
             return Model.None;
 

@@ -7,6 +7,10 @@ public interface IUserProfilesClientDef
 {
     [Get(nameof(Get))]
     Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
+    [Get(nameof(GetUserAuthor))]
+    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
+    [Post(nameof(Update))]
+    Task Update([Body] IUserProfiles.UpdateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userPresences")]
@@ -14,17 +18,6 @@ public interface IUserPresencesClientDef
 {
     [Get(nameof(Get))]
     Task<Presence> Get(string userId, CancellationToken cancellationToken);
-}
-
-[BasePath("userAuthors")]
-public interface IUserAuthorsClientDef
-{
-    [Get(nameof(Get))]
-    Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
-    [Get(nameof(GetName))]
-    Task<string> GetName(Session session, CancellationToken cancellationToken);
-    [Post(nameof(UpdateName))]
-    Task UpdateName([Body] IUserAuthors.UpdateNameCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("userAvatars")]

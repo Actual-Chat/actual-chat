@@ -5,6 +5,9 @@ public interface IUserProfiles
     [ComputeMethod(KeepAliveTime = 10)]
     Task<UserProfile?> Get(Session session, CancellationToken cancellationToken);
 
+    [ComputeMethod(KeepAliveTime = 10)]
+    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
+
     [CommandHandler]
     public Task Update(UpdateCommand command, CancellationToken cancellationToken);
 

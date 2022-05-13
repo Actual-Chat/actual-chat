@@ -1,15 +1,15 @@
-using Stl.Fusion.EntityFramework;
+using ActualChat.Users.Module;
 using Stl.Fusion.EntityFramework.Authentication;
 
 namespace ActualChat.Users.Db;
 
 public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
 {
-    public new IDbEntityConverter<DbUser, User> UserConverter { get; }
+    private readonly UsersSettings _usersSettings;
 
     public DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
         : base(options, services)
-        => UserConverter = services.GetRequiredService<IDbEntityConverter<DbUser, User>>();
+        => _usersSettings = services.GetRequiredService<UsersSettings>();
 
     public override async Task<DbUser> Create(
         UsersDbContext dbContext,
@@ -17,14 +17,15 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
         CancellationToken cancellationToken = default)
     {
         var dbUser = await base.Create(dbContext, user, cancellationToken).ConfigureAwait(false);
-        var dbUserAuthor = new DbUserAuthor();
-        string userName = dbUser.Claims.GetValueOrDefault(System.Security.Claims.ClaimTypes.Name) ?? user.Name;
-        var userAuthor = new UserAuthor() {
-            Id = dbUser.Id,
-            Name = userName,
+        user = UserConverter.ToModel(dbUser);
+
+        var isAdmin = UserProfilesBackend.IsAdmin(user);
+        var dbUserProfile = new DbUserProfile {
+            UserId = user.Id,
+            Status = isAdmin ? UserStatus.Active : _usersSettings.NewUserStatus,
+            Version = VersionGenerator.NextVersion(),
         };
-        dbUserAuthor.UpdateFrom(userAuthor);
-        dbContext.Add(dbUserAuthor);
+        dbContext.UserProfiles.Add(dbUserProfile);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbUser;

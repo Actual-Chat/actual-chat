@@ -107,13 +107,6 @@ public interface IChatUserSettingsClientDef
     Task Set([Body] IChatUserSettings.SetCommand command, CancellationToken cancellationToken);
 }
 
-[BasePath("userAuthors")]
-public interface IUserAuthorsClientDef
-{
-    [Get(nameof(Get))]
-    Task<UserAuthor?> Get(string userId, bool inherit, CancellationToken cancellationToken);
-}
-
 [BasePath("userContacts")]
 public interface IUserContactsClientDef
 {
