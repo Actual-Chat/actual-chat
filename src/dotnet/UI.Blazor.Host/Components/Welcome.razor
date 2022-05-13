@@ -1,0 +1,69 @@
+@using ActualChat.Users
+@inherits ComputedStateComponent<Welcome.Model>
+@{
+    var m = State.LatestNonErrorValue;
+}
+
+@if (m.IsAuthenticated) {
+    if (m.UserStatus == UserStatus.Active) {
+        @ChildContent
+    } else {
+        <WelcomeLayout>
+            <h1 class="text-primary">Welcome to Actual Chat!</h1>
+            <p class="text-primary mt-5">
+                Hello, <span class="font-semibold">@(m.UserName)!</span>
+            </p>
+            <p class="text-primary">
+                @if (m.UserStatus == UserStatus.Suspended) {
+                    <span>Your account is suspended. Please, contact administrator.</span>
+                } else {
+                    <span>Please, wait for your approval.</span>
+                }
+            </p>
+            <div class="mt-5">
+                <Button Class="btn-primary" Click="OnSignOutClick">Sign out</Button>
+            </div>
+        </WelcomeLayout>
+    }
+} else {
+    <WelcomeLayout>
+        <h1 class="text-primary">Welcome to Actual Chat!</h1>
+        <div class="relative mt-5">
+            <SignInMenu ButtonClass="px-4 py-2" ContentPositionClass="bottom-8"/>
+        </div>
+    </WelcomeLayout>
+}
+
+@code {
+    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
+    [Inject] private IAuth Auth { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ClientAuthHelper ClientAuthHelper { get; init; } = null!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions() {
+        return new ComputedState<Model>.Options() {
+            InitialValue = new Model()
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
+        if (!user.IsAuthenticated)
+            return new Model { IsAuthenticated = false };
+        var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
+        var userStatus = userProfile?.Status ?? UserStatus.Inactive;
+        return new Model { IsAuthenticated = true, UserName = user.Name, UserStatus = userStatus };
+    }
+
+    private async Task OnSignOutClick() {
+        await ClientAuthHelper.SignOut();
+    }
+
+    public record Model {
+        public bool IsAuthenticated { get; init; }
+        public string UserName { get; set; } = "";
+        public UserStatus UserStatus { get; init; } = UserStatus.Inactive;
+    }
+}
