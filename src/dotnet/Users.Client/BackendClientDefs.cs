@@ -9,8 +9,10 @@ public interface IUserProfilesBackendClientDef
 {
     [Get(nameof(Get))]
     Task<UserProfile?> Get(string userId, CancellationToken cancellationToken);
-    [Get(nameof(GetByName))]
-    Task<UserProfile?> GetByName(string name, CancellationToken cancellationToken);
+    [Get(nameof(GetUserAuthor))]
+    Task<UserAuthor?> GetUserAuthor(string userId, CancellationToken cancellationToken);
+    [Post(nameof(Update))]
+    Task Update([Body] IUserProfilesBackend.UpdateCommand command, CancellationToken cancellationToken);
 }
 
 [BasePath("sessionOptionsBackend")]
