@@ -63,7 +63,7 @@
 
     public record Model {
         public bool IsAuthenticated { get; init; }
-        public string UserName { get; set; } = "";
+        public string UserName { get; init; } = "";
         public UserStatus UserStatus { get; init; } = UserStatus.Inactive;
     }
 }
