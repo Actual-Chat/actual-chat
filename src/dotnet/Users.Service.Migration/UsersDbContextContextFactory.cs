@@ -7,7 +7,7 @@ namespace ActualChat.Users;
 public class UsersDbContextContextFactory : IDesignTimeDbContextFactory<UsersDbContext>
 {
     public string ConnectionString =
-        "Server=localhost;Database=ac_dev_invite;Port=5432;User Id=postgres;Password=postgres";
+        "Server=localhost;Database=ac_dev_users;Port=5432;User Id=postgres;Password=postgres";
 
     public UsersDbContext CreateDbContext(string[] args)
     {
