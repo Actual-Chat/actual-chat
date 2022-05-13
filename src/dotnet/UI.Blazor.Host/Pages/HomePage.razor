@@ -1,35 +1,7 @@
 @page "/"
-@using ActualChat.Users
-@inherits ComputedStateComponent<ActualChat.Users.UserProfile?>
+@inject NavigationManager _nav
 
 @code {
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-
-    protected override Task<UserProfile?> ComputeState(CancellationToken cancellationToken) {
-        return UserProfiles.Get(Session, cancellationToken);
-    }
-}
-
-@{
-    var userProfile = State.LatestNonErrorValue;
-}
-
-@if (userProfile != null) {
-    @switch (userProfile.Status) {
-        case UserStatus.Active:
-            Nav.NavigateTo($"/chat/{Constants.Chat.DefaultChatId}");
-            return;
-        case UserStatus.Inactive:
-            <div>Welcome to Actual Chat. Please, wait for your approval.</div>
-            break;
-        case UserStatus.Suspended:
-            <div>Your account is suspended.</div>
-            break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(userProfile.Status), userProfile.Status, $"Unexpected user status value '{userProfile.Status}'");
-    }
-} else {
-    <Landing/>
+    protected override void OnInitialized()
+        => _nav.NavigateTo($"/chat/{Constants.Chat.DefaultChatId}");
 }
