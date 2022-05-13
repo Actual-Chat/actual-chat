@@ -13,4 +13,9 @@ export * from './Components/ContextMenu/context-menu';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/VirtualList/virtual-list';
 export * from './Components/Feedback/feedback';
+
 export * from './messaging-init';
+
+export * from './Components/Escapist/escapist';
+export * from './Components/Escapist/keyboard-dispatcher';
+export * from './Components/Escapist/escapist-subscription';
