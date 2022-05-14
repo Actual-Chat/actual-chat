@@ -1,6 +1,6 @@
 namespace ActualChat.Collections;
 
-public class ThreadSafeLruCache<TKey, TValue> : ILruCache<TKey, TValue>
+public class ThreadSafeLruCache<TKey, TValue> : IThreadSafeLruCache<TKey, TValue>
     where TKey : notnull
 {
     public object Lock { get; } = new();

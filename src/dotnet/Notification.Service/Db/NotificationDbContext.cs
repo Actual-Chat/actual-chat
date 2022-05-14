@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
@@ -16,5 +17,5 @@ public class NotificationDbContext : DbContextBase
     public NotificationDbContext(DbContextOptions options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(NotificationDbContext).Assembly);
+        => model.ApplyConfigurationsFromAssembly(typeof(NotificationDbContext).Assembly).UseSnakeCaseNaming();
 }

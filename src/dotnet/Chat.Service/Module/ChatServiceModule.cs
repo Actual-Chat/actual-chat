@@ -1,6 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.EventHandlers;
 using ActualChat.Chat.Events;
+using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Events;
 using ActualChat.Hosting;
@@ -39,6 +40,11 @@ public class ChatServiceModule : HostModule<ChatSettings>
                 options.QueryTransformer = dbChats => dbChats.Include(chat => chat.Owners);
             });
             dbContext.AddEntityResolver<string, DbChatAuthor>();
+            dbContext.AddShardLocalIdGenerator(db => db.ChatAuthors, (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
+            dbContext.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
+                db => db.ChatEntries,
+                (e, shardKey) => e.ChatId == shardKey.ChatId && e.Type == shardKey.Type,
+                e => e.Id);
         });
 
         var fusion = services.AddFusion();

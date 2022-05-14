@@ -7,9 +7,18 @@ public static class StringExt
 {
     private static readonly Regex CaseChangeRegex =
         new("([0-9a-z][A-Z])|([a-z][0-9])|([A-Z][0-9])", RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+    private static readonly Regex CamelCaseRegex =
+        new (@"([a-z0-9])([A-Z])", RegexOptions.Compiled);
 
     public static string ToSentenceCase(this string str, string delimiter = " ")
         => CaseChangeRegex.Replace(str, m => $"{m.Value[0]}{delimiter}{m.Value[1..]}");
+
+    public static string ToSnakeCase(this string input)
+        => string.IsNullOrEmpty(input)
+            ? input
+            : CamelCaseRegex.Replace(input, "$1_$2")
+                .ToLower(CultureInfo.InvariantCulture)
+                .Replace("__", "_", StringComparison.InvariantCulture);
 
     public static string Capitalize(this string s)
         => s.IsNullOrEmpty() ? s : s[..1].ToUpperInvariant() + s[1..];

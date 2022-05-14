@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
@@ -18,5 +19,5 @@ public class ChatDbContext : DbContextBase
     public ChatDbContext(DbContextOptions options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(ChatDbContext).Assembly);
+        => model.ApplyConfigurationsFromAssembly(typeof(ChatDbContext).Assembly).UseSnakeCaseNaming();
 }

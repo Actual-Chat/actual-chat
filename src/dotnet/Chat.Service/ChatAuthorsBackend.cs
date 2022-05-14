@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -8,8 +9,6 @@ namespace ActualChat.Chat;
 
 public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBackend
 {
-    private readonly ThreadSafeLruCache<Symbol, long> _maxLocalIdCache = new(16384);
-
     private const string AuthorIdSuffix = "::authorId";
     private IChatAuthors? _frontend;
 
@@ -20,6 +19,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     private RedisSequenceSet<ChatAuthor> IdSequences { get; }
     private IRandomNameGenerator RandomNameGenerator { get; }
     private IDbEntityResolver<string, DbChatAuthor> DbChatAuthorResolver { get; }
+    private IDbShardLocalIdGenerator<DbChatAuthor, string> DbChatAuthorLocalIdGenerator { get; }
     private IChatUserSettingsBackend ChatUserSettingsBackend { get; }
     private IChatAuthors Frontend => _frontend ??= Services.GetRequiredService<IChatAuthors>();
 
@@ -31,6 +31,7 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         IdSequences = services.GetRequiredService<RedisSequenceSet<ChatAuthor>>();
         RandomNameGenerator = services.GetRequiredService<IRandomNameGenerator>();
         DbChatAuthorResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatAuthor>>();
+        DbChatAuthorLocalIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatAuthor, string>>();
         UserAvatarsBackend = services.GetRequiredService<IUserAvatarsBackend>();
         ChatUserSettingsBackend = services.GetRequiredService<IChatUserSettingsBackend>();
     }
@@ -174,7 +175,9 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
         await using var __ = dbContext.ConfigureAwait(false);
 
         dbChatAuthor.ChatId = chatId;
-        dbChatAuthor.LocalId = await DbNextLocalId(dbContext, chatId, cancellationToken).ConfigureAwait(false);
+        dbChatAuthor.LocalId = await DbChatAuthorLocalIdGenerator
+            .Next(dbContext, chatId, cancellationToken)
+            .ConfigureAwait(false);
         dbChatAuthor.Id = DbChatAuthor.ComposeId(chatId, dbChatAuthor.LocalId);
         dbChatAuthor.UserId = userId.NullIfEmpty();
         dbContext.Add(dbChatAuthor);
@@ -204,28 +207,6 @@ public class ChatAuthorsBackend : DbServiceBase<ChatDbContext>, IChatAuthorsBack
     }
 
     // Private / internal methods
-
-    private async Task<long> DbNextLocalId(
-        ChatDbContext dbContext,
-        string chatId,
-        CancellationToken cancellationToken)
-    {
-        var idSequenceKey = new Symbol(chatId);
-        var maxLocalId = _maxLocalIdCache.GetValueOrDefault(idSequenceKey);
-        if (maxLocalId == 0) {
-            _maxLocalIdCache[idSequenceKey] = maxLocalId =
-                await dbContext.ChatAuthors.ForUpdate() // To serialize inserts
-                    .Where(e => e.ChatId == chatId)
-                    .OrderByDescending(e => e.LocalId)
-                    .Select(e => e.LocalId)
-                    .FirstOrDefaultAsync(cancellationToken)
-                    .ConfigureAwait(false);
-        }
-
-        var localId = await IdSequences.Next(idSequenceKey, maxLocalId).ConfigureAwait(false);
-        _maxLocalIdCache[idSequenceKey] = localId;
-        return localId;
-    }
 
     private async Task<ChatAuthor?> InheritFromUserAuthor(ChatAuthor? chatAuthor, bool inherit, CancellationToken cancellationToken)
     {

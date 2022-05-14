@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
@@ -65,7 +66,6 @@ public class UsersServiceModule : HostModule<UsersSettings>
         // Redis
         var redisModule = Plugins.GetPlugins<RedisModule>().Single();
         redisModule.AddRedisDb<UsersDbContext>(services, Settings.Redis);
-        services.RegisterLocalIdGenerator<UsersDbContext, DbUserAvatar>();
 
         // DB
         var dbModule = Plugins.GetPlugins<DbModule>().Single();
@@ -83,6 +83,7 @@ public class UsersServiceModule : HostModule<UsersSettings>
             dbContext.AddEntityResolver<string, DbUserAvatar>();
             dbContext.AddEntityResolver<string, DbUserContact>();
             dbContext.AddEntityResolver<string, DbChatReadPosition>();
+            dbContext.AddShardLocalIdGenerator(db => db.UserAvatars, (e, shardKey) => e.UserId == shardKey, e => e.LocalId);
 
             // DB authentication services
             dbContext.AddAuthentication<DbSessionInfo, DbUser, string>((_, options) => {

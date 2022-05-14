@@ -29,4 +29,4 @@ services:
       "
     depends_on:
       - redis
-      - mariadb
+      - postgres
