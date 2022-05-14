@@ -7,14 +7,6 @@
 
 <UserNameEditor />
 
-<div>
-    <label class="block text-sm font-medium text-secondary">User avatars</label>
-    <div class="mt-2">
-        <UserAvatarsEditor />
-    </div>
-</div>
+<h4 class="section top-section">Avatars</h4>
 
-
-@code {
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-}
+<UserAvatarsEditor />

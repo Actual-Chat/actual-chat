@@ -3,11 +3,11 @@
 @{
     var m = _model;
 }
+
 <Form Model="@m" OnValidSubmit="@OnSave" >
-    <DataAnnotationsValidator />
     <ValidationSummary />
 
-    <FormSection InputId="@m.NameId" Label="User name" IsRequired="true">
+    <FormSection InputId="@m.NameId" Label="Name" IsRequired="true">
         <TextBox @bind-Value="@m.Name" id="@m.NameId" Autofocus="true" />
     </FormSection>
 
