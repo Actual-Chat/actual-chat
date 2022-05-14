@@ -1,13 +1,14 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
+@implements IMenu
 @using ActualChat.UI.Blazor.Components
 
-<div class="menu @Class" name="@Name">
-    <div class="select-none flex @MenuDirection()">
-        <CascadingValue Value="@this" IsFixed="true">
+<CascadingValue Value="@((IMenu) this)" IsFixed="true">
+    <div class="menu @Class" name="@Name">
+        <div class="select-none flex @MenuDirection()">
             @ChildContent
-        </CascadingValue>
+        </div>
     </div>
-</div>
+</CascadingValue>
 
 @code {
     [CascadingParameter] public Dropdown? Dropdown { get; set; }
@@ -15,16 +16,16 @@
     [Parameter] public string ItemClass { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string Icon { get; set; } = "";
-    [Parameter] public Orientation Orientation { get; set; } = Orientation.Vertical;
-    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Right;
-    [Parameter] public TooltipPosition TooltipPosition { get; set; } = TooltipPosition.Top;
+    [Parameter] public MenuOrientation Orientation { get; set; } = MenuOrientation.Vertical;
+    [Parameter] public MenuIconPosition IconPosition { get; set; } = MenuIconPosition.Right;
+    [Parameter] public MenuTooltipPosition TooltipPosition { get; set; } = MenuTooltipPosition.Top;
     [Parameter] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private string MenuDirection()
-        => Orientation == Orientation.Vertical ? "flex-col" : "flex-row";
+        => Orientation == MenuOrientation.Vertical ? "flex-col" : "flex-row";
 
-    internal async Task OnItemClick(MenuItem item) {
+    public async Task OnItemClick(MenuItem item) {
         if (Dropdown != null)
             await Dropdown.Toggle(false);
     }

@@ -1,6 +1,9 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
-public enum IconPosition {
+public enum MenuTooltipPosition
+{
+    Top,
+    Bottom,
     Left,
     Right,
 }

@@ -1,12 +1,10 @@
 @namespace ActualChat.UI.Blazor.Components
+@implements IMenu
 @implements IContextMenuBackend
 @implements IAsyncDisposable
 @using ActualChat.UI.Blazor.Module
-@{
-    var menuClass = "context-menu " + MenuClass;
-}
 
-<CascadingValue Value="@this" IsFixed="true">
+<CascadingValue Value="@((IMenu) this)" IsFixed="true">
     <div @ref="Ref" class="context-menu @Class">
         <button class="context-menu-button @ButtonClass" @onclick="_ => Toggle()">
             <div class="context-menu-button-inner">
@@ -32,8 +30,12 @@
     private bool _isOpen;
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ItemClass { get; set; } = "";
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public string MenuClass { get; set; } = "";
+    [Parameter] public MenuOrientation Orientation { get; set; } = MenuOrientation.Vertical;
+    [Parameter] public MenuIconPosition IconPosition { get; set; } = MenuIconPosition.Left;
+    [Parameter] public MenuTooltipPosition TooltipPosition { get; set; } = MenuTooltipPosition.Top;
     [Parameter] public RenderFragment? ButtonTemplate { get; set; }
     [Parameter] public RenderFragment? MenuTemplate { get; set; }
     [Parameter] public EventCallback<bool> OpenStateChanged { get; set; }
@@ -74,6 +76,9 @@
                 ).ConfigureAwait(true);
         }
     }
+
+    public Task OnItemClick(MenuItem item)
+        => Task.CompletedTask;
 
     [JSInvokable]
     public Task Toggle(bool? mustOpen = null) {

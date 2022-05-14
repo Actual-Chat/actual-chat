@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
-public enum Orientation
+public enum MenuOrientation
 {
     Horizontal,
     Vertical,
