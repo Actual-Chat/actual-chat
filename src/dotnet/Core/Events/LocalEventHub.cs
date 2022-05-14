@@ -1,6 +1,7 @@
 namespace ActualChat.Events;
 
-public class LocalEventHub<T> where T: class, IEvent
+public class LocalEventHub<T>
+    where T: class, IEvent
 {
     public LocalEventHub()
     {

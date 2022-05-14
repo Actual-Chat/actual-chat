@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Operations;
@@ -14,5 +15,5 @@ public class InviteDbContext : DbContextBase
     public InviteDbContext(DbContextOptions options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(InviteDbContext).Assembly);
+        => model.ApplyConfigurationsFromAssembly(typeof(InviteDbContext).Assembly).UseSnakeCaseNaming();
 }

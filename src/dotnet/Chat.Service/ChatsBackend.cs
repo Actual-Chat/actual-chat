@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
+using ActualChat.Db;
 using ActualChat.Events;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,6 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private static readonly string ChatIdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
     private static readonly RandomStringGenerator ChatIdGenerator = new(10, ChatIdAlphabet);
-    private readonly ThreadSafeLruCache<Symbol, long> _maxIdCache = new(16384);
 
     private readonly IAuthBackend _authBackend;
     private readonly IChatAuthors _chatAuthors;
@@ -23,6 +23,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
     private readonly IUserProfilesBackend _userProfilesBackend;
     private readonly IUserContactsBackend _userContactsBackend;
     private readonly IDbEntityResolver<string, DbChat> _dbChatResolver;
+    private readonly IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> _dbChatEntryIdGenerator;
     private readonly RedisSequenceSet<ChatEntry> _idSequences;
     private readonly ICommander _commander;
     private readonly IEventPublisher _eventPublisher;
@@ -35,6 +36,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         _userProfilesBackend = Services.GetRequiredService<IUserProfilesBackend>();
         _userContactsBackend = services.GetRequiredService<IUserContactsBackend>();
         _dbChatResolver = Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+        _dbChatEntryIdGenerator = Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
         _idSequences = Services.GetRequiredService<RedisSequenceSet<ChatEntry>>();
         _commander = services.GetRequiredService<ICommander>();
         _eventPublisher = Services.GetRequiredService<IEventPublisher>();
@@ -461,28 +463,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
 
     // Private / internal methods
 
-    internal async Task<long> DbNextEntryId(
+    internal Task<long> DbNextEntryId(
         ChatDbContext dbContext,
         string chatId,
         ChatEntryType entryType,
         CancellationToken cancellationToken)
-    {
-        var idSequenceKey = new Symbol($"{chatId}:{entryType:D}");
-        var maxId = _maxIdCache.GetValueOrDefault(idSequenceKey);
-        if (maxId == 0) {
-            _maxIdCache[idSequenceKey] = maxId =
-                await dbContext.ChatEntries.ForUpdate() // To serialize inserts
-                    .Where(e => e.ChatId == chatId && e.Type == entryType)
-                    .OrderByDescending(e => e.Id)
-                    .Select(e => e.Id)
-                    .FirstOrDefaultAsync(cancellationToken)
-                    .ConfigureAwait(false);
-        }
-
-        var id = await _idSequences.Next(idSequenceKey, maxId).ConfigureAwait(false);
-        _maxIdCache[idSequenceKey] = id;
-        return id;
-    }
+        => _dbChatEntryIdGenerator.Next(dbContext, new DbChatEntryShardRef(chatId, entryType), cancellationToken);
 
     private void ParseChatPrincipalId(string chatPrincipalId, out string? authorId, out string? userId)
     {

@@ -4,6 +4,7 @@ using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -17,280 +18,352 @@ namespace ActualChat.Users.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "6.0.5")
-                .HasAnnotation("Relational:MaxIdentifierLength", 64);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ActualChat.Users.Db.DbChatReadPosition", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<long>("ReadEntryId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("read_entry_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_chat_read_positions");
 
-                    b.ToTable("ChatReadPositions");
+                    b.ToTable("chat_read_positions");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbChatUserSettings", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("AvatarId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_id");
 
                     b.Property<string>("ChatId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
 
                     b.Property<string>("Language")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("language");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_chat_user_settings");
 
-                    b.HasIndex("ChatId", "UserId");
+                    b.HasIndex("ChatId", "UserId")
+                        .HasDatabaseName("ix_chat_user_settings_chat_id_user_id");
 
-                    b.ToTable("ChatUserSettings");
+                    b.ToTable("chat_user_settings");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbSessionInfo", b =>
                 {
                     b.Property<string>("Id")
                         .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("id");
 
                     b.Property<string>("AuthenticatedIdentity")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("authenticated_identity");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("IPAddress")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("ipaddress");
 
                     b.Property<bool>("IsSignOutForced")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_sign_out_forced");
 
                     b.Property<DateTime>("LastSeenAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
 
                     b.Property<string>("OptionsJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("options_json");
 
                     b.Property<string>("UserAgent")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("user_agent");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_sessions");
 
-                    b.HasIndex("CreatedAt", "IsSignOutForced");
+                    b.HasIndex("CreatedAt", "IsSignOutForced")
+                        .HasDatabaseName("ix_sessions_created_at_is_sign_out_forced");
 
-                    b.HasIndex("IPAddress", "IsSignOutForced");
+                    b.HasIndex("IPAddress", "IsSignOutForced")
+                        .HasDatabaseName("ix_sessions_ipaddress_is_sign_out_forced");
 
-                    b.HasIndex("LastSeenAt", "IsSignOutForced");
+                    b.HasIndex("LastSeenAt", "IsSignOutForced")
+                        .HasDatabaseName("ix_sessions_last_seen_at_is_sign_out_forced");
 
-                    b.HasIndex("UserId", "IsSignOutForced");
+                    b.HasIndex("UserId", "IsSignOutForced")
+                        .HasDatabaseName("ix_sessions_user_id_is_sign_out_forced");
 
-                    b.ToTable("_Sessions");
+                    b.ToTable("_sessions");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUser", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("ClaimsJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("claims_json");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_users");
 
-                    b.HasIndex("Name");
+                    b.HasIndex("Name")
+                        .HasDatabaseName("ix_users_name");
 
-                    b.ToTable("Users");
+                    b.ToTable("users");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserAvatar", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("Bio")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("bio");
 
                     b.Property<long>("LocalId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("local_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<string>("Picture")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("picture");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_avatars");
 
-                    b.ToTable("UserAvatars");
+                    b.ToTable("user_avatars");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserContact", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<string>("OwnerUserId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("owner_user_id");
 
                     b.Property<string>("TargetUserId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("target_user_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_contacts");
 
-                    b.HasIndex("OwnerUserId");
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_user_contacts_owner_user_id");
 
-                    b.ToTable("UserContacts");
+                    b.ToTable("user_contacts");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserPresence", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<DateTime>("OnlineCheckInAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("online_check_in_at");
 
-                    b.HasKey("UserId");
+                    b.HasKey("UserId")
+                        .HasName("pk_user_presences");
 
-                    b.ToTable("UserPresences");
+                    b.ToTable("user_presences");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUserProfile", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<string>("AvatarId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_id");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint");
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("UserId");
+                    b.HasKey("UserId")
+                        .HasName("pk_user_profiles");
 
-                    b.ToTable("UserProfiles");
+                    b.ToTable("user_profiles");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("DbUserId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("UserId");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<string>("Secret")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("secret");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_identities");
 
-                    b.HasIndex("DbUserId");
+                    b.HasIndex("DbUserId")
+                        .HasDatabaseName("ix_user_identities_user_id");
 
-                    b.HasIndex("Id");
+                    b.HasIndex("Id")
+                        .HasDatabaseName("ix_user_identities_id");
 
-                    b.ToTable("UserIdentities");
+                    b.ToTable("user_identities");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("AgentId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("agent_id");
 
                     b.Property<string>("CommandJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("command_json");
 
                     b.Property<DateTime>("CommitTime")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("commit_time");
 
                     b.Property<string>("ItemsJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("items_json");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_operations");
 
-                    b.HasIndex(new[] { "CommitTime" }, "IX_CommitTime");
+                    b.HasIndex(new[] { "CommitTime" }, "IX_CommitTime")
+                        .HasDatabaseName("ix_commit_time");
 
-                    b.HasIndex(new[] { "StartTime" }, "IX_StartTime");
+                    b.HasIndex(new[] { "StartTime" }, "IX_StartTime")
+                        .HasDatabaseName("ix_start_time");
 
-                    b.ToTable("_Operations");
+                    b.ToTable("_operations");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
@@ -299,7 +372,8 @@ namespace ActualChat.Users.Migrations
                         .WithMany("Identities")
                         .HasForeignKey("DbUserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_identities_users_user_id");
                 });
 
             modelBuilder.Entity("ActualChat.Users.Db.DbUser", b =>

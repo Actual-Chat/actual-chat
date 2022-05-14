@@ -46,6 +46,9 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddScoped<ImagePreviewUI>();
         services.AddScoped<ErrorUI>();
         services.AddScoped<ModalUI>();
+        services.AddTransient<EscapistSubscription>();
+        services.AddScoped<Escapist>();
+        services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
         services.AddScoped<MainContextMenuUI>();
 
         if (OSInfo.IsWebAssembly)

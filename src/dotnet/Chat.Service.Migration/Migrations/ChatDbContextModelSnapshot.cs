@@ -4,6 +4,7 @@ using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -16,233 +17,299 @@ namespace ActualChat.Chat.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.4")
-                .HasAnnotation("Relational:MaxIdentifierLength", 64);
+                .HasAnnotation("ProductVersion", "6.0.5")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChat", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<int>("ChatType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("chat_type");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<bool>("IsPublic")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_chats");
 
-                    b.ToTable("Chats");
+                    b.ToTable("chats");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatAuthor", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("ChatId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
 
                     b.Property<bool>("IsAnonymous")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_anonymous");
 
                     b.Property<long>("LocalId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("local_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_chat_authors");
 
-                    b.HasIndex("ChatId", "LocalId");
+                    b.HasIndex("ChatId", "LocalId")
+                        .HasDatabaseName("ix_chat_authors_chat_id_local_id");
 
-                    b.HasIndex("ChatId", "UserId");
+                    b.HasIndex("ChatId", "UserId")
+                        .HasDatabaseName("ix_chat_authors_chat_id_user_id");
 
-                    b.ToTable("ChatAuthors");
+                    b.ToTable("chat_authors");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatEntry", b =>
                 {
                     b.Property<string>("CompositeId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("composite_id");
 
                     b.Property<long?>("AudioEntryId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("audio_entry_id");
 
                     b.Property<string>("AuthorId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("author_id");
 
                     b.Property<DateTime>("BeginsAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("begins_at");
 
                     b.Property<string>("ChatId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
 
                     b.Property<DateTime?>("ClientSideBeginsAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("client_side_begins_at");
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("content");
 
                     b.Property<DateTime?>("ContentEndsAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("content_ends_at");
 
                     b.Property<double>("Duration")
-                        .HasColumnType("double");
+                        .HasColumnType("double precision")
+                        .HasColumnName("duration");
 
                     b.Property<DateTime?>("EndsAt")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
 
                     b.Property<bool>("HasAttachments")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_attachments");
 
                     b.Property<long>("Id")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
 
                     b.Property<bool>("IsRemoved")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_removed");
 
                     b.Property<string>("StreamId")
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("stream_id");
 
                     b.Property<string>("TextToTimeMap")
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("text_to_time_map");
 
                     b.Property<int>("Type")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
                     b.Property<long?>("VideoEntryId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("video_entry_id");
 
-                    b.HasKey("CompositeId");
+                    b.HasKey("CompositeId")
+                        .HasName("pk_chat_entries");
 
-                    b.HasIndex("ChatId", "Type", "Id");
+                    b.HasIndex("ChatId", "Type", "Id")
+                        .HasDatabaseName("ix_chat_entries_chat_id_type_id");
 
-                    b.HasIndex("ChatId", "Type", "Version");
+                    b.HasIndex("ChatId", "Type", "Version")
+                        .HasDatabaseName("ix_chat_entries_chat_id_type_version");
 
-                    b.HasIndex("ChatId", "Type", "BeginsAt", "EndsAt");
+                    b.HasIndex("ChatId", "Type", "BeginsAt", "EndsAt")
+                        .HasDatabaseName("ix_chat_entries_chat_id_type_begins_at_ends_at");
 
-                    b.HasIndex("ChatId", "Type", "EndsAt", "BeginsAt");
+                    b.HasIndex("ChatId", "Type", "EndsAt", "BeginsAt")
+                        .HasDatabaseName("ix_chat_entries_chat_id_type_ends_at_begins_at");
 
-                    b.HasIndex("ChatId", "Type", "IsRemoved", "Id");
+                    b.HasIndex("ChatId", "Type", "IsRemoved", "Id")
+                        .HasDatabaseName("ix_chat_entries_chat_id_type_is_removed_id");
 
-                    b.ToTable("ChatEntries");
+                    b.ToTable("chat_entries");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatOwner", b =>
                 {
                     b.Property<string>("ChatId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
 
                     b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
 
                     b.Property<string>("DbChatId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("db_chat_id");
 
-                    b.HasKey("ChatId", "UserId");
+                    b.HasKey("ChatId", "UserId")
+                        .HasName("pk_chat_owners");
 
-                    b.HasIndex("DbChatId");
+                    b.HasIndex("DbChatId")
+                        .HasDatabaseName("ix_chat_owners_db_chat_id");
 
-                    b.ToTable("ChatOwners");
+                    b.ToTable("chat_owners");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbTextEntryAttachment", b =>
                 {
                     b.Property<string>("CompositeId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("composite_id");
 
                     b.Property<string>("ChatId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("chat_id");
 
                     b.Property<string>("ContentId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("content_id");
 
                     b.Property<long>("EntryId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("entry_id");
 
                     b.Property<int>("Index")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("index");
 
                     b.Property<string>("MetadataJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("metadata_json");
 
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
 
-                    b.HasKey("CompositeId");
+                    b.HasKey("CompositeId")
+                        .HasName("pk_text_entry_attachments");
 
-                    b.ToTable("TextEntryAttachments");
+                    b.ToTable("text_entry_attachments");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("text")
+                        .HasColumnName("id");
 
                     b.Property<string>("AgentId")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("agent_id");
 
                     b.Property<string>("CommandJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("command_json");
 
                     b.Property<DateTime>("CommitTime")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("commit_time");
 
                     b.Property<string>("ItemsJson")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("text")
+                        .HasColumnName("items_json");
 
                     b.Property<DateTime>("StartTime")
-                        .HasColumnType("datetime(6)");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_operations");
 
-                    b.HasIndex(new[] { "CommitTime" }, "IX_CommitTime");
+                    b.HasIndex(new[] { "CommitTime" }, "IX_CommitTime")
+                        .HasDatabaseName("ix_commit_time");
 
-                    b.HasIndex(new[] { "StartTime" }, "IX_StartTime");
+                    b.HasIndex(new[] { "StartTime" }, "IX_StartTime")
+                        .HasDatabaseName("ix_start_time");
 
-                    b.ToTable("_Operations");
+                    b.ToTable("_operations");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChatOwner", b =>
                 {
                     b.HasOne("ActualChat.Chat.Db.DbChat", null)
                         .WithMany("Owners")
-                        .HasForeignKey("DbChatId");
+                        .HasForeignKey("DbChatId")
+                        .HasConstraintName("fk_chat_owners_chats_db_chat_id");
                 });
 
             modelBuilder.Entity("ActualChat.Chat.Db.DbChat", b =>

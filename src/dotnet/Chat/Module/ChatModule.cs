@@ -14,7 +14,7 @@ public class ChatModule : HostModule
     {
         if (HostInfo.HostKind == HostKind.WebServer) {
             var rawParser = new MarkupParser();
-            var sharedCache = new ConcurrentLruCache<string, Markup>(1024, HardwareInfo.GetProcessorCountPo2Factor(4));
+            var sharedCache = new ConcurrentLruCache<string, Markup>(65536, HardwareInfo.GetProcessorCountPo2Factor(4));
             var sharedParser = new CachingMarkupParser(rawParser, sharedCache);
             services.AddSingleton(sharedParser);
             services.AddScoped<IMarkupParser>(c => {

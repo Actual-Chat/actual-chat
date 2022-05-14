@@ -1,46 +1,46 @@
 @implements IModalView<UserAvatarEditorModal.Model>
 @attribute [MatchFor(typeof(Model), typeof(IModalView))]
+@{
+    var m = _model!;
+}
 
-<EditForm Model="@_model" OnValidSubmit="@OnSave">
+<Form Model="@m" OnValidSubmit="@OnSave">
     <DialogFrame Title="Edit avatar">
         <Body>
             <DataAnnotationsValidator />
             <ValidationSummary />
 
-            <div>
-                <label for="Picture" class="block text-sm font-medium text-secondary">Picture</label>
-                <div class="mt-1">
-                    <TextBox @bind-Value="_model.Picture" id="Picture"
-                             class="w-full px-2 py-1 border rounded-md focus:outline-none focus:border-success" />
-                </div>
-            </div>
+            <FormSection InputId="@m.PictureId" Label="Picture">
+                <TextBox @bind-Value="@m.Picture" id="@m.PictureId" Autofocus="true" />
+            </FormSection>
 
-            <div class="mt-2">
-                <label for="Bio" class="block text-sm font-medium text-secondary">Bio</label>
-                <div class="mt-1">
-                    <TextBox @bind-Value="_model.Bio" id="Bio"
-                             class="w-full px-2 py-1 border rounded-md focus:outline-none focus:border-success" />
-                </div>
-            </div>
+            <FormSection InputId="@m.BioId" Label="Bio">
+                <TextBox @bind-Value="@m.Bio" id="@m.BioId" />
+            </FormSection>
         </Body>
         <Buttons>
-            <Button Class="btn-cancel" Click="OnCancel">Cancel</Button>
-            <Button Type="@ButtonType.Submit" class="btn-success">Save</Button>
+            <FormButtons>
+                <Button Class="btn-cancel" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" class="btn-success">Save</Button>
+            </FormButtons>
         </Buttons>
     </DialogFrame>
-</EditForm>
+</Form>
 
 @code {
-    private readonly EditModel _model = new();
+    private EditModel? _model;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IUserAvatars UserAvatars { get; init; } = null!;
     [Inject] private UICommandRunner Cmd { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] BlazoredModalInstance ModalInstance { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync() {
+        _model ??= new EditModel(ComponentIdGenerator);
+
         var userAvatar = await UserAvatars.Get(Session, ModalModel.AvatarId, default);
 
         _model.Name = userAvatar?.Name ?? "";
@@ -61,9 +61,21 @@
         => ModalInstance.CancelAsync();
 
     public sealed class EditModel {
+        public string FormId { get; }
+        public string NameId { get; }
+        public string PictureId { get; }
+        public string BioId { get; }
+
         public string Name { get; set; } = "";
         public string Picture { get; set; } = "";
         public string Bio { get; set; } = "";
+
+        public EditModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("avatar-editor");
+            NameId = $"{FormId}-name";
+            PictureId = $"{FormId}-picture";
+            BioId = $"{FormId}-bio";
+        }
     }
 
     public sealed record Model(string AvatarId);

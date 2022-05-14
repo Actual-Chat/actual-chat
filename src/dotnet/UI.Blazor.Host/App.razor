@@ -9,20 +9,22 @@
 }
 
 <CascadingAuthState SessionId="@SessionId">
-    <CascadingBlazoredModal>
-        <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
-            <Found>
-                <CascadingValue Value="@context">
-                    <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
-                </CascadingValue>
-            </Found>
-            <NotFound>
-                <LayoutView Layout="@typeof(MainLayout)">
-                    <p>Sorry, there's nothing here.</p>
-                </LayoutView>
-            </NotFound>
-        </Router>
-    </CascadingBlazoredModal>
+    <Welcome>
+        <CascadingBlazoredModal>
+            <Router AppAssembly="@typeof(Program).Assembly" AdditionalAssemblies="moduleAssemblies">
+                <Found>
+                    <CascadingValue Value="@context">
+                        <AuthorizeRouteView RouteData="@context" DefaultLayout="@typeof(MainLayout)"/>
+                    </CascadingValue>
+                </Found>
+                <NotFound>
+                    <LayoutView Layout="@typeof(MainLayout)">
+                        <p>Sorry, there's nothing here.</p>
+                    </LayoutView>
+                </NotFound>
+            </Router>
+        </CascadingBlazoredModal>
+    </Welcome>
 </CascadingAuthState>
 
 @code {

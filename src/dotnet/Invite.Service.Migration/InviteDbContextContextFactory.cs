@@ -7,13 +7,13 @@ namespace ActualChat.Invite;
 public class InviteDbContextContextFactory : IDesignTimeDbContextFactory<InviteDbContext>
 {
     public string ConnectionString =
-        "Server=localhost;Database=ac_dev_invite;Port=3306;User=root;Password=mariadb";
+        "Server=localhost;Database=ac_dev_invite;Port=5432;User Id=postgres;Password=postgres";
 
     public InviteDbContext CreateDbContext(string[] args)
     {
         var builder = new DbContextOptionsBuilder<InviteDbContext>();
-        builder.UseMySql(ConnectionString,
-            ServerVersion.AutoDetect(ConnectionString),
+        builder.UseNpgsql(
+            ConnectionString,
             o => o.MigrationsAssembly(typeof(InviteDbContextContextFactory).Assembly.FullName));
 
         return new InviteDbContext(builder.Options);

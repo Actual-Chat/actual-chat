@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Authentication;
@@ -23,5 +24,5 @@ public class UsersDbContext : DbContextBase
     public UsersDbContext(DbContextOptions options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder model)
-        => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly);
+        => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();
 }
