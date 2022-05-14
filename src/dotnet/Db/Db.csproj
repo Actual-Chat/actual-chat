@@ -19,4 +19,8 @@
     <PackageReference Include="Ulid" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Internal" />
+  </ItemGroup>
+
 </Project>
