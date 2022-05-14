@@ -49,7 +49,7 @@ public class BlazorUICoreModule : HostModule, IBlazorUIModule
         services.AddTransient<EscapistSubscription>();
         services.AddScoped<Escapist>();
         services.AddScoped<Func<EscapistSubscription>>(x => x.GetRequiredService<EscapistSubscription>);
-        services.AddScoped<MainContextMenuUI>();
+        services.AddScoped<ContextMenuUI>();
 
         if (OSInfo.IsWebAssembly)
             services.AddSingleton<IHostApplicationLifetime, BlazorHostApplicationLifetime>();

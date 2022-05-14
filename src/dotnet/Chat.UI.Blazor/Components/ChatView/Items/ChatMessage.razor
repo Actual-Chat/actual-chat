@@ -65,13 +65,13 @@
         }
     </div>
 
-    <MainContextMenuButton Click="MenuUI.MenuToggle" Class="message-menu-btn show-on-hover" Id="@contextButtonId">
+    <MainContextMenuButton Click="ContextMenuUI.MenuToggle" Class="message-menu-btn show-on-hover" Id="@contextButtonId">
         <svg class="w-6 h-6 fill-current horizontal-item" xlmns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26">
             <path d="M6 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm9 0c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3z"/>
         </svg>
     </MainContextMenuButton>
 
-    @if (MenuUI.IsOpen) {
+    @if (ContextMenuUI.IsOpen) {
         <MainContextMenu SlotName="MainContextMenu" Id="@contextMenuId">
             <CascadingValue Value="@Model">
                 <MessageContextMenu/>
@@ -93,7 +93,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IChatAuthors ChatAuthor { get; init; } = null!;
-    [Inject] private MainContextMenuUI MenuUI { get; init; } = null!;
+    [Inject] private ContextMenuUI ContextMenuUI { get; init; } = null!;
 
     private string PrincipalId { get; set; } = "";
 

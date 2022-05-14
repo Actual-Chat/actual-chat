@@ -19,7 +19,7 @@
     }
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private MainContextMenuUI MenuUI { get; init; } = null!;
+    [Inject] private ContextMenuUI ContextMenuUI { get; init; } = null!;
 
     [Parameter] public string SlotName { get; set; } = null!;
     [Parameter] public string Id { get; set; } = null!;
@@ -58,6 +58,6 @@
 
     [JSInvokable]
     public void CloseMenu() {
-        MenuUI.CloseMenu();
+        ContextMenuUI.CloseMenu();
     }
 }

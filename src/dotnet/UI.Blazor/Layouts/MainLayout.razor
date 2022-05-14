@@ -2,9 +2,6 @@
 @layout BaseLayout
 
 <PageWithHeaderAndFooter BodyClass="p-3">
-    <MainContextMenu>
-        <RenderSlot Name="MainContextMenu"/>
-    </MainContextMenu>
     <Header>
         <RenderSlot Name="MainHeader"/>
     </Header>
@@ -12,6 +9,6 @@
         <RenderSlot Name="MainFooter"/>
     </Footer>
     <Body>
-    @Body
+        @Body
     </Body>
 </PageWithHeaderAndFooter>

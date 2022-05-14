@@ -19,8 +19,8 @@
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public EventCallback<string> OnPost { get; set; }
-    [Parameter] public EventCallback OnRendered { get; set; }
+    [Parameter] public EventCallback<string> Posted { get; set; }
+    [Parameter] public EventCallback Rendered { get; set; }
     [CascadingParameter] public MentionCandidateListManager? MentionCandidateListManager { get; set; }
 
     protected override void OnParametersSet() {
@@ -53,7 +53,7 @@
                 ).ConfigureAwait(true);
             _rendered = true;
             _ = SetPlaceholder(Placeholder);
-            await OnRendered.InvokeAsync().ConfigureAwait(false);
+            await Rendered.InvokeAsync().ConfigureAwait(false);
         }
     }
 
@@ -62,7 +62,7 @@
 
     [JSInvokable]
     public Task Post(string? text = null)
-        => OnPost.InvokeAsync(text);
+        => Posted.InvokeAsync(text);
 
     public async Task Clear()
         => await JSRef.InvokeAsync<string>("clearText").ConfigureAwait(false);
