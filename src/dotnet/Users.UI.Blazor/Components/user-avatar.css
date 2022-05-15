@@ -34,8 +34,8 @@
 }
 
 .user-avatar-card_tag {
-    @apply bg-online pl-0.5 pr-1.5;
-    @apply align-top font-light text-secondary text-xs;
+    @apply bg-online pl-1 pr-2.5 py-0.5;
+    @apply align-top font-light text-secondary text-xxs uppercase;
 }
 
 .user-avatar-card_add-tile .user-avatar-card_picture {
