@@ -18,7 +18,10 @@
     [Inject] private NavigationManager Nav { get; init; } = null!;
 
     protected override ComputedState<User>.Options GetStateOptions()
-        => new() { UpdateDelayer = UpdateDelayer.MinDelay };
+        => new() {
+            UpdateDelayer = UpdateDelayer.MinDelay,
+            InitialValue = new User(String.Empty, "")
+        };
 
     protected override Task<User> ComputeState(CancellationToken cancellationToken)
         => Auth.GetUser(Session, default);
