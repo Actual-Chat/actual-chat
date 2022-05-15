@@ -22,6 +22,15 @@
     @apply p-0.5 text-base bg-transparent hover:bg-secondary;
 }
 
+/* Navgar subgroup */
+.navbar-subgroup {
+    @apply pt-2;
+    @apply text-secondary text-xs font-semibold uppercase opacity-75;
+}
+.navbar-subgroup.first {
+    @apply pt-0;
+}
+
 /* Navbar item */
 .navbar-item .navbar-item-content {
     @apply text-sm text-primary;

@@ -1,7 +1,16 @@
 @inherits ComputedStateComponent<ChatListNavbarWidget.Model>
 @{
-    var m = State.LatestNonErrorValue;
-    var chats = m.Chats;
+    var m = State.LatestNonErrorValue ?? Model.None;
+    var hasPinnedChats = m.PinnedChats.Length > 0;
+
+    RenderFragment RenderChat(Chat chat) =>
+        @<NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@(m.ActiveChatId == chat.Id)">
+            <ChildContent>@chat.Title</ChildContent>
+            <Ending>
+                <ChatListRecordingToggle ChatId="@chat.Id"/>
+                <ChatListPinToggle ChatId="@chat.Id"/>
+            </Ending>
+        </NavbarItem>;
 }
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="chats">
@@ -13,58 +22,68 @@
         }
     </Icons>
     <ChildContent>
-        @foreach (var chat in chats) {
-            var isActive = m.ActiveChatId == chat.Id;
-            <NavbarItem Url="@($"/chat/{chat.Id}")" IsActive="@isActive">
-                <ChildContent>@chat.Title</ChildContent>
-                <Ending>
-                    <ChatListRecordingToggle ChatId="@chat.Id"/>
-                    <ChatListPinToggle ChatId="@chat.Id"/>
-                </Ending>
-            </NavbarItem>
+        @if (hasPinnedChats) {
+            <NavbarSubgroup Class="first">Pinned</NavbarSubgroup>
+            foreach (var chat in m.PinnedChats)
+                @RenderChat(chat)
+            <NavbarSubgroup>Unpinned</NavbarSubgroup>
+            foreach (var chat in m.UnpinnedChats)
+                @RenderChat(chat)
+        } else {
+            foreach (var chat in m.UnpinnedChats)
+                @RenderChat(chat)
         }
     </ChildContent>
 </NavbarGroup>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IUserProfiles UserProfiles { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAuth Auth { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new (),
+            InitialValue = Model.None,
             UpdateDelayer = UpdateDelayer.MinDelay, // GetActiveChatId() change should be instantly visible
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chats = await Chats.GetChats(Session, cancellationToken);
-        var chatsToShow = chats.OrderBy(c => c.Title).ToList();
-        var addDefault = chats.Length == 0 || chats.All(c => c.Id != Constants.Chat.DefaultChatId);
-        if (addDefault) {
+        var userProfile = await UserProfiles.Get(Session, cancellationToken).ConfigureAwait(false);
+        if (userProfile is not { Status: UserStatus.Active })
+            return Model.None;
+
+        var chats = await Chats.GetChats(Session, cancellationToken).ConfigureAwait(false);
+        var mustAddDefaultChat = userProfile.IsAdmin && chats.All(c => c.Id != Constants.Chat.DefaultChatId);
+        if (mustAddDefaultChat) {
             var defaultChat = await Chats.Get(Session, Constants.Chat.DefaultChatId, cancellationToken);
-            if (defaultChat != null) {
-                chatsToShow.Add(defaultChat);
-            }
+            if (defaultChat != null)
+                chats = chats.Append(defaultChat).ToArray();
         }
-        var user = await Auth.GetUser(Session, cancellationToken).ConfigureAwait(false);
+
+        var activeChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChatIds = await ChatUI.PinnedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        var pinnedChats = chats.Where(c => pinnedChatIds.Contains(c.Id)).OrderBy(c => c.Title).ToImmutableArray();
+        var unpinnedChats = chats.Where(c => !pinnedChatIds.Contains(c.Id)).OrderBy(c => c.Title).ToImmutableArray();
 
         return new () {
-            CanCreateChat = user.IsAuthenticated,
-            Chats = chatsToShow.ToImmutableArray(),
-            ActiveChatId = await ChatUI.ActiveChatId.Use(cancellationToken).ConfigureAwait(false),
+            CanCreateChat = true,
+            PinnedChats = pinnedChats,
+            UnpinnedChats = unpinnedChats,
+            ActiveChatId = activeChatId,
         };
     }
 
     private void OnCreateNewChatClick()
         => ModalUI.Show(new NewChatModal.Model());
 
-    public class Model
-    {
+    public sealed record Model {
+        public static Model None { get; } = new();
+
         public bool CanCreateChat { get; init; }
-        public ImmutableArray<Chat> Chats { get; init; } = ImmutableArray<Chat>.Empty;
+        public ImmutableArray<Chat> PinnedChats { get; init; } = ImmutableArray<Chat>.Empty;
+        public ImmutableArray<Chat> UnpinnedChats { get; init; } = ImmutableArray<Chat>.Empty;
         public Symbol ActiveChatId { get; init; } = Constants.Chat.DefaultChatId;
     }
 }
