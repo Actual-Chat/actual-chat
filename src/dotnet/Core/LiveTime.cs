@@ -68,19 +68,19 @@ public class LiveTime : ILiveTime
         var localNow = now.ToDateTime().ToLocalTime();
         var localToday = localNow.Date;
         if (localTimeDate == localToday) {
-            result = $"today, {localTime.ToShortTimeString()}";
+            result = $"today at {localTime.ToShortTimeString()}";
             delay = TimeSpan.FromDays(1) - localNow.TimeOfDay;
         }
         else if (isFuture && localTimeDate == localToday.AddDays(1)) {
-            result = $"tomorrow, {localTime.ToShortTimeString()}";
+            result = $"tomorrow at {localTime.ToShortTimeString()}";
             delay = TimeSpan.FromDays(1) - localNow.TimeOfDay;
         }
         else if (!isFuture && localTimeDate == localToday.AddDays(-1)) {
-            result = $"yesterday, {localTime.ToShortTimeString()}";
+            result = $"yesterday at {localTime.ToShortTimeString()}";
             delay = TimeSpan.FromDays(1) - localNow.TimeOfDay;
         }
         else {
-            result = $"{localTime.ToShortDateString()}, {localTime.ToShortTimeString()}";
+            result = $"{localTime.ToShortDateString()} at {localTime.ToShortTimeString()}";
             delay = TimeSpan.MaxValue;
         }
         return (result, delay);
