@@ -1,24 +1,13 @@
 ﻿@using System.Text.Encodings.Web
-@inherits ComputedStateComponent<UserAvatarsEditor.Model>
-@{
-    var items = State.LatestNonErrorValue.Items;
-}
+@inherits ComputedStateComponent<string[]>
 
-<ul class="flex flex-wrap gap-4">
-    @foreach (var item in items) {
-        <li class="group cursor-pointer" @onclick="@(() => EditAvatar(item.AvatarId))">
-            <div class="relative">
-                <div class="absolute top-0 right-0">
-                    @{ var tag = item.IsActive ? "active" : item.IsDefault ? "default" : ""; }
-                    @if (!tag.IsNullOrEmpty()) {
-                        <span class="user-avatar-card_tag">@tag</span>
-                    }
-                </div>
-                <UserAvatar AvatarId="@item.AvatarId" />
-            </div>
+<ul class="user-avatar-editor">
+    @foreach (var avatarId in State.LatestNonErrorValue) {
+        <li class="user-avatar-editor_item" @onclick="@(() => EditAvatar(avatarId))">
+            <UserAvatar AvatarId="@avatarId" ChatId="@ChatId" />
         </li>
     }
-    <li class="group cursor-pointer" @onclick="OnAddNewAvatar">
+    <li class="user-avatar-editor_item" @onclick="OnAddNewAvatar">
         <UserAvatarAddTile />
     </li>
 </ul>
@@ -32,27 +21,11 @@
 
     [Parameter] public string ChatId { get; set; } = "";
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new () { InitialValue = new() };
+    protected override ComputedState<string[]>.Options GetStateOptions()
+        => new () { InitialValue = Array.Empty<string>() };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var avatarIds = await UserAvatars.GetAvatarIds(Session, cancellationToken).ConfigureAwait(true);
-        var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken).ConfigureAwait(true);
-        string activeAvatarId;
-        if (ChatId.IsNullOrEmpty()) {
-            activeAvatarId = defaultAvatarId;
-        } else {
-            var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
-            activeAvatarId = chatUserSettings?.AvatarId ?? "";
-        }
-        return new Model {
-            Items = avatarIds.Select(c => new Item {
-                AvatarId = c,
-                IsDefault = c == defaultAvatarId,
-                IsActive = c == activeAvatarId,
-            }).ToArray(),
-        };
-    }
+    protected override Task<string[]> ComputeState(CancellationToken cancellationToken)
+        => UserAvatars.GetAvatarIds(Session, cancellationToken);
 
     private async Task OnAddNewAvatar() {
         var command = new IUserAvatars.CreateCommand(Session);
@@ -61,15 +34,5 @@
 
     private void EditAvatar(string avatarId) {
         ModalUI.Show(new UserAvatarEditorModal.Model(avatarId, ChatId));
-    }
-
-    public class Model {
-        public Item[] Items { get; init; } = Array.Empty<Item>();
-    }
-
-    public class Item {
-        public bool IsDefault { get; init; }
-        public bool IsActive { get; init; }
-        public string AvatarId { get; init; } = "";
     }
 }

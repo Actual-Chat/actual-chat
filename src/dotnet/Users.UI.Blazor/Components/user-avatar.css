@@ -1,11 +1,23 @@
+.user-avatar-editor {
+    @apply flex flex-wrap gap-4;
+}
+
+.user-avatar-editor_item {
+    @apply cursor-pointer;
+}
+
 .user-avatar-card {
-    @apply flex flex-col items-center;
+    @apply flex flex-col items-center overflow-hidden;
     @apply w-40 h-32 max-w-xs p-2;
     @apply bg-white font-semibold text-center border rounded-2xl shadow-lg;
 }
 
+.user-avatar-card_content {
+    @apply my-auto;
+}
+
 .user-avatar-card_bio {
-    @apply m-2 text-xs text-gray-400;
+    @apply mt-2 h-8 text-xs text-gray-400;
     @apply font-light;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -22,7 +34,7 @@
 }
 
 .user-avatar-card_tag {
-    @apply bg-online rounded-md px-0.5;
+    @apply bg-online pl-0.5 pr-1.5;
     @apply align-top font-light text-secondary text-xs;
 }
 
