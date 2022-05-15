@@ -8,6 +8,10 @@
         <TextBox @bind-Value="@_form.Title" id="@_form.TitleId" tabIndex="1" Autofocus="true"/>
     </FormSection>
 
+    <FormSection Label="Picture" InputId="@_form.PictureId">
+        <TextBox @bind-Value="@_form.Picture" id="@_form.PictureId" />
+    </FormSection>
+
     <FormSection>
         <ToggleEdit Id="@_form.IsPublicId" Label="Public chat &ndash; anyone can join" @bind-Value="_form.IsPublic"/>
     </FormSection>
@@ -31,6 +35,7 @@
     protected override Task OnParametersSetAsync() {
         _form ??= new(ComponentIdGenerator);
         _form.Title = Chat.Title;
+        _form.Picture = Chat.Picture;
         _form.IsPublic = Chat.IsPublic;
         return Task.CompletedTask;
     }
@@ -39,6 +44,7 @@
         var newChat = Chat with {
             Title = _form.Title,
             IsPublic = _form.IsPublic,
+            Picture = _form.Picture,
         };
         await Cmd.Run(new IChats.UpdateChatCommand(Session, newChat));
     }
@@ -46,15 +52,18 @@
     public sealed class FormModel
     {
         [Required] public string Title { get; set; } = "";
+        public string Picture { get; set; } = "";
         public bool IsPublic { get; set; }
 
         public string FormId { get; }
         public string TitleId { get; }
+        public string PictureId { get; }
         public string IsPublicId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
+            PictureId = $"{FormId}-picture";
             IsPublicId = $"{FormId}-is-public";
         }
     }

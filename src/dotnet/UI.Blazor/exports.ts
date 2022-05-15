@@ -6,6 +6,7 @@ import './Components/Navbar/navbar.css'
 import './Components/TabPanel/tab.css'
 import './Components/Form/form.css'
 import './Components/Form/toggle.css'
+import './Components/ChatIcon/chat-icon.css'
 import './Components/tooltip.css'
 
 export * from './Components/Clipboard/clipboard';
