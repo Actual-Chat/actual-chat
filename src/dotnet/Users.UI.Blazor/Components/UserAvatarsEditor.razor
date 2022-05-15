@@ -6,32 +6,20 @@
 
 <ul class="flex flex-wrap gap-4">
     @foreach (var item in items) {
-        var borderClass = !ChatId.IsNullOrEmpty() && item.IsDefault ? "border border-green-300" : "";
-        <li class="group">
+        <li class="group cursor-pointer" @onclick="@(() => EditAvatar(item.AvatarId))">
             <div class="relative">
-                <UserAvatar AvatarId="@item.AvatarId" Class="@borderClass">
-                    <ActionsTemplate>
-                        <div class="self-center btn-group">
-                            <Button Click="@(() => EditAvatar(item.AvatarId))" Class="btn-cancel">Edit</Button>
-                        </div>
-                    </ActionsTemplate>
-                </UserAvatar>
-                <div class="absolute top-0 right-0 mr-3 mt-2">
-                    @if (item.IsSelected) {
-                        <i class="fa fa-check fa-lg text-success" aria-hidden="true"></i>
+                <div class="absolute top-0 right-0">
+                    @{ var tag = item.IsActive ? "active" : item.IsDefault ? "default" : ""; }
+                    @if (!tag.IsNullOrEmpty()) {
+                        <span class="user-avatar-card_tag">@tag</span>
                     }
                 </div>
+                <UserAvatar AvatarId="@item.AvatarId" />
             </div>
         </li>
     }
-    <li class="group">
-        <UserAvatar>
-            <ActionsTemplate>
-                <div class="self-center btn-group">
-                    <Button Class="btn-success" Click="OnAddNewAvatar">Add new</Button>
-                </div>
-            </ActionsTemplate>
-        </UserAvatar>
+    <li class="group cursor-pointer" @onclick="OnAddNewAvatar">
+        <UserAvatarAddTile />
     </li>
 </ul>
 
@@ -50,18 +38,18 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var avatarIds = await UserAvatars.GetAvatarIds(Session, cancellationToken).ConfigureAwait(true);
         var defaultAvatarId = await UserAvatars.GetDefaultAvatarId(Session, cancellationToken).ConfigureAwait(true);
-        string selectedAvatarId;
+        string activeAvatarId;
         if (ChatId.IsNullOrEmpty()) {
-            selectedAvatarId = defaultAvatarId;
+            activeAvatarId = defaultAvatarId;
         } else {
             var chatUserSettings = await ChatUserSettings.Get(Session, ChatId, cancellationToken).ConfigureAwait(true);
-            selectedAvatarId = chatUserSettings?.AvatarId ?? "";
+            activeAvatarId = chatUserSettings?.AvatarId ?? "";
         }
         return new Model {
             Items = avatarIds.Select(c => new Item {
                 AvatarId = c,
                 IsDefault = c == defaultAvatarId,
-                IsSelected = c == selectedAvatarId,
+                IsActive = c == activeAvatarId,
             }).ToArray(),
         };
     }
@@ -81,7 +69,7 @@
 
     public class Item {
         public bool IsDefault { get; init; }
-        public bool IsSelected { get; init; }
+        public bool IsActive { get; init; }
         public string AvatarId { get; init; } = "";
     }
 }

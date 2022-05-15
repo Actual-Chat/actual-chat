@@ -1,0 +1,31 @@
+.user-avatar-card {
+    @apply flex flex-col items-center;
+    @apply w-40 h-32 max-w-xs p-2;
+    @apply bg-white font-semibold text-center border rounded-2xl shadow-lg;
+}
+
+.user-avatar-card_bio {
+    @apply m-2 text-xs text-gray-400;
+    @apply font-light;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.user-avatar-card_picture {
+    @apply w-16 h-16 rounded-full shadow-lg mx-auto;
+}
+
+.user-avatar-card_picture-svg {
+    @apply text-secondary fill-current;
+}
+
+.user-avatar-card_tag {
+    @apply bg-online rounded-md px-0.5;
+    @apply align-top font-light text-secondary text-xs;
+}
+
+.user-avatar-card_add-tile .user-avatar-card_picture {
+    @apply m-auto;
+}
